@@ -9,7 +9,7 @@ const db: any = { ready: false };
 
 const getIPFS = async () => {
     //const ipfsOptions = { repo : './ipfs', }
-    return await IPFS.create({ repo: './ipfs' + Math.random() })
+    return await IPFS.create({ repo: './ipfscasdadsd' })
 }
 
 const initDB = async () => {
@@ -44,6 +44,7 @@ const initUserDBForWallet = async (wallet: string): Promise<RegisteredUser> => {
 
     await accountsDB.put(wallet, registeredUser)
     const dbUser = accountsDB.get(wallet)
+    console.log(dbUser)
     accountsDB.close()
     return dbUser
 }

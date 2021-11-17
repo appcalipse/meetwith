@@ -1,7 +1,6 @@
 import Web3 from "web3";
 import Web3Modal from "web3modal";
 import { RegisteredUser, User } from "../models/User";
-import { initDB } from "./database";
 import { createOrFetchUser } from "./user_manager";
 
 const DEFAULT_MESSAGE = 'Welcome to meetwith.wallet! Please sign this message to make your experience safe.'
@@ -9,8 +8,6 @@ const DEFAULT_MESSAGE = 'Welcome to meetwith.wallet! Please sign this message to
 let web3: Web3;
 
 const loginWithWallet = async (): Promise<RegisteredUser> => {
-
-    await initDB()
 
     const providerOptions = {
         /* See Provider Options Section */
