@@ -1,6 +1,7 @@
 import Web3 from "web3";
 import Web3Modal from "web3modal";
-import { RegisteredUser, User } from "../models/User";
+import { RegisteredUser, User } from "../types/User";
+import { saveSignature } from "./storage";
 import { createOrFetchUser } from "./user_manager";
 
 const DEFAULT_MESSAGE = 'Welcome to meetwith.wallet! Please sign this message to make your experience safe.'
@@ -30,7 +31,7 @@ const loginWithWallet = async (): Promise<RegisteredUser> => {
 
 const signDefaultMessage = async (userAccount: User): Promise<string> => {
     const signature = await web3.eth.personal.sign(`${DEFAULT_MESSAGE}`, userAccount.address, userAccount.address);
-    (window as any).signature = signature;
+    saveSignature(userAccount, signature)
     return signature;
 }
 

@@ -1,7 +1,7 @@
 import React, { useState } from "react"
-import { RegisteredUser } from "../models/User";
+import { RegisteredUser } from "../types/User";
 
-interface IUserConetxt {
+interface IUserContext {
     currentUser?: RegisteredUser,
     logged: boolean,
     login: (user: RegisteredUser) => void,
@@ -10,7 +10,7 @@ interface IUserConetxt {
 
 const DEFAULT_STATE = { logged: false, login: () => { }, logout: () => { } }
 
-const UserContext = React.createContext<IUserConetxt>(DEFAULT_STATE);
+const UserContext = React.createContext<IUserContext>(DEFAULT_STATE);
 
 const UserProvider = ({ children }: any) => {
 

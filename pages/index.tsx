@@ -1,22 +1,10 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import React from 'react'
-import { User } from '../models/User'
 import styles from '../styles/Home.module.css'
 import { fetchUserMeetings, scheduleMeeting } from '../utils/calendar_manager'
 import { getMeeting } from '../utils/database'
 import { loginWithWallet } from '../utils/wallet'
-
-const schedule = async () => {
-  const user = await loginWithWallet()
-
-  const fakeUser: User = {
-    address: 'saasdsadasdadssaad',
-    pubKey: 'asdsaasdsdasasda'
-  }
-
-  await scheduleMeeting(fakeUser, user, new Date(), new Date((new Date().getMilliseconds() + 60 * 60 * 1000)), 'Look, a meeting ' + Math.random())
-}
 
 const getMeetings = async () => {
   const user = await loginWithWallet()
@@ -37,10 +25,8 @@ const Home: NextPage = () => {
 
       <main className={styles.main}>
 
-        <button onClick={schedule}>Schedule</button>
         <button onClick={getMeetings}>Get meetings</button>
 
-        <LALA />
 
       </main>
 
@@ -49,26 +35,4 @@ const Home: NextPage = () => {
   )
 }
 
-interface IProps { }
-interface IState {
-  hash: string
-}
-
-class LALA extends React.Component<IProps, IState> {
-
-  constructor(props: IProps) {
-    super(props)
-
-    this.state = {
-      hash: '',
-    }
-  }
-  render() {
-    return <div>
-      <input type="text" onChange={(e) => this.setState({ hash: e.target.value })} />
-      <button onClick={async () => getMeeting(await loginWithWallet(), this.state.hash)}>Get a meeting</button>
-
-    </div>
-  }
-}
 export default Home

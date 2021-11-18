@@ -1,15 +1,16 @@
 import * as IPFS from 'ipfs'
 import OrbitDB from 'orbit-db'
 import EthCrypto from 'eth-crypto';
-import { RegisteredUser, User } from '../models/User';
+import { RegisteredUser, User } from '../types/User';
 import { signDefaultMessage } from './wallet';
 import { encryptContent } from './cryptography';
+import { saveSignature } from './storage';
 
 const db: any = { ready: false };
 
 const getIPFS = async () => {
     //const ipfsOptions = { repo : './ipfs', }
-    return await IPFS.create({ repo: './ipfscasdadsd' })
+    return await IPFS.create({ repo: './ipfs/new' })
 }
 
 const initDB = async () => {
@@ -44,7 +45,6 @@ const initUserDBForWallet = async (wallet: string): Promise<RegisteredUser> => {
 
     await accountsDB.put(wallet, registeredUser)
     const dbUser = accountsDB.get(wallet)
-    console.log(dbUser)
     accountsDB.close()
     return dbUser
 }
