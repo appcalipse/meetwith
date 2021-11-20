@@ -5,6 +5,7 @@ import { ChakraProvider } from '@chakra-ui/react';
 
 import { extendTheme } from "@chakra-ui/react"
 import NavBar from '../components/Navbar';
+import Footer from '../components/Footer';
 import { AccountProvider } from '../providers/AccountProvider';
 import { initDB } from '../utils/database';
 
@@ -40,6 +41,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
           <>
             <NavBar />
             <Component {...pageProps} />
+            <Footer />
           </>
         }
       </AccountProvider>

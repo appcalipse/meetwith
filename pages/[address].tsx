@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import MeetSlotPicker from '../components/MeetSlotPicker'
 import { AccountContext } from '../providers/AccountProvider'
 import { fetchAccountMeetings, isSlotAvailable, scheduleMeeting } from '../utils/calendar_manager'
@@ -7,7 +7,7 @@ import dayjs from 'dayjs'
 import { Meeting } from '../types/Meeting'
 import { getAccount } from '../utils/database'
 
-const Schedule = () => {
+const Schedule: React.FC = () => {
     const router = useRouter()
     const { address } = router.query
 
@@ -17,7 +17,6 @@ const Schedule = () => {
 
     const [account, setAccount] = useState(null as string | null)
     const [loading, setLoading] = useState(true)
-    const [notFound, setNotFound] = useState(false)
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [meetings, setMeetings] = useState([] as Meeting[])
 
@@ -29,7 +28,7 @@ const Schedule = () => {
             setAccount(account.address)
             updateMeetings(account.address)
         } else {
-            setNotFound(true)
+            router.push('/404')
         }
         setLoading(false)
     }
@@ -68,13 +67,14 @@ const Schedule = () => {
         loading ?
             <div>Loading...</div>
             :
-            notFound ? <div>User not found</div> :
+            (<div>
                 <div>
-                    <div>
-                        <MeetSlotPicker onMonthChange={(day: Date) => setCurrentMonth(day)} onSchedule={confirmSchedule} slotDurationInMinutes={30} timeSlotAvailability={validateSlot} />
-                    </div>Wallet: {account}
+                    <MeetSlotPicker onMonthChange={(day: Date) => setCurrentMonth(day)} onSchedule={confirmSchedule} slotDurationInMinutes={30} timeSlotAvailability={validateSlot} />
                 </div>
+                Wallet: {account}
+            </div>)
     )
+
 }
 
 export default Schedule

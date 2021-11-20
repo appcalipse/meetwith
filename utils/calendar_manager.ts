@@ -1,14 +1,13 @@
 import dayjs, { Dayjs } from 'dayjs';
-import { decryptWithPrivateKey, Encrypted, encryptWithPublicKey } from 'eth-crypto';
+import { decryptWithPrivateKey, Encrypted } from 'eth-crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { DBMeeting, Meeting } from "../types/Meeting";
 import { decryptContent } from './cryptography';
 import { getAccount, getMeetingDBForUser as getMeetingDBForAccount, saveMeeting } from "./database";
+import { TimeNotAvailableError } from './errors';
 import { getSignature } from './storage';
 
 const scheduleMeeting = async (sourceAddress: string, targetAddress: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<DBMeeting> => {
-
-    const targetAccount = await getAccount(targetAddress)
 
     const meeting = { _id: uuidv4(), source: sourceAddress, target: targetAddress, startTime: startTime.valueOf(), endTime: endTime.valueOf() }
 
@@ -22,11 +21,13 @@ const scheduleMeeting = async (sourceAddress: string, targetAddress: string, sta
 }
 
 const fetchAccountMeetings = async (accountAddress: string, from?: Date, to?: Date): Promise<Meeting[]> => {
+    console.log(accountAddress)
     const accountMeetingsDB = await getMeetingDBForAccount(accountAddress);
     const response = await accountMeetingsDB.query((event: DBMeeting) => event.startTime >= (from ? from : 0) && event.endTime <= (to ? to : 9999999999999999))
     accountMeetingsDB.close()
-
-    return await Promise.all(response.map(async (meeting: DBMeeting) => await enhanceMeetingFromDB(accountAddress, meeting, getSignature(accountAddress)!)))
+    const meetings = await Promise.all(response.map(async (meeting: DBMeeting) => await enhanceMeetingFromDB(accountAddress, meeting, getSignature(accountAddress)!)))
+    console.log(meetings)
+    return meetings
 }
 
 const getContentFromEncrypted = async (accountAddress: string, signature: string, encrypted: Encrypted): Promise<string> => {
@@ -37,6 +38,7 @@ const getContentFromEncrypted = async (accountAddress: string, signature: string
 
 const enhanceMeetingFromDB = async (accountAddress: string, meeting: DBMeeting, encryptedSignature: string): Promise<Meeting> => {
     const enhancedMeeting: Meeting = {
+        id: meeting._id,
         source: await getAccount(meeting.source),
         target: await getAccount(meeting.target),
         content: meeting.content ? await getContentFromEncrypted(accountAddress, encryptedSignature, meeting.content) : '',

@@ -12,6 +12,7 @@ export interface DBMeeting {
 }
 
 export interface Meeting {
+    id: string,
     source: Account,
     target: Account,
     startTime: Dayjs,
