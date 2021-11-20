@@ -5,7 +5,7 @@ import { ChakraProvider } from '@chakra-ui/react';
 
 import { extendTheme } from "@chakra-ui/react"
 import NavBar from '../components/Navbar';
-import { UserProvider } from '../providers/UserProvider';
+import { AccountProvider } from '../providers/AccountProvider';
 import { initDB } from '../utils/database';
 
 // 2. Extend the theme to include custom colors, fonts, etc
@@ -35,14 +35,14 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <ChakraProvider>
-      <UserProvider>
+      <AccountProvider>
         {loading ? <div>Loading...</div> :
           <>
             <NavBar />
             <Component {...pageProps} />
           </>
         }
-      </UserProvider>
+      </AccountProvider>
     </ChakraProvider>
   );
 }

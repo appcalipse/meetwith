@@ -1,22 +1,22 @@
 import React, { useState } from "react"
-import { RegisteredUser } from "../types/User";
+import { Account } from "../types/Account";
 
-interface IUserContext {
-    currentUser?: RegisteredUser,
+interface IAccountContext {
+    currentUser?: Account,
     logged: boolean,
-    login: (user: RegisteredUser) => void,
+    login: (user: Account) => void,
     logout: () => void,
 }
 
 const DEFAULT_STATE = { logged: false, login: () => { }, logout: () => { } }
 
-const UserContext = React.createContext<IUserContext>(DEFAULT_STATE);
+const AccountContext = React.createContext<IAccountContext>(DEFAULT_STATE);
 
-const UserProvider = ({ children }: any) => {
+const AccountProvider = ({ children }: any) => {
 
     const [userContext, setUserContext] = useState(DEFAULT_STATE);
 
-    const login = (user: RegisteredUser) => {
+    const login = (user: Account) => {
         setUserContext(() => ({
             ...userContext,
             currentUser: user,
@@ -33,10 +33,10 @@ const UserProvider = ({ children }: any) => {
     };
 
     return (
-        <UserContext.Provider value={{ ...userContext, login, logout }}>
+        <AccountContext.Provider value={{ ...userContext, login, logout }}>
             {children}
-        </UserContext.Provider>
+        </AccountContext.Provider>
     );
 }
 
-export { UserProvider, UserContext }
+export { AccountProvider, AccountContext }

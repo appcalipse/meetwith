@@ -1,6 +1,6 @@
 import React, { useContext } from 'react'
-import { loginWithWallet } from '../utils/wallet'
-import { UserContext } from '../providers/UserProvider'
+import { loginWithWallet } from '../utils/user_manager'
+import { AccountContext } from '../providers/AccountProvider'
 import {
     Box,
     Flex,
@@ -24,12 +24,12 @@ import {
     ChevronDownIcon,
     ChevronRightIcon,
 } from '@chakra-ui/icons';
-import { RegisteredUser } from '../types/User';
+import { Account } from '../types/Account';
 
 export default function WithSubnavigation() {
     const { isOpen, onToggle } = useDisclosure();
 
-    const { currentUser, logged, login } = useContext(UserContext)
+    const { currentUser, logged, login } = useContext(AccountContext)
 
     const handleLogin = async () => {
         if (!currentUser) {
@@ -103,7 +103,7 @@ export default function WithSubnavigation() {
 }
 
 const LoggedContainer: React.FC<{
-    user: RegisteredUser
+    user: Account
 }> = ({ user }) => {
     return (<div>{user.address}</div>)
 }

@@ -2,17 +2,14 @@ import type { NextPage } from 'next'
 import Head from 'next/head'
 import React from 'react'
 import styles from '../styles/Home.module.css'
-import { fetchUserMeetings, scheduleMeeting } from '../utils/calendar_manager'
-import { getMeeting } from '../utils/database'
-import { loginWithWallet } from '../utils/wallet'
+import { fetchAccountMeetings } from '../utils/calendar_manager'
+import { loginWithWallet } from '../utils/user_manager'
 
 const getMeetings = async () => {
-  const user = await loginWithWallet()
+  const account = await loginWithWallet()
+  console.log(await fetchAccountMeetings(account.address))
 
-  console.log(await fetchUserMeetings(user))
 }
-
-let a = ''
 
 const Home: NextPage = () => {
   return (

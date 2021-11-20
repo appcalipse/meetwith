@@ -1,7 +1,8 @@
+import { Dayjs } from "dayjs";
 import { Encrypted } from "eth-crypto";
-import { User } from "./User";
+import { Account } from "./Account";
 
-export interface DBMetting {
+export interface DBMeeting {
     _id: string,
     source: string,
     target: string,
@@ -10,10 +11,10 @@ export interface DBMetting {
     content?: Encrypted
 }
 
-export interface Metting {
-    source: User,
-    target: User,
-    startTime: Date,
-    endTime: Date,
+export interface Meeting {
+    source: Account,
+    target: Account,
+    startTime: Dayjs,
+    endTime: Dayjs,
     content: string
 }

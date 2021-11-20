@@ -26,7 +26,13 @@
     "plugin:prettier/recommended",
     "plugin:tailwindcss/recommended"
   ],
-  "plugins": ["react", "react-hooks", "@typescript-eslint", "tailwindcss", "prettier"],
+  "plugins": [
+    "react",
+    "react-hooks",
+    "@typescript-eslint",
+    "tailwindcss",
+    "prettier"
+  ],
   "rules": {
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn",
@@ -43,7 +49,21 @@
     "eol-last": "error",
     "prefer-arrow-callback": "error",
     "no-trailing-spaces": "error",
-    "quotes": ["warn", "single", {"avoidEscape": true}],
+    "comma-dangle": [
+      "error",
+      "only-multiline"
+    ],
+    "semi": [
+      2,
+      "never"
+    ],
+    "quotes": [
+      "warn",
+      "single",
+      {
+        "avoidEscape": true
+      }
+    ],
     "no-restricted-properties": [
       "error",
       {
@@ -58,7 +78,10 @@
   },
   "overrides": [
     {
-      "files": ["**/*.ts", "**/*.tsx"],
+      "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
       "rules": {
         "@typescript-eslint/no-non-null-assertion": "off",
         "@typescript-eslint/no-use-before-define": "off",
