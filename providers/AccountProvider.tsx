@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { Account } from "../types/Account";
 
 interface IAccountContext {
-    currentUser?: Account,
+    currentAccount?: Account,
     logged: boolean,
     login: (user: Account) => void,
     logout: () => void,
@@ -16,10 +16,10 @@ const AccountProvider = ({ children }: any) => {
 
     const [userContext, setUserContext] = useState(DEFAULT_STATE);
 
-    const login = (user: Account) => {
+    const login = (account: Account) => {
         setUserContext(() => ({
             ...userContext,
-            currentUser: user,
+            currentAccount: account,
             logged: true,
         }));
     };
@@ -27,7 +27,7 @@ const AccountProvider = ({ children }: any) => {
     const logout = () => {
         setUserContext(() => ({
             ...userContext,
-            currentUser: null,
+            currentAccount: null,
             logged: false,
         }));
     };

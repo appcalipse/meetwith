@@ -2,56 +2,59 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import MeetSlotPicker from '../components/MeetSlotPicker'
 import { AccountContext } from '../providers/AccountProvider'
-import { fetchAccountMeetings, isSlotAvailable, scheduleMeeting } from '../utils/calendar_manager'
+import { isSlotAvailable, scheduleMeeting } from '../utils/calendar_manager'
 import dayjs from 'dayjs'
-import { Meeting } from '../types/Meeting'
-import { getAccount } from '../utils/database'
+import { MeetingEncrypted } from '../types/Meeting'
+import { getAccount, getMeeting, getMeetings } from '../utils/api_helper'
 
 const Schedule: React.FC = () => {
-    const router = useRouter()
-    const { address } = router.query
 
-    if (!address) {
-        router.push('/')
-    }
+    const router = useRouter()
+    useEffect(() => {
+        const address = router.query.address as string
+        if (address) {
+            checkUser(address)
+        }
+    }, [router.query]);
 
     const [account, setAccount] = useState(null as string | null)
     const [loading, setLoading] = useState(true)
     const [currentMonth, setCurrentMonth] = useState(new Date())
-    const [meetings, setMeetings] = useState([] as Meeting[])
+    const [meetings, setMeetings] = useState([] as MeetingEncrypted[])
 
-    const { currentUser, logged } = useContext(AccountContext)
+    const { currentAccount, logged } = useContext(AccountContext)
 
-    const checkUser = async () => {
-        const account = await getAccount(address! as string)
-        if (account) {
+    const checkUser = async (identifier: string) => {
+        try {
+            getMeeting('e65d9e89-709d-4c90-8647-e5afa1a746a0')
+            const account = await getAccount(identifier)
             setAccount(account.address)
             updateMeetings(account.address)
-        } else {
-            router.push('/404')
+            setLoading(false)
+        } catch (e) {
+            //TODO handle error
+            console.log(e)
+            //router.push('/404')
         }
-        setLoading(false)
     }
-
-    useEffect(() => {
-        checkUser()
-    }, [])
 
     const confirmSchedule = async (startTime: Date) => {
         if (logged) {
             const start = dayjs(startTime)
             const end = dayjs(startTime).add(15, 'minute')
-            await scheduleMeeting(currentUser!.address, account!, start, end, 'testing')
+            await scheduleMeeting(currentAccount!.address, account!, start, end, 'testing')
         } else {
             //TODO: provide feedback to log
         }
     }
 
-    const updateMeetings = async (account: string) => {
+    const updateMeetings = async (identifier: string) => {
         const monthStart = dayjs(currentMonth).startOf('month')
         const monthEnd = dayjs(currentMonth).endOf('month')
 
-        setMeetings(await fetchAccountMeetings(account!, monthStart.toDate(), monthEnd.toDate()))
+        const meetings = await getMeetings(identifier, monthStart.toDate(), monthEnd.toDate())
+
+        setMeetings(meetings)
     }
 
     useEffect(() => {

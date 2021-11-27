@@ -1,8 +1,8 @@
 import { Badge, Box } from "@chakra-ui/layout"
-import { Meeting } from "../../../types/Meeting"
+import { MeetingEncrypted } from "../../../types/Meeting"
 
 interface MeetingCardProps {
-    meeting: Meeting
+    meeting: MeetingEncrypted
 }
 export default ({ meeting }: MeetingCardProps) => {
     return (

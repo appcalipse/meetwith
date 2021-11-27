@@ -29,12 +29,12 @@ import { Account } from '../types/Account';
 export default function WithSubnavigation() {
     const { isOpen, onToggle } = useDisclosure();
 
-    const { currentUser, logged, login } = useContext(AccountContext)
+    const { currentAccount, logged, login } = useContext(AccountContext)
 
     const handleLogin = async () => {
-        if (!currentUser) {
-            const user = await loginWithWallet()
-            await login(user)
+        if (!currentAccount) {
+            const account = await loginWithWallet()
+            await login(account)
         }
     }
 
@@ -82,7 +82,7 @@ export default function WithSubnavigation() {
                     direction={'row'}
                     spacing={6}>
                     {logged ?
-                        <LoggedContainer user={currentUser!} />
+                        <LoggedContainer user={currentAccount!} />
                         :
                         <Button
                             as={'a'}

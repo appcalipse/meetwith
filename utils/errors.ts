@@ -5,9 +5,9 @@ export class TimeNotAvailableError extends Error {
     }
 }
 
-export class UserNotFoundError extends Error {
+export class AccountNotFoundError extends Error {
     constructor(identifier: string) {
-        super(`User with identifier ${identifier} not found.`);
-        this.name = "UserNotFoundError";
+        super(`Account with identifier ${identifier} not found.`);
+        this.name = "AccountNotFoundError";
     }
 }

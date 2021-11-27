@@ -1,21 +1,21 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { AccountContext } from '../providers/AccountProvider'
-import { fetchAccountMeetings } from '../utils/calendar_manager'
-import { Meeting } from '../types/Meeting'
+import { MeetingEncrypted } from '../types/Meeting'
 import { Account } from '../types/Account'
 import { Box } from '@chakra-ui/layout'
 import MeetingCard from '../components/meeting/MeetingCard'
+import { getMeetings } from '../utils/api_helper'
 
 const Dashboard: React.FC = () => {
 
-    const { currentUser, logged } = useContext(AccountContext)
-    const [meetings, setMeetings] = useState([] as Meeting[])
+    const { currentAccount, logged } = useContext(AccountContext)
+    const [meetings, setMeetings] = useState([] as MeetingEncrypted[])
 
     const updateMeetings = async (account: Account) => {
-        setMeetings(await fetchAccountMeetings(account.address))
+        setMeetings(await getMeetings(account.address))
     }
     useEffect(() => {
-        logged && updateMeetings(currentUser!)
+        logged && updateMeetings(currentAccount!)
     }, [logged])
 
     return (

@@ -7,7 +7,7 @@ import { extendTheme } from "@chakra-ui/react"
 import NavBar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { AccountProvider } from '../providers/AccountProvider';
-import { initDB } from '../utils/database';
+import Head from 'next/head';
 
 // 2. Extend the theme to include custom colors, fonts, etc
 const colors = {
@@ -26,7 +26,6 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   const [loading, setLoading] = React.useState(true);
 
   const initApp = async () => {
-    await initDB()
     setLoading(false)
   }
 
@@ -37,6 +36,9 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   return (
     <ChakraProvider>
       <AccountProvider>
+        <Head>
+          <meta name="viewport" content="initial-scale=1, width=device-width" />
+        </Head>
         {loading ? <div>Loading...</div> :
           <>
             <NavBar />

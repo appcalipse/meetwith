@@ -1,11 +1,11 @@
 import Web3 from "web3";
 import Web3Modal from "web3modal";
-import { getAccount, getAccountsDB, initAccountDBForWallet } from './database';
 import { getSignature } from './storage';
 import { Account } from "../types/Account";
 import { saveSignature } from "./storage";
+import { getAccount, createAccount } from "./api_helper";
 
-const DEFAULT_MESSAGE = 'Welcome to meetwith.wallet! Please sign this message to make your experience safe.'
+export const DEFAULT_MESSAGE = 'Welcome to meetwith.wallet! Please sign this message to make your experience safe.'
 
 let web3: Web3;
 
@@ -37,14 +37,13 @@ const signDefaultMessage = async (accountAddress: string): Promise<string> => {
 
 const createOrFetchAccount = async (accountAddress: string): Promise<Account> => {
 
-    const accountsDB = await getAccountsDB()
-
     let account: Account;
 
     try {
         account = await getAccount(accountAddress)
     } catch (e) {
-        account = await initAccountDBForWallet(accountAddress)
+        const signature = await signDefaultMessage(accountAddress)
+        account = await createAccount(accountAddress, signature)
     }
 
     const signature = getSignature(accountAddress)

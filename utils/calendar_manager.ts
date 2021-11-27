@@ -1,33 +1,39 @@
 import dayjs, { Dayjs } from 'dayjs';
 import { decryptWithPrivateKey, Encrypted } from 'eth-crypto';
-import { v4 as uuidv4 } from 'uuid';
-import { DBMeeting, Meeting } from "../types/Meeting";
+import { DBMeeting, MeetingCreationRequest, MeetingEncrypted, MeetingStatus, ParticipantInfo, ParticipantType } from "../types/Meeting";
+import { createMeeting, getAccount, getMeetings } from './api_helper';
 import { decryptContent } from './cryptography';
-import { getAccount, getMeetingDBForUser as getMeetingDBForAccount, saveMeeting } from "./database";
 import { TimeNotAvailableError } from './errors';
 import { getSignature } from './storage';
 
 const scheduleMeeting = async (sourceAddress: string, targetAddress: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<DBMeeting> => {
 
-    const meeting = { _id: uuidv4(), source: sourceAddress, target: targetAddress, startTime: startTime.valueOf(), endTime: endTime.valueOf() }
+    const owner: ParticipantInfo = {
+        participant: targetAddress,
+        type: ParticipantType.Owner,
+        status: MeetingStatus.Pending,
+    }
+
+    const scheduler: ParticipantInfo = {
+        participant: sourceAddress,
+        type: ParticipantType.Scheduler,
+        status: MeetingStatus.Accepted,
+    }
+
+    const meeting: MeetingCreationRequest = {
+        start: startTime.toDate(),
+        end: endTime.toDate(),
+        participants: [owner, scheduler],
+        content: meetingContent
+    }
 
     if (await isTimeAvailable(targetAddress, meeting)) {
-        await saveMeeting(meeting, meetingContent)
+        await createMeeting(meeting)
     } else {
         throw new TimeNotAvailableError()
     }
 
     return meeting
-}
-
-const fetchAccountMeetings = async (accountAddress: string, from?: Date, to?: Date): Promise<Meeting[]> => {
-    console.log(accountAddress)
-    const accountMeetingsDB = await getMeetingDBForAccount(accountAddress);
-    const response = await accountMeetingsDB.query((event: DBMeeting) => event.startTime >= (from ? from : 0) && event.endTime <= (to ? to : 9999999999999999))
-    accountMeetingsDB.close()
-    const meetings = await Promise.all(response.map(async (meeting: DBMeeting) => await enhanceMeetingFromDB(accountAddress, meeting, getSignature(accountAddress)!)))
-    console.log(meetings)
-    return meetings
 }
 
 const getContentFromEncrypted = async (accountAddress: string, signature: string, encrypted: Encrypted): Promise<string> => {
@@ -36,28 +42,23 @@ const getContentFromEncrypted = async (accountAddress: string, signature: string
     return await decryptWithPrivateKey(pvtKey, encrypted)
 }
 
-const enhanceMeetingFromDB = async (accountAddress: string, meeting: DBMeeting, encryptedSignature: string): Promise<Meeting> => {
-    const enhancedMeeting: Meeting = {
-        id: meeting._id,
-        source: await getAccount(meeting.source),
-        target: await getAccount(meeting.target),
-        content: meeting.content ? await getContentFromEncrypted(accountAddress, encryptedSignature, meeting.content) : '',
-        startTime: dayjs(meeting.startTime),
-        endTime: dayjs(meeting.endTime),
-    }
+// const enhanceMeetingFromDB = async (accountAddress: string, meeting: DBMeeting, encryptedSignature: string): Promise<Meeting> => {
+//     const enhancedMeeting: Meeting = {
+//         id: meeting._id,
+//         source: await getAccount(meeting.source),
+//         target: await getAccount(meeting.target),
+//         content: meeting.content ? await getContentFromEncrypted(accountAddress, encryptedSignature, meeting.content) : '',
+//         startTime: dayjs(meeting.startTime),
+//         endTime: dayjs(meeting.endTime),
+//     }
 
-    return enhancedMeeting
-}
+//     return enhancedMeeting
+// }
 
 const isTimeAvailable = async (accountAddress: string, meeting: DBMeeting): Promise<boolean> => {
 
-    const accountMeetingsDB = await getMeetingDBForAccount(accountAddress);
-    const meetings = await accountMeetingsDB.query((event: DBMeeting) =>
-        (event.startTime < meeting.startTime.valueOf() && event.endTime >= meeting.endTime.valueOf()) ||
-        (event.startTime < meeting.endTime.valueOf() && event.startTime >= meeting.startTime.valueOf()) ||
-        (event.endTime > meeting.startTime.valueOf() && event.endTime < meeting.endTime.valueOf()) ||
-        (event.startTime > meeting.startTime.valueOf() && event.endTime <= meeting.endTime.valueOf()))
-    accountMeetingsDB.close()
+    const meetings = await getMeetings(accountAddress, meeting.start, meeting.end);
+
     return meetings.length === 0
     // Criteria criteria = this.createCriteria();
 
@@ -76,7 +77,7 @@ const isTimeAvailable = async (accountAddress: string, meeting: DBMeeting): Prom
     //         Restrictions.le("dataHoraFinal", dataHoraFinal)));
 }
 
-const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetingsForDay: Meeting[]): boolean => {
+const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetingsForDay: MeetingEncrypted[]): boolean => {
 
     const start = dayjs(slotTime)
     const end = dayjs(start).add(slotDurationInMinutes, 'minute')
@@ -90,4 +91,4 @@ const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetings
     return filtered.length == 0
 }
 
-export { scheduleMeeting, fetchAccountMeetings, isTimeAvailable, isSlotAvailable }
+export { scheduleMeeting, isTimeAvailable, isSlotAvailable }

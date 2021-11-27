@@ -1,9 +1,9 @@
 import { ReactNode } from 'react';
 import {
     Box,
-    Stack,
     HStack,
     Heading,
+    Flex,
     Text,
     VStack,
     useColorModeValue,
@@ -12,85 +12,87 @@ import {
     ListIcon,
     Button,
 } from '@chakra-ui/react';
-import { FaCheckCircle } from 'react-icons/fa';
+import { FaAngry, FaCheckCircle } from 'react-icons/fa';
 
 function PriceWrapper({ children }: { children: ReactNode }) {
     return (
-        <Box
-            mb={4}
+        <Flex
+            m={4}
             shadow="base"
             borderWidth="1px"
-            alignSelf={{ base: 'center', lg: 'flex-start' }}
             borderColor={useColorModeValue('gray.200', 'gray.500')}
-            borderRadius={'xl'}>
+            borderRadius={'xl'}
+            flexDirection="column"
+            minWidth="360px"
+            flex="0 1">
             {children}
-        </Box>
+        </Flex>
     );
 }
 
-export default function ThreeTierPricing() {
+export default function Pricing() {
     return (
-        <Box py={12}>
+        <Box py={12} px={12}>
             <VStack spacing={2} textAlign="center">
                 <Heading as="h1" fontSize="4xl">
-                    Plans that fit your need
+                    Options that fits your needs
                 </Heading>
                 <Text fontSize="lg" color={'gray.500'}>
-                    Start with 14-day free trial. No credit card needed. Cancel at
-                    anytime.
+                    Start for free, go Pro or power your DAO with more organization and transparency.
                 </Text>
             </VStack>
-            <Stack
-                direction={{ base: 'column', md: 'row' }}
-                textAlign="center"
-                justify="center"
-                spacing={{ base: 4, lg: 10 }}
-                py={10}>
+            <Flex justify="center" wrap="wrap" py={10}>
                 <PriceWrapper>
                     <Box py={4} px={12}>
-                        <Text fontWeight="500" fontSize="2xl">
-                            Hobby
+                        <Text fontWeight="500" fontSize="2xl" textAlign="center">
+                            Free
                         </Text>
                         <HStack justifyContent="center">
                             <Text fontSize="3xl" fontWeight="600">
-                                $
+                                Ξ
                             </Text>
                             <Text fontSize="5xl" fontWeight="900">
-                                79
+                                0
                             </Text>
                             <Text fontSize="3xl" color="gray.500">
-                                /month
+                                /forever
                             </Text>
                         </HStack>
                     </Box>
                     <VStack
                         bg={useColorModeValue('gray.50', 'gray.700')}
                         py={4}
-                        borderBottomRadius={'xl'}>
+                        borderBottomRadius={'xl'}
+                        flex={1}>
                         <List spacing={3} textAlign="start" px={12}>
                             <ListItem>
                                 <ListIcon as={FaCheckCircle} color="green.500" />
-                                unlimited build minutes
+                                Public page for meet scheduling
                             </ListItem>
                             <ListItem>
                                 <ListIcon as={FaCheckCircle} color="green.500" />
-                                Lorem, ipsum dolor.
+                                Single meeting configuration
                             </ListItem>
                             <ListItem>
-                                <ListIcon as={FaCheckCircle} color="green.500" />
-                                5TB Lorem, ipsum dolor.
+                                <ListIcon as={FaAngry} color="red.500" />
+                                Fixed booking link with wallet address
                             </ListItem>
+                            <ListItem>
+                                <ListIcon as={FaAngry} color="red.500" />
+                                Accounts needs reactivation every 3 months
+                            </ListItem>
+
                         </List>
-                        <Box w="80%" pt={7}>
-                            <Button w="full" colorScheme="red" variant="outline">
-                                Start trial
+                        <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
+                            <Button w="full" colorScheme="red" variant="outline" disabled>
+                                Coming soon
                             </Button>
                         </Box>
                     </VStack>
                 </PriceWrapper>
 
                 <PriceWrapper>
-                    <Box position="relative">
+                    {/* <Box position="relative">
                         <Box
                             position="absolute"
                             top="-16px"
@@ -108,99 +110,145 @@ export default function ThreeTierPricing() {
                                 Most Popular
                             </Text>
                         </Box>
-                        <Box py={4} px={12}>
-                            <Text fontWeight="500" fontSize="2xl">
-                                Growth
-                            </Text>
-                            <HStack justifyContent="center">
-                                <Text fontSize="3xl" fontWeight="600">
-                                    $
-                                </Text>
-                                <Text fontSize="5xl" fontWeight="900">
-                                    149
-                                </Text>
-                                <Text fontSize="3xl" color="gray.500">
-                                    /month
-                                </Text>
-                            </HStack>
-                        </Box>
-                        <VStack
-                            bg={useColorModeValue('gray.50', 'gray.700')}
-                            py={4}
-                            borderBottomRadius={'xl'}>
-                            <List spacing={3} textAlign="start" px={12}>
-                                <ListItem>
-                                    <ListIcon as={FaCheckCircle} color="green.500" />
-                                    unlimited build minutes
-                                </ListItem>
-                                <ListItem>
-                                    <ListIcon as={FaCheckCircle} color="green.500" />
-                                    Lorem, ipsum dolor.
-                                </ListItem>
-                                <ListItem>
-                                    <ListIcon as={FaCheckCircle} color="green.500" />
-                                    5TB Lorem, ipsum dolor.
-                                </ListItem>
-                                <ListItem>
-                                    <ListIcon as={FaCheckCircle} color="green.500" />
-                                    5TB Lorem, ipsum dolor.
-                                </ListItem>
-                                <ListItem>
-                                    <ListIcon as={FaCheckCircle} color="green.500" />
-                                    5TB Lorem, ipsum dolor.
-                                </ListItem>
-                            </List>
-                            <Box w="80%" pt={7}>
-                                <Button w="full" colorScheme="red">
-                                    Start trial
-                                </Button>
-                            </Box>
-                        </VStack>
-                    </Box>
-                </PriceWrapper>
-                <PriceWrapper>
+                    </Box> */}
                     <Box py={4} px={12}>
-                        <Text fontWeight="500" fontSize="2xl">
-                            Scale
+                        <Text fontWeight="500" fontSize="2xl" textAlign="center">
+                            Pro
                         </Text>
                         <HStack justifyContent="center">
                             <Text fontSize="3xl" fontWeight="600">
-                                $
+                                Ξ
                             </Text>
                             <Text fontSize="5xl" fontWeight="900">
-                                349
+                                0.01
                             </Text>
                             <Text fontSize="3xl" color="gray.500">
-                                /month
+                                /year
                             </Text>
                         </HStack>
                     </Box>
                     <VStack
                         bg={useColorModeValue('gray.50', 'gray.700')}
                         py={4}
-                        borderBottomRadius={'xl'}>
+                        borderBottomRadius={'xl'}
+                        flex={1}>
                         <List spacing={3} textAlign="start" px={12}>
                             <ListItem>
                                 <ListIcon as={FaCheckCircle} color="green.500" />
-                                unlimited build minutes
+                                Unlimited meeting configurations
                             </ListItem>
                             <ListItem>
                                 <ListIcon as={FaCheckCircle} color="green.500" />
-                                Lorem, ipsum dolor.
+                                Customisable booking link
                             </ListItem>
                             <ListItem>
                                 <ListIcon as={FaCheckCircle} color="green.500" />
-                                5TB Lorem, ipsum dolor.
+                                ENS integration
+                            </ListItem>
+                            <ListItem>
+                                <ListIcon as={FaCheckCircle} color="green.500" />
+                                Meeting Notifications (Email, Push and EPNS)
+                            </ListItem>
+                            <ListItem>
+                                <ListIcon as={FaCheckCircle} color="green.500" />
+                                Integrations (Google calendar and iCloud)
                             </ListItem>
                         </List>
-                        <Box w="80%" pt={7}>
-                            <Button w="full" colorScheme="red" variant="outline">
-                                Start trial
+                        <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
+                            <Button w="full" colorScheme="red" variant="outline" disabled>
+                                Coming soon
                             </Button>
                         </Box>
                     </VStack>
                 </PriceWrapper>
-            </Stack>
-        </Box>
+
+                <PriceWrapper>
+                    <Box py={4} px={12}>
+                        <Text fontWeight="500" fontSize="2xl" textAlign="center">
+                            DAO
+                        </Text>
+                        <HStack justifyContent="center">
+                            <Text fontSize="3xl" fontWeight="600">
+                                Ξ
+                            </Text>
+                            <Text fontSize="5xl" fontWeight="900">
+                                0.1
+                            </Text>
+                            <Text fontSize="3xl" color="gray.500">
+                                /year
+                            </Text>
+                        </HStack>
+                    </Box>
+                    <VStack
+                        bg={useColorModeValue('gray.50', 'gray.700')}
+                        py={4}
+                        borderBottomRadius={'xl'}
+                        flex={1}>
+                        <List spacing={3} textAlign="start" px={12}>
+                            <ListItem>
+                                <ListIcon as={FaCheckCircle} color="green.500" />
+                                Everything from PRO
+                            </ListItem>
+                            <ListItem>
+                                <ListIcon as={FaCheckCircle} color="green.500" />
+                                Gated scheduled meetings for members with Allow lists
+                            </ListItem>
+                        </List>
+                        <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
+                            <Button w="full" colorScheme="red" variant="outline" disabled>
+                                Coming soon
+                            </Button>
+                        </Box>
+                    </VStack>
+                </PriceWrapper>
+                <PriceWrapper>
+                    <Box py={4} px={12}>
+                        <Text fontWeight="500" fontSize="2xl" textAlign="center">
+                            Awesome DAO
+                        </Text>
+                        <HStack justifyContent="center">
+                            <Text fontSize="3xl" fontWeight="600">
+                                Ξ
+                            </Text>
+                            <Text fontSize="5xl" fontWeight="900">
+                                0.2
+                            </Text>
+                            <Text fontSize="3xl" color="gray.500">
+                                /year
+                            </Text>
+                        </HStack>
+                    </Box>
+                    <VStack
+                        bg={useColorModeValue('gray.50', 'gray.700')}
+                        py={4}
+                        borderBottomRadius={'xl'}
+                        flex={1}>
+                        <List spacing={3} textAlign="start" px={12}>
+                            <ListItem>
+                                <ListIcon as={FaCheckCircle} color="green.500" />
+                                Everything from DAO
+                            </ListItem>
+                            <ListItem>
+                                <ListIcon as={FaCheckCircle} color="green.500" />
+                                Token gated (ERC20 and/or ERC721) access to scheduled meetings
+                            </ListItem>
+                            <ListItem>
+                                <ListIcon as={FaCheckCircle} color="green.500" />
+                                Unlimited sub teams pages with multiple calendars
+                            </ListItem>
+                            <ListItem>
+                                <ListIcon as={FaCheckCircle} color="green.500" />
+                                Custom branding
+                            </ListItem>
+                        </List>
+                        <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
+                            <Button w="full" colorScheme="red" variant="outline" disabled>
+                                Coming soon
+                            </Button>
+                        </Box>
+                    </VStack>
+                </PriceWrapper>
+            </Flex>
+        </Box >
     );
 }

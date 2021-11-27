@@ -8,12 +8,54 @@ import {
     Icon,
     useColorModeValue,
     createIcon,
+    useToast
 } from '@chakra-ui/react';
+import React, { useState } from 'react';
+import { subscribeToWaitlist } from '../../utils/api_helper';
 
-export default function CardWithIllustration() {
+const CardWithIllustration: React.FC = () => {
+
+    const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const toast = useToast();
+
+    const subscribe = async (email: string) => {
+
+        setLoading(true);
+        if (String(email)
+            .toLowerCase()
+            .match(
+                /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+            )) {
+            const success = await subscribeToWaitlist(email)
+            if (success) {
+                toast({
+                    title: "Success",
+                    description: "You are now on our waitlist. Soon we will get in touch with you!",
+                    status: "success",
+                    duration: 5000,
+                    position: "top",
+                    isClosable: true,
+                })
+                setLoading(false);
+                return
+            }
+        }
+        toast({
+            title: "Failed",
+            description: "Failed to add you to the waitlist. Is your email address correct?",
+            status: "error",
+            duration: 5000,
+            position: "top",
+            isClosable: true,
+        })
+        setLoading(false);
+
+    }
+
+
     return (
         <Flex
-            minH={'100vh'}
             align={'center'}
             justify={'center'}
             py={12}
@@ -23,6 +65,8 @@ export default function CardWithIllustration() {
                 bg={useColorModeValue('white', 'gray.700')}
                 rounded={'xl'}
                 p={10}
+                m={4}
+                maxW={'2xl'}
                 spacing={8}
                 align={'center'}>
                 <Icon as={NotificationIcon} w={24} h={24} />
@@ -31,19 +75,23 @@ export default function CardWithIllustration() {
                         textTransform={'uppercase'}
                         fontSize={'3xl'}
                         color={useColorModeValue('gray.800', 'gray.200')}>
-                        Subscribe
+                        Join the waitlist
                     </Heading>
-                    <Text fontSize={'lg'} color={'gray.500'}>
-                        Subscribe to our newsletter & stay up to date!
+                    <Text fontSize={'2xl'} color={'gray.500'}>
+                        First 50 on the waitlist will get one year free of PRO.
+                    </Text>
+                    <Text fontSize={'lg'} color={'gray.500'} textAlign="center">
+                        Hey, we know the waitlist uses email, but we didn't have time to come up with something better 🙃
                     </Text>
                 </Stack>
                 <Stack spacing={4} direction={{ base: 'column', md: 'row' }} w={'full'}>
                     <Input
                         type={'text'}
-                        placeholder={'john@doe.net'}
+                        placeholder={'your.email@cooldomain.xyz'}
                         color={useColorModeValue('gray.800', 'gray.200')}
                         bg={useColorModeValue('gray.100', 'gray.600')}
                         rounded={'full'}
+                        onChange={(e) => setEmail(e.target.value)}
                         border={0}
                         _focus={{
                             bg: useColorModeValue('gray.200', 'gray.800'),
@@ -52,12 +100,14 @@ export default function CardWithIllustration() {
                     />
                     <Button
                         bg={'blue.400'}
-                        rounded={'full'}
                         color={'white'}
                         flex={'1 0 auto'}
+                        rounded={'full'}
                         _hover={{ bg: 'blue.500' }}
-                        _focus={{ bg: 'blue.500' }}>
-                        Subscribe
+                        _focus={{ bg: 'blue.500' }}
+                        isLoading={loading}
+                        onClick={() => subscribe(email)}>
+                        JOIN
                     </Button>
                 </Stack>
             </Stack>
@@ -161,3 +211,5 @@ const NotificationIcon = createIcon({
         </g>
     ),
 });
+
+export default CardWithIllustration
