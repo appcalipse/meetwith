@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import dateFns from 'date-fns';
-import { ThemeProvider } from 'styled-components';
+import {ThemeProvider} from 'styled-components';
 
-import { PopupWrapper, Popup, PopupHeader, PopupClose } from './Popup';
-import { ConfirmButton } from './Confirm';
-import { DayIcon, ClockIcon, SuccessIcon, FailedIcon } from './Icons';
-import { Success, Failed } from './Feedback';
+import {PopupWrapper, Popup, PopupHeader, PopupClose} from './Popup';
+import {ConfirmButton} from './Confirm';
+import {DayIcon, ClockIcon, SuccessIcon, FailedIcon} from './Icons';
+import {Success, Failed} from './Feedback';
 
 import Calendar from './calendar';
 import TimeSlots from './time-slots';
 
-import { preventPastDays } from './validators';
+import {preventPastDays} from './validators';
 
 function DayTimePicker({
   timeSlotValidator,
@@ -25,7 +25,7 @@ function DayTimePicker({
   doneText,
   dayChanged,
   monthChanged,
-  theme
+  theme,
 }) {
   const [pickedDay, setPickedDay] = useState(null);
   const [pickedTime, setPickedTime] = useState(null);
@@ -34,7 +34,7 @@ function DayTimePicker({
 
   const handlePickDay = day => {
     if (pickedDay !== day) {
-      dayChanged && dayChanged(day)
+      dayChanged && dayChanged(day);
     }
     setPickedDay(day);
     setShowPickTime(true);
@@ -62,7 +62,11 @@ function DayTimePicker({
   return (
     <ThemeProvider theme={theme}>
       <PopupWrapper>
-        <Calendar validator={preventPastDays} monthChanged={monthChanged} pickDay={handlePickDay} />
+        <Calendar
+          validator={preventPastDays}
+          monthChanged={monthChanged}
+          pickDay={handlePickDay}
+        />
 
         {showPickTime && (
           <Popup>
@@ -147,18 +151,18 @@ DayTimePicker.propTypes = {
     buttons: PropTypes.shape({
       disabled: PropTypes.shape({
         color: PropTypes.string,
-        background: PropTypes.string
+        background: PropTypes.string,
       }),
       confirm: PropTypes.shape({
         color: PropTypes.string,
         background: PropTypes.string,
         hover: PropTypes.shape({
           color: PropTypes.string,
-          background: PropTypes.string
-        })
-      })
-    })
-  })
+          background: PropTypes.string,
+        }),
+      }),
+    }),
+  }),
 };
 
 DayTimePicker.defaultProps = {
@@ -172,26 +176,26 @@ DayTimePicker.defaultProps = {
     buttons: {
       disabled: {
         color: '#333',
-        background: '#dfdfdf'
+        background: '#dfdfdf',
       },
       confirm: {
         color: '#fff',
         background: '#3a9ad9',
         hover: {
           color: '',
-          background: '#3a9ad9d6'
-        }
-      }
+          background: '#3a9ad9d6',
+        },
+      },
     },
     feedback: {
       success: {
-        color: '#29aba4'
+        color: '#29aba4',
       },
       failed: {
-        color: '#eb7260'
-      }
-    }
-  }
+        color: '#eb7260',
+      },
+    },
+  },
 };
 
 export default DayTimePicker;

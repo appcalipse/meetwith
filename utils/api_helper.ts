@@ -43,7 +43,7 @@ export const createMeeting = async (meeting: any): Promise<MeetingEncrypted> => 
 }
 
 export const getMeetings = async (accountIdentifier: string, start?: Date, end?: Date): Promise<MeetingEncrypted[]> => {
-    return await internalFetch(`/meetings/${accountIdentifier}?start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`) as Meeting[]
+    return await internalFetch(`/meetings/${accountIdentifier}?start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`) as MeetingEncrypted[]
 }
 
 export const subscribeToWaitlist = async (email: string): Promise<boolean> => {

@@ -1,26 +1,26 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import PropTypes from 'prop-types';
 import dateFns from 'date-fns';
 
-import { PrevIcon, NextIcon } from '../Icons';
+import {PrevIcon, NextIcon} from '../Icons';
 
-import { Grid, Wrapper, MonthYear, DaysOfWeek, DaysOfMonth } from './Layout';
-import { WeekDays, WeekDay, WEEK_DAYS } from './WeekDays';
-import { MonthDays, MonthDay } from './MonthDays';
+import {Grid, Wrapper, MonthYear, DaysOfWeek, DaysOfMonth} from './Layout';
+import {WeekDays, WeekDay, WEEK_DAYS} from './WeekDays';
+import {MonthDays, MonthDay} from './MonthDays';
 
 import {
   MonthPicker,
   PrevMonth,
   NextMonth,
   CurrentMonth,
-  FakeCurrentMonth
+  FakeCurrentMonth,
 } from './MonthPicker';
 
-import { Calendar, FakeCalendar } from './Calendar';
+import {Calendar, FakeCalendar} from './Calendar';
 
 import generateDays from './generate-days';
 
-function Root({ validator, pickDay, monthChanged }) {
+function Root({validator, pickDay, monthChanged}) {
   const [month, setMonth] = useState(new Date());
   const [fakeMonth, setFakeMonth] = useState(month);
   const [animation, setAnimation] = useState('');
@@ -171,7 +171,7 @@ function Root({ validator, pickDay, monthChanged }) {
 Root.propTypes = {
   validator: PropTypes.func,
   pickDay: PropTypes.func.isRequired,
-  monthChanged: PropTypes.func
+  monthChanged: PropTypes.func,
 };
 
 export default Root;

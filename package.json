@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "static": "next build && next export",
     "start": "next start",
     "lint": "next lint"
   },
@@ -50,10 +51,16 @@
     "@types/react": "17.0.34",
     "@types/react-dom": "latest",
     "@types/uuid": "^8.3.1",
+    "@typescript-eslint/eslint-plugin": "^5.4.0",
     "babel-plugin-transform-typescript-metadata": "^0.3.2",
     "eslint": "7",
     "eslint-config-next": "12.0.3",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-tailwind": "^0.2.1",
+    "eslint-plugin-tailwindcss": "^1.17.2",
     "ipfs-core-types": "^0.8.3",
+    "prettier": "^2.5.0",
     "typescript": "4.4.4"
   }
 }

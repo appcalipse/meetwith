@@ -1,11 +1,11 @@
-import type { NextPage } from 'next'
-import Head from 'next/head'
-import React from 'react'
-import Hero from '../components/landing/Hero'
-import Features from '../components/landing/Features'
-import Subscribe from '../components/landing/Subscribe'
-import Pricing from '../components/landing/Pricing'
-
+import type {NextPage} from 'next';
+import Head from 'next/head';
+import React from 'react';
+import Hero from '../components/landing/Hero';
+import Features from '../components/landing/Features';
+import Subscribe from '../components/landing/Subscribe';
+import Pricing from '../components/landing/Pricing';
+import FAQ from '../components/landing/FAQ';
 
 const Home: NextPage = () => {
   return (
@@ -17,20 +17,18 @@ const Home: NextPage = () => {
       </Head>
 
       <main>
-
         <Hero />
-
-        <Subscribe />
 
         <Features />
 
+        <Subscribe />
+
         <Pricing />
 
+        <FAQ />
       </main>
-
-
     </div>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;

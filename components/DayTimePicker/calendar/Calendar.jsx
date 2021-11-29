@@ -1,5 +1,4 @@
-
-import styled, { keyframes, css } from 'styled-components';
+import styled, {keyframes, css} from 'styled-components';
 
 const prev = keyframes`
   0% {
@@ -43,7 +42,7 @@ const _makeAnimation = type => css`
 `;
 
 const animation = props => {
-  const { animation } = props;
+  const {animation} = props;
 
   if (animation === 'prev') {
     return _makeAnimation(prev);
@@ -55,7 +54,7 @@ const animation = props => {
 };
 
 const fakeAnimation = props => {
-  const { animation } = props;
+  const {animation} = props;
 
   if (animation === 'prev') {
     return _makeAnimation(fakePrev);

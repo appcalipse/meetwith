@@ -38,7 +38,7 @@ const scheduleMeeting = async (sourceAddress: string, targetAddress: string, sta
 
 const getContentFromEncrypted = async (accountAddress: string, signature: string, encrypted: Encrypted): Promise<string> => {
     const account = await getAccount(accountAddress)
-    const pvtKey = decryptContent(signature, account.encodedSignature)
+    const pvtKey = decryptContent(signature, account.encoded_signature)
     return await decryptWithPrivateKey(pvtKey, encrypted)
 }
 

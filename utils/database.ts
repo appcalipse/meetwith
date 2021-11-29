@@ -29,7 +29,7 @@ const initAccountDBForWallet = async (address: string, signature: string): Promi
 
     const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
 
-    const preferences: AccountPreferences = {
+    const preferences = {
         availableTypes: [],
         description: ''
     }

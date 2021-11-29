@@ -23,7 +23,7 @@ function generateTimeSlots(selectedDate, slotSizeMinutes) {
   const end = dateFns.addDays(selectedDate, 1);
 
   let slot = start;
-  let timeSlots = [];
+  const timeSlots = [];
   while (slot < end) {
     timeSlots.push(slot);
     slot = dateFns.addMinutes(slot, slotSizeMinutes);
