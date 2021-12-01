@@ -8,8 +8,12 @@ const initAnalytics = async () => {
     }
 }
 
-const logEvent = (eventName: string) => {
-    isProduction && amplitude.getInstance().logEvent(eventName)
+const logEvent = (eventName: string, properties?: object) => {
+    isProduction && amplitude.getInstance().logEvent(eventName, properties)
 }
 
-export { initAnalytics, logEvent }
+const pageView = (path: string) => {
+    isProduction && amplitude.getInstance().logEvent('Page viewed', {path})
+}
+
+export { initAnalytics, logEvent, pageView }

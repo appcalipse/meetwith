@@ -8,13 +8,13 @@ import NavBar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { AccountProvider } from '../providers/AccountProvider'
 import Head from 'next/head'
-import { initAnalytics } from '../utils/analytics'
+import { initAnalytics, pageView } from '../utils/analytics'
 import customTheme from '../styles/theme'
 import { CookieConsent } from '../components/CookieConsent'
 
 const theme = extendTheme(customTheme)
 
-export default function MyApp({ Component, pageProps }: AppProps) {
+export default function MyApp({ Component, pageProps, router }: AppProps) {
   const [loading, setLoading] = React.useState(true)
 
   const initApp = async () => {
@@ -25,6 +25,16 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   React.useEffect(() => {
     initApp()
   }, [])
+
+  React.useEffect(() => {
+    const handleRouteChange = (url: string) => {
+      pageView(url);
+    };
+    router.events.on('routeChangeComplete', handleRouteChange);
+    return () => {
+      router.events.off('routeChangeComplete', handleRouteChange);
+    };
+  }, []);
 
   return (
     <ChakraProvider theme={theme}>
