@@ -28,13 +28,13 @@ export default function MyApp({ Component, pageProps, router }: AppProps) {
 
   React.useEffect(() => {
     const handleRouteChange = (url: string) => {
-      pageView(url);
-    };
-    router.events.on('routeChangeComplete', handleRouteChange);
+      pageView(url)
+    }
+    router.events.on('routeChangeComplete', handleRouteChange)
     return () => {
-      router.events.off('routeChangeComplete', handleRouteChange);
-    };
-  }, []);
+      router.events.off('routeChangeComplete', handleRouteChange)
+    }
+  }, [])
 
   return (
     <ChakraProvider theme={theme}>
