@@ -9,7 +9,7 @@ import {
 
 export default function FAQ() {
   return (
-    <Container maxW="container.lg" id="faq">
+    <Container maxW="7xl" id="faq">
       <Box p={4} mb={8} color={useColorModeValue('gray.500', 'gray.300')}>
         <Heading size="xl" pb={8} textColor="orange.400">
           Common questions
@@ -78,11 +78,14 @@ export default function FAQ() {
         </Heading>
         <Text pb={2}>
           Check our high level feature roadmap{' '}
-          <Link href="https://meet-with-wallet.sleekplan.app/" target="_blank">
+          <Link href="https://meet-with-wallet.sleekplan.app/" isExternal>
             here
           </Link>{' '}
           and vote on what you want to be done next. You can also be active in
-          conversations in our <Link>Discord</Link>
+          conversations in our{' '}
+          <Link isExternal href="https://discord.gg/jzJm3NAD">
+            Discord
+          </Link>
         </Text>
       </Box>
     </Container>
