@@ -1,10 +1,10 @@
-import {Badge, Box} from '@chakra-ui/layout';
-import {MeetingEncrypted} from '../../../types/Meeting';
+import { Badge, Box } from '@chakra-ui/layout';
+import { MeetingEncrypted } from '../../../types/Meeting';
 
 interface MeetingCardProps {
   meeting: MeetingEncrypted;
 }
-const MeetingCard = ({meeting}: MeetingCardProps) => {
+const MeetingCard = ({ meeting }: MeetingCardProps) => {
   return (
     <Box
       boxShadow="base"

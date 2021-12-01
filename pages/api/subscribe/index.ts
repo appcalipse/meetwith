@@ -1,5 +1,5 @@
-import {NextApiRequest, NextApiResponse} from 'next';
-import {initDB, saveEmailToDB} from '../../../utils/database';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { initDB, saveEmailToDB } from '../../../utils/database';
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -8,7 +8,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (email) {
       const success = await saveEmailToDB(email);
-      res.status(200).json({success});
+      res.status(200).json({ success });
       return;
     }
   }

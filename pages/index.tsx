@@ -1,4 +1,4 @@
-import type {NextPage} from 'next';
+import type { NextPage } from 'next';
 import React from 'react';
 import Hero from '../components/landing/Hero';
 import Features from '../components/landing/Features';
@@ -9,7 +9,6 @@ import FAQ from '../components/landing/FAQ';
 const Home: NextPage = () => {
   return (
     <div>
-
       <main>
         <Hero />
 

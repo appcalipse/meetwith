@@ -1,6 +1,6 @@
-import {NextApiRequest, NextApiResponse} from 'next';
-import {getMeetingsForAccount, initDB} from '../../../utils/database';
-import {AccountNotFoundError} from '../../../utils/errors';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { getMeetingsForAccount, initDB } from '../../../utils/database';
+import { AccountNotFoundError } from '../../../utils/errors';
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -18,7 +18,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     } catch (error) {
       console.log(error);
       if (error instanceof AccountNotFoundError)
-        res.status(404).json({error: error.message});
+        res.status(404).json({ error: error.message });
       return;
     }
   }

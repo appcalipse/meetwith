@@ -4,9 +4,9 @@ import dateFns from 'date-fns';
 
 import generateTimeSlots from './generate-time-slots';
 
-import {List, ListItem} from './List';
+import { List, ListItem } from './List';
 
-function Root({pickedDay, slotSizeMinutes, validator, pickTime}) {
+function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes);
 
   return (

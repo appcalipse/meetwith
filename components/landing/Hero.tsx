@@ -18,15 +18,15 @@ export default function CallToActionWithVideo() {
     <Container maxW={'7xl'}>
       <Stack
         align={'center'}
-        spacing={{base: 8, md: 10}}
+        spacing={{ base: 8, md: 10 }}
         py={28}
-        direction={{base: 'column', md: 'row'}}
+        direction={{ base: 'column', md: 'row' }}
       >
-        <Stack flex={1} spacing={{base: 5, md: 10}}>
+        <Stack flex={1} spacing={{ base: 5, md: 10 }}>
           <Heading
             lineHeight={1.1}
             fontWeight={600}
-            fontSize={{base: '3xl', sm: '4xl', lg: '6xl'}}
+            fontSize={{ base: '3xl', sm: '4xl', lg: '6xl' }}
           >
             <Text
               as={'span'}
@@ -49,7 +49,7 @@ export default function CallToActionWithVideo() {
               for web3!
             </Text>
           </Heading>
-          <Text color={useColorModeValue('gray.500','gray.300')}>
+          <Text color={useColorModeValue('gray.500', 'gray.300')}>
             <strong>Meet with Wallet</strong> provides an easy way to share your
             calendar and schedule meetings without any hassle or back-and-forth
             communication. All possible by simply connecting your crypto wallet.
@@ -58,8 +58,8 @@ export default function CallToActionWithVideo() {
             but for <strong>web3</strong>!
           </Text>
           <Stack
-            spacing={{base: 4, sm: 6}}
-            direction={{base: 'column', sm: 'row'}}
+            spacing={{ base: 4, sm: 6 }}
+            direction={{ base: 'column', sm: 'row' }}
           >
             <Button
               rounded={'full'}
@@ -67,7 +67,7 @@ export default function CallToActionWithVideo() {
               fontWeight={'normal'}
               px={6}
               bg={'orange.400'}
-              _hover={{bg: 'orange.500'}}
+              _hover={{ bg: 'orange.500' }}
               as={'a'}
               href="#subscribe"
             >
@@ -97,7 +97,7 @@ export default function CallToActionWithVideo() {
             w={'150%'}
             h={'150%'}
             position={'absolute'}
-            top={{base: '-15%', md:'-20%'}}
+            top={{ base: '-15%', md: '-20%' }}
             left={0}
             zIndex={-1}
             color={useColorModeValue('orange.50', 'orange.400')}
@@ -106,7 +106,7 @@ export default function CallToActionWithVideo() {
             position={'relative'}
             width={'full'}
             maxW="600px"
-            mt={{base: 8, md: 0}}
+            mt={{ base: 8, md: 0 }}
             overflow={'hidden'}
           >
             <Image

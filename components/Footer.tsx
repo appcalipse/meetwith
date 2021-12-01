@@ -10,8 +10,8 @@ import {
   Image,
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
-import {FaDiscord, FaEnvelope, FaTwitter} from 'react-icons/fa';
-import {ReactNode} from 'react';
+import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa';
+import { ReactNode } from 'react';
 
 const Logo = () => {
   return (
@@ -66,10 +66,10 @@ export default function SmallWithLogoLeft() {
         as={Stack}
         maxW={'6xl'}
         py={4}
-        direction={{base: 'column', md: 'row'}}
+        direction={{ base: 'column', md: 'row' }}
         spacing={4}
-        justify={{base: 'center', md: 'space-between'}}
-        align={{base: 'center', md: 'center'}}
+        justify={{ base: 'center', md: 'space-between' }}
+        align={{ base: 'center', md: 'center' }}
       >
         <Logo />
         <Text>© 2021 Meet with Wallet. All rights reserved</Text>

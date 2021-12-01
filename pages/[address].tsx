@@ -1,11 +1,11 @@
-import {useRouter} from 'next/router';
-import React, {useContext, useEffect, useState} from 'react';
+import { useRouter } from 'next/router';
+import React, { useContext, useEffect, useState } from 'react';
 import MeetSlotPicker from '../components/MeetSlotPicker';
-import {AccountContext} from '../providers/AccountProvider';
-import {isSlotAvailable, scheduleMeeting} from '../utils/calendar_manager';
+import { AccountContext } from '../providers/AccountProvider';
+import { isSlotAvailable, scheduleMeeting } from '../utils/calendar_manager';
 import dayjs from 'dayjs';
-import {MeetingEncrypted} from '../types/Meeting';
-import {getAccount, getMeeting, getMeetings} from '../utils/api_helper';
+import { MeetingEncrypted } from '../types/Meeting';
+import { getAccount, getMeeting, getMeetings } from '../utils/api_helper';
 
 const Schedule: React.FC = () => {
   const router = useRouter();
@@ -21,7 +21,7 @@ const Schedule: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [meetings, setMeetings] = useState([] as MeetingEncrypted[]);
 
-  const {currentAccount, logged} = useContext(AccountContext);
+  const { currentAccount, logged } = useContext(AccountContext);
 
   const checkUser = async (identifier: string) => {
     try {

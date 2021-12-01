@@ -1,17 +1,17 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import dateFns from 'date-fns';
-import {ThemeProvider} from 'styled-components';
+import { ThemeProvider } from 'styled-components';
 
-import {PopupWrapper, Popup, PopupHeader, PopupClose} from './Popup';
-import {ConfirmButton} from './Confirm';
-import {DayIcon, ClockIcon, SuccessIcon, FailedIcon} from './Icons';
-import {Success, Failed} from './Feedback';
+import { PopupWrapper, Popup, PopupHeader, PopupClose } from './Popup';
+import { ConfirmButton } from './Confirm';
+import { DayIcon, ClockIcon, SuccessIcon, FailedIcon } from './Icons';
+import { Success, Failed } from './Feedback';
 
 import Calendar from './calendar';
 import TimeSlots from './time-slots';
 
-import {preventPastDays} from './validators';
+import { preventPastDays } from './validators';
 
 function DayTimePicker({
   timeSlotValidator,

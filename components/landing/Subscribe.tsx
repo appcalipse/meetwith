@@ -10,9 +10,9 @@ import {
   createIcon,
   useToast,
 } from '@chakra-ui/react';
-import React, {useState} from 'react';
-import {logEvent} from '../../utils/analytics';
-import {subscribeToWaitlist} from '../../utils/api_helper';
+import React, { useState } from 'react';
+import { logEvent } from '../../utils/analytics';
+import { subscribeToWaitlist } from '../../utils/api_helper';
 
 const CardWithIllustration: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -84,15 +84,23 @@ const CardWithIllustration: React.FC = () => {
           >
             Join the waitlist
           </Heading>
-          <Text fontSize={'2xl'} color={useColorModeValue('gray.500','gray.300')} textAlign="center">
+          <Text
+            fontSize={'2xl'}
+            color={useColorModeValue('gray.500', 'gray.300')}
+            textAlign="center"
+          >
             First 50 on the waitlist will get one year free of PRO.
           </Text>
-          <Text fontSize={'lg'} color={useColorModeValue('gray.500','gray.300')} textAlign="center">
+          <Text
+            fontSize={'lg'}
+            color={useColorModeValue('gray.500', 'gray.300')}
+            textAlign="center"
+          >
             Hey, we know the waitlist uses email, but we didn't have time to
             come up with something better 🙃
           </Text>
         </Stack>
-        <Stack spacing={4} direction={{base: 'column', md: 'row'}} w={'full'}>
+        <Stack spacing={4} direction={{ base: 'column', md: 'row' }} w={'full'}>
           <Input
             type={'text'}
             placeholder={'your.email@cooldomain.xyz'}
@@ -111,7 +119,7 @@ const CardWithIllustration: React.FC = () => {
             rounded={'full'}
             bg={'orange.400'}
             fontWeight={'normal'}
-            _hover={{bg: 'orange.500'}}
+            _hover={{ bg: 'orange.500' }}
             isLoading={loading}
             onClick={() => subscribe(email)}
           >

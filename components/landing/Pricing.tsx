@@ -1,4 +1,4 @@
-import {ReactNode} from 'react';
+import { ReactNode } from 'react';
 import {
   Box,
   HStack,
@@ -12,9 +12,9 @@ import {
   ListIcon,
   Button,
 } from '@chakra-ui/react';
-import {FaAngry, FaCheckCircle} from 'react-icons/fa';
+import { FaAngry, FaCheckCircle } from 'react-icons/fa';
 
-function PriceWrapper({children}: {children: ReactNode}) {
+function PriceWrapper({ children }: { children: ReactNode }) {
   return (
     <Flex
       m={4}
@@ -38,7 +38,7 @@ export default function Pricing() {
         <Heading as="h1" fontSize="4xl">
           Options that fit your needs
         </Heading>
-        <Text fontSize="lg" color={useColorModeValue('gray.500','gray.300')}>
+        <Text fontSize="lg" color={useColorModeValue('gray.500', 'gray.300')}>
           Start for free, go Pro or power your DAO with more organization and
           transparency.
         </Text>

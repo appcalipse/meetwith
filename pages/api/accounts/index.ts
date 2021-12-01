@@ -1,5 +1,5 @@
-import {NextApiRequest, NextApiResponse} from 'next';
-import {initAccountDBForWallet, initDB} from '../../../utils/database';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { initAccountDBForWallet, initDB } from '../../../utils/database';
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {

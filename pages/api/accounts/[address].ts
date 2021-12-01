@@ -1,9 +1,9 @@
-import {NextApiRequest, NextApiResponse} from 'next';
-import {getAccountFromDB} from '../../../utils/database';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { getAccountFromDB } from '../../../utils/database';
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    const {address} = req.query;
+    const { address } = req.query;
 
     try {
       const account = await getAccountFromDB(address as string);

@@ -1,13 +1,24 @@
-import {Container, Box, Heading, Text, Link, useColorModeValue} from '@chakra-ui/react';
+import {
+  Container,
+  Box,
+  Heading,
+  Text,
+  Link,
+  useColorModeValue,
+} from '@chakra-ui/react';
 
 export default function FAQ() {
   return (
     <Container maxW="container.lg" id="faq">
-      <Box p={4} mb={8} color={useColorModeValue('gray.500','gray.300')}>
+      <Box p={4} mb={8} color={useColorModeValue('gray.500', 'gray.300')}>
         <Heading size="xl" pb={8} textColor="orange.400">
           Common questions
         </Heading>
-        <Heading size="lg" py={4} color={useColorModeValue('gray.700','gray.100')}>
+        <Heading
+          size="lg"
+          py={4}
+          color={useColorModeValue('gray.700', 'gray.100')}
+        >
           Why creating another scheduling tool?
         </Heading>
         <Text pb={2}>
@@ -18,7 +29,11 @@ export default function FAQ() {
           colaboration of our users). Also, enough of using your email to create
           account and logo into tools right?
         </Text>
-        <Heading size="lg" py={4} color={useColorModeValue('gray.700','gray.100')}>
+        <Heading
+          size="lg"
+          py={4}
+          color={useColorModeValue('gray.700', 'gray.100')}
+        >
           Which data is public and which is private?
         </Heading>
         <Text pb={2}>
@@ -35,18 +50,30 @@ export default function FAQ() {
           only participants of a meeting know information about it and who are
           they meeting with - Yes, not even ourselves know about it.
         </Text>
-        <Heading size="lg" py={4} color={useColorModeValue('gray.700','gray.100')}>
+        <Heading
+          size="lg"
+          py={4}
+          color={useColorModeValue('gray.700', 'gray.100')}
+        >
           When is this going live?
         </Heading>
         <Text pb={2}>Soon :)</Text>
-        <Heading size="lg" py={4} color={useColorModeValue('gray.700','gray.100')}>
+        <Heading
+          size="lg"
+          py={4}
+          color={useColorModeValue('gray.700', 'gray.100')}
+        >
           When is soon?
         </Heading>
         <Text pb={2}>
           Optimistic scenario, before end of 2021. Realistic scenario, mid Q1 of
           2022.
         </Text>
-        <Heading size="lg" py={4} color={useColorModeValue('gray.700','gray.100')}>
+        <Heading
+          size="lg"
+          py={4}
+          color={useColorModeValue('gray.700', 'gray.100')}
+        >
           How can I know what is coming next and colaborate?
         </Heading>
         <Text pb={2}>
