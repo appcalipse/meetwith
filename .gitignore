@@ -37,5 +37,5 @@ yarn-error.log*
 *.tsbuildinfo
 
 # local running and testing
-ipfs*
+.ipfs*
 orbitdb*
