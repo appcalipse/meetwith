@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode } from 'react'
 import {
   Box,
   HStack,
@@ -11,8 +11,8 @@ import {
   ListItem,
   ListIcon,
   Button,
-} from '@chakra-ui/react';
-import { FaAngry, FaCheckCircle } from 'react-icons/fa';
+} from '@chakra-ui/react'
+import { FaAngry, FaCheckCircle } from 'react-icons/fa'
 
 function PriceWrapper({ children }: { children: ReactNode }) {
   return (
@@ -28,7 +28,7 @@ function PriceWrapper({ children }: { children: ReactNode }) {
     >
       {children}
     </Flex>
-  );
+  )
 }
 
 export default function Pricing() {
@@ -255,5 +255,5 @@ export default function Pricing() {
         </PriceWrapper>
       </Flex>
     </Box>
-  );
+  )
 }

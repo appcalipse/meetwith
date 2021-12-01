@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import dateFns from 'date-fns';
-import { ThemeProvider } from 'styled-components';
+import React, { useState } from 'react'
+import PropTypes from 'prop-types'
+import dateFns from 'date-fns'
+import { ThemeProvider } from 'styled-components'
 
-import { PopupWrapper, Popup, PopupHeader, PopupClose } from './Popup';
-import { ConfirmButton } from './Confirm';
-import { DayIcon, ClockIcon, SuccessIcon, FailedIcon } from './Icons';
-import { Success, Failed } from './Feedback';
+import { PopupWrapper, Popup, PopupHeader, PopupClose } from './Popup'
+import { ConfirmButton } from './Confirm'
+import { DayIcon, ClockIcon, SuccessIcon, FailedIcon } from './Icons'
+import { Success, Failed } from './Feedback'
 
-import Calendar from './calendar';
-import TimeSlots from './time-slots';
+import Calendar from './calendar'
+import TimeSlots from './time-slots'
 
-import { preventPastDays } from './validators';
+import { preventPastDays } from './validators'
 
 function DayTimePicker({
   timeSlotValidator,
@@ -27,37 +27,37 @@ function DayTimePicker({
   monthChanged,
   theme,
 }) {
-  const [pickedDay, setPickedDay] = useState(null);
-  const [pickedTime, setPickedTime] = useState(null);
-  const [showPickTime, setShowPickTime] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [pickedDay, setPickedDay] = useState(null)
+  const [pickedTime, setPickedTime] = useState(null)
+  const [showPickTime, setShowPickTime] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const handlePickDay = day => {
     if (pickedDay !== day) {
-      dayChanged && dayChanged(day);
+      dayChanged && dayChanged(day)
     }
-    setPickedDay(day);
-    setShowPickTime(true);
-  };
+    setPickedDay(day)
+    setShowPickTime(true)
+  }
 
   const handlePickTime = time => {
-    setPickedTime(time);
-    setShowPickTime(false);
-    setShowConfirm(true);
-  };
+    setPickedTime(time)
+    setShowPickTime(false)
+    setShowConfirm(true)
+  }
 
   const handleClosePickTime = () => {
-    setShowPickTime(false);
-  };
+    setShowPickTime(false)
+  }
 
   const handleConfirm = () => {
-    onConfirm(pickedTime);
-  };
+    onConfirm(pickedTime)
+  }
 
   const handleCloseConfirm = () => {
-    setShowConfirm(false);
-    setShowPickTime(true);
-  };
+    setShowConfirm(false)
+    setShowPickTime(true)
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -131,7 +131,7 @@ function DayTimePicker({
         )}
       </PopupWrapper>
     </ThemeProvider>
-  );
+  )
 }
 
 DayTimePicker.propTypes = {
@@ -163,7 +163,7 @@ DayTimePicker.propTypes = {
       }),
     }),
   }),
-};
+}
 
 DayTimePicker.defaultProps = {
   confirmText: 'Schedule',
@@ -196,6 +196,6 @@ DayTimePicker.defaultProps = {
       },
     },
   },
-};
+}
 
-export default DayTimePicker;
+export default DayTimePicker

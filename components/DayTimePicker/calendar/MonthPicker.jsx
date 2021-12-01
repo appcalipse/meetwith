@@ -1,4 +1,4 @@
-import styled, { keyframes, css } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components'
 
 const prev = keyframes`
   0% {
@@ -9,7 +9,7 @@ const prev = keyframes`
     opacity: 1;
     transform: translateX(0);
   }
-`;
+`
 
 const fakePrev = keyframes`
   0% {
@@ -20,7 +20,7 @@ const fakePrev = keyframes`
     opacity: 0;
     transform: translateX(25px);
   }
-`;
+`
 
 const next = keyframes`
   0% {
@@ -31,7 +31,7 @@ const next = keyframes`
     opacity: 1;
     transform: translateX(0);
   }
-`;
+`
 
 const fakeNext = keyframes`
   0% {
@@ -42,37 +42,37 @@ const fakeNext = keyframes`
     opacity: 0;
     transform: translateX(-25px);
   }
-`;
+`
 
-const ANIM_TIME_SEC = 0.2;
-const ANIM_DELAY_TIME_SEC = 0.1;
+const ANIM_TIME_SEC = 0.2
+const ANIM_DELAY_TIME_SEC = 0.1
 const _makeAnimation = type => css`
   ${type} ${ANIM_TIME_SEC}s ease-out ${ANIM_DELAY_TIME_SEC}s normal both;
-`;
+`
 
 const animation = props => {
-  const { animation } = props;
+  const { animation } = props
 
   if (animation === 'prev') {
-    return _makeAnimation(prev);
+    return _makeAnimation(prev)
   }
 
   if (animation === 'next') {
-    return _makeAnimation(next);
+    return _makeAnimation(next)
   }
-};
+}
 
 const fakeAnimation = props => {
-  const { animation } = props;
+  const { animation } = props
 
   if (animation === 'prev') {
-    return _makeAnimation(fakePrev);
+    return _makeAnimation(fakePrev)
   }
 
   if (animation === 'next') {
-    return _makeAnimation(fakeNext);
+    return _makeAnimation(fakeNext)
   }
-};
+}
 
 export const MonthPicker = styled.div`
   display: grid;
@@ -82,7 +82,7 @@ export const MonthPicker = styled.div`
   align-items: center;
   padding: 0 0.5em;
   font-size: 1.2em;
-`;
+`
 
 const Button = styled.button`
   border-radius: 50%;
@@ -101,10 +101,10 @@ const Button = styled.button`
     cursor: pointer;
     color: ${props => props.theme.primary};
   }
-`;
+`
 
-export const PrevMonth = styled(Button)``;
-export const NextMonth = styled(Button)``;
+export const PrevMonth = styled(Button)``
+export const NextMonth = styled(Button)``
 
 export const CurrentMonth = styled.div`
   position: absolute;
@@ -113,10 +113,10 @@ export const CurrentMonth = styled.div`
   right: 0;
   font-weight: 500;
   animation: ${animation};
-`;
+`
 
 export const FakeCurrentMonth = styled.div`
   font-weight: 500;
   animation: ${fakeAnimation};
   visibility: ${props => (props.animation ? 'visible' : 'hidden')};
-`;
+`

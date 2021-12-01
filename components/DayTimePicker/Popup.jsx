@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled from 'styled-components'
 
 export const PopupWrapper = styled.div`
   position: relative;
@@ -9,7 +9,7 @@ export const PopupWrapper = styled.div`
   @media (max-width: 500px) {
     width: 100%;
   }
-`;
+`
 
 export const Popup = styled.div`
   position: absolute;
@@ -23,11 +23,11 @@ export const Popup = styled.div`
   z-index: 3;
   background-color: ${props => props.theme.background};
   font-size: 1.1em;
-`;
+`
 
 export const PopupHeader = styled.header`
   padding: 1em 0;
-`;
+`
 
 export const PopupClose = styled.button`
   margin: 0;
@@ -46,4 +46,4 @@ export const PopupClose = styled.button`
     cursor: not-allowed;
     color: ${props => props.theme.buttons.disabled.color};
   }
-`;
+`

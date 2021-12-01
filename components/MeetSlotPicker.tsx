@@ -1,12 +1,12 @@
-import React from 'react';
-import DayTimePicker from './DayTimePicker';
+import React from 'react'
+import DayTimePicker from './DayTimePicker'
 
 interface MeetSlotPickerProps {
-  onSchedule: (startTime: Date) => void;
-  timeSlotAvailability: (slot: Date) => boolean;
-  slotDurationInMinutes: number;
-  onDayChange?: (day: Date) => void;
-  onMonthChange?: (day: Date) => void;
+  onSchedule: (startTime: Date) => void
+  timeSlotAvailability: (slot: Date) => boolean
+  slotDurationInMinutes: number
+  onDayChange?: (day: Date) => void
+  onMonthChange?: (day: Date) => void
 }
 
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
@@ -24,7 +24,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       onConfirm={onSchedule}
       timeSlotValidator={timeSlotAvailability}
     />
-  );
-};
+  )
+}
 
-export default MeetSlotPicker;
+export default MeetSlotPicker

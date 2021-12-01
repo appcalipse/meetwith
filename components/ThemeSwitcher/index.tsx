@@ -1,12 +1,12 @@
-import { Button } from '@chakra-ui/button';
-import { useColorMode, useColorModeValue } from '@chakra-ui/color-mode';
-import { Stack } from '@chakra-ui/layout';
-import { Switch } from '@chakra-ui/switch';
-import React from 'react';
-import { FaSun, FaMoon } from 'react-icons/fa';
+import { Button } from '@chakra-ui/button'
+import { useColorMode, useColorModeValue } from '@chakra-ui/color-mode'
+import { Stack } from '@chakra-ui/layout'
+import { Switch } from '@chakra-ui/switch'
+import React from 'react'
+import { FaSun, FaMoon } from 'react-icons/fa'
 
 export const ThemeSwitcher: React.FC = () => {
-  const { colorMode, toggleColorMode } = useColorMode();
+  const { colorMode, toggleColorMode } = useColorMode()
 
   return (
     <>
@@ -42,5 +42,5 @@ export const ThemeSwitcher: React.FC = () => {
         </Button>
       </Stack>
     </>
-  );
-};
+  )
+}

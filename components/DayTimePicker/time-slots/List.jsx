@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled from 'styled-components'
 
 export const List = styled.ul`
   display: grid;
@@ -11,7 +11,7 @@ export const List = styled.ul`
   height: 355px;
   overflow: auto;
   border-top: 1px solid ${props => props.theme.secondary};
-`;
+`
 
 export const ListItem = styled.li`
   padding: 0.75em 0.5em;
@@ -23,4 +23,4 @@ export const ListItem = styled.li`
     cursor: ${props => (props.isValid ? 'pointer' : 'inherit')};
     color: ${props => (props.isValid ? props.theme.primary : 'inherit')};
   }
-`;
+`

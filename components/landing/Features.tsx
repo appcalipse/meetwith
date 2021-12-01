@@ -1,4 +1,4 @@
-import { ReactElement } from 'react';
+import { ReactElement } from 'react'
 import {
   Container,
   Link,
@@ -9,13 +9,13 @@ import {
   Stack,
   Flex,
   useColorModeValue,
-} from '@chakra-ui/react';
-import { FcCalendar, FcPrivacy, FcWorkflow } from 'react-icons/fc';
+} from '@chakra-ui/react'
+import { FcCalendar, FcPrivacy, FcWorkflow } from 'react-icons/fc'
 
 interface FeatureProps {
-  title: string;
-  text: string | ReactElement;
-  icon: ReactElement;
+  title: string
+  text: string | ReactElement
+  icon: ReactElement
 }
 
 const Feature = ({ title, text, icon }: FeatureProps) => {
@@ -36,8 +36,8 @@ const Feature = ({ title, text, icon }: FeatureProps) => {
       <Text fontWeight={600}>{title}</Text>
       <Text color={useColorModeValue('gray.500', 'gray.300')}>{text}</Text>
     </Stack>
-  );
-};
+  )
+}
 
 export default function SimpleThreeColumns() {
   return (
@@ -105,5 +105,5 @@ export default function SimpleThreeColumns() {
         </SimpleGrid>
       </Box>
     </Container>
-  );
+  )
 }

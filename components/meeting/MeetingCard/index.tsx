@@ -1,8 +1,8 @@
-import { Badge, Box } from '@chakra-ui/layout';
-import { MeetingEncrypted } from '../../../types/Meeting';
+import { Badge, Box } from '@chakra-ui/layout'
+import { MeetingEncrypted } from '../../../types/Meeting'
 
 interface MeetingCardProps {
-  meeting: MeetingEncrypted;
+  meeting: MeetingEncrypted
 }
 const MeetingCard = ({ meeting }: MeetingCardProps) => {
   return (
@@ -45,7 +45,7 @@ const MeetingCard = ({ meeting }: MeetingCardProps) => {
         <Box>{meeting.endTime.format('MMM DD, YYYY')}</Box>
       </Box>
     </Box>
-  );
-};
+  )
+}
 
-export default MeetingCard;
+export default MeetingCard

@@ -1,6 +1,6 @@
-import styled from 'styled-components';
+import styled from 'styled-components'
 
-export const WEEK_DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+export const WEEK_DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
 export const WeekDays = styled.ul`
   display: grid;
@@ -13,7 +13,7 @@ export const WeekDays = styled.ul`
   font-weight: 500;
   text-transform: uppercase;
   opacity: 0.6;
-`;
+`
 
 export const WeekDay = styled.li`
   list-style: none;
@@ -21,4 +21,4 @@ export const WeekDay = styled.li`
   align-items: center;
   margin: 0;
   padding: 0;
-`;
+`

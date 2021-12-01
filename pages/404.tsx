@@ -1,4 +1,4 @@
-import { Box, Heading, Text, Button } from '@chakra-ui/react';
+import { Box, Heading, Text, Button } from '@chakra-ui/react'
 
 export default function NotFound() {
   return (
@@ -28,5 +28,5 @@ export default function NotFound() {
         Go to Home
       </Button>
     </Box>
-  );
+  )
 }

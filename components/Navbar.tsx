@@ -1,6 +1,6 @@
-import React, { useContext } from 'react';
-import { loginWithWallet } from '../utils/user_manager';
-import { AccountContext } from '../providers/AccountProvider';
+import React, { useContext } from 'react'
+import { loginWithWallet } from '../utils/user_manager'
+import { AccountContext } from '../providers/AccountProvider'
 import {
   Box,
   Flex,
@@ -18,23 +18,23 @@ import {
   useColorModeValue,
   useDisclosure,
   useToast,
-} from '@chakra-ui/react';
+} from '@chakra-ui/react'
 import {
   HamburgerIcon,
   CloseIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-} from '@chakra-ui/icons';
-import NextLink from 'next/link';
-import { Account } from '../types/Account';
-import { ThemeSwitcher } from './ThemeSwitcher';
+} from '@chakra-ui/icons'
+import NextLink from 'next/link'
+import { Account } from '../types/Account'
+import { ThemeSwitcher } from './ThemeSwitcher'
 
 export default function WithSubnavigation() {
-  const { isOpen, onToggle } = useDisclosure();
+  const { isOpen, onToggle } = useDisclosure()
 
-  const { currentAccount, logged, login } = useContext(AccountContext);
+  const { currentAccount, logged, login } = useContext(AccountContext)
 
-  const toast = useToast();
+  const toast = useToast()
 
   const handleLogin = async () => {
     if (!currentAccount) {
@@ -48,9 +48,9 @@ export default function WithSubnavigation() {
         duration: 7000,
         position: 'top',
         isClosable: true,
-      });
+      })
     }
-  };
+  }
 
   const buttonColor = useColorModeValue('gray.500', 'gray.400')
 
@@ -124,19 +124,19 @@ export default function WithSubnavigation() {
         <MobileNav />
       </Collapse>
     </Box>
-  );
+  )
 }
 
 const LoggedContainer: React.FC<{
-  user: Account;
+  user: Account
 }> = ({ user }) => {
-  return <div>{user.address}</div>;
-};
+  return <div>{user.address}</div>
+}
 
 const DesktopNav = () => {
-  const linkColor = useColorModeValue('gray.600', 'gray.200');
-  const linkHoverColor = useColorModeValue('gray.800', 'white');
-  const popoverContentBgColor = useColorModeValue('white', 'gray.800');
+  const linkColor = useColorModeValue('gray.600', 'gray.200')
+  const linkHoverColor = useColorModeValue('gray.800', 'white')
+  const popoverContentBgColor = useColorModeValue('white', 'gray.800')
 
   return (
     <Stack direction={'row'} spacing={4} alignItems="center">
@@ -179,8 +179,8 @@ const DesktopNav = () => {
         </Box>
       ))}
     </Stack>
-  );
-};
+  )
+}
 
 const DesktopSubNav = ({ label, href, subLabel }: NavItem) => {
   return (
@@ -216,8 +216,8 @@ const DesktopSubNav = ({ label, href, subLabel }: NavItem) => {
         </Flex>
       </Stack>
     </Link>
-  );
-};
+  )
+}
 
 const MobileNav = () => {
   return (
@@ -230,11 +230,11 @@ const MobileNav = () => {
         <MobileNavItem key={navItem.label} {...navItem} />
       ))}
     </Stack>
-  );
-};
+  )
+}
 
 const MobileNavItem = ({ label, children, href }: NavItem) => {
-  const { isOpen, onToggle } = useDisclosure();
+  const { isOpen, onToggle } = useDisclosure()
 
   return (
     <Stack spacing={4} onClick={children && onToggle}>
@@ -283,14 +283,14 @@ const MobileNavItem = ({ label, children, href }: NavItem) => {
         </Stack>
       </Collapse>
     </Stack>
-  );
-};
+  )
+}
 
 interface NavItem {
-  label: string;
-  subLabel?: string;
-  children?: Array<NavItem>;
-  href?: string;
+  label: string
+  subLabel?: string
+  children?: Array<NavItem>
+  href?: string
 }
 
 const NAV_ITEMS: Array<NavItem> = [
@@ -325,4 +325,4 @@ const NAV_ITEMS: Array<NavItem> = [
   //     label: 'Hire Designers',
   //     href: '#',
   // },
-];
+]

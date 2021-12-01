@@ -9,18 +9,18 @@ import {
   useColorModeValue,
   createIcon,
   useToast,
-} from '@chakra-ui/react';
-import React, { useState } from 'react';
-import { logEvent } from '../../utils/analytics';
-import { subscribeToWaitlist } from '../../utils/api_helper';
+} from '@chakra-ui/react'
+import React, { useState } from 'react'
+import { logEvent } from '../../utils/analytics'
+import { subscribeToWaitlist } from '../../utils/api_helper'
 
 const CardWithIllustration: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const toast = useToast();
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const toast = useToast()
 
   const subscribe = async (email: string) => {
-    setLoading(true);
+    setLoading(true)
     if (
       String(email)
         .toLowerCase()
@@ -28,9 +28,9 @@ const CardWithIllustration: React.FC = () => {
           /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
         )
     ) {
-      const success = await subscribeToWaitlist(email);
+      const success = await subscribeToWaitlist(email)
       if (success) {
-        logEvent('Subscribed to waitlist');
+        logEvent('Subscribed to waitlist')
         toast({
           title: 'Success',
           description:
@@ -39,9 +39,9 @@ const CardWithIllustration: React.FC = () => {
           duration: 5000,
           position: 'top',
           isClosable: true,
-        });
-        setLoading(false);
-        return;
+        })
+        setLoading(false)
+        return
       }
     }
     toast({
@@ -52,10 +52,10 @@ const CardWithIllustration: React.FC = () => {
       duration: 5000,
       position: 'top',
       isClosable: true,
-    });
-    logEvent('Failed to subscribe to waitlist');
-    setLoading(false);
-  };
+    })
+    logEvent('Failed to subscribe to waitlist')
+    setLoading(false)
+  }
 
   return (
     <Flex
@@ -128,8 +128,8 @@ const CardWithIllustration: React.FC = () => {
         </Stack>
       </Stack>
     </Flex>
-  );
-};
+  )
+}
 
 const NotificationIcon = createIcon({
   displayName: 'Notification',
@@ -226,6 +226,6 @@ const NotificationIcon = createIcon({
       />
     </g>
   ),
-});
+})
 
-export default CardWithIllustration;
+export default CardWithIllustration

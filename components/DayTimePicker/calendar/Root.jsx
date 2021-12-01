@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import dateFns from 'date-fns';
+import React, { useState } from 'react'
+import PropTypes from 'prop-types'
+import dateFns from 'date-fns'
 
-import { PrevIcon, NextIcon } from '../Icons';
+import { PrevIcon, NextIcon } from '../Icons'
 
-import { Grid, Wrapper, MonthYear, DaysOfWeek, DaysOfMonth } from './Layout';
-import { WeekDays, WeekDay, WEEK_DAYS } from './WeekDays';
-import { MonthDays, MonthDay } from './MonthDays';
+import { Grid, Wrapper, MonthYear, DaysOfWeek, DaysOfMonth } from './Layout'
+import { WeekDays, WeekDay, WEEK_DAYS } from './WeekDays'
+import { MonthDays, MonthDay } from './MonthDays'
 
 import {
   MonthPicker,
@@ -14,62 +14,62 @@ import {
   NextMonth,
   CurrentMonth,
   FakeCurrentMonth,
-} from './MonthPicker';
+} from './MonthPicker'
 
-import { Calendar, FakeCalendar } from './Calendar';
+import { Calendar, FakeCalendar } from './Calendar'
 
-import generateDays from './generate-days';
+import generateDays from './generate-days'
 
 function Root({ validator, pickDay, monthChanged }) {
-  const [month, setMonth] = useState(new Date());
-  const [fakeMonth, setFakeMonth] = useState(month);
-  const [animation, setAnimation] = useState('');
+  const [month, setMonth] = useState(new Date())
+  const [fakeMonth, setFakeMonth] = useState(month)
+  const [animation, setAnimation] = useState('')
 
-  const [startDay, days] = generateDays(month);
-  const [fakeStartDay, fakeDays] = generateDays(fakeMonth);
+  const [startDay, days] = generateDays(month)
+  const [fakeStartDay, fakeDays] = generateDays(fakeMonth)
 
-  const isAnimating = !!animation;
+  const isAnimating = !!animation
 
   // Handlers
   const handleNextMonth = () => {
     if (isAnimating) {
-      return;
+      return
     }
 
-    const next = dateFns.addMonths(month, 1);
-    setMonth(next);
-    setAnimation('next');
-    monthChanged && monthChanged(next);
-  };
+    const next = dateFns.addMonths(month, 1)
+    setMonth(next)
+    setAnimation('next')
+    monthChanged && monthChanged(next)
+  }
 
   const handlePrevMonth = () => {
     if (isAnimating) {
-      return;
+      return
     }
 
-    const prev = dateFns.subMonths(month, 1);
-    setMonth(prev);
-    setAnimation('prev');
-    monthChanged && monthChanged(prev);
-  };
+    const prev = dateFns.subMonths(month, 1)
+    setMonth(prev)
+    setAnimation('prev')
+    monthChanged && monthChanged(prev)
+  }
 
   const handleAnimationEnd = () => {
     const newFakeMonth =
       animation === 'prev'
         ? dateFns.subMonths(fakeMonth, 1)
-        : dateFns.addMonths(fakeMonth, 1);
+        : dateFns.addMonths(fakeMonth, 1)
 
-    setFakeMonth(newFakeMonth);
-    setAnimation('');
-  };
+    setFakeMonth(newFakeMonth)
+    setAnimation('')
+  }
 
   const handlePickDay = day => {
     if (isAnimating) {
-      return;
+      return
     }
 
-    pickDay(day);
-  };
+    pickDay(day)
+  }
 
   return (
     <Grid>
@@ -100,21 +100,21 @@ function Root({ validator, pickDay, monthChanged }) {
           <DaysOfWeek>
             <WeekDays>
               {WEEK_DAYS.map(weekDay => {
-                return <WeekDay key={weekDay}>{weekDay}</WeekDay>;
+                return <WeekDay key={weekDay}>{weekDay}</WeekDay>
               })}
             </WeekDays>
           </DaysOfWeek>
 
           <MonthDays>
             {days.map(day => {
-              const isSameMonth = dateFns.isSameMonth(day, startDay);
+              const isSameMonth = dateFns.isSameMonth(day, startDay)
               if (!isSameMonth) {
-                return <MonthDay key={day} />;
+                return <MonthDay key={day} />
               }
 
-              const formatted = dateFns.format(day, 'D');
-              const isToday = dateFns.isToday(day);
-              const isValid = validator ? validator(day) : true;
+              const formatted = dateFns.format(day, 'D')
+              const isToday = dateFns.isToday(day)
+              const isValid = validator ? validator(day) : true
               return (
                 <MonthDay
                   key={day}
@@ -124,7 +124,7 @@ function Root({ validator, pickDay, monthChanged }) {
                 >
                   {formatted}
                 </MonthDay>
-              );
+              )
             })}
           </MonthDays>
         </Calendar>
@@ -133,7 +133,7 @@ function Root({ validator, pickDay, monthChanged }) {
           <DaysOfWeek>
             <WeekDays>
               {WEEK_DAYS.map(weekDay => {
-                return <WeekDay key={weekDay}>{weekDay}</WeekDay>;
+                return <WeekDay key={weekDay}>{weekDay}</WeekDay>
               })}
             </WeekDays>
           </DaysOfWeek>
@@ -141,14 +141,14 @@ function Root({ validator, pickDay, monthChanged }) {
           <DaysOfMonth>
             <MonthDays>
               {fakeDays.map(fakeDay => {
-                const isSameMonth = dateFns.isSameMonth(fakeDay, fakeStartDay);
+                const isSameMonth = dateFns.isSameMonth(fakeDay, fakeStartDay)
                 if (!isSameMonth) {
-                  return <MonthDay key={fakeDay} />;
+                  return <MonthDay key={fakeDay} />
                 }
 
-                const formatted = dateFns.format(fakeDay, 'D');
-                const isToday = dateFns.isToday(fakeDay);
-                const isValid = validator ? validator(fakeDay) : true;
+                const formatted = dateFns.format(fakeDay, 'D')
+                const isToday = dateFns.isToday(fakeDay)
+                const isValid = validator ? validator(fakeDay) : true
                 return (
                   <MonthDay
                     key={fakeDay}
@@ -158,20 +158,20 @@ function Root({ validator, pickDay, monthChanged }) {
                   >
                     {formatted}
                   </MonthDay>
-                );
+                )
               })}
             </MonthDays>
           </DaysOfMonth>
         </FakeCalendar>
       </Wrapper>
     </Grid>
-  );
+  )
 }
 
 Root.propTypes = {
   validator: PropTypes.func,
   pickDay: PropTypes.func.isRequired,
   monthChanged: PropTypes.func,
-};
+}
 
-export default Root;
+export default Root

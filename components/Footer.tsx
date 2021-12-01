@@ -8,10 +8,10 @@ import {
   useColorModeValue,
   VisuallyHidden,
   Image,
-} from '@chakra-ui/react';
-import NextLink from 'next/link';
-import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa';
-import { ReactNode } from 'react';
+} from '@chakra-ui/react'
+import NextLink from 'next/link'
+import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
+import { ReactNode } from 'react'
 
 const Logo = () => {
   return (
@@ -20,17 +20,17 @@ const Logo = () => {
         <Image boxSize="100px" src="/assets/logo.svg" alt="Meet with Wallet" />
       </Link>
     </NextLink>
-  );
-};
+  )
+}
 
 const SocialButton = ({
   children,
   label,
   href,
 }: {
-  children: ReactNode;
-  label: string;
-  href: string;
+  children: ReactNode
+  label: string
+  href: string
 }) => {
   return (
     <chakra.button
@@ -53,8 +53,8 @@ const SocialButton = ({
       <VisuallyHidden>{label}</VisuallyHidden>
       {children}
     </chakra.button>
-  );
-};
+  )
+}
 
 export default function SmallWithLogoLeft() {
   return (
@@ -95,5 +95,5 @@ export default function SmallWithLogoLeft() {
         </Stack>
       </Container>
     </Box>
-  );
+  )
 }

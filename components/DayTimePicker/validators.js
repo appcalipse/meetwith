@@ -6,7 +6,7 @@
  * @return {Boolan} If the day can be picked by the user (valid) or not.
  */
 export function preventPastDays(calendarDay) {
-  const now = new Date();
+  const now = new Date()
   const today = new Date(
     now.getFullYear(),
     now.getMonth(),
@@ -14,8 +14,8 @@ export function preventPastDays(calendarDay) {
     0,
     0,
     0
-  );
+  )
 
-  const isValid = calendarDay.getTime() >= today.getTime();
-  return isValid;
+  const isValid = calendarDay.getTime() >= today.getTime()
+  return isValid
 }

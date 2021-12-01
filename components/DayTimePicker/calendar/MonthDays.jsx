@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled from 'styled-components'
 
 export const MonthDays = styled.ul`
   display: grid;
@@ -9,7 +9,7 @@ export const MonthDays = styled.ul`
   font-weight: 300;
   margin: 0;
   padding: 0;
-`;
+`
 
 export const MonthDay = styled.li`
   list-style: none;
@@ -28,4 +28,4 @@ export const MonthDay = styled.li`
     cursor: ${props => (props.isValid ? 'pointer' : 'inherit')};
     color: ${props => (props.isValid ? props.theme.primary : 'inherit')};
   }
-`;
+`

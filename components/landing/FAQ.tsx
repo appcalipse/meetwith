@@ -5,7 +5,7 @@ import {
   Text,
   Link,
   useColorModeValue,
-} from '@chakra-ui/react';
+} from '@chakra-ui/react'
 
 export default function FAQ() {
   return (
@@ -86,5 +86,5 @@ export default function FAQ() {
         </Text>
       </Box>
     </Container>
-  );
+  )
 }

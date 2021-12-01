@@ -1,19 +1,19 @@
-import { Button } from '@chakra-ui/button';
-import { useColorModeValue } from '@chakra-ui/color-mode';
-import { Box, Text } from '@chakra-ui/layout';
-import React from 'react';
-import { useCookies } from 'react-cookie';
+import { Button } from '@chakra-ui/button'
+import { useColorModeValue } from '@chakra-ui/color-mode'
+import { Box, Text } from '@chakra-ui/layout'
+import React from 'react'
+import { useCookies } from 'react-cookie'
 
 export const CookieConsent: React.FC = () => {
-  const [cookies, setCookie] = useCookies(['mww_consent']);
+  const [cookies, setCookie] = useCookies(['mww_consent'])
 
   const accepted = () => {
     setCookie('mww_consent', true, {
       path: '/',
       maxAge: 99999999999999, // Expires after 1hr
       sameSite: true,
-    });
-  };
+    })
+  }
 
   const textColor = useColorModeValue('gray.200', 'gray.500')
 
@@ -48,5 +48,5 @@ export const CookieConsent: React.FC = () => {
         </Box>
       </Box>
     </Box>
-  );
-};
+  )
+}

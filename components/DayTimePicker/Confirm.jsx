@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled from 'styled-components'
 
 export const ConfirmButton = styled.button`
   font-size: 1em;
@@ -28,4 +28,4 @@ export const ConfirmButton = styled.button`
   @media (max-width: 450px) {
     width: 100%;
   }
-`;
+`
