@@ -33,12 +33,12 @@ function PriceWrapper({children}: {children: ReactNode}) {
 
 export default function Pricing() {
   return (
-    <Box py={12} px={12} id="pricing">
+    <Box pt={12} px={12} id="pricing">
       <VStack spacing={2} textAlign="center">
         <Heading as="h1" fontSize="4xl">
           Options that fit your needs
         </Heading>
-        <Text fontSize="lg" color={'gray.500'}>
+        <Text fontSize="lg" color={useColorModeValue('gray.500','gray.300')}>
           Start for free, go Pro or power your DAO with more organization and
           transparency.
         </Text>
@@ -50,7 +50,7 @@ export default function Pricing() {
               Free
             </Text>
             <HStack justifyContent="center">
-              <Text fontSize="3xl" fontWeight="600">
+              <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
                 Ξ
               </Text>
               <Text fontSize="5xl" fontWeight="900">
@@ -77,16 +77,16 @@ export default function Pricing() {
                 Single meeting configuration
               </ListItem>
               <ListItem>
-                <ListIcon as={FaAngry} color="red.500" />
+                <ListIcon as={FaAngry} color="gray.500" />
                 Fixed booking link with wallet address
               </ListItem>
               <ListItem>
-                <ListIcon as={FaAngry} color="red.500" />
+                <ListIcon as={FaAngry} color="gray.500" />
                 Accounts needs reactivation every 3 months
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
-              <Button w="full" colorScheme="purple" variant="outline" disabled>
+              <Button w="full" colorScheme="orange" variant="outline" disabled>
                 Coming soon
               </Button>
             </Box>
@@ -102,7 +102,7 @@ export default function Pricing() {
                             style={{ transform: 'translate(-50%)' }}>
                             <Text
                                 textTransform="uppercase"
-                                bg={useColorModeValue('red.300', 'red.700')}
+                                bg={useColorModeValue('gray.300', 'gray.700')}
                                 px={3}
                                 py={1}
                                 color={useColorModeValue('gray.900', 'gray.300')}
@@ -118,7 +118,7 @@ export default function Pricing() {
               Pro
             </Text>
             <HStack justifyContent="center">
-              <Text fontSize="3xl" fontWeight="600">
+              <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
                 Ξ
               </Text>
               <Text fontSize="5xl" fontWeight="900">
@@ -158,7 +158,7 @@ export default function Pricing() {
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
-              <Button w="full" colorScheme="purple" variant="outline" disabled>
+              <Button w="full" colorScheme="orange" variant="outline" disabled>
                 Coming soon
               </Button>
             </Box>
@@ -171,7 +171,7 @@ export default function Pricing() {
               DAO
             </Text>
             <HStack justifyContent="center">
-              <Text fontSize="3xl" fontWeight="600">
+              <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
                 Ξ
               </Text>
               <Text fontSize="5xl" fontWeight="900">
@@ -199,7 +199,7 @@ export default function Pricing() {
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
-              <Button w="full" colorScheme="purple" variant="outline" disabled>
+              <Button w="full" colorScheme="orange" variant="outline" disabled>
                 Coming soon
               </Button>
             </Box>
@@ -211,7 +211,7 @@ export default function Pricing() {
               Awesome DAO
             </Text>
             <HStack justifyContent="center">
-              <Text fontSize="3xl" fontWeight="600">
+              <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
                 Ξ
               </Text>
               <Text fontSize="5xl" fontWeight="900">
@@ -247,7 +247,7 @@ export default function Pricing() {
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
-              <Button w="full" colorScheme="purple" variant="outline" disabled>
+              <Button w="full" colorScheme="orange" variant="outline" disabled>
                 Coming soon
               </Button>
             </Box>

@@ -8,6 +8,7 @@ import {
   Text,
   Stack,
   Flex,
+  useColorModeValue
 } from '@chakra-ui/react';
 import {FcCalendar, FcPrivacy, FcWorkflow} from 'react-icons/fc';
 
@@ -33,7 +34,7 @@ const Feature = ({title, text, icon}: FeatureProps) => {
         {icon}
       </Flex>
       <Text fontWeight={600}>{title}</Text>
-      <Text color={'gray.600'}>{text}</Text>
+      <Text color={useColorModeValue('gray.500','gray.300')}>{text}</Text>
     </Stack>
   );
 };
@@ -47,7 +48,7 @@ export default function SimpleThreeColumns() {
             icon={<Icon as={FcCalendar} w={10} h={10} />}
             title={'Fast and simple'}
             text={
-              'Enough of Discord conversations to find a good time to meet. Just share you link and let the other part choose the best time.'
+              'Enough of Discord conversations to find a good time to meet. Just share your link and let the other participant pick the best time.'
             }
           />
           <Feature
@@ -64,7 +65,6 @@ export default function SimpleThreeColumns() {
               <>
                 Integration with state of the art technology on the web3 space:{' '}
                 <Link
-                  color="purple.500"
                   href="https://ethereum.org/?source=meetwithwallet"
                   target="_blank"
                 >
@@ -72,7 +72,6 @@ export default function SimpleThreeColumns() {
                 </Link>
                 ,{' '}
                 <Link
-                  color="purple.500"
                   href="https://arbitrum.io/?source=meetwithwallet"
                   target="_blank"
                 >
@@ -80,7 +79,6 @@ export default function SimpleThreeColumns() {
                 </Link>
                 ,{' '}
                 <Link
-                  color="purple.500"
                   href="https://ipfs.io/?source=meetwithwallet"
                   target="_blank"
                 >
@@ -88,7 +86,6 @@ export default function SimpleThreeColumns() {
                 </Link>
                 ,{' '}
                 <Link
-                  color="purple.500"
                   href="https://ens.domains/?source=meetwithwallet"
                   target="_blank"
                 >
@@ -96,13 +93,12 @@ export default function SimpleThreeColumns() {
                 </Link>{' '}
                 and{' '}
                 <Link
-                  color="purple.500"
                   href="https://epns.io/?source=meetwithwallet"
                   target="_blank"
                 >
                   EPNS
                 </Link>
-                . And more to come.
+                . Much more to come.
               </>
             }
           />

@@ -34,6 +34,7 @@
     "prettier"
   ],
   "rules": {
+    "react/no-unescaped-entities": 0,
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn",
     "react/prop-types": "off",
@@ -64,6 +65,7 @@
         "avoidEscape": true
       }
     ],
+    "max-len": [2, 80, 4],
     "no-restricted-properties": [
       "error",
       {

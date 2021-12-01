@@ -88,7 +88,7 @@ const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetings
         (meeting.endTime > start && meeting.endTime <= end) ||
         (meeting.startTime >= start && meeting.startTime < end))
 
-    return filtered.length == 0
+    return filtegray.length == 0
 }
 
 export { scheduleMeeting, isTimeAvailable, isSlotAvailable }

@@ -10,7 +10,7 @@ import {
   Image,
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
-import {FaDiscord, FaTwitter} from 'react-icons/fa';
+import {FaDiscord, FaEnvelope, FaTwitter} from 'react-icons/fa';
 import {ReactNode} from 'react';
 
 const Logo = () => {
@@ -41,6 +41,7 @@ const SocialButton = ({
       cursor={'pointer'}
       as={'a'}
       href={href}
+      target="_blank"
       display={'inline-flex'}
       alignItems={'center'}
       justifyContent={'center'}
@@ -74,6 +75,12 @@ export default function SmallWithLogoLeft() {
         <Text>© 2021 Meet with Wallet. All rights reserved</Text>
         <Stack direction={'row'} spacing={6}>
           <SocialButton
+            label={'Eamil'}
+            href={'mailto:it_people@meetwithwallet.xyz'}
+          >
+            <FaEnvelope />
+          </SocialButton>
+          <SocialButton
             label={'Twitter'}
             href={'https://twitter.com/meetwithwallet'}
           >
@@ -81,7 +88,7 @@ export default function SmallWithLogoLeft() {
           </SocialButton>
           <SocialButton
             label={'Discord'}
-            href={'https://discord.com/something'}
+            href={'https://discord.gg/MSsyBDf27E'}
           >
             <FaDiscord />
           </SocialButton>

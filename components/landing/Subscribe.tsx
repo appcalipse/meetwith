@@ -11,6 +11,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import React, {useState} from 'react';
+import {logEvent} from '../../utils/analytics';
 import {subscribeToWaitlist} from '../../utils/api_helper';
 
 const CardWithIllustration: React.FC = () => {
@@ -29,6 +30,7 @@ const CardWithIllustration: React.FC = () => {
     ) {
       const success = await subscribeToWaitlist(email);
       if (success) {
+        logEvent('Subscribed to waitlist');
         toast({
           title: 'Success',
           description:
@@ -51,6 +53,7 @@ const CardWithIllustration: React.FC = () => {
       position: 'top',
       isClosable: true,
     });
+    logEvent('Failed to subscribe to waitlist');
     setLoading(false);
   };
 
@@ -81,12 +84,12 @@ const CardWithIllustration: React.FC = () => {
           >
             Join the waitlist
           </Heading>
-          <Text fontSize={'2xl'} color={'gray.500'} textAlign="center">
+          <Text fontSize={'2xl'} color={useColorModeValue('gray.500','gray.300')} textAlign="center">
             First 50 on the waitlist will get one year free of PRO.
           </Text>
-          <Text fontSize={'lg'} color={'gray.500'} textAlign="center">
-            Hey, we know the waitlist uses email, but we didn&apos;t have time
-            to come up with something better 🙃
+          <Text fontSize={'lg'} color={useColorModeValue('gray.500','gray.300')} textAlign="center">
+            Hey, we know the waitlist uses email, but we didn't have time to
+            come up with something better 🙃
           </Text>
         </Stack>
         <Stack spacing={4} direction={{base: 'column', md: 'row'}} w={'full'}>
@@ -104,12 +107,11 @@ const CardWithIllustration: React.FC = () => {
             }}
           />
           <Button
-            bg={'purple.400'}
-            color={'white'}
             flex={'1 0 auto'}
             rounded={'full'}
-            _hover={{bg: 'purple.500'}}
-            _focus={{bg: 'purple.500'}}
+            bg={'orange.400'}
+            fontWeight={'normal'}
+            _hover={{bg: 'orange.500'}}
             isLoading={loading}
             onClick={() => subscribe(email)}
           >
@@ -134,10 +136,10 @@ const NotificationIcon = createIcon({
         width="108"
         height="82"
       />
-      <circle className="cls-2" fill={'#663399'} cx="105" cy="86" r="22" />
+      <circle className="cls-2" fill={'#f1765b'} cx="105" cy="86" r="22" />
       <rect
         className="cls-3"
-        fill={'#b5a1c8'}
+        fill={'#ec502d'}
         x="1"
         y="122"
         width="108"
@@ -145,7 +147,7 @@ const NotificationIcon = createIcon({
       />
       <path
         className="cls-4"
-        fill={'#b5a1c8'}
+        fill={'#ec502d'}
         d="M105,108A22,22,0,0,1,83.09,84a22,22,0,0,0,43.82,0A22,22,0,0,1,105,108Z"
       />
       <path

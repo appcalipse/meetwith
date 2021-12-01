@@ -8,7 +8,6 @@ import {
   Button,
   Image,
   Icon,
-  IconButton,
   createIcon,
   IconProps,
   useColorModeValue,
@@ -20,7 +19,7 @@ export default function CallToActionWithVideo() {
       <Stack
         align={'center'}
         spacing={{base: 8, md: 10}}
-        py={{base: 20, md: 28}}
+        py={28}
         direction={{base: 'column', md: 'row'}}
       >
         <Stack flex={1} spacing={{base: 5, md: 10}}>
@@ -39,23 +38,24 @@ export default function CallToActionWithVideo() {
                 position: 'absolute',
                 bottom: 1,
                 left: 0,
-                bg: 'purple.400',
+                bg: 'orange.400',
                 zIndex: -1,
               }}
             >
               Meet scheduling,
             </Text>
             <br />
-            <Text as={'span'} color={'purple.400'}>
+            <Text as={'span'} color={'orange.400'}>
               for web3!
             </Text>
           </Heading>
-          <Text color={'gray.500'}>
-            Easily share your calendar and schedule meetings without any hassle
-            or back-and-forth communication. All possible by simply connecting
-            your wallet. No registration needed, no more emails (only if you
-            want to) - Own your private data! You know <b>Calendly</b> right?
-            Same thing here, but for web3!
+          <Text color={useColorModeValue('gray.500','gray.300')}>
+            <strong>Meet with Wallet</strong> provides an easy way to share your
+            calendar and schedule meetings without any hassle or back-and-forth
+            communication. All possible by simply connecting your crypto wallet.
+            No registration needed, no more emails (only if you want to) - Own
+            your private data! You know <b>Calendly</b> right? Same thing here,
+            but for <strong>web3</strong>!
           </Text>
           <Stack
             spacing={{base: 4, sm: 6}}
@@ -66,9 +66,8 @@ export default function CallToActionWithVideo() {
               size={'lg'}
               fontWeight={'normal'}
               px={6}
-              colorScheme={'purple'}
-              bg={'purple.400'}
-              _hover={{bg: 'purple.500'}}
+              bg={'orange.400'}
+              _hover={{bg: 'orange.500'}}
               as={'a'}
               href="#subscribe"
             >
@@ -79,6 +78,7 @@ export default function CallToActionWithVideo() {
               href="#pricing"
               rounded={'full'}
               size={'lg'}
+              color={useColorModeValue('gray.500', 'gray.400')}
               fontWeight={'normal'}
               px={6}
             >
@@ -97,23 +97,23 @@ export default function CallToActionWithVideo() {
             w={'150%'}
             h={'150%'}
             position={'absolute'}
-            top={'-20%'}
+            top={{base: '-15%', md:'-20%'}}
             left={0}
             zIndex={-1}
-            color={useColorModeValue('purple.50', 'purple.400')}
+            color={useColorModeValue('orange.50', 'orange.400')}
           />
           <Box
             position={'relative'}
-            height={'300px'}
-            rounded={'2xl'}
             width={'full'}
+            maxW="600px"
+            mt={{base: 8, md: 0}}
             overflow={'hidden'}
           >
             <Image
               alt={'Hero Image'}
               align={'center'}
               w={'100%'}
-              h={'100%'}
+              h={'auto'}
               src={'/assets/calendar.png'}
             />
           </Box>

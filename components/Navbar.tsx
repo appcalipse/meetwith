@@ -27,6 +27,7 @@ import {
 } from '@chakra-ui/icons';
 import NextLink from 'next/link';
 import {Account} from '../types/Account';
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 export default function WithSubnavigation() {
   const {isOpen, onToggle} = useDisclosure();
@@ -52,20 +53,20 @@ export default function WithSubnavigation() {
   };
 
   return (
-    <Box>
+    <Box as="header" position="fixed" width="100%" zIndex={999}>
       <Flex
         bg={useColorModeValue('white', 'gray.800')}
         color={useColorModeValue('gray.600', 'white')}
         minH={'60px'}
-        py={{base: 2}}
-        px={{base: 4}}
+        py="2"
+        px="4"
         borderBottom={1}
         borderStyle={'solid'}
         borderColor={useColorModeValue('gray.200', 'gray.900')}
         align={'center'}
       >
         <Flex
-          flex={{base: 1, md: 'auto'}}
+          
           ml={{base: -2}}
           display={{base: 'flex', md: 'none'}}
         >
@@ -78,7 +79,7 @@ export default function WithSubnavigation() {
             aria-label={'Toggle Navigation'}
           />
         </Flex>
-        <Flex flex={{base: 1}} justify={{base: 'center', md: 'start'}}>
+        <Flex flex={{base: 1}}>
           <NextLink href={'/'} passHref>
             <Link>
               <Image
@@ -101,11 +102,12 @@ export default function WithSubnavigation() {
           direction={'row'}
           spacing={6}
         >
+          <ThemeSwitcher />
           {logged ? (
             <LoggedContainer user={currentAccount!} />
           ) : (
-            <Button as={'a'} size="lg" href={'#'} onClick={handleLogin}>
-              Log in with wallet
+            <Button as={'a'} size="lg" href={'#'} onClick={handleLogin} color={useColorModeValue('gray.500', 'gray.400')}>
+              Log in<Box display={{base: 'none', md: 'flex'}} as="span">&#160;with wallet</Box>
             </Button>
           )}
         </Stack>
@@ -307,6 +309,10 @@ const NAV_ITEMS: Array<NavItem> = [
   {
     label: 'Waitlist',
     href: '#subscribe',
+  },
+  {
+    label: 'FAQ',
+    href: '#faq',
   },
   // {
   //     label: 'Hire Designers',
