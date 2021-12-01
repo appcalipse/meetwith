@@ -35,6 +35,7 @@ export const CookieConsent: React.FC = () => {
           display="flex"
           p={4}
           shadow="xl"
+          flexDirection={{ base: 'column', md: 'row' }}
           bg={boxColor}
           borderRadius={8}
         >
@@ -42,7 +43,11 @@ export const CookieConsent: React.FC = () => {
             We use cookies to improve your experience, for real. We won't do
             anything to harm your privacy :)
           </Text>
-          <Button onClick={accepted} colorScheme="orange">
+          <Button
+            onClick={accepted}
+            colorScheme="orange"
+            mt={{ base: 4, md: 0 }}
+          >
             ACCEPT COOKIES
           </Button>
         </Box>
