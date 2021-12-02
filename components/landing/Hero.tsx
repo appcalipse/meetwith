@@ -51,7 +51,7 @@ export default function CallToActionWithVideo() {
           </Heading>
           <Text color={useColorModeValue('gray.500', 'gray.300')}>
             <strong>Meet with Wallet</strong> provides an easy way to share your
-            calendar and schedule meetings without any hassle or back-and-forth
+            (or your <strong>DAO's</strong>) calendar and schedule meetings without any hassle or back-and-forth
             communication. All possible by simply connecting your crypto wallet.
             No registration needed, no more emails (only if you want to) - Own
             your private data! You know <b>Calendly</b> right? Same thing here,

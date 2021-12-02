@@ -294,10 +294,6 @@ interface NavItem {
 }
 
 const NAV_ITEMS: Array<NavItem> = [
-  {
-    label: 'Plans',
-    href: '#pricing',
-  },
   // {
   //     label: 'Pricing',
   //     children: [
@@ -316,6 +312,10 @@ const NAV_ITEMS: Array<NavItem> = [
   {
     label: 'Waitlist',
     href: '#subscribe',
+  },
+  {
+    label: 'Plans',
+    href: '#pricing',
   },
   {
     label: 'FAQ',

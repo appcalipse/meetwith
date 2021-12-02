@@ -77,11 +77,11 @@ export default function Pricing() {
                 Single meeting configuration
               </ListItem>
               <ListItem>
-                <ListIcon as={FaAngry} color="gray.500" />
+                <ListIcon as={FaAngry} color="red.500" />
                 Fixed booking link with wallet address
               </ListItem>
               <ListItem>
-                <ListIcon as={FaAngry} color="gray.500" />
+                <ListIcon as={FaAngry} color="red.500" />
                 Accounts needs reactivation every 3 months
               </ListItem>
             </List>

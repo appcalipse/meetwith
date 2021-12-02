@@ -4,8 +4,16 @@ import { Box, Text } from '@chakra-ui/layout'
 import React from 'react'
 import { useCookies } from 'react-cookie'
 
-export const CookieConsent: React.FC = () => {
+interface Props {
+  consentCookie: boolean
+}
+export const CookieConsent: React.FC<Props> = (props: Props) => {
+
+  let cookie = props.consentCookie
   const [cookies, setCookie] = useCookies(['mww_consent'])
+  if(!cookie) {
+    cookie = cookies.mww_consent
+  }
 
   const accepted = () => {
     setCookie('mww_consent', true, {
@@ -14,12 +22,12 @@ export const CookieConsent: React.FC = () => {
       sameSite: true,
     })
   }
-
+  
   const textColor = useColorModeValue('gray.200', 'gray.500')
 
   const boxColor = useColorModeValue('gray.800', 'white')
 
-  return cookies.mww_consent ? (
+  return cookie ? (
     <></>
   ) : (
     <Box position="fixed" bottom={8} width="100%">

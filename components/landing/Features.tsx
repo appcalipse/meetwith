@@ -48,7 +48,7 @@ export default function SimpleThreeColumns() {
             icon={<Icon as={FcCalendar} w={10} h={10} />}
             title={'Fast and simple'}
             text={
-              'Enough of Discord conversations to find a good time to meet. Just share your link and let the other participant pick the best time.'
+              'Enough of Discord conversations to find a good time to meet. Just share your link and let the other participant pick the best time. For 1-1 or group meetings.'
             }
           />
           <Feature

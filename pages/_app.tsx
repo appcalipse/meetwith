@@ -1,5 +1,6 @@
 import '../styles/globals.css'
-import type { AppProps } from 'next/app'
+import type { AppContext, AppInitialProps, AppProps } from 'next/app'
+import App from 'next/app'
 import * as React from 'react'
 import { ChakraProvider } from '@chakra-ui/react'
 import { CookiesProvider } from 'react-cookie'
@@ -11,15 +12,21 @@ import Head from 'next/head'
 import { initAnalytics, pageView } from '../utils/analytics'
 import customTheme from '../styles/theme'
 import { CookieConsent } from '../components/CookieConsent'
+import cookie from 'cookie'
 
 const theme = extendTheme(customTheme)
 
-export default function MyApp({ Component, pageProps, router }: AppProps) {
+interface MyAppProps extends AppProps {
+  consentCookie?: boolean | undefined
+}
+
+export default function MyApp({ Component, pageProps, router, consentCookie }: MyAppProps) {
   const [loading, setLoading] = React.useState(true)
 
   const initApp = async () => {
     setLoading(false)
     await initAnalytics()
+    pageView(router.asPath)
   }
 
   React.useEffect(() => {
@@ -34,7 +41,7 @@ export default function MyApp({ Component, pageProps, router }: AppProps) {
     return () => {
       router.events.off('routeChangeComplete', handleRouteChange)
     }
-  }, [])
+  }, [router.events])
 
   return (
     <ChakraProvider theme={theme}>
@@ -82,8 +89,17 @@ export default function MyApp({ Component, pageProps, router }: AppProps) {
             </>
           )}
         </AccountProvider>
-        <CookieConsent />
+        <CookieConsent consentCookie={consentCookie as boolean} />
       </CookiesProvider>
     </ChakraProvider>
   )
+}
+
+
+MyApp.getInitialProps = async (appContext: AppContext) => {
+  const appProps: AppInitialProps = await App.getInitialProps(appContext);
+
+  const consentCookie = (appContext.ctx.req && appContext.ctx.req.headers!.cookie) ? cookie.parse(appContext.ctx.req.headers!.cookie).mww_consent : false
+
+  return { ...appProps, consentCookie}
 }
