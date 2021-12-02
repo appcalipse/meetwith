@@ -34,6 +34,20 @@ export default function FAQ() {
           py={4}
           color={useColorModeValue('gray.700', 'gray.100')}
         >
+          Why using my wallet to connect/use the tool?
+        </Heading>
+        <Text pb={2}>
+          By connecting with your wallet, you will only provide a already public
+          information (you address and public key), and you can decide which
+          other information you want to share. Wallet connection is the new
+          standard for web3 interactions and allow you to keep the sovereignty
+          of your identity.
+        </Text>
+        <Heading
+          size="lg"
+          py={4}
+          color={useColorModeValue('gray.700', 'gray.100')}
+        >
           Which data is public and which is private?
         </Heading>
         <Text pb={2}>

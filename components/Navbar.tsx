@@ -28,6 +28,7 @@ import {
 import NextLink from 'next/link'
 import { Account } from '../types/Account'
 import { ThemeSwitcher } from './ThemeSwitcher'
+import { logEvent } from '../utils/analytics'
 
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()
@@ -40,6 +41,7 @@ export default function WithSubnavigation() {
     if (!currentAccount) {
       // const account = await loginWithWallet()
       // await login(account)
+      logEvent('Clicked to connect wallet')
       toast({
         title: 'Comming Soon',
         description:
