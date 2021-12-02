@@ -42,7 +42,7 @@ export default function CallToActionWithVideo() {
                 zIndex: -1,
               }}
             >
-              Meet scheduling,
+              Meeting scheduling,
             </Text>
             <br />
             <Text as={'span'} color={'orange.400'}>

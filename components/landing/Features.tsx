@@ -91,7 +91,7 @@ export default function SimpleThreeColumns() {
                 >
                   ENS
                 </Link>{' '}
-                and{' '}
+                and,{' '}
                 <Link
                   href="https://epns.io/?source=meetwithwallet"
                   target="_blank"

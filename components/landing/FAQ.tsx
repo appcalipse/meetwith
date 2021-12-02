@@ -19,15 +19,15 @@ export default function FAQ() {
           py={4}
           color={useColorModeValue('gray.700', 'gray.100')}
         >
-          Why creating another scheduling tool?
+          Why create yet another scheduling tool?
         </Heading>
         <Text pb={2}>
           We believe web3 still lacks some important tools widely available in
           web 2.0, scheduling meetings being one of them. We want to provide a
-          great experience of meet scheduling at the same time that our product
-          meets the ethos of a decentralized web (and is build with the strong
-          colaboration of our users). Also, enough of using your email to create
-          account and logo into tools right?
+          great experience of meet schedule at the same time that our product
+          meets the ethos of a decentralized web (and is built with the strong
+          collaboration of our users). Also, enough of using your email to create
+          an account and logo into tools right?
         </Text>
         <Heading
           size="lg"
@@ -37,16 +37,16 @@ export default function FAQ() {
           Which data is public and which is private?
         </Heading>
         <Text pb={2}>
-          Your public data consists in your account information (calendar URL,
-          optional description, any relevant links, meeting types and duration,
+          Your public data consists of your account information (calendar URL,
+          an optional description, any relevant links, meeting types and duration,
           an internal public key and an encoded private key - not your wallet's,
           we generate a pair for the application), and your meet slots (times
-          that your account have some meeting, so no one else can schedule it).
+          that your account has some meeting, so no one else can schedule it).
           The public data is stored in our servers to provide a smoother and
           faster experi experience to all users. All other data regarding your
           meetings (participants, description/comments, meeting link, etc) are
           stored on IPFS, encoded with your internal private key (that is only
-          know by you, encrypted with your wallet signature). This means that
+          known by you, encrypted with your wallet signature). This means that
           only participants of a meeting know information about it and who are
           they meeting with - Yes, not even ourselves know about it.
         </Text>
@@ -66,7 +66,7 @@ export default function FAQ() {
           When is soon?
         </Heading>
         <Text pb={2}>
-          Optimistic scenario, before end of 2021. Realistic scenario, mid Q1 of
+          Optimistic scenario, before the end of 2021. Realistic scenario, mid Q1 of
           2022.
         </Text>
         <Heading
@@ -74,10 +74,10 @@ export default function FAQ() {
           py={4}
           color={useColorModeValue('gray.700', 'gray.100')}
         >
-          How can I know what is coming next and colaborate?
+          How can I know what is coming next and collaborate?
         </Heading>
         <Text pb={2}>
-          Check our high level feature roadmap{' '}
+          Check our high-level feature roadmap{' '}
           <Link href="https://meet-with-wallet.sleekplan.app/" isExternal>
             here
           </Link>{' '}

@@ -39,7 +39,7 @@ export default function Pricing() {
           Options that fit your needs
         </Heading>
         <Text fontSize="lg" color={useColorModeValue('gray.500', 'gray.300')}>
-          Start for free, go Pro or power your DAO with more organization and
+          Start for free, go Pro, or power your DAO with more organization and
           transparency.
         </Text>
       </VStack>
@@ -70,10 +70,10 @@ export default function Pricing() {
             <List spacing={3} textAlign="start" px={12}>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Public page for meet scheduling
-              </ListItem>
+                  Public page for meet scheduling
+                </ListItem>
               <ListItem>
-                <ListIcon as={FaCheckCircle} color="green.500" />
+                <ListIcon as={FaCheckCircle} color="red.500" />
                 Single meeting configuration
               </ListItem>
               <ListItem>
@@ -82,7 +82,7 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaAngry} color="red.500" />
-                Accounts needs reactivation every 3 months
+                Only 1-1 meetings
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
@@ -142,7 +142,7 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Customisable booking link
+                Customizable booking link
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
@@ -150,7 +150,7 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Meeting Notifications (Email, Push and EPNS)
+                Meeting Notifications (Email, Push and, EPNS)
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
@@ -239,7 +239,7 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Unlimited sub teams pages with multiple calendars
+                Unlimited sub-teams pages with multiple calendars
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
