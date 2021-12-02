@@ -8,10 +8,9 @@ interface Props {
   consentCookie: boolean
 }
 export const CookieConsent: React.FC<Props> = (props: Props) => {
-
   let cookie = props.consentCookie
   const [cookies, setCookie] = useCookies(['mww_consent'])
-  if(!cookie) {
+  if (!cookie) {
     cookie = cookies.mww_consent
   }
 
@@ -22,7 +21,7 @@ export const CookieConsent: React.FC<Props> = (props: Props) => {
       sameSite: true,
     })
   }
-  
+
   const textColor = useColorModeValue('gray.200', 'gray.500')
 
   const boxColor = useColorModeValue('gray.800', 'white')

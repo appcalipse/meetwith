@@ -70,8 +70,8 @@ export default function Pricing() {
             <List spacing={3} textAlign="start" px={12}>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                  Public page for meet scheduling
-                </ListItem>
+                Public page for meet scheduling
+              </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="red.500" />
                 Single meeting configuration

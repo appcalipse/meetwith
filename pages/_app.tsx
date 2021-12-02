@@ -20,7 +20,12 @@ interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
 }
 
-export default function MyApp({ Component, pageProps, router, consentCookie }: MyAppProps) {
+export default function MyApp({
+  Component,
+  pageProps,
+  router,
+  consentCookie,
+}: MyAppProps) {
   const [loading, setLoading] = React.useState(true)
 
   const initApp = async () => {
@@ -95,11 +100,13 @@ export default function MyApp({ Component, pageProps, router, consentCookie }: M
   )
 }
 
-
 MyApp.getInitialProps = async (appContext: AppContext) => {
-  const appProps: AppInitialProps = await App.getInitialProps(appContext);
+  const appProps: AppInitialProps = await App.getInitialProps(appContext)
 
-  const consentCookie = (appContext.ctx.req && appContext.ctx.req.headers!.cookie) ? cookie.parse(appContext.ctx.req.headers!.cookie).mww_consent : false
+  const consentCookie =
+    appContext.ctx.req && appContext.ctx.req.headers!.cookie
+      ? cookie.parse(appContext.ctx.req.headers!.cookie).mww_consent
+      : false
 
-  return { ...appProps, consentCookie}
+  return { ...appProps, consentCookie }
 }
