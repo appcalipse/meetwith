@@ -73,7 +73,7 @@ export default function Pricing() {
                 Public page for meet scheduling
               </ListItem>
               <ListItem>
-                <ListIcon as={FaCheckCircle} color="red.500" />
+                <ListIcon as={FaAngry} color="red.500" />
                 Single meeting configuration
               </ListItem>
               <ListItem>
