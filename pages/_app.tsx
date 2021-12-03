@@ -53,7 +53,46 @@ export default function MyApp({
       <CookiesProvider>
         <AccountProvider>
           <Head>
-            <title>Meet with wallet</title>
+            <title>
+              Meeting scheduling for #web3 - Meet with Wallet -
+              meetwthwallet.xyz
+            </title>
+            <meta
+              name="description"
+              content="Meet with wallet provides an easy way to share you calendar and let people find the perfect time to meet with you, always ensuring your data is private. Booking for FREE by simply connecting a crypto wallet (No transaction is needed)."
+            />
+
+            <meta property="og:url" content="https://meetwithwallet.xyz/" />
+            <meta property="og:type" content="website" />
+            <meta
+              property="og:title"
+              content="Meeting scheduling for #web3 - Meet with Wallet - meetwthwallet.xyz"
+            />
+            <meta
+              property="og:description"
+              content="Meet with wallet provides an easy way to share you calendar and let people find the perfect time to meet with you, always ensuring your data is private. Booking for FREE by simply connecting a crypto wallet (No transaction is needed)."
+            />
+            <meta
+              property="og:image"
+              content="https://meetwithwallet.xyz/assets/opengraph.jpg"
+            />
+
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta property="twitter:domain" content="meetwithwallet.xyz" />
+            <meta property="twitter:url" content="https://meetwithwallet.xyz" />
+            <meta
+              name="twitter:title"
+              content="Meeting scheduling for #web3 - Meet with Wallet - meetwthwallet.xyz"
+            />
+            <meta
+              name="twitter:description"
+              content="Meet with wallet provides an easy way to share you calendar and let people find the perfect time to meet with you, always ensuring your data is private. Booking for FREE by simply connecting a crypto wallet (No transaction is needed)."
+            />
+            <meta
+              name="twitter:image"
+              content="https://meetwithwallet.xyz/assets/opengraph.jpg"
+            />
+
             <meta
               name="viewport"
               content="initial-scale=1, width=device-width"
