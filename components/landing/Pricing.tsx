@@ -70,7 +70,7 @@ export default function Pricing() {
             <List spacing={3} textAlign="start" px={12}>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Public page for meet scheduling
+                Public page for scheduling meetings
               </ListItem>
               <ListItem>
                 <ListIcon as={FaAngry} color="red.500" />

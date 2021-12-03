@@ -54,7 +54,7 @@ export default function MyApp({
         <AccountProvider>
           <Head>
             <title>
-              Meeting scheduling for #web3 - Meet with Wallet -
+              Meeting scheduler for #web3 - Meet with Wallet -
               meetwthwallet.xyz
             </title>
             <meta
@@ -66,7 +66,7 @@ export default function MyApp({
             <meta property="og:type" content="website" />
             <meta
               property="og:title"
-              content="Meeting scheduling for #web3 - Meet with Wallet - meetwthwallet.xyz"
+              content="Meeting scheduler for #web3 - Meet with Wallet - meetwthwallet.xyz"
             />
             <meta
               property="og:description"
@@ -82,7 +82,7 @@ export default function MyApp({
             <meta property="twitter:url" content="https://meetwithwallet.xyz" />
             <meta
               name="twitter:title"
-              content="Meeting scheduling for #web3 - Meet with Wallet - meetwthwallet.xyz"
+              content="Meeting scheduler for #web3 - Meet with Wallet - meetwthwallet.xyz"
             />
             <meta
               name="twitter:description"

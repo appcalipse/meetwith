@@ -24,7 +24,7 @@ export default function FAQ() {
         <Text pb={2}>
           We believe web3 still lacks some important tools widely available in
           web 2.0, scheduling meetings being one of them. We want to provide a
-          great experience of meet schedule at the same time that our product
+          great experience to schedule meetings at the same time that our product
           meets the ethos of a decentralized web (and is built with the strong
           collaboration of our users). Also, enough of using your email to
           create an account and logo into tools right?
