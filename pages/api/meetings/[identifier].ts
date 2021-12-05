@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { getMeetingsForAccount, initDB } from '../../../utils/database'
+import { getSlotsForAccount, initDB } from '../../../utils/database'
 import { AccountNotFoundError } from '../../../utils/errors'
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
@@ -7,7 +7,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     initDB()
 
     try {
-      const meetings = await getMeetingsForAccount(
+      const meetings = await getSlotsForAccount(
         req.query.identifier as string,
         req.query.start ? new Date(req.query.start as string) : undefined,
         req.query.end ? new Date(req.query.end as string) : undefined
@@ -16,9 +16,10 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       res.status(200).json(meetings)
       return
     } catch (error) {
-      console.log(error)
-      if (error instanceof AccountNotFoundError)
+      if (error instanceof AccountNotFoundError) {
         res.status(404).json({ error: error.message })
+      }
+      console.error(error)
       return
     }
   }

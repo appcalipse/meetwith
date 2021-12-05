@@ -47,7 +47,8 @@ class IPFSHelper {
                 data.push(chunk)
             }
         } catch (err) {
-            console.log(err)
+            //TODO add error handling
+            console.error(err)
         }
 
         return JSON.parse(Buffer.concat(data).toString())

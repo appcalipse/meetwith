@@ -7,7 +7,6 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 
     try {
       const account = await getAccountFromDB(identifier as string)
-      console.log(account)
       res.status(200).json(account)
     } catch (e) {
       console.log(e)

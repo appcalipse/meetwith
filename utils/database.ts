@@ -2,11 +2,9 @@ import EthCrypto, { Encrypted, encryptWithPublicKey } from 'eth-crypto';
 import { Account } from '../types/Account';
 import { encryptContent } from './cryptography';
 import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, ParticipantBaseInfo, ParticipantInfo, ParticipantType, ParticipationStatus } from '../types/Meeting';
-import { AccountPreferences } from '../types/Account';
 import { createClient } from '@supabase/supabase-js'
-import { AccountNotFoundError, MeetingNotFoundError } from '../utils/errors';
+import { AccountNotFoundError, MeetingNotFoundError, MeetingWithYourselfError } from '../utils/errors';
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper';
-import dayjs from 'dayjs';
 import { randomUUID } from 'crypto';
 import { generateMeetingUrl } from './meeting_url_heper';
 
@@ -50,7 +48,7 @@ const initAccountDBForWallet = async (address: string, signature: string): Promi
         ])
 
     if (error) {
-        console.log(error)
+        console.error(error)
         throw new Error('Account couldn\'t be created')
     }
 
@@ -61,7 +59,6 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     const {data, error} = await db.supabase.from('accounts').select()
     .or(`address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`)
 
-    console.log(error)
     if (!error && data.length > 0) {
         const account = data[0] as Account
         //account.preferences = (await fetchContentFromIPFS(account.preferences_path)) as AccountPreferences
@@ -71,24 +68,17 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     throw new AccountNotFoundError(identifier)
 }
 
-const getMeetingsForAccount = async (identifier: string, start?: Date, end?: Date): Promise<DBSlotEnhanced[]> => {
+const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date): Promise<DBSlot[]> => {
     const account = await getAccountFromDB(identifier)
 
-    const { data, error } = await db.supabase.from('participant_info').select(
-        `
-        participant,
-        meeting_info_file_path,
-        meetings (
-          start,
-          end
-        )
-      `
-    ).eq('participant', account.address)
-        .gte('meeting.start', start ? start : 0)
-        .lte('meeting.end', end ? end : 99999999999)
+    const { data, error } = await db.supabase.from('slots').select(
+    ).eq('account_pub_key', account.internal_pub_key)
+    .gte('meeting.start', start ? start : 0)
+    .lte('meeting.end', end ? end : 99999999999999999)
 
+    if (error) {
     // //TODO: handle error
-
+    }
 
     return data || []
 }
@@ -116,8 +106,14 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
 
 const saveMeeting = async (meeting: MeetingCreationRequest): Promise<DBSlotEnhanced> => {
 
-    const participantsInfo: ParticipantInfo[] = meeting.participants.map((participant: ParticipantBaseInfo) => {
+    const schedulerId = meeting.participants.find(p => p.type == ParticipantType.Scheduler)!.account_identifier
+    const ownerId = meeting.participants.find(p => p.type == ParticipantType.Owner)!.account_identifier
 
+    if(schedulerId === ownerId) {
+        throw new MeetingWithYourselfError()
+    }
+
+    const participantsInfo: ParticipantInfo[] = meeting.participants.map((participant: ParticipantBaseInfo) => {
         return {
             account_identifier: participant.account_identifier,
             type: participant.type,
@@ -192,4 +188,4 @@ const saveEmailToDB = async (email: string): Promise<boolean> => {
     return false
 }
 
-export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getMeetingsForAccount, getMeetingFromDB, saveEmailToDB }
+export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB }

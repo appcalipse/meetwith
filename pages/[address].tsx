@@ -2,9 +2,12 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import MeetSlotPicker from '../components/MeetSlotPicker'
 import { AccountContext } from '../providers/AccountProvider'
-import { decryptMeeting, isSlotAvailable, scheduleMeeting } from '../utils/calendar_manager'
+import { isSlotAvailable, scheduleMeeting } from '../utils/calendar_manager'
 import dayjs from 'dayjs'
-import { getAccount, getMeeting, getMeetings } from '../utils/api_helper'
+import { getAccount, getMeetings } from '../utils/api_helper'
+import { MeetingWithYourselfError } from '../utils/errors'
+import { useToast } from '@chakra-ui/toast'
+import { DBSlot } from '../types/Meeting'
 
 const Schedule: React.FC = () => {
   const router = useRouter()
@@ -18,23 +21,20 @@ const Schedule: React.FC = () => {
   const [account, setAccount] = useState(null as string | null)
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [meetings, setMeetings] = useState([] as MeetingEncrypted[])
-
+  const [meetings, setMeetings] = useState([] as DBSlot[])
+  const toast = useToast()
   const { currentAccount, logged } = useContext(AccountContext)
 
   const checkUser = async (identifier: string) => {
     try {
-      const meeting = await getMeeting('b6a95068-3404-4675-8d3f-8663dd3a3508')
-      console.log(meeting)
-      console.log(await decryptMeeting(meeting))
       const account = await getAccount(identifier)
       setAccount(account.address)
       updateMeetings(account.address)
       setLoading(false)
     } catch (e) {
       //TODO handle error
-      console.log(e)
-      //router.push('/404')
+      console.error(e)
+      router.push('/404')
     }
   }
 
@@ -42,13 +42,26 @@ const Schedule: React.FC = () => {
     if (logged) {
       const start = dayjs(startTime)
       const end = dayjs(startTime).add(15, 'minute')
-      await scheduleMeeting(
-        currentAccount!.address,
-        account!,
-        start,
-        end,
-        'testing'
-      )
+      try {
+        await scheduleMeeting(
+          currentAccount!.address,
+          account!,
+          start,
+          end,
+          'testing'
+        )
+      } catch (e) {
+        if (e instanceof MeetingWithYourselfError) {
+          toast({
+            title: "Ops! Can't do that",
+            description: e.message,
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else throw e
+      }
     } else {
       //TODO: provide feedback to log
     }

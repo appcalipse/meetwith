@@ -10,9 +10,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      const meeting = await getMeetingFromDB(
-        req.query.id as string
-      )
+      const meeting = await getMeetingFromDB(req.query.id as string)
 
       res.status(200).json(meeting)
       return

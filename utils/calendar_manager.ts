@@ -3,10 +3,14 @@ import { decryptWithPrivateKey, Encrypted } from 'eth-crypto';
 import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, MeetingDecrypted, ParticipantBaseInfo, ParticipantType } from "../types/Meeting";
 import { createMeeting, getAccount, isSlotFree } from './api_helper';
 import { decryptContent } from './cryptography';
-import { TimeNotAvailableError } from './errors';
+import { MeetingWithYourselfError, TimeNotAvailableError } from './errors';
 import { getSignature } from './storage';
 
 const scheduleMeeting = async (source_account: string, target_account: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<MeetingDecrypted> => {
+
+    if(source_account === target_account) {
+        throw new MeetingWithYourselfError()
+    }
 
     if (await isSlotFree(target_account, startTime.toDate(), endTime.toDate())) {
         const owner: ParticipantBaseInfo = {

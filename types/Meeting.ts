@@ -61,35 +61,3 @@ export interface MeetingDecrypted {
     content?: string
 
 }
-// export interface DBMeeting {
-//     id?: string,
-//     created_at?: Date,
-//     start: Date,
-//     end: Date,
-// }
-
-// export interface DBParticipantInfo {
-//     id?: string,
-//     meeting_id?: string,
-//     participant: string,
-//     meeting_info_path?: string
-// }
-
-// export interface ParticipantInfo extends DBParticipantInfo {
-//     type: ParticipantType,
-//     status: MeetingStatus,
-// }
-
-// export interface Participant {
-//     address: string,
-//     type: ParticipantType,
-//     status: MeetingStatus,
-// }
-
-// export interface MeetingEncrypted {
-//     id: string,
-//     participants: Participant[],
-//     startTime: Dayjs,
-//     endTime: Dayjs,
-//     content?: Encrypted
-// }

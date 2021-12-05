@@ -18,3 +18,10 @@ export class MeetingNotFoundError extends Error {
         this.name = "MeetingNotFoundError";
     }
 }
+
+export class MeetingWithYourselfError extends Error {
+    constructor() {
+        super(`Trying to meet with yourself?`);
+        this.name = "MeetingWithYourselfError";
+    }
+}
