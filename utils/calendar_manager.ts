@@ -36,7 +36,9 @@ const scheduleMeeting = async (source_account: string, target_account: string, s
 
 const decryptMeeting = async (meeting: DBSlotEnhanced): Promise<MeetingDecrypted> => {
 
-    const meetingInfo = JSON.parse(await getContentFromEncrypted(meeting.account, getSignature(meeting.account)!, meeting.meeting_info_encrypted)) as IPFSMeetingInfo
+    const account = await getAccount(meeting.account_pub_key)
+
+    const meetingInfo = JSON.parse(await getContentFromEncrypted(account.address, getSignature(account.address)!, meeting.meeting_info_encrypted)) as IPFSMeetingInfo
     
     return {
         ...meeting,
@@ -68,4 +70,4 @@ const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetings
     return filtered.length == 0
 }
 
-export { scheduleMeeting, isSlotAvailable }
+export { scheduleMeeting, isSlotAvailable, decryptMeeting }

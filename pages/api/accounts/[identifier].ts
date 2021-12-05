@@ -3,10 +3,11 @@ import { getAccountFromDB } from '../../../utils/database'
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    const { address } = req.query
+    const { identifier } = req.query
 
     try {
-      const account = await getAccountFromDB(address as string)
+      const account = await getAccountFromDB(identifier as string)
+      console.log(account)
       res.status(200).json(account)
     } catch (e) {
       console.log(e)

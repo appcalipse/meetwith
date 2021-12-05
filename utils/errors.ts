@@ -11,3 +11,10 @@ export class AccountNotFoundError extends Error {
         this.name = "AccountNotFoundError";
     }
 }
+
+export class MeetingNotFoundError extends Error {
+    constructor(identifier: string) {
+        super(`Meeting slot with identifier ${identifier} not found.`);
+        this.name = "MeetingNotFoundError";
+    }
+}

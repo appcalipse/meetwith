@@ -2,9 +2,8 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import MeetSlotPicker from '../components/MeetSlotPicker'
 import { AccountContext } from '../providers/AccountProvider'
-import { isSlotAvailable, scheduleMeeting } from '../utils/calendar_manager'
+import { decryptMeeting, isSlotAvailable, scheduleMeeting } from '../utils/calendar_manager'
 import dayjs from 'dayjs'
-import { MeetingEncrypted } from '../types/Meeting'
 import { getAccount, getMeeting, getMeetings } from '../utils/api_helper'
 
 const Schedule: React.FC = () => {
@@ -25,7 +24,9 @@ const Schedule: React.FC = () => {
 
   const checkUser = async (identifier: string) => {
     try {
-      getMeeting('e65d9e89-709d-4c90-8647-e5afa1a746a0')
+      const meeting = await getMeeting('b6a95068-3404-4675-8d3f-8663dd3a3508')
+      console.log(meeting)
+      console.log(await decryptMeeting(meeting))
       const account = await getAccount(identifier)
       setAccount(account.address)
       updateMeetings(account.address)

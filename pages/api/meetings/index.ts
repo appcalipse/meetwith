@@ -1,8 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import {
-  DBSlotEnhanced,
-  MeetingCreationRequest,
-} from '../../../types/Meeting'
+import { DBSlotEnhanced, MeetingCreationRequest } from '../../../types/Meeting'
 import { initDB, saveMeeting } from '../../../utils/database'
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {

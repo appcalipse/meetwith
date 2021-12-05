@@ -1,6 +1,5 @@
 import { Dayjs } from "dayjs";
 import { Encrypted } from "eth-crypto";
-import { Account } from "./Account";
 
 export enum ParticipationStatus {
     Pending = "pending",
@@ -27,7 +26,7 @@ export interface DBSlot {
     created_at?: Date,
     start: Date,
     end: Date,
-    account: string,
+    account_pub_key: string,
     meeting_info_file_path: string
 }
 

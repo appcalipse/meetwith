@@ -55,6 +55,6 @@ export const subscribeToWaitlist = async (email: string): Promise<boolean> => {
     return (result as any).success
 }
 
-export const getMeeting = async (meeting_id: string): Promise<MeetingEncrypted> => {
-    return await internalFetch(`/meetings/meeting/${meeting_id}`) as MeetingEncrypted
+export const getMeeting = async (slot_id: string): Promise<MeetingEncrypted> => {
+    return await internalFetch(`/meetings/meeting/${slot_id}`) as MeetingEncrypted
 }

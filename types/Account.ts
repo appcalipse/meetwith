@@ -8,8 +8,14 @@ export interface Account {
     preferences?: AccountPreferences
 }
 
+export enum SpecialDomainType {
+    ENS = 'ENS',
+    UNSTOPPABLE_DOMAINS = 'UNSTOPPABLE_DOMAINS'
+}
+
 export interface PremiumAccount extends Account {
-    ens: string
+    special_domain: string,
+    special_domain_type: SpecialDomainType,
 }
 
 export interface MeetingType {

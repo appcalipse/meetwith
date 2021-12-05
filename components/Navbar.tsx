@@ -39,18 +39,18 @@ export default function WithSubnavigation() {
 
   const handleLogin = async () => {
     if (!currentAccount) {
-      // const account = await loginWithWallet()
-      // await login(account)
       logEvent('Clicked to connect wallet')
-      toast({
-        title: 'Comming Soon',
-        description:
-          'Soon you will be able to log in with your favourite web3 wallet. Meanwhile, join the waitlist.',
-        status: 'warning',
-        duration: 7000,
-        position: 'top',
-        isClosable: true,
-      })
+      const account = await loginWithWallet()
+      await login(account)
+      // toast({
+      //   title: 'Comming Soon',
+      //   description:
+      //     'Soon you will be able to log in with your favourite web3 wallet. Meanwhile, join the waitlist.',
+      //   status: 'warning',
+      //   duration: 7000,
+      //   position: 'top',
+      //   isClosable: true,
+      // })
     }
   }
 

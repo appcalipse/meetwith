@@ -54,8 +54,7 @@ export default function MyApp({
         <AccountProvider>
           <Head>
             <title>
-              Meeting scheduler for #web3 - Meet with Wallet -
-              meetwthwallet.xyz
+              Meeting scheduler for #web3 - Meet with Wallet - meetwthwallet.xyz
             </title>
             <meta
               name="description"
