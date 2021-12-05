@@ -1,7 +1,7 @@
 import EthCrypto, { Encrypted, encryptWithPublicKey } from 'eth-crypto';
 import { Account } from '../types/Account';
 import { encryptContent } from './cryptography';
-import { DBMeeting, DBParticipantInfo, IPFSMeetingInfo, MeetingCreationRequest, MeetingEncrypted, MeetingStatus, Participant, ParticipantType } from '../types/Meeting';
+import { DBMeeting, DBParticipantInfo, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, MeetingEncrypted, MeetingStatus, Participant, ParticipantType } from '../types/Meeting';
 import { AccountPreferences } from '../types/Account';
 import { createClient } from '@supabase/supabase-js'
 import { AccountNotFoundError } from '../utils/errors';
@@ -130,14 +130,22 @@ const getMeetingFromDB = async (meeting_id: string, participant_address: string)
     return meeting
 }
 
-const saveMeeting = async (meeting: MeetingCreationRequest): Promise<MeetingEncrypted> => {
+const saveMeeting = async (meeting: MeetingCreationRequest): Promise<DBSlotEnhanced> => {
 
-    const { data, error } = await db.supabase.from('meetings').insert([
+    const { data, error } = await db.supabase.from('slots').insert([
         {
             start: meeting.start,
-            end: meeting.end
+            end: meeting.end,
+            account: meeting.participants.filter(p => p.type == ParticipantType.Owner)[0].account_identifier
         }
     ])
+
+    id?: string,
+    created_at?: Date,
+    start: Date,
+    end: Date,
+    account: string,
+    meeting_info_file_path: string
 
     //TODO: handle error
     if (error) {

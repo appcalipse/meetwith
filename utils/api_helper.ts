@@ -1,5 +1,5 @@
 import { Account } from "../types/Account";
-import { MeetingEncrypted } from "../types/Meeting";
+import { DBSlot, DBSlotEnhanced, MeetingEncrypted } from "../types/Meeting";
 import { apiUrl } from "./constants";
 import { AccountNotFoundError } from "./errors";
 
@@ -38,8 +38,12 @@ export const createAccount = async (address: string, signature: string): Promise
     return await internalFetch(`/accounts`, 'POST', { address, signature }) as Account
 }
 
-export const createMeeting = async (meeting: any): Promise<MeetingEncrypted> => {
-    return await internalFetch(`/meetings`, 'POST', meeting) as MeetingEncrypted
+export const createMeeting = async (meeting: any): Promise<DBSlotEnhanced> => {
+    return await internalFetch(`/meetings`, 'POST', meeting) as DBSlotEnhanced
+}
+
+export const isSlotFree = async (target_account: string, start: Date, end: Date): Promise<{isFree: boolean}> => {
+    return await internalFetch(`/meetings/slot/${target_account}?start=${start.getTime()}&end=${end.getTime()}`) as {isFree: boolean}
 }
 
 export const getMeetings = async (accountIdentifier: string, start?: Date, end?: Date): Promise<MeetingEncrypted[]> => {

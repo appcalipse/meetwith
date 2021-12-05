@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import {
+  DBSlotEnhanced,
   MeetingCreationRequest,
-  MeetingEncrypted,
 } from '../../../types/Meeting'
 import { initDB, saveMeeting } from '../../../utils/database'
 
@@ -11,7 +11,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 
     const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
 
-    const meetingResult: MeetingEncrypted = await saveMeeting(meeting)
+    const meetingResult: DBSlotEnhanced = await saveMeeting(meeting)
 
     res.status(200).json(meetingResult)
     return
