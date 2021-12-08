@@ -59,7 +59,7 @@ export default function WithSubnavigation() {
         } else {
           await login(account)
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(error)
         toast({
           title: 'Error',
