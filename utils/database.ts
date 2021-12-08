@@ -1,5 +1,5 @@
 import EthCrypto, { Encrypted, encryptWithPublicKey } from 'eth-crypto';
-import { Account } from '../types/Account';
+import { Account, AccountPreferences, MeetingType } from '../types/Account';
 import { encryptContent } from './cryptography';
 import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, ParticipantBaseInfo, ParticipantInfo, ParticipantType, ParticipationStatus } from '../types/Meeting';
 import { createClient } from '@supabase/supabase-js'
@@ -7,6 +7,7 @@ import { AccountNotFoundError, MeetingNotFoundError, MeetingWithYourselfError } 
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper';
 import { randomUUID } from 'crypto';
 import { generateMeetingUrl } from './meeting_url_heper';
+import { generateDefaultAvailabilities } from './calendar_manager';
 
 const db: any = { ready: false };
 
@@ -22,19 +23,11 @@ const initDB = () => {
 
 initDB()
 
-const initAccountDBForWallet = async (address: string, signature: string): Promise<Account> => {
+const initAccountDBForWallet = async (address: string, signature: string, timezone: string): Promise<Account> => {
 
     const newIdentity = EthCrypto.createIdentity();
 
     const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
-
-    const preferences = {
-        availableTypes: [],
-        description: ''
-    }
-
-    const path = await addContentToIPFS(preferences)
-    //TODO handle ipfs error
 
     const { data, error } = await db.supabase
         .from('accounts')
@@ -43,7 +36,7 @@ const initAccountDBForWallet = async (address: string, signature: string): Promi
                 address: address,
                 internal_pub_key: newIdentity.publicKey,
                 encoded_signature: encryptedPvtKey,
-                preferences_path: path
+                preferences_path: "",
             }
         ])
 
@@ -52,7 +45,67 @@ const initAccountDBForWallet = async (address: string, signature: string): Promi
         throw new Error('Account couldn\'t be created')
     }
 
-    return data[0] as Account
+    const meetingType: MeetingType = {
+        duration: 30,
+        minAdvanceTime: 60,
+        account_id: data[0].id,
+    }
+
+    const response = await db.supabase
+        .from('meeting_type')
+        .insert([
+            meetingType
+        ])
+
+    if(response.error) {
+        console.error(response.error)
+
+        //TODO: handle error
+    }
+
+    const availabilities = generateDefaultAvailabilities(response.data[0].id)
+
+    const responseAvailabilities = await db.supabase
+        .from('availability')
+        .insert(
+            availabilities
+        )
+
+    if(responseAvailabilities.error) {
+        console.log(responseAvailabilities.error)
+        //TODO: handle error
+    }
+
+    const preferences: AccountPreferences = {
+        availableTypes: [meetingType],
+        description: '',
+        availabilities,
+        socialLinks: [],
+        timezone 
+    }
+
+    const path = await addContentToIPFS(preferences)
+    //TODO handle ipfs error
+
+    const responsePrefs = await db.supabase
+        .from('accounts')
+        .update(
+            {
+                preferences_path: path
+            }
+        )
+        .match({ id: data[0].id })
+
+
+    if(responsePrefs.error) {
+        console.log(responsePrefs.error)
+        //TODO: handle error
+    }
+
+    const account = responsePrefs.data[0] as Account
+    account.preferences = preferences
+
+    return account
 }
 
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
@@ -61,7 +114,9 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
 
     if (!error && data.length > 0) {
         const account = data[0] as Account
-        //account.preferences = (await fetchContentFromIPFS(account.preferences_path)) as AccountPreferences
+        account.preferences = (await fetchContentFromIPFS(account.preferences_path)) as AccountPreferences
+
+        // account.preferences.availabilities = [...account.preferences.availabilities, {weekday: 4, start: "20:00", end: "20:30", meetingTypeId: "2523a99e-040a-43d1-8f0b-18b254309682"}]
         return account
     }
 
@@ -71,16 +126,22 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
 const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date): Promise<DBSlot[]> => {
     const account = await getAccountFromDB(identifier)
 
+    const _start = start ? start.toDateString() : "1970-01-01"
+    const _end = end ? end.toDateString() : "2500-01-01"
+
     const { data, error } = await db.supabase.from('slots').select(
     ).eq('account_pub_key', account.internal_pub_key)
-    .gte('meeting.start', start ? start : 0)
-    .lte('meeting.end', end ? end : 99999999999999999)
+    .or(`and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`)
 
     if (error) {
     // //TODO: handle error
     }
 
     return data || []
+}
+
+const isSlotFree = async (account_identifier: string, start: Date, end: Date): Promise<boolean> => {
+    return await (await getSlotsForAccount(account_identifier, start, end)).length == 0
 }
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
@@ -188,4 +249,4 @@ const saveEmailToDB = async (email: string): Promise<boolean> => {
     return false
 }
 
-export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB }
+export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB, isSlotFree }

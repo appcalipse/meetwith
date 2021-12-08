@@ -8,17 +8,14 @@ import { List, ListItem } from './List'
 
 function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes)
-
+  const filtered = timeSlots.filter(slot => {
+    return validator ? validator(slot) : true
+  })
   return (
     <List>
-      {timeSlots.map(slot => {
-        const isValid = validator ? validator(slot) : true
+      {filtered.map(slot => {
         return (
-          <ListItem
-            key={slot}
-            isValid={isValid}
-            onClick={() => isValid && pickTime(slot)}
-          >
+          <ListItem key={slot} isValid onClick={() => pickTime(slot)}>
             {dateFns.format(slot, 'HH:mm')}
           </ListItem>
         )

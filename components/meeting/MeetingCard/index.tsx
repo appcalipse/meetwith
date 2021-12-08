@@ -1,10 +1,21 @@
 import { Badge, Box } from '@chakra-ui/layout'
-import { MeetingEncrypted } from '../../../types/Meeting'
+import dayjs from 'dayjs'
+import LocalizedFormat from 'dayjs/plugin/localizedFormat'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
+import { DBSlot } from '../../../types/Meeting'
+
+dayjs.extend(LocalizedFormat)
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 interface MeetingCardProps {
-  meeting: MeetingEncrypted
+  meeting: DBSlot
+  opened?: boolean
 }
-const MeetingCard = ({ meeting }: MeetingCardProps) => {
+const MeetingCard = ({ meeting, opened = false }: MeetingCardProps) => {
+  const duration = dayjs(meeting.end).diff(dayjs(meeting.start), 'minute')
+
   return (
     <Box
       boxShadow="base"
@@ -26,7 +37,7 @@ const MeetingCard = ({ meeting }: MeetingCardProps) => {
             textTransform="uppercase"
             ml="2"
           >
-            Source: {meeting}
+            Source: {meeting.id}
           </Box>
         </Box>
 
@@ -37,12 +48,12 @@ const MeetingCard = ({ meeting }: MeetingCardProps) => {
           lineHeight="tight"
           isTruncated
         >
-          Target: {meeting}
+          Target: {meeting.account_pub_key}
         </Box>
 
-        <Box>{meeting.startTime.format('MMM DD, YYYY')}</Box>
+        <Box>{dayjs(meeting.start).format('LLLL')}</Box>
 
-        <Box>{meeting.endTime.format('MMM DD, YYYY')}</Box>
+        <Box>{duration}</Box>
       </Box>
     </Box>
   )

@@ -1,10 +1,18 @@
 import dayjs, { Dayjs } from 'dayjs';
 import { decryptWithPrivateKey, Encrypted } from 'eth-crypto';
+import { Availability } from '../types/Account';
 import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, MeetingDecrypted, ParticipantBaseInfo, ParticipantType } from "../types/Meeting";
 import { createMeeting, getAccount, isSlotFree } from './api_helper';
 import { decryptContent } from './cryptography';
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors';
 import { getSignature } from './storage';
+import LocalizedFormat from 'dayjs/plugin/localizedFormat'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
+
+dayjs.extend(LocalizedFormat)
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 const scheduleMeeting = async (source_account: string, target_account: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<MeetingDecrypted> => {
 
@@ -60,12 +68,14 @@ const getContentFromEncrypted = async (accountAddress: string, signature: string
     return await decryptWithPrivateKey(pvtKey, encrypted)
 }
 
-const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetingsForDay: DBSlot[]): boolean => {
+const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetings: DBSlot[], availabilities: Availability[], timezone: string): boolean => {
 
     const start = dayjs(slotTime).toDate()
     const end = dayjs(start).add(slotDurationInMinutes, 'minute').toDate()
 
-    const filtered = meetingsForDay.filter(meeting =>
+    if(!isTimeInsideAvailabilities(dayjs(start), dayjs(end), availabilities, timezone)) return false
+
+    const filtered = meetings.filter(meeting =>
         (meeting.start >= start && meeting.end <= end) ||
         (meeting.start <= start && meeting.end >= end) ||
         (meeting.end > start && meeting.end <= end) ||
@@ -74,4 +84,56 @@ const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetings
     return filtered.length == 0
 }
 
-export { scheduleMeeting, isSlotAvailable, decryptMeeting }
+const isTimeInsideAvailabilities = (start: Dayjs, end: Dayjs, availabilities: Availability[], timezone: string): boolean => {
+    
+    const realStart = start.tz(timezone)
+    
+    const startTime = realStart.format("HH:mm")
+    let endTime = end.tz(timezone).format("HH:mm")
+    if(endTime === "00:00") {
+        endTime = "24:00"
+    }
+
+
+    const compareTimes = (t1: string, t2: string) => {
+        const [h1, m1] = t1.split(":")
+        const [h2, m2] = t2.split(":")
+
+        if(h1 !== h2) {
+            return h1 > h2 ? 1 : -1
+        }
+
+        if(m1 !== m2) {
+            return m1 > m2 ? 1 : -1
+        }
+
+        return 0
+    }
+
+    for(const availability of availabilities) {
+        if(availability.weekday === realStart.day()) {
+            if(compareTimes(startTime, availability.start) >= 0) {
+                if(compareTimes(endTime, availability.end) < 0) {    
+                return true
+            }
+        }
+    }
+    }
+
+    return false
+}
+
+const generateDefaultAvailabilities = (meetingTypeId: string): Availability[] => {
+    const availabilities = []
+    for(let i = 1; i < 6; i++) {
+        availabilities.push({
+            meetingTypeId,
+            weekday: i,
+            start: "09:00",
+            end: "18:00"
+        })
+    }
+    return availabilities
+}
+
+export { scheduleMeeting, isSlotAvailable, decryptMeeting, generateDefaultAvailabilities}

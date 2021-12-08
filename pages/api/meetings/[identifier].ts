@@ -9,8 +9,10 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const meetings = await getSlotsForAccount(
         req.query.identifier as string,
-        req.query.start ? new Date(req.query.start as string) : undefined,
-        req.query.end ? new Date(req.query.end as string) : undefined
+        req.query.start
+          ? new Date(Number(req.query.start as string))
+          : undefined,
+        req.query.end ? new Date(Number(req.query.end as string)) : undefined
       )
 
       res.status(200).json(meetings)

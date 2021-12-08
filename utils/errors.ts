@@ -25,3 +25,14 @@ export class MeetingWithYourselfError extends Error {
         this.name = "MeetingWithYourselfError";
     }
 }
+
+export class ApiFetchError extends Error {
+
+    status:number
+
+    constructor(status: number, message: string) {
+        super(`${status} : ${message}`);
+        this.name = "ApiFetchError";
+        this.status = status;
+    }
+}

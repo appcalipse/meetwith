@@ -29,35 +29,55 @@ import NextLink from 'next/link'
 import { Account } from '../types/Account'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { logEvent } from '../utils/analytics'
+import { isProduction } from '../utils/constants'
+import router from 'next/router'
 
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()
 
   const { currentAccount, logged, login } = useContext(AccountContext)
+  const [loading, setLoading] = React.useState(false)
 
   const toast = useToast()
 
   const handleLogin = async () => {
     if (!currentAccount) {
+      setLoading(true)
       logEvent('Clicked to connect wallet')
-      const account = await loginWithWallet()
-      await login(account)
-      // toast({
-      //   title: 'Comming Soon',
-      //   description:
-      //     'Soon you will be able to log in with your favourite web3 wallet. Meanwhile, join the waitlist.',
-      //   status: 'warning',
-      //   duration: 7000,
-      //   position: 'top',
-      //   isClosable: true,
-      // })
+      try {
+        const account = await loginWithWallet()
+        if (isProduction) {
+          toast({
+            title: 'Comming Soon',
+            description:
+              'Soon you will be able to log in with your favourite web3 wallet. Meanwhile, join the waitlist.',
+            status: 'warning',
+            duration: 7000,
+            position: 'top',
+            isClosable: true,
+          })
+        } else {
+          await login(account)
+        }
+      } catch (error) {
+        console.error(error)
+        toast({
+          title: 'Error',
+          description: error.message,
+          status: 'error',
+          duration: 7000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
+      setLoading(false)
     }
   }
 
   const buttonColor = useColorModeValue('gray.500', 'gray.400')
 
   return (
-    <Box as="header" position="fixed" width="100%" zIndex={999}>
+    <Box as="header" position="fixed" width="100%" top="0" zIndex={999}>
       <Flex
         bg={useColorModeValue('white', 'gray.800')}
         color={useColorModeValue('gray.600', 'white')}
@@ -112,6 +132,7 @@ export default function WithSubnavigation() {
               href={'#'}
               onClick={handleLogin}
               color={buttonColor}
+              isLoading={loading}
             >
               Log in
               <Box display={{ base: 'none', md: 'flex' }} as="span">
@@ -132,7 +153,7 @@ export default function WithSubnavigation() {
 const LoggedContainer: React.FC<{
   user: Account
 }> = ({ user }) => {
-  return <div>{user.address}</div>
+  return <div onClick={() => router.push('/dashboard')}>{user.address}</div>
 }
 
 const DesktopNav = () => {

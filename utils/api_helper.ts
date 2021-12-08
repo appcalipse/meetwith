@@ -1,7 +1,7 @@
 import { Account } from "../types/Account";
 import { DBSlot, DBSlotEnhanced } from "../types/Meeting";
 import { apiUrl } from "./constants";
-import { AccountNotFoundError } from "./errors";
+import { AccountNotFoundError, ApiFetchError } from "./errors";
 
 export const internalFetch = async (path: string, method = 'GET', body?: any, options = {}): Promise<object> => {
 
@@ -23,7 +23,7 @@ export const internalFetch = async (path: string, method = 'GET', body?: any, op
         return await response.json();
     }
 
-    return response
+    throw new ApiFetchError(response.status,response.statusText);
 }
 
 export const getAccount = async (identifer: string): Promise<Account> => {
@@ -34,20 +34,25 @@ export const getAccount = async (identifer: string): Promise<Account> => {
     }
 }
 
-export const createAccount = async (address: string, signature: string): Promise<Account> => {
-    return await internalFetch(`/accounts`, 'POST', { address, signature }) as Account
+export const createAccount = async (address: string, signature: string, timezone: string): Promise<Account> => {
+    return await internalFetch(`/accounts`, 'POST', { address, signature, timezone }) as Account
 }
 
 export const createMeeting = async (meeting: any): Promise<DBSlotEnhanced> => {
     return await internalFetch(`/meetings`, 'POST', meeting) as DBSlotEnhanced
 }
 
-export const isSlotFree = async (target_account: string, start: Date, end: Date): Promise<{isFree: boolean}> => {
-    return await internalFetch(`/meetings/slot/${target_account}?start=${start.getTime()}&end=${end.getTime()}`) as {isFree: boolean}
+export const isSlotFree = async (account_identifier: string, start: Date, end: Date): Promise<{isFree: boolean}> => {
+    try {
+    return await internalFetch(`/meetings/slot/${account_identifier}?start=${start.getTime()}&end=${end.getTime()}`) as {isFree: boolean}
+    } catch (e) {
+        return {isFree: false}
+    }
 }
 
 export const getMeetings = async (accountIdentifier: string, start?: Date, end?: Date): Promise<DBSlot[]> => {
-    return await internalFetch(`/meetings/${accountIdentifier}?start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`) as DBSlot[]
+    const response = await internalFetch(`/meetings/${accountIdentifier}?start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`) as DBSlot[]
+    return response.map(slot => ({...slot, start: new Date(slot.start), end: new Date(slot.end)}))
 }
 
 export const subscribeToWaitlist = async (email: string): Promise<boolean> => {

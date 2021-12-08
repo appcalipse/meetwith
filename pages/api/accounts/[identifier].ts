@@ -9,7 +9,6 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       const account = await getAccountFromDB(identifier as string)
       res.status(200).json(account)
     } catch (e) {
-      console.log(e)
       res.status(404).send('Not found')
     }
   }

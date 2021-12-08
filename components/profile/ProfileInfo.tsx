@@ -1,0 +1,63 @@
+import { Box, Flex, Text, HStack, Spacer, Link } from '@chakra-ui/layout'
+import { Account } from '../../types/Account'
+import { Jazzicon } from '@ukstv/jazzicon-react'
+import { ellipsizeAddress, getCustomDomainName } from '../../utils/user_manager'
+import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
+import { Image } from '@chakra-ui/image'
+import { useColorModeValue } from '@chakra-ui/react'
+
+interface ProfileInfoProps {
+  account: Account
+}
+const ProfileInfo: React.FC<ProfileInfoProps> = props => {
+  return (
+    <Flex direction="column" alignItems="center">
+      <Box width="80px" height="80px" mb={4}>
+        <Jazzicon address={props.account.address} />
+      </Box>
+      <Box>{ellipsizeAddress(props.account.address)}</Box>
+      <HStack my={6}>
+        <Link
+          color={useColorModeValue('gray.600', 'white')}
+          isExternal
+          href={'https://uol.clm.br'}
+        >
+          <FaTelegram size={24} />
+        </Link>
+        <Spacer />
+        <Link
+          color={useColorModeValue('gray.600', 'white')}
+          isExternal
+          href={`https://${getCustomDomainName(props.account.address)}`}
+        >
+          <FaTwitter size={24} />
+        </Link>
+        <Spacer />
+        <Link
+          color={useColorModeValue('gray.600', 'white')}
+          isExternal
+          href={`https://${getCustomDomainName(props.account.address)}`}
+        >
+          <FaDiscord size={24} />
+        </Link>
+      </HStack>
+      <Box position="relative">
+        <Image
+          src="/assets/quotes.svg"
+          position="absolute"
+          top="-6px"
+          left="-24px"
+        />
+        <Text position="relative" textAlign="justify">
+          <em>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
+            ad minim veniam, quis nostrud exercitation ullamco laboris
+          </em>
+        </Text>
+      </Box>
+    </Flex>
+  )
+}
+
+export default ProfileInfo

@@ -27,6 +27,7 @@ export const Popup = styled.div`
 
 export const PopupHeader = styled.header`
   padding: 1em 0;
+  text-align: left;
 `
 
 export const PopupClose = styled.button`

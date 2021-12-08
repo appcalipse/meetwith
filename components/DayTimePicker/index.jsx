@@ -4,7 +4,6 @@ import dateFns from 'date-fns'
 import { ThemeProvider } from 'styled-components'
 
 import { PopupWrapper, Popup, PopupHeader, PopupClose } from './Popup'
-import { ConfirmButton } from './Confirm'
 import { DayIcon, ClockIcon, SuccessIcon, FailedIcon } from './Icons'
 import { Success, Failed } from './Feedback'
 
@@ -12,6 +11,10 @@ import Calendar from './calendar'
 import TimeSlots from './time-slots'
 
 import { preventPastDays } from './validators'
+import { Button } from '@chakra-ui/button'
+import { Box } from '@chakra-ui/layout'
+import { FormLabel } from '@chakra-ui/form-control'
+import { Textarea } from '@chakra-ui/textarea'
 
 function DayTimePicker({
   timeSlotValidator,
@@ -25,12 +28,27 @@ function DayTimePicker({
   doneText,
   dayChanged,
   monthChanged,
+  willStartScheduling,
   theme,
+  reset,
 }) {
   const [pickedDay, setPickedDay] = useState(null)
   const [pickedTime, setPickedTime] = useState(null)
   const [showPickTime, setShowPickTime] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [content, setContent] = useState('')
+  const [isScheduling, setIsScheduling] = useState(false)
+
+  React.useEffect(() => {
+    if (reset) {
+      setPickedDay(null)
+      setPickedTime(null)
+      setContent('')
+      setShowPickTime(false)
+      setShowConfirm(false)
+      setIsScheduling(false)
+    }
+  }, [reset])
 
   const handlePickDay = day => {
     if (pickedDay !== day) {
@@ -44,17 +62,22 @@ function DayTimePicker({
     setPickedTime(time)
     setShowPickTime(false)
     setShowConfirm(true)
+    willStartScheduling(true)
   }
 
   const handleClosePickTime = () => {
     setShowPickTime(false)
   }
 
-  const handleConfirm = () => {
-    onConfirm(pickedTime)
+  const handleConfirm = async () => {
+    setIsScheduling(true)
+    await onConfirm(pickedTime, content)
+    setIsScheduling(false)
+    willStartScheduling(false)
   }
 
   const handleCloseConfirm = () => {
+    willStartScheduling(false)
     setShowConfirm(false)
     setShowPickTime(true)
   }
@@ -109,9 +132,27 @@ function DayTimePicker({
             </PopupHeader>
 
             {!isDone ? (
-              <ConfirmButton disabled={isLoading} onClick={handleConfirm}>
-                {isLoading ? loadingText : confirmText}
-              </ConfirmButton>
+              <Box>
+                <FormLabel>Information (optional)</FormLabel>
+                <Textarea
+                  disabled={isScheduling}
+                  type="text"
+                  placeholder="Any information you want to share prior to the meeting?"
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                />
+
+                <Button
+                  isFullWidth
+                  disabled={isLoading}
+                  isLoading={isScheduling}
+                  onClick={handleConfirm}
+                  colorScheme="orange"
+                  mt={4}
+                >
+                  {isLoading ? loadingText : confirmText}
+                </Button>
+              </Box>
             ) : doneText ? (
               <Success>
                 <p>
@@ -141,6 +182,8 @@ DayTimePicker.propTypes = {
   isDone: PropTypes.bool,
   err: PropTypes.string,
   onConfirm: PropTypes.func.isRequired,
+  willStartScheduling: PropTypes.func,
+  reset: PropTypes.bool,
   confirmText: PropTypes.string,
   loadingText: PropTypes.string,
   doneText: PropTypes.string,
@@ -170,7 +213,7 @@ DayTimePicker.defaultProps = {
   loadingText: 'Scheduling..',
   doneText: 'Your event has been scheduled!',
   theme: {
-    primary: '#3a9ad9',
+    primary: '#f35826',
     secondary: '#f0f0f0',
     background: '#fff',
     buttons: {
