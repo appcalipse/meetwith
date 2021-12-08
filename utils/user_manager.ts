@@ -86,4 +86,4 @@ const getAccountDisplayName = (account: Account | PremiumAccount): string => {
 
 const ellipsizeAddress = (address: string) => `${address.substr(0,5)}...${address.substr(address.length - 5)}`
 
-export { loginWithWallet, signDefaultMessage, createOrFetchAccount, ellipsizeAddress, getCustomDomainName, getAccountDisplayName };
+export { loginWithWallet, signDefaultMessage, createOrFetchAccount, ellipsizeAddress, getCustomDomainName, getAccountDisplayName, web3};

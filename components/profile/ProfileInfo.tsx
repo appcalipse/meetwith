@@ -1,5 +1,5 @@
 import { Box, Flex, Text, HStack, Spacer, Link } from '@chakra-ui/layout'
-import { Account } from '../../types/Account'
+import { Account, SpecialDomainType } from '../../types/Account'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import { ellipsizeAddress, getCustomDomainName } from '../../utils/user_manager'
 import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
@@ -28,7 +28,10 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
         <Link
           color={useColorModeValue('gray.600', 'white')}
           isExternal
-          href={`https://${getCustomDomainName(props.account.address)}`}
+          href={`https://${getCustomDomainName(
+            props.account.address,
+            SpecialDomainType.ENS
+          )}`}
         >
           <FaTwitter size={24} />
         </Link>
@@ -36,7 +39,10 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
         <Link
           color={useColorModeValue('gray.600', 'white')}
           isExternal
-          href={`https://${getCustomDomainName(props.account.address)}`}
+          href={`https://${getCustomDomainName(
+            props.account.address,
+            SpecialDomainType.ENS
+          )}`}
         >
           <FaDiscord size={24} />
         </Link>
