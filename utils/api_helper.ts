@@ -2,9 +2,11 @@ import { Account } from "../types/Account";
 import { DBSlot, DBSlotEnhanced } from "../types/Meeting";
 import { apiUrl } from "./constants";
 import { AccountNotFoundError, ApiFetchError } from "./errors";
+import { getCurrentAccount, getSignature } from "./storage";
 
 export const internalFetch = async (path: string, method = 'GET', body?: any, options = {}): Promise<object> => {
 
+    const account = getCurrentAccount();
     const response = await fetch(`${apiUrl}${path}`,
         {
             method,
@@ -12,8 +14,8 @@ export const internalFetch = async (path: string, method = 'GET', body?: any, op
             headers: {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
-                'account_address': '0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b'
-                // 'Content-Type': 'application/x-www-form-urlencoded',
+                'account': account,
+                'signature': getSignature(account) || '',
             },
             ...options,
             body: (body && JSON.stringify(body)) || null
@@ -38,8 +40,12 @@ export const createAccount = async (address: string, signature: string, timezone
     return await internalFetch(`/accounts`, 'POST', { address, signature, timezone }) as Account
 }
 
+export const saveAccountChanges = async (account: Account): Promise<Account> => {
+    return await internalFetch(`/secure/accounts`, 'POST', account) as Account
+}
+
 export const createMeeting = async (meeting: any): Promise<DBSlotEnhanced> => {
-    return await internalFetch(`/meetings`, 'POST', meeting) as DBSlotEnhanced
+    return await internalFetch(`/secure/meetings`, 'POST', meeting) as DBSlotEnhanced
 }
 
 export const isSlotFree = async (account_identifier: string, start: Date, end: Date): Promise<{isFree: boolean}> => {

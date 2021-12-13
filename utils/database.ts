@@ -63,18 +63,7 @@ const initAccountDBForWallet = async (address: string, signature: string, timezo
         //TODO: handle error
     }
 
-    const availabilities = generateDefaultAvailabilities(response.data[0].id)
-
-    const responseAvailabilities = await db.supabase
-        .from('availability')
-        .insert(
-            availabilities
-        )
-
-    if(responseAvailabilities.error) {
-        console.log(responseAvailabilities.error)
-        //TODO: handle error
-    }
+    const availabilities = generateDefaultAvailabilities()
 
     const preferences: AccountPreferences = {
         availableTypes: [meetingType],
@@ -106,6 +95,31 @@ const initAccountDBForWallet = async (address: string, signature: string, timezo
     account.preferences = preferences
 
     return account
+}
+
+const updateAccount = async (account: Account): Promise<Account> => {
+
+    const path = await addContentToIPFS(account.preferences!)
+    //TODO handle ipfs error
+
+    const {data, error} = await db.supabase
+        .from('accounts')
+        .update(
+            {
+                preferences_path: path
+            }
+        )
+        .match({ id: account.id })
+
+
+    if(error) {
+        console.log(error)
+        //TODO: handle error
+    }
+
+    return {...data[0],
+        preferences: account.preferences
+    } as Account
 }
 
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
@@ -249,4 +263,4 @@ const saveEmailToDB = async (email: string): Promise<boolean> => {
     return false
 }
 
-export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB, isSlotFree }
+export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB, isSlotFree, updateAccount }

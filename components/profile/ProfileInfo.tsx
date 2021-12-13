@@ -1,7 +1,11 @@
 import { Box, Flex, Text, HStack, Spacer, Link } from '@chakra-ui/layout'
 import { Account, SpecialDomainType } from '../../types/Account'
 import { Jazzicon } from '@ukstv/jazzicon-react'
-import { ellipsizeAddress, getCustomDomainName } from '../../utils/user_manager'
+import {
+  ellipsizeAddress,
+  getAccountDisplayName,
+  getCustomDomainName,
+} from '../../utils/user_manager'
 import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
 import { Image } from '@chakra-ui/image'
 import { useColorModeValue } from '@chakra-ui/react'
@@ -15,7 +19,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
       <Box width="80px" height="80px" mb={4}>
         <Jazzicon address={props.account.address} />
       </Box>
-      <Box>{ellipsizeAddress(props.account.address)}</Box>
+      <Box>{getAccountDisplayName(props.account)}</Box>
       <HStack my={6}>
         <Link
           color={useColorModeValue('gray.600', 'white')}
@@ -47,21 +51,19 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
           <FaDiscord size={24} />
         </Link>
       </HStack>
-      <Box position="relative">
-        <Image
-          src="/assets/quotes.svg"
-          position="absolute"
-          top="-6px"
-          left="-24px"
-        />
-        <Text position="relative" textAlign="justify">
-          <em>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam, quis nostrud exercitation ullamco laboris
-          </em>
-        </Text>
-      </Box>
+      {props.account.preferences?.description && (
+        <Box position="relative">
+          <Image
+            src="/assets/quotes.svg"
+            position="absolute"
+            top="-6px"
+            left="-24px"
+          />
+          <Text position="relative" textAlign="justify">
+            <em>{props.account.preferences.description}</em>
+          </Text>
+        </Box>
+      )}
     </Flex>
   )
 }

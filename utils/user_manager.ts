@@ -1,13 +1,12 @@
 import Web3 from "web3";
 import Web3Modal from "web3modal";
-import { getSignature } from './storage';
+import { getSignature, storeCurrentAccount } from './storage';
 import { Account, PremiumAccount, SpecialDomainType } from "../types/Account";
 import { saveSignature } from "./storage";
 import { getAccount, createAccount } from "./api_helper";
 import ENS, { getEnsAddress } from '@ensdomains/ensjs'
 import { ethers } from "ethers";
-
-export const DEFAULT_MESSAGE = 'Welcome to meetwith.wallet! Please sign this message to make your experience safe.'
+import { DEFAULT_MESSAGE } from "./constants";
 
 const providerOptions = {
     /* See Provider Options Section */
@@ -32,7 +31,7 @@ const loginWithWallet = async (): Promise<Account> => {
 }
 
 const signDefaultMessage = async (accountAddress: string): Promise<string> => {
-    const signature = await web3.eth.personal.sign(`${DEFAULT_MESSAGE}`, accountAddress, accountAddress);
+    const signature = await web3.eth.personal.sign(DEFAULT_MESSAGE, accountAddress, '');
     saveSignature(accountAddress, signature)
     return signature;
 }
@@ -53,6 +52,8 @@ const createOrFetchAccount = async (accountAddress: string, timezone: string): P
     if (!signature) {
         await signDefaultMessage(accountAddress)
     }
+
+    storeCurrentAccount(account)
 
     return account
 }

@@ -18,6 +18,7 @@ import {
   useColorModeValue,
   useDisclosure,
   useToast,
+  Container,
 } from '@chakra-ui/react'
 import {
   HamburgerIcon,
@@ -26,11 +27,10 @@ import {
   ChevronRightIcon,
 } from '@chakra-ui/icons'
 import NextLink from 'next/link'
-import { Account } from '../types/Account'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { logEvent } from '../utils/analytics'
 import { isProduction } from '../utils/constants'
-import router from 'next/router'
+import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
 
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()
@@ -74,8 +74,6 @@ export default function WithSubnavigation() {
     }
   }
 
-  const buttonColor = useColorModeValue('gray.500', 'gray.400')
-
   return (
     <Box as="header" position="fixed" width="100%" top="0" zIndex={999}>
       <Flex
@@ -89,58 +87,66 @@ export default function WithSubnavigation() {
         borderColor={useColorModeValue('gray.200', 'gray.900')}
         align={'center'}
       >
-        <Flex ml={{ base: -2 }} display={{ base: 'flex', md: 'none' }}>
-          <IconButton
-            onClick={onToggle}
-            icon={
-              isOpen ? <CloseIcon w={3} h={3} /> : <HamburgerIcon w={5} h={5} />
-            }
-            variant={'ghost'}
-            aria-label={'Toggle Navigation'}
-          />
-        </Flex>
-        <Flex flex={{ base: 1 }}>
-          <NextLink href={'/'} passHref>
-            <Link>
-              <Image
-                width="100px"
-                p={2}
-                src="/assets/logo.svg"
-                alt="Meet with Wallet"
+        <Container maxW={'7xl'}>
+          <Flex alignItems="center">
+            <Flex ml={{ base: -2 }} display={{ base: 'flex', md: 'none' }}>
+              <IconButton
+                onClick={onToggle}
+                icon={
+                  isOpen ? (
+                    <CloseIcon w={3} h={3} />
+                  ) : (
+                    <HamburgerIcon w={5} h={5} />
+                  )
+                }
+                variant={'ghost'}
+                aria-label={'Toggle Navigation'}
               />
-            </Link>
-          </NextLink>
+            </Flex>
+            <Flex flex={{ base: 1 }}>
+              <NextLink href={'/'} passHref>
+                <Link>
+                  <Image
+                    width="100px"
+                    p={2}
+                    src="/assets/logo.svg"
+                    alt="Meet with Wallet"
+                  />
+                </Link>
+              </NextLink>
 
-          <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
-            <DesktopNav />
-          </Flex>
-        </Flex>
+              <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
+                <DesktopNav />
+              </Flex>
+            </Flex>
 
-        <Stack
-          flex={{ base: 1, md: 0 }}
-          justify={'flex-end'}
-          direction={'row'}
-          spacing={6}
-        >
-          <ThemeSwitcher />
-          {logged ? (
-            <LoggedContainer user={currentAccount!} />
-          ) : (
-            <Button
-              as={'a'}
-              size="lg"
-              href={'#'}
-              onClick={handleLogin}
-              color={buttonColor}
-              isLoading={loading}
+            <Stack
+              flex={{ base: 1, md: 0 }}
+              justify={'flex-end'}
+              direction={'row'}
+              spacing={6}
             >
-              Log in
-              <Box display={{ base: 'none', md: 'flex' }} as="span">
-                &#160;with wallet
-              </Box>
-            </Button>
-          )}
-        </Stack>
+              <ThemeSwitcher />
+              {logged ? (
+                <NavBarLoggedProfile account={currentAccount!} />
+              ) : (
+                <Button
+                  as={'a'}
+                  size="lg"
+                  href={'#'}
+                  colorScheme={isProduction ? 'gray' : 'orange'}
+                  onClick={handleLogin}
+                  isLoading={loading}
+                >
+                  Log in
+                  <Box display={{ base: 'none', md: 'flex' }} as="span">
+                    &#160;with wallet
+                  </Box>
+                </Button>
+              )}
+            </Stack>
+          </Flex>
+        </Container>
       </Flex>
 
       <Collapse in={isOpen} animateOpacity>
@@ -148,12 +154,6 @@ export default function WithSubnavigation() {
       </Collapse>
     </Box>
   )
-}
-
-const LoggedContainer: React.FC<{
-  user: Account
-}> = ({ user }) => {
-  return <div onClick={() => router.push('/dashboard')}>{user.address}</div>
 }
 
 const DesktopNav = () => {
@@ -248,6 +248,9 @@ const MobileNav = () => {
       bg={useColorModeValue('white', 'gray.800')}
       p={4}
       display={{ md: 'none' }}
+      borderBottom={1}
+      borderStyle={'solid'}
+      borderColor={useColorModeValue('gray.200', 'gray.900')}
     >
       {NAV_ITEMS.map(navItem => (
         <MobileNavItem key={navItem.label} {...navItem} />

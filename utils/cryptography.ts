@@ -1,6 +1,6 @@
 import CryptoJS from 'crypto-js'
 import { IdentityAsJson, IdentityProvider, IdentityProviderOptions } from 'orbit-db-identity-provider';
-import { DEFAULT_MESSAGE, web3 } from './user_manager';
+import { web3 } from './user_manager';
 
 const encryptContent = (signature: string, data: string): string => {
     var ciphertext = CryptoJS.AES.encrypt(data, signature).toString();

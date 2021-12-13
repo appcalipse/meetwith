@@ -1,13 +1,6 @@
 import { Badge, Box } from '@chakra-ui/layout'
-import dayjs from 'dayjs'
-import LocalizedFormat from 'dayjs/plugin/localizedFormat'
-import utc from 'dayjs/plugin/utc'
-import timezone from 'dayjs/plugin/timezone'
+import dayjs from '../../../utils/dayjs_entender'
 import { DBSlot } from '../../../types/Meeting'
-
-dayjs.extend(LocalizedFormat)
-dayjs.extend(utc)
-dayjs.extend(timezone)
 
 interface MeetingCardProps {
   meeting: DBSlot

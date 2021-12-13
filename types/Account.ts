@@ -27,9 +27,12 @@ export interface MeetingType {
     minAdvanceTime: number
 }
 
-export interface Availability {
-    meetingTypeId: string,
+export interface DayAvailability {
     weekday: number,
+    ranges: TimeRange[]
+}
+
+export interface TimeRange {
     start: string
     end: string
 }
@@ -38,7 +41,7 @@ export interface AccountPreferences {
     timezone: string,
     availableTypes: MeetingType[]
     description: string,
-    availabilities: Availability[],
+    availabilities: DayAvailability[],
     socialLinks: SocialLink[]
 }
 
