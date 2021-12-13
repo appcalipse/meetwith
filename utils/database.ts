@@ -5,9 +5,9 @@ import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, Partic
 import { createClient } from '@supabase/supabase-js'
 import { AccountNotFoundError, MeetingNotFoundError, MeetingWithYourselfError } from '../utils/errors';
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper';
-import { randomUUID } from 'crypto';
 import { generateMeetingUrl } from './meeting_url_heper';
 import { generateDefaultAvailabilities } from './calendar_manager';
+import { v4 as uuidv4 } from 'uuid';
 
 const db: any = { ready: false };
 
@@ -204,7 +204,7 @@ const saveMeeting = async (meeting: MeetingCreationRequest): Promise<DBSlotEnhan
             account_identifier: participant.account_identifier,
             type: participant.type,
             status: participant.type === ParticipantType.Scheduler ? ParticipationStatus.Accepted : ParticipationStatus.Pending,
-            slot_id: randomUUID()
+            slot_id: uuidv4()
         }
     })
 
