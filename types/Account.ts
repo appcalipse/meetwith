@@ -5,7 +5,8 @@ export interface Account {
     internal_pub_key: string,
     encoded_signature: string,
     preferences?: AccountPreferences,
-    preferences_path: string
+    preferences_path: string,
+    nonce: number
 }
 
 export enum SpecialDomainType {

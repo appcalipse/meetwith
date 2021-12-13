@@ -31,8 +31,8 @@ const loginWithWallet = async (): Promise<Account> => {
     return await createOrFetchAccount(accounts[0], Intl.DateTimeFormat().resolvedOptions().timeZone)
 }
 
-const signDefaultMessage = async (accountAddress: string): Promise<string> => {
-    const signature = await web3.eth.personal.sign(DEFAULT_MESSAGE, accountAddress, '');
+const signDefaultMessage = async (accountAddress: string, nonce: number): Promise<string> => {
+    const signature = await web3.eth.personal.sign(DEFAULT_MESSAGE(nonce), accountAddress, 'meetwithwallet.xyz');
     saveSignature(accountAddress, signature)
     return signature;
 }
@@ -45,8 +45,9 @@ const createOrFetchAccount = async (accountAddress: string, timezone: string): P
         account = await getAccount(accountAddress)
     } catch (e) {
         if(e instanceof AccountNotFoundError) {
-            const signature = await signDefaultMessage(accountAddress)
-            account = await createAccount(accountAddress, signature, timezone)
+            const nonce = Number(Math.random().toString(8).substring(2,10))
+            const signature = await signDefaultMessage(accountAddress, nonce)
+            account = await createAccount(accountAddress, signature, timezone, nonce)
         } else {
             throw e
         }
@@ -55,7 +56,7 @@ const createOrFetchAccount = async (accountAddress: string, timezone: string): P
     const signature = getSignature(accountAddress)
 
     if (!signature) {
-        await signDefaultMessage(accountAddress)
+        await signDefaultMessage(accountAddress, account.nonce)
     }
 
     storeCurrentAccount(account)

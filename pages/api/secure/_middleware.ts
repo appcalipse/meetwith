@@ -7,6 +7,7 @@ import {
   bufferToHex,
 } from 'ethereumjs-util'
 import { DEFAULT_MESSAGE } from '../../../utils/constants'
+import { getAccountNonce, initDB } from '../../../utils/database'
 
 export async function middleware(req: NextRequest) {
   const notAuthorized = new Response('Auth required', {
@@ -17,7 +18,11 @@ export async function middleware(req: NextRequest) {
 
   if (!sig || !account) return notAuthorized
 
-  const recovered = checkSignature(sig)
+  await initDB()
+
+  const nonce = await getAccountNonce(account)
+
+  const recovered = checkSignature(sig, nonce)
 
   if (account.toLocaleLowerCase() !== recovered.toLocaleLowerCase())
     return notAuthorized
@@ -25,9 +30,9 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next()
 }
 
-function checkSignature(signature: string): string {
+function checkSignature(signature: string, nonce: number): string {
   const toVerify =
-    '\x19Ethereum Signed Message:\n' + DEFAULT_MESSAGE.length + DEFAULT_MESSAGE
+    '\x19Ethereum Signed Message:\n' + DEFAULT_MESSAGE(nonce).length + DEFAULT_MESSAGE(nonce)
   const buffer = keccak(Buffer.from(toVerify))
   const { v, r, s } = fromRpcSig(signature)
   const pubKey = ecrecover(buffer, v, r, s)

@@ -1,14 +1,11 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext } from 'react'
 import { AccountContext } from '../providers/AccountProvider'
-import { DBSlot } from '../types/Meeting'
-import { Box, Container, Flex } from '@chakra-ui/layout'
-import MeetingCard from '../components/meeting/MeetingCard'
+import { Container } from '@chakra-ui/layout'
 import router from 'next/router'
-import ProfileEdit from '../components/profile/ProfileEdit'
+import ProfileEdit from '../components/profile/DashboardContent'
 
 const Dashboard: React.FC = () => {
-  const { currentAccount, logged } = useContext(AccountContext)
-  const [meetings, setMeetings] = useState([] as DBSlot[])
+  const { logged } = useContext(AccountContext)
 
   if (!logged) {
     router.push('/')

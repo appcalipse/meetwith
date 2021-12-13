@@ -20,6 +20,11 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
       justifyContent="center"
       onClick={() => router.push('/dashboard')}
       cursor="pointer"
+      _hover={{
+        bg: useColorModeValue('gray.100', 'gray.500'),
+        boxShadow: 'lg',
+      }}
+      transition="all 0.3s"
       backgroundColor={useColorModeValue('white', 'gray.600')}
     >
       <Text mr={2} fontSize={'sm'}>

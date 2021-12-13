@@ -99,7 +99,7 @@ const NavItem = ({
   )
 }
 
-const ProfileEdit: React.FC = () => {
+const DashboardContent: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
 
   const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
@@ -199,4 +199,4 @@ const ProfileEdit: React.FC = () => {
   )
 }
 
-export default ProfileEdit
+export default DashboardContent

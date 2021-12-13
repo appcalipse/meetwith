@@ -59,7 +59,7 @@ const AccountDetails: React.FC = () => {
       <Text>Description (optional)</Text>
       <Textarea
         value={description}
-        placeholder="Add a message you want "
+        placeholder="Add an optional message to be displayed on your public calendar page"
         onChange={e => setDescription(e.target.value)}
       />
 

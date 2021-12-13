@@ -23,7 +23,7 @@ const initDB = () => {
 
 initDB()
 
-const initAccountDBForWallet = async (address: string, signature: string, timezone: string): Promise<Account> => {
+const initAccountDBForWallet = async (address: string, signature: string, timezone: string, nonce: number): Promise<Account> => {
 
     const newIdentity = EthCrypto.createIdentity();
 
@@ -37,6 +37,7 @@ const initAccountDBForWallet = async (address: string, signature: string, timezo
                 internal_pub_key: newIdentity.publicKey,
                 encoded_signature: encryptedPvtKey,
                 preferences_path: "",
+                nonce
             }
         ])
 
@@ -122,6 +123,18 @@ const updateAccount = async (account: Account): Promise<Account> => {
     } as Account
 }
 
+const getAccountNonce = async (identifier: string): Promise<number> => {
+    const {data, error} = await db.supabase.from('accounts').select('nonce')
+    .or(`address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`)
+
+    if (!error && data.length > 0) {
+        return data[0] as number
+    }
+
+    throw new AccountNotFoundError(identifier)
+}
+
+
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
     const {data, error} = await db.supabase.from('accounts').select()
     .or(`address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`)
@@ -129,8 +142,6 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     if (!error && data.length > 0) {
         const account = data[0] as Account
         account.preferences = (await fetchContentFromIPFS(account.preferences_path)) as AccountPreferences
-
-        // account.preferences.availabilities = [...account.preferences.availabilities, {weekday: 4, start: "20:00", end: "20:30", meetingTypeId: "2523a99e-040a-43d1-8f0b-18b254309682"}]
         return account
     }
 
@@ -263,4 +274,4 @@ const saveEmailToDB = async (email: string): Promise<boolean> => {
     return false
 }
 
-export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB, isSlotFree, updateAccount }
+export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB, isSlotFree, updateAccount, getAccountNonce}

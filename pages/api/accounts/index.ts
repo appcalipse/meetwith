@@ -8,7 +8,8 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     const account = await initAccountDBForWallet(
       req.body.address,
       req.body.signature,
-      req.body.timezone
+      req.body.timezone,
+      req.body.nonce
     )
 
     res.status(200).json(account)
