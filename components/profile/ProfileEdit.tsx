@@ -9,7 +9,10 @@ import {
   Icon,
   Button,
   Tooltip,
-  InputGroup, Input, InputRightElement, useColorModeValue
+  InputGroup,
+  Input,
+  InputRightElement,
+  useColorModeValue,
 } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import { getAccountDisplayName } from '../../utils/user_manager'
@@ -101,20 +104,20 @@ const ProfileEdit: React.FC = () => {
 
   const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
 
-    const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
+  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
   const accountUrl = `https://meetwithwallet.xyz/${currentAccount.address}`
 
   const copyUrl = async () => {
     if ('clipboard' in navigator) {
-        await navigator.clipboard.writeText(accountUrl);
-      } else {
-        document.execCommand('copy', true, accountUrl);
-      }
-      setCopyFeedbackOpen(true)
-      setTimeout(() => {
-          setCopyFeedbackOpen(false)
-        }, 2000)
+      await navigator.clipboard.writeText(accountUrl)
+    } else {
+      document.execCommand('copy', true, accountUrl)
+    }
+    setCopyFeedbackOpen(true)
+    setTimeout(() => {
+      setCopyFeedbackOpen(false)
+    }, 2000)
   }
 
   const renderSelected = () => {
@@ -132,7 +135,13 @@ const ProfileEdit: React.FC = () => {
 
   return currentAccount ? (
     <HStack alignItems="start" width="100%" flexWrap="wrap">
-      <VStack alignItems="start" minW="390px" px={8} borderRight="1px solid" borderColor="gray.200">
+      <VStack
+        alignItems="start"
+        minW="390px"
+        px={8}
+        borderRight="1px solid"
+        borderColor="gray.200"
+      >
         <Box width="100%" mb="4" textAlign="center">
           <Box width="80px" height="80px" mb={4} mx="auto">
             <Jazzicon address={currentAccount.address} />
@@ -141,26 +150,29 @@ const ProfileEdit: React.FC = () => {
           <Box>{getAccountDisplayName(currentAccount)}</Box>
 
           <Box>
-
-              <Text fontSize="sm" mt={8} textAlign="start">
-                  Your calendar link
-                  </Text>
-          <InputGroup size='md'>
-      <Input
-        pr='4.5rem'
-        type={'text'}
-        disabled
-        value={accountUrl}
-      />
-      <InputRightElement width='4.5rem'>
-      <Tooltip label='Copied' placement='top' isOpen={copyFeedbackOpen}>
-      <Button h='1.75rem' color={buttonColor} size='sm' onClick={copyUrl}>
-          Copy
-        </Button>
-    </Tooltip>
-      </InputRightElement>
-    </InputGroup>
-              </Box>
+            <Text fontSize="sm" mt={8} textAlign="start">
+              Your calendar link
+            </Text>
+            <InputGroup size="md">
+              <Input pr="4.5rem" type={'text'} disabled value={accountUrl} />
+              <InputRightElement width="4.5rem">
+                <Tooltip
+                  label="Copied"
+                  placement="top"
+                  isOpen={copyFeedbackOpen}
+                >
+                  <Button
+                    h="1.75rem"
+                    color={buttonColor}
+                    size="sm"
+                    onClick={copyUrl}
+                  >
+                    Copy
+                  </Button>
+                </Tooltip>
+              </InputRightElement>
+            </InputGroup>
+          </Box>
 
           <IPFSLink ipfsHash={currentAccount.preferences_path} />
         </Box>
@@ -178,7 +190,9 @@ const ProfileEdit: React.FC = () => {
           ))}
         </Box>
       </VStack>
-      <Box flex={1} px={8} >{renderSelected()}</Box>
+      <Box flex={1} px={8}>
+        {renderSelected()}
+      </Box>
     </HStack>
   ) : (
     <Box>Loading...</Box>

@@ -43,7 +43,12 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash }) => {
             flexWrap="nowrap"
             flex={1}
           >
-            <Text fontSize="0.8rem" flex={1} textOverflow="ellipsis" textAlign="start">
+            <Text
+              fontSize="0.8rem"
+              flex={1}
+              textOverflow="ellipsis"
+              textAlign="start"
+            >
               {ipfsHash}
             </Text>
             <Icon name="ipfs link" size="16px" as={FaExternalLinkAlt} />

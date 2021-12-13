@@ -56,14 +56,14 @@ const AccountDetails: React.FC = () => {
 
   return (
     <VStack p={4} alignItems="start">
-        <Text>Description (optional)</Text>
+      <Text>Description (optional)</Text>
       <Textarea
         value={description}
         placeholder="Add a message you want "
         onChange={e => setDescription(e.target.value)}
       />
 
-<Text pt={2}>Twitter (optional)</Text>
+      <Text pt={2}>Twitter (optional)</Text>
       <Input
         value={twitter}
         type="text"
@@ -71,7 +71,7 @@ const AccountDetails: React.FC = () => {
         onChange={e => setTwitter(e.target.value)}
       />
 
-<Text pt={2}>Discord (optional)</Text>
+      <Text pt={2}>Discord (optional)</Text>
       <Input
         value={discord}
         type="text"
@@ -79,7 +79,7 @@ const AccountDetails: React.FC = () => {
         onChange={e => setDiscord(e.target.value)}
       />
 
-<Text pt={2}>Telegram (optional)</Text>
+      <Text pt={2}>Telegram (optional)</Text>
       <Input
         value={telegram}
         type="text"
@@ -87,7 +87,7 @@ const AccountDetails: React.FC = () => {
         onChange={e => setTelegram(e.target.value)}
       />
 
-<Spacer />
+      <Spacer />
       <Button
         isLoading={loading}
         alignSelf="flex-end"
