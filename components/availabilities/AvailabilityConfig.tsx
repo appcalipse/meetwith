@@ -74,8 +74,6 @@ const AvailabilityConfig: React.FC = () => {
         isLoading={loading}
         alignSelf="end"
         colorScheme="orange"
-        as="a"
-        href="#"
         onClick={saveAvailabilities}
       >
         Save availabilities
