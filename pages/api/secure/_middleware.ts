@@ -6,8 +6,7 @@ import {
   pubToAddress,
   bufferToHex,
 } from 'ethereumjs-util'
-import { DEFAULT_MESSAGE } from '../../../utils/constants'
-import { getAccountNonce, initDB } from '../../../utils/database'
+import { apiUrl, DEFAULT_MESSAGE } from '../../../utils/constants'
 
 export async function middleware(req: NextRequest) {
   const notAuthorized = new Response('Auth required', {
@@ -18,16 +17,22 @@ export async function middleware(req: NextRequest) {
 
   if (!sig || !account) return notAuthorized
 
-  await initDB()
+  try {
+    const response = await (
+      await fetch(`${apiUrl}/accounts/nonce_hidden/${account}`)
+    ).json()
+    console.log(response)
 
-  const nonce = await getAccountNonce(account)
+    const recovered = checkSignature(sig, response.nonce! as number)
 
-  const recovered = checkSignature(sig, nonce)
+    if (account.toLocaleLowerCase() !== recovered.toLocaleLowerCase())
+      return notAuthorized
 
-  if (account.toLocaleLowerCase() !== recovered.toLocaleLowerCase())
-    return notAuthorized
-
-  return NextResponse.next()
+    return NextResponse.next()
+  } catch (e) {
+    console.log(e)
+    throw e
+  }
 }
 
 function checkSignature(signature: string, nonce: number): string {

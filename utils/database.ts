@@ -128,7 +128,7 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
     .or(`address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`)
 
     if (!error && data.length > 0) {
-        return data[0] as number
+        return data[0].nonce as number
     }
 
     throw new AccountNotFoundError(identifier)

@@ -31,6 +31,7 @@ import { ThemeSwitcher } from './ThemeSwitcher'
 import { logEvent } from '../utils/analytics'
 import { isProduction } from '../utils/constants'
 import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
+import router from 'next/router'
 
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()
@@ -58,6 +59,7 @@ export default function WithSubnavigation() {
           })
         } else {
           await login(account)
+          await router.push('/dashboard')
         }
       } catch (error: any) {
         console.error(error)
