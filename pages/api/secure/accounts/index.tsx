@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { Account } from '../../../../types/Account'
 import { initDB, updateAccount } from '../../../../utils/database'
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {

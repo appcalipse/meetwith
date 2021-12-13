@@ -18,19 +18,23 @@ export async function middleware(req: NextRequest) {
   if (!sig || !account) return notAuthorized
 
   try {
+    //TODO remove this shitty from edge functions so no api for nonce have to exist
     const response = await (
       await fetch(`${apiUrl}/accounts/nonce_hidden/${account}`)
     ).json()
+
     console.log(response)
+    console.log(response.nonce! as number)
 
     const recovered = checkSignature(sig, response.nonce! as number)
 
+    console.log(recovered)
     if (account.toLocaleLowerCase() !== recovered.toLocaleLowerCase())
       return notAuthorized
 
     return NextResponse.next()
   } catch (e) {
-    console.log(e)
+    console.error(e)
     throw e
   }
 }
