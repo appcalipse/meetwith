@@ -7,6 +7,7 @@ import { getAccount, createAccount } from "./api_helper";
 import ENS, { getEnsAddress } from '@ensdomains/ensjs'
 import { ethers } from "ethers";
 import { DEFAULT_MESSAGE } from "./constants";
+import { AccountNotFoundError } from "./errors";
 
 const providerOptions = {
     /* See Provider Options Section */
@@ -43,8 +44,12 @@ const createOrFetchAccount = async (accountAddress: string, timezone: string): P
     try {
         account = await getAccount(accountAddress)
     } catch (e) {
-        const signature = await signDefaultMessage(accountAddress)
-        account = await createAccount(accountAddress, signature, timezone)
+        if(e instanceof AccountNotFoundError) {
+            const signature = await signDefaultMessage(accountAddress)
+            account = await createAccount(accountAddress, signature, timezone)
+        } else {
+            throw e
+        }
     }
 
     const signature = getSignature(accountAddress)
