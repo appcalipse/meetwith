@@ -1,6 +1,5 @@
-import { Button } from '@chakra-ui/button'
-import { Input } from '@chakra-ui/input'
-import { VStack } from '@chakra-ui/layout'
+import { Input, Box, Button } from '@chakra-ui/react'
+import { Spacer, Text, VStack } from '@chakra-ui/layout'
 import { Textarea } from '@chakra-ui/textarea'
 import { useContext, useState } from 'react'
 import { AccountContext } from '../../providers/AccountProvider'
@@ -56,25 +55,31 @@ const AccountDetails: React.FC = () => {
   }
 
   return (
-    <VStack p={4}>
+    <VStack p={4} alignItems="start">
+        <Text>Description (optional)</Text>
       <Textarea
         value={description}
         placeholder="Add a message you want "
         onChange={e => setDescription(e.target.value)}
       />
 
+<Text pt={2}>Twitter (optional)</Text>
       <Input
         value={twitter}
         type="text"
         placeholder="Twitter"
         onChange={e => setTwitter(e.target.value)}
       />
+
+<Text pt={2}>Discord (optional)</Text>
       <Input
         value={discord}
         type="text"
         placeholder="Discord"
         onChange={e => setDiscord(e.target.value)}
       />
+
+<Text pt={2}>Telegram (optional)</Text>
       <Input
         value={telegram}
         type="text"
@@ -82,9 +87,10 @@ const AccountDetails: React.FC = () => {
         onChange={e => setTelegram(e.target.value)}
       />
 
+<Spacer />
       <Button
         isLoading={loading}
-        alignSelf="end"
+        alignSelf="flex-end"
         colorScheme="orange"
         onClick={saveDetails}
       >

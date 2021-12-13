@@ -26,7 +26,7 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash }) => {
 
   return (
     <VStack my={4} alignItems="start" justifyContent="center">
-      <Text>You account configuration hash on IPFS</Text>
+      <Text fontSize="sm">You account configuration hash on IPFS</Text>
 
       <HStack minH="24px" width="100%">
         <Link
@@ -43,7 +43,7 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash }) => {
             flexWrap="nowrap"
             flex={1}
           >
-            <Text fontSize="0.8rem" flex={1} textOverflow="ellipsis">
+            <Text fontSize="0.8rem" flex={1} textOverflow="ellipsis" textAlign="start">
               {ipfsHash}
             </Text>
             <Icon name="ipfs link" size="16px" as={FaExternalLinkAlt} />

@@ -70,6 +70,7 @@ const AvailabilityConfig: React.FC = () => {
           </Box>
         )
       )}
+      <Spacer />
       <Button
         isLoading={loading}
         alignSelf="end"
