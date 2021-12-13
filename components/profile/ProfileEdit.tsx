@@ -106,7 +106,7 @@ const ProfileEdit: React.FC = () => {
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
-  const accountUrl = `https://meetwithwallet.xyz/${currentAccount.address}`
+  const accountUrl = `https://meetwithwallet.xyz/${currentAccount?.address}`
 
   const copyUrl = async () => {
     if ('clipboard' in navigator) {
