@@ -23,12 +23,8 @@ export async function middleware(req: NextRequest) {
       await fetch(`${apiUrl}/accounts/nonce_hidden/${account}`)
     ).json()
 
-    console.log(response)
-    console.log(response.nonce! as number)
-
     const recovered = checkSignature(sig, response.nonce! as number)
 
-    console.log(recovered)
     if (account.toLocaleLowerCase() !== recovered.toLocaleLowerCase())
       return notAuthorized
 

@@ -1,20 +1,23 @@
 import { Dayjs } from 'dayjs';
-import dayjs from '../utils/dayjs_entender'
+import dayjs from './dayjs_extender'
 import { decryptWithPrivateKey, Encrypted } from 'eth-crypto';
-import { DayAvailability } from '../types/Account';
+import { Account, DayAvailability, MeetingType } from '../types/Account';
 import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, MeetingDecrypted, ParticipantBaseInfo, ParticipantType } from "../types/Meeting";
 import { createMeeting, getAccount, isSlotFree } from './api_helper';
 import { decryptContent } from './cryptography';
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors';
 import { getSignature } from './storage';
+import { appUrl } from './constants';
+import { v4 as uuidv4 } from 'uuid';
+import { getAccountDisplayName } from './user_manager';
 
-const scheduleMeeting = async (source_account: string, target_account: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<MeetingDecrypted> => {
+const scheduleMeeting = async (source_account: string, target_account: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<MeetingDecrypted> => {
 
     if(source_account === target_account) {
         throw new MeetingWithYourselfError()
     }
 
-    if (await isSlotFree(target_account, startTime.toDate(), endTime.toDate())) {
+    if (await isSlotFree(target_account, startTime.toDate(), endTime.toDate(), meetingTypeId)) {
         const owner: ParticipantBaseInfo = {
             type: ParticipantType.Owner,
             account_identifier: target_account,
@@ -29,7 +32,8 @@ const scheduleMeeting = async (source_account: string, target_account: string, s
             start: startTime.toDate(),
             end: endTime.toDate(),
             participants: [owner, scheduler],
-            content: meetingContent
+            content: meetingContent,
+            meetingTypeId
         }
 
         const slot = await createMeeting(meeting)
@@ -62,12 +66,16 @@ const getContentFromEncrypted = async (accountAddress: string, signature: string
     return await decryptWithPrivateKey(pvtKey, encrypted)
 }
 
-const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetings: DBSlot[], availabilities: DayAvailability[], timezone: string): boolean => {
+const isSlotAvailable = (slotDurationInMinutes: number, minAdvanceTime: number, slotTime: Date, meetings: DBSlot[], availabilities: DayAvailability[], targetTimezone: string): boolean => {
 
     const start = dayjs(slotTime).toDate()
+
+    if(dayjs().add(minAdvanceTime, "minute").toDate() > start) {
+        return false
+    }
     const end = dayjs(start).add(slotDurationInMinutes, 'minute').toDate()
 
-    if(!isTimeInsideAvailabilities(dayjs(start), dayjs(end), availabilities, timezone)) return false
+    if(!isTimeInsideAvailabilities(dayjs(start), dayjs(end), availabilities, targetTimezone)) return false
 
     const filtered = meetings.filter(meeting =>
         (meeting.start >= start && meeting.end <= end) ||
@@ -78,16 +86,15 @@ const isSlotAvailable = (slotDurationInMinutes: number, slotTime: Date, meetings
     return filtered.length == 0
 }
 
-const isTimeInsideAvailabilities = (start: Dayjs, end: Dayjs, availabilities: DayAvailability[], timezone: string): boolean => {
+const isTimeInsideAvailabilities = (start: Dayjs, end: Dayjs, availabilities: DayAvailability[], targetTimezone: string): boolean => {
     
-    const realStart = start.tz(timezone)
+    const realStart = start.tz(targetTimezone)
     
     const startTime = realStart.format("HH:mm")
-    let endTime = end.tz(timezone).format("HH:mm")
+    let endTime = end.tz(targetTimezone).format("HH:mm")
     if(endTime === "00:00") {
         endTime = "24:00"
     }
-
 
     const compareTimes = (t1: string, t2: string) => {
         const [h1, m1] = t1.split(":")
@@ -134,4 +141,40 @@ const defaultTimeRange = () => {
     return {start: "09:00", end: "18:00"}
 }
 
-export { scheduleMeeting, isSlotAvailable, decryptMeeting, generateDefaultAvailabilities, defaultTimeRange}
+const durationToHumanReadable = (duration: number): string => {
+    const hours = Math.floor(duration / 60)
+    const minutes = duration % 60
+
+    if(hours > 0) {
+        if(minutes > 0) {
+            return `${hours} hour ${minutes} min`
+        }
+        return `${hours} hour`
+    }
+    return `${duration} min`
+}
+
+const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
+    return `${appUrl}${ellipsize ? getAccountDisplayName(account) : account!.address}`
+}
+
+const generateDefaultMeetingType = (account_id: string): MeetingType => {
+    const title = "30 minutes meeting"
+    const meetingType: MeetingType = {
+        id: uuidv4(),
+        title,
+        url: generateMeetingTypeUrl(title),
+        duration: 30,
+        minAdvanceTime: 60,
+        account_id: account_id,
+    }
+
+    return meetingType
+}
+
+const generateMeetingTypeUrl = (title:string): string => {
+    return title.toLowerCase().replace(/ /g, "-")
+}
+
+
+export { generateMeetingTypeUrl, scheduleMeeting, generateDefaultMeetingType, isSlotAvailable, decryptMeeting, generateDefaultAvailabilities, defaultTimeRange, durationToHumanReadable, getAccountCalendarUrl}

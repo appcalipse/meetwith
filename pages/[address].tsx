@@ -2,15 +2,19 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import MeetSlotPicker from '../components/MeetSlotPicker'
 import { AccountContext } from '../providers/AccountProvider'
-import { isSlotAvailable, scheduleMeeting } from '../utils/calendar_manager'
-import dayjs from '../utils/dayjs_entender'
+import {
+  durationToHumanReadable,
+  isSlotAvailable,
+  scheduleMeeting,
+} from '../utils/calendar_manager'
+import dayjs from '../utils/dayjs_extender'
 import { getAccount, getMeetings } from '../utils/api_helper'
 import { MeetingWithYourselfError } from '../utils/errors'
 import { useToast } from '@chakra-ui/toast'
 import { DBSlot } from '../types/Meeting'
 import { Select } from '@chakra-ui/select'
 import ProfileInfo from '../components/profile/ProfileInfo'
-import { Account } from '../types/Account'
+import { Account, MeetingType } from '../types/Account'
 import { Flex, Box, Container } from '@chakra-ui/layout'
 import MeetingScheduledDialog from '../components/meeting/MeetingScheduledDialog'
 import { useDisclosure } from '@chakra-ui/hooks'
@@ -29,7 +33,7 @@ const Schedule: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [meetings, setMeetings] = useState([] as DBSlot[])
-  const [duration, setDuration] = useState(15)
+  const [selectedType, setSelectedType] = useState({} as MeetingType)
   const [isScheduling, setIsScheduling] = useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { currentAccount, logged } = useContext(AccountContext)
@@ -41,6 +45,7 @@ const Schedule: React.FC = () => {
     try {
       const account = await getAccount(identifier)
       setAccount(account)
+      setSelectedType(account.preferences!.availableTypes[0])
       updateMeetings(account.address)
       setLoading(false)
     } catch (e) {
@@ -60,6 +65,7 @@ const Schedule: React.FC = () => {
         await scheduleMeeting(
           currentAccount!.address,
           account!.address,
+          selectedType.id,
           start,
           end,
           content
@@ -116,11 +122,12 @@ const Schedule: React.FC = () => {
 
   const validateSlot = (slot: Date): boolean => {
     return isSlotAvailable(
-      duration,
+      selectedType.duration,
+      selectedType.minAdvanceTime,
       slot,
       meetings,
       account!.preferences!.availabilities,
-      'America/New_York'
+      currentAccount?.preferences?.timezone || dayjs.tz.guess()
     )
   }
 
@@ -137,12 +144,20 @@ const Schedule: React.FC = () => {
                 disabled={isScheduling}
                 placeholder="Select option"
                 mt={8}
-                value={duration}
-                onChange={e => setDuration(Number(e.target.value))}
+                value={selectedType.id}
+                onChange={e =>
+                  setSelectedType(
+                    account!.preferences!.availableTypes.find(
+                      t => t.id === e.target.value
+                    )!
+                  )
+                }
               >
-                <option value="15">15 minutes</option>
-                <option value="30">30 minutes</option>
-                <option value="60">60 minutes</option>
+                {account!.preferences!.availableTypes.map(type => (
+                  <option key={type.id} value={type.id}>
+                    {durationToHumanReadable(type.duration)}
+                  </option>
+                ))}
               </Select>
             </Box>
 
@@ -152,7 +167,7 @@ const Schedule: React.FC = () => {
                 onMonthChange={(day: Date) => setCurrentMonth(day)}
                 onSchedule={confirmSchedule}
                 isScheduling={isScheduling => setIsScheduling(isScheduling)}
-                slotDurationInMinutes={duration}
+                slotDurationInMinutes={selectedType.duration}
                 timeSlotAvailability={validateSlot}
               />
             </Box>

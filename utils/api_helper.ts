@@ -48,9 +48,9 @@ export const createMeeting = async (meeting: any): Promise<DBSlotEnhanced> => {
     return await internalFetch(`/secure/meetings`, 'POST', meeting) as DBSlotEnhanced
 }
 
-export const isSlotFree = async (account_identifier: string, start: Date, end: Date): Promise<{isFree: boolean}> => {
+export const isSlotFree = async (account_identifier: string, start: Date, end: Date, meetingTypeId: string): Promise<{isFree: boolean}> => {
     try {
-    return await internalFetch(`/meetings/slot/${account_identifier}?start=${start.getTime()}&end=${end.getTime()}`) as {isFree: boolean}
+    return await internalFetch(`/meetings/slot/${account_identifier}?start=${start.getTime()}&end=${end.getTime()}&meetingTypeId=${meetingTypeId}`) as {isFree: boolean}
     } catch (e) {
         return {isFree: false}
     }

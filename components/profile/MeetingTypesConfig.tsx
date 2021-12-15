@@ -1,0 +1,268 @@
+import {
+  Box,
+  Button,
+  Checkbox,
+  HStack,
+  Icon,
+  Input,
+  InputGroup,
+  InputLeftAddon,
+  Select,
+  Spacer,
+  Text,
+  Tooltip,
+  useColorModeValue,
+  VStack,
+} from '@chakra-ui/react'
+import { useContext, useState } from 'react'
+import { FaArrowLeft, FaLock } from 'react-icons/fa'
+import { AccountContext } from '../../providers/AccountProvider'
+import { Account, MeetingType } from '../../types/Account'
+import {
+  durationToHumanReadable,
+  getAccountCalendarUrl,
+} from '../../utils/calendar_manager'
+
+const MeetingTypesConfig: React.FC = () => {
+  const { currentAccount, logged } = useContext(AccountContext)
+
+  const [selectedType, setSelectedType] = useState<string>('')
+
+  return (
+    <Box>
+      {selectedType ? (
+        <TypeConfig
+          typeId={selectedType}
+          account={currentAccount!}
+          goBack={() => setSelectedType('')}
+        />
+      ) : (
+        <VStack width="100%" alignItems={'flex-start'}>
+          <Text>Your meeting types</Text>
+          <HStack flexWrap="wrap">
+            {currentAccount!.preferences!.availableTypes.map((type, index) => {
+              const url = getAccountCalendarUrl(currentAccount!, false)
+              return (
+                <MeetingTypeCard
+                  onSelect={setSelectedType}
+                  key={index}
+                  title={type.title}
+                  duration={type.duration}
+                  url={url}
+                  typeId={type.id!}
+                />
+              )
+            })}
+            <AddTypeCard />
+          </HStack>
+        </VStack>
+      )}
+    </Box>
+  )
+}
+
+interface CardProps {
+  title?: string
+  typeId: string
+  url: string
+  duration: number
+  onSelect: (typeId: string) => void
+}
+
+const MeetingTypeCard: React.FC<CardProps> = ({
+  title,
+  typeId,
+  url,
+  duration,
+  onSelect,
+}) => {
+  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
+
+  const openType = () => {
+    onSelect(typeId)
+  }
+
+  const copyLink = async () => {
+    if ('clipboard' in navigator) {
+      await navigator.clipboard.writeText(url)
+    } else {
+      document.execCommand('copy', true, url)
+    }
+    setCopyFeedbackOpen(true)
+    setTimeout(() => {
+      setCopyFeedbackOpen(false)
+    }, 2000)
+  }
+
+  return (
+    <Box p={2} alignSelf="stretch">
+      <VStack
+        borderRadius={8}
+        p={4}
+        shadow={'md'}
+        minW="280px"
+        maxW="320px"
+        alignItems="flex-start"
+        height={'100%'}
+        bgColor={useColorModeValue('white', 'gray.600')}
+      >
+        <Text fontWeight="medium">{title}</Text>
+        <Text>Duration: {durationToHumanReadable(duration)}</Text>
+
+        <HStack width="100%" pt={4}>
+          <Tooltip label="Copied" placement="top" isOpen={copyFeedbackOpen}>
+            <Button
+              flex={1}
+              colorScheme="orange"
+              variant="outline"
+              onClick={copyLink}
+            >
+              Copy link
+            </Button>
+          </Tooltip>
+          <Button flex={1} colorScheme="orange" onClick={openType}>
+            Edit
+          </Button>
+        </HStack>
+      </VStack>
+    </Box>
+  )
+}
+
+const AddTypeCard: React.FC = () => {
+  return (
+    <Box p={2} alignSelf="stretch">
+      <VStack
+        cursor="pointer"
+        borderRadius={8}
+        p={4}
+        shadow={'md'}
+        minW="280px"
+        maxW="320px"
+        alignItems="center"
+        height={'100%'}
+        justifyContent="center"
+        bgColor={useColorModeValue('gray.100', 'gray.700')}
+      >
+        <Text mb={8} fontWeight="medium">
+          Add meeting type
+        </Text>
+        <Icon as={FaLock} size="2em" color="gray.500" />
+        <Text mt={2}>Coming soon</Text>
+      </VStack>
+    </Box>
+  )
+}
+
+interface TypeConfigProps {
+  account: Account
+  typeId: string
+  goBack: () => void
+}
+const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
+  const color = useColorModeValue('orange.500', 'orange.400')
+
+  const typeConfig = account.preferences!.availableTypes.find(
+    type => type.id === typeId
+  )
+  if (!typeConfig) {
+    // TODO handle this
+  }
+
+  const convertMinutes = (minutes: number) => {
+    if (minutes < 60) {
+      return { amount: minutes, type: 'minutes' }
+    } else if (minutes < 3600) {
+      return { amount: Math.floor(minutes / 60), type: 'hours' }
+    } else {
+      return { amount: Math.floor(minutes / 3600), type: 'days' }
+    }
+  }
+
+  const [title, setTitle] = useState(typeConfig!.title)
+  const [url, setUrl] = useState(typeConfig!.url)
+  const [duration, setDuration] = useState(typeConfig!.duration)
+  const [minAdvanceTime, setMinAdvanceTime] = useState(
+    convertMinutes(typeConfig!.minAdvanceTime)
+  )
+
+  return (
+    <VStack p={4} alignItems="start">
+      <HStack mb={4} cursor="pointer" onClick={goBack}>
+        <Icon as={FaArrowLeft} size="1.5em" color={color} />
+        <Text ml={3} color={color}>
+          Back
+        </Text>
+      </HStack>
+      <Text>Meeting type name</Text>
+      <Input
+        placeholder="What is this event about"
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+      />
+
+      <Text pt={4}>Event link</Text>
+      <Text fontSize="sm">
+        {getAccountCalendarUrl(account, true)}/{!url ? '<link>' : url}
+      </Text>
+      <Input
+        type="text"
+        placeholder="link"
+        value={url}
+        onChange={e => setUrl(e.target.value)}
+      />
+
+      <Text pt={4}>Meeting duration</Text>
+      <Select
+        width="160px"
+        defaultValue={duration}
+        onChange={e => setDuration(Number(e.target.value))}
+      >
+        <option value="15">15 min</option>
+        <option value="30">30 min</option>
+        <option value="45">45 min</option>
+        <option value="60">60 min</option>
+      </Select>
+
+      <Text pt={4}>
+        Minimum amount of notice time for anyone to schedule a meeting with you
+      </Text>
+      <HStack>
+        <Input
+          width="140px"
+          type="number"
+          value={minAdvanceTime.amount}
+          onChange={e => {
+            setMinAdvanceTime({
+              amount: Number(e.target.value),
+              type: minAdvanceTime.type,
+            })
+          }}
+        />
+        <Select
+          defaultValue={minAdvanceTime.type}
+          onChange={e => {
+            setMinAdvanceTime({
+              amount: minAdvanceTime.amount,
+              type: e.target.value,
+            })
+          }}
+        >
+          <option value="minutes">minutes</option>
+          <option value="hours">hours</option>
+          <option value="days">days</option>
+        </Select>
+      </HStack>
+
+      <Checkbox isDisabled pt={4}>
+        <HStack alignItems="center">
+          <Text>Require payment for scheduling</Text>
+          <Icon as={FaLock} />
+          <Text>(coming soon)</Text>
+        </HStack>
+      </Checkbox>
+    </VStack>
+  )
+}
+
+export default MeetingTypesConfig

@@ -15,6 +15,7 @@ export enum ParticipantType {
 
 export interface MeetingCreationRequest {
     participants: ParticipantBaseInfo[],
+    meetingTypeId: string,
     content?: string,
     start: Date,
     end: Date,

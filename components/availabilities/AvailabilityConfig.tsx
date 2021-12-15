@@ -8,9 +8,10 @@ import {
   Box,
   useColorModeValue,
   Button,
+  Input,
 } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
-import dayjs from '../../utils/dayjs_entender'
+import dayjs from '../../utils/dayjs_extender'
 import { useState } from 'react'
 import { FaPlus, FaTrash } from 'react-icons/fa'
 import { DayAvailability, TimeRange } from '../../types/Account'
@@ -18,6 +19,7 @@ import { useEffect, useContext } from 'react'
 import { defaultTimeRange } from '../../utils/calendar_manager'
 import { saveAccountChanges } from '../../utils/api_helper'
 import { AccountContext } from '../../providers/AccountProvider'
+import TimezoneSelector from '../TimezoneSelector'
 
 const AvailabilityConfig: React.FC = () => {
   const { currentAccount, login } = useContext(AccountContext)
@@ -26,6 +28,8 @@ const AvailabilityConfig: React.FC = () => {
   const [availabilities, setAvailabilities] = useState(
     currentAccount!.preferences!.availabilities
   )
+
+  let timezone = currentAccount!.preferences!.timezone
 
   const borderColor = useColorModeValue('gray.300', 'gray.700')
 
@@ -38,6 +42,7 @@ const AvailabilityConfig: React.FC = () => {
         preferences: {
           ...currentAccount!.preferences!,
           availabilities: availabilities,
+          timezone: timezone,
         },
       })
       login(updatedAccount)
@@ -55,8 +60,20 @@ const AvailabilityConfig: React.FC = () => {
     setAvailabilities(newAvailabilities)
   }
 
+  const onChangeTz = (_timezone: string) => {
+    timezone = _timezone
+  }
+
   return (
     <VStack alignItems="start" flex={1} mb={8}>
+      <Box width="100%">
+        <Text pb={2}>Your timezone</Text>
+        <TimezoneSelector
+          value={currentAccount!.preferences!.timezone}
+          onChange={onChangeTz}
+        />
+      </Box>
+      <Text pt={2}>Your availabilities</Text>
       {currentAccount!.preferences!.availabilities.map(
         (availability, index) => (
           <Box
@@ -77,7 +94,7 @@ const AvailabilityConfig: React.FC = () => {
         colorScheme="orange"
         onClick={saveAvailabilities}
       >
-        Save availabilities
+        Save information
       </Button>
     </VStack>
   )

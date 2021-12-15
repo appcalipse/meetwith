@@ -1,11 +1,7 @@
 import { Box, Flex, Text, HStack, Spacer, Link } from '@chakra-ui/layout'
-import { Account, SpecialDomainType } from '../../types/Account'
+import { Account, SocialLinkType } from '../../types/Account'
 import { Jazzicon } from '@ukstv/jazzicon-react'
-import {
-  ellipsizeAddress,
-  getAccountDisplayName,
-  getCustomDomainName,
-} from '../../utils/user_manager'
+import { getAccountDisplayName } from '../../utils/user_manager'
 import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
 import { Image } from '@chakra-ui/image'
 import { useColorModeValue } from '@chakra-ui/react'
@@ -14,6 +10,18 @@ interface ProfileInfoProps {
   account: Account
 }
 const ProfileInfo: React.FC<ProfileInfoProps> = props => {
+  let [twitter, telegram, discord] = ['', '', '']
+
+  const social = props.account.preferences?.socialLinks
+
+  if (social) {
+    twitter = social.filter(s => s.type === SocialLinkType.TWITTER)[0]?.url
+    discord = social.filter(s => s.type === SocialLinkType.DISCORD)[0]?.url
+    telegram = social.filter(s => s.type === SocialLinkType.TELEGRAM)[0]?.url
+  }
+
+  const iconColor = useColorModeValue('gray.600', 'white')
+
   return (
     <Flex direction="column" alignItems="center">
       <Box width="80px" height="80px" mb={4}>
@@ -21,35 +29,27 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
       </Box>
       <Box>{getAccountDisplayName(props.account)}</Box>
       <HStack my={6}>
-        <Link
-          color={useColorModeValue('gray.600', 'white')}
-          isExternal
-          href={'https://uol.clm.br'}
-        >
-          <FaTelegram size={24} />
-        </Link>
-        <Spacer />
-        <Link
-          color={useColorModeValue('gray.600', 'white')}
-          isExternal
-          href={`https://${getCustomDomainName(
-            props.account.address,
-            SpecialDomainType.ENS
-          )}`}
-        >
-          <FaTwitter size={24} />
-        </Link>
-        <Spacer />
-        <Link
-          color={useColorModeValue('gray.600', 'white')}
-          isExternal
-          href={`https://${getCustomDomainName(
-            props.account.address,
-            SpecialDomainType.ENS
-          )}`}
-        >
-          <FaDiscord size={24} />
-        </Link>
+        {telegram && (
+          <>
+            <Link color={iconColor} isExternal href={telegram}>
+              <FaTelegram size={24} />
+            </Link>
+            <Spacer />
+          </>
+        )}
+        {twitter && (
+          <>
+            <Link color={iconColor} isExternal href={twitter}>
+              <FaTwitter size={24} />
+            </Link>
+            <Spacer />
+          </>
+        )}
+        {discord && (
+          <Link color={iconColor} isExternal href={discord}>
+            <FaDiscord size={24} />
+          </Link>
+        )}
       </HStack>
       {props.account.preferences?.description && (
         <Box position="relative">

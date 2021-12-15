@@ -5,9 +5,10 @@ import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, Partic
 import { createClient } from '@supabase/supabase-js'
 import { AccountNotFoundError, MeetingNotFoundError, MeetingWithYourselfError } from '../utils/errors';
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper';
-import { generateMeetingUrl } from './meeting_url_heper';
-import { generateDefaultAvailabilities } from './calendar_manager';
+import { generateMeetingUrl } from './meeting_call_helper';
+import { generateDefaultAvailabilities, generateDefaultMeetingType } from './calendar_manager';
 import { v4 as uuidv4 } from 'uuid';
+import dayjs from 'dayjs';
 
 const db: any = { ready: false };
 
@@ -46,28 +47,10 @@ const initAccountDBForWallet = async (address: string, signature: string, timezo
         throw new Error('Account couldn\'t be created')
     }
 
-    const meetingType: MeetingType = {
-        duration: 30,
-        minAdvanceTime: 60,
-        account_id: data[0].id,
-    }
-
-    const response = await db.supabase
-        .from('meeting_type')
-        .insert([
-            meetingType
-        ])
-
-    if(response.error) {
-        console.error(response.error)
-
-        //TODO: handle error
-    }
-
     const availabilities = generateDefaultAvailabilities()
 
     const preferences: AccountPreferences = {
-        availableTypes: [meetingType],
+        availableTypes: [generateDefaultMeetingType(data[0].id)],
         description: '',
         availabilities,
         socialLinks: [],
@@ -165,7 +148,12 @@ const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date):
     return data || []
 }
 
-const isSlotFree = async (account_identifier: string, start: Date, end: Date): Promise<boolean> => {
+const isSlotFree = async (account_identifier: string, meetingTypeId: string, start: Date, end: Date): Promise<boolean> => {
+    const account = getAccountFromDB(account_identifier)
+    const minTime = (await account).preferences?.availableTypes.filter(mt => mt.id === meetingTypeId)[0].minAdvanceTime
+    if(!minTime || dayjs().add(minTime, 'minute').isAfter(start)) {
+        return false
+    }
     return await (await getSlotsForAccount(account_identifier, start, end)).length == 0
 }
 
@@ -191,6 +179,8 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
 }
 
 const saveMeeting = async (meeting: MeetingCreationRequest): Promise<DBSlotEnhanced> => {
+
+    //TODO - validate meeting can indeed be created, meaninig, it is not conflicting
 
     const schedulerId = meeting.participants.find(p => p.type == ParticipantType.Scheduler)!.account_identifier
     const ownerId = meeting.participants.find(p => p.type == ParticipantType.Owner)!.account_identifier
@@ -221,6 +211,10 @@ const saveMeeting = async (meeting: MeetingCreationRequest): Promise<DBSlotEnhan
             content: meeting.content,
             meeting_url: generateMeetingUrl(meeting),
             change_history_paths: []
+        }
+
+        if(await isSlotFree(participant.account_identifier, meeting.meetingTypeId, meeting.start, meeting.end)) {
+        
         }
 
         const account = await getAccountFromDB(participant.account_identifier)

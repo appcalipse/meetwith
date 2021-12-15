@@ -1,5 +1,5 @@
 import { Badge, Box } from '@chakra-ui/layout'
-import dayjs from '../../../utils/dayjs_entender'
+import dayjs from '../../../utils/dayjs_extender'
 import { DBSlot } from '../../../types/Meeting'
 
 interface MeetingCardProps {

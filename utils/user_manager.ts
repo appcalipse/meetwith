@@ -8,6 +8,7 @@ import ENS, { getEnsAddress } from '@ensdomains/ensjs'
 import { ethers } from "ethers";
 import { DEFAULT_MESSAGE } from "./constants";
 import { AccountNotFoundError } from "./errors";
+import dayjs from "./dayjs_extender";
 
 const providerOptions = {
     /* See Provider Options Section */
@@ -28,7 +29,7 @@ const loginWithWallet = async (): Promise<Account> => {
     web3 = new Web3(provider)
 
     const accounts = await web3.eth.getAccounts()
-    return await createOrFetchAccount(accounts[0], Intl.DateTimeFormat().resolvedOptions().timeZone)
+    return await createOrFetchAccount(accounts[0], dayjs.tz.guess())
 }
 
 const signDefaultMessage = async (accountAddress: string, nonce: number): Promise<string> => {
@@ -39,6 +40,8 @@ const signDefaultMessage = async (accountAddress: string, nonce: number): Promis
 
 const createOrFetchAccount = async (accountAddress: string, timezone: string): Promise<Account> => {
 
+    dayjs.tz.setDefault(timezone)
+    
     let account: Account;
 
     try {

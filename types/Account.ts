@@ -21,8 +21,9 @@ export interface PremiumAccount extends Account {
 
 export interface MeetingType {
     account_id: string,
-    id?: string,
-    title?: string,
+    id: string,
+    title: string,
+    url:string,
     duration: number
     description?: string
     minAdvanceTime: number

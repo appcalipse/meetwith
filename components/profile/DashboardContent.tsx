@@ -16,7 +16,12 @@ import {
 } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import { getAccountDisplayName } from '../../utils/user_manager'
-import { FaCalendarDay, FaCalendarWeek, FaInfo } from 'react-icons/fa'
+import {
+  FaCalendarDay,
+  FaCalendarPlus,
+  FaCalendarWeek,
+  FaInfo,
+} from 'react-icons/fa'
 import { useState, useContext } from 'react'
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import { IconType } from 'react-icons'
@@ -24,11 +29,14 @@ import Meetings from './Meetings'
 import IPFSLink from '../IPFSLink'
 import { AccountContext } from '../../providers/AccountProvider'
 import AccountDetails from './AccountDetails'
+import MeetingTypesConfig from './MeetingTypesConfig'
+import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 
 enum EditMode {
   MEETINGS,
   AVAILABILITY,
   DETAILS,
+  TYPES,
 }
 
 interface LinkItemProps {
@@ -40,6 +48,7 @@ const LinkItems: Array<LinkItemProps> = [
   { name: 'My meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
   { name: 'Account Details', icon: FaInfo, mode: EditMode.DETAILS },
   { name: 'Availabilities', icon: FaCalendarWeek, mode: EditMode.AVAILABILITY },
+  { name: 'Meeting types', icon: FaCalendarPlus, mode: EditMode.TYPES },
 ]
 
 interface NavItemProps extends FlexProps {
@@ -106,7 +115,7 @@ const DashboardContent: React.FC = () => {
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
-  const accountUrl = `https://meetwithwallet.xyz/${currentAccount?.address}`
+  const accountUrl = getAccountCalendarUrl(currentAccount!, false)
 
   const copyUrl = async () => {
     if ('clipboard' in navigator) {
@@ -128,6 +137,8 @@ const DashboardContent: React.FC = () => {
         return <AccountDetails />
       case EditMode.MEETINGS:
         return <Meetings />
+      case EditMode.TYPES:
+        return <MeetingTypesConfig />
     }
   }
 
