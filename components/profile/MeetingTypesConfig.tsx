@@ -161,7 +161,6 @@ interface TypeConfigProps {
   goBack: () => void
 }
 const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
-
   const { login } = useContext(AccountContext)
   const color = useColorModeValue('orange.500', 'orange.400')
 
