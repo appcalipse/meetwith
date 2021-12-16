@@ -5,8 +5,9 @@ import {
   ParticipantType,
 } from '../../../../types/Meeting'
 import { initDB, saveMeeting } from '../../../../utils/database'
+import { withSentry } from '@sentry/nextjs';
 
-export default async (req: NextApiRequest, res: NextApiResponse) => {
+export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
@@ -29,4 +30,4 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   res.status(404).send('Not found')
-}
+})

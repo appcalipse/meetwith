@@ -21,6 +21,7 @@
     "@mikro-orm/cli": "^4.5.9",
     "@mikro-orm/core": "^4.5.9",
     "@mikro-orm/postgresql": "^4.5.9",
+    "@sentry/nextjs": "^6.16.1",
     "@supabase/supabase-js": "^1.28.1",
     "@ukstv/jazzicon-react": "^1.0.0",
     "@unstoppabledomains/resolution": "^7.0.0",
