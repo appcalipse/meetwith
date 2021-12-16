@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { initDB, isSlotFree } from '../../../../utils/database'
 import { AccountNotFoundError } from '../../../../utils/errors'
-import { withSentry } from '@sentry/nextjs';
+import { withSentry } from '@sentry/nextjs'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {

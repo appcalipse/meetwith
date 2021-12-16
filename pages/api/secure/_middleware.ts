@@ -8,7 +8,7 @@ import {
 } from 'ethereumjs-util'
 import { apiUrl, DEFAULT_MESSAGE } from '../../../utils/constants'
 
-async function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const notAuthorized = new Response('Auth required', {
     status: 401,
   })

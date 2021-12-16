@@ -5,7 +5,7 @@ import {
   initDB,
   updateAccountPreferences,
 } from '../../../../utils/database'
-import { withSentry } from '@sentry/nextjs';
+import { withSentry } from '@sentry/nextjs'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {

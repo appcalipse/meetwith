@@ -55,6 +55,8 @@ const Schedule: React.FC = () => {
     }
   }
 
+  const love = account.whatfuck!.asdsa
+
   const confirmSchedule = async (startTime: Date, content?: string) => {
     onOpen()
 
