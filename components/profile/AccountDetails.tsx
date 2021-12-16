@@ -5,6 +5,7 @@ import { useContext, useState } from 'react'
 import { AccountContext } from '../../providers/AccountProvider'
 import { SocialLinkType } from '../../types/Account'
 import { saveAccountChanges } from '../../utils/api_helper'
+import { logEvent } from '../../utils/analytics'
 
 const AccountDetails: React.FC = () => {
   const { currentAccount, login } = useContext(AccountContext)
@@ -45,6 +46,7 @@ const AccountDetails: React.FC = () => {
           ],
         },
       })
+      logEvent('Updated account details')
       login(updatedAccount)
     } catch (e) {
       //TODO handle error
