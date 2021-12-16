@@ -4,7 +4,12 @@ import { Jazzicon } from '@ukstv/jazzicon-react'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
 import { Image } from '@chakra-ui/image'
-import { useColorModeValue } from '@chakra-ui/react'
+import { Tooltip, useColorModeValue } from '@chakra-ui/react'
+import {
+  generateTelegramUrl,
+  generateTwitterUrl,
+} from '../../utils/generic_utils'
+import { useState } from 'react'
 
 interface ProfileInfoProps {
   account: Account
@@ -20,7 +25,21 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
     telegram = social.filter(s => s.type === SocialLinkType.TELEGRAM)[0]?.url
   }
 
+  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
+
   const iconColor = useColorModeValue('gray.600', 'white')
+
+  const copyDiscord = async () => {
+    if ('clipboard' in navigator) {
+      await navigator.clipboard.writeText(discord)
+    } else {
+      document.execCommand('copy', true, discord)
+    }
+    setCopyFeedbackOpen(true)
+    setTimeout(() => {
+      setCopyFeedbackOpen(false)
+    }, 2000)
+  }
 
   return (
     <Flex direction="column" alignItems="center">
@@ -31,7 +50,11 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
       <HStack my={6}>
         {telegram && (
           <>
-            <Link color={iconColor} isExternal href={telegram}>
+            <Link
+              color={iconColor}
+              isExternal
+              href={generateTelegramUrl(telegram)}
+            >
               <FaTelegram size={24} />
             </Link>
             <Spacer />
@@ -39,16 +62,26 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
         )}
         {twitter && (
           <>
-            <Link color={iconColor} isExternal href={twitter}>
+            <Link
+              color={iconColor}
+              isExternal
+              href={generateTwitterUrl(twitter)}
+            >
               <FaTwitter size={24} />
             </Link>
             <Spacer />
           </>
         )}
         {discord && (
-          <Link color={iconColor} isExternal href={discord}>
-            <FaDiscord size={24} />
-          </Link>
+          <Tooltip
+            label="Discord username copied"
+            placement="top"
+            isOpen={copyFeedbackOpen}
+          >
+            <Box onClick={copyDiscord} cursor="pointer">
+              <FaDiscord size={24} />
+            </Box>
+          </Tooltip>
         )}
       </HStack>
       {props.account.preferences?.description && (

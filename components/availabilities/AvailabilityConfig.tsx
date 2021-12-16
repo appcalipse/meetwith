@@ -90,7 +90,7 @@ const AvailabilityConfig: React.FC = () => {
       <Spacer />
       <Button
         isLoading={loading}
-        alignSelf="end"
+        alignSelf="start"
         colorScheme="orange"
         onClick={saveAvailabilities}
       >

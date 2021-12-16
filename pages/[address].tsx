@@ -146,6 +146,7 @@ const Schedule: React.FC = () => {
                 mt={8}
                 value={selectedType.id}
                 onChange={e =>
+                  e.target.value &&
                   setSelectedType(
                     account!.preferences!.availableTypes.find(
                       t => t.id === e.target.value

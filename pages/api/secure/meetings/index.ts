@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import {
   DBSlotEnhanced,
   MeetingCreationRequest,
+  ParticipantType,
 } from '../../../../types/Meeting'
 import { initDB, saveMeeting } from '../../../../utils/database'
 
@@ -9,7 +10,17 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
+    const account_id = req.headers.account as string
+
     const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
+
+    if (
+      meeting.participants.filter(
+        participant => participant.account_identifier === account_id
+      )[0].type !== ParticipantType.Scheduler
+    ) {
+      res.status(403).send('You cant schedule a meeting for someone else')
+    }
 
     const meetingResult: DBSlotEnhanced = await saveMeeting(meeting)
 

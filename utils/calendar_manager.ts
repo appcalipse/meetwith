@@ -11,21 +11,21 @@ import { appUrl } from './constants';
 import { v4 as uuidv4 } from 'uuid';
 import { getAccountDisplayName } from './user_manager';
 
-const scheduleMeeting = async (source_account: string, target_account: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<MeetingDecrypted> => {
+const scheduleMeeting = async (source_account_address: string, target_account_address: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<MeetingDecrypted> => {
 
-    if(source_account === target_account) {
+    if(source_account_address === target_account_address) {
         throw new MeetingWithYourselfError()
     }
 
-    if (await isSlotFree(target_account, startTime.toDate(), endTime.toDate(), meetingTypeId)) {
+    if (await isSlotFree(target_account_address, startTime.toDate(), endTime.toDate(), meetingTypeId)) {
         const owner: ParticipantBaseInfo = {
             type: ParticipantType.Owner,
-            account_identifier: target_account,
+            account_identifier: target_account_address,
         }
 
         const scheduler: ParticipantBaseInfo = {
             type: ParticipantType.Scheduler,
-            account_identifier: source_account,
+            account_identifier: source_account_address,
         }
 
         const meeting: MeetingCreationRequest = {
@@ -158,7 +158,7 @@ const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
     return `${appUrl}${ellipsize ? getAccountDisplayName(account) : account!.address}`
 }
 
-const generateDefaultMeetingType = (account_id: string): MeetingType => {
+const generateDefaultMeetingType = (): MeetingType => {
     const title = "30 minutes meeting"
     const meetingType: MeetingType = {
         id: uuidv4(),
@@ -166,7 +166,6 @@ const generateDefaultMeetingType = (account_id: string): MeetingType => {
         url: generateMeetingTypeUrl(title),
         duration: 30,
         minAdvanceTime: 60,
-        account_id: account_id,
     }
 
     return meetingType

@@ -50,7 +50,7 @@ const initAccountDBForWallet = async (address: string, signature: string, timezo
     const availabilities = generateDefaultAvailabilities()
 
     const preferences: AccountPreferences = {
-        availableTypes: [generateDefaultMeetingType(data[0].id)],
+        availableTypes: [generateDefaultMeetingType()],
         description: '',
         availabilities,
         socialLinks: [],
@@ -81,7 +81,7 @@ const initAccountDBForWallet = async (address: string, signature: string, timezo
     return account
 }
 
-const updateAccount = async (account: Account): Promise<Account> => {
+const updateAccountPreferences = async (account: Account): Promise<Account> => {
 
     const path = await addContentToIPFS(account.preferences!)
     //TODO handle ipfs error
@@ -268,4 +268,4 @@ const saveEmailToDB = async (email: string): Promise<boolean> => {
     return false
 }
 
-export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB, isSlotFree, updateAccount, getAccountNonce}
+export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB, isSlotFree, updateAccountPreferences, getAccountNonce}

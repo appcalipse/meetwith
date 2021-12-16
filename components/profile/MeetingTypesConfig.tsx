@@ -18,6 +18,7 @@ import { useContext, useState } from 'react'
 import { FaArrowLeft, FaLock } from 'react-icons/fa'
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
+import { saveMeetingType } from '../../utils/api_helper'
 import {
   durationToHumanReadable,
   getAccountCalendarUrl,
@@ -160,6 +161,8 @@ interface TypeConfigProps {
   goBack: () => void
 }
 const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
+
+  const { login } = useContext(AccountContext)
   const color = useColorModeValue('orange.500', 'orange.400')
 
   const typeConfig = account.preferences!.availableTypes.find(
@@ -185,6 +188,32 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
   const [minAdvanceTime, setMinAdvanceTime] = useState(
     convertMinutes(typeConfig!.minAdvanceTime)
   )
+  const [loading, setLoading] = useState(false)
+
+  const save = async () => {
+    setLoading(true)
+
+    const meetingType: MeetingType = {
+      id: typeId,
+      title,
+      url,
+      duration,
+      minAdvanceTime:
+        minAdvanceTime.amount *
+        (minAdvanceTime.type === 'minutes'
+          ? 1
+          : minAdvanceTime.type === 'hours'
+          ? 60
+          : 3600),
+    }
+
+    const account = await saveMeetingType(meetingType)
+    login(account)
+
+    //TODO handle error
+
+    setLoading(false)
+  }
 
   return (
     <VStack p={4} alignItems="start">
@@ -261,6 +290,15 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
           <Text>(coming soon)</Text>
         </HStack>
       </Checkbox>
+      <Spacer />
+      <Button
+        isLoading={loading}
+        alignSelf="start"
+        colorScheme="orange"
+        onClick={save}
+      >
+        Save information
+      </Button>
     </VStack>
   )
 }

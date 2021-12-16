@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { initDB, updateAccount } from '../../../../utils/database'
+import { initDB, updateAccountPreferences } from '../../../../utils/database'
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -13,7 +13,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      const updatedAccount = await updateAccount(account)
+      const updatedAccount = await updateAccountPreferences(account)
 
       res.status(200).json(updatedAccount)
     } catch (e) {
