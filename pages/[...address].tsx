@@ -127,9 +127,9 @@ const Schedule: React.FC = () => {
   }, [currentMonth])
 
   const changeType = (typeId: string) => {
-    const type = account!
-      .preferences!.availableTypes
-      .find(t => t.id === typeId)!
+    const type = account!.preferences!.availableTypes.find(
+      t => t.id === typeId
+    )!
     setSelectedType(type)
     router.push(`/${account!.address}/${type.url}`, undefined, {
       shallow: true,
@@ -163,13 +163,11 @@ const Schedule: React.FC = () => {
                 value={selectedType.id}
                 onChange={e => e.target.value && changeType(e.target.value)}
               >
-                {account!
-                  .preferences!.availableTypes
-                  .map(type => (
-                    <option key={type.id} value={type.id}>
-                      {durationToHumanReadable(type.duration)}
-                    </option>
-                  ))}
+                {account!.preferences!.availableTypes.map(type => (
+                  <option key={type.id} value={type.id}>
+                    {durationToHumanReadable(type.duration)}
+                  </option>
+                ))}
               </Select>
             </Box>
 
