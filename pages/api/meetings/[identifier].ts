@@ -10,16 +10,16 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const meetings = await getSlotsForAccount(
         req.query.identifier as string,
-        req.query.start && req.query.start !== 'undefined'
+        req.query.start !== 'undefined'
           ? new Date(Number(req.query.start as string))
           : undefined,
-        req.query.end && req.query.end !== 'undefined'
+        req.query.end !== 'undefined'
           ? new Date(Number(req.query.end as string))
           : undefined,
-        req.query.limit && req.query.limit !== 'undefined'
+        req.query.limit !== 'undefined'
           ? Number(req.query.limit as string)
           : undefined,
-        req.query.offset && req.query.offset !== 'undefined'
+        req.query.offset !== 'undefined'
           ? Number(req.query.offset as string)
           : undefined
       )

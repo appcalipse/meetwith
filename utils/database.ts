@@ -159,11 +159,15 @@ const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date, 
     return data || []
 }
 
-const isSlotFree = async (account_identifier: string, meetingTypeId: string, start: Date, end: Date): Promise<boolean> => {
-    const account = getAccountFromDB(account_identifier)
-    const minTime = (await account).preferences?.availableTypes.filter(mt => mt.id === meetingTypeId)[0].minAdvanceTime
-    if(!minTime || dayjs().add(minTime, 'minute').isAfter(start)) {
-        return false
+const isSlotFree = async (account_identifier: string, start: Date, end: Date, meetingTypeId: string): Promise<boolean> => {
+    const account = await getAccountFromDB(account_identifier)
+    
+    const minTime = account.preferences?.availableTypes.filter(mt => mt.id === meetingTypeId)
+    
+    if(minTime && minTime.length > 0) {
+        if(!minTime[0].minAdvanceTime || dayjs().add(minTime[0].minAdvanceTime, 'minute').isAfter(start)) {
+            return false
+        }    
     }
     return await (await getSlotsForAccount(account_identifier, start, end)).length == 0
 }
@@ -205,7 +209,7 @@ const saveMeeting = async (meeting: MeetingCreationRequest, requesterId: string)
 
     for(let participant of meeting.participants_mapping) {
 
-        if(await !isSlotFree(participant.account_id, meeting.meetingTypeId, meeting.start, meeting.end)) {
+        if(await !isSlotFree(participant.account_id, new Date(meeting.start), new Date(meeting.end), meeting.meetingTypeId)) {
           throw new TimeNotAvailableError()
         }
 
