@@ -9,7 +9,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
     try {
       const free = await isSlotFree(
-        req.query.address as string,
+        req.query.account_id as string,
         req.query.meetingTypeId as string,
         new Date(Number(req.query.start as string)),
         new Date(Number(req.query.end as string))

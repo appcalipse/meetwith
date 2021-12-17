@@ -1,8 +1,8 @@
 import { Dayjs } from 'dayjs';
 import dayjs from './dayjs_extender'
-import { decryptWithPrivateKey, Encrypted } from 'eth-crypto';
+import { decryptWithPrivateKey, Encrypted, encryptWithPublicKey } from 'eth-crypto';
 import { Account, DayAvailability, MeetingType } from '../types/Account';
-import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, MeetingDecrypted, ParticipantBaseInfo, ParticipantType } from "../types/Meeting";
+import { CreationRequestParticipantMapping, DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, MeetingDecrypted, ParticipantBaseInfo, ParticipantInfo, ParticipantType, ParticipationStatus } from "../types/Meeting";
 import { createMeeting, getAccount, isSlotFree } from './api_helper';
 import { decryptContent } from './cryptography';
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors';
@@ -10,29 +10,59 @@ import { getSignature } from './storage';
 import { appUrl } from './constants';
 import { v4 as uuidv4 } from 'uuid';
 import { getAccountDisplayName } from './user_manager';
+import { generateMeetingUrl } from './meeting_call_helper';
 
-const scheduleMeeting = async (source_account_address: string, target_account_address: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<MeetingDecrypted> => {
+const scheduleMeeting = async (source_account_id: string, target_account_id: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<MeetingDecrypted> => {
 
-    if(source_account_address === target_account_address) {
+    if(source_account_id === target_account_id) {
         throw new MeetingWithYourselfError()
     }
 
-    if (await isSlotFree(target_account_address, startTime.toDate(), endTime.toDate(), meetingTypeId)) {
-        const owner: ParticipantBaseInfo = {
+    if (await isSlotFree(target_account_id, startTime.toDate(), endTime.toDate(), meetingTypeId)) {
+        
+        const ownerAccount = await getAccount(target_account_id)
+
+        const owner: ParticipantInfo = {
             type: ParticipantType.Owner,
-            account_identifier: target_account_address,
+            account_id: target_account_id,
+            status: ParticipationStatus.Pending,
+            address: ownerAccount.address,
+            slot_id: uuidv4(),
         }
 
-        const scheduler: ParticipantBaseInfo = {
+        const schedulerAccount = await getAccount(source_account_id)
+        const scheduler: ParticipantInfo = {
             type: ParticipantType.Scheduler,
-            account_identifier: source_account_address,
+            account_id: source_account_id,
+            status: ParticipationStatus.Accepted,
+            address: schedulerAccount.address,
+            slot_id: uuidv4(),
+        }
+
+        const privateInfo: IPFSMeetingInfo = {
+            created_at: new Date(),
+            participants: [owner, scheduler],
+            content: meetingContent,
+            meeting_url: generateMeetingUrl([owner, scheduler]),
+            change_history_paths: []
+        }
+
+        const ownerMapping: CreationRequestParticipantMapping = {
+            account_id: target_account_id,
+            slot_id: owner.slot_id,
+            privateInfo: await encryptWithPublicKey(ownerAccount.internal_pub_key, JSON.stringify(privateInfo))
+        }
+
+        const schedulerMapping: CreationRequestParticipantMapping = {
+            account_id: source_account_id,
+            slot_id: scheduler.slot_id,
+            privateInfo: await encryptWithPublicKey(schedulerAccount.internal_pub_key, JSON.stringify(privateInfo))
         }
 
         const meeting: MeetingCreationRequest = {
             start: startTime.toDate(),
             end: endTime.toDate(),
-            participants: [owner, scheduler],
-            content: meetingContent,
+            participants_mapping: [ownerMapping, schedulerMapping],
             meetingTypeId
         }
 

@@ -8,13 +8,14 @@ import {
   Box,
 } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
-import { FaExternalLinkAlt, FaLink } from 'react-icons/fa'
+import { FaExternalLinkAlt } from 'react-icons/fa'
 
 interface IPFSLinkProps {
   ipfsHash: string
+  title?: string
 }
 
-const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash }) => {
+const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -26,7 +27,7 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash }) => {
 
   return (
     <VStack my={4} alignItems="start" justifyContent="center">
-      <Text fontSize="sm">You account configuration hash on IPFS</Text>
+      {title && <Text fontSize="sm">{title}</Text>}
 
       <HStack minH="24px" width="100%">
         <Link

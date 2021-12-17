@@ -48,9 +48,9 @@ export const createMeeting = async (meeting: any): Promise<DBSlotEnhanced> => {
     return await internalFetch(`/secure/meetings`, 'POST', meeting) as DBSlotEnhanced
 }
 
-export const isSlotFree = async (account_identifier: string, start: Date, end: Date, meetingTypeId: string): Promise<{isFree: boolean}> => {
+export const isSlotFree = async (account_id: string, start: Date, end: Date, meetingTypeId: string): Promise<{isFree: boolean}> => {
     try {
-    return await internalFetch(`/meetings/slot/${account_identifier}?start=${start.getTime()}&end=${end.getTime()}&meetingTypeId=${meetingTypeId}`) as {isFree: boolean}
+    return await internalFetch(`/meetings/slot/${account_id}?start=${start.getTime()}&end=${end.getTime()}&meetingTypeId=${meetingTypeId}`) as {isFree: boolean}
     } catch (e) {
         return {isFree: false}
     }
@@ -60,8 +60,8 @@ export const saveMeetingType = async (type: MeetingType): Promise<Account> => {
     return await internalFetch(`/secure/meetings/type`, 'POST', type) as Account
 }
 
-export const getMeetings = async (accountIdentifier: string, start?: Date, end?: Date): Promise<DBSlot[]> => {
-    const response = await internalFetch(`/meetings/${accountIdentifier}?start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`) as DBSlot[]
+export const getMeetings = async (accountIdentifier: string, start?: Date, end?: Date, limit?: number, offset?: number): Promise<DBSlot[]> => {
+    const response = await internalFetch(`/meetings/${accountIdentifier}?limit=${limit || undefined}&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`) as DBSlot[]
     return response.map(slot => ({...slot, start: new Date(slot.start), end: new Date(slot.end)}))
 }
 

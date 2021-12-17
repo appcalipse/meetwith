@@ -66,3 +66,7 @@ export const addContentToIPFS = async (content: object): Promise<string> => {
 export const fetchContentFromIPFS = async (path: string): Promise<object> => {
     return ipfsInstance.fetchContentFromIPFS(path)
 }
+
+export const fetchContentFromIPFSFromBrowser = async (hash: string): Promise<object> => {
+    return await (await fetch(`https://ipfs.infura.io/ipfs/${hash}`)).json()
+}

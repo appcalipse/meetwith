@@ -3,11 +3,11 @@ import { Account, AccountPreferences, MeetingType } from '../types/Account';
 import { encryptContent } from './cryptography';
 import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, ParticipantBaseInfo, ParticipantInfo, ParticipantType, ParticipationStatus } from '../types/Meeting';
 import { createClient } from '@supabase/supabase-js'
-import { AccountNotFoundError, MeetingNotFoundError, MeetingWithYourselfError } from '../utils/errors';
+import { AccountNotFoundError, MeetingNotFoundError, MeetingWithYourselfError, TimeNotAvailableError } from '../utils/errors';
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper';
 import { generateMeetingUrl } from './meeting_call_helper';
 import { generateDefaultAvailabilities, generateDefaultMeetingType } from './calendar_manager';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4, validate } from 'uuid';
 import dayjs from 'dayjs';
 
 const db: any = { ready: false };
@@ -107,8 +107,11 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
 }
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
+
+    const query = validate(identifier) ? `id.eq.${identifier}` : `address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`
+
     const {data, error} = await db.supabase.from('accounts').select('nonce')
-    .or(`address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`)
+    .or(query)
 
     if (!error && data.length > 0) {
         return data[0].nonce as number
@@ -119,19 +122,24 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 
 
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
+
+    const query = validate(identifier) ? `id.eq.${identifier}` : `address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`
+
     const {data, error} = await db.supabase.from('accounts').select()
-    .or(`address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`)
+    .or(query)
 
     if (!error && data.length > 0) {
         const account = data[0] as Account
         account.preferences = (await fetchContentFromIPFS(account.preferences_path)) as AccountPreferences
         return account
+    } else {
+        console.log(error)
     }
 
     throw new AccountNotFoundError(identifier)
 }
 
-const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date): Promise<DBSlot[]> => {
+const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date, limit?: number, offset?: number): Promise<DBSlot[]> => {
     const account = await getAccountFromDB(identifier)
 
     const _start = start ? start.toDateString() : "1970-01-01"
@@ -140,8 +148,11 @@ const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date):
     const { data, error } = await db.supabase.from('slots').select(
     ).eq('account_pub_key', account.internal_pub_key)
     .or(`and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`)
+    .range(offset || 0, (offset || 0) + (limit ? (limit - 1) : 99999999999999999))
+    .order('start',  { ascending: false })
 
     if (error) {
+        console.log(error)
     // //TODO: handle error
     }
 
@@ -178,50 +189,29 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
     return meeting
 }
 
-const saveMeeting = async (meeting: MeetingCreationRequest): Promise<DBSlotEnhanced> => {
+const saveMeeting = async (meeting: MeetingCreationRequest, requesterId: string): Promise<DBSlotEnhanced> => {
 
-    //TODO - validate meeting can indeed be created, meaninig, it is not conflicting
+    //TODO - validate meeting can indeed be created, meaning, it is not conflicting
 
-    const schedulerId = meeting.participants.find(p => p.type == ParticipantType.Scheduler)!.account_identifier
-    const ownerId = meeting.participants.find(p => p.type == ParticipantType.Owner)!.account_identifier
-
-    if(schedulerId === ownerId) {
+    if((new Set(meeting.participants_mapping.map(p => p.account_id))).size !== meeting.participants_mapping.length) {
+        //means there are duplicate participants
         throw new MeetingWithYourselfError()
     }
-
-    const participantsInfo: ParticipantInfo[] = meeting.participants.map((participant: ParticipantBaseInfo) => {
-        return {
-            account_identifier: participant.account_identifier,
-            type: participant.type,
-            status: participant.type === ParticipantType.Scheduler ? ParticipationStatus.Accepted : ParticipationStatus.Pending,
-            slot_id: uuidv4()
-        }
-    })
 
     const slots = []
     let meetingResponse = {} as DBSlotEnhanced
     let index = 0
     let i = 0
 
-    for(let participant of participantsInfo) {
+    for(let participant of meeting.participants_mapping) {
 
-        const ipfsInfo: IPFSMeetingInfo = {
-            created_at: new Date(),
-            participants: participantsInfo,
-            content: meeting.content,
-            meeting_url: generateMeetingUrl(meeting),
-            change_history_paths: []
+        if(await !isSlotFree(participant.account_id, meeting.meetingTypeId, meeting.start, meeting.end)) {
+          throw new TimeNotAvailableError()
         }
 
-        if(await isSlotFree(participant.account_identifier, meeting.meetingTypeId, meeting.start, meeting.end)) {
+        const account = await getAccountFromDB(participant.account_id)
         
-        }
-
-        const account = await getAccountFromDB(participant.account_identifier)
-
-        const meetingInfoEncrypted = await encryptWithPublicKey(account.internal_pub_key, JSON.stringify(ipfsInfo))
-        
-        const path = await addContentToIPFS(meetingInfoEncrypted)
+        const path = await addContentToIPFS(participant.privateInfo)
 
         const dbSlot: DBSlot = {
             id: participant.slot_id,
@@ -233,9 +223,9 @@ const saveMeeting = async (meeting: MeetingCreationRequest): Promise<DBSlotEnhan
 
         slots.push(dbSlot)
 
-        if(participant.type === ParticipantType.Scheduler) {
+        if(participant.account_id === requesterId) {
             index = i
-            meetingResponse = {...dbSlot, meeting_info_encrypted: meetingInfoEncrypted}
+            meetingResponse = {...dbSlot, meeting_info_encrypted: participant.privateInfo}
         }
         i++
     }

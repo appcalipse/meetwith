@@ -55,14 +55,10 @@ const Schedule: React.FC = () => {
     }
   }
 
-  const love = account.whatfuck!.asdsa
-
   const confirmSchedule = async (startTime: Date, content?: string) => {
-    onOpen()
-
     if (logged) {
       const start = dayjs(startTime)
-      const end = dayjs(startTime).add(15, 'minute')
+      const end = dayjs(startTime).add(selectedType.duration, 'minute')
       try {
         await scheduleMeeting(
           currentAccount!.address,

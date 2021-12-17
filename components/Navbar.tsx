@@ -59,7 +59,9 @@ export default function WithSubnavigation() {
           })
         } else {
           await login(account)
-          await router.push('/dashboard')
+          if (router.pathname === '/') {
+            await router.push('/dashboard')
+          }
         }
       } catch (error: any) {
         console.error(error)
@@ -339,15 +341,15 @@ const NAV_ITEMS: Array<NavItem> = [
   // },
   {
     label: 'Waitlist',
-    href: '#subscribe',
+    href: '/#subscribe',
   },
   {
     label: 'Plans',
-    href: '#pricing',
+    href: '/#pricing',
   },
   {
     label: 'FAQ',
-    href: '#faq',
+    href: '/#faq',
   },
   // {
   //     label: 'Hire Designers',

@@ -14,12 +14,16 @@ export enum ParticipantType {
 }
 
 export interface MeetingCreationRequest {
-    participants: ParticipantBaseInfo[],
+    participants_mapping: CreationRequestParticipantMapping[],
     meetingTypeId: string,
-    content?: string,
     start: Date,
-    end: Date,
-    meeting_url?: string
+    end: Date
+}
+
+export interface CreationRequestParticipantMapping {
+    account_id: string,
+    slot_id: string,
+    privateInfo: Encrypted
 }
 
 export interface DBSlot {
@@ -36,13 +40,15 @@ export interface DBSlotEnhanced extends DBSlot {
 }
 
 export interface ParticipantBaseInfo {
-    account_identifier: string,
+    account_id: string,
     type: ParticipantType,
 }
 
 export interface ParticipantInfo extends ParticipantBaseInfo {
     status: ParticipationStatus,
     slot_id: string,
+    address: string,
+    name?: string,
 }
 
 export interface IPFSMeetingInfo {

@@ -56,10 +56,10 @@ const createOrFetchAccount = async (accountAddress: string, timezone: string): P
         }
     }
 
-    const signature = getSignature(accountAddress)
+    const signature = getSignature(account.address)
 
     if (!signature) {
-        await signDefaultMessage(accountAddress, account.nonce)
+        await signDefaultMessage(account.address, account.nonce)
     }
 
     storeCurrentAccount(account)

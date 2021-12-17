@@ -185,7 +185,10 @@ const DashboardContent: React.FC = () => {
             </InputGroup>
           </Box>
 
-          <IPFSLink ipfsHash={currentAccount.preferences_path} />
+          <IPFSLink
+            ipfsHash={currentAccount.preferences_path}
+            title="You account configuration hash on IPFS"
+          />
         </Box>
 
         <Box py={2} width="100%">
