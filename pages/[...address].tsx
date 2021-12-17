@@ -22,14 +22,18 @@ import { getAccountDisplayName } from '../utils/user_manager'
 
 const Schedule: React.FC = () => {
   const router = useRouter()
+
+  const [account, setAccount] = useState(null as Account | null)
+
   useEffect(() => {
-    const address = router.query.address as string
-    if (address) {
-      checkUser(address)
+    if (!account) {
+      const address = router.query.address ? router.query.address[0] : null
+      if (address) {
+        checkUser(address)
+      }
     }
   }, [router.query])
 
-  const [account, setAccount] = useState(null as Account | null)
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [meetings, setMeetings] = useState([] as DBSlot[])
@@ -45,7 +49,11 @@ const Schedule: React.FC = () => {
     try {
       const account = await getAccount(identifier)
       setAccount(account)
-      setSelectedType(account.preferences!.availableTypes[0])
+      const typeOnRoute = router.query.address ? router.query.address[1] : null
+      const type = account.preferences!.availableTypes.find(
+        t => t.url === typeOnRoute
+      )
+      setSelectedType(type || account.preferences!.availableTypes[0])
       updateMeetings(account.address)
       setLoading(false)
     } catch (e) {
@@ -118,6 +126,22 @@ const Schedule: React.FC = () => {
     account && updateMeetings(account.address)
   }, [currentMonth])
 
+  const changeType = (typeId: string) => {
+    const type = account!
+      .preferences!.availableTypes.concat({
+        id: 'sdas',
+        duration: 12,
+        title: 'whatevs',
+        url: 'here',
+        minAdvanceTime: 10,
+      })
+      .find(t => t.id === typeId)!
+    setSelectedType(type)
+    router.push(`/${account!.address}/${type.url}`, undefined, {
+      shallow: true,
+    })
+  }
+
   const validateSlot = (slot: Date): boolean => {
     return isSlotAvailable(
       selectedType.duration,
@@ -143,20 +167,21 @@ const Schedule: React.FC = () => {
                 placeholder="Select option"
                 mt={8}
                 value={selectedType.id}
-                onChange={e =>
-                  e.target.value &&
-                  setSelectedType(
-                    account!.preferences!.availableTypes.find(
-                      t => t.id === e.target.value
-                    )!
-                  )
-                }
+                onChange={e => e.target.value && changeType(e.target.value)}
               >
-                {account!.preferences!.availableTypes.map(type => (
-                  <option key={type.id} value={type.id}>
-                    {durationToHumanReadable(type.duration)}
-                  </option>
-                ))}
+                {account!
+                  .preferences!.availableTypes.concat({
+                    id: 'sdas',
+                    duration: 12,
+                    title: 'whatevs',
+                    url: 'here',
+                    minAdvanceTime: 10,
+                  })
+                  .map(type => (
+                    <option key={type.id} value={type.id}>
+                      {durationToHumanReadable(type.duration)}
+                    </option>
+                  ))}
               </Select>
             </Box>
 
