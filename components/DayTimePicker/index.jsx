@@ -16,6 +16,7 @@ import { FormLabel } from '@chakra-ui/form-control'
 import { Textarea } from '@chakra-ui/textarea'
 import { Icon, HStack, Text, useColorModeValue, Input } from '@chakra-ui/react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
+import { logEvent } from '../../utils/analytics'
 
 function DayTimePicker({
   timeSlotValidator,
@@ -55,11 +56,13 @@ function DayTimePicker({
     if (pickedDay !== day) {
       dayChanged && dayChanged(day)
     }
+    logEvent('Selected day')
     setPickedDay(day)
     setShowPickTime(true)
   }
 
   const handlePickTime = time => {
+    logEvent('Selected time')
     setPickedTime(time)
     setShowPickTime(false)
     setShowConfirm(true)

@@ -19,6 +19,7 @@ import { defaultTimeRange } from '../../utils/calendar_manager'
 import { saveAccountChanges } from '../../utils/api_helper'
 import { AccountContext } from '../../providers/AccountProvider'
 import TimezoneSelector from '../TimezoneSelector'
+import { logEvent } from '../../utils/analytics'
 
 const AvailabilityConfig: React.FC = () => {
   const { currentAccount, login } = useContext(AccountContext)
@@ -45,6 +46,7 @@ const AvailabilityConfig: React.FC = () => {
         },
       })
       login(updatedAccount)
+      logEvent('Updated availabilities')
     } catch (e) {
       //TODO handle error
       console.log(e)

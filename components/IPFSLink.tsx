@@ -1,6 +1,7 @@
 import { Link, Text, Spinner, VStack, HStack, Icon } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { FaExternalLinkAlt } from 'react-icons/fa'
+import { logEvent } from '../utils/analytics'
 
 interface IPFSLinkProps {
   ipfsHash: string
@@ -30,6 +31,7 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
           width="100%"
           alignItems="center"
           justifyContent="center"
+          onClick={() => logEvent('Clicked IPFS link', { title })}
         >
           <HStack
             display={loading ? 'none' : 'flex'}

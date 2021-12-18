@@ -2,11 +2,16 @@ import { Button } from '@chakra-ui/button'
 import { useColorMode, useColorModeValue } from '@chakra-ui/color-mode'
 import { Stack } from '@chakra-ui/layout'
 import { Switch } from '@chakra-ui/switch'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { FaSun, FaMoon } from 'react-icons/fa'
+import { logEvent } from '../../utils/analytics'
 
 export const ThemeSwitcher: React.FC = () => {
   const { colorMode, toggleColorMode } = useColorMode()
+
+  useEffect(() => {
+    logEvent('Toggled theme', { mode: colorMode })
+  }, [colorMode])
 
   return (
     <>

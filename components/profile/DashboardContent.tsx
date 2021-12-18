@@ -33,6 +33,7 @@ import { AccountContext } from '../../providers/AccountProvider'
 import AccountDetails from './AccountDetails'
 import MeetingTypesConfig from './MeetingTypesConfig'
 import { getAccountCalendarUrl } from '../../utils/calendar_manager'
+import { logEvent } from '../../utils/analytics'
 
 enum EditMode {
   MEETINGS,
@@ -142,7 +143,13 @@ const DashboardContent: React.FC = () => {
 
   const accountUrl = getAccountCalendarUrl(currentAccount!, false)
 
+  const menuClicked = (mode: EditMode) => {
+    setCurrentEditMode(mode)
+    logEvent('Selected menu item on dashboard', { mode })
+  }
+
   const copyUrl = async () => {
+    logEvent('Copied calendar URL')
     if ('clipboard' in navigator) {
       await navigator.clipboard.writeText(accountUrl)
     } else {
@@ -225,7 +232,7 @@ const DashboardContent: React.FC = () => {
               icon={link.icon}
               mode={link.mode}
               locked={link.locked || false}
-              changeMode={setCurrentEditMode}
+              changeMode={menuClicked}
             ></NavItem>
           ))}
         </Box>

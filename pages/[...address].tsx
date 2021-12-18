@@ -18,6 +18,7 @@ import { Account, MeetingType } from '../types/Account'
 import { Flex, Box, Container } from '@chakra-ui/layout'
 import MeetingScheduledDialog from '../components/meeting/MeetingScheduledDialog'
 import { useDisclosure } from '@chakra-ui/hooks'
+import { logEvent } from '../utils/analytics'
 
 const Schedule: React.FC = () => {
   const router = useRouter()
@@ -84,6 +85,7 @@ const Schedule: React.FC = () => {
           content
         )
         setLastScheduledMeeting(meeting)
+        logEvent('Scheduled a meeting')
         onOpen()
         return true
       } catch (e) {

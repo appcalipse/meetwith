@@ -4,6 +4,7 @@ import { Jazzicon } from '@ukstv/jazzicon-react'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import router from 'next/router'
 import { useColorModeValue } from '@chakra-ui/color-mode'
+import { logEvent } from '../../utils/analytics'
 
 interface NavBarLoggedProfileProps {
   account: Account
@@ -11,6 +12,10 @@ interface NavBarLoggedProfileProps {
 const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
   const accountName = getAccountDisplayName(props.account)
 
+  const goToDashboard = () => {
+    logEvent('Clicked menu account container')
+    router.push('/dashboard')
+  }
   return (
     <HStack
       borderRadius={6}
@@ -18,7 +23,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
       py={2}
       shadow={'md'}
       justifyContent="center"
-      onClick={() => router.push('/dashboard')}
+      onClick={goToDashboard}
       cursor="pointer"
       _hover={{
         bg: useColorModeValue('gray.100', 'gray.500'),

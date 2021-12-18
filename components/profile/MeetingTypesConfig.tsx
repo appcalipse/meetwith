@@ -16,6 +16,7 @@ import { useContext, useState } from 'react'
 import { FaArrowLeft, FaLock } from 'react-icons/fa'
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
+import { logEvent } from '../../utils/analytics'
 import { saveMeetingType } from '../../utils/api_helper'
 import {
   durationToHumanReadable,
@@ -78,10 +79,12 @@ const MeetingTypeCard: React.FC<CardProps> = ({
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
   const openType = () => {
+    logEvent('Clicked to edit meeting type')
     onSelect(typeId)
   }
 
   const copyLink = async () => {
+    logEvent('Copied link to meeting type')
     if ('clipboard' in navigator) {
       await navigator.clipboard.writeText(url)
     } else {
@@ -206,6 +209,7 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
 
     const account = await saveMeetingType(meetingType)
     login(account)
+    logEvent('Updated meeting type', meetingType)
 
     //TODO handle error
 

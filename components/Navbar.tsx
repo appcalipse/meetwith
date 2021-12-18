@@ -47,21 +47,10 @@ export default function WithSubnavigation() {
       logEvent('Clicked to connect wallet')
       try {
         const account = await loginWithWallet()
-        if (isProduction) {
-          toast({
-            title: 'Comming Soon',
-            description:
-              'Soon you will be able to sign in with your favourite web3 wallet. Meanwhile, join the waitlist.',
-            status: 'warning',
-            duration: 7000,
-            position: 'top',
-            isClosable: true,
-          })
-        } else {
-          await login(account)
-          if (router.pathname === '/') {
-            await router.push('/dashboard')
-          }
+        await login(account)
+        logEvent('Signed in')
+        if (router.pathname === '/') {
+          await router.push('/dashboard')
         }
       } catch (error: any) {
         console.error(error)
@@ -73,6 +62,7 @@ export default function WithSubnavigation() {
           position: 'top',
           isClosable: true,
         })
+        logEvent('Failed to sign in', error)
       }
       setLoading(false)
     }

@@ -27,6 +27,7 @@ import { Encrypted } from 'eth-crypto'
 import { ellipsizeAddress } from '../../../utils/user_manager'
 import { Dayjs } from 'dayjs'
 import { AccountContext } from '../../../providers/AccountProvider'
+import { logEvent } from '../../../utils/analytics'
 
 interface MeetingCardProps {
   meeting: DBSlot
@@ -158,7 +159,11 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
           <Text>
             <strong>Meeting link</strong>
           </Text>
-          <Link href={info.meeting_url} target="_blank">
+          <Link
+            href={info.meeting_url}
+            target="_blank"
+            onClick={() => logEvent('Clicked to start meeting')}
+          >
             {info.meeting_url}
           </Link>
           <VStack alignItems="flex-start">
