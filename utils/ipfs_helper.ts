@@ -17,7 +17,7 @@ class IPFSHelper {
                 port: 5001,
                 protocol: 'https',
                 headers: {
-                    authorization: 'Basic ' + Buffer.from(process.env.NEXT_INFURA_ID + ':' + process.env.NEXT_INFURA_SECRET).toString('base64')
+                    authorization: 'Basic ' + Buffer.from(process.env.NEXT_PUBLIC_INFURA_ID + ':' + process.env.NEXT_INFURA_SECRET).toString('base64')
                 }
             }
 

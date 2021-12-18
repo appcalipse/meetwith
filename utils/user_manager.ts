@@ -9,9 +9,15 @@ import { ethers } from "ethers";
 import { DEFAULT_MESSAGE } from "./constants";
 import { AccountNotFoundError } from "./errors";
 import dayjs from "./dayjs_extender";
+import WalletConnectProvider from "@walletconnect/web3-provider";
 
 const providerOptions = {
-    /* See Provider Options Section */
+    walletconnect: {
+        package: WalletConnectProvider, // required
+        options: {
+          infuraId: process.env.NEXT_PUBLIC_INFURA_ID
+        }
+      }
 };
 
 let web3: Web3;
@@ -19,7 +25,6 @@ let web3: Web3;
 const loginWithWallet = async (): Promise<Account> => {
 
     const web3Modal = new Web3Modal({
-        network: "mainnet", // optional
         cacheProvider: true, // optional
         providerOptions // required
     });
