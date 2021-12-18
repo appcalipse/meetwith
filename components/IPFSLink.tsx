@@ -1,12 +1,4 @@
-import {
-  Link,
-  Text,
-  Spinner,
-  VStack,
-  HStack,
-  Icon,
-  Box,
-} from '@chakra-ui/react'
+import { Link, Text, Spinner, VStack, HStack, Icon } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { FaExternalLinkAlt } from 'react-icons/fa'
 

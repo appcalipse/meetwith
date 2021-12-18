@@ -8,7 +8,6 @@ import {
   Box,
   useColorModeValue,
   Button,
-  Input,
 } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
 import dayjs from '../../utils/dayjs_extender'

@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getAccountDisplayName } from './user_manager';
 import { generateMeetingUrl } from './meeting_call_helper';
 
-const scheduleMeeting = async (source_account_id: string, target_account_id: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, meetingContent?: string): Promise<MeetingDecrypted> => {
+const scheduleMeeting = async (source_account_id: string, target_account_id: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, sourceName?:string, meetingContent?: string): Promise<MeetingDecrypted> => {
 
     if(source_account_id === target_account_id) {
         throw new MeetingWithYourselfError()
@@ -37,13 +37,14 @@ const scheduleMeeting = async (source_account_id: string, target_account_id: str
             status: ParticipationStatus.Accepted,
             address: schedulerAccount.address,
             slot_id: uuidv4(),
+            name: sourceName
         }
 
         const privateInfo: IPFSMeetingInfo = {
             created_at: new Date(),
             participants: [owner, scheduler],
             content: meetingContent,
-            meeting_url: generateMeetingUrl([owner, scheduler]),
+            meeting_url: generateMeetingUrl(),
             change_history_paths: []
         }
 

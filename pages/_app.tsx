@@ -28,13 +28,12 @@ export default function MyApp({
 }: MyAppProps) {
   const [loading, setLoading] = React.useState(true)
 
-  const initApp = async () => {
-    setLoading(false)
-    await initAnalytics()
-    pageView(router.asPath)
-  }
-
   React.useEffect(() => {
+    const initApp = async () => {
+      setLoading(false)
+      await initAnalytics()
+      pageView(router.asPath)
+    }
     initApp()
   }, [])
 

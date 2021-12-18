@@ -1,13 +1,12 @@
-import EthCrypto, { Encrypted, encryptWithPublicKey } from 'eth-crypto';
+import EthCrypto, { Encrypted } from 'eth-crypto';
 import { Account, AccountPreferences, MeetingType } from '../types/Account';
 import { encryptContent } from './cryptography';
-import { DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, ParticipantBaseInfo, ParticipantInfo, ParticipantType, ParticipationStatus } from '../types/Meeting';
+import { DBSlot, DBSlotEnhanced, MeetingCreationRequest, ParticipantBaseInfo, ParticipantInfo, ParticipantType, ParticipationStatus } from '../types/Meeting';
 import { createClient } from '@supabase/supabase-js'
 import { AccountNotFoundError, MeetingNotFoundError, MeetingWithYourselfError, TimeNotAvailableError } from '../utils/errors';
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper';
-import { generateMeetingUrl } from './meeting_call_helper';
 import { generateDefaultAvailabilities, generateDefaultMeetingType } from './calendar_manager';
-import { v4 as uuidv4, validate } from 'uuid';
+import { validate } from 'uuid';
 import dayjs from 'dayjs';
 
 const db: any = { ready: false };
@@ -142,14 +141,33 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
 const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date, limit?: number, offset?: number): Promise<DBSlot[]> => {
     const account = await getAccountFromDB(identifier)
 
-    const _start = start ? start.toDateString() : "1970-01-01"
-    const _end = end ? end.toDateString() : "2500-01-01"
+    const _start = start ? start.toISOString() : "1970-01-01"
+    const _end = end ? end.toISOString() : "2500-01-01"
 
     const { data, error } = await db.supabase.from('slots').select(
     ).eq('account_pub_key', account.internal_pub_key)
     .or(`and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`)
     .range(offset || 0, (offset || 0) + (limit ? (limit - 1) : 99999999999999999))
-    .order('start',  { ascending: false })
+    .order('start')
+
+    if (error) {
+        console.log(error)
+    // //TODO: handle error
+    }
+
+    return data || []
+}
+
+const getSlotsForDashboard = async (identifier: string, end: Date, limit: number, offset: number): Promise<DBSlot[]> => {
+    const account = await getAccountFromDB(identifier)
+
+    const _end = end.toISOString()
+
+    const { data, error } = await db.supabase.from('slots').select(
+    ).eq('account_pub_key', account.internal_pub_key)
+    .gte('end', _end)
+    .range(offset, offset + limit)
+    .order('start')
 
     if (error) {
         console.log(error)
@@ -262,4 +280,4 @@ const saveEmailToDB = async (email: string): Promise<boolean> => {
     return false
 }
 
-export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getMeetingFromDB, saveEmailToDB, isSlotFree, updateAccountPreferences, getAccountNonce}
+export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getSlotsForDashboard, getMeetingFromDB, saveEmailToDB, isSlotFree, updateAccountPreferences, getAccountNonce}

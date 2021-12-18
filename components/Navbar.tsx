@@ -51,7 +51,7 @@ export default function WithSubnavigation() {
           toast({
             title: 'Comming Soon',
             description:
-              'Soon you will be able to log in with your favourite web3 wallet. Meanwhile, join the waitlist.',
+              'Soon you will be able to sign in with your favourite web3 wallet. Meanwhile, join the waitlist.',
             status: 'warning',
             duration: 7000,
             position: 'top',
@@ -142,7 +142,7 @@ export default function WithSubnavigation() {
                   onClick={handleLogin}
                   isLoading={loading}
                 >
-                  Log in
+                  Sign in
                   <Box display={{ base: 'none', md: 'flex' }} as="span">
                     &#160;with wallet
                   </Box>

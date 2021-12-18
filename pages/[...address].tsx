@@ -11,14 +11,13 @@ import dayjs from '../utils/dayjs_extender'
 import { getAccount, getMeetings } from '../utils/api_helper'
 import { MeetingWithYourselfError } from '../utils/errors'
 import { useToast } from '@chakra-ui/toast'
-import { DBSlot } from '../types/Meeting'
+import { DBSlot, MeetingDecrypted } from '../types/Meeting'
 import { Select } from '@chakra-ui/select'
 import ProfileInfo from '../components/profile/ProfileInfo'
 import { Account, MeetingType } from '../types/Account'
 import { Flex, Box, Container } from '@chakra-ui/layout'
 import MeetingScheduledDialog from '../components/meeting/MeetingScheduledDialog'
 import { useDisclosure } from '@chakra-ui/hooks'
-import { getAccountDisplayName } from '../utils/user_manager'
 
 const Schedule: React.FC = () => {
   const router = useRouter()
@@ -42,19 +41,22 @@ const Schedule: React.FC = () => {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { currentAccount, logged } = useContext(AccountContext)
   const [reset, setReset] = useState(false)
+  const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
+    undefined as MeetingDecrypted | undefined
+  )
 
   const toast = useToast()
 
   const checkUser = async (identifier: string) => {
     try {
-      const account = await getAccount(identifier)
-      setAccount(account)
+      const _account = await getAccount(identifier)
+      setAccount(_account)
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account.preferences!.availableTypes.find(
+      const type = _account.preferences!.availableTypes.find(
         t => t.url === typeOnRoute
       )
-      setSelectedType(type || account.preferences!.availableTypes[0])
-      updateMeetings(account.address)
+      setSelectedType(type || _account.preferences!.availableTypes[0])
+      updateMeetings(_account.address)
       setLoading(false)
     } catch (e) {
       //TODO handle error
@@ -63,19 +65,25 @@ const Schedule: React.FC = () => {
     }
   }
 
-  const confirmSchedule = async (startTime: Date, content?: string) => {
+  const confirmSchedule = async (
+    startTime: Date,
+    name?: string,
+    content?: string
+  ): Promise<boolean> => {
     if (logged) {
       const start = dayjs(startTime)
       const end = dayjs(startTime).add(selectedType.duration, 'minute')
       try {
-        await scheduleMeeting(
-          currentAccount!.address,
-          account!.address,
+        const meeting = await scheduleMeeting(
+          currentAccount!.id,
+          account!.id,
           selectedType.id,
           start,
           end,
+          name,
           content
         )
+        setLastScheduledMeeting(meeting)
         onOpen()
         return true
       } catch (e) {
@@ -183,7 +191,8 @@ const Schedule: React.FC = () => {
             </Box>
           </Flex>
           <MeetingScheduledDialog
-            targetAccountId={getAccountDisplayName(account!)}
+            targetAccount={account!}
+            meeting={lastScheduledMeeting}
             isOpen={isOpen}
             onClose={_onClose}
           />

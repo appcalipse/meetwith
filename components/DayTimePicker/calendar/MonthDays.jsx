@@ -21,11 +21,11 @@ export const MonthDay = styled.li`
   border-radius: 50%;
   transition: all 0.25s ease;
   font-weight: ${props => (props.isToday ? 'bold' : 'inherit')};
-  color: ${props => (props.isToday ? props.theme.primary : 'inherit')};
+  color: ${props => (props.isToday ? '#d93f0c' : 'inherit')};
   opacity: ${props => (props.isValid ? 1 : 0.3)};
 
   :hover {
     cursor: ${props => (props.isValid ? 'pointer' : 'inherit')};
-    color: ${props => (props.isValid ? props.theme.primary : 'inherit')};
+    color: ${props => (props.isValid ? '#d93f0c' : 'inherit')};
   }
 `

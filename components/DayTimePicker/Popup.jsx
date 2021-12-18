@@ -12,7 +12,6 @@ export const PopupWrapper = styled.div`
 `
 
 export const Popup = styled.div`
-  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -21,7 +20,6 @@ export const Popup = styled.div`
   width: 100%;
   height: 100%;
   z-index: 3;
-  background-color: ${props => props.theme.background};
   font-size: 1.1em;
 `
 
@@ -36,7 +34,6 @@ export const PopupClose = styled.button`
   border: 0;
   background: none;
   font-size: 1em;
-  color: ${props => props.theme.primary};
   text-decoration: underline;
 
   :hover {
@@ -45,6 +42,5 @@ export const PopupClose = styled.button`
 
   :disabled {
     cursor: not-allowed;
-    color: ${props => props.theme.buttons.disabled.color};
   }
 `

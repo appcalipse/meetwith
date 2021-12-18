@@ -11,18 +11,24 @@ import {
   Text,
   Flex,
 } from '@chakra-ui/react'
+import dayjs from '../../utils/dayjs_extender'
 import router from 'next/router'
+import { Account } from '../../types/Account'
+import { MeetingDecrypted } from '../../types/Meeting'
+import { getAccountDisplayName } from '../../utils/user_manager'
 
 interface IProps {
   isOpen: boolean
   onClose: () => void
-  targetAccountId: string
+  targetAccount: Account
+  meeting?: MeetingDecrypted
 }
 
 const MeetingScheduledDialog: React.FC<IProps> = ({
   isOpen,
   onClose,
-  targetAccountId,
+  targetAccount,
+  meeting,
 }) => {
   return (
     <>
@@ -38,10 +44,16 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 src="/assets/calendar_success.svg"
                 alt="Meeting scheduled"
               />
-              <Text
-                textAlign="center"
-                mt={12}
-              >{`You meeting with ${targetAccountId} was scheduled successfully.`}</Text>
+              {isOpen && meeting && (
+                <Text
+                  textAlign="center"
+                  mt={12}
+                >{`You meeting with ${getAccountDisplayName(
+                  targetAccount
+                )} at ${dayjs(meeting!.start).format(
+                  'LLLL'
+                )} was scheduled successfully.`}</Text>
+              )}
             </Flex>
           </ModalBody>
           <ModalFooter>

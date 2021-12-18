@@ -2,14 +2,11 @@ import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import dateFns from 'date-fns'
 
-import { PrevIcon, NextIcon } from '../Icons'
-
 import { Grid, Wrapper, MonthYear, DaysOfWeek, DaysOfMonth } from './Layout'
 import { WeekDays, WeekDay, WEEK_DAYS } from './WeekDays'
 import { MonthDays, MonthDay } from './MonthDays'
 
 import {
-  MonthPicker,
   PrevMonth,
   NextMonth,
   CurrentMonth,
@@ -19,6 +16,8 @@ import {
 import { Calendar, FakeCalendar } from './Calendar'
 
 import generateDays from './generate-days'
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import { Flex, HStack } from '@chakra-ui/react'
 
 function Root({ validator, pickDay, monthChanged }) {
   const [month, setMonth] = useState(new Date())
@@ -74,9 +73,9 @@ function Root({ validator, pickDay, monthChanged }) {
   return (
     <Grid>
       <MonthYear>
-        <MonthPicker>
+        <HStack>
           <PrevMonth disabled={isAnimating} onClick={handlePrevMonth}>
-            <PrevIcon />
+            <FaChevronLeft />
           </PrevMonth>
 
           <Wrapper>
@@ -90,9 +89,11 @@ function Root({ validator, pickDay, monthChanged }) {
           </Wrapper>
 
           <NextMonth disabled={isAnimating} onClick={handleNextMonth}>
-            <NextIcon />
+            <Flex justifyContent="flex-end">
+              <FaChevronRight />
+            </Flex>
           </NextMonth>
-        </MonthPicker>
+        </HStack>
       </MonthYear>
 
       <Wrapper>

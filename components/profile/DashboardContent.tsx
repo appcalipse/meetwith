@@ -17,10 +17,12 @@ import {
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import {
+  FaBell,
   FaCalendarDay,
   FaCalendarPlus,
   FaCalendarWeek,
   FaInfo,
+  FaLock,
 } from 'react-icons/fa'
 import { useState, useContext } from 'react'
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
@@ -37,18 +39,26 @@ enum EditMode {
   AVAILABILITY,
   DETAILS,
   TYPES,
+  NOTIFICATIONS,
 }
 
 interface LinkItemProps {
   name: string
   icon: IconType
   mode: EditMode
+  locked?: boolean
 }
 const LinkItems: Array<LinkItemProps> = [
   { name: 'My meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
   { name: 'Account Details', icon: FaInfo, mode: EditMode.DETAILS },
   { name: 'Availabilities', icon: FaCalendarWeek, mode: EditMode.AVAILABILITY },
   { name: 'Meeting types', icon: FaCalendarPlus, mode: EditMode.TYPES },
+  {
+    name: 'Notifications (soon)',
+    icon: FaBell,
+    mode: EditMode.NOTIFICATIONS,
+    locked: true,
+  },
 ]
 
 interface NavItemProps extends FlexProps {
@@ -56,6 +66,7 @@ interface NavItemProps extends FlexProps {
   icon: IconType
   text: string
   mode: EditMode
+  locked: boolean
   changeMode: (mode: EditMode) => void
 }
 const NavItem = ({
@@ -64,18 +75,20 @@ const NavItem = ({
   text,
   mode,
   changeMode,
+  locked,
   ...rest
 }: NavItemProps) => {
   const backgroundColor = useColorModeValue('gray.300', 'gray.600')
   const hoverBg = useColorModeValue('gray.100', 'gray.500')
   const hoverColor = useColorModeValue('gray.600', 'gray.200')
   const iconColor = useColorModeValue('gray.600', 'gray.200')
+  const lockedColor = useColorModeValue('gray.400', 'gray.100')
   return (
     <Box
       width="100%"
       style={{ textDecoration: 'none' }}
       onClick={() => {
-        changeMode(mode)
+        !locked && changeMode(mode)
       }}
     >
       <Flex
@@ -96,13 +109,25 @@ const NavItem = ({
           <Icon
             mr="4"
             fontSize="16"
+            color={locked ? lockedColor : iconColor}
             _groupHover={{
-              color: iconColor,
+              color: locked ? lockedColor : iconColor,
             }}
             as={icon}
           />
         )}
-        <Text>{text}</Text>
+        <Text flex={1}>{text}</Text>
+        {locked && (
+          <Icon
+            mr="4"
+            fontSize="16"
+            color={lockedColor}
+            _groupHover={{
+              color: lockedColor,
+            }}
+            as={FaLock}
+          />
+        )}
       </Flex>
     </Box>
   )
@@ -199,6 +224,7 @@ const DashboardContent: React.FC = () => {
               text={link.name}
               icon={link.icon}
               mode={link.mode}
+              locked={link.locked || false}
               changeMode={setCurrentEditMode}
             ></NavItem>
           ))}

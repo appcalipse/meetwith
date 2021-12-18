@@ -1,4 +1,4 @@
-import { Input, Box, Button } from '@chakra-ui/react'
+import { Input, Button } from '@chakra-ui/react'
 import { Spacer, Text, VStack } from '@chakra-ui/layout'
 import { Textarea } from '@chakra-ui/textarea'
 import { useContext, useState } from 'react'

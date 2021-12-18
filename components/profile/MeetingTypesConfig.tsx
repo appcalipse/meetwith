@@ -5,8 +5,6 @@ import {
   HStack,
   Icon,
   Input,
-  InputGroup,
-  InputLeftAddon,
   Select,
   Spacer,
   Text,
@@ -25,7 +23,7 @@ import {
 } from '../../utils/calendar_manager'
 
 const MeetingTypesConfig: React.FC = () => {
-  const { currentAccount, logged } = useContext(AccountContext)
+  const { currentAccount } = useContext(AccountContext)
 
   const [selectedType, setSelectedType] = useState<string>('')
 
