@@ -33,30 +33,30 @@ function PriceWrapper({ children }: { children: ReactNode }) {
 
 export default function Pricing() {
   const handleLogin = async () => {
-    if (!currentAccount) {
-      setLoading(true)
-      logEvent('Clicked to connect wallet')
-      try {
-        const account = await loginWithWallet()
-        await login(account)
-        logEvent('Signed in')
-        if (router.pathname === '/') {
-          await router.push('/dashboard')
-        }
-      } catch (error: any) {
-        console.error(error)
-        toast({
-          title: 'Error',
-          description: error.message,
-          status: 'error',
-          duration: 7000,
-          position: 'top',
-          isClosable: true,
-        })
-        logEvent('Failed to sign in', error)
-      }
-      setLoading(false)
-    }
+    //   if (!currentAccount) {
+    //     setLoading(true)
+    //     logEvent('Clicked to connect wallet')
+    //     try {
+    //       const account = await loginWithWallet()
+    //       await login(account)
+    //       logEvent('Signed in')
+    //       if (router.pathname === '/') {
+    //         await router.push('/dashboard')
+    //       }
+    //     } catch (error: any) {
+    //       console.error(error)
+    //       toast({
+    //         title: 'Error',
+    //         description: error.message,
+    //         status: 'error',
+    //         duration: 7000,
+    //         position: 'top',
+    //         isClosable: true,
+    //       })
+    //       logEvent('Failed to sign in', error)
+    //     }
+    //     setLoading(false)
+    //   }
   }
 
   return (
