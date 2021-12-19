@@ -64,7 +64,7 @@ export default function MyApp({
             <meta property="og:type" content="website" />
             <meta
               property="og:title"
-              content="Meeting scheduler for #web3 - Meet with Wallet - meetwthwallet.xyz"
+              content="Meeting scheduler for #web3 - Meet with Wallet - meetwithwallet.xyz"
             />
             <meta
               property="og:description"
@@ -80,7 +80,7 @@ export default function MyApp({
             <meta property="twitter:url" content="https://meetwithwallet.xyz" />
             <meta
               name="twitter:title"
-              content="Meeting scheduler for #web3 - Meet with Wallet - meetwthwallet.xyz"
+              content="Meeting scheduler for #web3 - Meet with Wallet - meetwithwallet.xyz"
             />
             <meta
               name="twitter:description"
