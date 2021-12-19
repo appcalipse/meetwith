@@ -89,7 +89,7 @@ const CardWithIllustration: React.FC = () => {
             color={useColorModeValue('gray.500', 'gray.300')}
             textAlign="center"
           >
-            The first 50 on the waitlist will get one year free of PRO.
+            If you join the waitlist, will get one year free of PRO.
           </Text>
           <Text
             fontSize={'lg'}
