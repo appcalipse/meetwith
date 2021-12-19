@@ -3,7 +3,11 @@ import {
   DBSlotEnhanced,
   MeetingCreationRequest,
 } from '../../../../types/Meeting'
-import { getAccountFromDB, initDB, saveMeeting } from '../../../../utils/database'
+import {
+  getAccountFromDB,
+  initDB,
+  saveMeeting,
+} from '../../../../utils/database'
 import { withSentry } from '@sentry/nextjs'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
