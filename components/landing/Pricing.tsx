@@ -32,6 +32,33 @@ function PriceWrapper({ children }: { children: ReactNode }) {
 }
 
 export default function Pricing() {
+  const handleLogin = async () => {
+    if (!currentAccount) {
+      setLoading(true)
+      logEvent('Clicked to connect wallet')
+      try {
+        const account = await loginWithWallet()
+        await login(account)
+        logEvent('Signed in')
+        if (router.pathname === '/') {
+          await router.push('/dashboard')
+        }
+      } catch (error: any) {
+        console.error(error)
+        toast({
+          title: 'Error',
+          description: error.message,
+          status: 'error',
+          duration: 7000,
+          position: 'top',
+          isClosable: true,
+        })
+        logEvent('Failed to sign in', error)
+      }
+      setLoading(false)
+    }
+  }
+
   return (
     <Box pt={12} px={12} id="pricing">
       <VStack spacing={2} textAlign="center">
@@ -86,8 +113,14 @@ export default function Pricing() {
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
-              <Button w="full" colorScheme="orange" variant="outline" disabled>
-                Coming soon
+              <Button
+                w="full"
+                colorScheme="orange"
+                variant="outline"
+                disabled
+                onClick={handleLogin}
+              >
+                Start now
               </Button>
             </Box>
           </VStack>

@@ -3,26 +3,28 @@ import {
   DBSlotEnhanced,
   MeetingCreationRequest,
 } from '../../../../types/Meeting'
-import { initDB, saveMeeting } from '../../../../utils/database'
+import { getAccountFromDB, initDB, saveMeeting } from '../../../../utils/database'
 import { withSentry } from '@sentry/nextjs'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
-    const account_id = req.headers.account as string
+    const account_address = req.headers.account as string
+    const account = await getAccountFromDB(account_address)
 
     const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
 
     if (
       meeting.participants_mapping.filter(
-        participant => participant.account_id === account_id
+        participant => participant.account_id === account.id
       ).length === 0
     ) {
       res.status(403).send('You cant schedule a meeting for someone else')
+      return
     }
 
-    const meetingResult: DBSlotEnhanced = await saveMeeting(meeting, account_id)
+    const meetingResult: DBSlotEnhanced = await saveMeeting(meeting, account.id)
 
     res.status(200).json(meetingResult)
     return

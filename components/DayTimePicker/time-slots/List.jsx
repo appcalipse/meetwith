@@ -8,7 +8,6 @@ export const List = styled.ul`
   list-style: none;
   margin: 0;
   padding: 1em;
-  height: 355px;
   overflow: auto;
   border-top: 1px solid ${props => props.theme.secondary};
 `

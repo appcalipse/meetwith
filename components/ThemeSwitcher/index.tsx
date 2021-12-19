@@ -3,7 +3,7 @@ import { useColorMode, useColorModeValue } from '@chakra-ui/color-mode'
 import { Stack } from '@chakra-ui/layout'
 import { Switch } from '@chakra-ui/switch'
 import React, { useEffect } from 'react'
-import { FaSun, FaMoon } from 'react-icons/fa'
+import { BsSun, BsMoon } from 'react-icons/bs'
 import { logEvent } from '../../utils/analytics'
 
 export const ThemeSwitcher: React.FC = () => {
@@ -21,7 +21,7 @@ export const ThemeSwitcher: React.FC = () => {
         alignItems="center"
         direction="row"
       >
-        <FaSun />
+        <BsSun />
         <Switch
           pt={1}
           colorScheme="orange"
@@ -30,7 +30,7 @@ export const ThemeSwitcher: React.FC = () => {
           defaultChecked={colorMode === 'light' ? false : true}
           isChecked={colorMode === 'light' ? false : true}
         />
-        <FaMoon />
+        <BsMoon />
       </Stack>
       <Stack
         display={{ base: 'flex', md: 'none' }}
@@ -43,7 +43,7 @@ export const ThemeSwitcher: React.FC = () => {
           onClick={toggleColorMode}
           color={useColorModeValue('grey.500', 'grey.400')}
         >
-          {colorMode === 'light' ? <FaMoon /> : <FaSun />}
+          {colorMode === 'light' ? <BsMoon /> : <BsSun />}
         </Button>
       </Stack>
     </>
