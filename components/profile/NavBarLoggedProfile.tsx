@@ -1,4 +1,4 @@
-import { Text, HStack, Box } from '@chakra-ui/layout'
+import { Text, HStack, Box, Image } from '@chakra-ui/react'
 import { Account } from '../../types/Account'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import { getAccountDisplayName } from '../../utils/user_manager'
@@ -10,7 +10,7 @@ interface NavBarLoggedProfileProps {
   account: Account
 }
 const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
-  const accountName = getAccountDisplayName(props.account)
+  const accountName = getAccountDisplayName(props.account, true)
 
   const goToDashboard = () => {
     logEvent('Clicked menu account container')
@@ -36,7 +36,17 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         {accountName}
       </Text>
       <Box width="24px" height="24px">
-        <Jazzicon address={props.account.address} />
+        {props.account.avatar ? (
+          <Image
+            src={props.account.avatar}
+            width="24px"
+            height="24px"
+            borderRadius="50%"
+            objectFit="cover"
+          />
+        ) : (
+          <Jazzicon address={props.account.address} />
+        )}
       </Box>
     </HStack>
   )

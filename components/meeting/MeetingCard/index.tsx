@@ -28,6 +28,7 @@ import { ellipsizeAddress } from '../../../utils/user_manager'
 import { Dayjs } from 'dayjs'
 import { AccountContext } from '../../../providers/AccountProvider'
 import { logEvent } from '../../../utils/analytics'
+import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
 
 interface MeetingCardProps {
   meeting: DBSlot
@@ -160,7 +161,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             <strong>Meeting link</strong>
           </Text>
           <Link
-            href={info.meeting_url}
+            href={`${info.meeting_url}${UTM_PARAMS}`}
             target="_blank"
             onClick={() => logEvent('Clicked to start meeting')}
           >

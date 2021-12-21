@@ -12,9 +12,17 @@ import TimeSlots from './time-slots'
 import { preventPastDays } from './validators'
 import { Button } from '@chakra-ui/button'
 import { Box } from '@chakra-ui/layout'
-import { FormLabel } from '@chakra-ui/form-control'
 import { Textarea } from '@chakra-ui/textarea'
-import { Icon, HStack, Text, useColorModeValue, Input } from '@chakra-ui/react'
+import {
+  Icon,
+  HStack,
+  Text,
+  useColorModeValue,
+  Input,
+  Switch,
+  FormLabel,
+  Link,
+} from '@chakra-ui/react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
 import { logEvent } from '../../utils/analytics'
 
@@ -40,6 +48,8 @@ function DayTimePicker({
   const [content, setContent] = useState('')
   const [name, setName] = useState('')
   const [isScheduling, setIsScheduling] = useState(false)
+  const [customMeeting, setCustomMeeting] = useState(false)
+  const [meetingUrl, setMeetingUrl] = useState('')
 
   React.useEffect(() => {
     if (reset) {
@@ -75,7 +85,7 @@ function DayTimePicker({
 
   const handleConfirm = async () => {
     setIsScheduling(true)
-    const success = await onConfirm(pickedTime, name, content)
+    const success = await onConfirm(pickedTime, name, content, meetingUrl)
     setIsScheduling(false)
     willStartScheduling(!success)
   }
@@ -165,13 +175,43 @@ function DayTimePicker({
                 onChange={e => setContent(e.target.value)}
               />
 
+              <HStack my={4}>
+                <Switch
+                  colorScheme="orange"
+                  size="lg"
+                  mr={4}
+                  defaultChecked={!customMeeting}
+                  onChange={e => setCustomMeeting(!e.target.checked)}
+                />
+                <FormLabel htmlFor="email-alerts" mb="0">
+                  <Text color="gray">
+                    Use{' '}
+                    <Link isExternal href="https://huddle01.com">
+                      Huddle
+                    </Link>{' '}
+                    for your meeting (a link will be generated for you). Huddle
+                    is a decentralized meeting platform taillored for #web3.
+                  </Text>
+                </FormLabel>
+              </HStack>
+
+              {customMeeting && (
+                <Input
+                  mb={4}
+                  type="text"
+                  placeholder="insert a custom meeting url"
+                  value={meetingUrl}
+                  onChange={e => setMeetingUrl(e.target.value)}
+                />
+              )}
+
               <Button
                 isFullWidth
                 disabled={isLoading}
                 isLoading={isScheduling}
                 onClick={handleConfirm}
                 colorScheme="orange"
-                mt={4}
+                mt={2}
               >
                 {isLoading ? loadingText : confirmText}
               </Button>

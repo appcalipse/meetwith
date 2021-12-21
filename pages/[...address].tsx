@@ -19,11 +19,16 @@ import { Flex, Box, Container } from '@chakra-ui/layout'
 import MeetingScheduledDialog from '../components/meeting/MeetingScheduledDialog'
 import { useDisclosure } from '@chakra-ui/hooks'
 import { logEvent } from '../utils/analytics'
+import { loginWithWallet } from '../utils/user_manager'
 
 const Schedule: React.FC = () => {
   const router = useRouter()
 
+  const { currentAccount, logged, login, setLoginIn } =
+    useContext(AccountContext)
+
   const [account, setAccount] = useState(null as Account | null)
+  const [shouldSchedule, setShouldSchedule] = useState(false)
 
   useEffect(() => {
     if (!account) {
@@ -34,13 +39,40 @@ const Schedule: React.FC = () => {
     }
   }, [router.query])
 
+  // useEffect(() => {
+  //   if (shouldSchedule) {
+  //     confirmSchedule()
+  //   }
+  // }, [currentAccount])
+
+  const handleLogin = async (): Promise<void> => {
+    setLoginIn(true)
+    try {
+      const account = await loginWithWallet()
+      await login(account)
+      logEvent('Signed in')
+    } catch (error: any) {
+      console.error(error)
+      toast({
+        title: 'Error',
+        description: error.message,
+        status: 'error',
+        duration: 7000,
+        position: 'top',
+        isClosable: true,
+      })
+      logEvent('Failed to sign in', error)
+    }
+    setLoginIn(false)
+    return
+  }
+
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [meetings, setMeetings] = useState([] as DBSlot[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
   const [isScheduling, setIsScheduling] = useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const { currentAccount, logged } = useContext(AccountContext)
   const [reset, setReset] = useState(false)
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
     undefined as MeetingDecrypted | undefined
@@ -69,46 +101,45 @@ const Schedule: React.FC = () => {
   const confirmSchedule = async (
     startTime: Date,
     name?: string,
-    content?: string
+    content?: string,
+    meetingUrl?: string
   ): Promise<boolean> => {
-    if (logged) {
-      const start = dayjs(startTime)
-      const end = dayjs(startTime).add(selectedType.duration, 'minute')
-      try {
-        const meeting = await scheduleMeeting(
-          currentAccount!.id,
-          account!.id,
-          selectedType.id,
-          start,
-          end,
-          name,
-          content
-        )
-        setLastScheduledMeeting(meeting)
-        logEvent('Scheduled a meeting')
-        onOpen()
-        return true
-      } catch (e) {
-        if (e instanceof MeetingWithYourselfError) {
-          toast({
-            title: "Ops! Can't do that",
-            description: e.message,
-            status: 'error',
-            duration: 5000,
-            position: 'top',
-            isClosable: true,
-          })
-        } else throw e
-      }
-    } else {
-      toast({
-        title: 'Not connected',
-        description: 'Please connect your wallet to schedule.',
-        status: 'warning',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+    if (!logged) {
+      await handleLogin()
+      // setTimeout(() => {
+      //   confirmSchedule(startTime, name, content)
+      // }, 1000)
+      return false
+    }
+
+    const start = dayjs(startTime)
+    const end = dayjs(startTime).add(selectedType.duration, 'minute')
+    try {
+      const meeting = await scheduleMeeting(
+        currentAccount!.id,
+        account!.id,
+        selectedType.id,
+        start,
+        end,
+        name,
+        content,
+        meetingUrl
+      )
+      setLastScheduledMeeting(meeting)
+      logEvent('Scheduled a meeting')
+      onOpen()
+      return true
+    } catch (e) {
+      if (e instanceof MeetingWithYourselfError) {
+        toast({
+          title: "Ops! Can't do that",
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else throw e
     }
     return false
   }

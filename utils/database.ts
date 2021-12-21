@@ -1,5 +1,5 @@
 import EthCrypto, { Encrypted } from 'eth-crypto';
-import { Account, AccountPreferences, MeetingType } from '../types/Account';
+import { Account, AccountPreferences, MeetingType, SpecialDomainType } from '../types/Account';
 import { encryptContent } from './cryptography';
 import { DBSlot, DBSlotEnhanced, MeetingCreationRequest, ParticipantBaseInfo, ParticipantInfo, ParticipantType, ParticipationStatus } from '../types/Meeting';
 import { createClient } from '@supabase/supabase-js'
@@ -128,7 +128,7 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     .or(query)
 
     if (!error && data.length > 0) {
-        const account = data[0] as Account
+        let account = data[0] as Account
         account.preferences = (await fetchContentFromIPFS(account.preferences_path)) as AccountPreferences
         return account
     } else {

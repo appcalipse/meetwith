@@ -4,12 +4,12 @@ import { getSignature, storeCurrentAccount } from './storage';
 import { Account, PremiumAccount, SpecialDomainType } from "../types/Account";
 import { saveSignature } from "./storage";
 import { getAccount, createAccount } from "./api_helper";
-import ENS, { getEnsAddress } from '@ensdomains/ensjs'
 import { ethers } from "ethers";
 import { DEFAULT_MESSAGE } from "./constants";
 import { AccountNotFoundError } from "./errors";
 import dayjs from "./dayjs_extender";
 import WalletConnectProvider from "@walletconnect/web3-provider";
+import { resolveExtraInfo } from "./rpc_helper";
 
 const providerOptions = {
     walletconnect: {
@@ -63,40 +63,45 @@ const createOrFetchAccount = async (accountAddress: string, timezone: string): P
 
     const signature = getSignature(account.address)
 
+    const extraInfo = await resolveExtraInfo(account.address)
+
     if (!signature) {
         await signDefaultMessage(account.address, account.nonce)
     }
 
     storeCurrentAccount(account)
 
-    return account
+    return {...account, ...extraInfo}
 }
 
 const getCustomDomainName = async (address: string, type: SpecialDomainType) => {
     
-    if(type === SpecialDomainType.ENS) {
-    const provider = new ethers.providers.JsonRpcProvider('https://main-light.eth.linkpool.io/');
-    
-    const ens = new ENS({ provider, ensAddress: getEnsAddress('1') })
-    
-let result = await ens.getName(address)
-let name = result.name 
+//     if(type === SpecialDomainType.ENS) {
+//     const provider = new ethers.providers.InfuraProvider("homestead", {
+//         projectId: "e9561b79c40044eea932e764d03895df",
+//         projectSecret: "c394c63985fa49f1b6ac3bee76998148"
+//     });
+
+//     const result = await provider.lookupAddress(address)
+//     const ens = new ENS({ provider, ensAddress: getEnsAddress('1') })
+//     console.log(ens)
+// let name = "sasd"
 // Check to be sure the reverse record is correct.
-if(address != await ens.name(result.name).getAddress()) {
-  name = null;
+//if(address != await ens.name(result.name).getAddress()) {
+  //name = null;
+//}
+
+// return name
+//     }
+//     return null
 }
 
-return name
+const getAccountDisplayName = (account: Account | PremiumAccount, forceCustomDomain?: boolean): string => {
+    if(forceCustomDomain) {
+        return account.name || ellipsizeAddress(account.address)
+    }else {
+        return ellipsizeAddress(account.address)
     }
-    return null
-}
-
-const getAccountDisplayName = (account: Account | PremiumAccount): string => {
-    if((account as PremiumAccount).special_domain_type) {
-        return ''
-} else {
-    return ellipsizeAddress(account.address)
-}
 }
 
 const ellipsizeAddress = (address: string) => `${address.substr(0,5)}...${address.substr(address.length - 5)}`

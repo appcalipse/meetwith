@@ -36,14 +36,14 @@ import router from 'next/router'
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()
 
-  const { currentAccount, logged, login } = useContext(AccountContext)
-  const [loading, setLoading] = React.useState(false)
+  const { currentAccount, logged, login, loginIn, setLoginIn } =
+    useContext(AccountContext)
 
   const toast = useToast()
 
   const handleLogin = async () => {
     if (!currentAccount) {
-      setLoading(true)
+      setLoginIn(true)
       logEvent('Clicked to connect wallet')
       try {
         const account = await loginWithWallet()
@@ -64,7 +64,7 @@ export default function WithSubnavigation() {
         })
         logEvent('Failed to sign in', error)
       }
-      setLoading(false)
+      setLoginIn(false)
     }
   }
 
@@ -130,7 +130,7 @@ export default function WithSubnavigation() {
                   href={'#'}
                   colorScheme={isProduction ? 'gray' : 'orange'}
                   onClick={handleLogin}
-                  isLoading={loading}
+                  isLoading={loginIn}
                 >
                   Sign in
                   <Box display={{ base: 'none', md: 'flex' }} as="span">

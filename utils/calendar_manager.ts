@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getAccountDisplayName } from './user_manager';
 import { generateMeetingUrl } from './meeting_call_helper';
 
-const scheduleMeeting = async (source_account_id: string, target_account_id: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, sourceName?:string, meetingContent?: string): Promise<MeetingDecrypted> => {
+const scheduleMeeting = async (source_account_id: string, target_account_id: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, sourceName?:string, meetingContent?: string, meetingUrl?: string): Promise<MeetingDecrypted> => {
 
     if(source_account_id === target_account_id) {
         throw new MeetingWithYourselfError()
@@ -44,7 +44,7 @@ const scheduleMeeting = async (source_account_id: string, target_account_id: str
             created_at: new Date(),
             participants: [owner, scheduler],
             content: meetingContent,
-            meeting_url: generateMeetingUrl(),
+            meeting_url: meetingUrl || (await generateMeetingUrl()),
             change_history_paths: []
         }
 

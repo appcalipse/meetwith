@@ -78,7 +78,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
             placement="top"
             isOpen={copyFeedbackOpen}
           >
-            <Box onClick={copyDiscord} cursor="pointer">
+            <Box color={iconColor} onClick={copyDiscord} cursor="pointer">
               <FaDiscord size={24} />
             </Box>
           </Tooltip>

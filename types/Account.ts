@@ -6,7 +6,9 @@ export interface Account {
     encoded_signature: string,
     preferences?: AccountPreferences,
     preferences_path: string,
-    nonce: number
+    nonce: number,
+    name?: string, 
+    avatar?: string
 }
 
 export enum SpecialDomainType {
