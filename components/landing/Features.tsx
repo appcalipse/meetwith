@@ -77,7 +77,6 @@ export default function SimpleThreeColumns() {
                 >
                   Arbitrum
                 </Link> */}
-                ,{' '}
                 <Link
                   href="https://ipfs.io/?source=meetwithwallet"
                   target="_blank"

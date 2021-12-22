@@ -70,8 +70,8 @@ export const getMeetingsForDashboard = async (accountIdentifier: string, end: Da
     return response.map(slot => ({...slot, start: new Date(slot.start), end: new Date(slot.end)}))
 }
 
-export const subscribeToWaitlist = async (email: string): Promise<boolean> => {
-    const result = await internalFetch(`/subscribe`, 'POST', { email })
+export const subscribeToWaitlist = async (email: string, plan?: string): Promise<boolean> => {
+    const result = await internalFetch(`/subscribe`, 'POST', { email, plan})
     return (result as any).success
 }
 

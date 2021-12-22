@@ -266,17 +266,17 @@ const saveMeeting = async (meeting: MeetingCreationRequest, requesterId: string)
     return meetingResponse
 }
 
-const saveEmailToDB = async (email: string): Promise<boolean> => {
-    const { data, error } = await db.supabase.from('emails').upsert([
+const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
+    const { data, error } = await db.supabase.from('emails').insert([
         {
-            email
+            email,
+            plan
         }
     ])
 
     if (!error) {
         return true
     }
-
     return false
 }
 

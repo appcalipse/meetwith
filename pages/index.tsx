@@ -14,8 +14,6 @@ const Home: NextPage = () => {
 
         <Features />
 
-        <Subscribe />
-
         <Pricing />
 
         <FAQ />

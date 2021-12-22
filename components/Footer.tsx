@@ -72,7 +72,7 @@ export default function SmallWithLogoLeft() {
         align={{ base: 'center', md: 'center' }}
       >
         <Logo />
-        <Text>© 2021 Meet with Wallet. All rights reserved</Text>
+        <Text>Meet with Wallet. Some rights reserved, we guess</Text>
         <Stack direction={'row'} spacing={6}>
           <SocialButton
             label={'Eamil'}
