@@ -146,7 +146,7 @@ const isTimeInsideAvailabilities = (start: Dayjs, end: Dayjs, availabilities: Da
         if(availability.weekday === realStart.day()) {
             for(const range of availability.ranges) {
                 if(compareTimes(startTime, range.start) >= 0) {
-                    if(compareTimes(endTime, range.end) < 0) {    
+                    if(compareTimes(endTime, range.end) <= 0) {    
                     return true
                 }
         }

@@ -57,8 +57,8 @@ export default function FAQ() {
           wallet's, we generate a pair for the application), and your meet slots
           (times that your account has some meeting, so no one else can schedule
           it). Part of the public data is stored in our servers (to provide a
-          smoother and faster experi experience to all users) and part on IPFS.
-          All other data regarding your meetings (participants,
+          smoother and faster experience to all users) and part on IPFS. All
+          other data regarding your meetings (participants,
           description/comments, meeting link, etc) are stored on IPFS, encoded
           with your internal private key (that is only known by you, encrypted
           with your wallet signature). This means that only participants of a

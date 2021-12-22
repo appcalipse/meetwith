@@ -38,8 +38,8 @@ function PriceWrapper({ children }: { children: ReactNode }) {
 }
 
 export default function Pricing() {
-  const { currentAccount, login, setLoginIn } = useContext(AccountContext)
-  const [loading, setLoading] = useState(false)
+  const { currentAccount, login, setLoginIn, loginIn } =
+    useContext(AccountContext)
 
   const [selectedPlan, setSelectedPlan] = useState(
     undefined as string | undefined
@@ -48,12 +48,15 @@ export default function Pricing() {
   const toast = useToast()
 
   const handleLogin = async () => {
-    setLoading(true)
     if (!currentAccount) {
       setLoginIn(true)
       logEvent('Clicked to start on FREE plan')
       try {
         const account = await loginWithWallet()
+        if (!account) {
+          setLoginIn(false)
+          return
+        }
         await login(account)
         logEvent('Signed in')
 
@@ -71,7 +74,7 @@ export default function Pricing() {
         logEvent('Failed to sign in', error)
       }
     }
-    setLoading(false)
+    setLoginIn(false)
   }
 
   return (
@@ -140,7 +143,7 @@ export default function Pricing() {
                 w="full"
                 colorScheme="orange"
                 variant="outline"
-                isLoading={loading}
+                isLoading={loginIn}
                 onClick={handleLogin}
               >
                 Start now

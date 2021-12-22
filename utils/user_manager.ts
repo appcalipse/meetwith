@@ -22,19 +22,24 @@ const providerOptions = {
 
 let web3: Web3;
 
-const loginWithWallet = async (): Promise<Account> => {
+const loginWithWallet = async (): Promise<Account | undefined> => {
 
     const web3Modal = new Web3Modal({
         cacheProvider: true, // optional
         providerOptions // required
     });
 
-    const provider = await web3Modal.connect()
+    try {
+        const provider = await web3Modal.connect()
+    
 
-    web3 = new Web3(provider)
+        web3 = new Web3(provider)
 
-    const accounts = await web3.eth.getAccounts()
-    return await createOrFetchAccount(accounts[0], dayjs.tz.guess())
+        const accounts = await web3.eth.getAccounts()
+        return await createOrFetchAccount(accounts[0], dayjs.tz.guess())
+    } catch(err) {
+        return undefined
+    }
 }
 
 const signDefaultMessage = async (accountAddress: string, nonce: number): Promise<string> => {

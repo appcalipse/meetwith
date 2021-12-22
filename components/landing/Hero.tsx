@@ -19,18 +19,21 @@ import { logEvent } from '../../utils/analytics'
 import { loginWithWallet } from '../../utils/user_manager'
 
 export default function CallToActionWithVideo() {
-  const { currentAccount, login, setLoginIn } = useContext(AccountContext)
-  const [loading, setLoading] = useState(false)
+  const { currentAccount, login, setLoginIn, loginIn } =
+    useContext(AccountContext)
 
   const toast = useToast()
 
   const handleLogin = async () => {
-    setLoading(true)
+    setLoginIn(true)
     if (!currentAccount) {
-      setLoginIn(true)
       logEvent('Clicked on get started')
       try {
         const account = await loginWithWallet()
+        if (!account) {
+          setLoginIn(false)
+          return
+        }
         await login(account)
         logEvent('Signed in')
 
@@ -48,7 +51,7 @@ export default function CallToActionWithVideo() {
         logEvent('Failed to sign in', error)
       }
     }
-    setLoading(false)
+    setLoginIn(false)
   }
 
   return (
@@ -106,8 +109,7 @@ export default function CallToActionWithVideo() {
               px={6}
               bg={'orange.400'}
               _hover={{ bg: 'orange.500' }}
-              as={'a'}
-              isLoading={loading}
+              isLoading={loginIn}
               onClick={handleLogin}
             >
               Get started

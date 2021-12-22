@@ -61,6 +61,10 @@ const Schedule: React.FC = () => {
     setLoginIn(true)
     try {
       const account = await loginWithWallet()
+      if (!account) {
+        setLoginIn(false)
+        return
+      }
       await login(account)
       logEvent('Signed in')
     } catch (error: any) {

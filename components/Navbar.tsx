@@ -47,6 +47,10 @@ export default function WithSubnavigation() {
       logEvent('Clicked to connect wallet')
       try {
         const account = await loginWithWallet()
+        if (!account) {
+          setLoginIn(false)
+          return
+        }
         await login(account)
         logEvent('Signed in')
         if (router.pathname === '/') {
