@@ -28,7 +28,14 @@ const Schedule: React.FC = () => {
     useContext(AccountContext)
 
   const [account, setAccount] = useState(null as Account | null)
-  const [shouldSchedule, setShouldSchedule] = useState(false)
+  const [unloggedSchedule, setUnloggedSchedule] = useState(
+    null as {
+      startTime: Date
+      name?: string
+      content?: string
+      meetingUrl?: string
+    } | null
+  )
 
   useEffect(() => {
     if (!account) {
@@ -39,11 +46,17 @@ const Schedule: React.FC = () => {
     }
   }, [router.query])
 
-  // useEffect(() => {
-  //   if (shouldSchedule) {
-  //     confirmSchedule()
-  //   }
-  // }, [currentAccount])
+  useEffect(() => {
+    console.log(logged, currentAccount, 'unloggedSchedule', unloggedSchedule)
+    if (logged && unloggedSchedule) {
+      confirmSchedule(
+        unloggedSchedule.startTime,
+        unloggedSchedule.name,
+        unloggedSchedule.content,
+        unloggedSchedule.meetingUrl
+      )
+    }
+  }, [currentAccount])
 
   const handleLogin = async (): Promise<void> => {
     setLoginIn(true)
@@ -104,11 +117,11 @@ const Schedule: React.FC = () => {
     content?: string,
     meetingUrl?: string
   ): Promise<boolean> => {
+    setUnloggedSchedule(null)
+    setIsScheduling(true)
     if (!logged) {
+      setUnloggedSchedule({ startTime, name, content, meetingUrl })
       await handleLogin()
-      // setTimeout(() => {
-      //   confirmSchedule(startTime, name, content)
-      // }, 1000)
       return false
     }
 
@@ -128,6 +141,7 @@ const Schedule: React.FC = () => {
       setLastScheduledMeeting(meeting)
       logEvent('Scheduled a meeting')
       onOpen()
+      setIsScheduling(false)
       return true
     } catch (e) {
       if (e instanceof MeetingWithYourselfError) {
@@ -141,6 +155,7 @@ const Schedule: React.FC = () => {
         })
       } else throw e
     }
+    setIsScheduling(false)
     return false
   }
 
@@ -217,7 +232,10 @@ const Schedule: React.FC = () => {
                 reset={reset}
                 onMonthChange={(day: Date) => setCurrentMonth(day)}
                 onSchedule={confirmSchedule}
-                isScheduling={isScheduling => setIsScheduling(isScheduling)}
+                willStartScheduling={isScheduling =>
+                  setIsScheduling(isScheduling)
+                }
+                isSchedulingExternal={isScheduling}
                 slotDurationInMinutes={selectedType.duration}
                 timeSlotAvailability={validateSlot}
               />

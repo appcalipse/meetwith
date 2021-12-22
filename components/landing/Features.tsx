@@ -71,12 +71,12 @@ export default function SimpleThreeColumns() {
                   Ethereum Blockchain
                 </Link>
                 ,{' '}
-                <Link
+                {/* <Link
                   href="https://arbitrum.io/?source=meetwithwallet"
                   target="_blank"
                 >
                   Arbitrum
-                </Link>
+                </Link> */}
                 ,{' '}
                 <Link
                   href="https://ipfs.io/?source=meetwithwallet"
@@ -90,6 +90,13 @@ export default function SimpleThreeColumns() {
                   target="_blank"
                 >
                   ENS
+                </Link>
+                ,{' '}
+                <Link
+                  href="https://huddle01.com/?source=meetwithwallet"
+                  target="_blank"
+                >
+                  Huddle
                 </Link>{' '}
                 and,{' '}
                 <Link

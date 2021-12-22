@@ -39,6 +39,7 @@ function DayTimePicker({
   dayChanged,
   monthChanged,
   willStartScheduling,
+  isSchedulingExternal,
   reset,
 }) {
   const [pickedDay, setPickedDay] = useState(null)
@@ -208,7 +209,7 @@ function DayTimePicker({
               <Button
                 isFullWidth
                 disabled={isLoading}
-                isLoading={isScheduling}
+                isLoading={isScheduling || isSchedulingExternal}
                 onClick={handleConfirm}
                 colorScheme="orange"
                 mt={2}
@@ -245,6 +246,7 @@ DayTimePicker.propTypes = {
   err: PropTypes.string,
   onConfirm: PropTypes.func.isRequired,
   willStartScheduling: PropTypes.func,
+  isSchedulingExternal: PropTypes.bool,
   reset: PropTypes.bool,
   confirmText: PropTypes.string,
   loadingText: PropTypes.string,

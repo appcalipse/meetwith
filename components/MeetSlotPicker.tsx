@@ -7,7 +7,8 @@ interface MeetSlotPickerProps {
   slotDurationInMinutes: number
   onDayChange?: (day: Date) => void
   onMonthChange?: (day: Date) => void
-  isScheduling: (isScheduling: boolean) => void
+  willStartScheduling: (isScheduling: boolean) => void
+  isSchedulingExternal: boolean
   reset: boolean
 }
 
@@ -17,7 +18,8 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   slotDurationInMinutes,
   onDayChange,
   onMonthChange,
-  isScheduling,
+  willStartScheduling,
+  isSchedulingExternal,
   reset,
 }) => {
   return (
@@ -27,7 +29,8 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       monthChanged={onMonthChange}
       timeSlotSizeMinutes={slotDurationInMinutes}
       onConfirm={onSchedule}
-      willStartScheduling={isScheduling}
+      willStartScheduling={willStartScheduling}
+      isSchedulingExternal={isSchedulingExternal}
       timeSlotValidator={timeSlotAvailability}
     />
   )
