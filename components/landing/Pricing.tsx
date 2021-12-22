@@ -41,7 +41,9 @@ export default function Pricing() {
   const { currentAccount, login, setLoginIn } = useContext(AccountContext)
   const [loading, setLoading] = useState(false)
 
-  const [selectedPlan, setSelectedPlan] = useState(null as string | undefined)
+  const [selectedPlan, setSelectedPlan] = useState(
+    undefined as string | undefined
+  )
 
   const toast = useToast()
 
