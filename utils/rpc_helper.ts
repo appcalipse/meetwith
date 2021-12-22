@@ -2,7 +2,7 @@ import { Avatar } from "@ethersproject/providers/lib/base-provider";
 import { BigNumber, ethers } from "ethers";
 import { hexConcat, hexDataSlice, hexZeroPad } from "ethers/lib/utils";
 import { toUtf8String } from "@ethersproject/strings";
-import { Web3Provider } from "@ethersproject/providers";
+import { JsonRpcProvider } from "@ethersproject/providers";
 
 interface AccountExtraProps {
     name: string,
@@ -15,7 +15,13 @@ export const resolveExtraInfo = async (address: string): Promise<AccountExtraPro
 
 const resolveENS = async (address: string): Promise<AccountExtraProps | undefined> => {
 
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    let provider: JsonRpcProvider
+    
+    if(window.ethereum && window.ethereum.chainId === "0x1") {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+    } else {
+        provider = new ethers.providers.InfuraProvider("homestead", process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID);
+    }
 
     const name = await provider.lookupAddress(address)
 
@@ -50,7 +56,7 @@ const matchers = [
 ];
 
 
-const getAvatar = async (owner: string, avatar: string, provider: Web3Provider): Promise<Avatar | undefined> =>{
+const getAvatar = async (owner: string, avatar: string, provider: JsonRpcProvider): Promise<Avatar | undefined> =>{
     const linkage: Array<{ type: string, content: string }> = [ ];
     try {
         if (avatar == null) { return undefined; }

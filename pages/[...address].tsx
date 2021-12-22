@@ -47,7 +47,6 @@ const Schedule: React.FC = () => {
   }, [router.query])
 
   useEffect(() => {
-    console.log(logged, currentAccount, 'unloggedSchedule', unloggedSchedule)
     if (logged && unloggedSchedule) {
       confirmSchedule(
         unloggedSchedule.startTime,
