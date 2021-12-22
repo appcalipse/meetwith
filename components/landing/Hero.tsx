@@ -10,9 +10,47 @@ import {
   Icon,
   IconProps,
   useColorModeValue,
+  useToast,
 } from '@chakra-ui/react'
+import router from 'next/router'
+import { useContext, useState } from 'react'
+import { AccountContext } from '../../providers/AccountProvider'
+import { logEvent } from '../../utils/analytics'
+import { loginWithWallet } from '../../utils/user_manager'
 
 export default function CallToActionWithVideo() {
+  const { currentAccount, login, setLoginIn } = useContext(AccountContext)
+  const [loading, setLoading] = useState(false)
+
+  const toast = useToast()
+
+  const handleLogin = async () => {
+    setLoading(true)
+    if (!currentAccount) {
+      setLoginIn(true)
+      logEvent('Clicked on get started')
+      try {
+        const account = await loginWithWallet()
+        await login(account)
+        logEvent('Signed in')
+
+        await router.push('/dashboard')
+      } catch (error: any) {
+        console.error(error)
+        toast({
+          title: 'Error',
+          description: error.message,
+          status: 'error',
+          duration: 7000,
+          position: 'top',
+          isClosable: true,
+        })
+        logEvent('Failed to sign in', error)
+      }
+    }
+    setLoading(false)
+  }
+
   return (
     <Container maxW={'7xl'}>
       <Stack
@@ -69,7 +107,8 @@ export default function CallToActionWithVideo() {
               bg={'orange.400'}
               _hover={{ bg: 'orange.500' }}
               as={'a'}
-              href="#subscribe"
+              isLoading={loading}
+              onClick={handleLogin}
             >
               Get started
             </Button>
