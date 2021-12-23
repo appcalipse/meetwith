@@ -32,6 +32,7 @@ import { logEvent } from '../utils/analytics'
 import { isProduction } from '../utils/constants'
 import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
 import router from 'next/router'
+import MWWButton from './MWWButton'
 
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()
@@ -128,19 +129,12 @@ export default function WithSubnavigation() {
               {logged ? (
                 <NavBarLoggedProfile account={currentAccount!} />
               ) : (
-                <Button
-                  as={'a'}
-                  size="lg"
-                  href={'#'}
-                  colorScheme={isProduction ? 'gray' : 'orange'}
-                  onClick={handleLogin}
-                  isLoading={loginIn}
-                >
+                <MWWButton size="lg" onClick={handleLogin} isLoading={loginIn}>
                   Sign in
                   <Box display={{ base: 'none', md: 'flex' }} as="span">
                     &#160;with wallet
                   </Box>
-                </Button>
+                </MWWButton>
               )}
             </Stack>
           </Flex>

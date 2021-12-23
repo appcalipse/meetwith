@@ -16,6 +16,7 @@ import router from 'next/router'
 import { Account } from '../../types/Account'
 import { MeetingDecrypted } from '../../types/Meeting'
 import { getAccountDisplayName } from '../../utils/user_manager'
+import MWWButton from '../MWWButton'
 
 interface IProps {
   isOpen: boolean
@@ -60,13 +61,9 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
             <Button m={4} onClick={onClose} variant="ghost">
               Schedule another
             </Button>
-            <Button
-              colorScheme="orange"
-              mr={3}
-              onClick={() => router.push('/dashboard')}
-            >
+            <MWWButton mr={3} onClick={() => router.push('/dashboard')}>
               Go to dashboard
-            </Button>
+            </MWWButton>
           </ModalFooter>
         </ModalContent>
       </Modal>

@@ -17,6 +17,8 @@ import { useContext, useState } from 'react'
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
 import { loginWithWallet } from '../../utils/user_manager'
+import Loading from '../Loading'
+import MWWButton from '../MWWButton'
 
 export default function CallToActionWithVideo() {
   const { currentAccount, login, setLoginIn, loginIn } =
@@ -85,8 +87,16 @@ export default function CallToActionWithVideo() {
               Meeting scheduler,
             </Text>
             <br />
-            <Text as={'span'} color={'orange.400'}>
-              for web3!
+            <Text
+              bgGradient={useColorModeValue(
+                'linear(to-r,orange.400 25%, yellow.300)',
+                'linear(to-r,orange.300 25%, yellow.500)'
+              )}
+              bgClip="text"
+              fontSize="6xl"
+              fontWeight="extrabold"
+            >
+              for web3
             </Text>
           </Heading>
           <Text color={useColorModeValue('gray.500', 'gray.300')}>
@@ -102,18 +112,16 @@ export default function CallToActionWithVideo() {
             spacing={{ base: 4, sm: 6 }}
             direction={{ base: 'column', sm: 'row' }}
           >
-            <Button
+            <MWWButton
               rounded={'full'}
               size={'lg'}
               fontWeight={'normal'}
               px={6}
-              bg={'orange.400'}
-              _hover={{ bg: 'orange.500' }}
               isLoading={loginIn}
               onClick={handleLogin}
             >
               Get started
-            </Button>
+            </MWWButton>
             <Button
               as="a"
               href="#pricing"

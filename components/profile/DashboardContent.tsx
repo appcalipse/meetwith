@@ -34,6 +34,7 @@ import AccountDetails from './AccountDetails'
 import MeetingTypesConfig from './MeetingTypesConfig'
 import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { logEvent } from '../../utils/analytics'
+import Loading from '../Loading'
 
 enum EditMode {
   MEETINGS,
@@ -242,7 +243,14 @@ const DashboardContent: React.FC = () => {
       </Box>
     </HStack>
   ) : (
-    <Box>Loading...</Box>
+    <Flex
+      width="100%"
+      height="100%"
+      alignItems="center"
+      justifyContent="center"
+    >
+      <Loading />
+    </Flex>
   )
 }
 

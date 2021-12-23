@@ -119,9 +119,8 @@ const AlertMeDialog: React.FC<IProps> = ({ isOpen, onClose, plan }) => {
               <Button
                 flex={'1 0 auto'}
                 rounded={'full'}
-                bg={'orange.400'}
                 fontWeight={'normal'}
-                _hover={{ bg: 'orange.500' }}
+                colorScheme="orange"
                 isLoading={loading}
                 onClick={() => subscribe(email)}
               >

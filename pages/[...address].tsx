@@ -20,6 +20,7 @@ import MeetingScheduledDialog from '../components/meeting/MeetingScheduledDialog
 import { useDisclosure } from '@chakra-ui/hooks'
 import { logEvent } from '../utils/analytics'
 import { loginWithWallet } from '../utils/user_manager'
+import Loading from '../components/Loading'
 
 const Schedule: React.FC = () => {
   const router = useRouter()
@@ -88,6 +89,7 @@ const Schedule: React.FC = () => {
   const [meetings, setMeetings] = useState([] as DBSlot[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
   const [isScheduling, setIsScheduling] = useState(false)
+  const [readyToSchedule, setReadyToSchedule] = useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [reset, setReset] = useState(false)
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
@@ -209,14 +211,21 @@ const Schedule: React.FC = () => {
   return (
     <Container maxW="7xl" mt={8} flex={1}>
       {loading ? (
-        <div>Loading...</div>
+        <Flex
+          width="100%"
+          height="100%"
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Loading />
+        </Flex>
       ) : (
         <>
           <Flex wrap="wrap">
             <Box flex="1" minW="500px" p={8}>
               <ProfileInfo account={account!} />
               <Select
-                disabled={isScheduling}
+                disabled={readyToSchedule}
                 placeholder="Select option"
                 mt={8}
                 value={selectedType.id}
@@ -235,8 +244,8 @@ const Schedule: React.FC = () => {
                 reset={reset}
                 onMonthChange={(day: Date) => setCurrentMonth(day)}
                 onSchedule={confirmSchedule}
-                willStartScheduling={isScheduling =>
-                  setIsScheduling(isScheduling)
+                willStartScheduling={willStartScheduling =>
+                  setReadyToSchedule(willStartScheduling)
                 }
                 isSchedulingExternal={isScheduling}
                 slotDurationInMinutes={selectedType.duration}
