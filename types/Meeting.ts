@@ -60,11 +60,11 @@ export interface IPFSMeetingInfo {
 }
 
 export interface MeetingDecrypted {
-    created_at?: Date,
+    id: string,
+    created_at: Dayjs,
     start: Dayjs,
     end: Dayjs,
     participants: ParticipantInfo[],
     meeting_url: string,
     content?: string
-
 }

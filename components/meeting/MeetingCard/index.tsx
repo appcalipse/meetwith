@@ -8,6 +8,7 @@ import {
   HStack,
   Spinner,
   Spacer,
+  Button,
 } from '@chakra-ui/react'
 import dayjs from '../../../utils/dayjs_extender'
 import {
@@ -19,6 +20,7 @@ import {
 import {
   decryptMeeting,
   durationToHumanReadable,
+  generateIcs,
 } from '../../../utils/calendar_manager'
 import IPFSLink from '../../IPFSLink'
 import { useContext, useEffect, useState } from 'react'
@@ -120,6 +122,8 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
         meeting_info_encrypted: meetingInfoEncrypted,
       })
 
+      console.log(decryptedMeeting)
+
       setInfo(decryptedMeeting)
       setLoading(false)
     }
@@ -185,6 +189,13 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
               <Text mb={2}>{info.content}</Text>
             </Box>
           )}
+          <Button
+            colorScheme="orange"
+            variant="outline"
+            onClick={() => generateIcs(info)}
+          >
+            Download .ics
+          </Button>
         </VStack>
       )}
     </Box>

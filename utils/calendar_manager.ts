@@ -2,7 +2,7 @@ import { Dayjs } from 'dayjs';
 import dayjs from './dayjs_extender'
 import { decryptWithPrivateKey, Encrypted, encryptWithPublicKey } from 'eth-crypto';
 import { Account, DayAvailability, MeetingType } from '../types/Account';
-import { CreationRequestParticipantMapping, DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, MeetingDecrypted, ParticipantBaseInfo, ParticipantInfo, ParticipantType, ParticipationStatus } from "../types/Meeting";
+import { CreationRequestParticipantMapping, DBSlot, DBSlotEnhanced, IPFSMeetingInfo, MeetingCreationRequest, MeetingDecrypted, ParticipantInfo, ParticipantType, ParticipationStatus } from "../types/Meeting";
 import { createMeeting, getAccount, isSlotFree } from './api_helper';
 import { decryptContent } from './cryptography';
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors';
@@ -11,6 +11,7 @@ import { appUrl } from './constants';
 import { v4 as uuidv4 } from 'uuid';
 import { getAccountDisplayName } from './user_manager';
 import { generateMeetingUrl } from './meeting_call_helper';
+import { getDisplayName } from 'next/dist/shared/lib/utils';
 
 const scheduleMeeting = async (source_account_id: string, target_account_id: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, sourceName?:string, meetingContent?: string, meetingUrl?: string): Promise<MeetingDecrypted> => {
 
@@ -75,6 +76,47 @@ const scheduleMeeting = async (source_account_id: string, target_account_id: str
     }
 }
 
+const generateIcs = async (meeting: MeetingDecrypted) => {
+
+    const event = {
+        uid: meeting.id,
+        start: [meeting.start.year(), meeting.start.month() + 1, meeting.start.date(), meeting.start.hour(), meeting.start.minute()],
+        end: [meeting.end.year(), meeting.end.month() + 1, meeting.end.date(), meeting.end.hour(), meeting.end.minute()],
+        title: `Meeting: ${meeting.participants.map(participant => participant.name || participant.address).join(", ")}`,
+        description: meeting.content,
+        url: meeting.meeting_url,
+        created: [meeting.created_at!.year(), meeting.created_at!.month() + 1, meeting.created_at!.date(), meeting.created_at!.hour(), meeting.created_at!.minute()],
+//        status: 'CONFIRMED',
+        // organizer: { name: 'Admin', email: 'Race@BolderBOULDER.com' },
+        // attendees: [
+        //   { name: 'Adam Gibbons', email: 'adam@example.com', rsvp: true, partstat: 'ACCEPTED', role: 'REQ-PARTICIPANT' },
+        //   { name: 'Brittany Seaton', email: 'brittany@example2.org', dir: 'https://linkedin.com/in/brittanyseaton', role: 'OPT-PARTICIPANT' }
+        // ]
+    }
+
+    const ics = require('ics')
+
+    const icsFile = await ics.createEvent(event)
+
+    if(!icsFile.error) {
+    const url = window.URL.createObjectURL(
+        new Blob([icsFile.value], {type: 'text/plain'}),
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute(
+        'download',
+        `${meeting.id}.ics`,
+      );
+  
+      document.body.appendChild(link);  
+      link.click();
+      link.parentNode!.removeChild(link);
+    } else {
+        console.error(icsFile.error)
+    }
+}
+
 const decryptMeeting = async (meeting: DBSlotEnhanced): Promise<MeetingDecrypted> => {
 
     const account = await getAccount(meeting.account_pub_key)
@@ -82,7 +124,9 @@ const decryptMeeting = async (meeting: DBSlotEnhanced): Promise<MeetingDecrypted
     const meetingInfo = JSON.parse(await getContentFromEncrypted(account.address, getSignature(account.address)!, meeting.meeting_info_encrypted)) as IPFSMeetingInfo
     
     return {
+        id: meeting.id!,
         ...meeting,
+        created_at: dayjs(meeting.created_at!),
         participants: meetingInfo.participants,
         content: meetingInfo.content,
         meeting_url: meetingInfo.meeting_url,
@@ -207,4 +251,4 @@ const generateMeetingTypeUrl = (title:string): string => {
 }
 
 
-export { generateMeetingTypeUrl, scheduleMeeting, generateDefaultMeetingType, isSlotAvailable, decryptMeeting, generateDefaultAvailabilities, defaultTimeRange, durationToHumanReadable, getAccountCalendarUrl}
+export { generateIcs, generateMeetingTypeUrl, scheduleMeeting, generateDefaultMeetingType, isSlotAvailable, decryptMeeting, generateDefaultAvailabilities, defaultTimeRange, durationToHumanReadable, getAccountCalendarUrl}

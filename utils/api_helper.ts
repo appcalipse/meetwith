@@ -70,7 +70,7 @@ export const getMeetings = async (accountIdentifier: string, start?: Date, end?:
 
 export const getMeetingsForDashboard = async (accountIdentifier: string, end: Date, limit: number, offset: number): Promise<DBSlot[]> => {
     const response = await internalFetch(`/meetings/${accountIdentifier}?upcoming=true&limit=${limit || undefined}&offset=${offset || 0}&end=${end.getTime()}`) as DBSlot[]
-    return response.map(slot => ({...slot, start: new Date(slot.start), end: new Date(slot.end)}))
+    return response.map(slot => ({...slot, start: new Date(slot.start), end: new Date(slot.end), created_at: slot.created_at ? new Date(slot.created_at) : undefined}))
 }
 
 export const subscribeToWaitlist = async (email: string, plan?: string): Promise<boolean> => {
