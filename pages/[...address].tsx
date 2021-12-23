@@ -220,9 +220,9 @@ const Schedule: React.FC = () => {
           <Loading />
         </Flex>
       ) : (
-        <>
+        <Container maxW="lg">
           <Flex wrap="wrap">
-            <Box flex="1" minW="500px" p={8}>
+            <Box flex="1" minW={{ base: '300px', md: '500px' }} p={8}>
               <ProfileInfo account={account!} />
               <Select
                 disabled={readyToSchedule}
@@ -259,7 +259,7 @@ const Schedule: React.FC = () => {
             isOpen={isOpen}
             onClose={_onClose}
           />
-        </>
+        </Container>
       )}
     </Container>
   )

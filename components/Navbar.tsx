@@ -328,10 +328,6 @@ const NAV_ITEMS: Array<NavItem> = [
   //     ],
   // },
   {
-    label: 'Waitlist',
-    href: '/#subscribe',
-  },
-  {
     label: 'Plans',
     href: '/#pricing',
   },
