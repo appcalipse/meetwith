@@ -19,6 +19,8 @@ import {
   useDisclosure,
   useToast,
   Container,
+  Badge,
+  HStack,
 } from '@chakra-ui/react'
 import {
   HamburgerIcon,
@@ -29,7 +31,6 @@ import {
 import NextLink from 'next/link'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { logEvent } from '../utils/analytics'
-import { isProduction } from '../utils/constants'
 import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
 import router from 'next/router'
 import MWWButton from './MWWButton'
@@ -104,16 +105,18 @@ export default function WithSubnavigation() {
             </Flex>
             <Flex flex={{ base: 1 }}>
               <NextLink href={'/'} passHref>
-                <Link>
-                  <Image
-                    width="100px"
-                    p={2}
-                    src="/assets/logo.svg"
-                    alt="Meet with Wallet"
-                  />
+                <Link display={{ base: 'none', md: 'flex' }}>
+                  <HStack>
+                    <Image
+                      width="100px"
+                      p={2}
+                      src="/assets/logo.svg"
+                      alt="Meet with Wallet"
+                    />
+                    <Badge colorScheme="orange">Alpha</Badge>
+                  </HStack>
                 </Link>
               </NextLink>
-
               <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
                 <DesktopNav />
               </Flex>

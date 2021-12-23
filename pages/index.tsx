@@ -4,18 +4,21 @@ import Hero from '../components/landing/Hero'
 import Features from '../components/landing/Features'
 import Pricing from '../components/landing/Pricing'
 import FAQ from '../components/landing/FAQ'
+import { Container } from '@chakra-ui/react'
 
 const Home: NextPage = () => {
   return (
     <div>
       <main>
-        <Hero />
+        <Container maxW="7xl">
+          <Hero />
 
-        <Features />
+          <Features />
 
-        <Pricing />
+          <Pricing />
 
-        <FAQ />
+          <FAQ />
+        </Container>
       </main>
     </div>
   )

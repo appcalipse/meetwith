@@ -61,14 +61,14 @@ export default function CallToActionWithVideo() {
       <Stack
         align={'center'}
         spacing={{ base: 8, md: 10 }}
-        py={28}
+        py={{ base: 16, md: 28 }}
         direction={{ base: 'column', md: 'row' }}
       >
         <Stack flex={1} spacing={{ base: 5, md: 10 }}>
           <Heading
             lineHeight={1.1}
             fontWeight={600}
-            fontSize={{ base: '3xl', sm: '4xl', lg: '6xl' }}
+            fontSize={{ base: '4xl', sm: '4xl', lg: '6xl' }}
           >
             <Text
               as={'span'}
