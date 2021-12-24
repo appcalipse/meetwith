@@ -50,7 +50,7 @@ const AccountDetails: React.FC = () => {
       login(updatedAccount)
     } catch (e) {
       //TODO handle error
-      console.log(e)
+      console.error(e)
     }
 
     setLoading(false)

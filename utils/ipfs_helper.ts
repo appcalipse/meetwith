@@ -1,5 +1,6 @@
 import { create, IPFSHTTPClient } from 'ipfs-http-client'
 import { isProduction } from './constants'
+import * as Sentry from "@sentry/browser";
 
 class IPFSHelper {
 
@@ -67,6 +68,11 @@ export const fetchContentFromIPFS = async (path: string): Promise<object> => {
     return ipfsInstance.fetchContentFromIPFS(path)
 }
 
-export const fetchContentFromIPFSFromBrowser = async (hash: string): Promise<object> => {
-    return await (await fetch(`https://ipfs.infura.io/ipfs/${hash}`)).json()
+export const fetchContentFromIPFSFromBrowser = async (hash: string): Promise<object | undefined> => {
+    try {
+        return await (await fetch(`https://ipfs.infura.io/ipfs/${hash}`)).json()
+    } catch(err) {
+        Sentry.captureException(err)
+        return undefined
+    }
 }

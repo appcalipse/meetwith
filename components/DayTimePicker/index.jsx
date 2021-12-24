@@ -188,10 +188,11 @@ function DayTimePicker({
                   <Text color="gray">
                     Use{' '}
                     <Link isExternal href="https://huddle01.com">
-                      Huddle
+                      Huddle01
                     </Link>{' '}
-                    for your meeting (a link will be generated for you). Huddle
-                    is a decentralized meeting platform taillored for #web3.
+                    for your meetings (a link will be generated for you).
+                    Huddle01 is a web3-powered video conferencing tailored for
+                    DAOs and NFT communities.
                   </Text>
                 </FormLabel>
               </HStack>

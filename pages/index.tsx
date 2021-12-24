@@ -10,7 +10,7 @@ const Home: NextPage = () => {
   return (
     <div>
       <main>
-        <Container maxW="7xl">
+        <Container maxW="9xl">
           <Hero />
 
           <Features />

@@ -21,6 +21,7 @@ import { useDisclosure } from '@chakra-ui/hooks'
 import { logEvent } from '../utils/analytics'
 import { loginWithWallet } from '../utils/user_manager'
 import Loading from '../components/Loading'
+import * as Sentry from '@sentry/browser'
 
 const Schedule: React.FC = () => {
   const router = useRouter()
@@ -69,10 +70,10 @@ const Schedule: React.FC = () => {
       await login(account)
       logEvent('Signed in')
     } catch (error: any) {
-      console.error(error)
+      Sentry.captureException(error)
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || error,
         status: 'error',
         duration: 7000,
         position: 'top',
@@ -220,9 +221,14 @@ const Schedule: React.FC = () => {
           <Loading />
         </Flex>
       ) : (
-        <Container maxW="lg">
-          <Flex wrap="wrap">
-            <Box flex="1" minW={{ base: '300px', md: '500px' }} p={8}>
+        <Box>
+          <Flex wrap="wrap" justifyContent="center">
+            <Box
+              flex="1"
+              minW={{ base: '300px', md: '500px' }}
+              maxW="600px"
+              p={8}
+            >
               <ProfileInfo account={account!} />
               <Select
                 disabled={readyToSchedule}
@@ -259,7 +265,7 @@ const Schedule: React.FC = () => {
             isOpen={isOpen}
             onClose={_onClose}
           />
-        </Container>
+        </Box>
       )}
     </Container>
   )

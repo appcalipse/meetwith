@@ -25,9 +25,22 @@ const AvailabilityConfig: React.FC = () => {
   const { currentAccount, login } = useContext(AccountContext)
 
   const [loading, setLoading] = useState(false)
-  const [availabilities, setAvailabilities] = useState(
-    currentAccount!.preferences!.availabilities
-  )
+
+  const initialAvailabilities = currentAccount!.preferences!.availabilities
+
+  for (let i = 0; i <= 6; i++) {
+    let found = false
+    for (const availability of initialAvailabilities) {
+      if (availability.weekday === i) {
+        found = true
+      }
+    }
+    if (!found) {
+      initialAvailabilities.push({ weekday: i, ranges: [] })
+    }
+  }
+
+  const [availabilities, setAvailabilities] = useState(initialAvailabilities)
 
   let timezone = currentAccount!.preferences!.timezone
 
@@ -49,7 +62,7 @@ const AvailabilityConfig: React.FC = () => {
       logEvent('Updated availabilities')
     } catch (e) {
       //TODO handle error
-      console.log(e)
+      console.error(e)
     }
 
     setLoading(false)
@@ -75,19 +88,17 @@ const AvailabilityConfig: React.FC = () => {
         />
       </Box>
       <Text pt={2}>Your availabilities</Text>
-      {currentAccount!.preferences!.availabilities.map(
-        (availability, index) => (
-          <Box
-            key={index}
-            py={2}
-            width="100%"
-            borderBottom="1px solid"
-            borderColor={borderColor}
-          >
-            <WeekdayConfig dayAvailability={availability} onChange={onChange} />
-          </Box>
-        )
-      )}
+      {availabilities.map((availability, index) => (
+        <Box
+          key={index}
+          py={2}
+          width="100%"
+          borderBottom="1px solid"
+          borderColor={borderColor}
+        >
+          <WeekdayConfig dayAvailability={availability} onChange={onChange} />
+        </Box>
+      ))}
       <Spacer />
       <Button
         isLoading={loading}

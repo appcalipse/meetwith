@@ -109,7 +109,7 @@ const MeetingCard = ({ meeting }: MeetingCardProps) => {
 
 const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
   const [loading, setLoading] = useState(true)
-  const [info, setInfo] = useState({} as MeetingDecrypted)
+  const [info, setInfo] = useState(undefined as MeetingDecrypted | undefined)
   const { currentAccount } = useContext(AccountContext)
 
   useEffect(() => {
@@ -117,14 +117,14 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
       const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
         meeting.meeting_info_file_path
       )) as Encrypted
-      const decryptedMeeting = await decryptMeeting({
-        ...meeting,
-        meeting_info_encrypted: meetingInfoEncrypted,
-      })
+      if (meetingInfoEncrypted) {
+        const decryptedMeeting = await decryptMeeting({
+          ...meeting,
+          meeting_info_encrypted: meetingInfoEncrypted,
+        })
 
-      console.log(decryptedMeeting)
-
-      setInfo(decryptedMeeting)
+        setInfo(decryptedMeeting)
+      }
       setLoading(false)
     }
     decodeData()
@@ -159,7 +159,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
           <Text>Decoding meeting info...</Text>{' '}
           <Spinner size="sm" colorScheme="gray" />
         </HStack>
-      ) : (
+      ) : info ? (
         <VStack alignItems="flex-start">
           <Text>
             <strong>Meeting link</strong>
@@ -197,6 +197,10 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             Download .ics
           </Button>
         </VStack>
+      ) : (
+        <HStack>
+          <Text>Failed to decode information</Text>
+        </HStack>
       )}
     </Box>
   )

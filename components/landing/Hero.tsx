@@ -17,8 +17,8 @@ import { useContext, useState } from 'react'
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
 import { loginWithWallet } from '../../utils/user_manager'
-import Loading from '../Loading'
 import MWWButton from '../MWWButton'
+import * as Sentry from '@sentry/browser'
 
 export default function CallToActionWithVideo() {
   const { currentAccount, login, setLoginIn, loginIn } =
@@ -41,10 +41,10 @@ export default function CallToActionWithVideo() {
 
         await router.push('/dashboard')
       } catch (error: any) {
-        console.error(error)
+        Sentry.captureException(error)
         toast({
           title: 'Error',
-          description: error.message,
+          description: error.message || error,
           status: 'error',
           duration: 7000,
           position: 'top',

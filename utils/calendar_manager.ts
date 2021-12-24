@@ -203,7 +203,7 @@ const isTimeInsideAvailabilities = (start: Dayjs, end: Dayjs, availabilities: Da
 
 const generateDefaultAvailabilities = (): DayAvailability[] => {
     const availabilities = []
-    for(let i = 0; i < 6; i++) {
+    for(let i = 0; i <= 6; i++) {
         availabilities.push({
             weekday: i,
            ranges: [defaultTimeRange()]

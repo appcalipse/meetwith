@@ -8,6 +8,7 @@ import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper';
 import { generateDefaultAvailabilities, generateDefaultMeetingType } from './calendar_manager';
 import { validate } from 'uuid';
 import dayjs from 'dayjs';
+import * as Sentry from '@sentry/browser'
 
 const db: any = { ready: false };
 
@@ -42,7 +43,7 @@ const initAccountDBForWallet = async (address: string, signature: string, timezo
         ])
 
     if (error) {
-        console.error(error)
+        Sentry.captureException(error)
         throw new Error('Account couldn\'t be created')
     }
 
@@ -70,7 +71,7 @@ const initAccountDBForWallet = async (address: string, signature: string, timezo
 
 
     if(responsePrefs.error) {
-        console.log(responsePrefs.error)
+        console.error(responsePrefs.error)
         //TODO: handle error
     }
 
@@ -96,7 +97,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
 
 
     if(error) {
-        console.log(error)
+        console.error(error)
         //TODO: handle error
     }
 
@@ -126,13 +127,14 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
 
     const {data, error} = await db.supabase.from('accounts').select()
     .or(query)
+    .order('created_at')
 
     if (!error && data.length > 0) {
         let account = data[0] as Account
         account.preferences = (await fetchContentFromIPFS(account.preferences_path)) as AccountPreferences
         return account
     } else {
-        console.log(error)
+        console.error(error)
     }
 
     throw new AccountNotFoundError(identifier)
@@ -151,7 +153,7 @@ const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date, 
     .order('start')
 
     if (error) {
-        console.log(error)
+        console.error(error)
     // //TODO: handle error
     }
 
@@ -170,7 +172,7 @@ const getSlotsForDashboard = async (identifier: string, end: Date, limit: number
     .order('start')
 
     if (error) {
-        console.log(error)
+        console.error(error)
     // //TODO: handle error
     }
 

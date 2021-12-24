@@ -32,7 +32,6 @@ const loginWithWallet = async (): Promise<Account | undefined> => {
     try {
         const provider = await web3Modal.connect()
     
-
         web3 = new Web3(provider)
 
         const accounts = await web3.eth.getAccounts()
@@ -79,28 +78,6 @@ const createOrFetchAccount = async (accountAddress: string, timezone: string): P
     return {...account, ...extraInfo}
 }
 
-const getCustomDomainName = async (address: string, type: SpecialDomainType) => {
-    
-//     if(type === SpecialDomainType.ENS) {
-//     const provider = new ethers.providers.InfuraProvider("homestead", {
-//         projectId: "e9561b79c40044eea932e764d03895df",
-//         projectSecret: "c394c63985fa49f1b6ac3bee76998148"
-//     });
-
-//     const result = await provider.lookupAddress(address)
-//     const ens = new ENS({ provider, ensAddress: getEnsAddress('1') })
-//     console.log(ens)
-// let name = "sasd"
-// Check to be sure the reverse record is correct.
-//if(address != await ens.name(result.name).getAddress()) {
-  //name = null;
-//}
-
-// return name
-//     }
-//     return null
-}
-
 const getAccountDisplayName = (account: Account | PremiumAccount, forceCustomDomain?: boolean): string => {
     if(forceCustomDomain) {
         return account.name || ellipsizeAddress(account.address)
@@ -111,4 +88,4 @@ const getAccountDisplayName = (account: Account | PremiumAccount, forceCustomDom
 
 const ellipsizeAddress = (address: string) => `${address.substr(0,5)}...${address.substr(address.length - 5)}`
 
-export { loginWithWallet, signDefaultMessage, createOrFetchAccount, ellipsizeAddress, getCustomDomainName, getAccountDisplayName, web3};
+export { loginWithWallet, signDefaultMessage, createOrFetchAccount, ellipsizeAddress, getAccountDisplayName, web3};

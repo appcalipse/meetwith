@@ -19,6 +19,7 @@ import { loginWithWallet } from '../../utils/user_manager'
 import { logEvent } from '../../utils/analytics'
 import router from 'next/router'
 import AlertMeDialog from './AlertMeDialog'
+import * as Sentry from '@sentry/browser'
 
 function PriceWrapper({ children }: { children: ReactNode }) {
   return (
@@ -62,10 +63,10 @@ export default function Pricing() {
 
         await router.push('/dashboard')
       } catch (error: any) {
-        console.error(error)
+        Sentry.captureException(error)
         toast({
           title: 'Error',
-          description: error.message,
+          description: error.message || error,
           status: 'error',
           duration: 7000,
           position: 'top',
