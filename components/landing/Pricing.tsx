@@ -186,7 +186,7 @@ export default function Pricing() {
                 Ξ
               </Text>
               <Text fontSize="5xl" fontWeight="900">
-                0.01
+                0.02
               </Text>
               <Text fontSize="3xl" color="gray.500">
                 /year
@@ -265,7 +265,7 @@ export default function Pricing() {
                 Ξ
               </Text>
               <Text fontSize="5xl" fontWeight="900">
-                0.1
+                0.2
               </Text>
               <Text fontSize="3xl" color="gray.500">
                 /year
@@ -331,7 +331,7 @@ export default function Pricing() {
                 Ξ
               </Text>
               <Text fontSize="5xl" fontWeight="900">
-                0.2
+                0.4
               </Text>
               <Text fontSize="3xl" color="gray.500">
                 /year
