@@ -1,10 +1,7 @@
 import React, { useContext } from 'react'
 import {
   ACCOUNT_CHANGED_BROADCAST_EVENT,
-  channel,
   loginWithWallet,
-  provider,
-  web3,
 } from '../utils/user_manager'
 import { AccountContext } from '../providers/AccountProvider'
 import {
