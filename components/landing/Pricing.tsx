@@ -74,6 +74,8 @@ export default function Pricing() {
         })
         logEvent('Failed to sign in', error)
       }
+    } else {
+      router.push('/dashboard')
     }
     setLoginIn(false)
   }

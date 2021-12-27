@@ -145,11 +145,12 @@ const isSlotAvailable = (slotDurationInMinutes: number, minAdvanceTime: number, 
 
     const start = dayjs(slotTime).toDate()
 
+    
     if(dayjs().add(minAdvanceTime, "minute").toDate() > start) {
         return false
     }
     const end = dayjs(start).add(slotDurationInMinutes, 'minute').toDate()
-
+        
     if(!isTimeInsideAvailabilities(dayjs(start), dayjs(end), availabilities, targetTimezone)) return false
 
     const filtered = meetings.filter(meeting =>
@@ -163,6 +164,8 @@ const isSlotAvailable = (slotDurationInMinutes: number, minAdvanceTime: number, 
 
 const isTimeInsideAvailabilities = (start: Dayjs, end: Dayjs, availabilities: DayAvailability[], targetTimezone: string): boolean => {
     
+    const shouldLog = start.hour() == 23 && start.minute() == 45
+
     const realStart = start.tz(targetTimezone)
     
     const startTime = realStart.format("HH:mm")
@@ -186,11 +189,20 @@ const isTimeInsideAvailabilities = (start: Dayjs, end: Dayjs, availabilities: Da
         return 0
     }
 
+    //After midnight
+    if(compareTimes(startTime, endTime) > 0) {
+        endTime = `${end.tz(targetTimezone).hour()+24}:00`
+    }
+
     for(const availability of availabilities) {
         if(availability.weekday === realStart.day()) {
             for(const range of availability.ranges) {
                 if(compareTimes(startTime, range.start) >= 0) {
-                    if(compareTimes(endTime, range.end) <= 0) {    
+                    if(compareTimes(endTime, range.end) <= 0) {  
+                        
+    if(shouldLog) {
+        console.log(range, startTime, endTime)
+    }  
                     return true
                 }
         }

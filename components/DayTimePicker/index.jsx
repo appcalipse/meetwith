@@ -25,6 +25,7 @@ import {
 } from '@chakra-ui/react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
 import { logEvent } from '../../utils/analytics'
+import router from 'next/router'
 
 function DayTimePicker({
   timeSlotValidator,

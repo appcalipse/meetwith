@@ -12,50 +12,12 @@ import {
   useColorModeValue,
   useToast,
 } from '@chakra-ui/react'
-import router from 'next/router'
-import { useContext, useState } from 'react'
+import { useContext } from 'react'
 import { AccountContext } from '../../providers/AccountProvider'
-import { logEvent } from '../../utils/analytics'
-import { loginWithWallet } from '../../utils/user_manager'
+
 import MWWButton from '../MWWButton'
-import * as Sentry from '@sentry/browser'
 
 export default function CallToActionWithVideo() {
-  const { currentAccount, login, setLoginIn, loginIn } =
-    useContext(AccountContext)
-
-  const toast = useToast()
-
-  const handleLogin = async () => {
-    setLoginIn(true)
-    if (!currentAccount) {
-      logEvent('Clicked on get started')
-      try {
-        const account = await loginWithWallet()
-        if (!account) {
-          setLoginIn(false)
-          return
-        }
-        await login(account)
-        logEvent('Signed in')
-
-        await router.push('/dashboard')
-      } catch (error: any) {
-        Sentry.captureException(error)
-        toast({
-          title: 'Error',
-          description: error.message || error,
-          status: 'error',
-          duration: 7000,
-          position: 'top',
-          isClosable: true,
-        })
-        logEvent('Failed to sign in', error)
-      }
-    }
-    setLoginIn(false)
-  }
-
   return (
     <Container maxW={'7xl'}>
       <Stack
@@ -117,22 +79,11 @@ export default function CallToActionWithVideo() {
               size={'lg'}
               fontWeight={'normal'}
               px={6}
-              isLoading={loginIn}
-              onClick={handleLogin}
+              as="a"
+              href="#pricing"
             >
               Get started
             </MWWButton>
-            <Button
-              as="a"
-              href="#pricing"
-              rounded={'full'}
-              size={'lg'}
-              color={useColorModeValue('gray.500', 'gray.400')}
-              fontWeight={'normal'}
-              px={6}
-            >
-              Pricing
-            </Button>
           </Stack>
         </Stack>
         <Flex

@@ -123,7 +123,7 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
 
-    const query = validate(identifier) ? `id.eq.${identifier}` : `address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`
+    const query = validate(identifier) ? `id.eq.${identifier}` : `address.ilike.${identifier},special_domain.ilike.${identifier},internal_pub_key.eq.${identifier}`
 
     const {data, error} = await db.supabase.from('accounts').select()
     .or(query)

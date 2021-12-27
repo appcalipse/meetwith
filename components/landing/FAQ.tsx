@@ -48,6 +48,21 @@ export default function FAQ() {
           py={4}
           color={useColorModeValue('gray.700', 'gray.100')}
         >
+          What does the "Alpha" means?
+        </Heading>
+        <Text pb={2}>
+          Meet with Wallet is a new platform, and therefore there is still a lot
+          of work to be done, including ensuring you will not encounter any bugs
+          while using it. For this reason we are still considering it a product
+          in Alpha stage. But, this does not means that it is not supposed to
+          work properly. If you dinf any bigs, please report to us in our
+          Discord.
+        </Text>
+        <Heading
+          size="lg"
+          py={4}
+          color={useColorModeValue('gray.700', 'gray.100')}
+        >
           Which data is public and which is private?
         </Heading>
         <Text pb={2}>
@@ -79,7 +94,7 @@ export default function FAQ() {
           </Link>{' '}
           and vote on what you want to be done next. You can also be an active
           member in our community through our{' '}
-          <Link isExternal href="https://discord.gg/jzJm3NAD">
+          <Link isExternal href="https://discord.gg/an2q4xUkcR">
             Discord
           </Link>
         </Text>

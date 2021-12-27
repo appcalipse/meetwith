@@ -66,42 +66,36 @@ export default function SimpleThreeColumns() {
                 Integration with state of the art technology on the web3 space:{' '}
                 <Link
                   href="https://ethereum.org/?source=meetwithwallet"
-                  target="_blank"
+                  isExternal
                 >
                   Ethereum Blockchain
                 </Link>
                 ,{' '}
                 {/* <Link
                   href="https://arbitrum.io/?source=meetwithwallet"
-                  target="_blank"
+                  isExternal
                 >
                   Arbitrum
                 </Link> */}
-                <Link
-                  href="https://ipfs.io/?source=meetwithwallet"
-                  target="_blank"
-                >
+                <Link href="https://ipfs.io/?source=meetwithwallet" isExternal>
                   IPFS
                 </Link>
                 ,{' '}
                 <Link
                   href="https://ens.domains/?source=meetwithwallet"
-                  target="_blank"
+                  isExternal
                 >
                   ENS
                 </Link>
                 ,{' '}
                 <Link
                   href="https://huddle01.com/?source=meetwithwallet"
-                  target="_blank"
+                  isExternal
                 >
                   Huddle
                 </Link>{' '}
                 and,{' '}
-                <Link
-                  href="https://epns.io/?source=meetwithwallet"
-                  target="_blank"
-                >
+                <Link href="https://epns.io/?source=meetwithwallet" isExternal>
                   EPNS
                 </Link>
                 . Much more to come.

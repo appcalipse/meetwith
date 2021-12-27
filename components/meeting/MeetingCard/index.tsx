@@ -166,7 +166,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
           </Text>
           <Link
             href={`${info.meeting_url}${UTM_PARAMS}`}
-            target="_blank"
+            isExternal
             onClick={() => logEvent('Clicked to start meeting')}
           >
             {info.meeting_url}

@@ -250,6 +250,7 @@ const TimeSelector: React.FC<{
       times.push(`${String(i).padStart(2, '0')}:${String(j).padStart(2, '0')}`)
     }
   }
+  times.push('24:00')
   return (
     <Select value={props.time} onChange={e => props.onChange(e.target.value)}>
       {times.map((time, index) => (

@@ -1,6 +1,12 @@
-import { Button, ButtonProps, useColorModeValue } from '@chakra-ui/react'
+import {
+  As,
+  Button,
+  ButtonProps,
+  LinkProps,
+  useColorModeValue,
+} from '@chakra-ui/react'
 
-const MWWButton: React.FC<ButtonProps> = prop => {
+const MWWButton: React.FC<ButtonProps & LinkProps> = prop => {
   const bgColor = useColorModeValue(
     'linear(to-r,orange.500 55%, yellow.400)',
     'linear(to-r,orange.300 45%, yellow.500)'

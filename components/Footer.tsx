@@ -90,7 +90,7 @@ export default function SmallWithLogoLeft() {
           </SocialButton>
           <SocialButton
             label={'Discord'}
-            href={'https://discord.gg/MSsyBDf27E'}
+            href={'https://discord.gg/an2q4xUkcR'}
           >
             <FaDiscord />
           </SocialButton>

@@ -1,15 +1,16 @@
 import Web3 from "web3";
 import Web3Modal from "web3modal";
-import { getSignature, storeCurrentAccount } from './storage';
-import { Account, PremiumAccount, SpecialDomainType } from "../types/Account";
+import { getCurrentAccount, getSignature, storeCurrentAccount } from './storage';
+import { Account, PremiumAccount } from "../types/Account";
 import { saveSignature } from "./storage";
 import { getAccount, createAccount } from "./api_helper";
-import { ethers } from "ethers";
 import { DEFAULT_MESSAGE } from "./constants";
 import { AccountNotFoundError } from "./errors";
 import dayjs from "./dayjs_extender";
 import WalletConnectProvider from "@walletconnect/web3-provider";
 import { resolveExtraInfo } from "./rpc_helper";
+
+export const ACCOUNT_CHANGED_BROADCAST_EVENT = 'account_changed'
 
 const providerOptions = {
     walletconnect: {
@@ -34,8 +35,17 @@ const loginWithWallet = async (): Promise<Account | undefined> => {
     
         web3 = new Web3(provider)
 
+        provider!.on('accountsChanged', async (accounts: string[]) => {
+            const storeCurrentAccount = getCurrentAccount()
+            if(accounts[0].toLocaleLowerCase() !== storeCurrentAccount) {
+                const channel = new BroadcastChannel(ACCOUNT_CHANGED_BROADCAST_EVENT);
+                channel.postMessage("")
+                channel.close()
+            }
+          })
+  
         const accounts = await web3.eth.getAccounts()
-        return await createOrFetchAccount(accounts[0], dayjs.tz.guess())
+        return await createOrFetchAccount(accounts[0].toLocaleLowerCase(), dayjs.tz.guess())
     } catch(err) {
         return undefined
     }

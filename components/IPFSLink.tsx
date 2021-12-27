@@ -25,6 +25,7 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
       <HStack minH="24px" width="100%">
         <Link
           href={`https://ipfs.io/ipfs/${ipfsHash}`}
+          isExternal
           target="_blank"
           rel="noopener noreferrer"
           display="flex"
