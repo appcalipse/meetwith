@@ -125,6 +125,7 @@ const getAvatar = async (owner: string, avatar: string, provider: JsonRpcProvide
 
                     // Get the token metadata
                     const metadata = await (await fetch(metadataUrl)).json();
+                    console.log(metadata)
 
                     // Pull the image URL out
                     if (!metadata || typeof(metadata.image) !== "string" || (!metadata.image.match(/^https:\/\//i) && (!metadata.image.match(/^ipfs:\/\//i)))) {
@@ -141,6 +142,7 @@ const getAvatar = async (owner: string, avatar: string, provider: JsonRpcProvide
             }
         }
     } catch (error) { 
+        console.log(error)
         Sentry.captureException(error);
     }
 
