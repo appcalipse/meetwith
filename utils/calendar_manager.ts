@@ -164,8 +164,6 @@ const isSlotAvailable = (slotDurationInMinutes: number, minAdvanceTime: number, 
 
 const isTimeInsideAvailabilities = (start: Dayjs, end: Dayjs, availabilities: DayAvailability[], targetTimezone: string): boolean => {
     
-    const shouldLog = start.hour() == 23 && start.minute() == 45
-
     const realStart = start.tz(targetTimezone)
     
     const startTime = realStart.format("HH:mm")
@@ -199,15 +197,11 @@ const isTimeInsideAvailabilities = (start: Dayjs, end: Dayjs, availabilities: Da
             for(const range of availability.ranges) {
                 if(compareTimes(startTime, range.start) >= 0) {
                     if(compareTimes(endTime, range.end) <= 0) {  
-                        
-    if(shouldLog) {
-        console.log(range, startTime, endTime)
-    }  
-                    return true
+                        return true
+                    }
                 }
+            }
         }
-        }
-    }
     }
 
     return false

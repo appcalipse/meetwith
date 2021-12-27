@@ -8,7 +8,7 @@ import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper';
 import { generateDefaultAvailabilities, generateDefaultMeetingType } from './calendar_manager';
 import { validate } from 'uuid';
 import dayjs from 'dayjs';
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/node'
 
 const db: any = { ready: false };
 
@@ -279,6 +279,8 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
     if (!error) {
         return true
     }
+    Sentry.captureException(error)
+
     return false
 }
 

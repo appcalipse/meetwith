@@ -39,6 +39,7 @@ const resolveENS = async (address: string): Promise<AccountExtraProps | undefine
     }
     
     const avatarInfo = await resolver?.getText("avatar")
+    console.log(avatarInfo)
     const avatar = avatarInfo ? (await getAvatar(address, avatarInfo!, provider))?.url : undefined
 
     return {
