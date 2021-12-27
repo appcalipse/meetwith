@@ -40,6 +40,7 @@ const resolveENS = async (address: string): Promise<AccountExtraProps | undefine
     }
     
     const avatarInfo = await resolver?.getText("avatar")
+    console.log(avatarInfo)
     const avatar = avatarInfo ? (await getAvatar(address, avatarInfo!, provider))?.url : undefined
 
     return {
@@ -60,6 +61,7 @@ const matchers = [
 const getAvatar = async (owner: string, avatar: string, provider: JsonRpcProvider): Promise<Avatar | undefined> =>{
     const linkage: Array<{ type: string, content: string }> = [ ];
     try {
+        console.log(avatar)
         if (avatar == null) { return undefined; }
 
         for (let i = 0; i < matchers.length; i++) {
@@ -101,6 +103,8 @@ const getAvatar = async (owner: string, avatar: string, provider: JsonRpcProvide
                         linkage.push({ type: "owner", content: tokenOwner });
 
                     } else if (match[1] === "erc1155") {
+                        console.log('here')
+
                         // balanceOf(address owner, uint256 tokenId)
                         const balance = BigNumber.from(await provider.call({
                             to: addr, data: hexConcat([ "0x00fdd58e", hexZeroPad(owner, 32), tokenId ])
@@ -122,6 +126,8 @@ const getAvatar = async (owner: string, avatar: string, provider: JsonRpcProvide
                     if (match[1] === "erc1155") {
                         metadataUrl = metadataUrl.replace("{id}", tokenId.substring(2));
                     }
+
+                    console.log('yo')
 
                     // Get the token metadata
                     const metadata = await (await fetch(metadataUrl)).json();
