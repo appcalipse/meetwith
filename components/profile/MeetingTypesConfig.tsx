@@ -43,14 +43,17 @@ const MeetingTypesConfig: React.FC = () => {
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
               const url = getAccountCalendarUrl(currentAccount!, false)
               return (
-                <MeetingTypeCard
-                  onSelect={setSelectedType}
-                  key={index}
-                  title={type.title}
-                  duration={type.duration}
-                  url={url}
-                  typeId={type.id!}
-                />
+                <>
+                  <MeetingTypeCard
+                    onSelect={setSelectedType}
+                    key={index}
+                    title={type.title}
+                    duration={type.duration}
+                    url={url}
+                    typeId={type.id!}
+                  />
+                  <Spacer />
+                </>
               )
             })}
             <AddTypeCard />
@@ -97,7 +100,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
   }
 
   return (
-    <Box p={2} alignSelf="stretch">
+    <Box alignSelf="stretch">
       <VStack
         borderRadius={8}
         p={4}
@@ -133,7 +136,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
 
 const AddTypeCard: React.FC = () => {
   return (
-    <Box p={2} alignSelf="stretch">
+    <Box alignSelf="stretch">
       <VStack
         cursor="pointer"
         borderRadius={8}
@@ -182,8 +185,8 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
     }
   }
 
-  const [title, setTitle] = useState(typeConfig!.title)
-  const [url, setUrl] = useState(typeConfig!.url)
+  const [title, setTitle] = useState(typeConfig?.title || '')
+  const [url, setUrl] = useState(typeConfig?.url || '')
   const [duration, setDuration] = useState(typeConfig!.duration)
   const [minAdvanceTime, setMinAdvanceTime] = useState(
     convertMinutes(typeConfig!.minAdvanceTime)

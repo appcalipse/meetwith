@@ -240,6 +240,7 @@ const Schedule: React.FC = () => {
               >
                 {account!.preferences!.availableTypes.map(type => (
                   <option key={type.id} value={type.id}>
+                    {type.title ? `${type.title} - ` : ''}
                     {durationToHumanReadable(type.duration)}
                   </option>
                 ))}

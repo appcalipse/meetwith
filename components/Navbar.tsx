@@ -1,4 +1,4 @@
-import React, { useContext } from 'react'
+import React, { useContext, useEffect } from 'react'
 import {
   ACCOUNT_CHANGED_BROADCAST_EVENT,
   loginWithWallet,
@@ -46,16 +46,16 @@ export default function WithSubnavigation() {
 
   const toast = useToast()
 
-  const channel = new BroadcastChannel(ACCOUNT_CHANGED_BROADCAST_EVENT)
-  channel.onmessage = async ev => {
-    channel.close()
-
-    const account = await loginWithWallet()
-    if (account) {
-      await login(account)
+  useEffect(() => {
+    const channel = new BroadcastChannel(ACCOUNT_CHANGED_BROADCAST_EVENT)
+    channel.onmessage = async ev => {
+      const account = await loginWithWallet()
+      if (account) {
+        await login(account)
+      }
+      setLoginIn(false)
     }
-    setLoginIn(false)
-  }
+  }, [])
 
   const handleLogin = async () => {
     if (!currentAccount) {
