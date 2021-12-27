@@ -1,12 +1,14 @@
 import React, { useContext } from 'react'
-import { loginWithWallet } from '../utils/user_manager'
+import {
+  ACCOUNT_CHANGED_BROADCAST_EVENT,
+  loginWithWallet,
+} from '../utils/user_manager'
 import { AccountContext } from '../providers/AccountProvider'
 import {
   Box,
   Flex,
   Text,
   IconButton,
-  Button,
   Stack,
   Collapse,
   Icon,
@@ -18,6 +20,9 @@ import {
   useColorModeValue,
   useDisclosure,
   useToast,
+  Container,
+  Badge,
+  HStack,
 } from '@chakra-ui/react'
 import {
   HamburgerIcon,
@@ -26,38 +31,68 @@ import {
   ChevronRightIcon,
 } from '@chakra-ui/icons'
 import NextLink from 'next/link'
-import { Account } from '../types/Account'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { logEvent } from '../utils/analytics'
+import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
+import router from 'next/router'
+import MWWButton from './MWWButton'
+import * as Sentry from '@sentry/browser'
 
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()
 
-  const { currentAccount, logged, login } = useContext(AccountContext)
+  const { currentAccount, logged, login, loginIn, setLoginIn } =
+    useContext(AccountContext)
 
   const toast = useToast()
 
+  const channel = new BroadcastChannel(ACCOUNT_CHANGED_BROADCAST_EVENT)
+  channel.onmessage = async ev => {
+    channel.close()
+
+    const account = await loginWithWallet()
+    if (account) {
+      await login(account)
+    }
+    setLoginIn(false)
+  }
+
   const handleLogin = async () => {
     if (!currentAccount) {
-      // const account = await loginWithWallet()
-      // await login(account)
+      setLoginIn(true)
       logEvent('Clicked to connect wallet')
-      toast({
-        title: 'Comming Soon',
-        description:
-          'Soon you will be able to log in with your favourite web3 wallet. Meanwhile, join the waitlist.',
-        status: 'warning',
-        duration: 7000,
-        position: 'top',
-        isClosable: true,
-      })
+      try {
+        const account = await loginWithWallet()
+        if (!account) {
+          setLoginIn(false)
+          return
+        }
+
+        await login(account)
+
+        logEvent('Signed in')
+
+        if (router.pathname === '/') {
+          await router.push('/dashboard')
+        }
+      } catch (error: any) {
+        Sentry.captureException(error)
+        toast({
+          title: 'Error',
+          description: error.message || error,
+          status: 'error',
+          duration: 7000,
+          position: 'top',
+          isClosable: true,
+        })
+        logEvent('Failed to sign in', error)
+      }
+      setLoginIn(false)
     }
   }
 
-  const buttonColor = useColorModeValue('gray.500', 'gray.400')
-
   return (
-    <Box as="header" position="fixed" width="100%" zIndex={999}>
+    <Box as="header" position="fixed" width="100%" top="0" zIndex={999}>
       <Flex
         bg={useColorModeValue('white', 'gray.800')}
         color={useColorModeValue('gray.600', 'white')}
@@ -69,57 +104,61 @@ export default function WithSubnavigation() {
         borderColor={useColorModeValue('gray.200', 'gray.900')}
         align={'center'}
       >
-        <Flex ml={{ base: -2 }} display={{ base: 'flex', md: 'none' }}>
-          <IconButton
-            onClick={onToggle}
-            icon={
-              isOpen ? <CloseIcon w={3} h={3} /> : <HamburgerIcon w={5} h={5} />
-            }
-            variant={'ghost'}
-            aria-label={'Toggle Navigation'}
-          />
-        </Flex>
-        <Flex flex={{ base: 1 }}>
-          <NextLink href={'/'} passHref>
-            <Link>
-              <Image
-                width="100px"
-                p={2}
-                src="/assets/logo.svg"
-                alt="Meet with Wallet"
+        <Container maxW={'7xl'}>
+          <Flex alignItems="center">
+            <Flex ml={{ base: -2 }} display={{ base: 'flex', md: 'none' }}>
+              <IconButton
+                onClick={onToggle}
+                icon={
+                  isOpen ? (
+                    <CloseIcon w={3} h={3} />
+                  ) : (
+                    <HamburgerIcon w={5} h={5} />
+                  )
+                }
+                variant={'ghost'}
+                aria-label={'Toggle Navigation'}
               />
-            </Link>
-          </NextLink>
+            </Flex>
+            <Flex flex={{ base: 1 }}>
+              <NextLink href={'/'} passHref>
+                <Link display={{ base: 'none', md: 'flex' }}>
+                  <HStack>
+                    <Image
+                      width="100px"
+                      p={2}
+                      src="/assets/logo.svg"
+                      alt="Meet with Wallet"
+                    />
+                    <Badge colorScheme="orange">Alpha</Badge>
+                  </HStack>
+                </Link>
+              </NextLink>
+              <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
+                <DesktopNav />
+              </Flex>
+            </Flex>
 
-          <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
-            <DesktopNav />
-          </Flex>
-        </Flex>
-
-        <Stack
-          flex={{ base: 1, md: 0 }}
-          justify={'flex-end'}
-          direction={'row'}
-          spacing={6}
-        >
-          <ThemeSwitcher />
-          {logged ? (
-            <LoggedContainer user={currentAccount!} />
-          ) : (
-            <Button
-              as={'a'}
-              size="lg"
-              href={'#'}
-              onClick={handleLogin}
-              color={buttonColor}
+            <Stack
+              flex={{ base: 1, md: 0 }}
+              justify={'flex-end'}
+              direction={'row'}
+              spacing={6}
             >
-              Log in
-              <Box display={{ base: 'none', md: 'flex' }} as="span">
-                &#160;with wallet
-              </Box>
-            </Button>
-          )}
-        </Stack>
+              <ThemeSwitcher />
+              {logged ? (
+                <NavBarLoggedProfile account={currentAccount!} />
+              ) : (
+                <MWWButton size="lg" onClick={handleLogin} isLoading={loginIn}>
+                  Sign in
+                  <Box display={{ base: 'none', md: 'flex' }} as="span">
+                    &#160;with wallet
+                  </Box>
+                </MWWButton>
+              )}
+            </Stack>
+          </Flex>
+        </Container>
       </Flex>
 
       <Collapse in={isOpen} animateOpacity>
@@ -129,108 +168,114 @@ export default function WithSubnavigation() {
   )
 }
 
-const LoggedContainer: React.FC<{
-  user: Account
-}> = ({ user }) => {
-  return <div>{user.address}</div>
-}
-
 const DesktopNav = () => {
+  const { logged } = useContext(AccountContext)
   const linkColor = useColorModeValue('gray.600', 'gray.200')
   const linkHoverColor = useColorModeValue('gray.800', 'white')
   const popoverContentBgColor = useColorModeValue('white', 'gray.800')
 
   return (
     <Stack direction={'row'} spacing={4} alignItems="center">
-      {NAV_ITEMS.map(navItem => (
-        <Box key={navItem.label}>
-          <Popover trigger={'hover'} placement={'bottom-start'}>
-            <PopoverTrigger>
-              <Link
-                p={2}
-                href={navItem.href ?? '#'}
-                fontSize={'sm'}
-                fontWeight={500}
-                color={linkColor}
-                _hover={{
-                  textDecoration: 'none',
-                  color: linkHoverColor,
-                }}
-              >
-                {navItem.label}
-              </Link>
-            </PopoverTrigger>
+      {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
+        navItem => (
+          <Box key={navItem.label}>
+            <Popover trigger={'hover'} placement={'bottom-start'}>
+              <PopoverTrigger>
+                <NextLink href={navItem.href ?? '#'} passHref>
+                  <Link
+                    p={2}
+                    fontSize={'sm'}
+                    fontWeight={500}
+                    color={linkColor}
+                    _hover={{
+                      textDecoration: 'none',
+                      color: linkHoverColor,
+                    }}
+                  >
+                    {navItem.label}
+                  </Link>
+                </NextLink>
+              </PopoverTrigger>
 
-            {navItem.children && (
-              <PopoverContent
-                border={0}
-                boxShadow={'xl'}
-                bg={popoverContentBgColor}
-                p={4}
-                rounded={'xl'}
-                minW={'sm'}
-              >
-                <Stack>
-                  {navItem.children.map(child => (
-                    <DesktopSubNav key={child.label} {...child} />
-                  ))}
-                </Stack>
-              </PopoverContent>
-            )}
-          </Popover>
-        </Box>
-      ))}
+              {navItem.children && (
+                <PopoverContent
+                  border={0}
+                  boxShadow={'xl'}
+                  bg={popoverContentBgColor}
+                  p={4}
+                  rounded={'xl'}
+                  minW={'sm'}
+                >
+                  <Stack>
+                    {navItem.children.map(child => (
+                      <DesktopSubNav key={child.label} {...child} />
+                    ))}
+                  </Stack>
+                </PopoverContent>
+              )}
+            </Popover>
+          </Box>
+        )
+      )}
     </Stack>
   )
 }
 
 const DesktopSubNav = ({ label, href, subLabel }: NavItem) => {
   return (
-    <Link
-      href={href}
-      role={'group'}
-      display={'block'}
-      p={2}
-      rounded={'md'}
-      _hover={{ bg: useColorModeValue('pink.50', 'gray.900') }}
-    >
-      <Stack direction={'row'} align={'center'}>
-        <Box>
-          <Text
+    <NextLink href={href!} passHref>
+      <Link
+        role={'group'}
+        display={'block'}
+        p={2}
+        rounded={'md'}
+        _hover={{ bg: useColorModeValue('pink.50', 'gray.900') }}
+      >
+        <Stack direction={'row'} align={'center'}>
+          <Box>
+            <Text
+              transition={'all .3s ease'}
+              _groupHover={{ color: 'pink.400' }}
+              fontWeight={500}
+            >
+              {label}
+            </Text>
+            <Text fontSize={'sm'}>{subLabel}</Text>
+          </Box>
+          <Flex
             transition={'all .3s ease'}
-            _groupHover={{ color: 'pink.400' }}
-            fontWeight={500}
+            transform={'translateX(-10px)'}
+            opacity={0}
+            _groupHover={{ opacity: '100%', transform: 'translateX(0)' }}
+            justify={'flex-end'}
+            align={'center'}
+            flex={1}
           >
-            {label}
-          </Text>
-          <Text fontSize={'sm'}>{subLabel}</Text>
-        </Box>
-        <Flex
-          transition={'all .3s ease'}
-          transform={'translateX(-10px)'}
-          opacity={0}
-          _groupHover={{ opacity: '100%', transform: 'translateX(0)' }}
-          justify={'flex-end'}
-          align={'center'}
-          flex={1}
-        >
-          <Icon color={'pink.400'} w={5} h={5} as={ChevronRightIcon} />
-        </Flex>
-      </Stack>
-    </Link>
+            <Icon color={'pink.400'} w={5} h={5} as={ChevronRightIcon} />
+          </Flex>
+        </Stack>
+      </Link>
+    </NextLink>
   )
 }
 
 const MobileNav = () => {
+  const { logged } = useContext(AccountContext)
+
   return (
     <Stack
       bg={useColorModeValue('white', 'gray.800')}
       p={4}
       display={{ md: 'none' }}
+      borderBottom={1}
+      borderStyle={'solid'}
+      borderColor={useColorModeValue('gray.200', 'gray.900')}
     >
-      {NAV_ITEMS.map(navItem => (
-        <MobileNavItem key={navItem.label} {...navItem} />
-      ))}
+      {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
+        navItem => (
+          <MobileNavItem key={navItem.label} {...navItem} />
+        )
+      )}
     </Stack>
   )
 }
@@ -278,9 +323,9 @@ const MobileNavItem = ({ label, children, href }: NavItem) => {
         >
           {children &&
             children.map(child => (
-              <Link key={child.label} py={2} href={child.href}>
-                {child.label}
-              </Link>
+              <NextLink key={child.label} href={child.href!} passHref>
+                <Link py={2}>{child.label}</Link>
+              </NextLink>
             ))}
         </Stack>
       </Collapse>
@@ -293,6 +338,7 @@ interface NavItem {
   subLabel?: string
   children?: Array<NavItem>
   href?: string
+  logged?: boolean
 }
 
 const NAV_ITEMS: Array<NavItem> = [
@@ -312,16 +358,21 @@ const NAV_ITEMS: Array<NavItem> = [
   //     ],
   // },
   {
-    label: 'Waitlist',
-    href: '#subscribe',
+    label: 'Dashboard',
+    href: '/dashboard',
+    logged: true,
+  },
+  {
+    label: 'Home',
+    href: '/',
   },
   {
     label: 'Plans',
-    href: '#pricing',
+    href: '/#pricing',
   },
   {
     label: 'FAQ',
-    href: '#faq',
+    href: '/#faq',
   },
   // {
   //     label: 'Hire Designers',

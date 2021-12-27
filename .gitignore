@@ -39,3 +39,5 @@ yarn-error.log*
 # local running and testing
 .ipfs*
 orbitdb*
+# Sentry
+.sentryclirc

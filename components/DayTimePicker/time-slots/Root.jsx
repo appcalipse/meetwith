@@ -4,26 +4,50 @@ import dateFns from 'date-fns'
 
 import generateTimeSlots from './generate-time-slots'
 
-import { List, ListItem } from './List'
+import {
+  Flex,
+  useColorModeValue,
+  VStack,
+  Box,
+  Image,
+  Text,
+} from '@chakra-ui/react'
 
 function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes)
+  const filtered = timeSlots.filter(slot => {
+    return validator ? validator(slot) : true
+  })
+  const borderColor = useColorModeValue('gray.200', 'gray.700')
 
   return (
-    <List>
-      {timeSlots.map(slot => {
-        const isValid = validator ? validator(slot) : true
-        return (
-          <ListItem
-            key={slot}
-            isValid={isValid}
-            onClick={() => isValid && pickTime(slot)}
-          >
-            {dateFns.format(slot, 'HH:mm')}
-          </ListItem>
-        )
-      })}
-    </List>
+    <>
+      {filtered.length > 0 ? (
+        <VStack maxW="200px" mx="auto">
+          {filtered.map(slot => {
+            return (
+              <Flex
+                key={slot}
+                onClick={() => pickTime(slot)}
+                width="100%"
+                border="1px solid"
+                borderColor={borderColor}
+                p={2}
+                justifyContent="center"
+                _hover={{ cursor: 'pointer', color: 'orange.400' }}
+              >
+                {dateFns.format(slot, 'HH:mm')}
+              </Flex>
+            )
+          })}
+        </VStack>
+      ) : (
+        <VStack alignItems="center">
+          <Image src="/assets/no_meetings.svg" w="200px" pb={4} />
+          <Text>No slots available for this day</Text>
+        </VStack>
+      )}
+    </>
   )
 }
 

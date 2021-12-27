@@ -1,20 +1,31 @@
 import {
-  Flex,
-  Stack,
-  Heading,
-  Text,
-  Input,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
   Button,
+  Text,
   Icon,
+  Stack,
   useColorModeValue,
-  createIcon,
+  Input,
   useToast,
+  createIcon,
+  Box,
 } from '@chakra-ui/react'
-import React, { useState } from 'react'
-import { logEvent } from '../../utils/analytics'
+import { useState } from 'react'
 import { subscribeToWaitlist } from '../../utils/api_helper'
+import { logEvent } from '../../utils/analytics'
 
-const CardWithIllustration: React.FC = () => {
+interface IProps {
+  isOpen: boolean
+  onClose: () => void
+  plan?: string
+}
+
+const AlertMeDialog: React.FC<IProps> = ({ isOpen, onClose, plan }) => {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const toast = useToast()
@@ -28,106 +39,98 @@ const CardWithIllustration: React.FC = () => {
           /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
         )
     ) {
-      const success = await subscribeToWaitlist(email)
+      const success = await subscribeToWaitlist(email, plan)
       if (success) {
-        logEvent('Subscribed to waitlist')
+        logEvent('Subscribed to plan waitlist', { plan })
         toast({
-          title: 'Success',
+          title: 'Subscribed',
           description:
-            'You are now on our waitlist. Soon we will get in touch with you!',
+            'Thanks for subscribing. We will get in touch with you as soon as this plan is available!',
           status: 'success',
           duration: 5000,
           position: 'top',
           isClosable: true,
         })
         setLoading(false)
+        onClose()
         return
       }
     }
     toast({
       title: 'Failed',
-      description:
-        'Failed to add you to the waitlist. Is your email address correct?',
+      description: 'Failed to subscribe. Is your email address correct?',
       status: 'error',
       duration: 5000,
       position: 'top',
       isClosable: true,
     })
-    logEvent('Failed to subscribe to waitlist')
+    logEvent('Failed to subscribe to plan waitlist')
     setLoading(false)
   }
 
   return (
-    <Flex
-      id="subscribe"
-      align={'center'}
-      justify={'center'}
-      py={12}
-      bg={useColorModeValue('gray.50', 'gray.800')}
-    >
-      <Stack
-        boxShadow={'2xl'}
-        bg={useColorModeValue('white', 'gray.700')}
-        rounded={'xl'}
-        p={10}
-        m={4}
-        maxW={'2xl'}
-        spacing={8}
-        align={'center'}
-      >
-        <Icon as={NotificationIcon} w={24} h={24} />
-        <Stack align={'center'} spacing={2}>
-          <Heading
-            textTransform={'uppercase'}
-            fontSize={'3xl'}
-            color={useColorModeValue('gray.800', 'gray.200')}
-          >
-            Join the waitlist
-          </Heading>
-          <Text
-            fontSize={'2xl'}
-            color={useColorModeValue('gray.500', 'gray.300')}
-            textAlign="center"
-          >
-            If you join the waitlist, will get one year free of PRO.
-          </Text>
-          <Text
-            fontSize={'lg'}
-            color={useColorModeValue('gray.500', 'gray.300')}
-            textAlign="center"
-          >
-            Hey, we know the waitlist uses email, but we didn't have time to
-            come up with something better 🙃
-          </Text>
-        </Stack>
-        <Stack spacing={4} direction={{ base: 'column', md: 'row' }} w={'full'}>
-          <Input
-            type={'text'}
-            placeholder={'your.email@cooldomain.xyz'}
-            color={useColorModeValue('gray.800', 'gray.200')}
-            bg={useColorModeValue('gray.100', 'gray.600')}
-            rounded={'full'}
-            onChange={e => setEmail(e.target.value)}
-            border={0}
-            _focus={{
-              bg: useColorModeValue('gray.200', 'gray.800'),
-              outline: 'none',
-            }}
-          />
-          <Button
-            flex={'1 0 auto'}
-            rounded={'full'}
-            bg={'orange.400'}
-            fontWeight={'normal'}
-            _hover={{ bg: 'orange.500' }}
-            isLoading={loading}
-            onClick={() => subscribe(email)}
-          >
-            JOIN
-          </Button>
-        </Stack>
-      </Stack>
-    </Flex>
+    <>
+      <Modal blockScrollOnMount={false} isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Alert me</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody p={6}>
+            <Box textAlign="center">
+              <Icon as={NotificationIcon} w={16} h={16} />
+            </Box>
+            <Stack align={'center'} spacing={2}>
+              <Text
+                fontSize={'2xl'}
+                color={useColorModeValue('gray.500', 'gray.300')}
+                textAlign="center"
+              >
+                Subscribe to be alerted when {plan} plan is available.
+              </Text>
+              <Text
+                color={useColorModeValue('gray.500', 'gray.300')}
+                textAlign="center"
+                pb={2}
+              >
+                Hey, we know we are using email to alert you, but there isn't an
+                elegant way to get back to you only with your wallet address yet
+                🙃. But worry not, no spam will be sent, we swear.
+              </Text>
+            </Stack>
+            <Stack
+              spacing={4}
+              direction={{ base: 'column', md: 'row' }}
+              w={'full'}
+            >
+              <Input
+                type={'text'}
+                placeholder={'your.email@cooldomain.xyz'}
+                color={useColorModeValue('gray.800', 'gray.200')}
+                bg={useColorModeValue('gray.100', 'gray.600')}
+                rounded={'full'}
+                onChange={e => setEmail(e.target.value)}
+                border={0}
+                onKeyPress={event => event.key === 'Enter' && subscribe(email)}
+                _focus={{
+                  bg: useColorModeValue('gray.200', 'gray.800'),
+                  outline: 'none',
+                }}
+              />
+              <Button
+                flex={'1 0 auto'}
+                rounded={'full'}
+                fontWeight={'normal'}
+                colorScheme="orange"
+                isLoading={loading}
+                onClick={() => subscribe(email)}
+              >
+                Subscribe
+              </Button>
+            </Stack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+    </>
   )
 }
 
@@ -228,4 +231,4 @@ const NotificationIcon = createIcon({
   ),
 })
 
-export default CardWithIllustration
+export default AlertMeDialog

@@ -72,7 +72,9 @@ export default function SmallWithLogoLeft() {
         align={{ base: 'center', md: 'center' }}
       >
         <Logo />
-        <Text>© 2021 Meet with Wallet. All rights reserved</Text>
+        <Text textAlign="center">
+          Meet with Wallet. Some rights reserved, maybe...
+        </Text>
         <Stack direction={'row'} spacing={6}>
           <SocialButton
             label={'Eamil'}
@@ -88,7 +90,7 @@ export default function SmallWithLogoLeft() {
           </SocialButton>
           <SocialButton
             label={'Discord'}
-            href={'https://discord.gg/MSsyBDf27E'}
+            href={'https://discord.gg/an2q4xUkcR'}
           >
             <FaDiscord />
           </SocialButton>

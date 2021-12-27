@@ -2,7 +2,7 @@ import '../styles/globals.css'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
 import * as React from 'react'
-import { ChakraProvider } from '@chakra-ui/react'
+import { ChakraProvider, Flex } from '@chakra-ui/react'
 import { CookiesProvider } from 'react-cookie'
 import { extendTheme } from '@chakra-ui/react'
 import NavBar from '../components/Navbar'
@@ -13,6 +13,7 @@ import { initAnalytics, pageView } from '../utils/analytics'
 import customTheme from '../styles/theme'
 import { CookieConsent } from '../components/CookieConsent'
 import cookie from 'cookie'
+import Loading from '../components/Loading'
 
 const theme = extendTheme(customTheme)
 
@@ -28,13 +29,12 @@ export default function MyApp({
 }: MyAppProps) {
   const [loading, setLoading] = React.useState(true)
 
-  const initApp = async () => {
-    setLoading(false)
-    await initAnalytics()
-    pageView(router.asPath)
-  }
-
   React.useEffect(() => {
+    const initApp = async () => {
+      setLoading(false)
+      await initAnalytics()
+      pageView(router.asPath)
+    }
     initApp()
   }, [])
 
@@ -123,7 +123,14 @@ export default function MyApp({
             <meta name="theme-color" content="#f35826"></meta>
           </Head>
           {loading ? (
-            <div>Loading...</div>
+            <Flex
+              width="100%"
+              height="100%"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Loading />
+            </Flex>
           ) : (
             <>
               <NavBar />

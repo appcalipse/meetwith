@@ -2,23 +2,23 @@ import type { NextPage } from 'next'
 import React from 'react'
 import Hero from '../components/landing/Hero'
 import Features from '../components/landing/Features'
-import Subscribe from '../components/landing/Subscribe'
 import Pricing from '../components/landing/Pricing'
 import FAQ from '../components/landing/FAQ'
+import { Container } from '@chakra-ui/react'
 
 const Home: NextPage = () => {
   return (
     <div>
       <main>
-        <Hero />
+        <Container maxW="9xl">
+          <Hero />
 
-        <Features />
+          <Features />
 
-        <Subscribe />
+          <Pricing />
 
-        <Pricing />
-
-        <FAQ />
+          <FAQ />
+        </Container>
       </main>
     </div>
   )

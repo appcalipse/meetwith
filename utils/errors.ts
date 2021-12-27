@@ -11,3 +11,28 @@ export class AccountNotFoundError extends Error {
         this.name = "AccountNotFoundError";
     }
 }
+
+export class MeetingNotFoundError extends Error {
+    constructor(identifier: string) {
+        super(`Meeting slot with identifier ${identifier} not found.`);
+        this.name = "MeetingNotFoundError";
+    }
+}
+
+export class MeetingWithYourselfError extends Error {
+    constructor() {
+        super(`Trying to meet with yourself?`);
+        this.name = "MeetingWithYourselfError";
+    }
+}
+
+export class ApiFetchError extends Error {
+
+    status:number
+
+    constructor(status: number, message: string) {
+        super(`${status} : ${message}`);
+        this.name = "ApiFetchError";
+        this.status = status;
+    }
+}

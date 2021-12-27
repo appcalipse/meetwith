@@ -1,13 +1,14 @@
-import EthCrypto, { Encrypted, encryptWithPublicKey } from 'eth-crypto';
-import { Account } from '../types/Account';
+import EthCrypto, { Encrypted } from 'eth-crypto';
+import { Account, AccountPreferences, MeetingType, SpecialDomainType } from '../types/Account';
 import { encryptContent } from './cryptography';
-import { DBMeeting, DBParticipantInfo, IPFSMeetingInfo, MeetingCreationRequest, MeetingEncrypted, MeetingStatus, Participant, ParticipantType } from '../types/Meeting';
-import { AccountPreferences } from '../types/Account';
+import { DBSlot, DBSlotEnhanced, MeetingCreationRequest, ParticipantBaseInfo, ParticipantInfo, ParticipantType, ParticipationStatus } from '../types/Meeting';
 import { createClient } from '@supabase/supabase-js'
-import { AccountNotFoundError } from '../utils/errors';
+import { AccountNotFoundError, MeetingNotFoundError, MeetingWithYourselfError, TimeNotAvailableError } from '../utils/errors';
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper';
+import { generateDefaultAvailabilities, generateDefaultMeetingType } from './calendar_manager';
+import { validate } from 'uuid';
 import dayjs from 'dayjs';
-import meetings from '../pages/api/meetings';
+import * as Sentry from '@sentry/browser'
 
 const db: any = { ready: false };
 
@@ -23,19 +24,11 @@ const initDB = () => {
 
 initDB()
 
-const initAccountDBForWallet = async (address: string, signature: string): Promise<Account> => {
+const initAccountDBForWallet = async (address: string, signature: string, timezone: string, nonce: number): Promise<Account> => {
 
     const newIdentity = EthCrypto.createIdentity();
 
     const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
-
-    const preferences = {
-        availableTypes: [],
-        description: ''
-    }
-
-    const path = await addContentToIPFS(preferences)
-    //TODO handle ipfs error
 
     const { data, error } = await db.supabase
         .from('accounts')
@@ -44,171 +37,249 @@ const initAccountDBForWallet = async (address: string, signature: string): Promi
                 address: address,
                 internal_pub_key: newIdentity.publicKey,
                 encoded_signature: encryptedPvtKey,
-                preferences_path: path
+                preferences_path: "",
+                nonce
             }
         ])
 
     if (error) {
-        console.log(error)
+        Sentry.captureException(error)
         throw new Error('Account couldn\'t be created')
     }
 
-    return data[0] as Account
-}
+    const availabilities = generateDefaultAvailabilities()
 
-const getAccountFromDB = async (identifier: string): Promise<Account> => {
-    let response = await db.supabase.from('accounts').select().eq('address', identifier)
-
-    if (response.error || response.data.length == 0) {
-        response = await db.supabase.from('accounts').select().eq('ens', identifier)
+    const preferences: AccountPreferences = {
+        availableTypes: [generateDefaultMeetingType()],
+        description: '',
+        availabilities,
+        socialLinks: [],
+        timezone 
     }
 
-    if (!response.error && response.data.length > 0) {
-        const account = response.data[0] as Account
-        account.preferences = (await fetchContentFromIPFS(account.preferences_path)) as AccountPreferences
-        return account
+    const path = await addContentToIPFS(preferences)
+    //TODO handle ipfs error
+
+    const responsePrefs = await db.supabase
+        .from('accounts')
+        .update(
+            {
+                preferences_path: path
+            }
+        )
+        .match({ id: data[0].id })
+
+
+    if(responsePrefs.error) {
+        console.error(responsePrefs.error)
+        //TODO: handle error
+    }
+
+    const account = responsePrefs.data[0] as Account
+    account.preferences = preferences
+
+    return account
+}
+
+const updateAccountPreferences = async (account: Account): Promise<Account> => {
+
+    const path = await addContentToIPFS(account.preferences!)
+    //TODO handle ipfs error
+
+    const {data, error} = await db.supabase
+        .from('accounts')
+        .update(
+            {
+                preferences_path: path
+            }
+        )
+        .match({ id: account.id })
+
+
+    if(error) {
+        console.error(error)
+        //TODO: handle error
+    }
+
+    return {...data[0],
+        preferences: account.preferences
+    } as Account
+}
+
+const getAccountNonce = async (identifier: string): Promise<number> => {
+
+    const query = validate(identifier) ? `id.eq.${identifier}` : `address.eq.${identifier},special_domain.eq.${identifier},internal_pub_key.eq.${identifier}`
+
+    const {data, error} = await db.supabase.from('accounts').select('nonce')
+    .or(query)
+
+    if (!error && data.length > 0) {
+        return data[0].nonce as number
     }
 
     throw new AccountNotFoundError(identifier)
 }
 
-const getMeetingsForAccount = async (identifier: string, start?: Date, end?: Date): Promise<DBMeeting[]> => {
-    const account = await getAccountFromDB(identifier)
 
-    const { data, error } = await db.supabase.from('participant_info').select(
-        `
-        participant,
-        meeting_info_path,
-        meetings (
-          start,
-          end
-        )
-      `
-    ).eq('participant', account.address)
-        .gte('meeting.start', start ? start : 0)
-        .lte('meeting.end', end ? end : 99999999999)
+const getAccountFromDB = async (identifier: string): Promise<Account> => {
 
-    // //TODO: handle error
+    const query = validate(identifier) ? `id.eq.${identifier}` : `address.ilike.${identifier},special_domain.ilike.${identifier},internal_pub_key.eq.${identifier}`
 
+    const {data, error} = await db.supabase.from('accounts').select()
+    .or(query)
+    .order('created_at')
 
-    return data
-}
-
-const getMeetingFromDB = async (meeting_id: string, participant_address: string): Promise<MeetingEncrypted> => {
-
-    const { data, error } = await db.supabase.from('meetings').select(`
-        *,
-        participant_info (
-            *
-        )
-    `).eq('id', meeting_id)
-
-    const dbMeeting = data[0] as DBMeeting
-    const meeting: MeetingEncrypted = {
-        id: dbMeeting.id!,
-        startTime: dayjs(dbMeeting.start),
-        endTime: dayjs(dbMeeting.end),
-        participants: []
+    if (!error && data.length > 0) {
+        let account = data[0] as Account
+        account.preferences = (await fetchContentFromIPFS(account.preferences_path)) as AccountPreferences
+        return account
+    } else {
+        console.error(error)
     }
 
-    const participants: Participant[] = []
+    throw new AccountNotFoundError(identifier)
+}
 
-    for (const participant of data[0].participant_info) {
-        const ipfsContent: IPFSMeetingInfo = await fetchContentFromIPFS(participant.meeting_info_path!) as IPFSMeetingInfo
-        participants.push({
-            address: participant.participant,
-            type: ipfsContent.type,
-            status: ipfsContent.status
-        })
-        if (participant.participant == participant_address) {
-            meeting.content = ipfsContent.content
-        }
-    };
+const getSlotsForAccount = async (identifier: string, start?: Date, end?: Date, limit?: number, offset?: number): Promise<DBSlot[]> => {
+    const account = await getAccountFromDB(identifier)
 
-    meeting.participants = participants
+    const _start = start ? start.toISOString() : "1970-01-01"
+    const _end = end ? end.toISOString() : "2500-01-01"
+
+    const { data, error } = await db.supabase.from('slots').select(
+    ).eq('account_pub_key', account.internal_pub_key)
+    .or(`and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`)
+    .range(offset || 0, (offset || 0) + (limit ? (limit - 1) : 99999999999999999))
+    .order('start')
+
+    if (error) {
+        console.error(error)
+    // //TODO: handle error
+    }
+
+    return data || []
+}
+
+const getSlotsForDashboard = async (identifier: string, end: Date, limit: number, offset: number): Promise<DBSlot[]> => {
+    const account = await getAccountFromDB(identifier)
+
+    const _end = end.toISOString()
+
+    const { data, error } = await db.supabase.from('slots').select(
+    ).eq('account_pub_key', account.internal_pub_key)
+    .gte('end', _end)
+    .range(offset, offset + limit)
+    .order('start')
+
+    if (error) {
+        console.error(error)
+    // //TODO: handle error
+    }
+
+    return data || []
+}
+
+const isSlotFree = async (account_identifier: string, start: Date, end: Date, meetingTypeId: string): Promise<boolean> => {
+    const account = await getAccountFromDB(account_identifier)
+    
+    const minTime = account.preferences?.availableTypes.filter(mt => mt.id === meetingTypeId)
+    
+    if(minTime && minTime.length > 0) {
+        if(!minTime[0].minAdvanceTime || dayjs().add(minTime[0].minAdvanceTime, 'minute').isAfter(start)) {
+            return false
+        }    
+    }
+    return await (await getSlotsForAccount(account_identifier, start, end)).length == 0
+}
+
+const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
+
+    const { data, error } = await db.supabase.from('slots').select().eq('id', slot_id)
+
+    if(error) {
+        // todo handle error
+    }
+    
+    if(data.length == 0) {
+        throw new MeetingNotFoundError(slot_id)
+    }
+
+    const dbMeeting = data[0] as DBSlot
+    const meeting: DBSlotEnhanced = {
+        ...dbMeeting,
+        meeting_info_encrypted: await fetchContentFromIPFS(dbMeeting.meeting_info_file_path) as Encrypted,
+    }
 
     return meeting
 }
 
-const saveMeeting = async (meeting: MeetingCreationRequest): Promise<MeetingEncrypted> => {
+const saveMeeting = async (meeting: MeetingCreationRequest, requesterId: string): Promise<DBSlotEnhanced> => {
 
-    const { data, error } = await db.supabase.from('meetings').insert([
-        {
-            start: meeting.start,
-            end: meeting.end
+    //TODO - validate meeting can indeed be created, meaning, it is not conflicting
+
+    if((new Set(meeting.participants_mapping.map(p => p.account_id))).size !== meeting.participants_mapping.length) {
+        //means there are duplicate participants
+        throw new MeetingWithYourselfError()
+    }
+
+    const slots = []
+    let meetingResponse = {} as DBSlotEnhanced
+    let index = 0
+    let i = 0
+
+    for(let participant of meeting.participants_mapping) {
+
+        if(await !isSlotFree(participant.account_id, new Date(meeting.start), new Date(meeting.end), meeting.meetingTypeId)) {
+          throw new TimeNotAvailableError()
         }
-    ])
+
+        const account = await getAccountFromDB(participant.account_id)
+        
+        const path = await addContentToIPFS(participant.privateInfo)
+
+        const dbSlot: DBSlot = {
+            id: participant.slot_id,
+            start: meeting.start,
+            end: meeting.end,
+            account_pub_key: account.internal_pub_key,
+            meeting_info_file_path: path
+        }
+
+        slots.push(dbSlot)
+
+        if(participant.account_id === requesterId) {
+            index = i
+            meetingResponse = {...dbSlot, meeting_info_encrypted: participant.privateInfo}
+        }
+        i++
+    }
+    
+    const { data, error } = await db.supabase.from('slots').insert(
+        slots
+    )
 
     //TODO: handle error
     if (error) {
         console.error(error)
     }
 
-    const meeting_id = data[0].id
-
-    let contentToReturn: Encrypted | undefined
-
-    await meeting.participants.forEach(async (participantInfo) => {
-
-        const account = await getAccountFromDB(participantInfo.participant)
-
-        const content = meeting.content ? await encryptWithPublicKey(account.internal_pub_key, meeting.content) : undefined
-        if (participantInfo.type == ParticipantType.Scheduler) {
-            contentToReturn = content
-        }
-
-        const ipfsInfo: IPFSMeetingInfo = {
-            created_at: new Date(),
-            status: participantInfo.type === ParticipantType.Scheduler ? MeetingStatus.Accepted : MeetingStatus.Pending,
-            type: participantInfo.type,
-            content,
-            change_history_paths: []
-        }
-
-        const path = await addContentToIPFS(ipfsInfo)
-        const { data, error } = await db.supabase.from('participant_info').insert([
-            {
-                meeting_id,
-                participant: participantInfo.participant,
-                meeting_info_path: path
-            }
-        ])
-
-        //TODO: handle error
-
-    })
-
-    const result: MeetingEncrypted = {
-        id: meeting_id,
-        participants: meeting.participants.map((participantInfo) => {
-            return {
-                address: participantInfo.participant,
-                type: participantInfo.type,
-                status: participantInfo.status
-            }
-        }),
-        startTime: dayjs(meeting.start),
-        endTime: dayjs(meeting.end),
-        content: contentToReturn
-    }
-
-    return result
+    meetingResponse.id = data[index].id
+    
+    return meetingResponse
 }
 
-const saveEmailToDB = async (email: string): Promise<boolean> => {
-    const { data, error } = await db.supabase.from('emails').upsert([
+const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
+    const { data, error } = await db.supabase.from('emails').insert([
         {
-            email
+            email,
+            plan
         }
     ])
 
-    console.log(data)
-    console.log(error)
     if (!error) {
         return true
     }
-
     return false
 }
 
-export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getMeetingsForAccount, getMeetingFromDB, saveEmailToDB }
+export { initDB, initAccountDBForWallet, saveMeeting, getAccountFromDB, getSlotsForAccount, getSlotsForDashboard, getMeetingFromDB, saveEmailToDB, isSlotFree, updateAccountPreferences, getAccountNonce}

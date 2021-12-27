@@ -27,4 +27,5 @@ export const DaysOfMonth = styled.section`
 export const Wrapper = styled.div`
   position: relative;
   overflow: hidden;
+  flex: 1;
 `

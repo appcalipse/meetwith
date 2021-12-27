@@ -1,26 +1,52 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { getMeetingsForAccount, initDB } from '../../../utils/database'
+import {
+  getSlotsForAccount,
+  getSlotsForDashboard,
+  initDB,
+} from '../../../utils/database'
 import { AccountNotFoundError } from '../../../utils/errors'
+import { withSentry } from '@sentry/nextjs'
 
-export default async (req: NextApiRequest, res: NextApiResponse) => {
+export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     initDB()
 
     try {
-      const meetings = await getMeetingsForAccount(
-        req.query.identifier as string,
-        req.query.start ? new Date(req.query.start as string) : undefined,
-        req.query.end ? new Date(req.query.end as string) : undefined
-      )
+      let meetings
+      if (req.query.upcoming) {
+        meetings = await getSlotsForDashboard(
+          req.query.identifier as string,
+          new Date(Number(req.query.end as string)),
+          Number(req.query.limit as string),
+          Number(req.query.offset as string)
+        )
+      } else {
+        meetings = await getSlotsForAccount(
+          req.query.identifier as string,
+          req.query.start !== 'undefined'
+            ? new Date(Number(req.query.start as string))
+            : undefined,
+          req.query.end !== 'undefined'
+            ? new Date(Number(req.query.end as string))
+            : undefined,
+          req.query.limit !== 'undefined'
+            ? Number(req.query.limit as string)
+            : undefined,
+          req.query.offset !== 'undefined'
+            ? Number(req.query.offset as string)
+            : undefined
+        )
+      }
 
       res.status(200).json(meetings)
       return
     } catch (error) {
-      console.log(error)
-      if (error instanceof AccountNotFoundError)
+      if (error instanceof AccountNotFoundError) {
         res.status(404).json({ error: error.message })
+      }
+      console.error(error)
       return
     }
   }
   res.status(404).send('Not found')
-}
+})

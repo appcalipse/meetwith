@@ -3,6 +3,7 @@ import { useColorModeValue } from '@chakra-ui/color-mode'
 import { Box, Text } from '@chakra-ui/layout'
 import React from 'react'
 import { useCookies } from 'react-cookie'
+import MWWButton from '../MWWButton'
 
 interface Props {
   consentCookie: boolean
@@ -50,13 +51,9 @@ export const CookieConsent: React.FC<Props> = (props: Props) => {
             We use cookies to improve your experience, for real. We won't do
             anything to harm your privacy :)
           </Text>
-          <Button
-            onClick={accepted}
-            colorScheme="orange"
-            mt={{ base: 4, md: 0 }}
-          >
+          <MWWButton onClick={accepted} mt={{ base: 4, md: 0 }}>
             ACCEPT COOKIES
-          </Button>
+          </MWWButton>
         </Box>
       </Box>
     </Box>

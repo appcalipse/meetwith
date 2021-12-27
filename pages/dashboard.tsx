@@ -1,28 +1,31 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext } from 'react'
 import { AccountContext } from '../providers/AccountProvider'
-import { MeetingEncrypted } from '../types/Meeting'
-import { Account } from '../types/Account'
-import { Box } from '@chakra-ui/layout'
-import MeetingCard from '../components/meeting/MeetingCard'
-import { getMeetings } from '../utils/api_helper'
+import { Container, Flex } from '@chakra-ui/layout'
+import router from 'next/router'
+import DashboardContent from '../components/profile/DashboardContent'
+import Loading from '../components/Loading'
 
 const Dashboard: React.FC = () => {
-  const { currentAccount, logged } = useContext(AccountContext)
-  const [meetings, setMeetings] = useState([] as MeetingEncrypted[])
+  const { logged } = useContext(AccountContext)
 
-  const updateMeetings = async (account: Account) => {
-    setMeetings(await getMeetings(account.address))
+  if (!logged) {
+    router.push('/')
+    return (
+      <Flex
+        width="100%"
+        height="100%"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Loading />
+      </Flex>
+    )
   }
-  useEffect(() => {
-    logged && updateMeetings(currentAccount!)
-  }, [logged])
 
   return (
-    <Box>
-      {meetings.map(meeting => (
-        <MeetingCard key={meeting.id} meeting={meeting} />
-      ))}
-    </Box>
+    <Container maxW="6xl" mt={8} flex={1}>
+      <DashboardContent />
+    </Container>
   )
 }
 

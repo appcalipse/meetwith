@@ -1,5 +1,6 @@
 import { create, IPFSHTTPClient } from 'ipfs-http-client'
 import { isProduction } from './constants'
+import * as Sentry from "@sentry/browser";
 
 class IPFSHelper {
 
@@ -17,7 +18,7 @@ class IPFSHelper {
                 port: 5001,
                 protocol: 'https',
                 headers: {
-                    authorization: 'Basic ' + Buffer.from(process.env.NEXT_INFURA_ID + ':' + process.env.NEXT_INFURA_SECRET).toString('base64')
+                    authorization: 'Basic ' + Buffer.from(process.env.NEXT_PUBLIC_INFURA_ID + ':' + process.env.NEXT_INFURA_SECRET).toString('base64')
                 }
             }
 
@@ -47,7 +48,8 @@ class IPFSHelper {
                 data.push(chunk)
             }
         } catch (err) {
-            console.log(err)
+            //TODO add error handling
+            console.error(err)
         }
 
         return JSON.parse(Buffer.concat(data).toString())
@@ -64,4 +66,13 @@ export const addContentToIPFS = async (content: object): Promise<string> => {
 
 export const fetchContentFromIPFS = async (path: string): Promise<object> => {
     return ipfsInstance.fetchContentFromIPFS(path)
+}
+
+export const fetchContentFromIPFSFromBrowser = async (hash: string): Promise<object | undefined> => {
+    try {
+        return await (await fetch(`https://ipfs.infura.io/ipfs/${hash}`)).json()
+    } catch(err) {
+        Sentry.captureException(err)
+        return undefined
+    }
 }

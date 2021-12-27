@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useContext, useState } from 'react'
 import {
   Box,
   HStack,
@@ -11,8 +11,15 @@ import {
   ListItem,
   ListIcon,
   Button,
+  useToast,
 } from '@chakra-ui/react'
 import { FaAngry, FaCheckCircle } from 'react-icons/fa'
+import { AccountContext } from '../../providers/AccountProvider'
+import { loginWithWallet } from '../../utils/user_manager'
+import { logEvent } from '../../utils/analytics'
+import router from 'next/router'
+import AlertMeDialog from './AlertMeDialog'
+import * as Sentry from '@sentry/browser'
 
 function PriceWrapper({ children }: { children: ReactNode }) {
   return (
@@ -32,6 +39,47 @@ function PriceWrapper({ children }: { children: ReactNode }) {
 }
 
 export default function Pricing() {
+  const { currentAccount, login, setLoginIn, loginIn } =
+    useContext(AccountContext)
+
+  const [selectedPlan, setSelectedPlan] = useState(
+    undefined as string | undefined
+  )
+
+  const toast = useToast()
+
+  const handleLogin = async () => {
+    if (!currentAccount) {
+      setLoginIn(true)
+      logEvent('Clicked to start on FREE plan')
+      try {
+        const account = await loginWithWallet()
+        if (!account) {
+          setLoginIn(false)
+          return
+        }
+        await login(account)
+        logEvent('Signed in')
+
+        await router.push('/dashboard')
+      } catch (error: any) {
+        Sentry.captureException(error)
+        toast({
+          title: 'Error',
+          description: error.message || error,
+          status: 'error',
+          duration: 7000,
+          position: 'top',
+          isClosable: true,
+        })
+        logEvent('Failed to sign in', error)
+      }
+    } else {
+      router.push('/dashboard')
+    }
+    setLoginIn(false)
+  }
+
   return (
     <Box pt={12} px={12} id="pricing">
       <VStack spacing={2} textAlign="center">
@@ -73,6 +121,14 @@ export default function Pricing() {
                 Public page for scheduling meetings
               </ListItem>
               <ListItem>
+                <ListIcon as={FaCheckCircle} color="green.500" />
+                Configurable availability
+              </ListItem>
+              <ListItem>
+                <ListIcon as={FaCheckCircle} color="green.500" />
+                Web3 powered meeting room
+              </ListItem>
+              <ListItem>
                 <ListIcon as={FaAngry} color="red.500" />
                 Single meeting configuration
               </ListItem>
@@ -86,33 +142,41 @@ export default function Pricing() {
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
-              <Button w="full" colorScheme="orange" variant="outline" disabled>
-                Coming soon
+              <Button
+                w="full"
+                colorScheme="orange"
+                variant="outline"
+                isLoading={loginIn}
+                onClick={handleLogin}
+              >
+                Start now
               </Button>
             </Box>
           </VStack>
         </PriceWrapper>
 
         <PriceWrapper>
-          {/* <Box position="relative">
-                        <Box
-                            position="absolute"
-                            top="-16px"
-                            left="50%"
-                            style={{ transform: 'translate(-50%)' }}>
-                            <Text
-                                textTransform="uppercase"
-                                bg={useColorModeValue('gray.300', 'gray.700')}
-                                px={3}
-                                py={1}
-                                color={useColorModeValue('gray.900', 'gray.300')}
-                                fontSize="sm"
-                                fontWeight="600"
-                                rounded="xl">
-                                Most Popular
-                            </Text>
-                        </Box>
-                    </Box> */}
+          <Box position="relative">
+            <Box
+              position="absolute"
+              top="-16px"
+              left="50%"
+              style={{ transform: 'translate(-50%)' }}
+            >
+              <Text
+                textTransform="uppercase"
+                bg={useColorModeValue('yellow.300', 'yellow.800')}
+                px={3}
+                py={1}
+                color={useColorModeValue('gray.900', 'gray.300')}
+                fontSize="sm"
+                fontWeight="600"
+                rounded="xl"
+              >
+                Coming soon
+              </Text>
+            </Box>
+          </Box>
           <Box py={4} px={12}>
             <Text fontWeight="500" fontSize="2xl" textAlign="center">
               Pro
@@ -146,7 +210,7 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                ENS integration
+                ENS and unstoppable domains integration for your calendar link
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
@@ -158,14 +222,40 @@ export default function Pricing() {
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
-              <Button w="full" colorScheme="orange" variant="outline" disabled>
-                Coming soon
+              <Button
+                w="full"
+                colorScheme="orange"
+                variant="outline"
+                onClick={() => setSelectedPlan('Pro')}
+              >
+                Alert me
               </Button>
             </Box>
           </VStack>
         </PriceWrapper>
 
         <PriceWrapper>
+          <Box position="relative">
+            <Box
+              position="absolute"
+              top="-16px"
+              left="50%"
+              style={{ transform: 'translate(-50%)' }}
+            >
+              <Text
+                textTransform="uppercase"
+                bg={useColorModeValue('yellow.300', 'yellow.800')}
+                px={3}
+                py={1}
+                color={useColorModeValue('gray.900', 'gray.300')}
+                fontSize="sm"
+                fontWeight="600"
+                rounded="xl"
+              >
+                Coming soon
+              </Text>
+            </Box>
+          </Box>
           <Box py={4} px={12}>
             <Text fontWeight="500" fontSize="2xl" textAlign="center">
               DAO
@@ -199,13 +289,39 @@ export default function Pricing() {
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
-              <Button w="full" colorScheme="orange" variant="outline" disabled>
-                Coming soon
+              <Button
+                w="full"
+                colorScheme="orange"
+                variant="outline"
+                onClick={() => setSelectedPlan('DAO')}
+              >
+                Alert me
               </Button>
             </Box>
           </VStack>
         </PriceWrapper>
         <PriceWrapper>
+          <Box position="relative">
+            <Box
+              position="absolute"
+              top="-16px"
+              left="50%"
+              style={{ transform: 'translate(-50%)' }}
+            >
+              <Text
+                textTransform="uppercase"
+                bg={useColorModeValue('yellow.300', 'yellow.800')}
+                px={3}
+                py={1}
+                color={useColorModeValue('gray.900', 'gray.300')}
+                fontSize="sm"
+                fontWeight="600"
+                rounded="xl"
+              >
+                Coming soon
+              </Text>
+            </Box>
+          </Box>
           <Box py={4} px={12}>
             <Text fontWeight="500" fontSize="2xl" textAlign="center">
               Awesome DAO
@@ -247,13 +363,23 @@ export default function Pricing() {
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
-              <Button w="full" colorScheme="orange" variant="outline" disabled>
-                Coming soon
+              <Button
+                w="full"
+                colorScheme="orange"
+                variant="outline"
+                onClick={() => setSelectedPlan('Awesome DAO')}
+              >
+                Alert me
               </Button>
             </Box>
           </VStack>
         </PriceWrapper>
       </Flex>
+      <AlertMeDialog
+        plan={selectedPlan}
+        isOpen={selectedPlan !== undefined}
+        onClose={() => setSelectedPlan(undefined)}
+      />
     </Box>
   )
 }
