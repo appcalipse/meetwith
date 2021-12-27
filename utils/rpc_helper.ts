@@ -15,15 +15,22 @@ export const resolveExtraInfo = async (address: string): Promise<AccountExtraPro
 
 const resolveENS = async (address: string): Promise<AccountExtraProps | undefined> => {
 
+    console.log('here')
+
     let provider: JsonRpcProvider
     
     if(window.ethereum && window.ethereum.chainId === "0x1") {
+        console.log('1')
+
         provider = new ethers.providers.Web3Provider(window.ethereum);
     } else {
+        console.log('2')
+
         provider = new ethers.providers.InfuraProvider("homestead", process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID);
     }
 
     const name = await provider.lookupAddress(address)
+    console.log(name)
 
     if(!name) {
         return undefined

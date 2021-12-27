@@ -59,7 +59,7 @@ const MeetingCard = ({ meeting }: MeetingCardProps) => {
     } else if (now.add(6, 'hour').isAfter(start)) {
       return {
         color: 'green',
-        text: 'Staring Soon',
+        text: 'Starting Soon',
       }
     }
     return null
