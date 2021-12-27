@@ -144,7 +144,7 @@ const Schedule: React.FC = () => {
         content,
         meetingUrl
       )
-      // await updateMeetings(account!.address)
+      await updateMeetings(account!.address)
       setLastScheduledMeeting(meeting)
       logEvent('Scheduled a meeting')
       onOpen()
