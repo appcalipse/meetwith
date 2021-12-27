@@ -3,6 +3,7 @@ import { BigNumber, ethers } from "ethers";
 import { hexConcat, hexDataSlice, hexZeroPad } from "ethers/lib/utils";
 import { toUtf8String } from "@ethersproject/strings";
 import { JsonRpcProvider } from "@ethersproject/providers";
+import * as Sentry from '@sentry/browser'
 
 interface AccountExtraProps {
     name: string,
@@ -39,7 +40,6 @@ const resolveENS = async (address: string): Promise<AccountExtraProps | undefine
     }
     
     const avatarInfo = await resolver?.getText("avatar")
-    console.log(avatarInfo)
     const avatar = avatarInfo ? (await getAvatar(address, avatarInfo!, provider))?.url : undefined
 
     return {
@@ -140,7 +140,9 @@ const getAvatar = async (owner: string, avatar: string, provider: JsonRpcProvide
                 }
             }
         }
-    } catch (error) { }
+    } catch (error) { 
+        Sentry.captureException(error);
+    }
 
     return undefined;
 }
