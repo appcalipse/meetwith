@@ -160,8 +160,8 @@ function DayTimePicker({
             <Box>
               <FormLabel>Your name (optional)</FormLabel>
               <Input
-                disabled={isScheduling}
                 type="text"
+                disabled={isLoading || isScheduling || isSchedulingExternal}
                 placeholder="Your name or an identifier (if you want to provide)"
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -170,8 +170,8 @@ function DayTimePicker({
 
               <FormLabel>Information (optional)</FormLabel>
               <Textarea
-                disabled={isScheduling}
                 type="text"
+                disabled={isLoading || isScheduling || isSchedulingExternal}
                 placeholder="Any information you want to share prior to the meeting?"
                 value={content}
                 onChange={e => setContent(e.target.value)}
@@ -182,6 +182,7 @@ function DayTimePicker({
                   colorScheme="orange"
                   size="lg"
                   mr={4}
+                  isDisabled={isLoading || isScheduling || isSchedulingExternal}
                   defaultChecked={!customMeeting}
                   onChange={e => setCustomMeeting(!e.target.checked)}
                 />
@@ -203,6 +204,7 @@ function DayTimePicker({
                   mb={4}
                   type="text"
                   placeholder="insert a custom meeting url"
+                  disabled={isLoading || isScheduling || isSchedulingExternal}
                   value={meetingUrl}
                   onChange={e => setMeetingUrl(e.target.value)}
                 />
@@ -210,7 +212,7 @@ function DayTimePicker({
 
               <Button
                 isFullWidth
-                disabled={isLoading}
+                disabled={isLoading || isScheduling || isSchedulingExternal}
                 isLoading={isScheduling || isSchedulingExternal}
                 onClick={handleConfirm}
                 colorScheme="orange"
