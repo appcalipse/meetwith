@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getAccountDisplayName } from './user_manager';
 import { generateMeetingUrl } from './meeting_call_helper';
 import { getDisplayName } from 'next/dist/shared/lib/utils';
+import { logEvent } from './analytics';
 
 const scheduleMeeting = async (source_account_id: string, target_account_id: string, meetingTypeId: string, startTime: Dayjs, endTime: Dayjs, sourceName?:string, meetingContent?: string, meetingUrl?: string): Promise<MeetingDecrypted> => {
 
@@ -112,6 +113,7 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
       document.body.appendChild(link);  
       link.click();
       link.parentNode!.removeChild(link);
+      logEvent('Downloaded .ics')
     } else {
         console.error(icsFile.error)
     }
