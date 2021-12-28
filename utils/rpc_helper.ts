@@ -35,12 +35,12 @@ const resolveENS = async (address: string): Promise<AccountExtraProps | undefine
     const validatedAddress = await resolver?.getAddress()
 
     // Check to be sure the reverse record is correct.
-    if(address.toLocaleLowerCase() !== validatedAddress?.toLocaleLowerCase()) {
+    if(address.toLowerCase() !== validatedAddress?.toLowerCase()) {
         return undefined
     }
     
     const avatarInfo = await resolver?.getText("avatar")
-    const avatar = avatarInfo ? (await getAvatar(address.toLocaleLowerCase(), avatarInfo!, provider))?.url : undefined
+    const avatar = avatarInfo ? (await getAvatar(address.toLowerCase(), avatarInfo!, provider))?.url : undefined
 
     return {
         name,
@@ -97,7 +97,7 @@ const getAvatar = async (owner: string, avatar: string, provider: JsonRpcProvide
                         const tokenOwner = provider.formatter.callAddress(await provider.call({
                             to: addr, data: hexConcat([ "0x6352211e", tokenId ])
                         }));
-                        if (owner !== tokenOwner.toLocaleLowerCase()) { return undefined; }
+                        if (owner !== tokenOwner.toLowerCase()) { return undefined; }
                         linkage.push({ type: "owner", content: tokenOwner });
 
                     } else if (match[1] === "erc1155") {

@@ -1,8 +1,5 @@
-import React, { useContext, useEffect } from 'react'
-import {
-  ACCOUNT_CHANGED_BROADCAST_EVENT,
-  loginWithWallet,
-} from '../utils/user_manager'
+import React, { useContext, useEffect, useState } from 'react'
+import { loginWithWallet, web3 } from '../utils/user_manager'
 import { AccountContext } from '../providers/AccountProvider'
 import {
   Box,
@@ -46,17 +43,6 @@ export default function WithSubnavigation() {
 
   const toast = useToast()
 
-  useEffect(() => {
-    const channel = new BroadcastChannel(ACCOUNT_CHANGED_BROADCAST_EVENT)
-    channel.onmessage = async ev => {
-      const account = await loginWithWallet()
-      if (account) {
-        await login(account)
-      }
-      setLoginIn(false)
-    }
-  }, [])
-
   const handleLogin = async () => {
     if (!currentAccount) {
       setLoginIn(true)
@@ -69,6 +55,19 @@ export default function WithSubnavigation() {
         }
 
         await login(account)
+
+        const provider = web3.currentProvider as any
+        provider &&
+          provider.on('accountsChanged', async (accounts: string[]) => {
+            if (accounts[0] && accounts[0].toLowerCase() !== currentAccount) {
+              setLoginIn(true)
+              const account = await loginWithWallet()
+              if (account) {
+                await login(account)
+              }
+              setLoginIn(false)
+            }
+          })
 
         logEvent('Signed in')
 

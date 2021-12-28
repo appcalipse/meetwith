@@ -25,8 +25,7 @@ export async function middleware(req: NextRequest) {
 
     const recovered = checkSignature(sig, response.nonce! as number)
 
-    if (account.toLocaleLowerCase() !== recovered.toLocaleLowerCase())
-      return notAuthorized
+    if (account.toLowerCase() !== recovered.toLowerCase()) return notAuthorized
 
     return NextResponse.next()
   } catch (e) {

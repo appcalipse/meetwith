@@ -41,19 +41,20 @@ const MeetingTypesConfig: React.FC = () => {
           <Text>Your meeting types</Text>
           <HStack flexWrap="wrap">
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
-              const url = getAccountCalendarUrl(currentAccount!, false)
+              const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
+                type.url
+              }`
               return (
-                <>
+                <Box key={index}>
                   <MeetingTypeCard
                     onSelect={setSelectedType}
-                    key={index}
                     title={type.title}
                     duration={type.duration}
                     url={url}
                     typeId={type.id!}
                   />
                   <Spacer />
-                </>
+                </Box>
               )
             })}
             <AddTypeCard />
@@ -234,11 +235,12 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
         onChange={e => setTitle(e.target.value)}
       />
 
-      <Text pt={4}>Event link</Text>
+      <Text pt={4}>Event link (max 40 characters)</Text>
       <Text fontSize="sm">
         {getAccountCalendarUrl(account, true)}/{!url ? '<link>' : url}
       </Text>
       <Input
+        maxLength={40}
         type="text"
         placeholder="link"
         value={url}
