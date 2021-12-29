@@ -206,7 +206,7 @@ const Schedule: React.FC = () => {
       slot,
       meetings,
       account!.preferences!.availabilities,
-      currentAccount?.preferences?.timezone || dayjs.tz.guess()
+      account!.preferences!.timezone || dayjs.tz.guess()
     )
   }
 

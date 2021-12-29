@@ -21,11 +21,13 @@ import {
   Input,
   Switch,
   FormLabel,
+  VStack,
   Link,
 } from '@chakra-ui/react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
 import { logEvent } from '../../utils/analytics'
-import router from 'next/router'
+import { AccountContext } from '../../providers/AccountProvider'
+import dayjs from '../../utils/dayjs_extender'
 
 function DayTimePicker({
   timeSlotValidator,
@@ -52,6 +54,7 @@ function DayTimePicker({
   const [isScheduling, setIsScheduling] = useState(false)
   const [customMeeting, setCustomMeeting] = useState(false)
   const [meetingUrl, setMeetingUrl] = useState('')
+  const { currentAccount } = React.useContext(AccountContext)
 
   React.useEffect(() => {
     if (reset) {
@@ -119,9 +122,17 @@ function DayTimePicker({
                 Back
               </Text>
             </HStack>
-            <HStack>
-              <FaCalendar />
-              <Text>{dateFns.format(pickedDay, 'dddd, MMMM Do, YYYY')}</Text>
+            <HStack alignItems="flex-start">
+              <Box mt="4px">
+                <FaCalendar />
+              </Box>
+              <VStack alignItems="flex-start">
+                <Text>{dateFns.format(pickedDay, 'dddd, MMMM Do, YYYY')}</Text>
+                <Text fontSize="sm">
+                  Timezone:{' '}
+                  {currentAccount?.preferences?.timezone || dayjs.tz.guess()}
+                </Text>
+              </VStack>
             </HStack>
           </PopupHeader>
 
