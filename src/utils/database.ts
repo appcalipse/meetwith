@@ -26,6 +26,7 @@ import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
 import {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
+  isTimeInsideAvailabilities,
 } from './calendar_manager'
 import { validate } from 'uuid'
 import dayjs from 'dayjs'
@@ -274,7 +275,6 @@ const saveMeeting = async (
   meeting: MeetingCreationRequest,
   requesterId: string
 ): Promise<DBSlotEnhanced> => {
-  //TODO - validate meeting can indeed be created, meaning, it is not conflicting
 
   if (
     new Set(meeting.participants_mapping.map(p => p.account_id)).size !==
@@ -300,6 +300,8 @@ const saveMeeting = async (
     ) {
       throw new TimeNotAvailableError()
     }
+
+    //TODO validate availabilities
 
     const account = await getAccountFromDB(participant.account_id)
 

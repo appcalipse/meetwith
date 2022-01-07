@@ -131,15 +131,16 @@ const Schedule: React.FC = () => {
       return false
     }
 
-    const start = dayjs(startTime)
-    const end = dayjs(startTime).add(selectedType.duration, 'minute')
+    const start = dayjs.utc(startTime).tz(currentAccount?.preferences?.timezone || dayjs.tz.guess(), true)
+    const end = start.clone().add(selectedType.duration, 'minute')
+
     try {
       const meeting = await scheduleMeeting(
         currentAccount!.id,
         account!.id,
         selectedType.id,
-        start,
-        end,
+        start.utc(),
+        end.utc(),
         name,
         content,
         meetingUrl
@@ -206,7 +207,8 @@ const Schedule: React.FC = () => {
       slot,
       meetings,
       account!.preferences!.availabilities,
-      account!.preferences!.timezone || dayjs.tz.guess()
+      account!.preferences!.timezone || dayjs.tz.guess(),
+      currentAccount?.preferences!.timezone || dayjs.tz.guess()
     )
   }
 
@@ -252,8 +254,9 @@ const Schedule: React.FC = () => {
                 reset={reset}
                 onMonthChange={(day: Date) => setCurrentMonth(day)}
                 onSchedule={confirmSchedule}
-                willStartScheduling={willStartScheduling =>
+                willStartScheduling={willStartScheduling => {
                   setReadyToSchedule(willStartScheduling)
+                }
                 }
                 isSchedulingExternal={isScheduling}
                 slotDurationInMinutes={selectedType.duration}
