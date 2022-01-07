@@ -5,15 +5,11 @@ import {
   Box,
   Heading,
   Text,
-  Button,
   Image,
   Icon,
   IconProps,
   useColorModeValue,
-  useToast,
 } from '@chakra-ui/react'
-import { useContext } from 'react'
-import { AccountContext } from '../../providers/AccountProvider'
 
 import MWWButton from '../MWWButton'
 
