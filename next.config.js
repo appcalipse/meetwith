@@ -1,9 +1,11 @@
 /** @type {import('next').NextConfig} */
 
-const { withSentryConfig } = require("@sentry/nextjs");
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { withSentryConfig } = require('@sentry/nextjs')
 
 const moduleExports = {
   reactStrictMode: true,
+  eslint: { dirs: ['src'] },
 }
 
 const SentryWebpackPluginOptions = {
@@ -17,8 +19,8 @@ const SentryWebpackPluginOptions = {
   enabled: process.env.NEXT_PUBLIC_ENV !== 'local',
   // For all available options, see:
   // https://github.com/getsentry/sentry-webpack-plugin#options.
-};
+}
 
 // Make sure adding Sentry options is the last code to run before exporting, to
 // ensure that your source maps include changes from all other Webpack plugins
-module.exports = withSentryConfig(moduleExports, SentryWebpackPluginOptions);
+module.exports = withSentryConfig(moduleExports, SentryWebpackPluginOptions)
