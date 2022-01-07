@@ -14,8 +14,6 @@ import dayjs from '../../../utils/dayjs_extender'
 import {
   DBSlot,
   MeetingDecrypted,
-  ParticipantInfo,
-  ParticipantType,
 } from '../../../types/Meeting'
 import {
   decryptMeeting,
@@ -26,22 +24,22 @@ import IPFSLink from '../../IPFSLink'
 import { useContext, useEffect, useState } from 'react'
 import { fetchContentFromIPFSFromBrowser } from '../../../utils/ipfs_helper'
 import { Encrypted } from 'eth-crypto'
-import { ellipsizeAddress } from '../../../utils/user_manager'
+import { getParticipantDisplay } from '../../../utils/user_manager'
 import { Dayjs } from 'dayjs'
 import { AccountContext } from '../../../providers/AccountProvider'
 import { logEvent } from '../../../utils/analytics'
 import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
 
 interface MeetingCardProps {
-  meeting: DBSlot
-  opened?: boolean
+  meeting: DBSlot,
+  timezone: string,
 }
 
 interface Label {
   color: string
   text: string
 }
-const MeetingCard = ({ meeting }: MeetingCardProps) => {
+const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
   const duration = dayjs(meeting.end).diff(dayjs(meeting.start), 'minute')
 
   const defineLabel = (start: Dayjs, end: Dayjs): Label | null => {
@@ -65,7 +63,7 @@ const MeetingCard = ({ meeting }: MeetingCardProps) => {
     return null
   }
 
-  const label = defineLabel(dayjs(meeting.start), dayjs(meeting.end))
+  const label = defineLabel(dayjs(meeting.start).tz(timezone), dayjs(meeting.end).tz(timezone))
   return (
     <>
       <Box
@@ -88,7 +86,7 @@ const MeetingCard = ({ meeting }: MeetingCardProps) => {
               </Badge>
             )}
             <Box>
-              <strong>When</strong>: {dayjs(meeting.start).format('LLLL')}
+              <strong>When</strong>: {dayjs(meeting.start).tz(timezone).format('LLLL')}
             </Box>
             <HStack>
               <strong>Duration</strong>:{' '}
@@ -132,19 +130,6 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
 
   const bgColor = useColorModeValue('gray.100', 'gray.900')
 
-  const getParticipantDisplay = (participant: ParticipantInfo) => {
-    let display =
-      participant.account_id === currentAccount?.id
-        ? 'You'
-        : participant.name || ellipsizeAddress(participant.address)
-
-    if (participant.type === ParticipantType.Scheduler) {
-      display = `${display} (Scheduler)`
-    }
-
-    return display
-  }
-
   return (
     <Box
       mt={2}
@@ -177,7 +162,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             </Text>
             <Text>
               {info.participants
-                .map(participant => getParticipantDisplay(participant))
+                .map(participant => getParticipantDisplay(participant, currentAccount))
                 .join(', ')}
             </Text>
           </VStack>

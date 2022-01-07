@@ -25,7 +25,6 @@ import { appUrl } from './constants'
 import { v4 as uuidv4 } from 'uuid'
 import { getAccountDisplayName } from './user_manager'
 import { generateMeetingUrl } from './meeting_call_helper'
-import { getDisplayName } from 'next/dist/shared/lib/utils'
 import { logEvent } from './analytics'
 
 const scheduleMeeting = async (
@@ -211,7 +210,8 @@ const isSlotAvailable = (
   slotTime: Date,
   meetings: DBSlot[],
   availabilities: DayAvailability[],
-  targetTimezone: string
+  targetTimezone: string,
+  sourceTimezone: string,
 ): boolean => {
   const start = dayjs(slotTime).toDate()
 
@@ -225,7 +225,8 @@ const isSlotAvailable = (
       dayjs(start),
       dayjs(end),
       availabilities,
-      targetTimezone
+      targetTimezone,
+      sourceTimezone
     )
   )
     return false
@@ -245,11 +246,15 @@ const isTimeInsideAvailabilities = (
   start: Dayjs,
   end: Dayjs,
   availabilities: DayAvailability[],
-  targetTimezone: string
+  targetTimezone: string,
+  sourceTimezone: string,
 ): boolean => {
-  const realStart = start.tz(targetTimezone)
 
-  const startTime = realStart.format('HH:mm')
+  
+  const startForSource = dayjs.utc(start.format("YYYY-MM-DD HH:mm")).tz(sourceTimezone)
+  const startForTarget = startForSource.clone().tz(targetTimezone)
+
+  const startTime = startForTarget.format('HH:mm')
   let endTime = end.tz(targetTimezone).format('HH:mm')
   if (endTime === '00:00') {
     endTime = '24:00'
@@ -276,7 +281,7 @@ const isTimeInsideAvailabilities = (
   }
 
   for (const availability of availabilities) {
-    if (availability.weekday === realStart.day()) {
+    if (availability.weekday === startForTarget.day()) {
       for (const range of availability.ranges) {
         if (compareTimes(startTime, range.start) >= 0) {
           if (compareTimes(endTime, range.end) <= 0) {
