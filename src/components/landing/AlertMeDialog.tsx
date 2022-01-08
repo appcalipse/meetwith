@@ -18,6 +18,7 @@ import {
 import { useState } from 'react'
 import { subscribeToWaitlist } from '../../utils/api_helper'
 import { logEvent } from '../../utils/analytics'
+import { isValidEmail } from '../../utils/validations'
 
 interface IProps {
   isOpen: boolean
@@ -32,13 +33,7 @@ const AlertMeDialog: React.FC<IProps> = ({ isOpen, onClose, plan }) => {
 
   const subscribe = async (email: string) => {
     setLoading(true)
-    if (
-      String(email)
-        .toLowerCase()
-        .match(
-          /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-        )
-    ) {
+    if (isValidEmail(email)) {
       const success = await subscribeToWaitlist(email, plan)
       if (success) {
         logEvent('Subscribed to plan waitlist', { plan })

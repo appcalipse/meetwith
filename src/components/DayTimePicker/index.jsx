@@ -197,7 +197,7 @@ function DayTimePicker({
                   defaultChecked={!customMeeting}
                   onChange={e => setCustomMeeting(!e.target.checked)}
                 />
-                <FormLabel htmlFor="email-alerts" mb="0">
+                <FormLabel mb="0">
                   <Text color="gray">
                     Use{' '}
                     <Link isExternal href="https://huddle01.com">

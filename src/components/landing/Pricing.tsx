@@ -131,7 +131,7 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Optional email notifications
+                Email notifications (optional)
               </ListItem>
               <ListItem>
                 <ListIcon as={FaAngry} color="red.500" />
@@ -222,7 +222,7 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Meeting Notifications (Email, Push and, EPNS)
+                Email, Push and EPNS Notifications (optional)
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
