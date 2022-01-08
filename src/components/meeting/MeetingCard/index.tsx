@@ -11,10 +11,7 @@ import {
   Button,
 } from '@chakra-ui/react'
 import dayjs from '../../../utils/dayjs_extender'
-import {
-  DBSlot,
-  MeetingDecrypted,
-} from '../../../types/Meeting'
+import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
 import {
   decryptMeeting,
   durationToHumanReadable,
@@ -31,8 +28,8 @@ import { logEvent } from '../../../utils/analytics'
 import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
 
 interface MeetingCardProps {
-  meeting: DBSlot,
-  timezone: string,
+  meeting: DBSlot
+  timezone: string
 }
 
 interface Label {
@@ -63,7 +60,10 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
     return null
   }
 
-  const label = defineLabel(dayjs(meeting.start).tz(timezone), dayjs(meeting.end).tz(timezone))
+  const label = defineLabel(
+    dayjs(meeting.start).tz(timezone),
+    dayjs(meeting.end).tz(timezone)
+  )
   return (
     <>
       <Box
@@ -86,7 +86,8 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
               </Badge>
             )}
             <Box>
-              <strong>When</strong>: {dayjs(meeting.start).tz(timezone).format('LLLL')}
+              <strong>When</strong>:{' '}
+              {dayjs(meeting.start).tz(timezone).format('LLLL')}
             </Box>
             <HStack>
               <strong>Duration</strong>:{' '}
@@ -116,10 +117,13 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
         meeting.meeting_info_file_path
       )) as Encrypted
       if (meetingInfoEncrypted) {
-        const decryptedMeeting = await decryptMeeting({
-          ...meeting,
-          meeting_info_encrypted: meetingInfoEncrypted,
-        })
+        const decryptedMeeting = await decryptMeeting(
+          {
+            ...meeting,
+            meeting_info_encrypted: meetingInfoEncrypted,
+          },
+          currentAccount!
+        )
 
         setInfo(decryptedMeeting)
       }
@@ -162,7 +166,9 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             </Text>
             <Text>
               {info.participants
-                .map(participant => getParticipantDisplay(participant, currentAccount))
+                .map(participant =>
+                  getParticipantDisplay(participant, currentAccount)
+                )
                 .join(', ')}
             </Text>
           </VStack>

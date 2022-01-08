@@ -131,7 +131,9 @@ const Schedule: React.FC = () => {
       return false
     }
 
-    const start = dayjs.utc(startTime).tz(currentAccount?.preferences?.timezone || dayjs.tz.guess(), true)
+    const start = dayjs
+      .utc(startTime)
+      .tz(currentAccount?.preferences?.timezone || dayjs.tz.guess(), true)
     const end = start.clone().add(selectedType.duration, 'minute')
 
     try {
@@ -256,8 +258,7 @@ const Schedule: React.FC = () => {
                 onSchedule={confirmSchedule}
                 willStartScheduling={willStartScheduling => {
                   setReadyToSchedule(willStartScheduling)
-                }
-                }
+                }}
                 isSchedulingExternal={isScheduling}
                 slotDurationInMinutes={selectedType.duration}
                 timeSlotAvailability={validateSlot}

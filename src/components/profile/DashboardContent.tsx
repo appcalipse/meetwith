@@ -35,6 +35,7 @@ import MeetingTypesConfig from './MeetingTypesConfig'
 import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { logEvent } from '../../utils/analytics'
 import Loading from '../Loading'
+import NotificationsConfig from '../notifications/NotificationConfig'
 
 enum EditMode {
   MEETINGS,
@@ -56,10 +57,9 @@ const LinkItems: Array<LinkItemProps> = [
   { name: 'Availabilities', icon: FaCalendarWeek, mode: EditMode.AVAILABILITY },
   { name: 'Meeting types', icon: FaCalendarPlus, mode: EditMode.TYPES },
   {
-    name: 'Notifications (soon)',
+    name: 'Notifications',
     icon: FaBell,
     mode: EditMode.NOTIFICATIONS,
-    locked: true,
   },
 ]
 
@@ -172,6 +172,8 @@ const DashboardContent: React.FC = () => {
         return <Meetings />
       case EditMode.TYPES:
         return <MeetingTypesConfig />
+      case EditMode.NOTIFICATIONS:
+        return <NotificationsConfig />
     }
   }
 
