@@ -19,13 +19,13 @@ import {
 } from '../../../utils/calendar_manager'
 import IPFSLink from '../../IPFSLink'
 import { useContext, useEffect, useState } from 'react'
-import { fetchContentFromIPFSFromBrowser } from '../../../utils/ipfs_helper'
 import { Encrypted } from 'eth-crypto'
 import { getParticipantDisplay } from '../../../utils/user_manager'
 import { Dayjs } from 'dayjs'
 import { AccountContext } from '../../../providers/AccountProvider'
 import { logEvent } from '../../../utils/analytics'
 import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
+import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
 
 interface MeetingCardProps {
   meeting: DBSlot

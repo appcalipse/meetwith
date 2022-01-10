@@ -1,12 +1,10 @@
 import { Account, MeetingType } from '../types/Account'
-import {
-  AccountNotifications,
-  NotificationType,
-} from '../types/AccountNotifications'
+import { AccountNotifications } from '../types/AccountNotifications'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
 import { getCurrentAccount, getSignature } from './storage'
+import * as Sentry from '@sentry/browser'
 
 export const internalFetch = async (
   path: string,
@@ -157,4 +155,15 @@ export const setNotificationSubscriptions = async (
     'POST',
     notifications
   )) as AccountNotifications
+}
+
+export const fetchContentFromIPFSFromBrowser = async (
+  hash: string
+): Promise<object | undefined> => {
+  try {
+    return await (await fetch(`https://ipfs.infura.io/ipfs/${hash}`)).json()
+  } catch (err) {
+    Sentry.captureException(err)
+    return undefined
+  }
 }
