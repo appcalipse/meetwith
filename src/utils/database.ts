@@ -1,19 +1,10 @@
 import EthCrypto, { Encrypted } from 'eth-crypto'
-import {
-  Account,
-  AccountPreferences,
-  MeetingType,
-  SpecialDomainType,
-} from '../types/Account'
+import { Account, AccountPreferences } from '../types/Account'
 import { encryptContent } from './cryptography'
 import {
   DBSlot,
   DBSlotEnhanced,
   MeetingCreationRequest,
-  ParticipantBaseInfo,
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
 } from '../types/Meeting'
 import { createClient } from '@supabase/supabase-js'
 import {
@@ -30,6 +21,8 @@ import {
 import { validate } from 'uuid'
 import dayjs from 'dayjs'
 import * as Sentry from '@sentry/node'
+import { AccountNotifications } from '../types/AccountNotifications'
+import { notifyForNewMeeting } from './notification_helper'
 
 const db: any = { ready: false }
 
@@ -274,8 +267,6 @@ const saveMeeting = async (
   meeting: MeetingCreationRequest,
   requesterId: string
 ): Promise<DBSlotEnhanced> => {
-  //TODO - validate meeting can indeed be created, meaning, it is not conflicting
-
   if (
     new Set(meeting.participants_mapping.map(p => p.account_id)).size !==
     meeting.participants_mapping.length
@@ -300,6 +291,8 @@ const saveMeeting = async (
     ) {
       throw new TimeNotAvailableError()
     }
+
+    //TODO validate availabilities
 
     const account = await getAccountFromDB(participant.account_id)
 
@@ -330,11 +323,50 @@ const saveMeeting = async (
   //TODO: handle error
   if (error) {
     console.error(error)
+    Sentry.captureException(error)
   }
 
   meetingResponse.id = data[index].id
 
+  notifyForNewMeeting(meeting)
+
   return meetingResponse
+}
+
+const getAccountNotificationSubscriptions = async (
+  address: string
+): Promise<AccountNotifications> => {
+  const { data, error } = await db.supabase
+    .from('account_notifications')
+    .select()
+    .eq('account_address', address)
+
+  if (error) {
+    console.error(error)
+    Sentry.captureException(error)
+  }
+
+  if (data[0]) {
+    return data[0] as AccountNotifications
+  }
+  return { account_address: address, notification_types: [] }
+}
+
+const setAccountNotificationSubscriptions = async (
+  address: string,
+  notifications: AccountNotifications
+): Promise<AccountNotifications> => {
+  const { _, error } = await db.supabase
+    .from('account_notifications')
+    .upsert(notifications, { onConflict: 'account_address' })
+    .eq('account_address', address)
+
+  if (error) {
+    console.error(error)
+    Sentry.captureException(error)
+  }
+
+  return notifications
 }
 
 const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
@@ -365,4 +397,6 @@ export {
   isSlotFree,
   updateAccountPreferences,
   getAccountNonce,
+  getAccountNotificationSubscriptions,
+  setAccountNotificationSubscriptions,
 }

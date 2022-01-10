@@ -25,7 +25,6 @@ import { appUrl } from './constants'
 import { v4 as uuidv4 } from 'uuid'
 import { getAccountDisplayName } from './user_manager'
 import { generateMeetingUrl } from './meeting_call_helper'
-import { getDisplayName } from 'next/dist/shared/lib/utils'
 import { logEvent } from './analytics'
 
 const scheduleMeeting = async (
@@ -105,7 +104,7 @@ const scheduleMeeting = async (
 
     const slot = await createMeeting(meeting)
 
-    return await decryptMeeting(slot)
+    return await decryptMeeting(slot, ownerAccount)
   } else {
     throw new TimeNotAvailableError()
   }
@@ -171,13 +170,13 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
 }
 
 const decryptMeeting = async (
-  meeting: DBSlotEnhanced
+  meeting: DBSlotEnhanced,
+  account: Account
 ): Promise<MeetingDecrypted> => {
-  const account = await getAccount(meeting.account_pub_key)
-
+  account
   const meetingInfo = JSON.parse(
     await getContentFromEncrypted(
-      account.address,
+      account,
       getSignature(account.address)!,
       meeting.meeting_info_encrypted
     )
@@ -196,11 +195,10 @@ const decryptMeeting = async (
 }
 
 const getContentFromEncrypted = async (
-  accountAddress: string,
+  account: Account,
   signature: string,
   encrypted: Encrypted
 ): Promise<string> => {
-  const account = await getAccount(accountAddress)
   const pvtKey = decryptContent(signature, account.encoded_signature)
   return await decryptWithPrivateKey(pvtKey, encrypted)
 }
@@ -211,31 +209,33 @@ const isSlotAvailable = (
   slotTime: Date,
   meetings: DBSlot[],
   availabilities: DayAvailability[],
-  targetTimezone: string
+  targetTimezone: string,
+  sourceTimezone: string
 ): boolean => {
-  const start = dayjs(slotTime).toDate()
+  const start = dayjs(slotTime)
 
-  if (dayjs().add(minAdvanceTime, 'minute').toDate() > start) {
+  if (dayjs().add(minAdvanceTime, 'minute') > start) {
     return false
   }
-  const end = dayjs(start).add(slotDurationInMinutes, 'minute').toDate()
 
-  if (
-    !isTimeInsideAvailabilities(
-      dayjs(start),
-      dayjs(end),
-      availabilities,
-      targetTimezone
-    )
-  )
+  const startForSource = dayjs
+    .utc(start.format('YYYY-MM-DD HH:mm'))
+    .tz(sourceTimezone, true)
+  const startForTarget = startForSource.clone().tz(targetTimezone)
+  const end = startForTarget.clone().add(slotDurationInMinutes, 'minute')
+
+  if (!isTimeInsideAvailabilities(startForTarget, end, availabilities))
     return false
+
+  const startDate = start.toDate()
+  const endDate = end.toDate()
 
   const filtered = meetings.filter(
     meeting =>
-      (meeting.start >= start && meeting.end <= end) ||
-      (meeting.start <= start && meeting.end >= end) ||
-      (meeting.end > start && meeting.end <= end) ||
-      (meeting.start >= start && meeting.start < end)
+      (meeting.start >= startDate && meeting.end <= endDate) ||
+      (meeting.start <= startDate && meeting.end >= endDate) ||
+      (meeting.end > startDate && meeting.end <= endDate) ||
+      (meeting.start >= startDate && meeting.start < endDate)
   )
 
   return filtered.length == 0
@@ -244,13 +244,10 @@ const isSlotAvailable = (
 const isTimeInsideAvailabilities = (
   start: Dayjs,
   end: Dayjs,
-  availabilities: DayAvailability[],
-  targetTimezone: string
+  availabilities: DayAvailability[]
 ): boolean => {
-  const realStart = start.tz(targetTimezone)
-
-  const startTime = realStart.format('HH:mm')
-  let endTime = end.tz(targetTimezone).format('HH:mm')
+  const startTime = start.format('HH:mm')
+  let endTime = end.format('HH:mm')
   if (endTime === '00:00') {
     endTime = '24:00'
   }
@@ -272,11 +269,11 @@ const isTimeInsideAvailabilities = (
 
   //After midnight
   if (compareTimes(startTime, endTime) > 0) {
-    endTime = `${end.tz(targetTimezone).hour() + 24}:00`
+    endTime = `${end.hour() + 24}:00`
   }
 
   for (const availability of availabilities) {
-    if (availability.weekday === realStart.day()) {
+    if (availability.weekday === start.day()) {
       for (const range of availability.ranges) {
         if (compareTimes(startTime, range.start) >= 0) {
           if (compareTimes(endTime, range.end) <= 0) {
@@ -352,4 +349,5 @@ export {
   defaultTimeRange,
   durationToHumanReadable,
   getAccountCalendarUrl,
+  isTimeInsideAvailabilities,
 }
