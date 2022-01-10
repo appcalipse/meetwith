@@ -1,4 +1,8 @@
 import { Account, MeetingType } from '../types/Account'
+import {
+  AccountNotifications,
+  NotificationType,
+} from '../types/AccountNotifications'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
@@ -136,4 +140,21 @@ export const subscribeToWaitlist = async (
 
 export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
   return (await internalFetch(`/meetings/meeting/${slot_id}`)) as DBSlotEnhanced
+}
+
+export const getNotificationSubscriptions =
+  async (): Promise<AccountNotifications> => {
+    return (await internalFetch(
+      `/secure/notifications`
+    )) as AccountNotifications
+  }
+
+export const setNotificationSubscriptions = async (
+  notifications: AccountNotifications
+): Promise<AccountNotifications> => {
+  return (await internalFetch(
+    `/secure/notifications`,
+    'POST',
+    notifications
+  )) as AccountNotifications
 }
