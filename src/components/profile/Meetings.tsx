@@ -62,7 +62,11 @@ const Meetings: React.FC = () => {
   ) : (
     <VStack>
       {meetings.map(meeting => (
-        <MeetingCard key={meeting.id} meeting={meeting} />
+        <MeetingCard
+          key={meeting.id}
+          meeting={meeting}
+          timezone={currentAccount?.preferences?.timezone || dayjs.tz.guess()}
+        />
       ))}
       {!noMoreFetch && !firstFetch && (
         <Button

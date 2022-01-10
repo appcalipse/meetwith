@@ -99,7 +99,7 @@ export default function Pricing() {
             </Text>
             <HStack justifyContent="center">
               <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
-                Ξ
+                $
               </Text>
               <Text fontSize="5xl" fontWeight="900">
                 0
@@ -108,6 +108,7 @@ export default function Pricing() {
                 /forever
               </Text>
             </HStack>
+            <Box pb={6} />
           </Box>
           <VStack
             bg={useColorModeValue('gray.50', 'gray.700')}
@@ -127,6 +128,10 @@ export default function Pricing() {
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
                 Web3 powered meeting room
+              </ListItem>
+              <ListItem>
+                <ListIcon as={FaCheckCircle} color="green.500" />
+                Email notifications (optional)
               </ListItem>
               <ListItem>
                 <ListIcon as={FaAngry} color="red.500" />
@@ -183,15 +188,18 @@ export default function Pricing() {
             </Text>
             <HStack justifyContent="center">
               <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
-                Ξ
+                $
               </Text>
               <Text fontSize="5xl" fontWeight="900">
-                0.02
+                30
               </Text>
               <Text fontSize="3xl" color="gray.500">
                 /year
               </Text>
             </HStack>
+            <Text fontSize="sm" textAlign="center">
+              Paid in ETH, MATIC, USDC or DAI
+            </Text>
           </Box>
           <VStack
             bg={useColorModeValue('gray.50', 'gray.700')}
@@ -214,7 +222,7 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Meeting Notifications (Email, Push and, EPNS)
+                Email, Push and EPNS Notifications (optional)
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
@@ -262,15 +270,18 @@ export default function Pricing() {
             </Text>
             <HStack justifyContent="center">
               <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
-                Ξ
+                $
               </Text>
               <Text fontSize="5xl" fontWeight="900">
-                0.2
+                200
               </Text>
               <Text fontSize="3xl" color="gray.500">
                 /year
               </Text>
             </HStack>
+            <Text fontSize="sm" textAlign="center">
+              Paid in ETH, MATIC, USDC or DAI
+            </Text>
           </Box>
           <VStack
             bg={useColorModeValue('gray.50', 'gray.700')}
@@ -328,15 +339,18 @@ export default function Pricing() {
             </Text>
             <HStack justifyContent="center">
               <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
-                Ξ
+                $
               </Text>
               <Text fontSize="5xl" fontWeight="900">
-                0.4
+                999
               </Text>
               <Text fontSize="3xl" color="gray.500">
                 /year
               </Text>
             </HStack>
+            <Text fontSize="sm" textAlign="center">
+              Paid in ETH, MATIC, USDC or DAI
+            </Text>
           </Box>
           <VStack
             bg={useColorModeValue('gray.50', 'gray.700')}

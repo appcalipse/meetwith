@@ -12,7 +12,7 @@ Sentry.init({
     'https://9bd15726a7fd440e96e8f30b70b9bf1f@o366052.ingest.sentry.io/6110717',
   environment: process.env.NEXT_PUBLIC_ENV,
   // Adjust this value in production, or use tracesSampler for greater control
-  tracesSampleRate: 1.0,
+  tracesSampleRate: 0,
   silent: process.env.NEXT_PUBLIC_ENV === 'production', // Suppresses all logs
   enabled: process.env.NEXT_PUBLIC_ENV !== 'local',
   // ...
