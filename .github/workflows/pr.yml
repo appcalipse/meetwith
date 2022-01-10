@@ -1,9 +1,6 @@
 name: Pull Request CI
-
 on:
   pull_request:
-    branches: [ main, develop ]
-
   workflow_dispatch:
 
 jobs:
@@ -14,12 +11,15 @@ jobs:
       - env:
           NEXT_PUBLIC_ENV: local
           SENTRY_AUTH_TOKEN: ${{ secrets.PREVIEW_SENTRY_AUTH_TOKEN}}
+      
       - uses: actions/checkout@v2
       
       - uses: actions/setup-node@v2
         with:
           node-version: '16'
-      - run: yarn
+      
+      - name: Install dependencies
+        run: yarn
 
       # `next build` already checks lint and types
       - name: Build project
