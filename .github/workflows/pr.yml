@@ -7,11 +7,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      NEXT_PUBLIC_ENV: local
+      SENTRY_AUTH_TOKEN: ${{ secrets.PREVIEW_SENTRY_AUTH_TOKEN}}
+
     steps:
-      - env:
-          NEXT_PUBLIC_ENV: local
-          SENTRY_AUTH_TOKEN: ${{ secrets.PREVIEW_SENTRY_AUTH_TOKEN}}
-      
       - uses: actions/checkout@v2
       
       - uses: actions/setup-node@v2
