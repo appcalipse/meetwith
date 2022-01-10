@@ -8,6 +8,6 @@
   ],
   "plugins": ["@typescript-eslint", "tailwindcss"],
   "rules": {
-    "prettier/prettier": "error",
+    "prettier/prettier": "error"
   }
 }
