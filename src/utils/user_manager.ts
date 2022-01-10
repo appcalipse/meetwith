@@ -9,6 +9,7 @@ import { AccountNotFoundError } from './errors'
 import dayjs from './dayjs_extender'
 import WalletConnectProvider from '@walletconnect/web3-provider'
 import { resolveExtraInfo } from './rpc_helper'
+import { ParticipantInfo, ParticipantType } from '../types/Meeting'
 
 const providerOptions = {
   walletconnect: {
@@ -110,11 +111,28 @@ const getAccountDisplayName = (
 const ellipsizeAddress = (address: string) =>
   `${address.substr(0, 5)}...${address.substr(address.length - 5)}`
 
+const getParticipantDisplay = (
+  participant: ParticipantInfo,
+  currentAccount?: Account
+) => {
+  let display =
+    participant.account_id === currentAccount?.id
+      ? 'You'
+      : participant.name || ellipsizeAddress(participant.address)
+
+  if (participant.type === ParticipantType.Scheduler) {
+    display = `${display} (Scheduler)`
+  }
+
+  return display
+}
+
 export {
   loginWithWallet,
   signDefaultMessage,
   createOrFetchAccount,
   ellipsizeAddress,
   getAccountDisplayName,
+  getParticipantDisplay,
   web3,
 }
