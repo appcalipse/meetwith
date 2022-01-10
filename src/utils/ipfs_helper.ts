@@ -21,9 +21,7 @@ class IPFSHelper {
           authorization:
             'Basic ' +
             Buffer.from(
-              process.env.NEXT_INFURA_ID +
-                ':' +
-                process.env.NEXT_INFURA_SECRET
+              process.env.NEXT_INFURA_ID + ':' + process.env.NEXT_INFURA_SECRET
             ).toString('base64'),
         },
       }

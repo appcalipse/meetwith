@@ -1,7 +1,5 @@
 import { Account, MeetingType } from '../types/Account'
-import {
-  AccountNotifications,
-} from '../types/AccountNotifications'
+import { AccountNotifications } from '../types/AccountNotifications'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
