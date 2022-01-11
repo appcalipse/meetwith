@@ -267,6 +267,7 @@ const Schedule: React.FC = () => {
           </Flex>
           <MeetingScheduledDialog
             targetAccount={account!}
+            schedulerAccount={currentAccount!}
             meeting={lastScheduledMeeting}
             isOpen={isOpen}
             onClose={_onClose}
