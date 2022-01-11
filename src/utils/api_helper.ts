@@ -35,11 +35,11 @@ export const internalFetch = async (
 export const getAccount = async (identifer: string): Promise<Account> => {
   try {
     return (await internalFetch(`/accounts/${identifer}`)) as Account
-  } catch (e) {
-    if (e instanceof TypeError) {
-      throw e
+  } catch (e: any) {
+    if (e.status && e.status === 404) {
+      throw new AccountNotFoundError(identifer)
     }
-    throw new AccountNotFoundError('User not found')
+    throw e
   }
 }
 

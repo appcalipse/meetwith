@@ -51,9 +51,9 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                   mt={12}
                 >{`You meeting with ${getAccountDisplayName(
                   targetAccount
-                )} at ${dayjs(meeting!.start).format(
-                  'LLLL'
-                )} was scheduled successfully.`}</Text>
+                )} at ${dayjs(meeting!.start)
+                  .tz(targetAccount.preferences!.timezone)
+                  .format('LLLL')} was scheduled successfully.`}</Text>
               )}
             </Flex>
           </ModalBody>
