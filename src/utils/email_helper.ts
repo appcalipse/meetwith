@@ -3,6 +3,7 @@ import Email from 'email-templates'
 import dayjs from '../utils/dayjs_extender'
 import { durationToHumanReadable } from './calendar_manager'
 import * as Sentry from '@sentry/node'
+import path from 'path'
 
 const transporter = nodemailer.createTransport({
   host: 'smtppro.zoho.eu',
@@ -28,13 +29,13 @@ export const newMeetingEmail = async (
       from: FROM,
     },
     // uncomment below to send emails in development/test env:
-    send: process.env.NEXT_PUBLIC_ENV !== 'local',
+    send: true,
     transport: transporter,
   })
 
   try {
     email.send({
-      template: 'new_meeting',
+      template: path.resolve('src', 'emails', 'new_meeting'),
       message: {
         to: toEmail,
       },

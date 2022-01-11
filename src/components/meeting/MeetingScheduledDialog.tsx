@@ -22,6 +22,7 @@ interface IProps {
   isOpen: boolean
   onClose: () => void
   targetAccount: Account
+  schedulerAccount: Account
   meeting?: MeetingDecrypted
 }
 
@@ -29,6 +30,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   isOpen,
   onClose,
   targetAccount,
+  schedulerAccount,
   meeting,
 }) => {
   return (
@@ -52,7 +54,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 >{`You meeting with ${getAccountDisplayName(
                   targetAccount
                 )} at ${dayjs(meeting!.start)
-                  .tz(targetAccount.preferences!.timezone)
+                  .tz(schedulerAccount.preferences!.timezone)
                   .format('LLLL')} was scheduled successfully.`}</Text>
               )}
             </Flex>

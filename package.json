@@ -45,6 +45,7 @@
     "next": "12.0.7",
     "nodemailer": "^6.7.2",
     "orbit-db": "^0.27.2",
+    "path": "^0.12.7",
     "prism-react-renderer": "^0.1.6",
     "react": "17.0.2",
     "react-cookie": "^4.1.1",
