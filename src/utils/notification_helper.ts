@@ -48,7 +48,6 @@ export const notifyForNewMeeting = async (
           participant.subscriptions.notification_types[j]
         switch (notification_type.channel) {
           case NotificationChannel.EMAIL:
-            console.error(participant)
             if (participant.type === ParticipantType.Owner) {
               await newMeetingEmail(
                 notification_type.destination,
