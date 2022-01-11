@@ -28,14 +28,14 @@ export const newMeetingEmail = async (
     message: {
       from: FROM,
     },
-    send: process.env.NEXT_PUBLIC_ENV !== 'local',
+    send: process.env.NEXT_PUBLIC_ENV !== 'asdas',
     transport: transporter,
   })
 
-  console.log(`Sending email to ${toEmail}`)
+  console.error(`Sending email to ${toEmail}`)
 
   try {
-    console.log(
+    console.error(
       await email.send({
         template: path.resolve('src', 'emails', 'new_meeting'),
         message: {
