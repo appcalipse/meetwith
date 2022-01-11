@@ -11,7 +11,6 @@ class IPFSHelper {
   }
 
   startIPFS = async (): Promise<void> => {
-    console.log(process.env.NEXT_INFURA_ID, process.env.NEXT_INFURA_SECRET)
     if (!this.ipfs) {
       const options = {
         host: 'ipfs.infura.io',

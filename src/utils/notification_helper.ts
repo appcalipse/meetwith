@@ -25,7 +25,8 @@ export const notifyForNewMeeting = async (
     })
   }
 
-  participants.forEach(async (participant: ParticipantInfoForNotification) => {
+  for (let i = 0; i < participants.length; i++) {
+    const participant = participants[i]
     const subscriptions = await getAccountNotificationSubscriptions(
       participant.address
     )
@@ -48,5 +49,5 @@ export const notifyForNewMeeting = async (
         }
       })
     }
-  })
+  }
 }
