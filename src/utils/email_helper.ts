@@ -36,7 +36,7 @@ export const newMeetingEmail = async (
   console.log(`Sending email to ${toEmail}`)
 
   try {
-    email.send({
+    console.log(await email.send({
       template: path.resolve('src', 'emails', 'new_meeting'),
       message: {
         to: toEmail,
@@ -50,7 +50,7 @@ export const newMeetingEmail = async (
           ),
         },
       },
-    })
+    }))
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
