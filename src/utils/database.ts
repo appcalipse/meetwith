@@ -346,7 +346,7 @@ const getAccountNotificationSubscriptions = async (
     Sentry.captureException(error)
   }
 
-  if (data[0]) {
+  if (data && data[0]) {
     return data[0] as AccountNotifications
   }
   return { account_address: address, notification_types: [] }

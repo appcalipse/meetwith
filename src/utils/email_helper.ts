@@ -29,9 +29,11 @@ export const newMeetingEmail = async (
       from: FROM,
     },
     // uncomment below to send emails in development/test env:
-    send: true,
+    send: process.env.NEXT_PUBLIC_ENV !== 'local',
     transport: transporter,
   })
+
+  console.log(`Sending email to ${toEmail}`)
 
   try {
     email.send({
