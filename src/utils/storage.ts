@@ -11,9 +11,13 @@ const saveSignature = (account_address: string, signature: string) => {
 }
 
 const getSignature = (account_address: string): string | null => {
-  return window.localStorage.getItem(
-    `${SIGNATURE_KEY}:${account_address.toLowerCase()}`
-  )
+  if (account_address) {
+    return window.localStorage.getItem(
+      `${SIGNATURE_KEY}:${account_address.toLowerCase()}`
+    )
+  } else {
+    return null
+  }
 }
 
 const storeCurrentAccount = (account: Account) => {
