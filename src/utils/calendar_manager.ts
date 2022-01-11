@@ -173,7 +173,7 @@ const decryptMeeting = async (
   meeting: DBSlotEnhanced,
   account: Account
 ): Promise<MeetingDecrypted> => {
-  account
+  console.log(getSignature(account.address))
   const meetingInfo = JSON.parse(
     await getContentFromEncrypted(
       account,
