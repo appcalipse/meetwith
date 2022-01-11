@@ -1,5 +1,5 @@
 import { NotificationChannel } from '../types/AccountNotifications'
-import { MeetingCreationRequest } from '../types/Meeting'
+import { MeetingCreationRequest, ParticipantType } from '../types/Meeting'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
@@ -9,6 +9,7 @@ import { newMeetingEmail } from './email_helper'
 export interface ParticipantInfoForNotification {
   address: string
   timezone: string
+  type: ParticipantType
 }
 
 export const notifyForNewMeeting = async (
@@ -20,10 +21,11 @@ export const notifyForNewMeeting = async (
     participants.push({
       address: account.address,
       timezone: account.preferences!.timezone,
+      type: participant.type,
     })
   }
 
-  participants.forEach(async (participant: any) => {
+  participants.forEach(async (participant: ParticipantInfoForNotification) => {
     const subscriptions = await getAccountNotificationSubscriptions(
       participant.address
     )
@@ -32,13 +34,15 @@ export const notifyForNewMeeting = async (
       subscriptions.notification_types.forEach((notification_type: any) => {
         switch (notification_type.channel) {
           case NotificationChannel.EMAIL:
-            newMeetingEmail(
-              notification_type.destination,
-              participants.map(participant => participant.address),
-              participant.timezone,
-              meeting.start,
-              meeting.end
-            )
+            if (participant.type === ParticipantType.Owner) {
+              newMeetingEmail(
+                notification_type.destination,
+                participants.map(participant => participant.address),
+                participant.timezone,
+                meeting.start,
+                meeting.end
+              )
+            }
             break
           default:
         }

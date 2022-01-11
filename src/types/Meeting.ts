@@ -23,6 +23,7 @@ export interface MeetingCreationRequest {
 export interface CreationRequestParticipantMapping {
   account_id: string
   slot_id: string
+  type: ParticipantType
   privateInfo: Encrypted
 }
 

@@ -80,6 +80,7 @@ const scheduleMeeting = async (
     const ownerMapping: CreationRequestParticipantMapping = {
       account_id: target_account_id,
       slot_id: owner.slot_id,
+      type: ParticipantType.Owner,
       privateInfo: await encryptWithPublicKey(
         ownerAccount.internal_pub_key,
         JSON.stringify(privateInfo)
@@ -89,6 +90,7 @@ const scheduleMeeting = async (
     const schedulerMapping: CreationRequestParticipantMapping = {
       account_id: source_account_id,
       slot_id: scheduler.slot_id,
+      type: ParticipantType.Scheduler,
       privateInfo: await encryptWithPublicKey(
         schedulerAccount.internal_pub_key,
         JSON.stringify(privateInfo)
@@ -104,7 +106,7 @@ const scheduleMeeting = async (
 
     const slot = await createMeeting(meeting)
 
-    return await decryptMeeting(slot, ownerAccount)
+    return await decryptMeeting(slot, schedulerAccount)
   } else {
     throw new TimeNotAvailableError()
   }
@@ -173,7 +175,6 @@ const decryptMeeting = async (
   meeting: DBSlotEnhanced,
   account: Account
 ): Promise<MeetingDecrypted> => {
-  console.log(getSignature(account.address))
   const meetingInfo = JSON.parse(
     await getContentFromEncrypted(
       account,
