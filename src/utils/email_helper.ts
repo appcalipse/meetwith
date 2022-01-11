@@ -27,7 +27,7 @@ export const newMeetingEmail = async (
   const email = new Email({
     message: {
       from: FROM,
-  },
+    },
     send: process.env.NEXT_PUBLIC_ENV !== 'local',
     transport: transporter,
   })
