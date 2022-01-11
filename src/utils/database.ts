@@ -339,7 +339,7 @@ const getAccountNotificationSubscriptions = async (
   const { data, error } = await db.supabase
     .from('account_notifications')
     .select()
-    .eq('account_address', address)
+    .eq('account_address', address.toLowerCase())
 
   if (error) {
     console.error(error)
@@ -359,7 +359,7 @@ const setAccountNotificationSubscriptions = async (
   const { _, error } = await db.supabase
     .from('account_notifications')
     .upsert(notifications, { onConflict: 'account_address' })
-    .eq('account_address', address)
+    .eq('account_address', address.toLowerCase())
 
   if (error) {
     console.error(error)
