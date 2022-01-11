@@ -36,21 +36,23 @@ export const newMeetingEmail = async (
   console.log(`Sending email to ${toEmail}`)
 
   try {
-    console.log(await email.send({
-      template: path.resolve('src', 'emails', 'new_meeting'),
-      message: {
-        to: toEmail,
-      },
-      locals: {
-        participantsDisplay: participantsDisplayNames.join(', '),
-        meeting: {
-          start: `${dayjs(start).tz(timezone).format('LLLL')} - ${timezone}`,
-          duration: durationToHumanReadable(
-            dayjs.tz(end).diff(dayjs(start), 'minute')
-          ),
+    console.log(
+      await email.send({
+        template: path.resolve('src', 'emails', 'new_meeting'),
+        message: {
+          to: toEmail,
         },
-      },
-    }))
+        locals: {
+          participantsDisplay: participantsDisplayNames.join(', '),
+          meeting: {
+            start: `${dayjs(start).tz(timezone).format('LLLL')} - ${timezone}`,
+            duration: durationToHumanReadable(
+              dayjs.tz(end).diff(dayjs(start), 'minute')
+            ),
+          },
+        },
+      })
+    )
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
