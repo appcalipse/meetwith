@@ -1,4 +1,7 @@
-import { NotificationChannel } from '../types/AccountNotifications'
+import {
+  AccountNotifications,
+  NotificationChannel,
+} from '../types/AccountNotifications'
 import { MeetingCreationRequest, ParticipantType } from '../types/Meeting'
 import {
   getAccountFromDB,
@@ -10,34 +13,44 @@ export interface ParticipantInfoForNotification {
   address: string
   timezone: string
   type: ParticipantType
+  subscriptions: AccountNotifications
 }
 
 export const notifyForNewMeeting = async (
   meeting: MeetingCreationRequest
 ): Promise<void> => {
   const participants: ParticipantInfoForNotification[] = []
-  for (const participant of meeting.participants_mapping) {
+  for (let i = 0; i < meeting.participants_mapping.length; i++) {
+    const participant = meeting.participants_mapping[i]
+
     const account = await getAccountFromDB(participant.account_id)
+    const subscriptions = await getAccountNotificationSubscriptions(
+      account.address
+    )
     participants.push({
       address: account.address,
       timezone: account.preferences!.timezone,
       type: participant.type,
+      subscriptions,
     })
   }
 
   for (let i = 0; i < participants.length; i++) {
     const participant = participants[i]
-    const subscriptions = await getAccountNotificationSubscriptions(
-      participant.address
-    )
 
-    if (subscriptions.notification_types.length > 0) {
-      subscriptions.notification_types.forEach((notification_type: any) => {
+    if (participant.subscriptions.notification_types.length > 0) {
+      for (
+        let j = 0;
+        j < participant.subscriptions.notification_types.length;
+        j++
+      ) {
+        const notification_type =
+          participant.subscriptions.notification_types[j]
         switch (notification_type.channel) {
           case NotificationChannel.EMAIL:
             console.error(participant)
             if (participant.type === ParticipantType.Owner) {
-              newMeetingEmail(
+              await newMeetingEmail(
                 notification_type.destination,
                 participants.map(participant => participant.address),
                 participant.timezone,
@@ -48,7 +61,8 @@ export const notifyForNewMeeting = async (
             break
           default:
         }
-      })
+      }
     }
   }
+  return
 }

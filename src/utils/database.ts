@@ -328,7 +328,7 @@ const saveMeeting = async (
 
   meetingResponse.id = data[index].id
 
-  notifyForNewMeeting(meeting)
+  await notifyForNewMeeting(meeting)
 
   return meetingResponse
 }
