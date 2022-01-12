@@ -1,5 +1,0 @@
-{
-    "files.autoSave": "onWindowChange",
-    "editor.formatOnSave": true,
-    "prettier.configPath": ".prettierrc"
-}
