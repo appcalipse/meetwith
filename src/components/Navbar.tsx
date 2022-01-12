@@ -61,11 +61,11 @@ export default function WithSubnavigation() {
             if (
               accounts[0] &&
               accounts[0].toLowerCase() !==
-                currentAccount?.address.toLowerCase()
+                currentAccount!.address.toLowerCase()
             ) {
-              const account = await loginWithWallet(setLoginIn)
-              if (account) {
-                await login(account)
+              const newAccount = await loginWithWallet(setLoginIn)
+              if (newAccount) {
+                await login(newAccount)
               }
             }
           })
