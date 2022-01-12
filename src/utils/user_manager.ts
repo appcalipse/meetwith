@@ -23,7 +23,7 @@ const providerOptions = {
 let web3: Web3
 
 const loginWithWallet = async (
-  setLoginIn: (boolean) => void
+  setLoginIn: (loginIn: boolean) => void
 ): Promise<Account | undefined> => {
   const web3Modal = new Web3Modal({
     cacheProvider: true, // optional
