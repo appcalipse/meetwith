@@ -60,11 +60,9 @@ const Schedule: React.FC = () => {
   }, [currentAccount])
 
   const handleLogin = async (): Promise<void> => {
-    setLoginIn(true)
     try {
-      const account = await loginWithWallet()
+      const account = await loginWithWallet(setLoginIn)
       if (!account) {
-        setLoginIn(false)
         return
       }
       await login(account)
@@ -81,7 +79,6 @@ const Schedule: React.FC = () => {
       })
       logEvent('Failed to sign in', error)
     }
-    setLoginIn(false)
     return
   }
 
