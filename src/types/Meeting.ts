@@ -1,4 +1,3 @@
-import { Dayjs } from 'dayjs'
 import { Encrypted } from 'eth-crypto'
 
 export enum ParticipationStatus {
@@ -62,9 +61,9 @@ export interface IPFSMeetingInfo {
 
 export interface MeetingDecrypted {
   id: string
-  created_at: Dayjs
-  start: Dayjs
-  end: Dayjs
+  created_at: Date
+  start: Date
+  end: Date
   participants: ParticipantInfo[]
   meeting_url: string
   content?: string

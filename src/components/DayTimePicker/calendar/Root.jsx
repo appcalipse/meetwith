@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
-import dateFns from 'date-fns'
+import { format, isSameMonth, isToday, addMonths, subMonths } from 'date-fns'
 
 import { Grid, Wrapper, MonthYear, DaysOfWeek, DaysOfMonth } from './Layout'
 import { WeekDays, WeekDay, WEEK_DAYS } from './WeekDays'
@@ -35,7 +35,7 @@ function Root({ validator, pickDay, monthChanged }) {
       return
     }
 
-    const next = dateFns.addMonths(month, 1)
+    const next = addMonths(month, 1)
     setMonth(next)
     setAnimation('next')
     monthChanged && monthChanged(next)
@@ -46,7 +46,7 @@ function Root({ validator, pickDay, monthChanged }) {
       return
     }
 
-    const prev = dateFns.subMonths(month, 1)
+    const prev = subMonths(month, 1)
     setMonth(prev)
     setAnimation('prev')
     monthChanged && monthChanged(prev)
@@ -54,9 +54,7 @@ function Root({ validator, pickDay, monthChanged }) {
 
   const handleAnimationEnd = () => {
     const newFakeMonth =
-      animation === 'prev'
-        ? dateFns.subMonths(fakeMonth, 1)
-        : dateFns.addMonths(fakeMonth, 1)
+      animation === 'prev' ? subMonths(fakeMonth, 1) : addMonths(fakeMonth, 1)
 
     setFakeMonth(newFakeMonth)
     setAnimation('')
@@ -80,11 +78,11 @@ function Root({ validator, pickDay, monthChanged }) {
 
           <Wrapper>
             <CurrentMonth animation={animation}>
-              {dateFns.format(month, 'MMMM YYYY')}
+              {format(month, 'MMMM yyyy')}
             </CurrentMonth>
 
             <FakeCurrentMonth animation={animation}>
-              {dateFns.format(fakeMonth, 'MMMM YYYY')}
+              {format(fakeMonth, 'MMMM yyy')}
             </FakeCurrentMonth>
           </Wrapper>
 
@@ -108,19 +106,19 @@ function Root({ validator, pickDay, monthChanged }) {
 
           <MonthDays>
             {days.map(day => {
-              const isSameMonth = dateFns.isSameMonth(day, startDay)
-              if (!isSameMonth) {
+              const _isSameMonth = isSameMonth(day, startDay)
+              if (!_isSameMonth) {
                 return <MonthDay key={day} />
               }
 
-              const formatted = dateFns.format(day, 'D')
-              const isToday = dateFns.isToday(day)
+              const formatted = format(day, 'd')
+              const _isToday = isToday(day)
               const isValid = validator ? validator(day) : true
               return (
                 <MonthDay
                   key={day}
                   isValid={isValid}
-                  isToday={isToday}
+                  isToday={_isToday}
                   onClick={() => isValid && handlePickDay(day)}
                 >
                   {formatted}
@@ -142,20 +140,20 @@ function Root({ validator, pickDay, monthChanged }) {
           <DaysOfMonth>
             <MonthDays>
               {fakeDays.map(fakeDay => {
-                const isSameMonth = dateFns.isSameMonth(fakeDay, fakeStartDay)
-                if (!isSameMonth) {
+                const _isSameMonth = isSameMonth(fakeDay, fakeStartDay)
+                if (!_isSameMonth) {
                   return <MonthDay key={fakeDay} />
                 }
 
-                const formatted = dateFns.format(fakeDay, 'D')
-                const isToday = dateFns.isToday(fakeDay)
+                const formatted = format(fakeDay, 'd')
+                const _isToday = isToday(fakeDay)
                 const isValid = validator ? validator(fakeDay) : true
                 return (
                   <MonthDay
                     key={fakeDay}
-                    disabled={!isSameMonth}
+                    disabled={!_isSameMonth}
                     isValid={isValid}
-                    isToday={isToday}
+                    isToday={_isToday}
                   >
                     {formatted}
                   </MonthDay>

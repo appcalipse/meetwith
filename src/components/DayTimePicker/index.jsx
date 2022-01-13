@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
-import dateFns from 'date-fns'
+import { format } from 'date-fns'
 
 import { PopupWrapper, Popup, PopupHeader } from './Popup'
 import { SuccessIcon, FailedIcon } from './Icons'
@@ -27,7 +27,6 @@ import {
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
 import { logEvent } from '../../utils/analytics'
 import { AccountContext } from '../../providers/AccountProvider'
-import dayjs from '../../utils/dayjs_extender'
 
 function DayTimePicker({
   timeSlotValidator,
@@ -127,10 +126,11 @@ function DayTimePicker({
                 <FaCalendar />
               </Box>
               <VStack alignItems="flex-start">
-                <Text>{dateFns.format(pickedDay, 'dddd, MMMM Do, YYYY')}</Text>
+                <Text>{format(pickedDay, 'PPPP')}</Text>
                 <Text fontSize="sm">
                   Timezone:{' '}
-                  {currentAccount?.preferences?.timezone || dayjs.tz.guess()}
+                  {currentAccount?.preferences?.timezone ||
+                    Intl.DateTimeFormat().resolvedOptions().timeZone}
                 </Text>
               </VStack>
             </HStack>
@@ -158,12 +158,12 @@ function DayTimePicker({
             )}
             <HStack>
               <FaCalendar />
-              <Text>{dateFns.format(pickedDay, 'dddd, MMMM Do, YYYY')}</Text>
+              <Text>{format(pickedDay, 'PPPP')}</Text>
             </HStack>
 
             <HStack>
               <FaClock />
-              <Text>{dateFns.format(pickedTime, 'HH:mm')}</Text>
+              <Text>{format(pickedTime, 'HH:mm')}</Text>
             </HStack>
           </PopupHeader>
 

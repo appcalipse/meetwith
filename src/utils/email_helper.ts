@@ -1,9 +1,10 @@
 import nodemailer from 'nodemailer'
 import Email from 'email-templates'
-import dayjs from '../utils/dayjs_extender'
 import { durationToHumanReadable } from './calendar_manager'
 import * as Sentry from '@sentry/node'
 import path from 'path'
+import { utcToZonedTime } from 'date-fns-tz'
+import { differenceInMinutes, format } from 'date-fns'
 
 const transporter = nodemailer.createTransport({
   host: 'smtppro.zoho.eu',
@@ -41,10 +42,11 @@ export const newMeetingEmail = async (
       locals: {
         participantsDisplay: participantsDisplayNames.join(', '),
         meeting: {
-          start: `${dayjs(start).tz(timezone).format('LLLL')} - ${timezone}`,
-          duration: durationToHumanReadable(
-            dayjs.tz(end).diff(dayjs(start), 'minute')
-          ),
+          start: `${format(
+            utcToZonedTime(start, timezone),
+            'LLLL'
+          )} - ${timezone}`,
+          duration: durationToHumanReadable(differenceInMinutes(end, start)),
         },
       },
     })

@@ -10,7 +10,6 @@ import {
   Button,
 } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
-import dayjs from '../../utils/dayjs_extender'
 import { useState } from 'react'
 import { FaPlus, FaTrash } from 'react-icons/fa'
 import { DayAvailability, TimeRange } from '../../types/Account'
@@ -20,6 +19,8 @@ import { saveAccountChanges } from '../../utils/api_helper'
 import { AccountContext } from '../../providers/AccountProvider'
 import TimezoneSelector from '../TimezoneSelector'
 import { logEvent } from '../../utils/analytics'
+import { format } from 'date-fns'
+import setDay from 'date-fns/setDay'
 
 const AvailabilityConfig: React.FC = () => {
   const { currentAccount, login } = useContext(AccountContext)
@@ -156,7 +157,7 @@ const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
         minW="140px"
       >
         <strong>
-          {dayjs().day(props.dayAvailability.weekday).format('dddd')}
+          {format(setDay(new Date(), props.dayAvailability.weekday), 'cccc')}
         </strong>
       </Checkbox>
       <Spacer />
