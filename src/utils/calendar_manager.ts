@@ -213,7 +213,7 @@ const isSlotAvailable = (
   targetTimezone: string,
   sourceTimezone: string
 ): boolean => {
-  const start = dayjs(slotTime)
+  const start = dayjs.utc(slotTime, sourceTimezone)
 
   if (dayjs().add(minAdvanceTime, 'minute') > start) {
     return false
