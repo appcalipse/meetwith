@@ -50,12 +50,10 @@ export default function Pricing() {
 
   const handleLogin = async () => {
     if (!currentAccount) {
-      setLoginIn(true)
       logEvent('Clicked to start on FREE plan')
       try {
-        const account = await loginWithWallet()
+        const account = await loginWithWallet(setLoginIn)
         if (!account) {
-          setLoginIn(false)
           return
         }
         await login(account)
@@ -77,7 +75,6 @@ export default function Pricing() {
     } else {
       router.push('/dashboard')
     }
-    setLoginIn(false)
   }
 
   return (

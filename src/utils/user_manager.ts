@@ -21,7 +21,9 @@ const providerOptions = {
 
 let web3: Web3
 
-const loginWithWallet = async (): Promise<Account | undefined> => {
+const loginWithWallet = async (
+  setLoginIn: (loginIn: boolean) => void
+): Promise<Account | undefined> => {
   const web3Modal = new Web3Modal({
     cacheProvider: true, // optional
     providerOptions, // required
@@ -29,15 +31,19 @@ const loginWithWallet = async (): Promise<Account | undefined> => {
 
   try {
     const provider = await web3Modal.connect()
-
     web3 = new Web3(provider)
 
+    setLoginIn(true)
     const accounts = await web3.eth.getAccounts()
-    return await createOrFetchAccount(
+
+    const account = await createOrFetchAccount(
       accounts[0].toLowerCase(),
       Intl.DateTimeFormat().resolvedOptions().timeZone
     )
+    setLoginIn(false)
+    return account
   } catch (err) {
+    setLoginIn(false)
     return undefined
   }
 }
