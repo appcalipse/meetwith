@@ -11,7 +11,7 @@ import {
   Text,
   Flex,
 } from '@chakra-ui/react'
-import dayjs from '../../utils/dayjs_extender'
+import { utcToZonedTime, format } from 'date-fns-tz'
 import router from 'next/router'
 import { Account } from '../../types/Account'
 import { MeetingDecrypted } from '../../types/Meeting'
@@ -53,9 +53,13 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                   mt={12}
                 >{`You meeting with ${getAccountDisplayName(
                   targetAccount
-                )} at ${dayjs(meeting!.start)
-                  .tz(schedulerAccount.preferences!.timezone)
-                  .format('LLLL')} was scheduled successfully.`}</Text>
+                )} at ${format(
+                  utcToZonedTime(
+                    meeting!.start,
+                    schedulerAccount.preferences!.timezone
+                  ),
+                  'LLLL'
+                )} was scheduled successfully.`}</Text>
               )}
             </Flex>
           </ModalBody>
