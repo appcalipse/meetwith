@@ -30,12 +30,11 @@ const loginWithWallet = async (
     providerOptions, // required
   })
 
-  setLoginIn(true)
-
   try {
     const provider = await web3Modal.connect()
     web3 = new Web3(provider)
 
+    setLoginIn(true)
     const accounts = await web3.eth.getAccounts()
 
     const account = await createOrFetchAccount(
