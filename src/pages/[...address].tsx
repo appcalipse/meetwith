@@ -202,7 +202,6 @@ const Schedule: React.FC = () => {
   }
 
   const validateSlot = (slot: Date): boolean => {
-    console.log(slot)
     return isSlotAvailable(
       selectedType.duration,
       selectedType.minAdvanceTime,
@@ -210,8 +209,6 @@ const Schedule: React.FC = () => {
       meetings,
       account!.preferences!.availabilities,
       account!.preferences!.timezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone,
-      currentAccount?.preferences!.timezone ||
         Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }

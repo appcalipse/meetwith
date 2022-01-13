@@ -33,6 +33,7 @@ import {
   isAfter,
   addMinutes,
   format,
+  getDay,
 } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 
@@ -212,21 +213,20 @@ const isSlotAvailable = (
   slotTime: Date,
   meetings: DBSlot[],
   availabilities: DayAvailability[],
-  targetTimezone: string,
-  sourceTimezone: string
+  targetTimezone: string
 ): boolean => {
   const start = slotTime
 
-  if (isAfter(addMinutes(start, minAdvanceTime), new Date())) {
+  if (isAfter(addMinutes(new Date(), minAdvanceTime), start)) {
     return false
   }
 
-  const startForSource = utcToZonedTime(start, sourceTimezone)
   const startForTarget = utcToZonedTime(start, targetTimezone)
   const end = addMinutes(startForTarget, slotDurationInMinutes)
 
-  if (!isTimeInsideAvailabilities(startForTarget, end, availabilities))
+  if (!isTimeInsideAvailabilities(startForTarget, end, availabilities)) {
     return false
+  }
 
   const filtered = meetings.filter(
     meeting =>
@@ -271,7 +271,7 @@ const isTimeInsideAvailabilities = (
   }
 
   for (const availability of availabilities) {
-    if (availability.weekday === getDate(start)) {
+    if (availability.weekday === getDay(start)) {
       for (const range of availability.ranges) {
         if (compareTimes(startTime, range.start) >= 0) {
           if (compareTimes(endTime, range.end) <= 0) {
