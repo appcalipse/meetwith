@@ -179,10 +179,10 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
   const convertMinutes = (minutes: number) => {
     if (minutes < 60) {
       return { amount: minutes, type: 'minutes' }
-    } else if (minutes < 60*24) {
+    } else if (minutes < 60 * 24) {
       return { amount: Math.floor(minutes / 60), type: 'hours' }
     } else {
-      return { amount: Math.floor(minutes / (60*24)), type: 'days' }
+      return { amount: Math.floor(minutes / (60 * 24)), type: 'days' }
     }
   }
 
@@ -208,7 +208,7 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
           ? 1
           : minAdvanceTime.type === 'hours'
           ? 60
-          : 60*24),
+          : 60 * 24),
     }
 
     const account = await saveMeetingType(meetingType)

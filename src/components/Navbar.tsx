@@ -60,8 +60,7 @@ export default function WithSubnavigation() {
           provider.on('accountsChanged', async (accounts: string[]) => {
             if (
               accounts[0] &&
-              accounts[0].toLowerCase() !==
-              account.address.toLowerCase()
+              accounts[0].toLowerCase() !== account.address.toLowerCase()
             ) {
               const newAccount = await loginWithWallet(setLoginIn)
               if (newAccount) {
