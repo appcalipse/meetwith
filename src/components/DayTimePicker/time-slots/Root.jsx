@@ -1,17 +1,10 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import dateFns from 'date-fns'
+import { format } from 'date-fns'
 
 import generateTimeSlots from './generate-time-slots'
 
-import {
-  Flex,
-  useColorModeValue,
-  VStack,
-  Box,
-  Image,
-  Text,
-} from '@chakra-ui/react'
+import { Flex, useColorModeValue, VStack, Image, Text } from '@chakra-ui/react'
 
 function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes)
@@ -36,7 +29,7 @@ function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
                 justifyContent="center"
                 _hover={{ cursor: 'pointer', color: 'orange.400' }}
               >
-                {dateFns.format(slot, 'HH:mm')}
+                {format(slot, 'HH:mm')}
               </Flex>
             )
           })}
