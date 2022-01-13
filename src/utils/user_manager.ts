@@ -6,7 +6,6 @@ import { saveSignature } from './storage'
 import { getAccount, createAccount } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
-import dayjs from './dayjs_extender'
 import WalletConnectProvider from '@walletconnect/web3-provider'
 import { resolveExtraInfo } from './rpc_helper'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
@@ -36,7 +35,7 @@ const loginWithWallet = async (): Promise<Account | undefined> => {
     const accounts = await web3.eth.getAccounts()
     return await createOrFetchAccount(
       accounts[0].toLowerCase(),
-      dayjs.tz.guess()
+      Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   } catch (err) {
     return undefined
@@ -60,8 +59,6 @@ const createOrFetchAccount = async (
   accountAddress: string,
   timezone: string
 ): Promise<Account> => {
-  dayjs.tz.setDefault(timezone)
-
   let account: Account
 
   try {

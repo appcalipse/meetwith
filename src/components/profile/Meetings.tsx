@@ -7,7 +7,7 @@ import {
   HStack,
   Spinner,
 } from '@chakra-ui/react'
-import dayjs from 'dayjs'
+import { addHours } from 'date-fns'
 import { useContext, useEffect, useState } from 'react'
 import { AccountContext } from '../../providers/AccountProvider'
 import { DBSlot } from '../../types/Meeting'
@@ -21,14 +21,14 @@ const Meetings: React.FC = () => {
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
 
-  const endToFetch = dayjs().add(-1, 'hour')
+  const endToFetch = addHours(new Date(), -1)
 
   const fetchMeetings = async () => {
     const PAGE_SIZE = 5
     setLoading(true)
     const newMeetings = (await getMeetingsForDashboard(
       currentAccount!.address,
-      endToFetch.toDate(),
+      endToFetch,
       PAGE_SIZE,
       meetings.length
     )) as DBSlot[]
@@ -65,7 +65,10 @@ const Meetings: React.FC = () => {
         <MeetingCard
           key={meeting.id}
           meeting={meeting}
-          timezone={currentAccount?.preferences?.timezone || dayjs.tz.guess()}
+          timezone={
+            currentAccount?.preferences?.timezone ||
+            Intl.DateTimeFormat().resolvedOptions().timeZone
+          }
         />
       ))}
       {!noMoreFetch && !firstFetch && (

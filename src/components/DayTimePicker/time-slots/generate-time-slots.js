@@ -1,32 +1,32 @@
-import dateFns from 'date-fns'
+import { isToday, getHours, addHours, addMinutes, addDays } from 'date-fns'
 
 function generateTimeSlots(selectedDate, slotSizeMinutes) {
-  const isToday = dateFns.isToday(selectedDate)
+  const _isToday = isToday(selectedDate)
 
   let start = selectedDate
-  if (isToday) {
+  if (_isToday) {
     const now = new Date()
-    const offsetHours = dateFns.getHours(now)
+    const offsetHours = getHours(now)
 
     // "Pad" the start time with the amount of hours of the current time, to
     // prevent rendering time slots of the past
-    start = dateFns.addHours(start, offsetHours)
+    start = addHours(start, offsetHours)
 
     // The start positions might still be in the past in terms of minutes
     // So "pad" the start time with the slot size, to prevent rendering time
     // slots of the past
     while (start <= now) {
-      start = dateFns.addMinutes(start, slotSizeMinutes)
+      start = addMinutes(start, slotSizeMinutes)
     }
   }
 
-  const end = dateFns.addDays(selectedDate, 1)
+  const end = addDays(selectedDate, 1)
 
   let slot = start
   const timeSlots = []
   while (slot < end) {
     timeSlots.push(slot)
-    slot = dateFns.addMinutes(slot, slotSizeMinutes)
+    slot = addMinutes(slot, slotSizeMinutes)
   }
 
   return timeSlots
