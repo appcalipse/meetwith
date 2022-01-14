@@ -263,7 +263,7 @@ export default function Pricing() {
           </Box>
           <Box py={4} px={12}>
             <Text fontWeight="500" fontSize="2xl" textAlign="center">
-              DAO
+              Guild/Community
             </Text>
             <HStack justifyContent="center">
               <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
@@ -295,13 +295,21 @@ export default function Pricing() {
                 <ListIcon as={FaCheckCircle} color="green.500" />
                 Gated scheduled meetings for members with Allow lists
               </ListItem>
+              <ListItem>
+                <ListIcon as={FaCheckCircle} color="green.500" />
+                Custom branding
+              </ListItem>
+              <ListItem>
+                <ListIcon as={FaCheckCircle} color="green.500" />
+                And more to come
+              </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
               <Button
                 w="full"
                 colorScheme="orange"
                 variant="outline"
-                onClick={() => setSelectedPlan('DAO')}
+                onClick={() => setSelectedPlan('Guild')}
               >
                 Alert me
               </Button>
@@ -332,7 +340,7 @@ export default function Pricing() {
           </Box>
           <Box py={4} px={12}>
             <Text fontWeight="500" fontSize="2xl" textAlign="center">
-              Awesome DAO
+              DAOs
             </Text>
             <HStack justifyContent="center">
               <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
@@ -358,7 +366,7 @@ export default function Pricing() {
             <List spacing={3} textAlign="start" px={12}>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Everything from DAO
+                Everything from Guild
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
@@ -372,13 +380,17 @@ export default function Pricing() {
                 <ListIcon as={FaCheckCircle} color="green.500" />
                 Custom branding
               </ListItem>
+              <ListItem>
+                <ListIcon as={FaCheckCircle} color="green.500" />
+                And more to come
+              </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
               <Button
                 w="full"
                 colorScheme="orange"
                 variant="outline"
-                onClick={() => setSelectedPlan('Awesome DAO')}
+                onClick={() => setSelectedPlan('DAO')}
               >
                 Alert me
               </Button>
