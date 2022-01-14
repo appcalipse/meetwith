@@ -1,4 +1,6 @@
-const generateTwitterUrl = (url: string) => {
+import slugify from 'slugify'
+
+export const generateTwitterUrl = (url: string) => {
   if (url.startsWith('@')) {
     return `https://twitter.com/${url.replace('@', '')}`
   } else if (url.startsWith('http')) {
@@ -10,7 +12,7 @@ const generateTwitterUrl = (url: string) => {
   }
 }
 
-const generateTelegramUrl = (url: string) => {
+export const generateTelegramUrl = (url: string) => {
   if (url.startsWith('@')) {
     return `https://t.me/${url.replace('@', '')}`
   } else if (url.startsWith('http')) {
@@ -22,4 +24,8 @@ const generateTelegramUrl = (url: string) => {
   }
 }
 
-export { generateTwitterUrl, generateTelegramUrl }
+export const getSlugFromText = (text: string) =>
+  slugify(text, {
+    lower: true,
+    strict: true,
+  })
