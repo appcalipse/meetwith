@@ -12,7 +12,7 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { useContext, useState } from 'react'
+import { ChangeEvent, useContext, useState } from 'react'
 import { FaArrowLeft, FaLock } from 'react-icons/fa'
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
@@ -22,6 +22,7 @@ import {
   durationToHumanReadable,
   getAccountCalendarUrl,
 } from '../../utils/calendar_manager'
+import { getSlugFromText } from '../../utils/generic_utils'
 
 const MeetingTypesConfig: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -220,6 +221,13 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
     setLoading(false)
   }
 
+  const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const sluggedUrl = getSlugFromText(event.target.value)
+
+    setUrl(sluggedUrl)
+    setTitle(event.target.value)
+  }
+
   return (
     <VStack p={4} alignItems="start">
       <HStack mb={4} cursor="pointer" onClick={goBack}>
@@ -232,20 +240,13 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
       <Input
         placeholder="What is this event about"
         value={title}
-        onChange={e => setTitle(e.target.value)}
+        onChange={handleTitleChange}
       />
 
-      <Text pt={4}>Event link (max 40 characters)</Text>
+      <Text pt={4}>Event link</Text>
       <Text fontSize="sm">
         {getAccountCalendarUrl(account, true)}/{!url ? '<link>' : url}
       </Text>
-      <Input
-        maxLength={40}
-        type="text"
-        placeholder="link"
-        value={url}
-        onChange={e => setUrl(e.target.value)}
-      />
 
       <Text pt={4}>Meeting duration</Text>
       <Select
