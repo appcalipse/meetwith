@@ -19,10 +19,10 @@ import {
   generateDefaultMeetingType,
 } from './calendar_manager'
 import { validate } from 'uuid'
-import dayjs from 'dayjs'
 import * as Sentry from '@sentry/node'
 import { AccountNotifications } from '../types/AccountNotifications'
 import { notifyForNewMeeting } from './notification_helper'
+import { addMinutes, isAfter } from 'date-fns'
 
 const db: any = { ready: false }
 
@@ -227,7 +227,7 @@ const isSlotFree = async (
   if (minTime && minTime.length > 0) {
     if (
       !minTime[0].minAdvanceTime ||
-      dayjs().add(minTime[0].minAdvanceTime, 'minute').isAfter(start)
+      isAfter(addMinutes(new Date(), minTime[0].minAdvanceTime), start)
     ) {
       return false
     }

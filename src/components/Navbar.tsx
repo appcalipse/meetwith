@@ -34,6 +34,7 @@ import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
 import router from 'next/router'
 import MWWButton from './MWWButton'
 import * as Sentry from '@sentry/browser'
+import ConnectWalletDialog from './ConnectWalletDialog'
 
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()
@@ -45,12 +46,10 @@ export default function WithSubnavigation() {
 
   const handleLogin = async () => {
     if (!currentAccount) {
-      setLoginIn(true)
       logEvent('Clicked to connect wallet')
       try {
-        const account = await loginWithWallet()
+        const account = await loginWithWallet(setLoginIn)
         if (!account) {
-          setLoginIn(false)
           return
         }
 
@@ -59,13 +58,14 @@ export default function WithSubnavigation() {
         const provider = web3.currentProvider as any
         provider &&
           provider.on('accountsChanged', async (accounts: string[]) => {
-            if (accounts[0] && accounts[0].toLowerCase() !== currentAccount) {
-              setLoginIn(true)
-              const account = await loginWithWallet()
-              if (account) {
-                await login(account)
+            if (
+              accounts[0] &&
+              accounts[0].toLowerCase() !== account.address.toLowerCase()
+            ) {
+              const newAccount = await loginWithWallet(setLoginIn)
+              if (newAccount) {
+                await login(newAccount)
               }
-              setLoginIn(false)
             }
           })
 
@@ -86,7 +86,6 @@ export default function WithSubnavigation() {
         })
         logEvent('Failed to sign in', error)
       }
-      setLoginIn(false)
     }
   }
 
@@ -163,6 +162,7 @@ export default function WithSubnavigation() {
       <Collapse in={isOpen} animateOpacity>
         <MobileNav />
       </Collapse>
+      <ConnectWalletDialog isOpen={loginIn} />
     </Box>
   )
 }
