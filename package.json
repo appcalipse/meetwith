@@ -53,6 +53,7 @@
     "react-icons": "^4.3.1",
     "react-virtualized": "^9.22.3",
     "reflect-metadata": "^0.1.13",
+    "slugify": "^1.6.5",
     "styled-components": "^4.2.0",
     "timezones-list": "^3.0.1",
     "uuid": "^8.3.2",
