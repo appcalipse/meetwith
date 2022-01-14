@@ -36,6 +36,7 @@ import {
   getDay,
 } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
+import { getSlugFromText } from './generic_utils'
 
 const scheduleMeeting = async (
   source_account_id: string,
@@ -324,7 +325,7 @@ const generateDefaultMeetingType = (): MeetingType => {
   const meetingType: MeetingType = {
     id: uuidv4(),
     title,
-    url: generateMeetingTypeUrl(title),
+    url: getSlugFromText(title),
     duration: 30,
     minAdvanceTime: 60,
   }
@@ -332,13 +333,8 @@ const generateDefaultMeetingType = (): MeetingType => {
   return meetingType
 }
 
-const generateMeetingTypeUrl = (title: string): string => {
-  return title.toLowerCase().replace(/ /g, '-')
-}
-
 export {
   generateIcs,
-  generateMeetingTypeUrl,
   scheduleMeeting,
   generateDefaultMeetingType,
   isSlotAvailable,
