@@ -10,7 +10,6 @@ import {
   Spacer,
   Button,
 } from '@chakra-ui/react'
-import dayjs from '../../../utils/dayjs_extender'
 import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
 import {
   decryptMeeting,
@@ -21,12 +20,17 @@ import IPFSLink from '../../IPFSLink'
 import { useContext, useEffect, useState } from 'react'
 import { Encrypted } from 'eth-crypto'
 import { getParticipantDisplay } from '../../../utils/user_manager'
-import { Dayjs } from 'dayjs'
 import { AccountContext } from '../../../providers/AccountProvider'
 import { logEvent } from '../../../utils/analytics'
 import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
 import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
-
+import {
+  addHours,
+  differenceInMinutes,
+  isAfter,
+  isWithinInterval,
+} from 'date-fns'
+import { utcToZonedTime, format } from 'date-fns-tz'
 interface MeetingCardProps {
   meeting: DBSlot
   timezone: string
@@ -37,21 +41,21 @@ interface Label {
   text: string
 }
 const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
-  const duration = dayjs(meeting.end).diff(dayjs(meeting.start), 'minute')
+  const duration = differenceInMinutes(meeting.end, meeting.start)
 
-  const defineLabel = (start: Dayjs, end: Dayjs): Label | null => {
-    const now = dayjs()
-    if (now.isBetween(start, end)) {
+  const defineLabel = (start: Date, end: Date): Label | null => {
+    const now = new Date()
+    if (isWithinInterval(now, { start, end })) {
       return {
         color: 'yellow',
         text: 'Ongoing',
       }
-    } else if (now.isAfter(end)) {
+    } else if (isAfter(now, end)) {
       return {
         color: 'gray',
         text: 'Ended',
       }
-    } else if (now.add(6, 'hour').isAfter(start)) {
+    } else if (isAfter(addHours(now, 6), start)) {
       return {
         color: 'green',
         text: 'Starting Soon',
@@ -60,10 +64,7 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
     return null
   }
 
-  const label = defineLabel(
-    dayjs(meeting.start).tz(timezone),
-    dayjs(meeting.end).tz(timezone)
-  )
+  const label = defineLabel(meeting.start, meeting.end)
   return (
     <>
       <Box
@@ -87,7 +88,7 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
             )}
             <Box>
               <strong>When</strong>:{' '}
-              {dayjs(meeting.start).tz(timezone).format('LLLL')}
+              {format(utcToZonedTime(meeting.start, timezone), 'PPPPp')}
             </Box>
             <HStack>
               <strong>Duration</strong>:{' '}

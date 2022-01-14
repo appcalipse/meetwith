@@ -7,7 +7,6 @@ import {
   isSlotAvailable,
   scheduleMeeting,
 } from '../utils/calendar_manager'
-import dayjs from '../utils/dayjs_extender'
 import { getAccount, getMeetings } from '../utils/api_helper'
 import { MeetingWithYourselfError } from '../utils/errors'
 import { useToast } from '@chakra-ui/toast'
@@ -22,6 +21,8 @@ import { logEvent } from '../utils/analytics'
 import { loginWithWallet } from '../utils/user_manager'
 import Loading from '../components/Loading'
 import * as Sentry from '@sentry/browser'
+import { zonedTimeToUtc } from 'date-fns-tz'
+import { addMinutes, endOfMonth, startOfMonth } from 'date-fns'
 
 const Schedule: React.FC = () => {
   const router = useRouter()
@@ -60,11 +61,9 @@ const Schedule: React.FC = () => {
   }, [currentAccount])
 
   const handleLogin = async (): Promise<void> => {
-    setLoginIn(true)
     try {
-      const account = await loginWithWallet()
+      const account = await loginWithWallet(setLoginIn)
       if (!account) {
-        setLoginIn(false)
         return
       }
       await login(account)
@@ -81,7 +80,6 @@ const Schedule: React.FC = () => {
       })
       logEvent('Failed to sign in', error)
     }
-    setLoginIn(false)
     return
   }
 
@@ -131,18 +129,20 @@ const Schedule: React.FC = () => {
       return false
     }
 
-    const start = dayjs
-      .utc(startTime)
-      .tz(currentAccount?.preferences?.timezone || dayjs.tz.guess(), true)
-    const end = start.clone().add(selectedType.duration, 'minute')
+    const start = zonedTimeToUtc(
+      startTime,
+      currentAccount?.preferences?.timezone ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone
+    )
+    const end = addMinutes(new Date(start), selectedType.duration)
 
     try {
       const meeting = await scheduleMeeting(
         currentAccount!.id,
         account!.id,
         selectedType.id,
-        start.utc(),
-        end.utc(),
+        start,
+        end,
         name,
         content,
         meetingUrl
@@ -176,14 +176,10 @@ const Schedule: React.FC = () => {
   }
 
   const updateMeetings = async (identifier: string) => {
-    const monthStart = dayjs(currentMonth).startOf('month')
-    const monthEnd = dayjs(currentMonth).endOf('month')
+    const monthStart = startOfMonth(currentMonth)
+    const monthEnd = endOfMonth(currentMonth)
 
-    const meetings = await getMeetings(
-      identifier,
-      monthStart.toDate(),
-      monthEnd.toDate()
-    )
+    const meetings = await getMeetings(identifier, monthStart, monthEnd)
 
     setMeetings(meetings)
   }
@@ -209,8 +205,8 @@ const Schedule: React.FC = () => {
       slot,
       meetings,
       account!.preferences!.availabilities,
-      account!.preferences!.timezone || dayjs.tz.guess(),
-      currentAccount?.preferences!.timezone || dayjs.tz.guess()
+      account!.preferences!.timezone ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
 

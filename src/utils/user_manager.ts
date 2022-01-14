@@ -6,7 +6,6 @@ import { saveSignature } from './storage'
 import { getAccount, createAccount } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
-import dayjs from './dayjs_extender'
 import WalletConnectProvider from '@walletconnect/web3-provider'
 import { resolveExtraInfo } from './rpc_helper'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
@@ -22,7 +21,9 @@ const providerOptions = {
 
 let web3: Web3
 
-const loginWithWallet = async (): Promise<Account | undefined> => {
+const loginWithWallet = async (
+  setLoginIn: (loginIn: boolean) => void
+): Promise<Account | undefined> => {
   const web3Modal = new Web3Modal({
     cacheProvider: true, // optional
     providerOptions, // required
@@ -30,15 +31,19 @@ const loginWithWallet = async (): Promise<Account | undefined> => {
 
   try {
     const provider = await web3Modal.connect()
-
     web3 = new Web3(provider)
 
+    setLoginIn(true)
     const accounts = await web3.eth.getAccounts()
-    return await createOrFetchAccount(
+
+    const account = await createOrFetchAccount(
       accounts[0].toLowerCase(),
-      dayjs.tz.guess()
+      Intl.DateTimeFormat().resolvedOptions().timeZone
     )
+    setLoginIn(false)
+    return account
   } catch (err) {
+    setLoginIn(false)
     return undefined
   }
 }
@@ -60,8 +65,6 @@ const createOrFetchAccount = async (
   accountAddress: string,
   timezone: string
 ): Promise<Account> => {
-  dayjs.tz.setDefault(timezone)
-
   let account: Account
 
   try {

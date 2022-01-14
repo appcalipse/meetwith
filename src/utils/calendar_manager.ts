@@ -1,5 +1,3 @@
-import { Dayjs } from 'dayjs'
-import dayjs from './dayjs_extender'
 import {
   decryptWithPrivateKey,
   Encrypted,
@@ -26,13 +24,26 @@ import { v4 as uuidv4 } from 'uuid'
 import { getAccountDisplayName } from './user_manager'
 import { generateMeetingUrl } from './meeting_call_helper'
 import { logEvent } from './analytics'
+import {
+  getYear,
+  getMonth,
+  getDate,
+  getHours,
+  getMinutes,
+  isAfter,
+  addMinutes,
+  format,
+  getDay,
+} from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
+import { getSlugFromText } from './generic_utils'
 
 const scheduleMeeting = async (
   source_account_id: string,
   target_account_id: string,
   meetingTypeId: string,
-  startTime: Dayjs,
-  endTime: Dayjs,
+  startTime: Date,
+  endTime: Date,
   sourceName?: string,
   meetingContent?: string,
   meetingUrl?: string
@@ -41,14 +52,7 @@ const scheduleMeeting = async (
     throw new MeetingWithYourselfError()
   }
 
-  if (
-    await isSlotFree(
-      target_account_id,
-      startTime.toDate(),
-      endTime.toDate(),
-      meetingTypeId
-    )
-  ) {
+  if (await isSlotFree(target_account_id, startTime, endTime, meetingTypeId)) {
     const ownerAccount = await getAccount(target_account_id)
 
     const owner: ParticipantInfo = {
@@ -98,8 +102,8 @@ const scheduleMeeting = async (
     }
 
     const meeting: MeetingCreationRequest = {
-      start: startTime.toDate(),
-      end: endTime.toDate(),
+      start: startTime,
+      end: endTime,
       participants_mapping: [ownerMapping, schedulerMapping],
       meetingTypeId,
     }
@@ -116,18 +120,18 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
   const event = {
     uid: meeting.id,
     start: [
-      meeting.start.year(),
-      meeting.start.month() + 1,
-      meeting.start.date(),
-      meeting.start.hour(),
-      meeting.start.minute(),
+      getYear(meeting.start),
+      getMonth(meeting.start) + 1,
+      getDate(meeting.start),
+      getHours(meeting.start),
+      getMinutes(meeting.start),
     ],
     end: [
-      meeting.end.year(),
-      meeting.end.month() + 1,
-      meeting.end.date(),
-      meeting.end.hour(),
-      meeting.end.minute(),
+      getYear(meeting.end),
+      getMonth(meeting.end) + 1,
+      getDate(meeting.end),
+      getHours(meeting.end),
+      getMinutes(meeting.end),
     ],
     title: `Meeting: ${meeting.participants
       .map(participant => participant.name || participant.address)
@@ -135,11 +139,11 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
     description: meeting.content,
     url: meeting.meeting_url,
     created: [
-      meeting.created_at!.year(),
-      meeting.created_at!.month() + 1,
-      meeting.created_at!.date(),
-      meeting.created_at!.hour(),
-      meeting.created_at!.minute(),
+      getYear(meeting.created_at!),
+      getMonth(meeting.created_at!) + 1,
+      getDate(meeting.created_at!),
+      getHours(meeting.created_at!),
+      getMinutes(meeting.created_at!),
     ],
     //        status: 'CONFIRMED',
     // organizer: { name: 'Admin', email: 'Race@BolderBOULDER.com' },
@@ -186,12 +190,12 @@ const decryptMeeting = async (
   return {
     id: meeting.id!,
     ...meeting,
-    created_at: dayjs(meeting.created_at!),
+    created_at: meeting.created_at!,
     participants: meetingInfo.participants,
     content: meetingInfo.content,
     meeting_url: meetingInfo.meeting_url,
-    start: dayjs(meeting.start),
-    end: dayjs(meeting.end),
+    start: meeting.start,
+    end: meeting.end,
   }
 }
 
@@ -210,45 +214,39 @@ const isSlotAvailable = (
   slotTime: Date,
   meetings: DBSlot[],
   availabilities: DayAvailability[],
-  targetTimezone: string,
-  sourceTimezone: string
+  targetTimezone: string
 ): boolean => {
-  const start = dayjs(slotTime)
+  const start = slotTime
 
-  if (dayjs().add(minAdvanceTime, 'minute') > start) {
+  if (isAfter(addMinutes(new Date(), minAdvanceTime), start)) {
     return false
   }
 
-  const startForSource = dayjs
-    .utc(start.format('YYYY-MM-DD HH:mm'))
-    .tz(sourceTimezone, true)
-  const startForTarget = startForSource.clone().tz(targetTimezone)
-  const end = startForTarget.clone().add(slotDurationInMinutes, 'minute')
+  const startForTarget = utcToZonedTime(start, targetTimezone)
+  const end = addMinutes(startForTarget, slotDurationInMinutes)
 
-  if (!isTimeInsideAvailabilities(startForTarget, end, availabilities))
+  if (!isTimeInsideAvailabilities(startForTarget, end, availabilities)) {
     return false
-
-  const startDate = start.toDate()
-  const endDate = end.toDate()
+  }
 
   const filtered = meetings.filter(
     meeting =>
-      (meeting.start >= startDate && meeting.end <= endDate) ||
-      (meeting.start <= startDate && meeting.end >= endDate) ||
-      (meeting.end > startDate && meeting.end <= endDate) ||
-      (meeting.start >= startDate && meeting.start < endDate)
+      (meeting.start >= start && meeting.end <= end) ||
+      (meeting.start <= start && meeting.end >= end) ||
+      (meeting.end > start && meeting.end <= end) ||
+      (meeting.start >= start && meeting.start < end)
   )
 
   return filtered.length == 0
 }
 
 const isTimeInsideAvailabilities = (
-  start: Dayjs,
-  end: Dayjs,
+  start: Date,
+  end: Date,
   availabilities: DayAvailability[]
 ): boolean => {
-  const startTime = start.format('HH:mm')
-  let endTime = end.format('HH:mm')
+  const startTime = format(start, 'HH:mm')
+  let endTime = format(end, 'HH:mm')
   if (endTime === '00:00') {
     endTime = '24:00'
   }
@@ -270,11 +268,11 @@ const isTimeInsideAvailabilities = (
 
   //After midnight
   if (compareTimes(startTime, endTime) > 0) {
-    endTime = `${end.hour() + 24}:00`
+    endTime = `${getHours(end) + 24}:00`
   }
 
   for (const availability of availabilities) {
-    if (availability.weekday === start.day()) {
+    if (availability.weekday === getDay(start)) {
       for (const range of availability.ranges) {
         if (compareTimes(startTime, range.start) >= 0) {
           if (compareTimes(endTime, range.end) <= 0) {
@@ -327,7 +325,7 @@ const generateDefaultMeetingType = (): MeetingType => {
   const meetingType: MeetingType = {
     id: uuidv4(),
     title,
-    url: generateMeetingTypeUrl(title),
+    url: getSlugFromText(title),
     duration: 30,
     minAdvanceTime: 60,
   }
@@ -335,13 +333,8 @@ const generateDefaultMeetingType = (): MeetingType => {
   return meetingType
 }
 
-const generateMeetingTypeUrl = (title: string): string => {
-  return title.toLowerCase().replace(/ /g, '-')
-}
-
 export {
   generateIcs,
-  generateMeetingTypeUrl,
   scheduleMeeting,
   generateDefaultMeetingType,
   isSlotAvailable,
