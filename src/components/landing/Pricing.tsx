@@ -263,7 +263,7 @@ export default function Pricing() {
           </Box>
           <Box py={4} px={12}>
             <Text fontWeight="500" fontSize="2xl" textAlign="center">
-              Guild/Community
+              Guild/Group
             </Text>
             <HStack justifyContent="center">
               <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
@@ -340,7 +340,7 @@ export default function Pricing() {
           </Box>
           <Box py={4} px={12}>
             <Text fontWeight="500" fontSize="2xl" textAlign="center">
-              DAOs
+              DAO/Commmunity
             </Text>
             <HStack justifyContent="center">
               <Text fontSize="3xl" fontWeight="600" fontFamily="sans-serif">
