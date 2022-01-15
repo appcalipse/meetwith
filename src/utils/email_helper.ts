@@ -44,7 +44,7 @@ export const newMeetingEmail = async (
         meeting: {
           start: `${format(
             utcToZonedTime(start, timezone),
-            'LLLL'
+            'PPPPpp'
           )} - ${timezone}`,
           duration: durationToHumanReadable(differenceInMinutes(end, start)),
         },
