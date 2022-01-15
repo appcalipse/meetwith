@@ -53,8 +53,8 @@ export const notifyForNewMeeting = async (
                 notification_type.destination,
                 participants.map(participant => participant.address),
                 participant.timezone,
-                meeting.start,
-                meeting.end
+                new Date(meeting.start),
+                new Date(meeting.end)
               )
             }
             break
