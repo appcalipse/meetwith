@@ -333,6 +333,20 @@ const generateDefaultMeetingType = (): MeetingType => {
   return meetingType
 }
 
+const generateAllSlots = () => {
+  const allSlots: string[] = []
+  for (let i = 0; i < 24; i++) {
+    for (let j = 0; j < 60; j += 15) {
+      allSlots.push(
+        `${String(i).padStart(2, '0')}:${String(j).padStart(2, '0')}`
+      )
+    }
+  }
+  allSlots.push('24:00')
+  return allSlots
+}
+const allSlots = generateAllSlots()
+
 export {
   generateIcs,
   scheduleMeeting,
@@ -344,4 +358,5 @@ export {
   durationToHumanReadable,
   getAccountCalendarUrl,
   isTimeInsideAvailabilities,
+  allSlots,
 }
