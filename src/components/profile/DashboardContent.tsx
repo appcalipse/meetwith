@@ -1,21 +1,21 @@
-import React from 'react'
 import {
   Box,
-  Flex,
-  VStack,
-  HStack,
-  Text,
-  FlexProps,
-  Icon,
   Button,
-  Tooltip,
-  InputGroup,
+  Flex,
+  FlexProps,
+  HStack,
+  Icon,
   Input,
+  InputGroup,
   InputRightElement,
+  Text,
+  Tooltip,
   useColorModeValue,
+  VStack,
 } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
-import { getAccountDisplayName } from '../../utils/user_manager'
+import React, { useContext, useState } from 'react'
+import { IconType } from 'react-icons'
 import {
   FaBell,
   FaCalendarDay,
@@ -24,18 +24,17 @@ import {
   FaInfo,
   FaLock,
 } from 'react-icons/fa'
-import { useState, useContext } from 'react'
-import AvailabilityConfig from '../availabilities/AvailabilityConfig'
-import { IconType } from 'react-icons'
-import Meetings from './Meetings'
-import IPFSLink from '../IPFSLink'
 import { AccountContext } from '../../providers/AccountProvider'
-import AccountDetails from './AccountDetails'
-import MeetingTypesConfig from './MeetingTypesConfig'
-import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { logEvent } from '../../utils/analytics'
+import { getAccountCalendarUrl } from '../../utils/calendar_manager'
+import { getAccountDisplayName } from '../../utils/user_manager'
+import AvailabilityConfig from '../availabilities/availability-config'
+import IPFSLink from '../IPFSLink'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
+import AccountDetails from './AccountDetails'
+import Meetings from './Meetings'
+import MeetingTypesConfig from './MeetingTypesConfig'
 
 enum EditMode {
   MEETINGS,
