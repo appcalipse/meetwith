@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { BadgeChip } from './chip'
 
-const DEFAULT_STOP_KEYS = ['Tab', 'Space', 'Enter', 'Escape']
+const DEFAULT_STOP_KEYS = ['Tab', 'Space', 'Enter', 'Escape', 'Comma']
 
 export interface ChipInputProps {
   onChange?: (data: string[]) => void
@@ -72,9 +72,12 @@ export const ChipInput: React.FC<ChipInputProps> = ({
     setCurrent(event.target.value)
 
   const onKeyDown: KeyboardEventHandler<HTMLInputElement> = ev => {
+    // handle item creationg
     if (DEFAULT_STOP_KEYS.includes(ev.code)) {
       ev.preventDefault()
       addItem(current)
+    } else if (ev.code === 'Backspace' && labels.length) {
+      removeItem(labels.length - 1)
     }
   }
 
@@ -101,12 +104,13 @@ export const ChipInput: React.FC<ChipInputProps> = ({
           style={{
             display: 'inline-block',
             visibility: isReadOnly ? 'hidden' : 'visible',
+            lineHeight: '40px',
           }}
           variant={'unstyled'}
           value={current}
           onChange={onTextChange}
           onBlur={onLostFocus}
-          placeholder={placeholder}
+          placeholder={labels.length ? '' : placeholder}
           onKeyDown={onKeyDown}
         />
       </WrapItem>
