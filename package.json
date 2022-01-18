@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --pretty --noEmit",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "storybook": "start-storybook -p 6006",
+    "build-storybook": "build-storybook"
   },
   "dependencies": {
     "@chakra-ui/icons": "^1.1.1",
@@ -64,6 +66,11 @@
     "@babel/core": "^7.16.0",
     "@babel/plugin-proposal-class-properties": "^7.16.0",
     "@babel/plugin-proposal-decorators": "^7.16.4",
+    "@chakra-ui/storybook-addon": "^1.0.1",
+    "@storybook/addon-actions": "^6.4.13",
+    "@storybook/addon-essentials": "^6.4.13",
+    "@storybook/addon-links": "^6.4.13",
+    "@storybook/react": "^6.4.13",
     "@types/amplitude-js": "^8.0.2",
     "@types/crypto-js": "^4.0.2",
     "@types/email-templates": "^8.0.4",
@@ -75,6 +82,7 @@
     "@types/react-virtualized": "^9.21.15",
     "@types/uuid": "^8.3.1",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
+    "babel-loader": "^8.2.3",
     "babel-plugin-transform-typescript-metadata": "^0.3.2",
     "eslint": "7",
     "eslint-config-next": "12.0.3",
