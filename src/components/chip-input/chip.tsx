@@ -1,4 +1,5 @@
 import { Badge, Center, InputProps, Link, Image } from '@chakra-ui/react'
+import { FaTimes } from 'react-icons/fa'
 
 const styles = {
     badge: {
@@ -28,7 +29,7 @@ export interface BadgeChipProps {
 export const BadgeChip: React.FC<BadgeChipProps> = ({onRemove = () => {}, size='xs', allowRemove, children}) => {
     const closeButton = (
         <Link sx={styles.close} size={size} variant={'unstyled'} aria-label={`Remove Entry`} onClick={onRemove}>
-            <Image src="/assets/close.svg" height="12px" alt="Close" />
+            <FaTimes />
         </Link>
     );
     return (
