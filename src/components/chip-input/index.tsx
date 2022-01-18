@@ -72,11 +72,13 @@ export const ChipInput: React.FC<ChipInputProps> = ({
     setCurrent(event.target.value)
 
   const onKeyDown: KeyboardEventHandler<HTMLInputElement> = ev => {
-    // handle item creationg
+    // handle item creation
     if (DEFAULT_STOP_KEYS.includes(ev.code)) {
       ev.preventDefault()
       addItem(current)
-    } else if (ev.code === 'Backspace' && labels.length) {
+    }
+    // and support backspace as a natural way to remove the last item in the input
+    else if (ev.code === 'Backspace' && labels.length) {
       removeItem(labels.length - 1)
     }
   }
