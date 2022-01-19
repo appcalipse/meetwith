@@ -43,7 +43,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
   const [selectedDate, setDate] = useState(new Date())
-  const [selectedTime, setTime] = useState("")
+  const [selectedTime, setTime] = useState('')
 
   return (
     <Modal
@@ -74,14 +74,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <FormControl sx={{ marginTop: '24px' }}>
             <FormLabel htmlFor="date">When</FormLabel>
             <HStack>
-                <SingleDatepicker date={selectedDate} onDateChange={setDate} />
-                <InputTimePicker value={selectedTime} onChange={setTime} />
-                <Select id="duration" placeholder="Duration">
-                    <option value="15">15 min</option>
-                    <option value="30">30 min</option>
-                    <option value="45">45 min</option>
-                    <option value="60">60 min</option>
-                </Select>
+              <SingleDatepicker date={selectedDate} onDateChange={setDate} />
+              <InputTimePicker value={selectedTime} onChange={setTime} />
+              <Select id="duration" placeholder="Duration">
+                <option value="15">15 min</option>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">60 min</option>
+              </Select>
             </HStack>
           </FormControl>
           <FormControl sx={{ marginTop: '24px' }}>

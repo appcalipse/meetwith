@@ -1,6 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react'
 import {
-    Icon,
+  Icon,
   Input,
   InputGroup,
   InputLeftElement,
@@ -10,66 +10,66 @@ import {
   PopoverTrigger,
   useColorModeValue,
   useOutsideClick,
-} from '@chakra-ui/react';
-import { useDayzed } from 'dayzed';
-import { format } from 'date-fns';
-import { Month_Names_Short, Weekday_Names_Short } from './utils/calendar.utils';
-import { CalendarPanel } from './components/calendarPanel';
+} from '@chakra-ui/react'
+import { useDayzed } from 'dayzed'
+import { format } from 'date-fns'
+import { Month_Names_Short, Weekday_Names_Short } from './utils/calendar.utils'
+import { CalendarPanel } from './components/calendarPanel'
 import {
   DatepickerConfigs,
   DatepickerProps,
   OnDateSelected,
-} from './utils/types';
+} from './utils/types'
 import { FaCalendarDay } from 'react-icons/fa'
 
 export interface SingleDatepickerProps extends DatepickerProps {
-  date: Date;
-  configs?: DatepickerConfigs;
-  disabled?: boolean;
-  onDateChange: (date: Date) => void;
-  id?: string;
-  name?: string;
+  date: Date
+  configs?: DatepickerConfigs
+  disabled?: boolean
+  onDateChange: (date: Date) => void
+  id?: string
+  name?: string
 }
 
 const DefaultConfigs = {
   dateFormat: 'yyyy-MM-dd',
   monthNames: Month_Names_Short,
   dayNames: Weekday_Names_Short,
-};
+}
 
 export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
   configs = DefaultConfigs,
   propsConfigs,
   ...props
 }) => {
-  const { date, name, disabled, onDateChange, id } = props;
+  const { date, name, disabled, onDateChange, id } = props
 
   // chakra popover utils
-  const ref = useRef<HTMLElement>(null);
-  const initialFocusRef = useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLElement>(null)
+  const initialFocusRef = useRef<HTMLInputElement>(null)
 
-  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false)
 
   useOutsideClick({
     ref: ref,
     handler: () => setPopoverOpen(false),
-  });
+  })
 
   // dayzed utils
   const handleOnDateSelected: OnDateSelected = ({ selectable, date }) => {
-    if (!selectable) return;
+    if (!selectable) return
     if (date instanceof Date && !isNaN(date.getTime())) {
-      onDateChange(date);
-      setPopoverOpen(false);
-      return;
+      onDateChange(date)
+      setPopoverOpen(false)
+      return
     }
-  };
+  }
 
   const dayzedData = useDayzed({
     showOutsideDays: true,
     onDateSelected: handleOnDateSelected,
     selected: date,
-  });
+  })
 
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
@@ -84,20 +84,20 @@ export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
     >
       <PopoverTrigger>
         <InputGroup>
-            <InputLeftElement
-                pointerEvents="none"
-                children={
-                <Icon
-                    fontSize="16"
-                    color={iconColor}
-                    _groupHover={{
-                    color: iconColor,
-                    }}
-                    as={FaCalendarDay}
-                />
-                }
-            />
-            <Input
+          <InputLeftElement
+            pointerEvents="none"
+            children={
+              <Icon
+                fontSize="16"
+                color={iconColor}
+                _groupHover={{
+                  color: iconColor,
+                }}
+                as={FaCalendarDay}
+              />
+            }
+          />
+          <Input
             id={id}
             autoComplete="off"
             isDisabled={disabled}
@@ -105,9 +105,9 @@ export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
             onClick={() => setPopoverOpen(!popoverOpen)}
             name={name}
             value={format(date, configs.dateFormat)}
-            onChange={(e) => e.target.value}
+            onChange={e => e.target.value}
             {...propsConfigs?.inputProps}
-            />
+          />
         </InputGroup>
       </PopoverTrigger>
       <PopoverContent ref={ref} width="100%">
@@ -120,5 +120,5 @@ export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
         </PopoverBody>
       </PopoverContent>
     </Popover>
-  );
-};
+  )
+}
