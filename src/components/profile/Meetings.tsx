@@ -102,7 +102,7 @@ const Meetings: React.FC = () => {
   }
 
   const { isOpen, onOpen, onClose } = useDisclosure()
-
+  const isLocalDevelopment = process.env.NEXT_PUBLIC_ENV === 'local';
   return (
     <Flex direction={'column'}>
       <ScheduleModal isOpen={isOpen} onClose={onClose} onOpen={onOpen} />
@@ -112,7 +112,7 @@ const Meetings: React.FC = () => {
           onClick={onOpen}
           colorScheme="orange"
           isFullWidth={false}
-          sx={{ float: 'right' }}
+          sx={{ float: 'right', display: isLocalDevelopment ? 'inherit' : 'none' }}
           leftIcon={<FaPlus />}
         >
           New meeting
