@@ -1,1 +1,1 @@
-declare module 'arrow-keys-react';
+declare module 'arrow-keys-react'
