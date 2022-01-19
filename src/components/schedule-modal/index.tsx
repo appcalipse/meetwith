@@ -17,16 +17,13 @@ import {
   ModalOverlay,
   Select,
   Switch,
-  VStack,
   Textarea,
-  InputGroup,
-  InputLeftElement,
-  Icon,
   useColorModeValue,
 } from '@chakra-ui/react'
 import { useState } from 'react'
 import { ChipInput } from '../chip-input'
-import { FaCalendarDay, FaClock } from 'react-icons/fa'
+import { SingleDatepicker } from '../input-date-picker'
+import { InputTimePicker } from '../input-time-picker'
 
 export interface ScheduleModalProps {
   isOpen: boolean
@@ -46,6 +43,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
   const [selectedDate, setDate] = useState(new Date())
+  const [selectedTime, setTime] = useState("")
 
   return (
     <Modal
@@ -76,45 +74,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <FormControl sx={{ marginTop: '24px' }}>
             <FormLabel htmlFor="date">When</FormLabel>
             <HStack>
-              <InputGroup>
-                <InputLeftElement
-                  pointerEvents="none"
-                  children={
-                    <Icon
-                      fontSize="16"
-                      color={iconColor}
-                      _groupHover={{
-                        color: iconColor,
-                      }}
-                      as={FaCalendarDay}
-                    />
-                  }
-                />
-                <Input id="date" placeholder="Date" type="text" />
-              </InputGroup>
-              <InputGroup>
-                <InputLeftElement
-                  pointerEvents="none"
-                  children={
-                    <Icon
-                      fontSize="16"
-                      color={iconColor}
-                      _groupHover={{
-                        color: iconColor,
-                      }}
-                      as={FaClock}
-                    />
-                  }
-                />
-                <Input id="time" placeholder="Time" type="text" />
-              </InputGroup>
-
-              <Select id="duration" placeholder="Duration">
-                <option value="15">15 min</option>
-                <option value="30">30 min</option>
-                <option value="45">45 min</option>
-                <option value="60">60 min</option>
-              </Select>
+                <SingleDatepicker date={selectedDate} onDateChange={setDate} />
+                <InputTimePicker value={selectedTime} onChange={setTime} />
+                <Select id="duration" placeholder="Duration">
+                    <option value="15">15 min</option>
+                    <option value="30">30 min</option>
+                    <option value="45">45 min</option>
+                    <option value="60">60 min</option>
+                </Select>
             </HStack>
           </FormControl>
           <FormControl sx={{ marginTop: '24px' }}>
