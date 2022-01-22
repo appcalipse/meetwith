@@ -14,7 +14,7 @@ const Selector: React.FC<SelectorProps> = ({ onChange, time, slots }) => {
   }
 
   return (
-    <Select value={time} onChange={handleChange}>
+    <Select value={time} onChange={handleChange} width="96px">
       {slots.map(time => (
         <option key={time} value={time}>
           {time}
@@ -44,7 +44,7 @@ export const TimeSelector: React.FC<TimeSelectorProps> = ({
   const slots = {
     start: allSlots.slice(
       allSlots.findIndex(slot => slot === previousEnd),
-      allSlots.findIndex(slot => slot === end)
+      allSlots.findIndex(slot => slot === nextStart)
     ),
     end: allSlots.slice(
       allSlots.findIndex(slot => slot === start) + 1,
