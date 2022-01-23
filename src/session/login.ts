@@ -26,7 +26,6 @@ export const useLogin = () => {
         provider.on('accountsChanged', async (accounts: string[]) => {
           const newAccount = await loginWithWallet(setLoginIn)
           if (newAccount) {
-            console.log('login new account!')
             login(newAccount)
           }
         })
