@@ -15,7 +15,7 @@ import MWWButton from '../MWWButton'
 
 export default function CallToActionWithVideo() {
   return (
-    <Container maxW={'7xl'}>
+    <Container maxW={'7xl'} id="home">
       <Stack
         align={'center'}
         spacing={{ base: 8, md: 10 }}

@@ -116,7 +116,7 @@ const ellipsizeAddress = (address: string) =>
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,
-  currentAccount?: Account
+  currentAccount?: Account | null
 ) => {
   let display =
     participant.account_id === currentAccount?.id
