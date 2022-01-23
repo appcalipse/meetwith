@@ -18,7 +18,6 @@ import {
   Select,
   Switch,
   Textarea,
-  useColorModeValue,
 } from '@chakra-ui/react'
 import { useState } from 'react'
 import { ChipInput } from '../chip-input'
@@ -40,8 +39,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   const onParticipantsChange = (items: string[]) => {}
 
-  const iconColor = useColorModeValue('gray.500', 'gray.200')
-
   const [selectedDate, setDate] = useState(new Date())
   const [selectedTime, setTime] = useState('')
 
@@ -56,7 +53,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       <ModalOverlay />
       <ModalContent maxW="45rem">
         <ModalHeader>
-          <Heading size={'sm'}>Schedule a new meeting</Heading>
+          <Heading size={'md'}>Schedule a new meeting</Heading>
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
