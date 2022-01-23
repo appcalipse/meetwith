@@ -10,6 +10,7 @@
   "rules": {
     "prettier/prettier": "error",
     "@typescript-eslint/no-empty-function": "off",
-    "@typescript-eslint/no-non-null-assertion": "off"
+    "@typescript-eslint/no-non-null-assertion": "off",
+    "react/no-children-prop": "off"
   }
 }
