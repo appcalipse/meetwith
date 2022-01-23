@@ -1,6 +1,7 @@
 import { Input, Wrap, WrapItem, InputProps } from '@chakra-ui/react'
 import {
   ChangeEventHandler,
+  ClipboardEventHandler,
   FocusEventHandler,
   KeyboardEventHandler,
   useCallback,
@@ -31,13 +32,14 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   const [labels, setLabels] = useState(initialItems)
   const [current, setCurrent] = useState('')
 
-  const addItem = (item: string) => {
+  const addItem = (items: string[], pasting?: boolean) => {
     // do nothing with an empty entry
-    if (!current?.trim()) {
+
+    if (!current?.trim() && !pasting) {
       return
     }
 
-    const newState = [...labels, item.trim()]
+    const newState = [...labels, ...items.map(item => item.trim())]
     setLabels(newState)
     setCurrent('')
     if (onChange) {
@@ -71,21 +73,33 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   const onTextChange: ChangeEventHandler<HTMLInputElement> = event =>
     setCurrent(event.target.value)
 
+  const onPaste: ClipboardEventHandler<HTMLInputElement> = event => {
+    event.preventDefault()
+    const pasted = event.clipboardData.getData('text/plain')
+    const items = []
+    if (pasted) {
+      items.push(...pasted.split(','))
+    }
+
+    addItem(items, true)
+    setCurrent('')
+  }
+
   const onKeyDown: KeyboardEventHandler<HTMLInputElement> = ev => {
     // handle item creation
     if (DEFAULT_STOP_KEYS.includes(ev.code)) {
       ev.preventDefault()
-      addItem(current)
+      addItem([current])
     }
     // and support backspace as a natural way to remove the last item in the input
-    else if (ev.code === 'Backspace' && labels.length) {
+    else if (ev.code === 'Backspace' && labels.length && !current) {
       removeItem(labels.length - 1)
     }
   }
 
   const onLostFocus: FocusEventHandler<HTMLInputElement> = () => {
     if (current) {
-      addItem(current)
+      addItem([current])
     }
   }
 
@@ -108,6 +122,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
             visibility: isReadOnly ? 'hidden' : 'visible',
             lineHeight: '40px',
           }}
+          onPaste={onPaste}
           variant={'unstyled'}
           value={current}
           onChange={onTextChange}

@@ -112,10 +112,8 @@ const Meetings: React.FC = () => {
           onClick={onOpen}
           colorScheme="orange"
           isFullWidth={false}
-          sx={{
-            float: 'right',
-            display: isLocalDevelopment ? 'inherit' : 'none',
-          }}
+          display={isLocalDevelopment ? 'flex' : 'none'}
+          float={'right'}
           leftIcon={<FaPlus />}
         >
           New meeting
