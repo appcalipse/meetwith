@@ -11,7 +11,7 @@ export const forceAuthenticationCheck = <P,>(
 
     React.useEffect(() => {
       if (checkAuthOnClient) {
-        console.log('checking auth again automatically', checkAuthOnClient)
+        console.log('Checking auth again automatically')
         handleLogin(false, false)
       }
     }, [checkAuthOnClient])
