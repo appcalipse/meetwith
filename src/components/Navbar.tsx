@@ -10,8 +10,6 @@ import {
   Icon,
   Image,
   Link,
-  Popover,
-  PopoverContent,
   useColorModeValue,
   useDisclosure,
   Container,
@@ -122,46 +120,26 @@ const DesktopNav = () => {
   const { logged } = useContext(AccountContext)
   const linkColor = useColorModeValue('gray.600', 'gray.200')
   const linkHoverColor = useColorModeValue('gray.800', 'white')
-  const popoverContentBgColor = useColorModeValue('white', 'gray.800')
 
   return (
     <Stack direction={'row'} spacing={4} alignItems="center">
       {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
         navItem => (
           <Box key={navItem.label}>
-            <Popover trigger={'hover'} placement={'bottom-start'}>
-              <NextLink href={navItem.href ?? '#'} passHref>
-                <Link
-                  p={2}
-                  fontSize={'sm'}
-                  fontWeight={500}
-                  color={linkColor}
-                  _hover={{
-                    textDecoration: 'none',
-                    color: linkHoverColor,
-                  }}
-                >
-                  {navItem.label}
-                </Link>
-              </NextLink>
-
-              {navItem.children && (
-                <PopoverContent
-                  border={0}
-                  boxShadow={'xl'}
-                  bg={popoverContentBgColor}
-                  p={4}
-                  rounded={'xl'}
-                  minW={'sm'}
-                >
-                  <Stack>
-                    {navItem.children.map(child => (
-                      <DesktopSubNav key={child.label} {...child} />
-                    ))}
-                  </Stack>
-                </PopoverContent>
-              )}
-            </Popover>
+            <NextLink href={navItem.href ?? '#'} passHref>
+              <Link
+                p={2}
+                fontSize={'sm'}
+                fontWeight={500}
+                color={linkColor}
+                _hover={{
+                  textDecoration: 'none',
+                  color: linkHoverColor,
+                }}
+              >
+                {navItem.label}
+              </Link>
+            </NextLink>
           </Box>
         )
       )}
@@ -284,31 +262,15 @@ const MobileNavItem = ({ label, children, href }: NavItem) => {
 interface NavItem {
   label: string
   subLabel?: string
-  children?: Array<NavItem>
   href?: string
   logged?: boolean
 }
 
 const NAV_ITEMS: Array<NavItem> = [
-  // {
-  //     label: 'Pricing',
-  //     children: [
-  //         {
-  //             label: 'Free',
-  //             subLabel: 'Find your dream design job',
-  //             href: '#',
-  //         },
-  //         {
-  //             label: 'Freelance Projects',
-  //             subLabel: 'An exclusive list for contract work',
-  //             href: '#',
-  //         },
-  //     ],
-  // },
   {
     label: 'Dashboard',
-    href: '/dashboard',
     logged: true,
+    href: '/dashboard',
   },
   {
     label: 'Home',
@@ -322,8 +284,4 @@ const NAV_ITEMS: Array<NavItem> = [
     label: 'FAQ',
     href: '/#faq',
   },
-  // {
-  //     label: 'Hire Designers',
-  //     href: '#',
-  // },
 ]
