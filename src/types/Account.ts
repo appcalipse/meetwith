@@ -19,6 +19,7 @@ export enum SpecialDomainType {
 export interface PremiumAccount extends Account {
   special_domain: string
   special_domain_type: SpecialDomainType
+  calendar_url: string
 }
 
 export interface MeetingType {
