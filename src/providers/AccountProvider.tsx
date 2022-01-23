@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { useCookies } from 'react-cookie'
 import { Account } from '../types/Account'
 
 interface IAccountContext {
-  currentAccount?: Account
+  currentAccount?: Account | null
   logged: boolean
   login: (user: Account) => void
   logout: () => void
@@ -10,7 +11,7 @@ interface IAccountContext {
   loginIn: boolean
 }
 
-const DEFAULT_STATE = {
+const DEFAULT_STATE: IAccountContext = {
   logged: false,
   login: () => null,
   logout: () => null,
@@ -20,11 +21,34 @@ const DEFAULT_STATE = {
 
 const AccountContext = React.createContext<IAccountContext>(DEFAULT_STATE)
 
-const AccountProvider: React.FC = ({ children }) => {
-  const [userContext, setUserContext] = useState(DEFAULT_STATE)
-  const [loginIn, setLoginIn] = useState(false)
+interface AccountProviderProps {
+  currentAccount?: Account | null
+  logged: boolean
+}
 
-  const login = (account: Account) => {
+const AccountProvider: React.FC<AccountProviderProps> = ({
+  children,
+  currentAccount,
+  logged,
+}) => {
+  const [userContext, setUserContext] = useState({
+    ...DEFAULT_STATE,
+    currentAccount,
+    logged,
+  })
+
+  const [loginIn, setLoginIn] = useState(false)
+  const [_, setCookie, removeCookie] = useCookies(['mww_auth'])
+
+  function login(account: Account) {
+    // make sure to store only non critical information
+    setCookie('mww_auth', {
+      // id: account.id,
+      address: account.address,
+      name: account.name,
+      avatar: account.avatar,
+    })
+
     setUserContext(() => ({
       ...userContext,
       currentAccount: account,
@@ -33,6 +57,8 @@ const AccountProvider: React.FC = ({ children }) => {
   }
 
   const logout = () => {
+    removeCookie('mww_auth')
+
     setUserContext(() => ({
       ...userContext,
       currentAccount: null,
@@ -40,10 +66,9 @@ const AccountProvider: React.FC = ({ children }) => {
     }))
   }
 
+  const context = { ...userContext, loginIn, setLoginIn, login, logout }
   return (
-    <AccountContext.Provider
-      value={{ ...userContext, login, logout, loginIn, setLoginIn }}
-    >
+    <AccountContext.Provider value={context}>
       {children}
     </AccountContext.Provider>
   )

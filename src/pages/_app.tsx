@@ -7,28 +7,34 @@ import { CookiesProvider } from 'react-cookie'
 import { extendTheme } from '@chakra-ui/react'
 import NavBar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { AccountProvider } from '../providers/AccountProvider'
+import { AccountContext, AccountProvider } from '../providers/AccountProvider'
 import Head from 'next/head'
 import { initAnalytics, pageView } from '../utils/analytics'
 import customTheme from '../styles/theme'
 import { CookieConsent } from '../components/CookieConsent'
 import cookie from 'cookie'
 import Loading from '../components/Loading'
+import { validateAuthenticationApp } from '../session/core'
+import { Account } from '../types/Account'
+import { useLogin } from '../session/login'
 
 const theme = extendTheme(customTheme)
 
 interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
+  currentAccount?: Account | null
+  checkAuthOnClient?: boolean
 }
 
-export default function MyApp({
+function MyApp({
   Component,
   pageProps,
   router,
   consentCookie,
+  currentAccount,
+  checkAuthOnClient,
 }: MyAppProps) {
   const [loading, setLoading] = React.useState(true)
-
   React.useEffect(() => {
     const initApp = async () => {
       setLoading(false)
@@ -48,10 +54,18 @@ export default function MyApp({
     }
   }, [router.events])
 
+  const customProps = {
+    ...pageProps,
+    checkAuthOnClient,
+  }
+
   return (
     <ChakraProvider theme={theme}>
       <CookiesProvider>
-        <AccountProvider>
+        <AccountProvider
+          currentAccount={currentAccount}
+          logged={!!currentAccount}
+        >
           <Head>
             <title>
               Meeting scheduler for #web3 - Meet with Wallet - meetwthwallet.xyz
@@ -134,7 +148,7 @@ export default function MyApp({
           ) : (
             <>
               <NavBar />
-              <Component {...pageProps} />
+              <Component {...customProps} />
               <Footer />
             </>
           )}
@@ -153,5 +167,14 @@ MyApp.getInitialProps = async (appContext: AppContext) => {
       ? cookie.parse(appContext.ctx.req.headers!.cookie).mww_consent
       : false
 
-  return { ...appProps, consentCookie }
+  // we will only have web3 defined when on the client side, if we don't have
+  // then it means that we should force reload metamask connection on the client side
+  const currentAccount = await validateAuthenticationApp(appContext)
+
+  // only force check on the client side if we have an account and we came from the backend
+  const checkAuthOnClient = !!currentAccount && !!appContext.ctx.req
+
+  return { ...appProps, consentCookie, currentAccount, checkAuthOnClient }
 }
+
+export default MyApp
