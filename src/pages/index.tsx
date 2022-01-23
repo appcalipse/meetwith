@@ -5,6 +5,7 @@ import Features from '../components/landing/Features'
 import Pricing from '../components/landing/Pricing'
 import FAQ from '../components/landing/FAQ'
 import { Container } from '@chakra-ui/react'
+import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
 
 const Home: NextPage = () => {
   return (
@@ -24,4 +25,4 @@ const Home: NextPage = () => {
   )
 }
 
-export default Home
+export default forceAuthenticationCheck(Home)

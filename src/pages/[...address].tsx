@@ -23,6 +23,7 @@ import Loading from '../components/Loading'
 import * as Sentry from '@sentry/browser'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { addMinutes, endOfMonth, startOfMonth } from 'date-fns'
+import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
 
 const Schedule: React.FC = () => {
   const router = useRouter()
@@ -274,4 +275,4 @@ const Schedule: React.FC = () => {
   )
 }
 
-export default Schedule
+export default forceAuthenticationCheck(Schedule)

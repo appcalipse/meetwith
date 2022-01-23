@@ -1,5 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { loginWithWallet, web3 } from '../utils/user_manager'
+import React, { useContext } from 'react'
 import { AccountContext } from '../providers/AccountProvider'
 import {
   Box,
@@ -12,11 +11,9 @@ import {
   Image,
   Link,
   Popover,
-  PopoverTrigger,
   PopoverContent,
   useColorModeValue,
   useDisclosure,
-  useToast,
   Container,
   Badge,
   HStack,
@@ -29,65 +26,15 @@ import {
 } from '@chakra-ui/icons'
 import NextLink from 'next/link'
 import { ThemeSwitcher } from './ThemeSwitcher'
-import { logEvent } from '../utils/analytics'
 import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
-import router from 'next/router'
 import MWWButton from './MWWButton'
-import * as Sentry from '@sentry/browser'
 import ConnectWalletDialog from './ConnectWalletDialog'
+import { useLogin } from '../session/login'
 
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()
 
-  const { currentAccount, logged, login, loginIn, setLoginIn } =
-    useContext(AccountContext)
-
-  const toast = useToast()
-
-  const handleLogin = async () => {
-    if (!currentAccount) {
-      logEvent('Clicked to connect wallet')
-      try {
-        const account = await loginWithWallet(setLoginIn)
-        if (!account) {
-          return
-        }
-
-        await login(account)
-
-        const provider = web3.currentProvider as any
-        provider &&
-          provider.on('accountsChanged', async (accounts: string[]) => {
-            if (
-              accounts[0] &&
-              accounts[0].toLowerCase() !== account.address.toLowerCase()
-            ) {
-              const newAccount = await loginWithWallet(setLoginIn)
-              if (newAccount) {
-                await login(newAccount)
-              }
-            }
-          })
-
-        logEvent('Signed in')
-
-        if (router.pathname === '/') {
-          await router.push('/dashboard')
-        }
-      } catch (error: any) {
-        Sentry.captureException(error)
-        toast({
-          title: 'Error',
-          description: error.message || error,
-          status: 'error',
-          duration: 7000,
-          position: 'top',
-          isClosable: true,
-        })
-        logEvent('Failed to sign in', error)
-      }
-    }
-  }
+  const { handleLogin, currentAccount, logged, loginIn } = useLogin()
 
   return (
     <Box as="header" position="fixed" width="100%" top="0" zIndex={999}>
@@ -147,7 +94,7 @@ export default function WithSubnavigation() {
               {logged ? (
                 <NavBarLoggedProfile account={currentAccount!} />
               ) : (
-                <MWWButton size="lg" onClick={handleLogin} isLoading={loginIn}>
+                <MWWButton size="lg" onClick={() => handleLogin()} isLoading={loginIn}>
                   Sign in
                   <Box display={{ base: 'none', md: 'flex' }} as="span">
                     &#160;with wallet
@@ -179,22 +126,20 @@ const DesktopNav = () => {
         navItem => (
           <Box key={navItem.label}>
             <Popover trigger={'hover'} placement={'bottom-start'}>
-              <PopoverTrigger>
-                <NextLink href={navItem.href ?? '#'} passHref>
-                  <Link
-                    p={2}
-                    fontSize={'sm'}
-                    fontWeight={500}
-                    color={linkColor}
-                    _hover={{
-                      textDecoration: 'none',
-                      color: linkHoverColor,
-                    }}
-                  >
-                    {navItem.label}
-                  </Link>
-                </NextLink>
-              </PopoverTrigger>
+              <NextLink href={navItem.href ?? '#'} passHref>
+                <Link
+                  p={2}
+                  fontSize={'sm'}
+                  fontWeight={500}
+                  color={linkColor}
+                  _hover={{
+                    textDecoration: 'none',
+                    color: linkHoverColor,
+                  }}
+                >
+                  {navItem.label}
+                </Link>
+              </NextLink>
 
               {navItem.children && (
                 <PopoverContent
@@ -363,7 +308,7 @@ const NAV_ITEMS: Array<NavItem> = [
   },
   {
     label: 'Home',
-    href: '/',
+    href: '/#home',
   },
   {
     label: 'Plans',
