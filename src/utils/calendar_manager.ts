@@ -3,7 +3,12 @@ import {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
-import { Account, DayAvailability, MeetingType } from '../types/Account'
+import {
+  Account,
+  DayAvailability,
+  MeetingType,
+  PremiumAccount,
+} from '../types/Account'
 import {
   CreationRequestParticipantMapping,
   DBSlot,
@@ -315,7 +320,10 @@ const durationToHumanReadable = (duration: number): string => {
 }
 
 const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
-  return `${appUrl}${
+  if ((account as PremiumAccount).calendar_url) {
+    return `${appUrl}${(account as PremiumAccount).calendar_url}`
+  }
+  return `${appUrl}address/${
     ellipsize ? getAccountDisplayName(account) : account!.address
   }`
 }
