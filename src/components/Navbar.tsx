@@ -94,7 +94,11 @@ export default function WithSubnavigation() {
               {logged ? (
                 <NavBarLoggedProfile account={currentAccount!} />
               ) : (
-                <MWWButton size="lg" onClick={() => handleLogin()} isLoading={loginIn}>
+                <MWWButton
+                  size="lg"
+                  onClick={() => handleLogin()}
+                  isLoading={loginIn}
+                >
                   Sign in
                   <Box display={{ base: 'none', md: 'flex' }} as="span">
                     &#160;with wallet
