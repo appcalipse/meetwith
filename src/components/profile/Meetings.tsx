@@ -52,6 +52,8 @@ const Meetings: React.FC = () => {
 
   let content: any
 
+  console.log(currentAccount)
+
   if (firstFetch) {
     content = (
       <VStack alignItems="center">
@@ -106,7 +108,6 @@ const Meetings: React.FC = () => {
   return (
     <Flex direction={'column'}>
       <ScheduleModal isOpen={isOpen} onClose={onClose} onOpen={onOpen} />
-      <Text sx={{ alignSelf: 'left' }}>Meeting list</Text>
       <Box>
         <Button
           onClick={onOpen}
