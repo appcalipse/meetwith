@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import { useContext } from 'react'
 import { loginWithWallet, web3 } from '../utils/user_manager'
 import { AccountContext } from '../providers/AccountProvider'
 import { logEvent } from '../utils/analytics'

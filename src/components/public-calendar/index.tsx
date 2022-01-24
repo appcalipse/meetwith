@@ -8,7 +8,10 @@ import {
   scheduleMeeting,
 } from '../../utils/calendar_manager'
 import { getAccount, getMeetings } from '../../utils/api_helper'
-import { MeetingWithYourselfError } from '../../utils/errors'
+import {
+  AccountNotFoundError,
+  MeetingWithYourselfError,
+} from '../../utils/errors'
 import { useToast } from '@chakra-ui/toast'
 import { DBSlot, MeetingDecrypted } from '../../types/Meeting'
 import { Select } from '@chakra-ui/select'
@@ -23,6 +26,14 @@ import Loading from '../Loading'
 import * as Sentry from '@sentry/browser'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { addMinutes, endOfMonth, startOfMonth } from 'date-fns'
+import { useLogin } from '../../session/login'
+
+interface InternalSchedule {
+  startTime: Date
+  name?: string
+  content?: string
+  meetingUrl?: string
+}
 
 const PublicCalendar: React.FC = () => {
   const router = useRouter()
@@ -32,12 +43,7 @@ const PublicCalendar: React.FC = () => {
 
   const [account, setAccount] = useState(null as Account | null)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
-    null as {
-      startTime: Date
-      name?: string
-      content?: string
-      meetingUrl?: string
-    } | null
+    null as InternalSchedule | null
   )
 
   useEffect(() => {
@@ -60,28 +66,7 @@ const PublicCalendar: React.FC = () => {
     }
   }, [currentAccount])
 
-  const handleLogin = async (): Promise<void> => {
-    try {
-      const account = await loginWithWallet(setLoginIn)
-      if (!account) {
-        return
-      }
-      await login(account)
-      logEvent('Signed in')
-    } catch (error: any) {
-      Sentry.captureException(error)
-      toast({
-        title: 'Error',
-        description: error.message || error,
-        status: 'error',
-        duration: 7000,
-        position: 'top',
-        isClosable: true,
-      })
-      logEvent('Failed to sign in', error)
-    }
-    return
-  }
+  const { handleLogin } = useLogin()
 
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -109,8 +94,17 @@ const PublicCalendar: React.FC = () => {
       updateMeetings(_account.address)
       setLoading(false)
     } catch (e) {
-      //TODO handle error
-      console.error(e)
+      if (!(e instanceof AccountNotFoundError)) {
+        Sentry.captureException(e)
+        toast({
+          title: 'Ops!',
+          description: 'Something went wrong :(',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
       router.push('/404')
     }
   }

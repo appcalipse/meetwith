@@ -248,10 +248,6 @@ const NAV_ITEMS: Array<NavItem> = [
     href: '/#home',
   },
   {
-    label: 'test',
-    href: '/0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b',
-  },
-  {
     label: 'Plans',
     href: '/#pricing',
   },
