@@ -7,7 +7,7 @@ import { CookiesProvider } from 'react-cookie'
 import { extendTheme } from '@chakra-ui/react'
 import NavBar from '../components/Navbar'
 import Footer from '../components/Footer'
-import { AccountContext, AccountProvider } from '../providers/AccountProvider'
+import { AccountProvider } from '../providers/AccountProvider'
 import Head from 'next/head'
 import { initAnalytics, pageView } from '../utils/analytics'
 import customTheme from '../styles/theme'
@@ -16,7 +16,6 @@ import cookie from 'cookie'
 import Loading from '../components/Loading'
 import { validateAuthenticationApp } from '../session/core'
 import { Account } from '../types/Account'
-import { useLogin } from '../session/login'
 
 const theme = extendTheme(customTheme)
 
