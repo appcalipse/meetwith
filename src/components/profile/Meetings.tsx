@@ -52,6 +52,8 @@ const Meetings: React.FC = () => {
 
   let content: any
 
+  console.log(currentAccount)
+
   if (firstFetch) {
     content = (
       <VStack alignItems="center">
