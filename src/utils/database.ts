@@ -1,28 +1,29 @@
+import * as Sentry from '@sentry/node'
+import { createClient } from '@supabase/supabase-js'
+import { addMinutes, isAfter } from 'date-fns'
 import EthCrypto, { Encrypted } from 'eth-crypto'
+import { validate } from 'uuid'
+
 import { Account, AccountPreferences } from '../types/Account'
-import { encryptContent } from './cryptography'
+import { AccountNotifications } from '../types/AccountNotifications'
 import {
   DBSlot,
   DBSlotEnhanced,
   MeetingCreationRequest,
 } from '../types/Meeting'
-import { createClient } from '@supabase/supabase-js'
 import {
   AccountNotFoundError,
   MeetingNotFoundError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '../utils/errors'
-import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
 import {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
 } from './calendar_manager'
-import { validate } from 'uuid'
-import * as Sentry from '@sentry/node'
-import { AccountNotifications } from '../types/AccountNotifications'
+import { encryptContent } from './cryptography'
+import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
 import { notifyForNewMeeting } from './notification_helper'
-import { addMinutes, isAfter } from 'date-fns'
 
 const db: any = { ready: false }
 
@@ -386,17 +387,17 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
 }
 
 export {
-  initDB,
-  initAccountDBForWallet,
-  saveMeeting,
   getAccountFromDB,
-  getSlotsForAccount,
-  getSlotsForDashboard,
-  getMeetingFromDB,
-  saveEmailToDB,
-  isSlotFree,
-  updateAccountPreferences,
   getAccountNonce,
   getAccountNotificationSubscriptions,
+  getMeetingFromDB,
+  getSlotsForAccount,
+  getSlotsForDashboard,
+  initAccountDBForWallet,
+  initDB,
+  isSlotFree,
+  saveEmailToDB,
+  saveMeeting,
   setAccountNotificationSubscriptions,
+  updateAccountPreferences,
 }

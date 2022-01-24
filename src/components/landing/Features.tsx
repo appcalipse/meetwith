@@ -1,15 +1,15 @@
-import { ReactElement } from 'react'
 import {
-  Container,
-  Link,
   Box,
-  SimpleGrid,
-  Icon,
-  Text,
-  Stack,
+  Container,
   Flex,
+  Icon,
+  Link,
+  SimpleGrid,
+  Stack,
+  Text,
   useColorModeValue,
 } from '@chakra-ui/react'
+import { ReactElement } from 'react'
 import { FcCalendar, FcPrivacy, FcWorkflow } from 'react-icons/fc'
 
 interface FeatureProps {

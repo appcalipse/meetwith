@@ -1,11 +1,12 @@
+import { Flex } from '@chakra-ui/react'
 import { NextComponentType, NextPageContext } from 'next'
 import router from 'next/router'
 import React from 'react'
 import { useContext } from 'react'
+
+import Loading from '../components/Loading'
 import { AccountContext } from '../providers/AccountProvider'
 import { Account } from '../types/Account'
-import { Flex } from '@chakra-ui/react'
-import Loading from '../components/Loading'
 import { validateAuthentication } from './core'
 
 /**

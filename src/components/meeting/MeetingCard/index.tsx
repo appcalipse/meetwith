@@ -1,36 +1,37 @@
 import {
   Badge,
   Box,
-  VStack,
-  Text,
-  Link,
-  useColorModeValue,
-  HStack,
-  Spinner,
-  Spacer,
   Button,
+  HStack,
+  Link,
+  Spacer,
+  Spinner,
+  Text,
+  useColorModeValue,
+  VStack,
 } from '@chakra-ui/react'
-import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
-import {
-  decryptMeeting,
-  durationToHumanReadable,
-  generateIcs,
-} from '../../../utils/calendar_manager'
-import IPFSLink from '../../IPFSLink'
-import { useContext, useEffect, useState } from 'react'
-import { Encrypted } from 'eth-crypto'
-import { getParticipantDisplay } from '../../../utils/user_manager'
-import { AccountContext } from '../../../providers/AccountProvider'
-import { logEvent } from '../../../utils/analytics'
-import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
-import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
 import {
   addHours,
   differenceInMinutes,
   isAfter,
   isWithinInterval,
 } from 'date-fns'
-import { utcToZonedTime, format } from 'date-fns-tz'
+import { format, utcToZonedTime } from 'date-fns-tz'
+import { Encrypted } from 'eth-crypto'
+import { useContext, useEffect, useState } from 'react'
+
+import { AccountContext } from '../../../providers/AccountProvider'
+import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
+import { logEvent } from '../../../utils/analytics'
+import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
+import {
+  decryptMeeting,
+  durationToHumanReadable,
+  generateIcs,
+} from '../../../utils/calendar_manager'
+import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
+import { getParticipantDisplay } from '../../../utils/user_manager'
+import IPFSLink from '../../IPFSLink'
 interface MeetingCardProps {
   meeting: DBSlot
   timezone: string

@@ -1,11 +1,12 @@
+import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
+
+import { AccountNotifications } from '../../../../types/AccountNotifications'
 import {
   getAccountNotificationSubscriptions,
-  setAccountNotificationSubscriptions,
   initDB,
+  setAccountNotificationSubscriptions,
 } from '../../../../utils/database'
-import { withSentry } from '@sentry/nextjs'
-import { AccountNotifications } from '../../../../types/AccountNotifications'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {

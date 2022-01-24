@@ -1,5 +1,5 @@
-import { ethers } from 'ethers'
 import { JsonRpcProvider } from '@ethersproject/providers'
+import { ethers } from 'ethers'
 
 interface AccountExtraProps {
   name: string

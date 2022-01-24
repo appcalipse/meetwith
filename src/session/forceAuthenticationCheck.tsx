@@ -1,5 +1,6 @@
-import React from 'react'
 import { NextComponentType, NextPage, NextPageContext } from 'next'
+import React from 'react'
+
 import { useLogin } from './login'
 
 export const forceAuthenticationCheck = <P,>(

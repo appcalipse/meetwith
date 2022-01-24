@@ -1,8 +1,22 @@
 import {
+  addMinutes,
+  format,
+  getDate,
+  getDay,
+  getHours,
+  getMinutes,
+  getMonth,
+  getYear,
+  isAfter,
+} from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
+import {
   decryptWithPrivateKey,
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { v4 as uuidv4 } from 'uuid'
+
 import {
   Account,
   DayAvailability,
@@ -20,28 +34,15 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '../types/Meeting'
+import { logEvent } from './analytics'
 import { createMeeting, getAccount, isSlotFree } from './api_helper'
+import { appUrl } from './constants'
 import { decryptContent } from './cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors'
-import { getSignature } from './storage'
-import { appUrl } from './constants'
-import { v4 as uuidv4 } from 'uuid'
-import { getAccountDisplayName } from './user_manager'
-import { generateMeetingUrl } from './meeting_call_helper'
-import { logEvent } from './analytics'
-import {
-  getYear,
-  getMonth,
-  getDate,
-  getHours,
-  getMinutes,
-  isAfter,
-  addMinutes,
-  format,
-  getDay,
-} from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
 import { getSlugFromText } from './generic_utils'
+import { generateMeetingUrl } from './meeting_call_helper'
+import { getSignature } from './storage'
+import { getAccountDisplayName } from './user_manager'
 
 const scheduleMeeting = async (
   source_account_id: string,
@@ -356,15 +357,15 @@ const generateAllSlots = () => {
 const allSlots = generateAllSlots()
 
 export {
-  generateIcs,
-  scheduleMeeting,
-  generateDefaultMeetingType,
-  isSlotAvailable,
+  allSlots,
   decryptMeeting,
-  generateDefaultAvailabilities,
   defaultTimeRange,
   durationToHumanReadable,
+  generateDefaultAvailabilities,
+  generateDefaultMeetingType,
+  generateIcs,
   getAccountCalendarUrl,
+  isSlotAvailable,
   isTimeInsideAvailabilities,
-  allSlots,
+  scheduleMeeting,
 }

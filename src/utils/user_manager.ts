@@ -1,14 +1,15 @@
+import WalletConnectProvider from '@walletconnect/web3-provider'
 import Web3 from 'web3'
 import Web3Modal from 'web3modal'
-import { getSignature, storeCurrentAccount } from './storage'
+
 import { Account, PremiumAccount } from '../types/Account'
-import { saveSignature } from './storage'
-import { getAccount, createAccount } from './api_helper'
+import { ParticipantInfo, ParticipantType } from '../types/Meeting'
+import { createAccount, getAccount } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
-import WalletConnectProvider from '@walletconnect/web3-provider'
 import { resolveExtraInfo } from './rpc_helper'
-import { ParticipantInfo, ParticipantType } from '../types/Meeting'
+import { getSignature, storeCurrentAccount } from './storage'
+import { saveSignature } from './storage'
 
 const providerOptions = {
   walletconnect: {
@@ -131,11 +132,11 @@ const getParticipantDisplay = (
 }
 
 export {
-  loginWithWallet,
-  signDefaultMessage,
   createOrFetchAccount,
   ellipsizeAddress,
   getAccountDisplayName,
   getParticipantDisplay,
+  loginWithWallet,
+  signDefaultMessage,
   web3,
 }

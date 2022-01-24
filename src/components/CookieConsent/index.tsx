@@ -2,6 +2,7 @@ import { useColorModeValue } from '@chakra-ui/color-mode'
 import { Box, Text } from '@chakra-ui/layout'
 import React from 'react'
 import { useCookies } from 'react-cookie'
+
 import MWWButton from '../MWWButton'
 
 interface Props {

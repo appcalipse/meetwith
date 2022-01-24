@@ -1,23 +1,24 @@
 import {
+  Box,
+  Button,
+  createIcon,
+  Icon,
+  Input,
   Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
   ModalBody,
   ModalCloseButton,
-  Button,
-  Text,
-  Icon,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
   Stack,
+  Text,
   useColorModeValue,
-  Input,
   useToast,
-  createIcon,
-  Box,
 } from '@chakra-ui/react'
 import { useState } from 'react'
-import { subscribeToWaitlist } from '../../utils/api_helper'
+
 import { logEvent } from '../../utils/analytics'
+import { subscribeToWaitlist } from '../../utils/api_helper'
 import { isValidEmail } from '../../utils/validations'
 
 interface IProps {

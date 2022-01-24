@@ -1,6 +1,7 @@
-import { create, IPFSHTTPClient } from 'ipfs-http-client'
-import { isProduction } from './constants'
 import * as Sentry from '@sentry/node'
+import { create, IPFSHTTPClient } from 'ipfs-http-client'
+
+import { isProduction } from './constants'
 
 class IPFSHelper {
   path: string
