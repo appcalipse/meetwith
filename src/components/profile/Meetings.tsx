@@ -106,7 +106,6 @@ const Meetings: React.FC = () => {
   return (
     <Flex direction={'column'}>
       <ScheduleModal isOpen={isOpen} onClose={onClose} onOpen={onOpen} />
-      <Text sx={{ alignSelf: 'left' }}>Meeting list</Text>
       <Box>
         <Button
           onClick={onOpen}
