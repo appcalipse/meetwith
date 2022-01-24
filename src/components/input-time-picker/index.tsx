@@ -16,9 +16,9 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
+import dayjs from 'dayjs'
 import React from 'react'
 import { FaClock } from 'react-icons/fa'
-import dayjs from 'dayjs'
 
 export interface InputTimePickerProps {
   onChange: (time: string) => void

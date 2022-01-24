@@ -1,15 +1,16 @@
-import { Box, Flex, Text, HStack, Spacer, Link } from '@chakra-ui/layout'
-import { Account, SocialLinkType } from '../../types/Account'
-import { Jazzicon } from '@ukstv/jazzicon-react'
-import { getAccountDisplayName } from '../../utils/user_manager'
-import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
 import { Image } from '@chakra-ui/image'
+import { Box, Flex, HStack, Link, Spacer, Text } from '@chakra-ui/layout'
 import { Tooltip, useColorModeValue } from '@chakra-ui/react'
+import { Jazzicon } from '@ukstv/jazzicon-react'
+import { useState } from 'react'
+import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
+
+import { Account, SocialLinkType } from '../../types/Account'
 import {
   generateTelegramUrl,
   generateTwitterUrl,
 } from '../../utils/generic_utils'
-import { useState } from 'react'
+import { getAccountDisplayName } from '../../utils/user_manager'
 
 interface ProfileInfoProps {
   account: Account

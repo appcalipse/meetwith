@@ -1,5 +1,4 @@
 import {
-  Text,
   Button,
   FormControl,
   FormHelperText,
@@ -17,9 +16,11 @@ import {
   ModalOverlay,
   Select,
   Switch,
+  Text,
   Textarea,
 } from '@chakra-ui/react'
 import { useState } from 'react'
+
 import { ChipInput } from '../chip-input'
 import { SingleDatepicker } from '../input-date-picker'
 import { InputTimePicker } from '../input-time-picker'

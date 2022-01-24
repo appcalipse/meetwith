@@ -1,8 +1,9 @@
-import React from 'react'
 import { Container } from '@chakra-ui/layout'
+import React from 'react'
+
 import DashboardContent from '../components/profile/DashboardContent'
-import { withLoginRedirect } from '../session/requireAuthentication'
 import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
+import { withLoginRedirect } from '../session/requireAuthentication'
 
 const Dashboard: React.FC = () => {
   return (

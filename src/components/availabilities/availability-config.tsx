@@ -7,6 +7,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useContext, useEffect, useRef, useState } from 'react'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import { TimeRange } from '../../types/Account'
 import { logEvent } from '../../utils/analytics'

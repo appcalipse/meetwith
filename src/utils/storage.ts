@@ -28,4 +28,4 @@ const getCurrentAccount = (): string => {
   return window.localStorage.getItem(ACCOUNT) as string
 }
 
-export { saveSignature, getSignature, storeCurrentAccount, getCurrentAccount }
+export { getCurrentAccount, getSignature, saveSignature, storeCurrentAccount }

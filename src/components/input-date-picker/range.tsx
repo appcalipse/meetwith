@@ -1,7 +1,3 @@
-import React, { useRef, useState } from 'react'
-import { RenderProps, useDayzed } from 'dayzed'
-import ArrowKeysReact from 'arrow-keys-react'
-import { Month_Names_Short, Weekday_Names_Short } from './utils/calendar.utils'
 import {
   Flex,
   Input,
@@ -11,14 +7,19 @@ import {
   PopoverTrigger,
   useOutsideClick,
 } from '@chakra-ui/react'
+import ArrowKeysReact from 'arrow-keys-react'
+import { format } from 'date-fns'
+import { RenderProps, useDayzed } from 'dayzed'
+import React, { useRef, useState } from 'react'
+
 import { CalendarPanel } from './components/calendarPanel'
+import { Month_Names_Short, Weekday_Names_Short } from './utils/calendar.utils'
 import {
   DatepickerConfigs,
   DatepickerProps,
   OnDateSelected,
   PropsConfigs,
 } from './utils/types'
-import { format } from 'date-fns'
 
 interface RangeCalendarPanelProps {
   configs: DatepickerConfigs

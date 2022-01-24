@@ -1,11 +1,12 @@
+import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
+
 import { MeetingType } from '../../../../types/Account'
 import {
   getAccountFromDB,
   initDB,
   updateAccountPreferences,
 } from '../../../../utils/database'
-import { withSentry } from '@sentry/nextjs'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {

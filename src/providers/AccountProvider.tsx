@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useCookies } from 'react-cookie'
+
 import { Account } from '../types/Account'
 
 interface IAccountContext {
@@ -74,4 +75,4 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
   )
 }
 
-export { AccountProvider, AccountContext }
+export { AccountContext, AccountProvider }

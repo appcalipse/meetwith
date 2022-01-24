@@ -1,11 +1,12 @@
-import { Input, Button } from '@chakra-ui/react'
 import { Spacer, Text, VStack } from '@chakra-ui/layout'
+import { Button, Input } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
 import { useContext, useState } from 'react'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import { SocialLinkType } from '../../types/Account'
-import { saveAccountChanges } from '../../utils/api_helper'
 import { logEvent } from '../../utils/analytics'
+import { saveAccountChanges } from '../../utils/api_helper'
 
 const AccountDetails: React.FC = () => {
   const { currentAccount, login } = useContext(AccountContext)

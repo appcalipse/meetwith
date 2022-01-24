@@ -1,7 +1,8 @@
-import { NextPageContext } from 'next'
 import { parse as parseCookie } from 'cookie'
-import { Account } from '../types/Account'
+import { NextPageContext } from 'next'
 import { AppContext } from 'next/app'
+
+import { Account } from '../types/Account'
 
 export const validateAuthentication = async (
   ctx: NextPageContext

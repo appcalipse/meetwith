@@ -1,33 +1,34 @@
-import React, { useContext } from 'react'
-import { AccountContext } from '../providers/AccountProvider'
 import {
-  Box,
-  Flex,
-  Text,
-  IconButton,
-  Stack,
-  Collapse,
-  Icon,
-  Image,
-  Link,
-  useColorModeValue,
-  useDisclosure,
-  Container,
-  Badge,
-  HStack,
-} from '@chakra-ui/react'
-import {
-  HamburgerIcon,
-  CloseIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  CloseIcon,
+  HamburgerIcon,
 } from '@chakra-ui/icons'
+import {
+  Badge,
+  Box,
+  Collapse,
+  Container,
+  Flex,
+  HStack,
+  Icon,
+  IconButton,
+  Image,
+  Link,
+  Stack,
+  Text,
+  useColorModeValue,
+  useDisclosure,
+} from '@chakra-ui/react'
 import NextLink from 'next/link'
-import { ThemeSwitcher } from './ThemeSwitcher'
-import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
-import MWWButton from './MWWButton'
-import ConnectWalletDialog from './ConnectWalletDialog'
+import React, { useContext } from 'react'
+
+import { AccountContext } from '../providers/AccountProvider'
 import { useLogin } from '../session/login'
+import ConnectWalletDialog from './ConnectWalletDialog'
+import MWWButton from './MWWButton'
+import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
+import { ThemeSwitcher } from './ThemeSwitcher'
 
 export default function WithSubnavigation() {
   const { isOpen, onToggle } = useDisclosure()

@@ -1,16 +1,14 @@
-import React from 'react'
-import PropTypes from 'prop-types'
-
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-
 import {
+  faCalendarDay,
+  faCheckCircle,
   faChevronLeft,
   faChevronRight,
-  faCalendarDay,
   faClock,
-  faCheckCircle,
   faExclamationCircle,
 } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import PropTypes from 'prop-types'
+import React from 'react'
 
 const _propTypes = {
   className: PropTypes.string,
