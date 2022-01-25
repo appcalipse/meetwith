@@ -23,7 +23,6 @@ import {
   AccountNotFoundError,
   MeetingWithYourselfError,
 } from '../../utils/errors'
-import { loginWithWallet } from '../../utils/user_manager'
 import Loading from '../Loading'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
@@ -39,8 +38,7 @@ interface InternalSchedule {
 const PublicCalendar: React.FC = () => {
   const router = useRouter()
 
-  const { currentAccount, logged, login, setLoginIn } =
-    useContext(AccountContext)
+  const { currentAccount, logged } = useContext(AccountContext)
 
   const [account, setAccount] = useState(null as Account | null)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
@@ -133,8 +131,9 @@ const PublicCalendar: React.FC = () => {
 
     try {
       const meeting = await scheduleMeeting(
-        currentAccount!.id,
-        account!.id,
+        currentAccount!.address,
+        account!.address,
+        [],
         selectedType.id,
         start,
         end,

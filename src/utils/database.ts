@@ -4,7 +4,12 @@ import { addMinutes, isAfter } from 'date-fns'
 import EthCrypto, { Encrypted } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import { Account, AccountPreferences } from '../types/Account'
+import {
+  Account,
+  AccountPreferences,
+  EnhancedAccount,
+  SimpleAccountInfo,
+} from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
 import {
   DBSlot,
@@ -45,8 +50,9 @@ const initAccountDBForWallet = async (
   address: string,
   signature: string,
   timezone: string,
-  nonce: number
-): Promise<Account> => {
+  nonce: number,
+  from_invite?: boolean
+): Promise<EnhancedAccount> => {
   const newIdentity = EthCrypto.createIdentity()
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
@@ -58,6 +64,7 @@ const initAccountDBForWallet = async (
       encoded_signature: encryptedPvtKey,
       preferences_path: '',
       nonce,
+      from_invite,
     },
   ])
 
@@ -87,12 +94,14 @@ const initAccountDBForWallet = async (
     .match({ id: data[0].id })
 
   if (responsePrefs.error) {
-    console.error(responsePrefs.error)
+    Sentry.captureException(responsePrefs.error)
     //TODO: handle error
   }
 
-  const account = responsePrefs.data[0] as Account
+  const account = responsePrefs.data[0] as EnhancedAccount
   account.preferences = preferences
+  account.new_account = true
+  account.is_invited = from_invite || false
 
   return account
 }
@@ -109,7 +118,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     .match({ id: account.id })
 
   if (error) {
-    console.error(error)
+    Sentry.captureException(error)
     //TODO: handle error
   }
 
@@ -133,6 +142,26 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
   throw new AccountNotFoundError(identifier)
 }
 
+const getExistingAccountsFromDB = async (
+  addresses: string[]
+): Promise<SimpleAccountInfo[]> => {
+  const { data, error } = await db.supabase
+    .from('accounts')
+    .select('address, internal_pub_key')
+    .in(
+      'address',
+      addresses.map(address => address.toLowerCase())
+    )
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error("Couldn't get accounts")
+    // //TODO: handle error
+  }
+
+  return data
+}
+
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
   const query = validate(identifier)
     ? `id.eq.${identifier}`
@@ -151,20 +180,20 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     )) as AccountPreferences
     return account
   } else {
-    console.error(error)
+    Sentry.captureException(error)
   }
 
   throw new AccountNotFoundError(identifier)
 }
 
 const getSlotsForAccount = async (
-  identifier: string,
+  account_address: string,
   start?: Date,
   end?: Date,
   limit?: number,
   offset?: number
 ): Promise<DBSlot[]> => {
-  const account = await getAccountFromDB(identifier)
+  const account = await getAccountFromDB(account_address)
 
   const _start = start ? start.toISOString() : '1970-01-01'
   const _end = end ? end.toISOString() : '2500-01-01'
@@ -180,7 +209,7 @@ const getSlotsForAccount = async (
     .order('start')
 
   if (error) {
-    console.error(error)
+    Sentry.captureException(error)
     // //TODO: handle error
   }
 
@@ -206,7 +235,7 @@ const getSlotsForDashboard = async (
     .order('start')
 
   if (error) {
-    console.error(error)
+    Sentry.captureException(error)
     // //TODO: handle error
   }
 
@@ -214,12 +243,12 @@ const getSlotsForDashboard = async (
 }
 
 const isSlotFree = async (
-  account_identifier: string,
+  account_address: string,
   start: Date,
   end: Date,
   meetingTypeId: string
 ): Promise<boolean> => {
-  const account = await getAccountFromDB(account_identifier)
+  const account = await getAccountFromDB(account_address)
 
   const minTime = account.preferences?.availableTypes.filter(
     mt => mt.id === meetingTypeId
@@ -234,8 +263,7 @@ const isSlotFree = async (
     }
   }
   return (
-    (await (await getSlotsForAccount(account_identifier, start, end)).length) ==
-    0
+    (await (await getSlotsForAccount(account_address, start, end)).length) == 0
   )
 }
 
@@ -246,6 +274,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
     .eq('id', slot_id)
 
   if (error) {
+    Sentry.captureException(error)
     // todo handle error
   }
 
@@ -266,10 +295,10 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
 
 const saveMeeting = async (
   meeting: MeetingCreationRequest,
-  requesterId: string
+  requesterAddress: string
 ): Promise<DBSlotEnhanced> => {
   if (
-    new Set(meeting.participants_mapping.map(p => p.account_id)).size !==
+    new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
     meeting.participants_mapping.length
   ) {
     //means there are duplicate participants
@@ -284,7 +313,7 @@ const saveMeeting = async (
   for (const participant of meeting.participants_mapping) {
     if (
       await !isSlotFree(
-        participant.account_id,
+        participant.account_address,
         new Date(meeting.start),
         new Date(meeting.end),
         meeting.meetingTypeId
@@ -295,7 +324,7 @@ const saveMeeting = async (
 
     //TODO validate availabilities
 
-    const account = await getAccountFromDB(participant.account_id)
+    const account = await getAccountFromDB(participant.account_address)
 
     const path = await addContentToIPFS(participant.privateInfo)
 
@@ -309,7 +338,7 @@ const saveMeeting = async (
 
     slots.push(dbSlot)
 
-    if (participant.account_id === requesterId) {
+    if (participant.account_address === requesterAddress) {
       index = i
       meetingResponse = {
         ...dbSlot,
@@ -323,7 +352,6 @@ const saveMeeting = async (
 
   //TODO: handle error
   if (error) {
-    console.error(error)
     Sentry.captureException(error)
   }
 
@@ -343,7 +371,6 @@ const getAccountNotificationSubscriptions = async (
     .eq('account_address', address.toLowerCase())
 
   if (error) {
-    console.error(error)
     Sentry.captureException(error)
   }
 
@@ -363,7 +390,6 @@ const setAccountNotificationSubscriptions = async (
     .eq('account_address', address.toLowerCase())
 
   if (error) {
-    console.error(error)
     Sentry.captureException(error)
   }
 
@@ -390,6 +416,7 @@ export {
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
+  getExistingAccountsFromDB,
   getMeetingFromDB,
   getSlotsForAccount,
   getSlotsForDashboard,

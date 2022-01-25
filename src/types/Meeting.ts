@@ -20,7 +20,7 @@ export interface MeetingCreationRequest {
 }
 
 export interface CreationRequestParticipantMapping {
-  account_id: string
+  account_address: string
   slot_id: string
   type: ParticipantType
   privateInfo: Encrypted
@@ -40,14 +40,13 @@ export interface DBSlotEnhanced extends DBSlot {
 }
 
 export interface ParticipantBaseInfo {
-  account_id: string
+  account_address: string
   type: ParticipantType
 }
 
 export interface ParticipantInfo extends ParticipantBaseInfo {
   status: ParticipationStatus
   slot_id: string
-  address: string
   name?: string
 }
 

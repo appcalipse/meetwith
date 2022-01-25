@@ -53,8 +53,6 @@ const Meetings: React.FC = () => {
 
   let content: any
 
-  console.log(currentAccount)
-
   if (firstFetch) {
     content = (
       <VStack alignItems="center">
@@ -116,6 +114,7 @@ const Meetings: React.FC = () => {
           isFullWidth={false}
           display={isLocalDevelopment ? 'flex' : 'none'}
           float={'right'}
+          mb={4}
           leftIcon={<FaPlus />}
         >
           New meeting

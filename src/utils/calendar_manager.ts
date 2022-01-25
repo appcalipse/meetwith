@@ -35,7 +35,12 @@ import {
   ParticipationStatus,
 } from '../types/Meeting'
 import { logEvent } from './analytics'
-import { createMeeting, getAccount, isSlotFree } from './api_helper'
+import {
+  createMeeting,
+  getAccount,
+  getExistingAccounts,
+  isSlotFree,
+} from './api_helper'
 import { appUrl } from './constants'
 import { decryptContent } from './cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors'
@@ -45,8 +50,9 @@ import { getSignature } from './storage'
 import { getAccountDisplayName } from './user_manager'
 
 const scheduleMeeting = async (
-  source_account_id: string,
-  target_account_id: string,
+  source_account_address: string,
+  target_account_address: string,
+  extra_participants: string[],
   meetingTypeId: string,
   startTime: Date,
   endTime: Date,
@@ -54,67 +60,104 @@ const scheduleMeeting = async (
   meetingContent?: string,
   meetingUrl?: string
 ): Promise<MeetingDecrypted> => {
-  if (source_account_id === target_account_id) {
+  if (
+    source_account_address === target_account_address &&
+    extra_participants.length == 0
+  ) {
     throw new MeetingWithYourselfError()
   }
 
-  if (await isSlotFree(target_account_id, startTime, endTime, meetingTypeId)) {
-    const ownerAccount = await getAccount(target_account_id)
+  if (
+    await isSlotFree(target_account_address, startTime, endTime, meetingTypeId)
+  ) {
+    const allAccounts = await getExistingAccounts([
+      source_account_address,
+      target_account_address,
+      ...extra_participants,
+    ])
 
-    const owner: ParticipantInfo = {
-      type: ParticipantType.Owner,
-      account_id: target_account_id,
-      status: ParticipationStatus.Pending,
-      address: ownerAccount.address,
-      slot_id: uuidv4(),
+    if (source_account_address == target_account_address) {
+      allAccounts.splice(
+        allAccounts.findIndex(
+          account => account.address == target_account_address
+        ),
+        1
+      )
+    }
+    const participants: ParticipantInfo[] = []
+
+    for (const account of allAccounts) {
+      const participant: ParticipantInfo = {
+        type:
+          account.address === target_account_address
+            ? ParticipantType.Owner
+            : account.address === source_account_address
+            ? ParticipantType.Scheduler
+            : ParticipantType.Invitee,
+        account_address: account.address,
+        status:
+          account.address == source_account_address
+            ? ParticipationStatus.Accepted
+            : ParticipationStatus.Pending,
+        slot_id: uuidv4(),
+        name: account.address == source_account_address ? sourceName : '',
+      }
+
+      participants.push(participant)
     }
 
-    const schedulerAccount = await getAccount(source_account_id)
-    const scheduler: ParticipantInfo = {
-      type: ParticipantType.Scheduler,
-      account_id: source_account_id,
-      status: ParticipationStatus.Accepted,
-      address: schedulerAccount.address,
-      slot_id: uuidv4(),
-      name: sourceName,
+    const invitedAccounts = extra_participants.filter(
+      participant =>
+        !allAccounts
+          .map(account => account.address.toLowerCase())
+          .includes(participant.toLowerCase())
+    )
+
+    for (const account of invitedAccounts) {
+      const participant: ParticipantInfo = {
+        type: ParticipantType.Invitee,
+        account_address: account,
+        status: ParticipationStatus.Pending,
+        slot_id: uuidv4(),
+      }
+
+      participants.push(participant)
     }
 
     const privateInfo: IPFSMeetingInfo = {
       created_at: new Date(),
-      participants: [owner, scheduler],
+      participants: participants,
       content: meetingContent,
       meeting_url: meetingUrl || (await generateMeetingUrl()),
       change_history_paths: [],
     }
 
-    const ownerMapping: CreationRequestParticipantMapping = {
-      account_id: target_account_id,
-      slot_id: owner.slot_id,
-      type: ParticipantType.Owner,
-      privateInfo: await encryptWithPublicKey(
-        ownerAccount.internal_pub_key,
-        JSON.stringify(privateInfo)
-      ),
-    }
-
-    const schedulerMapping: CreationRequestParticipantMapping = {
-      account_id: source_account_id,
-      slot_id: scheduler.slot_id,
-      type: ParticipantType.Scheduler,
-      privateInfo: await encryptWithPublicKey(
-        schedulerAccount.internal_pub_key,
-        JSON.stringify(privateInfo)
-      ),
+    const participantsMappings = []
+    for (const participant of participants) {
+      const participantMapping: CreationRequestParticipantMapping = {
+        account_address: participant.account_address,
+        slot_id: participant.slot_id,
+        type: participant.type,
+        privateInfo: await encryptWithPublicKey(
+          allAccounts.filter(
+            account => account.address == participant.account_address
+          )[0]?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
+          JSON.stringify(privateInfo)
+        ),
+      }
+      participantsMappings.push(participantMapping)
     }
 
     const meeting: MeetingCreationRequest = {
       start: startTime,
       end: endTime,
-      participants_mapping: [ownerMapping, schedulerMapping],
+      participants_mapping: participantsMappings,
       meetingTypeId,
     }
 
     const slot = await createMeeting(meeting)
+
+    const schedulerAccount = await getAccount(source_account_address)
 
     return await decryptMeeting(slot, schedulerAccount)
   } else {
@@ -140,7 +183,7 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
       getMinutes(meeting.end),
     ],
     title: `Meeting: ${meeting.participants
-      .map(participant => participant.name || participant.address)
+      .map(participant => participant.name || participant.account_address)
       .join(', ')}`,
     description: meeting.content,
     url: meeting.meeting_url,

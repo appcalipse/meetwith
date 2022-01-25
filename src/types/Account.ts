@@ -11,6 +11,16 @@ export interface Account {
   avatar?: string
 }
 
+export interface EnhancedAccount extends Account {
+  is_invited: boolean
+  new_account: boolean
+}
+
+export interface SimpleAccountInfo {
+  address: string
+  internal_pub_key: string
+}
+
 export enum SpecialDomainType {
   ENS = 'ENS',
   UNSTOPPABLE_DOMAINS = 'UNSTOPPABLE_DOMAINS',
