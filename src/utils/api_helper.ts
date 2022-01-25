@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/browser'
 
-import { Account, MeetingType } from '../types/Account'
+import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { apiUrl } from './constants'
@@ -40,6 +40,18 @@ export const getAccount = async (identifer: string): Promise<Account> => {
     if (e.status && e.status === 404) {
       throw new AccountNotFoundError(identifer)
     }
+    throw e
+  }
+}
+
+export const getExistingAccounts = async (
+  addresses: string[]
+): Promise<SimpleAccountInfo[]> => {
+  try {
+    return (await internalFetch(`/accounts/simple`, 'POST', {
+      addresses,
+    })) as SimpleAccountInfo[]
+  } catch (e: any) {
     throw e
   }
 }

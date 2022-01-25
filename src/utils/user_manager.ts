@@ -120,9 +120,9 @@ const getParticipantDisplay = (
   currentAccount?: Account | null
 ) => {
   let display =
-    participant.account_id === currentAccount?.id
+    participant.account_address === currentAccount?.address
       ? 'You'
-      : participant.name || ellipsizeAddress(participant.address)
+      : participant.name || ellipsizeAddress(participant.account_address)
 
   if (participant.type === ParticipantType.Scheduler) {
     display = `${display} (Scheduler)`

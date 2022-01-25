@@ -22,7 +22,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (
       meeting.participants_mapping.filter(
-        participant => participant.account_id === account.id
+        participant => participant.account_address === account.address
       ).length === 0
     ) {
       res.status(403).send('You cant schedule a meeting for someone else')
