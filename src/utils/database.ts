@@ -4,7 +4,11 @@ import { addMinutes, isAfter } from 'date-fns'
 import EthCrypto, { Encrypted } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import { Account, AccountPreferences } from '../types/Account'
+import {
+  Account,
+  AccountPreferences,
+  ConnectedAccounts,
+} from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
 import {
   DBSlot,
@@ -57,6 +61,7 @@ const initAccountDBForWallet = async (
       internal_pub_key: newIdentity.publicKey,
       encoded_signature: encryptedPvtKey,
       preferences_path: '',
+      connected_accounts_path: '',
       nonce,
     },
   ])
@@ -116,6 +121,29 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
   return { ...data[0], preferences: account.preferences } as Account
 }
 
+const updateConnectedAccounts = async (account: Account): Promise<Account> => {
+  console.log('saving', account.connected_accounts)
+  const path = await addContentToIPFS(account.connected_accounts!)
+  //TODO handle ipfs error
+
+  const { data, error } = await db.supabase
+    .from('accounts')
+    .update({
+      connected_accounts_path: path,
+    })
+    .match({ id: account.id })
+
+  if (error) {
+    console.error(error)
+    //TODO: handle error
+  }
+
+  return {
+    ...data[0],
+    connected_accounts: account.connected_accounts,
+  } as Account
+}
+
 const getAccountNonce = async (identifier: string): Promise<number> => {
   const query = validate(identifier)
     ? `id.eq.${identifier}`
@@ -149,6 +177,10 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     account.preferences = (await fetchContentFromIPFS(
       account.preferences_path
     )) as AccountPreferences
+    account.connected_accounts = (await fetchContentFromIPFS(
+      account.connected_accounts_path
+    )) as ConnectedAccounts
+
     return account
   } else {
     console.error(error)
@@ -400,4 +432,5 @@ export {
   saveMeeting,
   setAccountNotificationSubscriptions,
   updateAccountPreferences,
+  updateConnectedAccounts,
 }
