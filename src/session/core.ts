@@ -1,8 +1,13 @@
 import { parse as parseCookie } from 'cookie'
+import { getIronSession } from 'iron-session'
 import { NextPageContext } from 'next'
 import { AppContext } from 'next/app'
 
 import { Account } from '../types/Account'
+import {
+  SESSION_COOKIE_NAME,
+  sessionOptions,
+} from '../utils/auth/withSessionApiRoute'
 
 export const validateAuthentication = async (
   ctx: NextPageContext
@@ -16,14 +21,20 @@ export const validateAuthentication = async (
   // if the user was authenticated, then we try to restore the authentication
   // without needing an action from user himself, given that we are in a serverless
   // context, we cannot store session state on the server side as of now...
-  const authCookie = cookies['mww_auth']
+  const authCookie = cookies[SESSION_COOKIE_NAME]
   if (authCookie) {
     // Actually, we cannot check if the user owns the wallet or get any update on backend side,
     // this should be done
     if (!!ctx.req) {
-      return typeof authCookie === 'string'
-        ? JSON.parse(authCookie)
-        : authCookie
+      const session = await getIronSession(ctx.req, ctx.res!, sessionOptions)
+
+      const account: Account = {
+        ...session.account!,
+      }
+
+      // this should be server side only
+      delete (account as any).signature
+      return account
     }
 
     // on the client side we force a check the first time the

@@ -1,3 +1,17 @@
+export enum ExternalAccountTypes {
+  GOOGLE = 'google',
+  APPLE = 'apple',
+}
+
+export interface ExternalAccount {
+  token: string
+  refresh_token: string
+}
+
+export interface ConnectedAccounts {
+  [key: string]: ExternalAccount
+}
+
 export interface Account {
   id: string
   created: Date
@@ -9,6 +23,8 @@ export interface Account {
   nonce: number
   name?: string
   avatar?: string
+  connected_accounts?: ConnectedAccounts
+  connected_accounts_path: string
 }
 
 export enum SpecialDomainType {

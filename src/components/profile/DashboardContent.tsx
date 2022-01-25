@@ -30,6 +30,7 @@ import { logEvent } from '../../utils/analytics'
 import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import AvailabilityConfig from '../availabilities/availability-config'
+import { IntegrationsConfig } from '../integrations/IntegrationsConfig'
 import IPFSLink from '../IPFSLink'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
@@ -43,6 +44,7 @@ enum EditMode {
   DETAILS,
   TYPES,
   NOTIFICATIONS,
+  INTEGRATIONS,
 }
 
 interface LinkItemProps {
@@ -60,6 +62,11 @@ const LinkItems: Array<LinkItemProps> = [
     name: 'Notifications',
     icon: FaBell,
     mode: EditMode.NOTIFICATIONS,
+  },
+  {
+    name: 'Connected Calendars',
+    icon: FaCalendarPlus,
+    mode: EditMode.INTEGRATIONS,
   },
 ]
 
@@ -174,6 +181,8 @@ const DashboardContent: React.FC = () => {
         return <MeetingTypesConfig />
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig />
+      case EditMode.INTEGRATIONS:
+        return <IntegrationsConfig />
     }
   }
 
