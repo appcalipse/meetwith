@@ -1,10 +1,11 @@
-import nodemailer from 'nodemailer'
-import Email from 'email-templates'
-import { durationToHumanReadable } from './calendar_manager'
 import * as Sentry from '@sentry/node'
-import path from 'path'
-import { utcToZonedTime } from 'date-fns-tz'
 import { differenceInMinutes, format } from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
+import Email from 'email-templates'
+import nodemailer from 'nodemailer'
+import path from 'path'
+
+import { durationToHumanReadable } from './calendar_manager'
 
 const transporter = nodemailer.createTransport({
   host: 'smtppro.zoho.eu',

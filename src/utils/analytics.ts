@@ -1,4 +1,5 @@
 import amplitude from 'amplitude-js'
+
 import { isProduction } from './constants'
 
 const initAnalytics = async () => {

@@ -1,32 +1,33 @@
+import { useDisclosure } from '@chakra-ui/hooks'
+import { Box, Container, Flex } from '@chakra-ui/layout'
+import { Select } from '@chakra-ui/select'
+import { useToast } from '@chakra-ui/toast'
+import * as Sentry from '@sentry/browser'
+import { addMinutes, endOfMonth, startOfMonth } from 'date-fns'
+import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
-import MeetSlotPicker from '../MeetSlotPicker'
+
 import { AccountContext } from '../../providers/AccountProvider'
+import { useLogin } from '../../session/login'
+import { Account, MeetingType } from '../../types/Account'
+import { DBSlot, MeetingDecrypted } from '../../types/Meeting'
+import { logEvent } from '../../utils/analytics'
+import { getAccount, getMeetings } from '../../utils/api_helper'
 import {
   durationToHumanReadable,
   isSlotAvailable,
   scheduleMeeting,
 } from '../../utils/calendar_manager'
-import { getAccount, getMeetings } from '../../utils/api_helper'
 import {
   AccountNotFoundError,
   MeetingWithYourselfError,
 } from '../../utils/errors'
-import { useToast } from '@chakra-ui/toast'
-import { DBSlot, MeetingDecrypted } from '../../types/Meeting'
-import { Select } from '@chakra-ui/select'
-import ProfileInfo from '../profile/ProfileInfo'
-import { Account, MeetingType } from '../../types/Account'
-import { Flex, Box, Container } from '@chakra-ui/layout'
-import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
-import { useDisclosure } from '@chakra-ui/hooks'
-import { logEvent } from '../../utils/analytics'
 import { loginWithWallet } from '../../utils/user_manager'
 import Loading from '../Loading'
-import * as Sentry from '@sentry/browser'
-import { zonedTimeToUtc } from 'date-fns-tz'
-import { addMinutes, endOfMonth, startOfMonth } from 'date-fns'
-import { useLogin } from '../../session/login'
+import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
+import MeetSlotPicker from '../MeetSlotPicker'
+import ProfileInfo from '../profile/ProfileInfo'
 
 interface InternalSchedule {
   startTime: Date

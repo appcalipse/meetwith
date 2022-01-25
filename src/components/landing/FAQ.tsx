@@ -1,9 +1,9 @@
 import {
-  Container,
   Box,
+  Container,
   Heading,
-  Text,
   Link,
+  Text,
   useColorModeValue,
 } from '@chakra-ui/react'
 

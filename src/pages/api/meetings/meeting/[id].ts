@@ -1,6 +1,7 @@
-import { NextApiRequest, NextApiResponse } from 'next'
-import { getMeetingFromDB, initDB } from '../../../../utils/database'
 import { withSentry } from '@sentry/nextjs'
+import { NextApiRequest, NextApiResponse } from 'next'
+
+import { getMeetingFromDB, initDB } from '../../../../utils/database'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {

@@ -15,4 +15,4 @@ const appUrl =
 const DEFAULT_MESSAGE = (nonce: number) =>
   `Welcome to Meet with Wallet!\n\nPlease sign this message to prove you are the owner of your account and enable your data to be encrypted and private.\n\nDon't worry, no actual transaction, gas or assets will be used for it.\n\nYour unique number is ${nonce}`
 
-export { apiUrl, isProduction, DEFAULT_MESSAGE, appUrl }
+export { apiUrl, appUrl, DEFAULT_MESSAGE, isProduction }

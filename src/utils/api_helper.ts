@@ -1,10 +1,11 @@
+import * as Sentry from '@sentry/browser'
+
 import { Account, MeetingType } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
 import { getCurrentAccount, getSignature } from './storage'
-import * as Sentry from '@sentry/browser'
 
 export const internalFetch = async (
   path: string,

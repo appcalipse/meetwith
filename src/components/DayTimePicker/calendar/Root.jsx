@@ -1,23 +1,20 @@
-import React, { useState } from 'react'
+import { Flex, HStack } from '@chakra-ui/react'
+import { addMonths, format, isSameMonth, isToday, subMonths } from 'date-fns'
 import PropTypes from 'prop-types'
-import { format, isSameMonth, isToday, addMonths, subMonths } from 'date-fns'
-
-import { Grid, Wrapper, MonthYear, DaysOfWeek, DaysOfMonth } from './Layout'
-import { WeekDays, WeekDay, WEEK_DAYS } from './WeekDays'
-import { MonthDays, MonthDay } from './MonthDays'
-
-import {
-  PrevMonth,
-  NextMonth,
-  CurrentMonth,
-  FakeCurrentMonth,
-} from './MonthPicker'
+import React, { useState } from 'react'
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
 import { Calendar, FakeCalendar } from './Calendar'
-
 import generateDays from './generate-days'
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
-import { Flex, HStack } from '@chakra-ui/react'
+import { DaysOfMonth, DaysOfWeek, Grid, MonthYear, Wrapper } from './Layout'
+import { MonthDay, MonthDays } from './MonthDays'
+import {
+  CurrentMonth,
+  FakeCurrentMonth,
+  NextMonth,
+  PrevMonth,
+} from './MonthPicker'
+import { WEEK_DAYS, WeekDay, WeekDays } from './WeekDays'
 
 function Root({ validator, pickDay, monthChanged }) {
   const [month, setMonth] = useState(new Date())

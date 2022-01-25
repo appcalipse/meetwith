@@ -4,6 +4,7 @@ import {
   IdentityProvider,
   IdentityProviderOptions,
 } from 'orbit-db-identity-provider'
+
 import { web3 } from './user_manager'
 
 const encryptContent = (signature: string, data: string): string => {
@@ -52,4 +53,4 @@ class PersonalIdentityProvider extends IdentityProvider {
   } //return true if identity.sigantures are valid
 }
 
-export { encryptContent, decryptContent, PersonalIdentityProvider }
+export { decryptContent, encryptContent, PersonalIdentityProvider }

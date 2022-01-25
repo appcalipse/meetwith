@@ -2,16 +2,16 @@ import {
   Box,
   chakra,
   Container,
+  Image,
   Link,
   Stack,
   Text,
   useColorModeValue,
   VisuallyHidden,
-  Image,
 } from '@chakra-ui/react'
 import NextLink from 'next/link'
-import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
 import { ReactNode } from 'react'
+import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
 
 const Logo = () => {
   return (

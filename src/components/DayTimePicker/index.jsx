@@ -1,32 +1,30 @@
-import React, { useState } from 'react'
-import PropTypes from 'prop-types'
-import { format } from 'date-fns'
-
-import { PopupWrapper, Popup, PopupHeader } from './Popup'
-import { SuccessIcon, FailedIcon } from './Icons'
-import { Success, Failed } from './Feedback'
-
-import Calendar from './calendar'
-import TimeSlots from './time-slots'
-
-import { preventPastDays } from './validators'
 import { Button } from '@chakra-ui/button'
 import { Box } from '@chakra-ui/layout'
-import { Textarea } from '@chakra-ui/textarea'
 import {
-  Icon,
+  FormLabel,
   HStack,
+  Icon,
+  Input,
+  Link,
+  Switch,
   Text,
   useColorModeValue,
-  Input,
-  Switch,
-  FormLabel,
   VStack,
-  Link,
 } from '@chakra-ui/react'
+import { Textarea } from '@chakra-ui/textarea'
+import { format } from 'date-fns'
+import PropTypes from 'prop-types'
+import React, { useState } from 'react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
-import { logEvent } from '../../utils/analytics'
+
 import { AccountContext } from '../../providers/AccountProvider'
+import { logEvent } from '../../utils/analytics'
+import Calendar from './calendar'
+import { Failed, Success } from './Feedback'
+import { FailedIcon, SuccessIcon } from './Icons'
+import { Popup, PopupHeader, PopupWrapper } from './Popup'
+import TimeSlots from './time-slots'
+import { preventPastDays } from './validators'
 
 function DayTimePicker({
   timeSlotValidator,

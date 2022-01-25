@@ -1,4 +1,4 @@
-import { Input, Wrap, WrapItem, InputProps } from '@chakra-ui/react'
+import { Input, InputProps, Wrap, WrapItem } from '@chakra-ui/react'
 import {
   ChangeEventHandler,
   ClipboardEventHandler,
@@ -7,6 +7,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+
 import { BadgeChip } from './chip'
 
 const DEFAULT_STOP_KEYS = ['Tab', 'Space', 'Enter', 'Escape', 'Comma']

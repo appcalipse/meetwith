@@ -1,4 +1,3 @@
-import React, { useRef, useState } from 'react'
 import {
   Icon,
   Input,
@@ -11,16 +10,18 @@ import {
   useColorModeValue,
   useOutsideClick,
 } from '@chakra-ui/react'
-import { useDayzed } from 'dayzed'
 import { format } from 'date-fns'
-import { Month_Names_Short, Weekday_Names_Short } from './utils/calendar.utils'
+import { useDayzed } from 'dayzed'
+import React, { useRef, useState } from 'react'
+import { FaCalendarDay } from 'react-icons/fa'
+
 import { CalendarPanel } from './components/calendarPanel'
+import { Month_Names_Short, Weekday_Names_Short } from './utils/calendar.utils'
 import {
   DatepickerConfigs,
   DatepickerProps,
   OnDateSelected,
 } from './utils/types'
-import { FaCalendarDay } from 'react-icons/fa'
 
 export interface SingleDatepickerProps extends DatepickerProps {
   date: Date
