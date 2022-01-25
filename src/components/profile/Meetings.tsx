@@ -1,23 +1,24 @@
 import {
-  Button,
-  VStack,
-  Spacer,
-  Image,
-  Text,
-  HStack,
-  Spinner,
-  useDisclosure,
-  Wrap,
-  Flex,
   Box,
+  Button,
+  Flex,
+  HStack,
+  Image,
+  Spacer,
+  Spinner,
+  Text,
+  useDisclosure,
+  VStack,
+  Wrap,
 } from '@chakra-ui/react'
 import { addHours } from 'date-fns'
 import { useContext, useEffect, useState } from 'react'
+import { FaPlus } from 'react-icons/fa'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import { DBSlot } from '../../types/Meeting'
 import { getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
-import { FaPlus } from 'react-icons/fa'
 import { ScheduleModal } from '../schedule-modal'
 
 const Meetings: React.FC = () => {

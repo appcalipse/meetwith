@@ -1,13 +1,13 @@
 import {
-  Container,
-  Stack,
-  Flex,
   Box,
+  Container,
+  Flex,
   Heading,
-  Text,
-  Image,
   Icon,
   IconProps,
+  Image,
+  Stack,
+  Text,
   useColorModeValue,
 } from '@chakra-ui/react'
 

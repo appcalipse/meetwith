@@ -1,4 +1,4 @@
-import { Badge, Center, InputProps, Link, Image } from '@chakra-ui/react'
+import { Badge, Center, Image, InputProps, Link } from '@chakra-ui/react'
 import { FaTimes } from 'react-icons/fa'
 
 const styles = {

@@ -14,6 +14,7 @@ import {
 } from '@chakra-ui/react'
 import { ChangeEvent, useContext, useState } from 'react'
 import { FaArrowLeft, FaLock } from 'react-icons/fa'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
 import { logEvent } from '../../utils/analytics'

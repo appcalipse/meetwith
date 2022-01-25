@@ -1,12 +1,13 @@
 import {
-  Heading,
-  Text,
-  Image,
-  VStack,
-  Spacer,
   Container,
+  Heading,
+  Image,
+  Spacer,
+  Text,
+  VStack,
 } from '@chakra-ui/react'
 import router from 'next/router'
+
 import MWWButton from '../components/MWWButton'
 
 export default function NotFound() {

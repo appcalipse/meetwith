@@ -1,21 +1,23 @@
 import '../styles/globals.css'
+
+import { ChakraProvider, Flex } from '@chakra-ui/react'
+import { extendTheme } from '@chakra-ui/react'
+import cookie from 'cookie'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
-import * as React from 'react'
-import { ChakraProvider, Flex } from '@chakra-ui/react'
-import { CookiesProvider } from 'react-cookie'
-import { extendTheme } from '@chakra-ui/react'
-import NavBar from '../components/Navbar'
-import Footer from '../components/Footer'
-import { AccountProvider } from '../providers/AccountProvider'
 import Head from 'next/head'
-import { initAnalytics, pageView } from '../utils/analytics'
-import customTheme from '../styles/theme'
+import * as React from 'react'
+import { CookiesProvider } from 'react-cookie'
+
 import { CookieConsent } from '../components/CookieConsent'
-import cookie from 'cookie'
+import Footer from '../components/Footer'
 import Loading from '../components/Loading'
+import NavBar from '../components/Navbar'
+import { AccountProvider } from '../providers/AccountProvider'
 import { validateAuthenticationApp } from '../session/core'
+import customTheme from '../styles/theme'
 import { Account } from '../types/Account'
+import { initAnalytics, pageView } from '../utils/analytics'
 
 const theme = extendTheme(customTheme)
 

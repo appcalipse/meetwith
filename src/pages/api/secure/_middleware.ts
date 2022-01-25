@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
 import {
-  keccak,
-  fromRpcSig,
-  ecrecover,
-  pubToAddress,
   bufferToHex,
+  ecrecover,
+  fromRpcSig,
+  keccak,
+  pubToAddress,
 } from 'ethereumjs-util'
+import { NextRequest, NextResponse } from 'next/server'
+
 import { apiUrl, DEFAULT_MESSAGE } from '../../../utils/constants'
 
 export async function middleware(req: NextRequest) {

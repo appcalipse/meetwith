@@ -1,5 +1,6 @@
-import { HStack, Text, Select } from '@chakra-ui/react'
+import { HStack, Select, Text } from '@chakra-ui/react'
 import { ChangeEvent } from 'react'
+
 import { allSlots } from '../../utils/calendar_manager'
 
 type SelectorProps = {

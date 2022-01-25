@@ -10,6 +10,7 @@ import {
 import { format, setDay } from 'date-fns'
 import { useEffect, useState } from 'react'
 import { FaPlus, FaTrash } from 'react-icons/fa'
+
 import { DayAvailability, TimeRange } from '../../types/Account'
 import { defaultTimeRange } from '../../utils/calendar_manager'
 import { TimeSelector } from './time-selector'

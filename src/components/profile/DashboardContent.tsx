@@ -24,6 +24,7 @@ import {
   FaInfo,
   FaLock,
 } from 'react-icons/fa'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
 import { getAccountCalendarUrl } from '../../utils/calendar_manager'

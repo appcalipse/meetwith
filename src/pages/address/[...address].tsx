@@ -1,8 +1,8 @@
+import { NextPage } from 'next'
 import React from 'react'
 
-import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
-import { NextPage } from 'next'
 import PublicCalendar from '../../components/public-calendar'
+import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
 
 const Schedule: NextPage = () => <PublicCalendar />
 

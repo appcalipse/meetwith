@@ -1,10 +1,11 @@
+import { useToast } from '@chakra-ui/react'
+import * as Sentry from '@sentry/browser'
+import router from 'next/router'
 import { useContext } from 'react'
-import { loginWithWallet, web3 } from '../utils/user_manager'
+
 import { AccountContext } from '../providers/AccountProvider'
 import { logEvent } from '../utils/analytics'
-import router from 'next/router'
-import * as Sentry from '@sentry/browser'
-import { useToast } from '@chakra-ui/react'
+import { loginWithWallet, web3 } from '../utils/user_manager'
 
 export const useLogin = () => {
   const { currentAccount, logged, login, loginIn, setLoginIn } =

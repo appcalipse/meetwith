@@ -1,9 +1,9 @@
 import {
   Modal,
-  ModalOverlay,
+  ModalBody,
   ModalContent,
   ModalHeader,
-  ModalBody,
+  ModalOverlay,
   Text,
   useColorModeValue,
 } from '@chakra-ui/react'
