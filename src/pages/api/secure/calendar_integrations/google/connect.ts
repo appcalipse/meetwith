@@ -1,7 +1,7 @@
 import { google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-const BASE_URL = 'http://localhost:3000'
+import { apiUrl } from '../../../../../utils/constants'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -19,17 +19,9 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (req.method === 'GET') {
-    // // Check that user is authenticated
-    // const session = await getSession({ req: req });
-
-    // if (!session) {
-    //   res.status(401).json({ message: "You must be logged in to do this" });
-    //   return;
-    // }
-
     // Get token from Google Calendar API
     const { client_secret, client_id } = credentials
-    const redirect_uri = BASE_URL + '/api/callbacks/googlecalendar/callback'
+    const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
     const oAuth2Client = new google.auth.OAuth2(
       client_id,
       client_secret,

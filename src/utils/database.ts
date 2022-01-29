@@ -68,6 +68,7 @@ const initAccountDBForWallet = async (
 
   if (error) {
     Sentry.captureException(error)
+    console.error(error)
     throw new Error("Account couldn't be created")
   }
 
@@ -177,9 +178,12 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     account.preferences = (await fetchContentFromIPFS(
       account.preferences_path
     )) as AccountPreferences
-    account.connected_accounts = (await fetchContentFromIPFS(
-      account.connected_accounts_path
-    )) as ConnectedAccounts
+
+    if (account.connected_accounts_path) {
+      account.connected_accounts = (await fetchContentFromIPFS(
+        account.connected_accounts_path
+      )) as ConnectedAccounts
+    }
 
     return account
   } else {

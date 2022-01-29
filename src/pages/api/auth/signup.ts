@@ -4,7 +4,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '../../../utils/auth/withSessionApiRoute'
 import { initAccountDBForWallet, initDB } from '../../../utils/database'
 
-const createAccount = async (req: NextApiRequest, res: NextApiResponse) => {
+const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
@@ -29,4 +29,4 @@ const createAccount = async (req: NextApiRequest, res: NextApiResponse) => {
   res.status(404).send('Not found')
 }
 
-export default withSessionRoute(withSentry(createAccount))
+export default withSessionRoute(withSentry(signupRoute))

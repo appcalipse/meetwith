@@ -4,7 +4,7 @@ import Web3Modal from 'web3modal'
 
 import { Account, PremiumAccount } from '../types/Account'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { createAccount, getAccount } from './api_helper'
+import { login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper'
@@ -37,7 +37,7 @@ const loginWithWallet = async (
     setLoginIn(true)
     const accounts = await web3.eth.getAccounts()
 
-    const account = await createOrFetchAccount(
+    const account = await loginOrSignup(
       accounts[0].toLowerCase(),
       Intl.DateTimeFormat().resolvedOptions().timeZone
     )
@@ -62,14 +62,14 @@ const signDefaultMessage = async (
   return signature
 }
 
-const createOrFetchAccount = async (
+const loginOrSignup = async (
   accountAddress: string,
   timezone: string
 ): Promise<Account> => {
   let account: Account
 
   try {
-    account = await getAccount(accountAddress.toLowerCase())
+    account = await login(accountAddress.toLowerCase())
   } catch (e) {
     if (e instanceof AccountNotFoundError) {
       const nonce = Number(Math.random().toString(8).substring(2, 10))
@@ -77,7 +77,7 @@ const createOrFetchAccount = async (
         accountAddress.toLowerCase(),
         nonce
       )
-      account = await createAccount(
+      account = await signup(
         accountAddress.toLowerCase(),
         signature,
         timezone,
@@ -89,7 +89,6 @@ const createOrFetchAccount = async (
   }
 
   const signature = getSignature(account.address)
-
   const extraInfo = await resolveExtraInfo(account.address)
 
   if (!signature) {
@@ -132,10 +131,10 @@ const getParticipantDisplay = (
 }
 
 export {
-  createOrFetchAccount,
   ellipsizeAddress,
   getAccountDisplayName,
   getParticipantDisplay,
+  loginOrSignup,
   loginWithWallet,
   signDefaultMessage,
   web3,

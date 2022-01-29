@@ -31,34 +31,22 @@ export async function middleware(req: NextRequest, ev: NextFetchEvent) {
   const session = (await unsealData(ironSessionCookie, sessionOptions)) as {
     account: AccountSession
   }
-  const sig = req.headers.get('signature')
-  const account = req.headers.get('account')
 
-  if (!sig || !account) return notAuthorized
-
-  if (sig !== session?.account?.signature) {
-    console.error('signature not matching', sig, session?.account?.signature)
-    return notAuthorized
-  }
-
-  if (account !== session?.account?.address.toLowerCase()) {
-    console.error(
-      'account not matching',
-      account,
-      session?.account?.address.toLowerCase()
-    )
-    return notAuthorized
-  }
+  if (!session?.account) return notAuthorized
 
   try {
     //TODO remove this shitty from edge functions so no api for nonce have to exist
     const response = await (
-      await fetch(`${apiUrl}/accounts/nonce_hidden/${account}`)
+      await fetch(`${apiUrl}/accounts/nonce_hidden/${session.account.address}`)
     ).json()
 
-    const recovered = checkSignature(sig, response.nonce! as number)
+    const recovered = checkSignature(
+      session.account.signature,
+      response.nonce! as number
+    )
 
-    if (account.toLowerCase() !== recovered.toLowerCase()) return notAuthorized
+    if (session.account.address.toLowerCase() !== recovered.toLowerCase())
+      return notAuthorized
 
     return NextResponse.next()
   } catch (e) {

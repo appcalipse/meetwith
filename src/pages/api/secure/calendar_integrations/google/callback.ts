@@ -1,11 +1,10 @@
 import { google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-import { Account } from '../../../../types/Account'
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
-import { updateConnectedAccounts } from '../../../../utils/database'
-
-const BASE_URL = 'http://localhost:3000'
+import { Account } from '../../../../../types/Account'
+import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
+import { apiUrl } from '../../../../../utils/constants'
+import { updateConnectedAccounts } from '../../../../../utils/database'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -14,17 +13,6 @@ const credentials = {
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code } = req.query
-
-  // Check that user is authenticated
-  // const session = await getSession({ req: req });
-
-  // if (!session?.user?.id) {
-  //   res.status(401).json({ message: "You must be logged in to do this" });
-  //   return;
-  // }
-
-  //console.log('query', req.headers.cookie)
-
   if (!req.session.account) {
     console.log('NO ACCOUNT')
     res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
@@ -43,7 +31,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const { client_secret, client_id } = credentials
-  const redirect_uri = BASE_URL + '/api/callbacks/googlecalendar/callback'
+  const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
 
   const oAuth2Client = new google.auth.OAuth2(
     client_id,
@@ -64,15 +52,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     key = token.res?.data
   }
 
-  // await prisma.credential.create({
-  //   data: {
-  //     type: "google_calendar",
-  //     key,
-  //     userId: session.user.id,
-  //   },
-  // });
-  // const state = decodeOAuthState(req);
-  //console.log(key, typeof key);
   const payload: Account = {
     ...req.session.account,
     connected_accounts: {
@@ -84,7 +63,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     },
   }
   await updateConnectedAccounts(payload)
-  res.redirect(`/dashboard`)
+  res.redirect(`/dashboard#calendar_connections`)
 }
 
 export default withSessionRoute(handler)
