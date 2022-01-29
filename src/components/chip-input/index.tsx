@@ -111,7 +111,10 @@ export const ChipInput: React.FC<ChipInputProps> = ({
         borderColor: 'gray.200',
         borderRadius: 'md',
         paddingLeft: '8px',
+        minHeight: '40px',
+        alignItems: 'center',
       }}
+      display={'flex'}
       align={'center'}
     >
       {badges}
@@ -121,7 +124,6 @@ export const ChipInput: React.FC<ChipInputProps> = ({
           style={{
             display: 'inline-block',
             visibility: isReadOnly ? 'hidden' : 'visible',
-            lineHeight: '40px',
           }}
           onPaste={onPaste}
           variant={'unstyled'}

@@ -9,9 +9,9 @@ import {
   Text,
   useDisclosure,
   VStack,
-  Wrap,
 } from '@chakra-ui/react'
 import { addHours } from 'date-fns'
+import { decryptWithPrivateKey } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
@@ -103,10 +103,16 @@ const Meetings: React.FC = () => {
   }
 
   const { isOpen, onOpen, onClose } = useDisclosure()
+
+  const afterClose = () => {
+    onClose()
+    fetchMeetings()
+  }
+
   const isLocalDevelopment = process.env.NEXT_PUBLIC_ENV === 'local'
   return (
     <Flex direction={'column'}>
-      <ScheduleModal isOpen={isOpen} onClose={onClose} onOpen={onOpen} />
+      <ScheduleModal isOpen={isOpen} onClose={afterClose} onOpen={onOpen} />
       <Box>
         <Button
           onClick={onOpen}
