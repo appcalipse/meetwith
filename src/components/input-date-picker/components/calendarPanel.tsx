@@ -7,7 +7,7 @@ import {
   Stack,
   VStack,
 } from '@chakra-ui/react'
-import { format, isSameDay } from 'date-fns'
+import { format, isSameDay, setMonth } from 'date-fns'
 import isBefore from 'date-fns/isBefore'
 import { RenderProps } from 'dayzed'
 import React from 'react'
@@ -53,7 +53,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
                 getBackProps={getBackProps}
               />
               <Heading size="sm" textAlign="center">
-                {format(new Date(2022, calendar.month, 1), 'MMM')}{' '}
+                {format(setMonth(new Date(), calendar.month), 'MMM')}{' '}
                 {calendar.year}
               </Heading>
               <DatepickerForwardBtns
