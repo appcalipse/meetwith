@@ -1,4 +1,4 @@
-import { Badge, Center, Image, InputProps, Link } from '@chakra-ui/react'
+import { Badge, Center, InputProps, Link } from '@chakra-ui/react'
 import { FaTimes } from 'react-icons/fa'
 
 const styles = {
@@ -10,6 +10,7 @@ const styles = {
     textTransform: 'none',
     borderRadius: 6,
     fontWeight: 'normal',
+    margin: '0 4px',
   },
   close: {
     color: 'white',

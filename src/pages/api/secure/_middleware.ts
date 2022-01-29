@@ -1,13 +1,7 @@
-import {
-  bufferToHex,
-  ecrecover,
-  fromRpcSig,
-  keccak,
-  pubToAddress,
-} from 'ethereumjs-util'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { apiUrl, DEFAULT_MESSAGE } from '../../../utils/constants'
+import { apiUrl } from '../../../utils/constants'
+import { checkSignature } from '../../../utils/cryptography'
 
 export async function middleware(req: NextRequest) {
   const notAuthorized = new Response('Auth required', {
@@ -33,18 +27,4 @@ export async function middleware(req: NextRequest) {
     console.error(e)
     throw e
   }
-}
-
-function checkSignature(signature: string, nonce: number): string {
-  const toVerify =
-    '\x19Ethereum Signed Message:\n' +
-    DEFAULT_MESSAGE(nonce).length +
-    DEFAULT_MESSAGE(nonce)
-  const buffer = keccak(Buffer.from(toVerify))
-  const { v, r, s } = fromRpcSig(signature)
-  const pubKey = ecrecover(buffer, v, r, s)
-  const addrBuf = pubToAddress(pubKey)
-  const addr = bufferToHex(addrBuf)
-
-  return addr
 }

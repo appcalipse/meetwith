@@ -7,26 +7,26 @@ import {
   Stack,
   VStack,
 } from '@chakra-ui/react'
+import { format, isSameDay, setMonth } from 'date-fns'
+import isBefore from 'date-fns/isBefore'
 import { RenderProps } from 'dayzed'
 import React from 'react'
 
-import { DatepickerConfigs, DatepickerProps } from '../utils/types'
 import { DatepickerBackBtns, DatepickerForwardBtns } from './dateNavBtns'
 import { DayOfMonth } from './dayOfMonth'
 
-interface CalendarPanelProps extends DatepickerProps {
+interface CalendarPanelProps {
   renderProps: RenderProps
-  configs: DatepickerConfigs
   onMouseEnterHighlight?: (date: Date) => void
   isInRange?: (date: Date) => boolean | null
+  blockPast?: boolean
 }
 
 export const CalendarPanel: React.FC<CalendarPanelProps> = ({
   renderProps,
-  configs,
-  propsConfigs,
   onMouseEnterHighlight,
   isInRange,
+  blockPast,
 }) => {
   const { calendars, getBackProps, getForwardProps } = renderProps
 
@@ -51,38 +51,30 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
               <DatepickerBackBtns
                 calendars={calendars}
                 getBackProps={getBackProps}
-                propsConfigs={propsConfigs}
               />
               <Heading size="sm" textAlign="center">
-                {configs.monthNames[calendar.month]} {calendar.year}
+                {format(setMonth(new Date(), calendar.month), 'MMM')}{' '}
+                {calendar.year}
               </Heading>
               <DatepickerForwardBtns
                 calendars={calendars}
                 getForwardProps={getForwardProps}
-                propsConfigs={propsConfigs}
               />
             </HStack>
             <Divider />
             <SimpleGrid columns={7} spacing={1} textAlign="center">
-              {configs.dayNames.map(day => (
-                <Box
-                  fontSize="sm"
-                  fontWeight="semibold"
-                  key={`${calendar.month}${calendar.year}${day}`}
-                >
-                  {day}
-                </Box>
-              ))}
               {calendar.weeks.map((week, weekIdx) => {
                 return week.map((dateObj, index) => {
                   const key = `${calendar.month}${calendar.year}${weekIdx}${index}`
                   if (!dateObj) return <Box key={key} />
+                  const today = new Date()
                   const { date } = dateObj
+                  dateObj.selectable =
+                    isBefore(today, date) || isSameDay(today, date)
                   return (
                     <DayOfMonth
                       key={key}
                       dateObj={dateObj}
-                      propsConfigs={propsConfigs}
                       renderProps={renderProps}
                       isInRange={isInRange && isInRange(date)}
                       onMouseEnter={() => {
