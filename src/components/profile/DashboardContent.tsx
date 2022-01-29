@@ -30,7 +30,7 @@ import { logEvent } from '../../utils/analytics'
 import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import AvailabilityConfig from '../availabilities/availability-config'
-import { IntegrationsConfig } from '../integrations/IntegrationsConfig'
+import { CalendarConnectionsConfig } from '../calendar-connections/connections-panel'
 import IPFSLink from '../IPFSLink'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
@@ -39,12 +39,12 @@ import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
 enum EditMode {
-  MEETINGS,
-  AVAILABILITY,
-  DETAILS,
-  TYPES,
-  NOTIFICATIONS,
-  INTEGRATIONS,
+  MEETINGS = 'meetings',
+  AVAILABILITY = 'availability',
+  DETAILS = 'details',
+  TYPES = 'types',
+  NOTIFICATIONS = 'notifications',
+  CALENDAR_CONNECTIONS = 'calendar_connections',
 }
 
 interface LinkItemProps {
@@ -66,7 +66,7 @@ const LinkItems: Array<LinkItemProps> = [
   {
     name: 'Connected Calendars',
     icon: FaCalendarPlus,
-    mode: EditMode.INTEGRATIONS,
+    mode: EditMode.CALENDAR_CONNECTIONS,
   },
 ]
 
@@ -145,7 +145,10 @@ const NavItem = ({
 const DashboardContent: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
 
-  const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
+  const initialHash = window.location.hash
+  const [currentEditMode, setCurrentEditMode] = useState(
+    initialHash?.replace('#', '') || EditMode.MEETINGS
+  )
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
@@ -153,6 +156,7 @@ const DashboardContent: React.FC = () => {
 
   const menuClicked = (mode: EditMode) => {
     setCurrentEditMode(mode)
+    window.location.hash = mode
     logEvent('Selected menu item on dashboard', { mode })
   }
 
@@ -181,8 +185,8 @@ const DashboardContent: React.FC = () => {
         return <MeetingTypesConfig />
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig />
-      case EditMode.INTEGRATIONS:
-        return <IntegrationsConfig />
+      case EditMode.CALENDAR_CONNECTIONS:
+        return <CalendarConnectionsConfig />
     }
   }
 

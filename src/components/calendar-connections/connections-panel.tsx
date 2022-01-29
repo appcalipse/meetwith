@@ -3,8 +3,9 @@ import { useContext, useEffect, useState } from 'react'
 import { FaGoogle } from 'react-icons/fa'
 
 import { AccountContext } from '../../providers/AccountProvider'
+import { getGoogleAuthConnectUrl } from '../../utils/api_helper'
 
-export const IntegrationsConfig: React.FC = () => {
+export const CalendarConnectionsConfig: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
   const [loading, setLoading] = useState(false)
   const connected = currentAccount?.connected_accounts
@@ -12,13 +13,9 @@ export const IntegrationsConfig: React.FC = () => {
 
   const connectGoogle = async () => {
     setLoading(true)
-    await fetch('api/callbacks/googlecalendar/add')
-      .then(res => res.json())
-      .then(data => {
-        console.log('data', data)
-        setLoading(false)
-        window.location.assign(data.url)
-      })
+    const data = await getGoogleAuthConnectUrl()
+    setLoading(false)
+    window.location.assign(data.url)
   }
 
   return (

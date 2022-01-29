@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { withSessionRoute } from '../../../utils/auth/withSessionApiRoute'
+import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 
-function logoutRoute(req: NextApiRequest, res: NextApiResponse) {
+const logoutRoute = async (req: NextApiRequest, res: NextApiResponse) => {
   req.session.destroy()
   res.send({ ok: true })
 }
