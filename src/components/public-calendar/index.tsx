@@ -84,6 +84,10 @@ const PublicCalendar: React.FC = () => {
   const checkUser = async (identifier: string) => {
     try {
       const _account = await getAccount(identifier)
+      if (_account.is_invited) {
+        router.push('/404')
+        return
+      }
       setAccount(_account)
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = _account.preferences!.availableTypes.find(
@@ -143,7 +147,10 @@ const PublicCalendar: React.FC = () => {
       )
       await updateMeetings(account!.address)
       setLastScheduledMeeting(meeting)
-      logEvent('Scheduled a meeting')
+      logEvent('Scheduled a meeting', {
+        fromPublicCalendar: true,
+        participantsSize: 2,
+      })
       onOpen()
       setIsScheduling(false)
       return true

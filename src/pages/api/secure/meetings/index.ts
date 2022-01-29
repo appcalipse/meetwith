@@ -29,7 +29,10 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       return
     }
 
-    const meetingResult: DBSlotEnhanced = await saveMeeting(meeting, account.id)
+    const meetingResult: DBSlotEnhanced = await saveMeeting(
+      meeting,
+      account.address
+    )
 
     res.status(200).json(meetingResult)
     return

@@ -4,7 +4,7 @@ import Web3Modal from 'web3modal'
 
 import { Account, PremiumAccount } from '../types/Account'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { createAccount, getAccount } from './api_helper'
+import { createAccount, getAccount, initInvitedAccount } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper'
@@ -68,15 +68,29 @@ const createOrFetchAccount = async (
 ): Promise<Account> => {
   let account: Account
 
+  const generateSignature = async () => {
+    const nonce = Number(Math.random().toString(8).substring(2, 10))
+    const signature = await signDefaultMessage(
+      accountAddress.toLowerCase(),
+      nonce
+    )
+    return { signature, nonce }
+  }
+
   try {
     account = await getAccount(accountAddress.toLowerCase())
-  } catch (e) {
-    if (e instanceof AccountNotFoundError) {
-      const nonce = Number(Math.random().toString(8).substring(2, 10))
-      const signature = await signDefaultMessage(
+    if (account.is_invited) {
+      const { signature, nonce } = await generateSignature()
+      account = await initInvitedAccount(
         accountAddress.toLowerCase(),
+        signature,
+        timezone,
         nonce
       )
+    }
+  } catch (e) {
+    if (e instanceof AccountNotFoundError) {
+      const { signature, nonce } = await generateSignature()
       account = await createAccount(
         accountAddress.toLowerCase(),
         signature,

@@ -7,24 +7,21 @@ import {
   Stack,
   VStack,
 } from '@chakra-ui/react'
+import { format } from 'date-fns'
 import { RenderProps } from 'dayzed'
 import React from 'react'
 
-import { DatepickerConfigs, DatepickerProps } from '../utils/types'
 import { DatepickerBackBtns, DatepickerForwardBtns } from './dateNavBtns'
 import { DayOfMonth } from './dayOfMonth'
 
-interface CalendarPanelProps extends DatepickerProps {
+interface CalendarPanelProps {
   renderProps: RenderProps
-  configs: DatepickerConfigs
   onMouseEnterHighlight?: (date: Date) => void
   isInRange?: (date: Date) => boolean | null
 }
 
 export const CalendarPanel: React.FC<CalendarPanelProps> = ({
   renderProps,
-  configs,
-  propsConfigs,
   onMouseEnterHighlight,
   isInRange,
 }) => {
@@ -51,28 +48,18 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
               <DatepickerBackBtns
                 calendars={calendars}
                 getBackProps={getBackProps}
-                propsConfigs={propsConfigs}
               />
               <Heading size="sm" textAlign="center">
-                {configs.monthNames[calendar.month]} {calendar.year}
+                {format(new Date(2022, calendar.month, 1), 'MMM')}{' '}
+                {calendar.year}
               </Heading>
               <DatepickerForwardBtns
                 calendars={calendars}
                 getForwardProps={getForwardProps}
-                propsConfigs={propsConfigs}
               />
             </HStack>
             <Divider />
             <SimpleGrid columns={7} spacing={1} textAlign="center">
-              {configs.dayNames.map(day => (
-                <Box
-                  fontSize="sm"
-                  fontWeight="semibold"
-                  key={`${calendar.month}${calendar.year}${day}`}
-                >
-                  {day}
-                </Box>
-              ))}
               {calendar.weeks.map((week, weekIdx) => {
                 return week.map((dateObj, index) => {
                   const key = `${calendar.month}${calendar.year}${weekIdx}${index}`
@@ -82,7 +69,6 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
                     <DayOfMonth
                       key={key}
                       dateObj={dateObj}
-                      propsConfigs={propsConfigs}
                       renderProps={renderProps}
                       isInRange={isInRange && isInRange(date)}
                       onMouseEnter={() => {

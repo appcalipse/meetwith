@@ -9,11 +9,7 @@ export interface Account {
   nonce: number
   name?: string
   avatar?: string
-}
-
-export interface EnhancedAccount extends Account {
   is_invited: boolean
-  new_account: boolean
 }
 
 export interface SimpleAccountInfo {

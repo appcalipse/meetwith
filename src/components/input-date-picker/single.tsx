@@ -3,6 +3,7 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  InputProps,
   Popover,
   PopoverBody,
   PopoverContent,
@@ -15,32 +16,20 @@ import { useDayzed } from 'dayzed'
 import React, { useRef, useState } from 'react'
 import { FaCalendarDay } from 'react-icons/fa'
 
+import { OnDateSelected } from '.'
 import { CalendarPanel } from './components/calendarPanel'
-import { Month_Names_Short, Weekday_Names_Short } from './utils/calendar.utils'
-import {
-  DatepickerConfigs,
-  DatepickerProps,
-  OnDateSelected,
-} from './utils/types'
 
-export interface SingleDatepickerProps extends DatepickerProps {
+export interface SingleDatepickerProps {
   date: Date
-  configs?: DatepickerConfigs
   disabled?: boolean
   onDateChange: (date: Date) => void
   id?: string
   name?: string
-}
-
-const DefaultConfigs = {
-  dateFormat: 'yyyy-MM-dd',
-  monthNames: Month_Names_Short,
-  dayNames: Weekday_Names_Short,
+  inputProps?: InputProps
 }
 
 export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
-  configs = DefaultConfigs,
-  propsConfigs,
+  inputProps,
   ...props
 }) => {
   const { date, name, disabled, onDateChange, id } = props
@@ -105,19 +94,15 @@ export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
             ref={initialFocusRef}
             onClick={() => setPopoverOpen(!popoverOpen)}
             name={name}
-            value={format(date, configs.dateFormat)}
+            value={format(date, 'P')}
             onChange={e => e.target.value}
-            {...propsConfigs?.inputProps}
+            {...inputProps}
           />
         </InputGroup>
       </PopoverTrigger>
       <PopoverContent ref={ref} width="100%">
         <PopoverBody>
-          <CalendarPanel
-            renderProps={dayzedData}
-            configs={configs}
-            propsConfigs={propsConfigs}
-          />
+          <CalendarPanel renderProps={dayzedData} />
         </PopoverBody>
       </PopoverContent>
     </Popover>

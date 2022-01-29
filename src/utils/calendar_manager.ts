@@ -68,7 +68,13 @@ const scheduleMeeting = async (
   }
 
   if (
-    await isSlotFree(target_account_address, startTime, endTime, meetingTypeId)
+    source_account_address === target_account_address ||
+    (await isSlotFree(
+      target_account_address,
+      startTime,
+      endTime,
+      meetingTypeId
+    ))
   ) {
     const allAccounts = await getExistingAccounts([
       source_account_address,
@@ -76,14 +82,6 @@ const scheduleMeeting = async (
       ...extra_participants,
     ])
 
-    if (source_account_address == target_account_address) {
-      allAccounts.splice(
-        allAccounts.findIndex(
-          account => account.address == target_account_address
-        ),
-        1
-      )
-    }
     const participants: ParticipantInfo[] = []
 
     for (const account of allAccounts) {

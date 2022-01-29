@@ -1,13 +1,16 @@
 import * as Sentry from '@sentry/node'
 import { createClient } from '@supabase/supabase-js'
 import { addMinutes, isAfter } from 'date-fns'
-import EthCrypto, { Encrypted } from 'eth-crypto'
+import EthCrypto, {
+  decryptWithPrivateKey,
+  Encrypted,
+  encryptWithPublicKey,
+} from 'eth-crypto'
 import { validate } from 'uuid'
 
 import {
   Account,
   AccountPreferences,
-  EnhancedAccount,
   SimpleAccountInfo,
 } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
@@ -15,11 +18,12 @@ import {
   DBSlot,
   DBSlotEnhanced,
   MeetingCreationRequest,
+  ParticipantType,
 } from '../types/Meeting'
 import {
   AccountNotFoundError,
+  MeetingCreationError,
   MeetingNotFoundError,
-  MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '../utils/errors'
 import {
@@ -51,8 +55,8 @@ const initAccountDBForWallet = async (
   signature: string,
   timezone: string,
   nonce: number,
-  from_invite?: boolean
-): Promise<EnhancedAccount> => {
+  is_invited?: boolean
+): Promise<Account> => {
   const newIdentity = EthCrypto.createIdentity()
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
@@ -64,7 +68,7 @@ const initAccountDBForWallet = async (
       encoded_signature: encryptedPvtKey,
       preferences_path: '',
       nonce,
-      from_invite,
+      is_invited: is_invited || false,
     },
   ])
 
@@ -98,10 +102,77 @@ const initAccountDBForWallet = async (
     //TODO: handle error
   }
 
-  const account = responsePrefs.data[0] as EnhancedAccount
+  const account = responsePrefs.data[0] as Account
   account.preferences = preferences
-  account.new_account = true
-  account.is_invited = from_invite || false
+  account.is_invited = is_invited || false
+
+  return account
+}
+
+const updateAccountFromInvite = async (
+  account_address: string,
+  signature: string,
+  timezone: string,
+  nonce: number
+): Promise<Account> => {
+  //fetch this before chaning internal pub key
+  const currentMeetings = await getSlotsForAccount(account_address)
+
+  const newIdentity = EthCrypto.createIdentity()
+
+  const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
+
+  const { _, error } = await db.supabase.from('accounts').upsert(
+    [
+      {
+        address: account_address.toLowerCase(),
+        internal_pub_key: newIdentity.publicKey,
+        encoded_signature: encryptedPvtKey,
+        nonce,
+        is_invited: false,
+      },
+    ],
+    { onConflict: 'address' }
+  )
+
+  if (error) {
+    console.error(error)
+    Sentry.captureException(error)
+    throw new Error("Account couldn't be created")
+  }
+
+  const account = await getAccountFromDB(account_address)
+  account.preferences!.timezone = timezone
+
+  await updateAccountPreferences(account)
+
+  for (const slot of currentMeetings) {
+    const encrypted = (await fetchContentFromIPFS(
+      slot.meeting_info_file_path
+    )) as Encrypted
+
+    const privateInfo = await decryptWithPrivateKey(
+      process.env.NEXT_SERVER_PVT_KEY!,
+      encrypted
+    )
+    const newPvtInfo = await encryptWithPublicKey(
+      newIdentity.publicKey,
+      privateInfo
+    )
+    const newEncryptedPath = await addContentToIPFS(newPvtInfo)
+
+    const { _, error } = await db.supabase
+      .from('slots')
+      .update({
+        account_pub_key: newIdentity.publicKey,
+        meeting_info_file_path: newEncryptedPath,
+      })
+      .match({ id: slot.id })
+
+    if (error) {
+      Sentry.captureException(error)
+    }
+  }
 
   return account
 }
@@ -302,7 +373,7 @@ const saveMeeting = async (
     meeting.participants_mapping.length
   ) {
     //means there are duplicate participants
-    throw new MeetingWithYourselfError()
+    throw new MeetingCreationError()
   }
 
   const slots = []
@@ -310,21 +381,57 @@ const saveMeeting = async (
   let index = 0
   let i = 0
 
+  const existingAccounts = await getExistingAccountsFromDB(
+    meeting.participants_mapping.map(p => p.account_address)
+  )
+  const ownerAccount =
+    meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
+    null
+  const schedulerAccount =
+    meeting.participants_mapping.find(
+      p => p.type === ParticipantType.Scheduler
+    ) || null
+
   for (const participant of meeting.participants_mapping) {
     if (
-      await !isSlotFree(
-        participant.account_address,
-        new Date(meeting.start),
-        new Date(meeting.end),
-        meeting.meetingTypeId
-      )
+      existingAccounts
+        .map(account => account.address)
+        .includes(participant.account_address) &&
+      participant.type === ParticipantType.Owner
     ) {
-      throw new TimeNotAvailableError()
+      // only validate slot if meeting is being scheduled ons omeones calendar and not by itself
+      if (
+        ownerAccount &&
+        ownerAccount.account_address === participant.account_address &&
+        ownerAccount.account_address !== schedulerAccount?.account_address &&
+        (await !isSlotFree(
+          participant.account_address,
+          new Date(meeting.start),
+          new Date(meeting.end),
+          meeting.meetingTypeId
+        ))
+      ) {
+        throw new TimeNotAvailableError()
+      }
     }
 
-    //TODO validate availabilities
+    let account: Account
 
-    const account = await getAccountFromDB(participant.account_address)
+    if (
+      existingAccounts
+        .map(account => account.address)
+        .includes(participant.account_address)
+    ) {
+      account = await getAccountFromDB(participant.account_address)
+    } else {
+      account = await initAccountDBForWallet(
+        participant.account_address,
+        '',
+        'UTC',
+        0,
+        true
+      )
+    }
 
     const path = await addContentToIPFS(participant.privateInfo)
 
@@ -397,7 +504,7 @@ const setAccountNotificationSubscriptions = async (
 }
 
 const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
-  const { data, error } = await db.supabase.from('emails').upsert([
+  const { _, error } = await db.supabase.from('emails').upsert([
     {
       email,
       plan,
@@ -426,5 +533,6 @@ export {
   saveEmailToDB,
   saveMeeting,
   setAccountNotificationSubscriptions,
+  updateAccountFromInvite,
   updateAccountPreferences,
 }
