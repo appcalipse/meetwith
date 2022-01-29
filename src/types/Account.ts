@@ -1,15 +1,15 @@
-export enum ExternalAccountTypes {
+export enum ExternalCalendarProvider {
   GOOGLE = 'google',
   APPLE = 'apple',
 }
 
-export interface ExternalAccount {
+export interface ExternalCalendarAccount {
   token: string
   refresh_token: string
 }
 
-export interface ConnectedAccounts {
-  [key: string]: ExternalAccount
+export interface ConnectedCalendars {
+  [key: string]: ExternalCalendarAccount
 }
 
 export interface Account {
@@ -23,7 +23,7 @@ export interface Account {
   nonce: number
   name?: string
   avatar?: string
-  connected_accounts?: ConnectedAccounts
+  connected_accounts?: ConnectedCalendars
   connected_accounts_path: string
 }
 
