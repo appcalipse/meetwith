@@ -2,29 +2,27 @@ import { Button } from '@chakra-ui/react'
 import { DateObj, RenderProps } from 'dayzed'
 import React from 'react'
 
-import { DatepickerProps } from '../utils/types'
-
-interface DayOfMonthProps extends DatepickerProps {
+interface DayOfMonthProps {
   renderProps: RenderProps
   isInRange?: boolean | null
   dateObj: DateObj
   onMouseEnter?: React.MouseEventHandler<HTMLButtonElement> | undefined
+  disabled?: boolean
 }
 
 export const DayOfMonth: React.FC<DayOfMonthProps> = ({
   dateObj,
-  propsConfigs,
   isInRange,
   renderProps,
   onMouseEnter,
+  disabled,
 }) => {
   const { date, selected, selectable, today } = dateObj
   const { getDateProps } = renderProps
-  const { selectedBg, ...customBtnProps } =
-    propsConfigs?.dayOfMonthBtnProps || {}
-  let bg = selected || isInRange ? selectedBg || 'purple.200' : 'transparent'
-  bg = !selectable ? customBtnProps?.disabledBg || 'red.200' : bg
+  let bg = selected || isInRange ? 'orange.200' : 'transparent'
+  bg = !selectable ? 'gray.200' : bg
   const halfGap = 0.125 //default Chakra-gap-space-1 is 0.25rem
+  console.log(disabled)
   return (
     <Button
       {...getDateProps({
@@ -37,7 +35,7 @@ export const DayOfMonth: React.FC<DayOfMonthProps> = ({
       variant="outline"
       bg={bg}
       _hover={{
-        bg: 'purple.400',
+        bg: 'orange.500',
       }}
       // this intends to fill the visual gap from Grid to improve the UX
       // so the button active area is actually larger than when it's seen
@@ -51,10 +49,7 @@ export const DayOfMonth: React.FC<DayOfMonthProps> = ({
         borderWidth: `${halfGap}rem`,
         borderColor: 'transparent',
       }}
-      {...customBtnProps}
-      borderColor={
-        today ? customBtnProps?.borderColor || 'blue.400' : 'transparent'
-      }
+      borderColor={today ? 'orange.500' : 'transparent'}
     >
       {selectable ? date.getDate() : 'X'}
     </Button>

@@ -23,7 +23,7 @@ export const notifyForNewMeeting = async (
   for (let i = 0; i < meeting.participants_mapping.length; i++) {
     const participant = meeting.participants_mapping[i]
 
-    const account = await getAccountFromDB(participant.account_id)
+    const account = await getAccountFromDB(participant.account_address)
     const subscriptions = await getAccountNotificationSubscriptions(
       account.address
     )

@@ -9,6 +9,12 @@ export interface Account {
   nonce: number
   name?: string
   avatar?: string
+  is_invited: boolean
+}
+
+export interface SimpleAccountInfo {
+  address: string
+  internal_pub_key: string
 }
 
 export enum SpecialDomainType {

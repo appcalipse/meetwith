@@ -22,14 +22,17 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (
       meeting.participants_mapping.filter(
-        participant => participant.account_id === account.id
+        participant => participant.account_address === account.address
       ).length === 0
     ) {
       res.status(403).send('You cant schedule a meeting for someone else')
       return
     }
 
-    const meetingResult: DBSlotEnhanced = await saveMeeting(meeting, account.id)
+    const meetingResult: DBSlotEnhanced = await saveMeeting(
+      meeting,
+      account.address
+    )
 
     res.status(200).json(meetingResult)
     return

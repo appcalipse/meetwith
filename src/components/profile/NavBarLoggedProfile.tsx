@@ -1,5 +1,5 @@
 import { useColorModeValue } from '@chakra-ui/color-mode'
-import { Box, Flex, HStack, Image, Text } from '@chakra-ui/react'
+import { Box, Flex, Image, Text } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import router from 'next/router'
 
@@ -45,6 +45,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         {props.account.avatar ? (
           <Image
             src={props.account.avatar}
+            alt="Account avatar"
             width="24px"
             height="24px"
             borderRadius="50%"
