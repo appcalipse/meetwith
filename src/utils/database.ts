@@ -61,7 +61,6 @@ const initAccountDBForWallet = async (
       internal_pub_key: newIdentity.publicKey,
       encoded_signature: encryptedPvtKey,
       preferences_path: '',
-      connected_accounts_path: '',
       nonce,
     },
   ])
@@ -122,26 +121,25 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
   return { ...data[0], preferences: account.preferences } as Account
 }
 
-const updateConnectedAccounts = async (account: Account): Promise<Account> => {
-  console.log('saving', account.connected_accounts)
-  const path = await addContentToIPFS(account.connected_accounts!)
-  //TODO handle ipfs error
-
+const updateGoogleCalendarRefreshToken = async (
+  accountId: Account['id'],
+  refresh_token: string
+): Promise<Account> => {
   const { data, error } = await db.supabase
     .from('accounts')
     .update({
-      connected_accounts_path: path,
+      google_refresh_token: refresh_token,
     })
-    .match({ id: account.id })
+    .match({ id: accountId })
 
   if (error) {
     console.error(error)
-    //TODO: handle error
+    Sentry.captureException(error)
   }
 
   return {
     ...data[0],
-    connected_accounts: account.connected_accounts,
+    google_refresh_token: refresh_token,
   } as Account
 }
 
@@ -178,12 +176,6 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     account.preferences = (await fetchContentFromIPFS(
       account.preferences_path
     )) as AccountPreferences
-
-    if (account.connected_accounts_path) {
-      account.connected_accounts = (await fetchContentFromIPFS(
-        account.connected_accounts_path
-      )) as ConnectedCalendars
-    }
 
     return account
   } else {
@@ -436,5 +428,5 @@ export {
   saveMeeting,
   setAccountNotificationSubscriptions,
   updateAccountPreferences,
-  updateConnectedAccounts,
+  updateGoogleCalendarRefreshToken,
 }

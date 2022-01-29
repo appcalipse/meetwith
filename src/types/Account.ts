@@ -3,15 +3,6 @@ export enum ExternalCalendarProvider {
   APPLE = 'apple',
 }
 
-export interface ExternalCalendarAccount {
-  token: string
-  refresh_token: string
-}
-
-export interface ConnectedCalendars {
-  [key: string]: ExternalCalendarAccount
-}
-
 export interface Account {
   id: string
   created: Date
@@ -23,8 +14,7 @@ export interface Account {
   nonce: number
   name?: string
   avatar?: string
-  connected_accounts?: ConnectedCalendars
-  connected_accounts_path: string
+  google_refresh_token?: string
 }
 
 export enum SpecialDomainType {
