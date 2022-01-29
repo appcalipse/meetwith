@@ -10,6 +10,7 @@ const styles = {
     textTransform: 'none',
     borderRadius: 6,
     fontWeight: 'normal',
+    margin: '0 4px',
   },
   close: {
     color: 'white',

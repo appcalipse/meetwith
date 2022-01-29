@@ -28,6 +28,11 @@ import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
 import { scheduleMeeting } from '../../utils/calendar_manager'
 import { MeetingWithYourselfError } from '../../utils/errors'
+import {
+  getAccountDisplayName,
+  getAddressDisplayForInput,
+  getParticipantDisplay,
+} from '../../utils/user_manager'
 import { ChipInput } from '../chip-input'
 import { SingleDatepicker } from '../input-date-picker'
 import { InputTimePicker } from '../input-time-picker'
@@ -49,10 +54,12 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   const [participants, setParticipants] = useState([] as string[])
   const [selectedDate, setDate] = useState(new Date())
-  const [selectedTime, setTime] = useState('')
+  const [selectedTime, setTime] = useState(
+    new Date().getHours() + ':' + new Date().getMinutes()
+  )
   const [content, setContent] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
-  const [duration, setDuration] = useState(15)
+  const [duration, setDuration] = useState(30)
   const [isScheduling, setIsScheduling] = useState(false)
 
   const schedule = async () => {
@@ -115,8 +122,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         fromDashboard: true,
         participantsSize: meeting.participants.length,
       })
-      onClose()
+      setParticipants([])
+      setDate(new Date())
+      setTime(new Date().getHours() + ':' + new Date().getMinutes())
+      setContent('')
+      setMeetingUrl('')
+      setDuration(30)
       setIsScheduling(false)
+      onClose()
       return true
     } catch (e) {
       if (e instanceof MeetingWithYourselfError) {
@@ -152,8 +165,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <FormControl>
             <FormLabel htmlFor="participants">Participants</FormLabel>
             <ChipInput
-              placeholder="Insert wallet addresses, ens or unstoppable domain"
+              placeholder="Insert wallet addresses"
               onChange={setParticipants}
+              renderItem={item => {
+                return getAddressDisplayForInput(item)
+              }}
             />
             <FormHelperText>
               Separate participants by comma. You will be added automatically,
