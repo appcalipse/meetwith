@@ -7,7 +7,7 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
-  ConnectedAccounts,
+  ConnectedCalendars,
 } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
 import {
@@ -182,7 +182,7 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     if (account.connected_accounts_path) {
       account.connected_accounts = (await fetchContentFromIPFS(
         account.connected_accounts_path
-      )) as ConnectedAccounts
+      )) as ConnectedCalendars
     }
 
     return account
