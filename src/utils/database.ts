@@ -33,6 +33,7 @@ import {
 import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
 import { notifyForNewMeeting } from './notification_helper'
+import { isValidEVMAddress } from './validations'
 
 const db: any = { ready: false }
 
@@ -57,6 +58,10 @@ const initAccountDBForWallet = async (
   nonce: number,
   is_invited?: boolean
 ): Promise<Account> => {
+  if (!isValidEVMAddress(address)) {
+    throw new Error('Invalid address')
+  }
+
   const newIdentity = EthCrypto.createIdentity()
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
