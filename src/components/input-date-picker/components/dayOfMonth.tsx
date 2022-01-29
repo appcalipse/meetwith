@@ -7,6 +7,7 @@ interface DayOfMonthProps {
   isInRange?: boolean | null
   dateObj: DateObj
   onMouseEnter?: React.MouseEventHandler<HTMLButtonElement> | undefined
+  disabled?: boolean
 }
 
 export const DayOfMonth: React.FC<DayOfMonthProps> = ({
@@ -14,12 +15,14 @@ export const DayOfMonth: React.FC<DayOfMonthProps> = ({
   isInRange,
   renderProps,
   onMouseEnter,
+  disabled,
 }) => {
   const { date, selected, selectable, today } = dateObj
   const { getDateProps } = renderProps
   let bg = selected || isInRange ? 'orange.200' : 'transparent'
-  bg = !selectable ? 'red.200' : bg
+  bg = !selectable ? 'gray.200' : bg
   const halfGap = 0.125 //default Chakra-gap-space-1 is 0.25rem
+  console.log(disabled)
   return (
     <Button
       {...getDateProps({

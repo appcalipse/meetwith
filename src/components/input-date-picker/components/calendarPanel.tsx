@@ -7,7 +7,8 @@ import {
   Stack,
   VStack,
 } from '@chakra-ui/react'
-import { format } from 'date-fns'
+import { format, isSameDay } from 'date-fns'
+import isBefore from 'date-fns/isBefore'
 import { RenderProps } from 'dayzed'
 import React from 'react'
 
@@ -18,12 +19,14 @@ interface CalendarPanelProps {
   renderProps: RenderProps
   onMouseEnterHighlight?: (date: Date) => void
   isInRange?: (date: Date) => boolean | null
+  blockPast?: boolean
 }
 
 export const CalendarPanel: React.FC<CalendarPanelProps> = ({
   renderProps,
   onMouseEnterHighlight,
   isInRange,
+  blockPast,
 }) => {
   const { calendars, getBackProps, getForwardProps } = renderProps
 
@@ -64,7 +67,10 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
                 return week.map((dateObj, index) => {
                   const key = `${calendar.month}${calendar.year}${weekIdx}${index}`
                   if (!dateObj) return <Box key={key} />
+                  const today = new Date()
                   const { date } = dateObj
+                  dateObj.selectable =
+                    isBefore(today, date) || isSameDay(today, date)
                   return (
                     <DayOfMonth
                       key={key}

@@ -20,19 +20,15 @@ import {
   Textarea,
   useToast,
 } from '@chakra-ui/react'
-import { addMinutes } from 'date-fns'
+import { addHours, addMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import { useContext, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
 import { scheduleMeeting } from '../../utils/calendar_manager'
 import { MeetingWithYourselfError } from '../../utils/errors'
-import {
-  getAccountDisplayName,
-  getAddressDisplayForInput,
-  getParticipantDisplay,
-} from '../../utils/user_manager'
+import { getAddressDisplayForInput } from '../../utils/user_manager'
 import { ChipInput } from '../chip-input'
 import { SingleDatepicker } from '../input-date-picker'
 import { InputTimePicker } from '../input-time-picker'
@@ -54,13 +50,32 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   const [participants, setParticipants] = useState([] as string[])
   const [selectedDate, setDate] = useState(new Date())
-  const [selectedTime, setTime] = useState(
-    new Date().getHours() + ':' + new Date().getMinutes()
-  )
+  const [selectedTime, setTime] = useState('')
   const [content, setContent] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
   const [duration, setDuration] = useState(30)
   const [isScheduling, setIsScheduling] = useState(false)
+
+  const clearInfo = () => {
+    setParticipants([])
+    setDate(new Date())
+    const minutes = Math.ceil(new Date().getMinutes() / 10) * 10
+    setTime(
+      (minutes < 60
+        ? new Date().getHours()
+        : addHours(new Date(), 1).getHours()) +
+        ':' +
+        (minutes < 60 ? minutes : '00')
+    )
+    setContent('')
+    setMeetingUrl('')
+    setDuration(30)
+    setIsScheduling(false)
+  }
+
+  useEffect(() => {
+    clearInfo()
+  }, [isOpen])
 
   const schedule = async () => {
     if (!useHuddle && !meetingUrl) {
@@ -81,6 +96,16 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         title: 'Missing participants',
         description:
           'Please add at least one participant for your meeting aside from yourself',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    } else if (!duration) {
+      toast({
+        title: 'Missing duration',
+        description: 'Please select the length of your meeting',
         status: 'error',
         duration: 5000,
         position: 'top',
@@ -122,13 +147,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         fromDashboard: true,
         participantsSize: meeting.participants.length,
       })
-      setParticipants([])
-      setDate(new Date())
-      setTime(new Date().getHours() + ':' + new Date().getMinutes())
-      setContent('')
-      setMeetingUrl('')
-      setDuration(30)
-      setIsScheduling(false)
+      clearInfo()
       onClose()
       return true
     } catch (e) {
@@ -179,8 +198,16 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <FormControl sx={{ marginTop: '24px' }}>
             <FormLabel htmlFor="date">When</FormLabel>
             <HStack>
-              <SingleDatepicker date={selectedDate} onDateChange={setDate} />
-              <InputTimePicker value={selectedTime} onChange={setTime} />
+              <SingleDatepicker
+                date={selectedDate}
+                onDateChange={setDate}
+                blockPast={true}
+              />
+              <InputTimePicker
+                value={selectedTime}
+                onChange={setTime}
+                currentDate={selectedDate}
+              />
               <Select
                 id="duration"
                 placeholder="Duration"

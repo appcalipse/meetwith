@@ -26,6 +26,7 @@ export interface SingleDatepickerProps {
   id?: string
   name?: string
   inputProps?: InputProps
+  blockPast?: boolean
 }
 
 export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
@@ -88,6 +89,7 @@ export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
             }
           />
           <Input
+            cursor="pointer"
             id={id}
             autoComplete="off"
             isDisabled={disabled}
@@ -102,7 +104,7 @@ export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
       </PopoverTrigger>
       <PopoverContent ref={ref} width="100%">
         <PopoverBody>
-          <CalendarPanel renderProps={dayzedData} />
+          <CalendarPanel renderProps={dayzedData} blockPast />
         </PopoverBody>
       </PopoverContent>
     </Popover>
