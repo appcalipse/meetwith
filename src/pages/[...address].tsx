@@ -4,6 +4,7 @@ import React from 'react'
 
 import PublicCalendar from '../components/public-calendar'
 import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
+import { isValidEVMAddress } from '../utils/validations'
 
 const Schedule: NextPage = () => <PublicCalendar />
 
@@ -16,7 +17,7 @@ EnhancedSchedule.getInitialProps = async ctx => {
   if (ctx.res) {
     serverSide = true
   }
-  if (address && address[0] && /^0x[a-fA-F0-9]{40}$/.test(address[0])) {
+  if (address && address[0] && isValidEVMAddress(address[0])) {
     const newLocation = `/address/${address[0]}`
     if (serverSide) {
       ctx.res!.writeHead(302, {

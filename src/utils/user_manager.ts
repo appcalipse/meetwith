@@ -10,6 +10,7 @@ import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper'
 import { getSignature, storeCurrentAccount } from './storage'
 import { saveSignature } from './storage'
+import { isValidEVMAddress } from './validations'
 
 const providerOptions = {
   walletconnect: {
@@ -126,6 +127,13 @@ const getAccountDisplayName = (
   }
 }
 
+const getAddressDisplayForInput = (input: string) => {
+  if (isValidEVMAddress(input)) {
+    return ellipsizeAddress(input)
+  }
+  return input
+}
+
 const ellipsizeAddress = (address: string) =>
   `${address.substr(0, 5)}...${address.substr(address.length - 5)}`
 
@@ -149,6 +157,7 @@ export {
   createOrFetchAccount,
   ellipsizeAddress,
   getAccountDisplayName,
+  getAddressDisplayForInput,
   getParticipantDisplay,
   loginWithWallet,
   signDefaultMessage,
