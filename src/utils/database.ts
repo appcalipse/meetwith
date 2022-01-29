@@ -4,11 +4,7 @@ import { addMinutes, isAfter } from 'date-fns'
 import EthCrypto, { Encrypted } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import {
-  Account,
-  AccountPreferences,
-  ConnectedCalendars,
-} from '../types/Account'
+import { Account, AccountPreferences } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
 import {
   DBSlot,

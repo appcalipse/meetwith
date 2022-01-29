@@ -8,7 +8,6 @@ import { getGoogleAuthConnectUrl } from '../../utils/api_helper'
 export const CalendarConnectionsConfig: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
   const [loading, setLoading] = useState(false)
-  const connected = currentAccount?.connected_accounts
   const [google, setGoogle] = useState('')
 
   const connectGoogle = async () => {
@@ -23,7 +22,8 @@ export const CalendarConnectionsConfig: React.FC = () => {
       {loading ? <Spinner display={!loading ? 'none' : 'flex'} /> : false}
       <Button colorScheme={'orange'} onClick={connectGoogle}>
         <FaGoogle /> Google (
-        {!!connected?.google ? 'Connected' : 'Not Connected'})
+        {!!currentAccount?.google_refresh_token ? 'Connected' : 'Not Connected'}
+        )
       </Button>
     </VStack>
   )
