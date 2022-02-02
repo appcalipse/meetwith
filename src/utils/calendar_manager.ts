@@ -370,6 +370,15 @@ const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
   }`
 }
 
+const getEmbedCode = (account: Account, ellipsize?: boolean) => {
+  if ((account as PremiumAccount).calendar_url) {
+    return `<iframe src="${appUrl}embed/${account.calendar_url}"></iframe>`
+  }
+  return `<iframe src="${appUrl}embed/${
+    ellipsize ? getAccountDisplayName(account) : account!.address
+  }"></iframe>`
+}
+
 const generateDefaultMeetingType = (): MeetingType => {
   const title = '30 minutes meeting'
   const meetingType: MeetingType = {
@@ -406,6 +415,7 @@ export {
   generateDefaultMeetingType,
   generateIcs,
   getAccountCalendarUrl,
+  getEmbedCode,
   isSlotAvailable,
   isTimeInsideAvailabilities,
   scheduleMeeting,
