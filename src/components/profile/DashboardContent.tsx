@@ -34,6 +34,7 @@ import IPFSLink from '../IPFSLink'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
+import ConnectCalendar from './ConnectCalendar'
 import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
@@ -42,6 +43,7 @@ enum EditMode {
   AVAILABILITY,
   DETAILS,
   TYPES,
+  CALENDARS,
   NOTIFICATIONS,
 }
 
@@ -56,6 +58,11 @@ const LinkItems: Array<LinkItemProps> = [
   { name: 'Account Details', icon: FaInfo, mode: EditMode.DETAILS },
   { name: 'Availabilities', icon: FaCalendarWeek, mode: EditMode.AVAILABILITY },
   { name: 'Meeting types', icon: FaCalendarPlus, mode: EditMode.TYPES },
+  {
+    name: 'Connected calendars',
+    icon: FaCalendarPlus,
+    mode: EditMode.CALENDARS,
+  },
   {
     name: 'Notifications',
     icon: FaBell,
@@ -172,6 +179,8 @@ const DashboardContent: React.FC = () => {
         return <Meetings />
       case EditMode.TYPES:
         return <MeetingTypesConfig />
+      case EditMode.CALENDARS:
+        return <ConnectCalendar />
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig />
     }
