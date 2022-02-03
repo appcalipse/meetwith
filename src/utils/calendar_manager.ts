@@ -372,7 +372,9 @@ const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
 
 const getEmbedCode = (account: Account, ellipsize?: boolean) => {
   if ((account as PremiumAccount).calendar_url) {
-    return `<iframe src="${appUrl}embed/${account.calendar_url}"></iframe>`
+    return `<iframe src="${appUrl}embed/${
+      (account as PremiumAccount).calendar_url
+    }"></iframe>`
   }
   return `<iframe src="${appUrl}embed/${
     ellipsize ? getAccountDisplayName(account) : account!.address
