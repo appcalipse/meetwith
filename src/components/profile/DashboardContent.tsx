@@ -27,7 +27,10 @@ import {
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
-import { getAccountCalendarUrl, getEmbedCode } from '../../utils/calendar_manager'
+import {
+  getAccountCalendarUrl,
+  getEmbedCode,
+} from '../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import AvailabilityConfig from '../availabilities/availability-config'
 import IPFSLink from '../IPFSLink'
@@ -140,7 +143,8 @@ const DashboardContent: React.FC = () => {
 
   const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
 
-  const [copyCalendarFeedbackOpen, setCopyCalendarFeedbackOpen] = useState(false)
+  const [copyCalendarFeedbackOpen, setCopyCalendarFeedbackOpen] =
+    useState(false)
   const [copyEmbedFeedbackOpen, setCopyEmbedFeedbackOpen] = useState(false)
 
   const accountUrl = getAccountCalendarUrl(currentAccount!, false)
@@ -158,12 +162,12 @@ const DashboardContent: React.FC = () => {
     } else {
       document.execCommand('copy', true, accountUrl)
     }
-    setCopyFeedbackOpen(true)
+    setCopyCalendarFeedbackOpen(true)
     setTimeout(() => {
-      setCopyFeedbackOpen(false)
+      setCopyCalendarFeedbackOpen(false)
     }, 2000)
   }
-  
+
   const copyEmbed = async () => {
     logEvent('Copied calendar URL')
     if ('clipboard' in navigator) {
@@ -234,7 +238,7 @@ const DashboardContent: React.FC = () => {
               </InputRightElement>
             </InputGroup>
           </Box>
-          
+
           <Box>
             <Text fontSize="sm" mt={4} textAlign="start">
               Embed calendar

@@ -8,9 +8,9 @@ import {
 } from '@chakra-ui/react'
 import router from 'next/router'
 
+import Footer from '../components/Footer'
 import MWWButton from '../components/MWWButton'
 import { Navbar } from '../components/Navbar'
-import Footer from '../components/Footer'
 
 export default function NotFound() {
   return (
