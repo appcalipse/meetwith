@@ -4,7 +4,7 @@ import Web3Modal from 'web3modal'
 
 import { Account, PremiumAccount } from '../types/Account'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { initInvitedAccount, login, signup } from './api_helper'
+import { getAccount, initInvitedAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper'
@@ -78,8 +78,11 @@ const loginOrSignup = async (
     return { signature, nonce }
   }
 
+  let signedUp = false
+
   try {
-    account = await login(accountAddress.toLowerCase())
+    // preload account data
+    account = await getAccount(accountAddress.toLowerCase())
     if (account.is_invited) {
       const { signature, nonce } = await generateSignature()
       account = await initInvitedAccount(
@@ -98,6 +101,7 @@ const loginOrSignup = async (
         timezone,
         nonce
       )
+      signedUp = true
     } else {
       throw e
     }
@@ -111,6 +115,12 @@ const loginOrSignup = async (
   }
 
   storeCurrentAccount(account)
+
+  if (!signedUp) {
+    // now that we have the signature, we need to check login agains the user signature
+    // and only then generate the session
+    account = await login(accountAddress.toLowerCase())
+  }
 
   return { ...account, ...extraInfo }
 }
