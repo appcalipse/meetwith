@@ -15,6 +15,10 @@ import {
 } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
 import {
+  ConnectedCalendar,
+  ConnectedCalendarCorePayload,
+} from '../types/CalendarConnections'
+import {
   DBSlot,
   DBSlotEnhanced,
   MeetingCreationRequest,
@@ -79,6 +83,7 @@ const initAccountDBForWallet = async (
 
   if (error) {
     Sentry.captureException(error)
+    console.error(error)
     throw new Error("Account couldn't be created")
   }
 
@@ -141,7 +146,6 @@ const updateAccountFromInvite = async (
   )
 
   if (error) {
-    console.error(error)
     Sentry.captureException(error)
     throw new Error("Account couldn't be created")
   }
@@ -254,6 +258,7 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     account.preferences = (await fetchContentFromIPFS(
       account.preferences_path
     )) as AccountPreferences
+
     return account
   } else {
     Sentry.captureException(error)
@@ -524,10 +529,50 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
   return false
 }
 
+const getConnectedCalendars = async (
+  address: string
+): Promise<ConnectedCalendar[]> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .select()
+    .eq('account_address', address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  if (data) {
+    return data as ConnectedCalendar[]
+  }
+
+  return []
+}
+
+const addConnectedCalendar = async (
+  address: string,
+  payload: ConnectedCalendarCorePayload
+): Promise<ConnectedCalendar> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .upsert(
+      { ...payload, created: new Date(), account_address: address },
+      { onConflict: 'refresh_token' }
+    )
+    .eq('account_address', address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return data as ConnectedCalendar
+}
+
 export {
+  addConnectedCalendar,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
+  getConnectedCalendars,
   getExistingAccountsFromDB,
   getMeetingFromDB,
   getSlotsForAccount,

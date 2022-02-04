@@ -4,7 +4,7 @@ import Web3Modal from 'web3modal'
 
 import { Account, PremiumAccount } from '../types/Account'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { createAccount, getAccount, initInvitedAccount } from './api_helper'
+import { getAccount, initInvitedAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper'
@@ -38,7 +38,7 @@ const loginWithWallet = async (
     setLoginIn(true)
     const accounts = await web3.eth.getAccounts()
 
-    const account = await createOrFetchAccount(
+    const account = await loginOrSignup(
       accounts[0].toLowerCase(),
       Intl.DateTimeFormat().resolvedOptions().timeZone
     )
@@ -63,7 +63,7 @@ const signDefaultMessage = async (
   return signature
 }
 
-const createOrFetchAccount = async (
+const loginOrSignup = async (
   accountAddress: string,
   timezone: string
 ): Promise<Account> => {
@@ -78,7 +78,10 @@ const createOrFetchAccount = async (
     return { signature, nonce }
   }
 
+  let signedUp = false
+
   try {
+    // preload account data
     account = await getAccount(accountAddress.toLowerCase())
     if (account.is_invited) {
       const { signature, nonce } = await generateSignature()
@@ -92,19 +95,19 @@ const createOrFetchAccount = async (
   } catch (e) {
     if (e instanceof AccountNotFoundError) {
       const { signature, nonce } = await generateSignature()
-      account = await createAccount(
+      account = await signup(
         accountAddress.toLowerCase(),
         signature,
         timezone,
         nonce
       )
+      signedUp = true
     } else {
       throw e
     }
   }
 
   const signature = getSignature(account.address)
-
   const extraInfo = await resolveExtraInfo(account.address)
 
   if (!signature) {
@@ -112,6 +115,12 @@ const createOrFetchAccount = async (
   }
 
   storeCurrentAccount(account)
+
+  if (!signedUp) {
+    // now that we have the signature, we need to check login agains the user signature
+    // and only then generate the session
+    account = await login(accountAddress.toLowerCase())
+  }
 
   return { ...account, ...extraInfo }
 }
@@ -135,7 +144,7 @@ const getAddressDisplayForInput = (input: string) => {
 }
 
 const ellipsizeAddress = (address: string) =>
-  `${address.substr(0, 5)}...${address.substr(address.length - 5)}`
+  `${address.substring(0, 5)}...${address.substring(address.length - 5)}`
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,
@@ -154,11 +163,11 @@ const getParticipantDisplay = (
 }
 
 export {
-  createOrFetchAccount,
   ellipsizeAddress,
   getAccountDisplayName,
   getAddressDisplayForInput,
   getParticipantDisplay,
+  loginOrSignup,
   loginWithWallet,
   signDefaultMessage,
   web3,
