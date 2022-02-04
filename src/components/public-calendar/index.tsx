@@ -23,7 +23,6 @@ import {
   AccountNotFoundError,
   MeetingWithYourselfError,
 } from '../../utils/errors'
-import { loginWithWallet } from '../../utils/user_manager'
 import Loading from '../Loading'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
@@ -39,8 +38,7 @@ interface InternalSchedule {
 const PublicCalendar: React.FC = () => {
   const router = useRouter()
 
-  const { currentAccount, logged, login, setLoginIn } =
-    useContext(AccountContext)
+  const { currentAccount, logged } = useContext(AccountContext)
 
   const [account, setAccount] = useState(null as Account | null)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
@@ -86,6 +84,10 @@ const PublicCalendar: React.FC = () => {
   const checkUser = async (identifier: string) => {
     try {
       const _account = await getAccount(identifier)
+      if (_account.is_invited) {
+        router.push('/404')
+        return
+      }
       setAccount(_account)
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = _account.preferences!.availableTypes.find(
@@ -133,8 +135,9 @@ const PublicCalendar: React.FC = () => {
 
     try {
       const meeting = await scheduleMeeting(
-        currentAccount!.id,
-        account!.id,
+        currentAccount!.address,
+        account!.address,
+        [],
         selectedType.id,
         start,
         end,
@@ -144,7 +147,10 @@ const PublicCalendar: React.FC = () => {
       )
       await updateMeetings(account!.address)
       setLastScheduledMeeting(meeting)
-      logEvent('Scheduled a meeting')
+      logEvent('Scheduled a meeting', {
+        fromPublicCalendar: true,
+        participantsSize: 2,
+      })
       onOpen()
       setIsScheduling(false)
       return true

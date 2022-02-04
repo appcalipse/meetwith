@@ -5,11 +5,13 @@ import Web3Modal from 'web3modal'
 import { Account, PremiumAccount } from '../types/Account'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
 import { login, signup } from './api_helper'
+import { createAccount, getAccount, initInvitedAccount } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper'
 import { getSignature, storeCurrentAccount } from './storage'
 import { saveSignature } from './storage'
+import { isValidEVMAddress } from './validations'
 
 const providerOptions = {
   walletconnect: {
@@ -68,15 +70,29 @@ const loginOrSignup = async (
 ): Promise<Account> => {
   let account: Account
 
+  const generateSignature = async () => {
+    const nonce = Number(Math.random().toString(8).substring(2, 10))
+    const signature = await signDefaultMessage(
+      accountAddress.toLowerCase(),
+      nonce
+    )
+    return { signature, nonce }
+  }
+
   try {
     account = await login(accountAddress.toLowerCase())
-  } catch (e) {
-    if (e instanceof AccountNotFoundError) {
-      const nonce = Number(Math.random().toString(8).substring(2, 10))
-      const signature = await signDefaultMessage(
+    if (account.is_invited) {
+      const { signature, nonce } = await generateSignature()
+      account = await initInvitedAccount(
         accountAddress.toLowerCase(),
+        signature,
+        timezone,
         nonce
       )
+    }
+  } catch (e) {
+    if (e instanceof AccountNotFoundError) {
+      const { signature, nonce } = await generateSignature()
       account = await signup(
         accountAddress.toLowerCase(),
         signature,
@@ -111,6 +127,13 @@ const getAccountDisplayName = (
   }
 }
 
+const getAddressDisplayForInput = (input: string) => {
+  if (isValidEVMAddress(input)) {
+    return ellipsizeAddress(input)
+  }
+  return input
+}
+
 const ellipsizeAddress = (address: string) =>
   `${address.substr(0, 5)}...${address.substr(address.length - 5)}`
 
@@ -119,9 +142,9 @@ const getParticipantDisplay = (
   currentAccount?: Account | null
 ) => {
   let display =
-    participant.account_id === currentAccount?.id
+    participant.account_address === currentAccount?.address
       ? 'You'
-      : participant.name || ellipsizeAddress(participant.address)
+      : participant.name || ellipsizeAddress(participant.account_address)
 
   if (participant.type === ParticipantType.Scheduler) {
     display = `${display} (Scheduler)`
@@ -133,6 +156,7 @@ const getParticipantDisplay = (
 export {
   ellipsizeAddress,
   getAccountDisplayName,
+  getAddressDisplayForInput,
   getParticipantDisplay,
   loginOrSignup,
   loginWithWallet,

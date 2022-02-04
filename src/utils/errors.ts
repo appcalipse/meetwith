@@ -26,6 +26,13 @@ export class MeetingWithYourselfError extends Error {
   }
 }
 
+export class MeetingCreationError extends Error {
+  constructor() {
+    super(`Error creating meeting`)
+    this.name = 'MeetingCreationError'
+  }
+}
+
 export class ApiFetchError extends Error {
   status: number
 

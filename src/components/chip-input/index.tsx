@@ -1,10 +1,9 @@
-import { Input, InputProps, Wrap, WrapItem } from '@chakra-ui/react'
+import { Box, HStack, Input, InputProps } from '@chakra-ui/react'
 import {
   ChangeEventHandler,
   ClipboardEventHandler,
   FocusEventHandler,
   KeyboardEventHandler,
-  useCallback,
   useState,
 } from 'react'
 
@@ -63,11 +62,11 @@ export const ChipInput: React.FC<ChipInputProps> = ({
 
   const badges = labels.map((it, idx) => {
     return (
-      <WrapItem key={`${idx}-${it}`}>
+      <Box key={`${idx}-${it}`}>
         <BadgeChip onRemove={() => onRemoveItem(idx)} allowRemove={!isReadOnly}>
           {renderItem(it)}
         </BadgeChip>
-      </WrapItem>
+      </Box>
     )
   })
 
@@ -105,24 +104,26 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   }
 
   return (
-    <Wrap
-      sx={{
-        borderWidth: '1px',
-        borderColor: 'gray.200',
-        borderRadius: 'md',
-        paddingLeft: '8px',
-      }}
+    <HStack
+      borderWidth={'1px'}
+      borderColor={'gray.200'}
+      borderRadius={'md'}
+      paddingLeft={'8px'}
+      minHeight={'40px'}
+      alignItems={'center'}
+      display={'flex'}
       align={'center'}
+      p={2}
+      flex={1}
+      flexWrap={'wrap'}
+      spacing={0}
     >
       {badges}
-      <WrapItem sx={{ flexGrow: 1 }}>
+      <Box flex={1}>
         <Input
           size={size}
-          style={{
-            display: 'inline-block',
-            visibility: isReadOnly ? 'hidden' : 'visible',
-            lineHeight: '40px',
-          }}
+          display={'inline-block'}
+          visibility={isReadOnly ? 'hidden' : 'visible'}
           onPaste={onPaste}
           variant={'unstyled'}
           value={current}
@@ -131,7 +132,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
           placeholder={labels.length ? '' : placeholder}
           onKeyDown={onKeyDown}
         />
-      </WrapItem>
-    </Wrap>
+      </Box>
+    </HStack>
   )
 }

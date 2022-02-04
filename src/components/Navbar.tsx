@@ -1,9 +1,4 @@
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  CloseIcon,
-  HamburgerIcon,
-} from '@chakra-ui/icons'
+import { ChevronRightIcon, CloseIcon, HamburgerIcon } from '@chakra-ui/icons'
 import {
   Badge,
   Box,
@@ -30,22 +25,26 @@ import MWWButton from './MWWButton'
 import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
-export default function WithSubnavigation() {
+export const Navbar = () => {
   const { isOpen, onToggle } = useDisclosure()
 
   const { handleLogin, currentAccount, logged, loginIn } = useLogin()
 
+  const bgGradient = `linear(to-b, ${useColorModeValue(
+    'white',
+    'gray.800'
+  )}, rgba(245, 247, 250, 0))`
+
   return (
     <Box as="header" position="fixed" width="100%" top="0" zIndex={999}>
       <Flex
-        bg={useColorModeValue('white', 'gray.800')}
+        bgGradient={bgGradient}
+        backdropFilter={'auto'}
+        backdropBlur={'24px'}
         color={useColorModeValue('gray.600', 'white')}
         minH={'60px'}
         py="2"
         px="4"
-        borderBottom={1}
-        borderStyle={'solid'}
-        borderColor={useColorModeValue('gray.200', 'gray.900')}
         align={'center'}
       >
         <Container maxW={'7xl'}>
@@ -231,11 +230,11 @@ const MobileNavItem = ({ label, href }: NavItem) => {
   )
 }
 
-interface NavItem {
+type NavItem = {
   label: string
-  subLabel?: string
-  href?: string
+  href: string
   logged?: boolean
+  subLabel?: string
 }
 
 const NAV_ITEMS: Array<NavItem> = [

@@ -1,20 +1,13 @@
-import {
-  bufferToHex,
-  ecrecover,
-  fromRpcSig,
-  keccak,
-  pubToAddress,
-} from 'ethereumjs-util'
 import { unsealData } from 'iron-session'
 import { NextFetchEvent, NextRequest, NextResponse } from 'next/server'
 
-import { Account } from '../../../types/Account'
 import { AccountSession } from '../../../types/Session'
 import {
   SESSION_COOKIE_NAME,
   sessionOptions,
 } from '../../../utils/auth/withSessionApiRoute'
-import { apiUrl, DEFAULT_MESSAGE } from '../../../utils/constants'
+import { apiUrl } from '../../../utils/constants'
+import { checkSignature } from '../../../utils/cryptography'
 
 const notAuthorized = new Response('Auth required', {
   status: 401,
@@ -53,18 +46,4 @@ export async function middleware(req: NextRequest, ev: NextFetchEvent) {
     console.error(e)
     throw e
   }
-}
-
-function checkSignature(signature: string, nonce: number): string {
-  const toVerify =
-    '\x19Ethereum Signed Message:\n' +
-    DEFAULT_MESSAGE(nonce).length +
-    DEFAULT_MESSAGE(nonce)
-  const buffer = keccak(Buffer.from(toVerify))
-  const { v, r, s } = fromRpcSig(signature)
-  const pubKey = ecrecover(buffer, v, r, s)
-  const addrBuf = pubToAddress(pubKey)
-  const addr = bufferToHex(addrBuf)
-
-  return addr
 }

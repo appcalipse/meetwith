@@ -15,6 +15,12 @@ export interface Account {
   name?: string
   avatar?: string
   google_refresh_token?: string
+  is_invited: boolean
+}
+
+export interface SimpleAccountInfo {
+  address: string
+  internal_pub_key: string
 }
 
 export enum SpecialDomainType {

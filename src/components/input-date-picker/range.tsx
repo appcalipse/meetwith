@@ -12,25 +12,15 @@ import { format } from 'date-fns'
 import { RenderProps, useDayzed } from 'dayzed'
 import React, { useRef, useState } from 'react'
 
+import { OnDateSelected } from '.'
 import { CalendarPanel } from './components/calendarPanel'
-import { Month_Names_Short, Weekday_Names_Short } from './utils/calendar.utils'
-import {
-  DatepickerConfigs,
-  DatepickerProps,
-  OnDateSelected,
-  PropsConfigs,
-} from './utils/types'
 
 interface RangeCalendarPanelProps {
-  configs: DatepickerConfigs
-  propsConfigs?: PropsConfigs
   selected?: Date | Date[]
   renderProps: RenderProps
 }
 
 const RangeCalendarPanel: React.FC<RangeCalendarPanelProps> = ({
-  configs,
-  propsConfigs,
   selected,
   renderProps,
 }) => {
@@ -104,8 +94,6 @@ const RangeCalendarPanel: React.FC<RangeCalendarPanelProps> = ({
     <Flex {...ArrowKeysReact.events} onMouseLeave={onMouseLeave}>
       <CalendarPanel
         renderProps={renderProps}
-        configs={configs}
-        propsConfigs={propsConfigs}
         isInRange={isInRange}
         onMouseEnterHighlight={onMouseEnterHighlight}
       />
@@ -113,27 +101,18 @@ const RangeCalendarPanel: React.FC<RangeCalendarPanelProps> = ({
   )
 }
 
-export interface RangeDatepickerProps extends DatepickerProps {
+export interface RangeDatepickerProps {
   initDate?: Date
   selectedDates: Date[]
   minDate?: Date
   maxDate?: Date
-  configs?: DatepickerConfigs
   disabled?: boolean
   onDateChange: (date: Date[]) => void
   id?: string
   name?: string
 }
 
-const DefaultConfigs = {
-  dateFormat: 'MM/dd/yyyy',
-  monthNames: Month_Names_Short,
-  dayNames: Weekday_Names_Short,
-}
-
 export const RangeDatepicker: React.FC<RangeDatepickerProps> = ({
-  configs = DefaultConfigs,
-  propsConfigs = {},
   initDate = new Date(),
   id,
   name,
@@ -186,12 +165,8 @@ export const RangeDatepicker: React.FC<RangeDatepickerProps> = ({
   })
 
   // eventually we want to allow user to freely type their own input and parse the input
-  let intVal = selectedDates[0]
-    ? `${format(selectedDates[0], configs.dateFormat)}`
-    : ''
-  intVal += selectedDates[1]
-    ? ` - ${format(selectedDates[1], configs.dateFormat)}`
-    : ''
+  let intVal = selectedDates[0] ? `${format(selectedDates[0], 'P')}` : ''
+  intVal += selectedDates[1] ? ` - ${format(selectedDates[1], 'P')}` : ''
 
   return (
     <Popover
@@ -212,15 +187,12 @@ export const RangeDatepicker: React.FC<RangeDatepickerProps> = ({
           name={name}
           value={intVal}
           onChange={e => e.target.value}
-          {...propsConfigs.inputProps}
         />
       </PopoverTrigger>
       <PopoverContent ref={ref} width="100%">
         <PopoverBody>
           <RangeCalendarPanel
             renderProps={dayzedData}
-            configs={configs}
-            propsConfigs={propsConfigs}
             selected={selectedDates}
           />
         </PopoverBody>
