@@ -38,11 +38,11 @@ import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
 enum EditMode {
-  MEETINGS = 'meetings',
-  AVAILABILITY = 'availability',
-  DETAILS = 'details',
-  TYPES = 'types',
-  NOTIFICATIONS = 'notifications',
+  MEETINGS,
+  AVAILABILITY,
+  DETAILS,
+  TYPES,
+  NOTIFICATIONS,
 }
 
 interface LinkItemProps {
@@ -146,7 +146,6 @@ const DashboardContent: React.FC = () => {
 
   const menuClicked = (mode: EditMode) => {
     setCurrentEditMode(mode)
-    window.location.hash = mode
     logEvent('Selected menu item on dashboard', { mode })
   }
 

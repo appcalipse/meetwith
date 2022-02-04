@@ -14,15 +14,12 @@ export const internalFetch = async (
   body?: any,
   options = {}
 ): Promise<object> => {
-  // const account = getCurrentAccount()
   const response = await fetch(`${apiUrl}${path}`, {
     method,
     mode: 'cors',
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
-      //account: account,
-      //signature: getSignature(account) || '',
     },
     ...options,
     body: (body && JSON.stringify(body)) || null,
