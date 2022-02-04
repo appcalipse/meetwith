@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/browser'
 
-import { Account, MeetingType } from '../types/Account'
+import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
 import { ConnectResponse } from '../types/CalendarConnections'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
@@ -43,6 +43,46 @@ export const getAccount = async (identifer: string): Promise<Account> => {
     }
     throw e
   }
+}
+
+export const getExistingAccounts = async (
+  addresses: string[]
+): Promise<SimpleAccountInfo[]> => {
+  try {
+    return (await internalFetch(`/accounts/simple`, 'POST', {
+      addresses,
+    })) as SimpleAccountInfo[]
+  } catch (e: any) {
+    throw e
+  }
+}
+
+export const createAccount = async (
+  address: string,
+  signature: string,
+  timezone: string,
+  nonce: number
+): Promise<Account> => {
+  return (await internalFetch(`/accounts`, 'POST', {
+    address,
+    signature,
+    timezone,
+    nonce,
+  })) as Account
+}
+
+export const initInvitedAccount = async (
+  address: string,
+  signature: string,
+  timezone: string,
+  nonce: number
+): Promise<Account> => {
+  return (await internalFetch(`/accounts`, 'PUT', {
+    address,
+    signature,
+    timezone,
+    nonce,
+  })) as Account
 }
 
 export const saveAccountChanges = async (

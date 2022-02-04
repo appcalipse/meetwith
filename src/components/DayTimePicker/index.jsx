@@ -9,6 +9,7 @@ import {
   Switch,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
@@ -85,7 +86,20 @@ function DayTimePicker({
     setShowPickTime(false)
   }
 
+  const toast = useToast()
+
   const handleConfirm = async () => {
+    if (customMeeting && !meetingUrl) {
+      toast({
+        title: 'Missing information',
+        description: 'Please provide a meeting link for participants to join',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
     setIsScheduling(true)
     const success = await onConfirm(pickedTime, name, content, meetingUrl)
     setIsScheduling(false)

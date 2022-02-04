@@ -1,42 +1,42 @@
 import {
-  Box,
   Button,
   HStack,
   Icon,
   Input,
   InputGroup,
   InputLeftElement,
-  Link,
   Popover,
   PopoverArrow,
   PopoverBody,
   PopoverContent,
   PopoverTrigger,
+  Text,
   useBoolean,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import dayjs from 'dayjs'
+import { addDays, addMinutes, format, isBefore, startOfDay } from 'date-fns'
 import React from 'react'
 import { FaClock } from 'react-icons/fa'
 
 export interface InputTimePickerProps {
   onChange: (time: string) => void
+  currentDate: Date
   value: string
 }
 
-const generateTimes = () => {
-  const start = dayjs().startOf('day')
-  const end = dayjs(start).add(1, 'day').startOf('day')
+const generateTimes = (currentDate: Date) => {
+  const start = startOfDay(currentDate)
+  const end = startOfDay(addDays(new Date(start), 1))
   const interval = 15
 
   const response = []
   for (
     let cur = start;
-    cur.isBefore(end);
-    cur = dayjs(cur).add(interval, 'minutes')
+    isBefore(cur, end);
+    cur = addMinutes(new Date(cur), interval)
   ) {
-    response.push(cur.format('HH:mm'))
+    response.push(cur)
   }
 
   return response
@@ -44,11 +44,12 @@ const generateTimes = () => {
 
 export const InputTimePicker: React.FC<InputTimePickerProps> = ({
   onChange,
+  currentDate,
   value,
 }) => {
   const [isEditing, setIsEditing] = useBoolean()
   const iconColor = useColorModeValue('gray.500', 'gray.200')
-  const times = generateTimes()
+  const times = generateTimes(currentDate)
 
   return (
     <InputGroup>
@@ -76,6 +77,7 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
         <HStack>
           <PopoverTrigger>
             <Input
+              cursor="pointer"
               id="time"
               sx={{ paddingLeft: '36px' }}
               placeholder="Time"
@@ -94,15 +96,18 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
           <PopoverBody>
             <VStack sx={{ maxHeight: '300px', overflowY: 'scroll' }}>
               {times.map((it, idx) => (
-                <Link
-                  key={it}
+                <Button
+                  variant="link"
+                  disabled={isBefore(it, new Date())}
+                  key={it.toString()}
                   onClick={() => {
-                    onChange(it)
+                    onChange(format(it, 'HH:mm'))
                     setIsEditing.off()
                   }}
+                  _hover={{ color: 'orange.500' }}
                 >
-                  <Box>{it}</Box>
-                </Link>
+                  <Text>{format(it, 'HH:mm')}</Text>
+                </Button>
               ))}
             </VStack>
           </PopoverBody>
