@@ -11,6 +11,7 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
+  ConnectedCalendar,
   SimpleAccountInfo,
 } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
@@ -202,14 +203,14 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
   return { ...data[0], preferences: account.preferences } as Account
 }
 
-const updateGoogleCalendarRefreshToken = async (
+const updateConnectedCalendars = async (
   accountId: Account['id'],
-  refresh_token: string
+  payload: ConnectedCalendar[]
 ): Promise<Account> => {
   const { data, error } = await db.supabase
     .from('accounts')
     .update({
-      google_refresh_token: refresh_token,
+      connected_calendars: payload,
     })
     .match({ id: accountId })
 
@@ -220,7 +221,7 @@ const updateGoogleCalendarRefreshToken = async (
 
   return {
     ...data[0],
-    google_refresh_token: refresh_token,
+    connected_calendars: payload,
   } as Account
 }
 
@@ -564,5 +565,5 @@ export {
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
   updateAccountPreferences,
-  updateGoogleCalendarRefreshToken,
+  updateConnectedCalendars,
 }

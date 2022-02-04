@@ -4,8 +4,7 @@ import Web3Modal from 'web3modal'
 
 import { Account, PremiumAccount } from '../types/Account'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { login, signup } from './api_helper'
-import { createAccount, getAccount, initInvitedAccount } from './api_helper'
+import { initInvitedAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper'
@@ -135,7 +134,7 @@ const getAddressDisplayForInput = (input: string) => {
 }
 
 const ellipsizeAddress = (address: string) =>
-  `${address.substr(0, 5)}...${address.substr(address.length - 5)}`
+  `${address.substring(0, 5)}...${address.substring(address.length - 5)}`
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,

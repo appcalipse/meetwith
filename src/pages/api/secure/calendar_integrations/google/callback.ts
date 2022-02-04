@@ -1,9 +1,9 @@
-import { google } from 'googleapis'
+import { Common, google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
 import { apiUrl } from '../../../../../utils/constants'
-import { updateGoogleCalendarRefreshToken } from '../../../../../utils/database'
+import { updateConnectedCalendars } from '../../../../../utils/database'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -51,10 +51,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     key = token.res?.data
   }
 
-  await updateGoogleCalendarRefreshToken(
-    req.session.account.id,
-    key!.refresh_token
-  )
+  console.log('payload', key)
+
+  await updateConnectedCalendars(req.session.account.id, [])
   res.redirect(`/dashboard#calendar_connections`)
 }
 
