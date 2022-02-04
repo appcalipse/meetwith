@@ -143,7 +143,6 @@ const updateAccountFromInvite = async (
   )
 
   if (error) {
-    console.error(error)
     Sentry.captureException(error)
     throw new Error("Account couldn't be created")
   }
