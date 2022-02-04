@@ -19,8 +19,10 @@ const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
       req.body.signature,
       req.body.nonce! as number
     )
-    if (req.body.address.toLowerCase() !== recovered.toLowerCase())
+    if (req.body.address.toLowerCase() !== recovered.toLowerCase()) {
       res.status(401).send('Not authorized')
+      return
+    }
 
     if (req.method === 'POST') {
       account = await initAccountDBForWallet(
