@@ -6,8 +6,8 @@ import { apiUrl } from '../../../../../utils/constants'
 import { updateConnectedCalendars } from '../../../../../utils/database'
 
 const credentials = {
-  client_id: process.env.NEXT_GOOGLE_CLIENT_ID,
-  client_secret: process.env.NEXT_GOOGLE_CLIENT_SECRET,
+  client_id: process.env.GOOGLE_CLIENT_ID,
+  client_secret: process.env.GOOGLE_CLIENT_SECRET,
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
