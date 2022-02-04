@@ -17,7 +17,6 @@ export async function middleware(req: NextRequest, ev: NextFetchEvent) {
   const ironSessionCookie = req.cookies[SESSION_COOKIE_NAME]
 
   if (!ironSessionCookie) {
-    console.log('No cookie found!')
     return notAuthorized
   }
 
