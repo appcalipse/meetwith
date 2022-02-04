@@ -1,0 +1,55 @@
+import { Common, google } from 'googleapis'
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
+import { apiUrl } from '../../../../../utils/constants'
+
+const credentials = {
+  client_id: process.env.GOOGLE_CLIENT_ID,
+  client_secret: process.env.GOOGLE_CLIENT_SECRET,
+}
+
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { code } = req.query
+  if (!req.session.account) {
+    res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
+    return
+  }
+
+  if (code && typeof code !== 'string') {
+    res.status(400).json({ message: '`code` must be a string' })
+    return
+  }
+  if (!credentials) {
+    res
+      .status(400)
+      .json({ message: 'There are no Google Credentials installed.' })
+    return
+  }
+
+  const { client_secret, client_id } = credentials
+  const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
+
+  const oAuth2Client = new google.auth.OAuth2(
+    client_id,
+    client_secret,
+    redirect_uri
+  )
+
+  let key: {
+    access_token: string
+    refresh_token: string
+    scope: string
+    token_type: string
+    expiry_date: number
+  } | null = null
+
+  if (code) {
+    const token = await oAuth2Client.getToken(code)
+    key = token.res?.data
+  }
+
+  res.redirect(`/dashboard#calendar_connections`)
+}
+
+export default withSessionRoute(handler)
