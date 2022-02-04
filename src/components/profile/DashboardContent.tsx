@@ -30,7 +30,6 @@ import { logEvent } from '../../utils/analytics'
 import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import AvailabilityConfig from '../availabilities/availability-config'
-import { CalendarConnectionsConfig } from '../calendar-connections/connections-panel'
 import IPFSLink from '../IPFSLink'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
@@ -44,7 +43,6 @@ enum EditMode {
   DETAILS = 'details',
   TYPES = 'types',
   NOTIFICATIONS = 'notifications',
-  CALENDAR_CONNECTIONS = 'calendar_connections',
 }
 
 interface LinkItemProps {
@@ -62,11 +60,6 @@ const LinkItems: Array<LinkItemProps> = [
     name: 'Notifications',
     icon: FaBell,
     mode: EditMode.NOTIFICATIONS,
-  },
-  {
-    name: 'Connected Calendars',
-    icon: FaCalendarPlus,
-    mode: EditMode.CALENDAR_CONNECTIONS,
   },
 ]
 
@@ -145,10 +138,7 @@ const NavItem = ({
 const DashboardContent: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
 
-  const initialHash = window.location.hash
-  const [currentEditMode, setCurrentEditMode] = useState(
-    initialHash?.replace('#', '') || EditMode.MEETINGS
-  )
+  const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
@@ -185,8 +175,6 @@ const DashboardContent: React.FC = () => {
         return <MeetingTypesConfig />
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig />
-      case EditMode.CALENDAR_CONNECTIONS:
-        return <CalendarConnectionsConfig />
     }
   }
 
