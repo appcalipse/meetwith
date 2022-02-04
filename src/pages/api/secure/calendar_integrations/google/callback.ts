@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
 import { apiUrl } from '../../../../../utils/constants'
-import { updateConnectedCalendars } from '../../../../../utils/database'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -13,7 +12,6 @@ const credentials = {
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { code } = req.query
   if (!req.session.account) {
-    console.log('NO ACCOUNT')
     res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
     return
   }
@@ -51,9 +49,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     key = token.res?.data
   }
 
-  console.log('payload', key)
-
-  await updateConnectedCalendars(req.session.account.id, [])
   res.redirect(`/dashboard#calendar_connections`)
 }
 

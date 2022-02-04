@@ -11,10 +11,13 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
-  ConnectedCalendar,
   SimpleAccountInfo,
 } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
+import {
+  ConnectedCalendar,
+  ConnectedCalendarCorePayload,
+} from '../types/CalendarConnections'
 import {
   DBSlot,
   DBSlotEnhanced,
@@ -200,28 +203,6 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
   }
 
   return { ...data[0], preferences: account.preferences } as Account
-}
-
-const updateConnectedCalendars = async (
-  accountId: Account['id'],
-  payload: ConnectedCalendar[]
-): Promise<Account> => {
-  const { data, error } = await db.supabase
-    .from('accounts')
-    .update({
-      connected_calendars: payload,
-    })
-    .match({ id: accountId })
-
-  if (error) {
-    console.error(error)
-    Sentry.captureException(error)
-  }
-
-  return {
-    ...data[0],
-    connected_calendars: payload,
-  } as Account
 }
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
@@ -548,10 +529,50 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
   return false
 }
 
+const getConnectedCalendars = async (
+  address: string
+): Promise<ConnectedCalendar[]> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .select()
+    .eq('account_address', address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  if (data) {
+    return data as ConnectedCalendar[]
+  }
+
+  return []
+}
+
+const addConnectedCalendar = async (
+  address: string,
+  payload: ConnectedCalendarCorePayload
+): Promise<ConnectedCalendar> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .upsert(
+      { ...payload, created: new Date(), account_address: address },
+      { onConflict: 'refresh_token' }
+    )
+    .eq('account_address', address.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return data as ConnectedCalendar
+}
+
 export {
+  addConnectedCalendar,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
+  getConnectedCalendars,
   getExistingAccountsFromDB,
   getMeetingFromDB,
   getSlotsForAccount,
@@ -564,5 +585,4 @@ export {
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
   updateAccountPreferences,
-  updateConnectedCalendars,
 }

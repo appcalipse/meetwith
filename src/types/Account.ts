@@ -1,15 +1,3 @@
-export enum ConnectedCalendarProvider {
-  GOOGLE = 'google',
-  APPLE = 'apple',
-}
-
-export interface ConnectedCalendar {
-  provider: ConnectedCalendarProvider
-  email: string
-  shouldSync: boolean
-  refreshToken: string
-}
-
 export interface Account {
   id: string
   created: Date
@@ -21,7 +9,6 @@ export interface Account {
   nonce: number
   name?: string
   avatar?: string
-  connected_calendars?: ConnectedCalendar[]
   is_invited: boolean
 }
 
