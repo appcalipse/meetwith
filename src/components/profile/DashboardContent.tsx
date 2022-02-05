@@ -27,7 +27,10 @@ import {
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
-import { getAccountCalendarUrl } from '../../utils/calendar_manager'
+import {
+  getAccountCalendarUrl,
+  getEmbedCode,
+} from '../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import AvailabilityConfig from '../availabilities/availability-config'
 import IPFSLink from '../IPFSLink'
@@ -141,8 +144,8 @@ const DashboardContent: React.FC = () => {
   const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
-
   const accountUrl = getAccountCalendarUrl(currentAccount!, false)
+  // For showing embedded calendar version: const embedCode = getEmbedCode(currentAccount!, false)
 
   const menuClicked = (mode: EditMode) => {
     setCurrentEditMode(mode)
