@@ -1,8 +1,9 @@
 import {
-  Avatar,
   Button,
+  Circle,
   Heading,
   HStack,
+  Icon,
   Stack,
   Switch,
   Text,
@@ -10,6 +11,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import { IconType } from 'react-icons'
 import { FaUnlink } from 'react-icons/fa'
 
 import DisconnectCalendarDialog from '../DisconnectCalendarDialog'
@@ -17,8 +19,10 @@ import DisconnectCalendarDialog from '../DisconnectCalendarDialog'
 const ConnectedCalendarCard: React.FC<{
   name: string
   email: string
+  icon: IconType
 }> = props => {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const textColor = useColorModeValue('gray.700', 'gray.300')
 
   return (
     <Stack
@@ -33,24 +37,18 @@ const ConnectedCalendarCard: React.FC<{
     >
       <HStack justifyContent="space-between" mb="8">
         <HStack>
-          <Avatar
-            size="lg"
+          <Circle
+            size="60px"
             bg={useColorModeValue('gray.700', 'gray.500')}
-            src={'/assets/' + props.name + '.svg'}
-          ></Avatar>
+            mr="4"
+          >
+            <Icon as={props.icon} fontSize="25" color="white" />
+          </Circle>
           <VStack alignItems="flex-start" justifyContent="space-around">
-            <Heading
-              fontSize="xl"
-              color={useColorModeValue('gray.700', 'gray.300')}
-            >
+            <Heading fontSize="xl" color={textColor}>
               {props.name}
             </Heading>
-            <Text
-              size="xs"
-              color={useColorModeValue('gray.700', 'gray.300')}
-              isTruncated
-              maxWidth="200"
-            >
+            <Text size="xs" color={textColor} isTruncated maxWidth="200">
               {props.email}
             </Text>
           </VStack>
@@ -60,7 +58,7 @@ const ConnectedCalendarCard: React.FC<{
             onClick={onOpen}
             leftIcon={<FaUnlink />}
             variant="link"
-            color={useColorModeValue('gray.700', 'gray.300')}
+            color={textColor}
           >
             Disconnect
           </Button>
@@ -70,7 +68,7 @@ const ConnectedCalendarCard: React.FC<{
 
       <HStack justifyContent="flex-start">
         <Switch size="lg" colorScheme="orange" mr="4"></Switch>
-        <Text color={useColorModeValue('gray.700', 'gray.300')}>
+        <Text color={textColor}>
           Add new meet with wallet events to this calendar
         </Text>
       </HStack>
