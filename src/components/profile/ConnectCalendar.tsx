@@ -10,37 +10,22 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { FaPlus } from 'react-icons/fa'
+import { FaApple, FaGoogle, FaMicrosoft, FaPlus } from 'react-icons/fa'
 
+import { ConnectedCalendar, ProviderType } from '../../types/ConnectCalendars'
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import ConnectedCalendarCard from '../ConnectedCalendars/ConnectedCalendarCard'
 
 const ConnectCalendar = () => {
-  enum Services {
-    Google = 'Google',
-    iCloud = 'iCloud',
-    Outlook = 'Outlook',
-    Office365 = 'Office 365',
-  }
+  const calendarConnections: Array<ConnectedCalendar> = []
 
-  interface calendarConnectionsProps {
-    name: Services
-    email: string
+  const onSelect = (provider: string) => {
+    return provider
   }
-
-  const calendarConnections: Array<calendarConnectionsProps> = [
-    {
-      name: Services.Google,
-      email: 'savioabfialho@gmail.com',
-    },
-    {
-      name: Services.iCloud,
-      email: 'savioabfialho@gmail.com',
-    },
-  ]
 
   const { isOpen, onOpen, onClose } = useDisclosure()
   const isPro = false
+  const textColor = useColorModeValue('gray.700', 'gray.300')
   let content
 
   if (!isPro) {
@@ -49,13 +34,18 @@ const ConnectCalendar = () => {
         <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
         <HStack pt={8}>
           <Text mb={10} fontSize="lg">
-            {"You didn't connect any callendar yet"}
+            You didn&apos;t connect any callendar yet
           </Text>
         </HStack>
         <Text>
-          <Link color="orange" fontWeight="bold">
-            Go PRO
-          </Link>{' '}
+          <Link
+            rel="pricing"
+            href="/#pricing"
+            colorScheme="orange"
+            fontWeight="bold"
+          >
+            Go PRO&nbsp;
+          </Link>
           and start connecting as many calendars you want (Google, iCloud,
           Outlook or Office).
         </Text>
@@ -66,7 +56,7 @@ const ConnectCalendar = () => {
       <VStack>
         <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
         <HStack pt={8}>
-          <Text fontSize="lg">{"You didn't connect any callendar yet"}</Text>
+          <Text fontSize="lg">You didn&apos;t connect any callendar yet</Text>
         </HStack>
       </VStack>
     )
@@ -75,9 +65,10 @@ const ConnectCalendar = () => {
       <Box>
         {calendarConnections.map(connection => (
           <ConnectedCalendarCard
-            key={connection.name}
-            name={connection.name}
+            key={connection.provider}
+            name={connection.provider}
             email={connection.email}
+            icon={connection.icon}
           />
         ))}
       </Box>
@@ -87,13 +78,10 @@ const ConnectCalendar = () => {
   return (
     <Box>
       <VStack alignItems="flex-start" mb={8}>
-        <Heading
-          fontSize="3xl"
-          color={useColorModeValue('gray.700', 'gray.300')}
-        >
+        <Heading fontSize="3xl" color={textColor}>
           Connected calendars
         </Heading>
-        <Text color={useColorModeValue('gray.700', 'gray.300')}>
+        <Text color={textColor}>
           When you connect a calendar we will use its events to block your
           availabilities and also to add your new events to it.
         </Text>
@@ -101,13 +89,16 @@ const ConnectCalendar = () => {
 
       {content}
 
-      <ConnectCalendarModal isOpen={isOpen} onClose={onClose} />
+      <ConnectCalendarModal
+        isOpen={isOpen}
+        onClose={onClose}
+        onSelect={onSelect}
+      />
 
       <Button
         onClick={onOpen}
         colorScheme="orange"
         isFullWidth={false}
-        float={'left'}
         mb={4}
         mt={4}
         alignSelf="flex-start"

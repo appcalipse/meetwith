@@ -14,11 +14,13 @@ import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 interface ConnectCalendarProps {
   isOpen: boolean
   onClose: () => void
+  onSelect: (provider: string) => void
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   isOpen,
   onClose,
+  onSelect,
 }) => {
   return (
     <Modal
@@ -36,16 +38,35 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
           <ModalCloseButton />
           <ModalBody>
             <HStack p="10" justifyContent="center">
-              <Button leftIcon={<FaGoogle />} variant="outline">
+              <Button
+                onClick={() => onSelect('google')}
+                leftIcon={<FaGoogle />}
+                variant="outline"
+              >
                 Google
               </Button>
-              <Button leftIcon={<FaApple />} variant="outline" disabled>
+              <Button
+                onClick={() => onSelect('iCloud')}
+                leftIcon={<FaApple />}
+                variant="outline"
+                disabled
+              >
                 iCloud (soon)
               </Button>
-              <Button leftIcon={<FaMicrosoft />} variant="outline" disabled>
+              <Button
+                onClick={() => onSelect('outlook')}
+                leftIcon={<FaMicrosoft />}
+                variant="outline"
+                disabled
+              >
                 Outlook (soon)
               </Button>
-              <Button leftIcon={<FaMicrosoft />} variant="outline" disabled>
+              <Button
+                onClick={() => onSelect('office365')}
+                leftIcon={<FaMicrosoft />}
+                variant="outline"
+                disabled
+              >
                 Office 365 (soon)
               </Button>
             </HStack>
