@@ -12,6 +12,7 @@ import { CookiesProvider } from 'react-cookie'
 import { CookieConsent } from '../components/CookieConsent'
 import Footer from '../components/Footer'
 import Loading from '../components/Loading'
+import { Navbar } from '../components/Navbar'
 import { AccountProvider } from '../providers/AccountProvider'
 import { validateAuthenticationApp } from '../session/core'
 import customTheme from '../styles/theme'
@@ -147,7 +148,9 @@ function MyApp({
             </Flex>
           ) : (
             <>
+              <Navbar />
               <Component {...customProps} />
+              <Footer />
             </>
           )}
         </AccountProvider>

@@ -16,6 +16,7 @@ import {
   useDisclosure,
 } from '@chakra-ui/react'
 import NextLink from 'next/link'
+import { useRouter } from 'next/router'
 import React, { useContext } from 'react'
 
 import { AccountContext } from '../providers/AccountProvider'
@@ -26,6 +27,8 @@ import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
 export const Navbar = () => {
+  const router = useRouter()
+
   const { isOpen, onToggle } = useDisclosure()
 
   const { handleLogin, currentAccount, logged, loginIn } = useLogin()
@@ -36,7 +39,14 @@ export const Navbar = () => {
   )}, rgba(245, 247, 250, 0))`
 
   return (
-    <Box as="header" position="fixed" width="100%" top="0" zIndex={999}>
+    <Box
+      as="header"
+      display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
+      position="fixed"
+      width="100%"
+      top="0"
+      zIndex={999}
+    >
       <Flex
         bgGradient={bgGradient}
         backdropFilter={'auto'}
