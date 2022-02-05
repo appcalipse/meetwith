@@ -8,14 +8,11 @@ import {
 } from '@chakra-ui/react'
 import router from 'next/router'
 
-import Footer from '../components/Footer'
 import MWWButton from '../components/MWWButton'
-import { Navbar } from '../components/Navbar'
 
 export default function NotFound() {
   return (
     <>
-      <Navbar />
       <Container maxW="7xl" mt={8} flex={1}>
         <VStack alignItems="center" py={10} px={6}>
           <Heading
@@ -45,7 +42,6 @@ export default function NotFound() {
           <Spacer />
         </VStack>
       </Container>
-      <Footer />
     </>
   )
 }

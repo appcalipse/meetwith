@@ -10,6 +10,7 @@ import {
   VisuallyHidden,
 } from '@chakra-ui/react'
 import NextLink from 'next/link'
+import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
 
@@ -57,10 +58,13 @@ const SocialButton = ({
 }
 
 export default function SmallWithLogoLeft() {
+  const router = useRouter()
+
   return (
     <Box
       bg={useColorModeValue('gray.50', 'gray.900')}
       color={useColorModeValue('gray.700', 'gray.200')}
+      display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
     >
       <Container
         as={Stack}
