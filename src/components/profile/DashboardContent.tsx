@@ -143,12 +143,9 @@ const DashboardContent: React.FC = () => {
 
   const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
 
-  const [copyCalendarFeedbackOpen, setCopyCalendarFeedbackOpen] =
-    useState(false)
-  const [copyEmbedFeedbackOpen, setCopyEmbedFeedbackOpen] = useState(false)
-
+  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
   const accountUrl = getAccountCalendarUrl(currentAccount!, false)
-  const embedCode = getEmbedCode(currentAccount!, false)
+  // For showing embedded calendar version: const embedCode = getEmbedCode(currentAccount!, false)
 
   const menuClicked = (mode: EditMode) => {
     setCurrentEditMode(mode)
@@ -162,22 +159,9 @@ const DashboardContent: React.FC = () => {
     } else {
       document.execCommand('copy', true, accountUrl)
     }
-    setCopyCalendarFeedbackOpen(true)
+    setCopyFeedbackOpen(true)
     setTimeout(() => {
-      setCopyCalendarFeedbackOpen(false)
-    }, 2000)
-  }
-
-  const copyEmbed = async () => {
-    logEvent('Copied calendar URL')
-    if ('clipboard' in navigator) {
-      await navigator.clipboard.writeText(embedCode)
-    } else {
-      document.execCommand('copy', true, embedCode)
-    }
-    setCopyEmbedFeedbackOpen(true)
-    setTimeout(() => {
-      setCopyEmbedFeedbackOpen(false)
+      setCopyFeedbackOpen(false)
     }, 2000)
   }
 
@@ -224,38 +208,13 @@ const DashboardContent: React.FC = () => {
                 <Tooltip
                   label="Copied"
                   placement="top"
-                  isOpen={copyCalendarFeedbackOpen}
+                  isOpen={copyFeedbackOpen}
                 >
                   <Button
                     h="1.75rem"
                     color={buttonColor}
                     size="sm"
                     onClick={copyUrl}
-                  >
-                    Copy
-                  </Button>
-                </Tooltip>
-              </InputRightElement>
-            </InputGroup>
-          </Box>
-
-          <Box>
-            <Text fontSize="sm" mt={4} textAlign="start">
-              Embed calendar
-            </Text>
-            <InputGroup size="md">
-              <Input pr="4.5rem" type={'text'} disabled value={embedCode} />
-              <InputRightElement width="4.5rem">
-                <Tooltip
-                  label="Copied"
-                  placement="top"
-                  isOpen={copyEmbedFeedbackOpen}
-                >
-                  <Button
-                    h="1.75rem"
-                    color={buttonColor}
-                    size="sm"
-                    onClick={copyEmbed}
                   >
                     Copy
                   </Button>
