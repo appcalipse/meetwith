@@ -5,6 +5,7 @@ import {
   HStack,
   Image,
   Link,
+  Spinner,
   Text,
   useColorModeValue,
   useDisclosure,
@@ -28,16 +29,24 @@ import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import ConnectedCalendarCard from '../ConnectedCalendars/ConnectedCalendarCard'
 
 const ConnectCalendar = () => {
+  const [loading, setLoading] = useState(true)
+  const [firstFetch, setFirstFetch] = useState(true)
   const [calendarConnections, setCalendarConnections] = useState<
     ConnectedCalendarCore[]
   >([])
 
   const loadCalendars = async () => {
+    setLoading(true)
     return listConnectedCalendars()
       .then(data => {
         setCalendarConnections(data)
+        setLoading(false)
+        setFirstFetch(false)
       })
-      .catch(error => console.error(error))
+      .catch(error => {
+        console.error(error)
+        setLoading(false)
+      })
   }
 
   useEffect(() => {
@@ -53,7 +62,7 @@ const ConnectCalendar = () => {
       default:
         throw new Error(`Invalid provider selected: ${provider}`)
     }
-    return provider
+    return
   }
 
   const onDelete = async (
@@ -93,29 +102,50 @@ const ConnectCalendar = () => {
         </Text>
       </VStack>
     )
-  } else if (isPro && calendarConnections.length === 0) {
-    content = (
-      <VStack>
-        <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
-        <HStack pt={8}>
-          <Text fontSize="lg">You didn&apos;t connect any callendar yet</Text>
-        </HStack>
-      </VStack>
-    )
-  } else if (isPro && calendarConnections.length > 0) {
-    content = (
-      <Box>
-        {calendarConnections.map((connection, idx) => (
-          <ConnectedCalendarCard
-            key={`connected-${connection.provider}-${idx}`}
-            name={connection.provider}
-            email={connection.email}
-            icon={ConnectedCalendarIcons[connection.provider]}
-            onDelete={onDelete}
+  } else if (isPro) {
+    if (firstFetch) {
+      content = (
+        <VStack alignItems="center">
+          <Image
+            src="/assets/no_calendars.svg"
+            height="200px"
+            alt="Loading..."
           />
-        ))}
-      </Box>
-    )
+          <HStack pt={8}>
+            <Spinner />
+            <Text fontSize="lg">Checking your calendars...</Text>
+          </HStack>
+        </VStack>
+      )
+    } else if (calendarConnections.length === 0) {
+      content = (
+        <VStack>
+          <Image
+            src="/assets/no_calendars.svg"
+            height="200px"
+            alt="Loading..."
+          />
+          <HStack pt={8}>
+            <Text fontSize="lg">You didn&apos;t connect any callendar yet</Text>
+          </HStack>
+        </VStack>
+      )
+    } else if (calendarConnections.length > 0) {
+      content = (
+        <Box>
+          {calendarConnections.map((connection, idx) => (
+            <ConnectedCalendarCard
+              key={`connected-${connection.provider}-${idx}`}
+              name={connection.provider}
+              email={connection.email}
+              icon={ConnectedCalendarIcons[connection.provider]}
+              onDelete={onDelete}
+              sync={connection.sync}
+            />
+          ))}
+        </Box>
+      )
+    }
   }
 
   return (

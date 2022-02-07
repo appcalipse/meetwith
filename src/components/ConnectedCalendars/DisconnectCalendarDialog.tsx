@@ -8,14 +8,14 @@ import {
   Button,
   useColorModeValue,
 } from '@chakra-ui/react'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
 
 interface DisconnectCalendarProps {
   isOpen: boolean
   onClose: () => void
-  onDelete: () => void
+  onDelete: () => Promise<void>
 }
 
 const DisconnectCalendarDialog: React.FC<DisconnectCalendarProps> = ({
@@ -24,6 +24,13 @@ const DisconnectCalendarDialog: React.FC<DisconnectCalendarProps> = ({
   onDelete,
 }) => {
   const cancelRef = useRef(null)
+  const [busy, setBusy] = useState(false)
+
+  const onDeleteWrapper = async () => {
+    setBusy(true)
+    await onDelete()
+    setBusy(false)
+  }
 
   return (
     <AlertDialog
@@ -52,7 +59,12 @@ const DisconnectCalendarDialog: React.FC<DisconnectCalendarProps> = ({
             >
               Cancel
             </Button>
-            <Button colorScheme="red" onClick={onDelete} ml={3}>
+            <Button
+              colorScheme="red"
+              onClick={onDeleteWrapper}
+              ml={3}
+              isLoading={busy}
+            >
               Disconnect
             </Button>
           </AlertDialogFooter>

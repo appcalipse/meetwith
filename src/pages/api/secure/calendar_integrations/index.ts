@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import {
+  changeConnectedCalendarSync,
   getConnectedCalendars,
   removeConnectedCalendar,
 } from '../../../../utils/database'
@@ -25,7 +26,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   } else if (req.method === 'DELETE') {
     const { email, provider } = req.body
     await removeConnectedCalendar(req.session.account!.address, email, provider)
-    res.status(200)
+    res.status(200).json({})
+  } else if (req.method === 'PUT') {
+    const { email, provider, sync } = req.body
+    await changeConnectedCalendarSync(
+      req.session.account!.address,
+      email,
+      provider,
+      sync
+    )
+    res.status(200).json({})
   }
 }
 

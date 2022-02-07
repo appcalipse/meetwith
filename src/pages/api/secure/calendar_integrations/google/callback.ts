@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { Auth, google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
@@ -15,7 +16,15 @@ const credentials = {
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { code } = req.query
+  const { code, error } = req.query
+
+  // if user did not complete the cicle, just log it and go to the dashboard page again
+  if (error) {
+    Sentry.captureException(error)
+    res.redirect(`/dashboard/calendars?result=error`)
+    return
+  }
+
   if (!req.session.account) {
     res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
     return
@@ -61,13 +70,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     payload: key,
   }
 
-  const response = await addOrUpdateConnectedCalendar(
-    req.session.account.address,
-    payload
-  )
-  console.log('inserting', response)
+  await addOrUpdateConnectedCalendar(req.session.account.address, payload)
 
-  res.redirect(`/dashboard#calendar_connections`)
+  res.redirect(`/dashboard/calendars?result=success`)
 }
 
 export default withSessionRoute(handler)

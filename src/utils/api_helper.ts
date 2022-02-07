@@ -254,3 +254,15 @@ export const deleteConnectedCalendar = async (
     provider,
   })) as ConnectedCalendarCore[]
 }
+
+export const updateConnectedCalendarSync = async (
+  email: string,
+  provider: ConnectedCalendarProvider,
+  sync: boolean
+): Promise<ConnectedCalendarCore[]> => {
+  return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
+    email,
+    provider,
+    sync,
+  })) as ConnectedCalendarCore[]
+}
