@@ -1,17 +1,19 @@
+import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
+
+import { AccountNotifications } from '../../../../types/AccountNotifications'
+import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import {
   getAccountNotificationSubscriptions,
-  setAccountNotificationSubscriptions,
   initDB,
+  setAccountNotificationSubscriptions,
 } from '../../../../utils/database'
-import { withSentry } from '@sentry/nextjs'
-import { AccountNotifications } from '../../../../types/AccountNotifications'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
-    const account_address = req.headers.account as string
+    const account_address = req.session.account!.address
     const subscriptions = await setAccountNotificationSubscriptions(
       account_address,
       req.body as AccountNotifications
@@ -21,7 +23,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     return
   } else if (req.method === 'GET') {
     initDB()
-    const account_address = req.headers.account as string
+    const account_address = req.session.account!.address
     const subscriptions = await getAccountNotificationSubscriptions(
       account_address
     )
@@ -30,4 +32,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   res.status(404).send('Not found')
-})
+}
+
+export default withSentry(withSessionRoute(handle))

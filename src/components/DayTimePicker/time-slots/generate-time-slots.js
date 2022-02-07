@@ -1,4 +1,4 @@
-import { isToday, getHours, addHours, addMinutes, addDays } from 'date-fns'
+import { addDays, addHours, addMinutes, getHours, isToday } from 'date-fns'
 
 function generateTimeSlots(selectedDate, slotSizeMinutes) {
   const _isToday = isToday(selectedDate)

@@ -1,27 +1,35 @@
+import { Container } from '@chakra-ui/react'
 import type { NextPage } from 'next'
 import React from 'react'
-import Hero from '../components/landing/Hero'
-import Features from '../components/landing/Features'
-import Pricing from '../components/landing/Pricing'
+
+import Footer from '../components/Footer'
 import FAQ from '../components/landing/FAQ'
-import { Container } from '@chakra-ui/react'
+import Features from '../components/landing/Features'
+import Hero from '../components/landing/Hero'
+import Pricing from '../components/landing/Pricing'
+import { Navbar } from '../components/Navbar'
+import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
 
 const Home: NextPage = () => {
   return (
-    <div>
-      <main>
-        <Container maxW="9xl">
-          <Hero />
+    <>
+      <Navbar />
+      <div>
+        <main>
+          <Container maxW="9xl">
+            <Hero />
 
-          <Features />
+            <Features />
 
-          <Pricing />
+            <Pricing />
 
-          <FAQ />
-        </Container>
-      </main>
-    </div>
+            <FAQ />
+          </Container>
+        </main>
+      </div>
+      <Footer />
+    </>
   )
 }
 
-export default Home
+export default forceAuthenticationCheck(Home)

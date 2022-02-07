@@ -1,105 +1,60 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { loginWithWallet, web3 } from '../utils/user_manager'
-import { AccountContext } from '../providers/AccountProvider'
+import { ChevronRightIcon, CloseIcon, HamburgerIcon } from '@chakra-ui/icons'
 import {
+  Badge,
   Box,
-  Flex,
-  Text,
-  IconButton,
-  Stack,
   Collapse,
+  Container,
+  Flex,
+  HStack,
   Icon,
+  IconButton,
   Image,
   Link,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
+  Stack,
+  Text,
   useColorModeValue,
   useDisclosure,
-  useToast,
-  Container,
-  Badge,
-  HStack,
 } from '@chakra-ui/react'
-import {
-  HamburgerIcon,
-  CloseIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-} from '@chakra-ui/icons'
 import NextLink from 'next/link'
-import { ThemeSwitcher } from './ThemeSwitcher'
-import { logEvent } from '../utils/analytics'
-import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
-import router from 'next/router'
-import MWWButton from './MWWButton'
-import * as Sentry from '@sentry/browser'
-import ConnectWalletDialog from './ConnectWalletDialog'
+import { useRouter } from 'next/router'
+import React, { useContext } from 'react'
 
-export default function WithSubnavigation() {
+import { AccountContext } from '../providers/AccountProvider'
+import { useLogin } from '../session/login'
+import ConnectWalletDialog from './ConnectWalletDialog'
+import MWWButton from './MWWButton'
+import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
+import { ThemeSwitcher } from './ThemeSwitcher'
+
+export const Navbar = () => {
+  const router = useRouter()
+
   const { isOpen, onToggle } = useDisclosure()
 
-  const { currentAccount, logged, login, loginIn, setLoginIn } =
-    useContext(AccountContext)
+  const { handleLogin, currentAccount, logged, loginIn } = useLogin()
 
-  const toast = useToast()
-
-  const handleLogin = async () => {
-    if (!currentAccount) {
-      logEvent('Clicked to connect wallet')
-      try {
-        const account = await loginWithWallet(setLoginIn)
-        if (!account) {
-          return
-        }
-
-        await login(account)
-
-        const provider = web3.currentProvider as any
-        provider &&
-          provider.on('accountsChanged', async (accounts: string[]) => {
-            if (
-              accounts[0] &&
-              accounts[0].toLowerCase() !== account.address.toLowerCase()
-            ) {
-              const newAccount = await loginWithWallet(setLoginIn)
-              if (newAccount) {
-                await login(newAccount)
-              }
-            }
-          })
-
-        logEvent('Signed in')
-
-        if (router.pathname === '/') {
-          await router.push('/dashboard')
-        }
-      } catch (error: any) {
-        Sentry.captureException(error)
-        toast({
-          title: 'Error',
-          description: error.message || error,
-          status: 'error',
-          duration: 7000,
-          position: 'top',
-          isClosable: true,
-        })
-        logEvent('Failed to sign in', error)
-      }
-    }
-  }
+  const bgGradient = `linear(to-b, ${useColorModeValue(
+    'white',
+    'gray.800'
+  )}, rgba(245, 247, 250, 0))`
 
   return (
-    <Box as="header" position="fixed" width="100%" top="0" zIndex={999}>
+    <Box
+      as="header"
+      display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
+      position="fixed"
+      width="100%"
+      top="0"
+      zIndex={999}
+    >
       <Flex
-        bg={useColorModeValue('white', 'gray.800')}
+        bgGradient={bgGradient}
+        backdropFilter={'auto'}
+        backdropBlur={'24px'}
         color={useColorModeValue('gray.600', 'white')}
         minH={'60px'}
         py="2"
         px="4"
-        borderBottom={1}
-        borderStyle={'solid'}
-        borderColor={useColorModeValue('gray.200', 'gray.900')}
         align={'center'}
       >
         <Container maxW={'7xl'}>
@@ -147,7 +102,11 @@ export default function WithSubnavigation() {
               {logged ? (
                 <NavBarLoggedProfile account={currentAccount!} />
               ) : (
-                <MWWButton size="lg" onClick={handleLogin} isLoading={loginIn}>
+                <MWWButton
+                  size="lg"
+                  onClick={() => handleLogin()}
+                  isLoading={loginIn}
+                >
                   Sign in
                   <Box display={{ base: 'none', md: 'flex' }} as="span">
                     &#160;with wallet
@@ -171,48 +130,26 @@ const DesktopNav = () => {
   const { logged } = useContext(AccountContext)
   const linkColor = useColorModeValue('gray.600', 'gray.200')
   const linkHoverColor = useColorModeValue('gray.800', 'white')
-  const popoverContentBgColor = useColorModeValue('white', 'gray.800')
 
   return (
     <Stack direction={'row'} spacing={4} alignItems="center">
       {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
         navItem => (
           <Box key={navItem.label}>
-            <Popover trigger={'hover'} placement={'bottom-start'}>
-              <PopoverTrigger>
-                <NextLink href={navItem.href ?? '#'} passHref>
-                  <Link
-                    p={2}
-                    fontSize={'sm'}
-                    fontWeight={500}
-                    color={linkColor}
-                    _hover={{
-                      textDecoration: 'none',
-                      color: linkHoverColor,
-                    }}
-                  >
-                    {navItem.label}
-                  </Link>
-                </NextLink>
-              </PopoverTrigger>
-
-              {navItem.children && (
-                <PopoverContent
-                  border={0}
-                  boxShadow={'xl'}
-                  bg={popoverContentBgColor}
-                  p={4}
-                  rounded={'xl'}
-                  minW={'sm'}
-                >
-                  <Stack>
-                    {navItem.children.map(child => (
-                      <DesktopSubNav key={child.label} {...child} />
-                    ))}
-                  </Stack>
-                </PopoverContent>
-              )}
-            </Popover>
+            <NextLink href={navItem.href ?? '#'} passHref>
+              <Link
+                p={2}
+                fontSize={'sm'}
+                fontWeight={500}
+                color={linkColor}
+                _hover={{
+                  textDecoration: 'none',
+                  color: linkHoverColor,
+                }}
+              >
+                {navItem.label}
+              </Link>
+            </NextLink>
           </Box>
         )
       )}
@@ -279,11 +216,9 @@ const MobileNav = () => {
   )
 }
 
-const MobileNavItem = ({ label, children, href }: NavItem) => {
-  const { isOpen, onToggle } = useDisclosure()
-
+const MobileNavItem = ({ label, href }: NavItem) => {
   return (
-    <Stack spacing={4} onClick={children && onToggle}>
+    <Stack spacing={4}>
       <Flex
         py={2}
         as={Link}
@@ -300,70 +235,27 @@ const MobileNavItem = ({ label, children, href }: NavItem) => {
         >
           {label}
         </Text>
-        {children && (
-          <Icon
-            as={ChevronDownIcon}
-            transition={'all .25s ease-in-out'}
-            transform={isOpen ? 'rotate(180deg)' : ''}
-            w={6}
-            h={6}
-          />
-        )}
       </Flex>
-
-      <Collapse in={isOpen} animateOpacity style={{ marginTop: '0!important' }}>
-        <Stack
-          mt={2}
-          pl={4}
-          borderLeft={1}
-          borderStyle={'solid'}
-          borderColor={useColorModeValue('gray.200', 'gray.700')}
-          align={'start'}
-        >
-          {children &&
-            children.map(child => (
-              <NextLink key={child.label} href={child.href!} passHref>
-                <Link py={2}>{child.label}</Link>
-              </NextLink>
-            ))}
-        </Stack>
-      </Collapse>
     </Stack>
   )
 }
 
-interface NavItem {
+type NavItem = {
   label: string
-  subLabel?: string
-  children?: Array<NavItem>
-  href?: string
+  href: string
   logged?: boolean
+  subLabel?: string
 }
 
 const NAV_ITEMS: Array<NavItem> = [
-  // {
-  //     label: 'Pricing',
-  //     children: [
-  //         {
-  //             label: 'Free',
-  //             subLabel: 'Find your dream design job',
-  //             href: '#',
-  //         },
-  //         {
-  //             label: 'Freelance Projects',
-  //             subLabel: 'An exclusive list for contract work',
-  //             href: '#',
-  //         },
-  //     ],
-  // },
   {
     label: 'Dashboard',
-    href: '/dashboard',
     logged: true,
+    href: '/dashboard',
   },
   {
     label: 'Home',
-    href: '/',
+    href: '/#home',
   },
   {
     label: 'Plans',
@@ -373,8 +265,4 @@ const NAV_ITEMS: Array<NavItem> = [
     label: 'FAQ',
     href: '/#faq',
   },
-  // {
-  //     label: 'Hire Designers',
-  //     href: '#',
-  // },
 ]

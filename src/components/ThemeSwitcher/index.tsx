@@ -3,7 +3,8 @@ import { useColorMode, useColorModeValue } from '@chakra-ui/color-mode'
 import { Stack } from '@chakra-ui/layout'
 import { Switch } from '@chakra-ui/switch'
 import React, { useEffect } from 'react'
-import { BsSun, BsMoon } from 'react-icons/bs'
+import { BsMoon, BsSun } from 'react-icons/bs'
+
 import { logEvent } from '../../utils/analytics'
 
 export const ThemeSwitcher: React.FC = () => {
