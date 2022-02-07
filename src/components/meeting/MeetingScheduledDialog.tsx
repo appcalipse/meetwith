@@ -1,18 +1,19 @@
 import {
+  Button,
+  Flex,
+  Image,
   Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
   ModalBody,
   ModalCloseButton,
+  ModalContent,
   ModalFooter,
-  Button,
-  Image,
+  ModalHeader,
+  ModalOverlay,
   Text,
-  Flex,
 } from '@chakra-ui/react'
-import { utcToZonedTime, format } from 'date-fns-tz'
+import { format, utcToZonedTime } from 'date-fns-tz'
 import router from 'next/router'
+
 import { Account } from '../../types/Account'
 import { MeetingDecrypted } from '../../types/Meeting'
 import { getAccountDisplayName } from '../../utils/user_manager'

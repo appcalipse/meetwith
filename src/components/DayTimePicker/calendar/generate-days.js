@@ -1,9 +1,9 @@
 import {
-  startOfWeek,
+  addDays,
+  endOfMonth,
   endOfWeek,
   startOfMonth,
-  endOfMonth,
-  addDays,
+  startOfWeek,
 } from 'date-fns'
 
 function generateDays(month) {

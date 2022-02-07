@@ -1,10 +1,11 @@
-import { Text, HStack, Box, Image, Flex } from '@chakra-ui/react'
-import { Account } from '../../types/Account'
-import { Jazzicon } from '@ukstv/jazzicon-react'
-import { getAccountDisplayName } from '../../utils/user_manager'
-import router from 'next/router'
 import { useColorModeValue } from '@chakra-ui/color-mode'
+import { Box, Flex, Image, Text } from '@chakra-ui/react'
+import { Jazzicon } from '@ukstv/jazzicon-react'
+import router from 'next/router'
+
+import { Account } from '../../types/Account'
 import { logEvent } from '../../utils/analytics'
+import { getAccountDisplayName } from '../../utils/user_manager'
 
 interface NavBarLoggedProfileProps {
   account: Account
@@ -44,6 +45,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         {props.account.avatar ? (
           <Image
             src={props.account.avatar}
+            alt="Account avatar"
             width="24px"
             height="24px"
             borderRadius="50%"

@@ -1,0 +1,138 @@
+import { Box, HStack, Input, InputProps } from '@chakra-ui/react'
+import {
+  ChangeEventHandler,
+  ClipboardEventHandler,
+  FocusEventHandler,
+  KeyboardEventHandler,
+  useState,
+} from 'react'
+
+import { BadgeChip } from './chip'
+
+const DEFAULT_STOP_KEYS = ['Tab', 'Space', 'Enter', 'Escape', 'Comma']
+
+export interface ChipInputProps {
+  onChange?: (data: string[]) => void
+  isReadOnly?: boolean
+  initialItems?: string[]
+  renderItem?: (item: string) => string
+  placeholder?: string
+  // chakra props that we want to propagate
+  size?: InputProps['size']
+}
+
+export const ChipInput: React.FC<ChipInputProps> = ({
+  onChange,
+  isReadOnly = false,
+  initialItems = [],
+  renderItem = item => item,
+  size = 'md',
+  placeholder = 'Type do add items',
+}) => {
+  const [labels, setLabels] = useState(initialItems)
+  const [current, setCurrent] = useState('')
+
+  const addItem = (items: string[], pasting?: boolean) => {
+    // do nothing with an empty entry
+
+    if (!current?.trim() && !pasting) {
+      return
+    }
+
+    const newState = [...labels, ...items.map(item => item.trim())]
+    setLabels(newState)
+    setCurrent('')
+    if (onChange) {
+      onChange(newState)
+    }
+  }
+
+  const removeItem = (idx: number) => {
+    const copy = [...labels]
+    copy.splice(idx, 1)
+    setLabels(copy)
+    if (onChange) {
+      onChange(copy)
+    }
+  }
+
+  const onRemoveItem = (idx: number) => {
+    removeItem(idx)
+  }
+
+  const badges = labels.map((it, idx) => {
+    return (
+      <Box key={`${idx}-${it}`}>
+        <BadgeChip onRemove={() => onRemoveItem(idx)} allowRemove={!isReadOnly}>
+          {renderItem(it)}
+        </BadgeChip>
+      </Box>
+    )
+  })
+
+  const onTextChange: ChangeEventHandler<HTMLInputElement> = event =>
+    setCurrent(event.target.value)
+
+  const onPaste: ClipboardEventHandler<HTMLInputElement> = event => {
+    event.preventDefault()
+    const pasted = event.clipboardData.getData('text/plain')
+    const items = []
+    if (pasted) {
+      items.push(...pasted.split(','))
+    }
+
+    addItem(items, true)
+    setCurrent('')
+  }
+
+  const onKeyDown: KeyboardEventHandler<HTMLInputElement> = ev => {
+    // handle item creation
+    if (DEFAULT_STOP_KEYS.includes(ev.code)) {
+      ev.preventDefault()
+      addItem([current])
+    }
+    // and support backspace as a natural way to remove the last item in the input
+    else if (ev.code === 'Backspace' && labels.length && !current) {
+      removeItem(labels.length - 1)
+    }
+  }
+
+  const onLostFocus: FocusEventHandler<HTMLInputElement> = () => {
+    if (current) {
+      addItem([current])
+    }
+  }
+
+  return (
+    <HStack
+      borderWidth={'1px'}
+      borderColor={'gray.200'}
+      borderRadius={'md'}
+      paddingLeft={'8px'}
+      minHeight={'40px'}
+      alignItems={'center'}
+      display={'flex'}
+      align={'center'}
+      p={2}
+      flex={1}
+      flexWrap={'wrap'}
+      spacing={0}
+    >
+      {badges}
+      <Box flex={1}>
+        <Input
+          size={size}
+          display={'inline-block'}
+          visibility={isReadOnly ? 'hidden' : 'visible'}
+          onPaste={onPaste}
+          variant={'unstyled'}
+          value={current}
+          onChange={onTextChange}
+          onBlur={onLostFocus}
+          placeholder={labels.length ? '' : placeholder}
+          onKeyDown={onKeyDown}
+        />
+      </Box>
+    </HStack>
+  )
+}

@@ -1,6 +1,7 @@
-import { Link, Text, Spinner, VStack, HStack, Icon } from '@chakra-ui/react'
-import { useState, useEffect } from 'react'
+import { HStack, Icon, Link, Spinner, Text, VStack } from '@chakra-ui/react'
+import { useEffect, useState } from 'react'
 import { FaExternalLinkAlt } from 'react-icons/fa'
+
 import { logEvent } from '../utils/analytics'
 
 interface IPFSLinkProps {

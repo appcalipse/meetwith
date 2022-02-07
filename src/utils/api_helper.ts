@@ -1,10 +1,12 @@
-import { Account, MeetingType } from '../types/Account'
+import * as Sentry from '@sentry/browser'
+
+import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
+import { ConnectResponse } from '../types/CalendarConnections'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
 import { getCurrentAccount, getSignature } from './storage'
-import * as Sentry from '@sentry/browser'
 
 export const internalFetch = async (
   path: string,
@@ -12,15 +14,12 @@ export const internalFetch = async (
   body?: any,
   options = {}
 ): Promise<object> => {
-  const account = getCurrentAccount()
   const response = await fetch(`${apiUrl}${path}`, {
     method,
     mode: 'cors',
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
-      account: account,
-      signature: getSignature(account) || '',
     },
     ...options,
     body: (body && JSON.stringify(body)) || null,
@@ -43,6 +42,18 @@ export const getAccount = async (identifer: string): Promise<Account> => {
   }
 }
 
+export const getExistingAccounts = async (
+  addresses: string[]
+): Promise<SimpleAccountInfo[]> => {
+  try {
+    return (await internalFetch(`/accounts/simple`, 'POST', {
+      addresses,
+    })) as SimpleAccountInfo[]
+  } catch (e: any) {
+    throw e
+  }
+}
+
 export const createAccount = async (
   address: string,
   signature: string,
@@ -50,6 +61,20 @@ export const createAccount = async (
   nonce: number
 ): Promise<Account> => {
   return (await internalFetch(`/accounts`, 'POST', {
+    address,
+    signature,
+    timezone,
+    nonce,
+  })) as Account
+}
+
+export const initInvitedAccount = async (
+  address: string,
+  signature: string,
+  timezone: string,
+  nonce: number
+): Promise<Account> => {
+  return (await internalFetch(`/accounts`, 'PUT', {
     address,
     signature,
     timezone,
@@ -166,4 +191,44 @@ export const fetchContentFromIPFSFromBrowser = async (
     Sentry.captureException(err)
     return undefined
   }
+}
+
+export const getGoogleAuthConnectUrl = async (): Promise<ConnectResponse> => {
+  return (await internalFetch(
+    `/secure/calendar_integrations/google/connect`
+  )) as ConnectResponse
+}
+
+export const login = async (identifier: string): Promise<Account> => {
+  try {
+    const account = getCurrentAccount()
+    const signature = getSignature(account) || ''
+    return (await internalFetch(`/auth/login`, 'POST', {
+      identifier,
+      signature,
+    })) as Account
+  } catch (e: any) {
+    if (e.status && e.status === 404) {
+      throw new AccountNotFoundError(identifier)
+    }
+    throw e
+  }
+}
+
+export const logout = async (): Promise<Account> => {
+  return (await internalFetch(`/secure/auth/logout`)) as Account
+}
+
+export const signup = async (
+  address: string,
+  signature: string,
+  timezone: string,
+  nonce: number
+): Promise<Account> => {
+  return (await internalFetch(`/auth/signup`, 'POST', {
+    address,
+    signature,
+    timezone,
+    nonce,
+  })) as Account
 }

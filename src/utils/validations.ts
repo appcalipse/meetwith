@@ -6,3 +6,8 @@ export const isValidEmail = (email: string): boolean => {
     )
   return !!match
 }
+
+export const isValidEVMAddress = (address: string): boolean => {
+  const match = address.match(/^0x[a-fA-F0-9]{40}$/i)
+  return !!match
+}

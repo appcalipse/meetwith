@@ -1,12 +1,14 @@
-import { NextApiRequest, NextApiResponse } from 'next'
-import { initDB, updateAccountPreferences } from '../../../../utils/database'
 import { withSentry } from '@sentry/nextjs'
+import { NextApiRequest, NextApiResponse } from 'next'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
+import { initDB, updateAccountPreferences } from '../../../../utils/database'
+
+const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
-    const account_id = req.headers.account as string
+    const account_id = req.session.account!.address
     const account = req.body
 
     if (account.address !== account_id) {
@@ -24,4 +26,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   res.status(404).send('Not found')
-})
+}
+
+export default withSentry(withSessionRoute(handle))

@@ -1,25 +1,26 @@
-import { ReactNode, useContext, useState } from 'react'
 import {
   Box,
-  HStack,
-  Heading,
-  Flex,
-  Text,
-  VStack,
-  useColorModeValue,
-  List,
-  ListItem,
-  ListIcon,
   Button,
+  Flex,
+  Heading,
+  HStack,
+  List,
+  ListIcon,
+  ListItem,
+  Text,
+  useColorModeValue,
   useToast,
+  VStack,
 } from '@chakra-ui/react'
-import { FaAngry, FaCheckCircle } from 'react-icons/fa'
-import { AccountContext } from '../../providers/AccountProvider'
-import { loginWithWallet } from '../../utils/user_manager'
-import { logEvent } from '../../utils/analytics'
-import router from 'next/router'
-import AlertMeDialog from './AlertMeDialog'
 import * as Sentry from '@sentry/browser'
+import router from 'next/router'
+import { ReactNode, useContext, useState } from 'react'
+import { FaAngry, FaCheckCircle } from 'react-icons/fa'
+
+import { AccountContext } from '../../providers/AccountProvider'
+import { logEvent } from '../../utils/analytics'
+import { loginWithWallet } from '../../utils/user_manager'
+import AlertMeDialog from './AlertMeDialog'
 
 function PriceWrapper({ children }: { children: ReactNode }) {
   return (

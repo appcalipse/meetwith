@@ -1,10 +1,9 @@
-import React from 'react'
-import PropTypes from 'prop-types'
+import { Flex, Image, Text, useColorModeValue, VStack } from '@chakra-ui/react'
 import { format } from 'date-fns'
+import PropTypes from 'prop-types'
+import React from 'react'
 
 import generateTimeSlots from './generate-time-slots'
-
-import { Flex, useColorModeValue, VStack, Image, Text } from '@chakra-ui/react'
 
 function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes)

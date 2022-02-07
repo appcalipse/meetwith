@@ -1,5 +1,5 @@
-import { v4 as uuidv4 } from 'uuid'
 import * as Sentry from '@sentry/browser'
+import { v4 as uuidv4 } from 'uuid'
 
 export const UTM_PARAMS =
   '&utm_source=partner&utm_medium=calendar&utm_campaign=mww'

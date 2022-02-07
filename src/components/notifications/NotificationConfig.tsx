@@ -1,18 +1,19 @@
 import {
-  HStack,
-  VStack,
-  Spacer,
   Button,
   FormControl,
-  FormLabel,
-  Input,
   FormHelperText,
+  FormLabel,
+  HStack,
+  Input,
+  Spacer,
   Switch,
   Text,
   useToast,
+  VStack,
 } from '@chakra-ui/react'
 import { useContext, useState } from 'react'
 import { useEffect } from 'react'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import {
   AccountNotifications,
