@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useCookies } from 'react-cookie'
 
 import { Account } from '../types/Account'
+import { SESSION_COOKIE_NAME } from '../utils/auth/withSessionApiRoute'
 
 interface IAccountContext {
   currentAccount?: Account | null
@@ -39,17 +40,9 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
   })
 
   const [loginIn, setLoginIn] = useState(false)
-  const [_, setCookie, removeCookie] = useCookies(['mww_auth'])
+  const [_, setCookie, removeCookie] = useCookies([SESSION_COOKIE_NAME])
 
   function login(account: Account) {
-    // make sure to store only non critical information
-    setCookie('mww_auth', {
-      // id: account.id,
-      address: account.address,
-      name: account.name,
-      avatar: account.avatar,
-    })
-
     setUserContext(() => ({
       ...userContext,
       currentAccount: account,
@@ -58,8 +51,7 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
   }
 
   const logout = () => {
-    removeCookie('mww_auth')
-
+    removeCookie(SESSION_COOKIE_NAME)
     setUserContext(() => ({
       ...userContext,
       currentAccount: null,

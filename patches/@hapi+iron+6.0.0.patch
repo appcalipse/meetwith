@@ -1,0 +1,30 @@
+diff --git a/node_modules/@hapi/iron/lib/index.js b/node_modules/@hapi/iron/lib/index.js
+index c17d35a..e45980d 100755
+--- a/node_modules/@hapi/iron/lib/index.js
++++ b/node_modules/@hapi/iron/lib/index.js
+@@ -8,6 +8,25 @@ const Bourne = require('@hapi/bourne');
+ const Cryptiles = require('@hapi/cryptiles');
+ const Hoek = require('@hapi/hoek');
+ 
++Crypto.timingSafeEqual = function timingSafeEqual(a, b) {
++    if (!Buffer.isBuffer(a)) {
++      throw new TypeError("First argument must be a buffer");
++    }
++    if (!Buffer.isBuffer(b)) {
++      throw new TypeError("Second argument must be a buffer");
++    }
++    if (a.length !== b.length) {
++      throw new TypeError("Input buffers must have the same length");
++    }
++    var len = a.length;
++    var out = 0;
++    var i = -1;
++    while (++i < len) {
++      out |= a[i] ^ b[i];
++    }
++    return out === 0;
++};
++
+ 
+ const internals = {};
+ 

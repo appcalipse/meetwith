@@ -1,6 +1,7 @@
 import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '../../../utils/auth/withSessionApiRoute'
 import { checkSignature } from '../../../utils/cryptography'
 import {
   initAccountDBForWallet,
@@ -8,7 +9,7 @@ import {
   updateAccountFromInvite,
 } from '../../../utils/database'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST' || req.method === 'PUT') {
     initDB()
     let account
@@ -18,8 +19,10 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       req.body.signature,
       req.body.nonce! as number
     )
-    if (req.body.address.toLowerCase() !== recovered.toLowerCase())
+    if (req.body.address.toLowerCase() !== recovered.toLowerCase()) {
       res.status(401).send('Not authorized')
+      return
+    }
 
     if (req.method === 'POST') {
       account = await initAccountDBForWallet(
@@ -37,9 +40,18 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       )
     }
 
+    // set the account in the session in order to use it on other requests
+    req.session.account = {
+      ...account,
+      signature: req.body.signature,
+    }
+    await req.session.save()
+
     res.status(200).json(account)
     return
   }
 
   res.status(404).send('Not found')
-})
+}
+
+export default withSessionRoute(withSentry(signupRoute))

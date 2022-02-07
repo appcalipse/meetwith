@@ -2,17 +2,18 @@ import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { MeetingType } from '../../../../types/Account'
+import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import {
   getAccountFromDB,
   initDB,
   updateAccountPreferences,
 } from '../../../../utils/database'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
-    const account_id = req.headers.account as string
+    const account_id = req.session.account!.address
 
     const account = await getAccountFromDB(account_id)
 
@@ -47,4 +48,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   res.status(404).send('Not found')
-})
+}
+
+export default withSentry(withSessionRoute(handle))

@@ -5,17 +5,18 @@ import {
   DBSlotEnhanced,
   MeetingCreationRequest,
 } from '../../../../types/Meeting'
+import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import {
   getAccountFromDB,
   initDB,
   saveMeeting,
 } from '../../../../utils/database'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
-    const account_address = req.headers.account as string
+    const account_address = req.session.account!.address
     const account = await getAccountFromDB(account_address)
 
     const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
@@ -39,4 +40,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   res.status(404).send('Not found')
-})
+}
+
+export default withSentry(withSessionRoute(handle))
