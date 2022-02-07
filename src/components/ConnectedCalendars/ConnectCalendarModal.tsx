@@ -11,10 +11,12 @@ import {
 } from '@chakra-ui/react'
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
+import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
+
 interface ConnectCalendarProps {
   isOpen: boolean
   onClose: () => void
-  onSelect: (provider: string) => void
+  onSelect: (provider: ConnectedCalendarProvider) => void
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
@@ -39,14 +41,14 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
           <ModalBody>
             <HStack p="10" justifyContent="center">
               <Button
-                onClick={() => onSelect('google')}
+                onClick={() => onSelect(ConnectedCalendarProvider.GOOGLE)}
                 leftIcon={<FaGoogle />}
                 variant="outline"
               >
                 Google
               </Button>
               <Button
-                onClick={() => onSelect('iCloud')}
+                onClick={() => onSelect(ConnectedCalendarProvider.ICLOUD)}
                 leftIcon={<FaApple />}
                 variant="outline"
                 disabled
@@ -54,7 +56,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 iCloud (soon)
               </Button>
               <Button
-                onClick={() => onSelect('outlook')}
+                onClick={() => onSelect(ConnectedCalendarProvider.OUTLOOK)}
                 leftIcon={<FaMicrosoft />}
                 variant="outline"
                 disabled
@@ -62,7 +64,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 Outlook (soon)
               </Button>
               <Button
-                onClick={() => onSelect('office365')}
+                onClick={() => onSelect(ConnectedCalendarProvider.OFFICE)}
                 leftIcon={<FaMicrosoft />}
                 variant="outline"
                 disabled

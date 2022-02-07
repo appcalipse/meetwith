@@ -10,14 +10,18 @@ import {
 } from '@chakra-ui/react'
 import { useRef } from 'react'
 
+import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
+
 interface DisconnectCalendarProps {
   isOpen: boolean
   onClose: () => void
+  onDelete: () => void
 }
 
 const DisconnectCalendarDialog: React.FC<DisconnectCalendarProps> = ({
   isOpen,
   onClose,
+  onDelete,
 }) => {
   const cancelRef = useRef(null)
 
@@ -48,7 +52,7 @@ const DisconnectCalendarDialog: React.FC<DisconnectCalendarProps> = ({
             >
               Cancel
             </Button>
-            <Button colorScheme="red" onClick={onClose} ml={3}>
+            <Button colorScheme="red" onClick={onDelete} ml={3}>
               Disconnect
             </Button>
           </AlertDialogFooter>

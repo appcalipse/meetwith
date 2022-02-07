@@ -17,6 +17,7 @@ import { AccountNotifications } from '../types/AccountNotifications'
 import {
   ConnectedCalendar,
   ConnectedCalendarCorePayload,
+  ConnectedCalendarProvider,
 } from '../types/CalendarConnections'
 import {
   DBSlot,
@@ -548,17 +549,69 @@ const getConnectedCalendars = async (
   return []
 }
 
-const addConnectedCalendar = async (
+const connectedCalendarExists = async (
+  address: string,
+  email: string,
+  provider: ConnectedCalendarProvider
+): Promise<boolean> => {
+  const { data, count, error } = await db.supabase
+    .from('connected_calendars')
+    .select('*', { count: 'exact' })
+    .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  console.log('COUNT', data, count)
+  return count > 0
+}
+
+const addOrUpdateConnectedCalendar = async (
   address: string,
   payload: ConnectedCalendarCorePayload
 ): Promise<ConnectedCalendar> => {
+  const existingConnection = await connectedCalendarExists(
+    address,
+    payload.email,
+    payload.provider
+  )
+  let queryPromise
+  if (existingConnection) {
+    queryPromise = db.supabase
+      .from('connected_calendars')
+      .update({ ...payload, updated: new Date() })
+      .eq('account_address', address.toLowerCase())
+      .eq('email', payload.email.toLowerCase())
+      .eq('provider', payload.provider)
+  } else {
+    queryPromise = db.supabase
+      .from('connected_calendars')
+      .insert({ ...payload, created: new Date(), account_address: address })
+  }
+
+  const { data, error } = await queryPromise
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return data as ConnectedCalendar
+}
+
+const removeConnectedCalendar = async (
+  address: string,
+  email: string,
+  provider: ConnectedCalendarProvider
+): Promise<ConnectedCalendar> => {
   const { data, error } = await db.supabase
     .from('connected_calendars')
-    .upsert(
-      { ...payload, created: new Date(), account_address: address },
-      { onConflict: 'refresh_token' }
-    )
+    .delete()
     .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
 
   if (error) {
     Sentry.captureException(error)
@@ -568,7 +621,8 @@ const addConnectedCalendar = async (
 }
 
 export {
-  addConnectedCalendar,
+  addOrUpdateConnectedCalendar,
+  connectedCalendarExists,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
@@ -580,6 +634,7 @@ export {
   initAccountDBForWallet,
   initDB,
   isSlotFree,
+  removeConnectedCalendar,
   saveEmailToDB,
   saveMeeting,
   setAccountNotificationSubscriptions,

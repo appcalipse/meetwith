@@ -10,21 +10,63 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { FaApple, FaGoogle, FaMicrosoft, FaPlus } from 'react-icons/fa'
+import { useEffect, useState } from 'react'
+import { FaPlus } from 'react-icons/fa'
 
-import { ConnectedCalendar, ProviderType } from '../../types/ConnectCalendars'
+import {
+  ConnectedCalendar,
+  ConnectedCalendarCore,
+  ConnectedCalendarIcons,
+  ConnectedCalendarProvider,
+} from '../../types/CalendarConnections'
+import {
+  deleteConnectedCalendar,
+  getGoogleAuthConnectUrl,
+  listConnectedCalendars,
+} from '../../utils/api_helper'
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import ConnectedCalendarCard from '../ConnectedCalendars/ConnectedCalendarCard'
 
 const ConnectCalendar = () => {
-  const calendarConnections: Array<ConnectedCalendar> = []
+  const [calendarConnections, setCalendarConnections] = useState<
+    ConnectedCalendarCore[]
+  >([])
 
-  const onSelect = (provider: string) => {
+  const loadCalendars = async () => {
+    return listConnectedCalendars()
+      .then(data => {
+        setCalendarConnections(data)
+      })
+      .catch(error => console.error(error))
+  }
+
+  useEffect(() => {
+    loadCalendars()
+  }, [])
+
+  const onSelect = async (provider: ConnectedCalendarProvider) => {
+    switch (provider) {
+      case ConnectedCalendarProvider.GOOGLE:
+        const { url } = await getGoogleAuthConnectUrl()
+        window.location.assign(url)
+        break
+      default:
+        throw new Error(`Invalid provider selected: ${provider}`)
+    }
     return provider
   }
 
+  const onDelete = async (
+    email: string,
+    provider: ConnectedCalendarProvider
+  ) => {
+    await deleteConnectedCalendar(email, provider)
+    await loadCalendars()
+  }
+
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const isPro = false
+  // TODO: implement this
+  const isPro = true
   const textColor = useColorModeValue('gray.700', 'gray.300')
   let content
 
@@ -63,12 +105,13 @@ const ConnectCalendar = () => {
   } else if (isPro && calendarConnections.length > 0) {
     content = (
       <Box>
-        {calendarConnections.map(connection => (
+        {calendarConnections.map((connection, idx) => (
           <ConnectedCalendarCard
-            key={connection.provider}
+            key={`connected-${connection.provider}-${idx}`}
             name={connection.provider}
             email={connection.email}
-            icon={connection.icon}
+            icon={ConnectedCalendarIcons[connection.provider]}
+            onDelete={onDelete}
           />
         ))}
       </Box>

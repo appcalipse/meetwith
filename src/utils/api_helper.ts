@@ -2,7 +2,11 @@ import * as Sentry from '@sentry/browser'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
-import { ConnectResponse } from '../types/CalendarConnections'
+import {
+  ConnectedCalendarCore,
+  ConnectedCalendarProvider,
+  ConnectResponse,
+} from '../types/CalendarConnections'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
@@ -231,4 +235,22 @@ export const signup = async (
     timezone,
     nonce,
   })) as Account
+}
+
+export const listConnectedCalendars = async (): Promise<
+  ConnectedCalendarCore[]
+> => {
+  return (await internalFetch(
+    `/secure/calendar_integrations`
+  )) as ConnectedCalendarCore[]
+}
+
+export const deleteConnectedCalendar = async (
+  email: string,
+  provider: ConnectedCalendarProvider
+): Promise<ConnectedCalendarCore[]> => {
+  return (await internalFetch(`/secure/calendar_integrations`, 'DELETE', {
+    email,
+    provider,
+  })) as ConnectedCalendarCore[]
 }
