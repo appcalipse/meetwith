@@ -7,9 +7,11 @@ import { withLoginRedirect } from '../session/requireAuthentication'
 
 const Dashboard: React.FC = () => {
   return (
-    <Container maxW="6xl" mt={8} flex={1}>
-      <DashboardContent />
-    </Container>
+    <>
+      <Container maxW="6xl" mt={8} flex={1}>
+        <DashboardContent />
+      </Container>
+    </>
   )
 }
 
