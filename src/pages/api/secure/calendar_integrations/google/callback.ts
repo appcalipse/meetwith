@@ -1,8 +1,13 @@
-import { Common, google } from 'googleapis'
+import { Auth, google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import {
+  ConnectedCalendarCorePayload,
+  ConnectedCalendarProvider,
+} from '../../../../../types/CalendarConnections'
 import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
 import { apiUrl } from '../../../../../utils/constants'
+import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -36,18 +41,31 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     redirect_uri
   )
 
-  let key: {
-    access_token: string
-    refresh_token: string
-    scope: string
-    token_type: string
-    expiry_date: number
-  } | null = null
+  let key: Auth.Credentials = {}
 
   if (code) {
     const token = await oAuth2Client.getToken(code)
     key = token.res?.data
   }
+
+  // request more info to google, in order to complete the user integration data
+  oAuth2Client.setCredentials({ access_token: key?.access_token })
+  const userInfo = await google
+    .oauth2('v2')
+    .userinfo.get({ auth: oAuth2Client })
+
+  const payload: ConnectedCalendarCorePayload = {
+    provider: ConnectedCalendarProvider.GOOGLE,
+    email: userInfo.data.email!,
+    sync: false,
+    payload: key,
+  }
+
+  const response = await addOrUpdateConnectedCalendar(
+    req.session.account.address,
+    payload
+  )
+  console.log('inserting', response)
 
   res.redirect(`/dashboard#calendar_connections`)
 }

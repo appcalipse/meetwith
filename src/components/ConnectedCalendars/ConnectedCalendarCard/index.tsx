@@ -14,12 +14,14 @@ import {
 import { IconType } from 'react-icons'
 import { FaUnlink } from 'react-icons/fa'
 
+import { ConnectedCalendarProvider } from '../../../types/CalendarConnections'
 import DisconnectCalendarDialog from '../DisconnectCalendarDialog'
 
 const ConnectedCalendarCard: React.FC<{
-  name: string
+  name: ConnectedCalendarProvider
   email: string
   icon: IconType
+  onDelete: (email: string, provider: ConnectedCalendarProvider) => void
 }> = props => {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const textColor = useColorModeValue('gray.700', 'gray.300')
@@ -63,7 +65,11 @@ const ConnectedCalendarCard: React.FC<{
             Disconnect
           </Button>
         </Stack>
-        <DisconnectCalendarDialog isOpen={isOpen} onClose={onClose} />
+        <DisconnectCalendarDialog
+          isOpen={isOpen}
+          onClose={onClose}
+          onDelete={() => props.onDelete(props.email, props.name)}
+        />
       </HStack>
 
       <HStack justifyContent="flex-start">
