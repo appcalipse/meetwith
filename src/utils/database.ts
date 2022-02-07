@@ -565,7 +565,6 @@ const connectedCalendarExists = async (
     Sentry.captureException(error)
   }
 
-  console.log('COUNT', data, count)
   return count > 0
 }
 
@@ -601,6 +600,26 @@ const addOrUpdateConnectedCalendar = async (
   return data as ConnectedCalendar
 }
 
+const changeConnectedCalendarSync = async (
+  address: string,
+  email: string,
+  provider: ConnectedCalendarProvider,
+  sync: boolean
+): Promise<ConnectedCalendar> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .update({ sync, updated: new Date() })
+    .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return data as ConnectedCalendar
+}
+
 const removeConnectedCalendar = async (
   address: string,
   email: string,
@@ -622,6 +641,7 @@ const removeConnectedCalendar = async (
 
 export {
   addOrUpdateConnectedCalendar,
+  changeConnectedCalendarSync,
   connectedCalendarExists,
   getAccountFromDB,
   getAccountNonce,

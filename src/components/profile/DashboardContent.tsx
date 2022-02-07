@@ -11,10 +11,12 @@ import {
   Text,
   Tooltip,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
-import React, { useContext, useState } from 'react'
+import { useRouter } from 'next/router'
+import React, { useContext, useEffect, useState } from 'react'
 import { IconType } from 'react-icons'
 import {
   FaBell,
@@ -41,13 +43,13 @@ import ConnectCalendar from './ConnectCalendar'
 import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
-enum EditMode {
-  MEETINGS,
-  AVAILABILITY,
-  DETAILS,
-  TYPES,
-  CALENDARS,
-  NOTIFICATIONS,
+export enum EditMode {
+  MEETINGS = 'meetings',
+  AVAILABILITY = 'availability',
+  DETAILS = 'details',
+  TYPES = 'types',
+  CALENDARS = 'calendars',
+  NOTIFICATIONS = 'notifications',
 }
 
 interface LinkItemProps {
@@ -145,18 +147,46 @@ const NavItem = ({
   )
 }
 
-const DashboardContent: React.FC = () => {
+const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
+  currentSection,
+}) => {
   const { currentAccount } = useContext(AccountContext)
+  const router = useRouter()
+  // const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
 
-  const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
+  const toast = useToast()
+  const { result } = router.query
+
+  useEffect(() => {
+    if (result === 'error') {
+      toast({
+        title: 'Error connecting calendar',
+        description:
+          'Please make sure to give access to Meet With Wallet within your calendar provider page.',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    } else if (result === 'success') {
+      toast({
+        title: 'Calendar connected',
+        description: "You've just connected a new calendar provider.",
+        status: 'success',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    }
+  }, [])
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
   const accountUrl = getAccountCalendarUrl(currentAccount!, false)
   // For showing embedded calendar version: const embedCode = getEmbedCode(currentAccount!, false)
 
   const menuClicked = (mode: EditMode) => {
-    setCurrentEditMode(mode)
     logEvent('Selected menu item on dashboard', { mode })
+    router.push(`/dashboard/${mode}`, undefined, { shallow: true })
   }
 
   const copyUrl = async () => {
@@ -173,13 +203,13 @@ const DashboardContent: React.FC = () => {
   }
 
   const renderSelected = () => {
-    switch (currentEditMode) {
+    switch (currentSection) {
+      case EditMode.MEETINGS:
+        return <Meetings />
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig />
       case EditMode.DETAILS:
         return <AccountDetails />
-      case EditMode.MEETINGS:
-        return <Meetings />
       case EditMode.TYPES:
         return <MeetingTypesConfig />
       case EditMode.CALENDARS:
@@ -241,7 +271,7 @@ const DashboardContent: React.FC = () => {
         <Box py={2} width="100%">
           {LinkItems.map(link => (
             <NavItem
-              selected={currentEditMode === link.mode}
+              selected={currentSection === link.mode}
               key={link.name}
               text={link.name}
               icon={link.icon}

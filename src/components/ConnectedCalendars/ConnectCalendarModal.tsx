@@ -9,6 +9,7 @@ import {
   ModalHeader,
   ModalOverlay,
 } from '@chakra-ui/react'
+import { useState } from 'react'
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
 import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
@@ -16,7 +17,7 @@ import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
 interface ConnectCalendarProps {
   isOpen: boolean
   onClose: () => void
-  onSelect: (provider: ConnectedCalendarProvider) => void
+  onSelect: (provider: ConnectedCalendarProvider) => Promise<void>
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
@@ -24,6 +25,15 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   onClose,
   onSelect,
 }) => {
+  const [loading, setLoading] = useState<
+    ConnectedCalendarProvider | undefined
+  >()
+  const selectOption = (provider: ConnectedCalendarProvider) => async () => {
+    setLoading(provider)
+    await onSelect(provider)
+    setLoading(undefined)
+  }
+
   return (
     <Modal
       isOpen={isOpen}
@@ -41,14 +51,15 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
           <ModalBody>
             <HStack p="10" justifyContent="center">
               <Button
-                onClick={() => onSelect(ConnectedCalendarProvider.GOOGLE)}
+                onClick={selectOption(ConnectedCalendarProvider.GOOGLE)}
                 leftIcon={<FaGoogle />}
                 variant="outline"
+                isLoading={loading === ConnectedCalendarProvider.GOOGLE}
               >
                 Google
               </Button>
               <Button
-                onClick={() => onSelect(ConnectedCalendarProvider.ICLOUD)}
+                onClick={selectOption(ConnectedCalendarProvider.ICLOUD)}
                 leftIcon={<FaApple />}
                 variant="outline"
                 disabled
@@ -56,7 +67,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 iCloud (soon)
               </Button>
               <Button
-                onClick={() => onSelect(ConnectedCalendarProvider.OUTLOOK)}
+                onClick={selectOption(ConnectedCalendarProvider.OUTLOOK)}
                 leftIcon={<FaMicrosoft />}
                 variant="outline"
                 disabled
@@ -64,7 +75,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 Outlook (soon)
               </Button>
               <Button
-                onClick={() => onSelect(ConnectedCalendarProvider.OFFICE)}
+                onClick={selectOption(ConnectedCalendarProvider.OFFICE)}
                 leftIcon={<FaMicrosoft />}
                 variant="outline"
                 disabled
