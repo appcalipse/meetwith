@@ -1,4 +1,4 @@
-// import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/browser'
 // import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
 // import { Auth } from 'googleapis'
 
