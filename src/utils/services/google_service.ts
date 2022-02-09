@@ -7,7 +7,6 @@ import {
   NewCalendarEventType,
 } from '../../types/CalendarConnections'
 import { DBSlot, MeetingDecrypted } from '../../types/Meeting'
-import { updateConnectedCalendarPayload } from '../api_helper'
 import { apiUrl } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
 import { MWWGoogleAuth } from './google_auth'
@@ -77,7 +76,6 @@ export default class GoogleCalendarService implements Calendar {
             undefined,
             googleCredentials
           ).then(() => {
-            console.log('token updated')
             myGoogleAuth.setCredentials(googleCredentials)
             return myGoogleAuth
           })
@@ -97,7 +95,6 @@ export default class GoogleCalendarService implements Calendar {
   async createEvent(event: MeetingDecrypted): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
-        console.log('CREATING EVENT ON GOOGLE')
         const payload: calendar_v3.Schema$Event = {
           summary: 'Meet With Wallet Scheduled Event', // TODO: implement
           description: event.content || 'A meeting description', // TODO: implement
@@ -129,7 +126,7 @@ export default class GoogleCalendarService implements Calendar {
           version: 'v3',
           auth: myGoogleAuth,
         })
-        console.log('inserting')
+
         calendar.events.insert(
           {
             auth: myGoogleAuth,
@@ -163,91 +160,10 @@ export default class GoogleCalendarService implements Calendar {
     )
   }
 
-  //   async updateEvent(uid: string, event: CalendarEvent): Promise<any> {
-  //     // return new Promise((resolve, reject) =>
-  //     //   this.auth.getToken().then((myGoogleAuth) => {
-  //     //     const payload: calendar_v3.Schema$Event = {
-  //     //       summary: event.title,
-  //     //       description: getRichDescription(event),
-  //     //       start: {
-  //     //         dateTime: event.startTime,
-  //     //         timeZone: event.organizer.timeZone,
-  //     //       },
-  //     //       end: {
-  //     //         dateTime: event.endTime,
-  //     //         timeZone: event.organizer.timeZone,
-  //     //       },
-  //     //       attendees: event.attendees,
-  //     //       reminders: {
-  //     //         useDefault: true,
-  //     //       },
-  //     //     };
-
-  //     //     if (event.location) {
-  //     //       payload["location"] = getLocation(event);
-  //     //     }
-
-  //     //     const calendar = google.calendar({
-  //     //       version: "v3",
-  //     //       auth: myGoogleAuth,
-  //     //     });
-  //     //     calendar.events.update(
-  //     //       {
-  //     //         auth: myGoogleAuth,
-  //     //         calendarId: event.destinationCalendar?.externalId
-  //     //           ? event.destinationCalendar.externalId
-  //     //           : "primary",
-  //     //         eventId: uid,
-  //     //         sendNotifications: true,
-  //     //         sendUpdates: "all",
-  //     //         requestBody: payload,
-  //     //       },
-  //     //       function (err, event) {
-  //     //         if (err) {
-  //     //           console.error("There was an error contacting google calendar service: ", err);
-
-  //     //           return reject(err);
-  //     //         }
-  //     //         return resolve(event?.data);
-  //     //       }
-  //     //     );
-  //     //   })
-  //     // );
-  //   }
-
-  //   async deleteEvent(uid: string, event: CalendarEvent): Promise<void> {
-  //     // return new Promise((resolve, reject) =>
-  //     //   this.auth.getToken().then((myGoogleAuth) => {
-  //     //     const calendar = google.calendar({
-  //     //       version: "v3",
-  //     //       auth: myGoogleAuth,
-  //     //     });
-  //     //     calendar.events.delete(
-  //     //       {
-  //     //         auth: myGoogleAuth,
-  //     //         calendarId: event.destinationCalendar?.externalId
-  //     //           ? event.destinationCalendar.externalId
-  //     //           : "primary",
-  //     //         eventId: uid,
-  //     //         sendNotifications: true,
-  //     //         sendUpdates: "all",
-  //     //       },
-  //     //       function (err, event) {
-  //     //         if (err) {
-  //     //           console.error("There was an error contacting google calendar service: ", err);
-  //     //           return reject(err);
-  //     //         }
-  //     //         return resolve(event?.data);
-  //     //       }
-  //     //     );
-  //     //   })
-  //     // );
-  //   }
-
   async getAvailability(
     dateFrom: string,
     dateTo: string,
-    selectedCalendars: IntegrationCalendar[]
+    calendarId: string
   ): Promise<EventBusyDate[]> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
@@ -255,24 +171,8 @@ export default class GoogleCalendarService implements Calendar {
           version: 'v3',
           auth: myGoogleAuth,
         })
-        const selectedCalendarIds = selectedCalendars
-          .filter(e => e.integration === this.integrationName)
-          .map(e => e.externalId)
-        if (selectedCalendarIds.length === 0 && selectedCalendars.length > 0) {
-          // Only calendars of other integrations selected
-          resolve([])
-          return
-        }
 
-        ;(selectedCalendarIds.length === 0
-          ? calendar.calendarList
-              .list()
-              .then(
-                cals =>
-                  cals.data.items?.map(cal => cal.id).filter(Boolean) || []
-              )
-          : Promise.resolve(selectedCalendarIds)
-        )
+        Promise.resolve([calendarId])
           .then(calsIds => {
             calendar.freebusy.query(
               {
@@ -307,41 +207,6 @@ export default class GoogleCalendarService implements Calendar {
             )
           })
           .catch(err => {
-            Sentry.captureException(err)
-            reject(err)
-          })
-      })
-    )
-  }
-
-  async listCalendars(): Promise<IntegrationCalendar[]> {
-    return new Promise((resolve, reject) =>
-      this.auth.getToken().then(myGoogleAuth => {
-        const calendar = google.calendar({
-          version: 'v3',
-          auth: myGoogleAuth,
-        })
-
-        calendar.calendarList
-          .list()
-          .then(cals => {
-            const calends =
-              cals.data.items?.map(cal => {
-                const calendar: IntegrationCalendar = {
-                  externalId: cal.id ?? 'No id',
-                  integration: this.integrationName,
-                  name: cal.summary ?? 'No name',
-                  primary: cal.primary ?? false,
-                }
-                return calendar
-              }) || []
-            console.log(
-              'calendars',
-              calends.filter(it => it.primary)
-            )
-            resolve(calends.filter(it => it.primary))
-          })
-          .catch((err: Error) => {
             Sentry.captureException(err)
             reject(err)
           })

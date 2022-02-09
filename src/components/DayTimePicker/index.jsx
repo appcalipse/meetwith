@@ -140,9 +140,7 @@ function DayTimePicker({
               <VStack alignItems="flex-start">
                 <Text>{format(pickedDay, 'PPPP')}</Text>
                 <Text fontSize="sm">
-                  Timezone:{' '}
-                  {currentAccount?.preferences?.timezone ||
-                    Intl.DateTimeFormat().resolvedOptions().timeZone}
+                  Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
                 </Text>
               </VStack>
             </HStack>
