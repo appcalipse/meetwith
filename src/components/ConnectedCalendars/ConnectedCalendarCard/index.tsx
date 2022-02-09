@@ -102,9 +102,9 @@ const ConnectedCalendarCard: React.FC<{
           disabled={isUpdating}
         ></Switch>
         <Text color={textColor}>
-          {isUpdating ? <Spinner /> : false}Add new meet with wallet events to
-          this calendar
+          Add new meet with wallet events to this calendar
         </Text>
+        {isUpdating ? <Spinner /> : false}
       </HStack>
     </Stack>
   )

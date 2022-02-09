@@ -10,8 +10,6 @@ import {
 } from '@chakra-ui/react'
 import { useRef, useState } from 'react'
 
-import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
-
 interface DisconnectCalendarProps {
   isOpen: boolean
   onClose: () => void

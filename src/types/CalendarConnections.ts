@@ -35,3 +35,12 @@ export interface ConnectedCalendar extends ConnectedCalendarCorePayload {
   updated?: Date
   created: Date
 }
+
+export type NewCalendarEventType = {
+  uid: string
+  id: string
+  type: string
+  password: string
+  url: string
+  additionalInfo: Record<string, any>
+}
