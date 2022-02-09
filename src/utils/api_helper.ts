@@ -139,6 +139,25 @@ export const getMeetings = async (
   }))
 }
 
+export const getBusySlots = async (
+  accountIdentifier: string,
+  start?: Date,
+  end?: Date,
+  limit?: number,
+  offset?: number
+): Promise<DBSlot[]> => {
+  const response = (await internalFetch(
+    `/meetings/busy/${accountIdentifier}?limit=${limit || undefined}&offset=${
+      offset || 0
+    }&start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`
+  )) as DBSlot[]
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
+
 export const getMeetingsForDashboard = async (
   accountIdentifier: string,
   end: Date,

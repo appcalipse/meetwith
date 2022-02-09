@@ -1,20 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { Account } from '../../../../types/Account'
-import {
-  DBSlotEnhanced,
-  MeetingDecrypted,
-  ParticipantType,
-} from '../../../../types/Meeting'
+import { MeetingDecrypted, ParticipantType } from '../../../../types/Meeting'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { decryptMeeting } from '../../../../utils/calendar_manager'
 import {
-  addOrUpdateConnectedCalendar,
-  changeConnectedCalendarSync,
   getAccountFromDB,
   getConnectedCalendars,
   getMeetingFromDB,
-  removeConnectedCalendar,
 } from '../../../../utils/database'
 import { getConnectedCalendarIntegration } from '../../../../utils/services/connected_calendars_factory'
 
@@ -34,6 +27,8 @@ const syncCalendarsIfNeeded = async (
         calendar.provider,
         calendar.payload
       )
+
+      // TODO: should I use browser timezone?
       await integration.createEvent(meeting)
     }
   }
@@ -44,7 +39,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     // sanity check
     if (!req.session.account) {
       res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
-      console.error('BAG')
       return
     }
 

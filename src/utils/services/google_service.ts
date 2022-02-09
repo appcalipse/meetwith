@@ -16,9 +16,18 @@ export interface Calendar {
   createEvent(event: MeetingDecrypted): Promise<NewCalendarEventType>
 }
 
+export interface IntegrationCalendar {
+  externalId: string
+  integration: string
+  name: string
+  primary: boolean
+}
+
+export type EventBusyDate = Record<'start' | 'end', Date | string>
+
 export default class GoogleCalendarService implements Calendar {
   private url = ''
-  private integrationName = ''
+  private integrationName = ConnectedCalendarProvider.GOOGLE
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
 
   constructor(
@@ -26,7 +35,6 @@ export default class GoogleCalendarService implements Calendar {
     email: string,
     credential: Auth.Credentials | string
   ) {
-    this.integrationName = ConnectedCalendarProvider.GOOGLE
     this.auth = this.googleAuth(
       address,
       email,
@@ -95,11 +103,11 @@ export default class GoogleCalendarService implements Calendar {
           description: event.content || 'A meeting description', // TODO: implement
           start: {
             dateTime: new Date(event.start).toISOString(),
-            timeZone: 'UTC', // TODO: implement
+            timeZone: 'UTC',
           },
           end: {
             dateTime: new Date(event.end).toISOString(),
-            timeZone: 'UTC', // TODO: implement
+            timeZone: 'UTC',
           },
           attendees: [], // TODO: implement
           reminders: {
@@ -236,100 +244,108 @@ export default class GoogleCalendarService implements Calendar {
   //     // );
   //   }
 
-  //   async getAvailability(
-  //     dateFrom: string,
-  //     dateTo: string,
-  //     selectedCalendars: IntegrationCalendar[]
-  //   ): Promise<EventBusyDate[]> {
-  //     // return new Promise((resolve, reject) =>
-  //     //   this.auth.getToken().then((myGoogleAuth) => {
-  //     //     const calendar = google.calendar({
-  //     //       version: "v3",
-  //     //       auth: myGoogleAuth,
-  //     //     });
-  //     //     const selectedCalendarIds = selectedCalendars
-  //     //       .filter((e) => e.integration === this.integrationName)
-  //     //       .map((e) => e.externalId);
-  //     //     if (selectedCalendarIds.length === 0 && selectedCalendars.length > 0) {
-  //     //       // Only calendars of other integrations selected
-  //     //       resolve([]);
-  //     //       return;
-  //     //     }
+  async getAvailability(
+    dateFrom: string,
+    dateTo: string,
+    selectedCalendars: IntegrationCalendar[]
+  ): Promise<EventBusyDate[]> {
+    return new Promise((resolve, reject) =>
+      this.auth.getToken().then(myGoogleAuth => {
+        const calendar = google.calendar({
+          version: 'v3',
+          auth: myGoogleAuth,
+        })
+        const selectedCalendarIds = selectedCalendars
+          .filter(e => e.integration === this.integrationName)
+          .map(e => e.externalId)
+        if (selectedCalendarIds.length === 0 && selectedCalendars.length > 0) {
+          // Only calendars of other integrations selected
+          resolve([])
+          return
+        }
 
-  //     //     (selectedCalendarIds.length === 0
-  //     //       ? calendar.calendarList
-  //     //           .list()
-  //     //           .then((cals) => cals.data.items?.map((cal) => cal.id).filter(Boolean) || [])
-  //     //       : Promise.resolve(selectedCalendarIds)
-  //     //     )
-  //     //       .then((calsIds) => {
-  //     //         calendar.freebusy.query(
-  //     //           {
-  //     //             requestBody: {
-  //     //               timeMin: dateFrom,
-  //     //               timeMax: dateTo,
-  //     //               items: calsIds.map((id) => ({ id: id })),
-  //     //             },
-  //     //           },
-  //     //           (err, apires) => {
-  //     //             if (err) {
-  //     //               reject(err);
-  //     //             }
-  //     //             let result: Prisma.PromiseReturnType<CalendarService["getAvailability"]> = [];
+        ;(selectedCalendarIds.length === 0
+          ? calendar.calendarList
+              .list()
+              .then(
+                cals =>
+                  cals.data.items?.map(cal => cal.id).filter(Boolean) || []
+              )
+          : Promise.resolve(selectedCalendarIds)
+        )
+          .then(calsIds => {
+            calendar.freebusy.query(
+              {
+                requestBody: {
+                  timeMin: dateFrom,
+                  timeMax: dateTo,
+                  items: calsIds.map(id => ({ id: id })),
+                },
+              },
+              (err, apires) => {
+                if (err) {
+                  reject(err)
+                }
+                let result: any = []
 
-  //     //             if (apires?.data.calendars) {
-  //     //               result = Object.values(apires.data.calendars).reduce((c, i) => {
-  //     //                 i.busy?.forEach((busyTime) => {
-  //     //                   c.push({
-  //     //                     start: busyTime.start || "",
-  //     //                     end: busyTime.end || "",
-  //     //                   });
-  //     //                 });
-  //     //                 return c;
-  //     //               }, [] as typeof result);
-  //     //             }
-  //     //             resolve(result);
-  //     //           }
-  //     //         );
-  //     //       })
-  //     //       .catch((err) => {
-  //     //         this.log.error("There was an error contacting google calendar service: ", err);
+                if (apires?.data.calendars) {
+                  result = Object.values(apires.data.calendars).reduce(
+                    (c, i) => {
+                      i.busy?.forEach(busyTime => {
+                        c.push({
+                          start: busyTime.start || '',
+                          end: busyTime.end || '',
+                        })
+                      })
+                      return c
+                    },
+                    [] as typeof result
+                  )
+                }
+                resolve(result)
+              }
+            )
+          })
+          .catch(err => {
+            Sentry.captureException(err)
+            reject(err)
+          })
+      })
+    )
+  }
 
-  //     //         reject(err);
-  //     //       });
-  //     //   })
-  //     // );
-  //   }
+  async listCalendars(): Promise<IntegrationCalendar[]> {
+    return new Promise((resolve, reject) =>
+      this.auth.getToken().then(myGoogleAuth => {
+        const calendar = google.calendar({
+          version: 'v3',
+          auth: myGoogleAuth,
+        })
 
-  //   async listCalendars(): Promise<IntegrationCalendar[]> {
-  //     // return new Promise((resolve, reject) =>
-  //     //   this.auth.getToken().then((myGoogleAuth) => {
-  //     //     const calendar = google.calendar({
-  //     //       version: "v3",
-  //     //       auth: myGoogleAuth,
-  //     //     });
-
-  //     //     calendar.calendarList
-  //     //       .list()
-  //     //       .then((cals) => {
-  //     //         resolve(
-  //     //           cals.data.items?.map((cal) => {
-  //     //             const calendar: IntegrationCalendar = {
-  //     //               externalId: cal.id ?? "No id",
-  //     //               integration: this.integrationName,
-  //     //               name: cal.summary ?? "No name",
-  //     //               primary: cal.primary ?? false,
-  //     //             };
-  //     //             return calendar;
-  //     //           }) || []
-  //     //         );
-  //     //       })
-  //     //       .catch((err: Error) => {
-  //     //         this.log.error("There was an error contacting google calendar service: ", err);
-
-  //     //         reject(err);
-  //     //       });
-  //     //   })
-  //     // );
-  //   }
+        calendar.calendarList
+          .list()
+          .then(cals => {
+            const calends =
+              cals.data.items?.map(cal => {
+                const calendar: IntegrationCalendar = {
+                  externalId: cal.id ?? 'No id',
+                  integration: this.integrationName,
+                  name: cal.summary ?? 'No name',
+                  primary: cal.primary ?? false,
+                }
+                return calendar
+              }) || []
+            console.log(
+              'calendars',
+              calends.filter(it => it.primary)
+            )
+            resolve(calends.filter(it => it.primary))
+          })
+          .catch((err: Error) => {
+            Sentry.captureException(err)
+            reject(err)
+          })
+      })
+    )
+  }
 }
