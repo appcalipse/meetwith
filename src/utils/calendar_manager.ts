@@ -161,12 +161,10 @@ const scheduleMeeting = async (
 
     // now that we have successfully created the event, then we will try to
     // intergate with the external calendars that the user has
-    console.log('CREATING', slot.id!)
     await syncExternalCalendars(slot.id!)
 
     return await decryptMeeting(slot, schedulerAccount)
   } else {
-    console.error('NO TIME AVAILABLE')
     throw new TimeNotAvailableError()
   }
 }

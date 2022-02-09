@@ -28,7 +28,6 @@ const syncCalendarsIfNeeded = async (
         calendar.payload
       )
 
-      // TODO: should I use browser timezone?
       await integration.createEvent(meeting)
     }
   }

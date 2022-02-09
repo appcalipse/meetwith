@@ -52,12 +52,11 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
             calendar.payload
           )
 
-          // TODO: should I use browser timezone?
-          const googleCalendars = await integration.listCalendars()
+          // const googleCalendars = await integration.listCalendars()
           const externalSlots = await integration.getAvailability(
             startDate!.toISOString(),
             endDate!.toISOString(),
-            googleCalendars
+            'primary'
           )
           busySlots.push(
             ...externalSlots.map(it => ({
