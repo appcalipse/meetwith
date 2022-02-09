@@ -531,12 +531,19 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
 }
 
 const getConnectedCalendars = async (
-  address: string
+  address: string,
+  syncOnly?: boolean
 ): Promise<ConnectedCalendar[]> => {
-  const { data, error } = await db.supabase
+  const query = db.supabase
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
+
+  if (syncOnly) {
+    query.eq('sync', true)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     Sentry.captureException(error)
@@ -604,11 +611,12 @@ const changeConnectedCalendarSync = async (
   address: string,
   email: string,
   provider: ConnectedCalendarProvider,
-  sync: boolean
+  sync?: boolean,
+  payload?: ConnectedCalendarCorePayload['payload']
 ): Promise<ConnectedCalendar> => {
   const { data, error } = await db.supabase
     .from('connected_calendars')
-    .update({ sync, updated: new Date() })
+    .update({ sync, payload, updated: new Date() })
     .eq('account_address', address.toLowerCase())
     .eq('email', email.toLowerCase())
     .eq('provider', provider)

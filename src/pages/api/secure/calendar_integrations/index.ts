@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import {
+  addOrUpdateConnectedCalendar,
   changeConnectedCalendarSync,
   getConnectedCalendars,
   removeConnectedCalendar,
@@ -15,7 +16,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return
     }
 
-    const calendars = await getConnectedCalendars(req.session.account!.address)
+    const { syncOnly } = req.query
+
+    const calendars = await getConnectedCalendars(
+      req.session.account!.address,
+      syncOnly === 'true'
+    )
     res.status(200).json(
       calendars.map(it => ({
         provider: it.provider,
@@ -28,12 +34,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     await removeConnectedCalendar(req.session.account!.address, email, provider)
     res.status(200).json({})
   } else if (req.method === 'PUT') {
-    const { email, provider, sync } = req.body
+    const { email, provider, sync, payload } = req.body
     await changeConnectedCalendarSync(
       req.session.account!.address,
       email,
       provider,
-      sync
+      sync,
+      payload
     )
     res.status(200).json({})
   }

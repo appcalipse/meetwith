@@ -4,10 +4,11 @@ import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
 import {
   ConnectedCalendarCore,
+  ConnectedCalendarCorePayload,
   ConnectedCalendarProvider,
   ConnectResponse,
 } from '../types/CalendarConnections'
-import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
+import { DBSlot, DBSlotEnhanced, MeetingDecrypted } from '../types/Meeting'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
 import { getCurrentAccount, getSignature } from './storage'
@@ -237,11 +238,11 @@ export const signup = async (
   })) as Account
 }
 
-export const listConnectedCalendars = async (): Promise<
-  ConnectedCalendarCore[]
-> => {
+export const listConnectedCalendars = async (
+  syncOnly?: boolean
+): Promise<ConnectedCalendarCore[]> => {
   return (await internalFetch(
-    `/secure/calendar_integrations`
+    `/secure/calendar_integrations?syncOnly=${syncOnly ? 'true' : 'false'}`
   )) as ConnectedCalendarCore[]
 }
 
@@ -264,5 +265,25 @@ export const updateConnectedCalendarSync = async (
     email,
     provider,
     sync,
+  })) as ConnectedCalendarCore[]
+}
+
+export const updateConnectedCalendarPayload = async (
+  email: string,
+  provider: ConnectedCalendarProvider,
+  payload: ConnectedCalendarCorePayload['payload']
+): Promise<ConnectedCalendarCore[]> => {
+  return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
+    email,
+    provider,
+    payload,
+  })) as ConnectedCalendarCore[]
+}
+
+export const syncExternalCalendars = async (
+  meetingId: MeetingDecrypted['id']
+): Promise<ConnectedCalendarCore[]> => {
+  return (await internalFetch(`/secure/calendar_integrations/sync`, 'POST', {
+    meetingId,
   })) as ConnectedCalendarCore[]
 }

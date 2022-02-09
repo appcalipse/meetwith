@@ -85,7 +85,7 @@ const ConnectCalendar = () => {
         <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
         <HStack pt={8}>
           <Text mb={10} fontSize="lg">
-            You didn&apos;t connect any callendar yet
+            You haven&apos;t connected any callendar yet
           </Text>
         </HStack>
         <Text>

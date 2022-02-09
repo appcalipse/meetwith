@@ -40,6 +40,8 @@ import {
   getAccount,
   getExistingAccounts,
   isSlotFree,
+  listConnectedCalendars,
+  syncExternalCalendars,
 } from './api_helper'
 import { appUrl } from './constants'
 import { decryptContent } from './cryptography'
@@ -157,8 +159,14 @@ const scheduleMeeting = async (
 
     const schedulerAccount = await getAccount(source_account_address)
 
+    // now that we have successfully created the event, then we will try to
+    // intergate with the external calendars that the user has
+    console.log('CREATING', slot.id!)
+    await syncExternalCalendars(slot.id!)
+
     return await decryptMeeting(slot, schedulerAccount)
   } else {
+    console.error('NO TIME AVAILABLE')
     throw new TimeNotAvailableError()
   }
 }
@@ -224,12 +232,13 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
 
 const decryptMeeting = async (
   meeting: DBSlotEnhanced,
-  account: Account
+  account: Account,
+  signature?: string
 ): Promise<MeetingDecrypted> => {
   const meetingInfo = JSON.parse(
     await getContentFromEncrypted(
       account,
-      getSignature(account.address)!,
+      signature || getSignature(account.address)!,
       meeting.meeting_info_encrypted
     )
   ) as IPFSMeetingInfo
