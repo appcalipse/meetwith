@@ -16,9 +16,7 @@ const syncCalendarsIfNeeded = async (
   meeting: MeetingDecrypted
 ) => {
   const account = await getAccountFromDB(address)
-  // TODO: check if the account is pro
-  const isPro = true
-  if (isPro) {
+  if (account.is_pro) {
     const calendars = await getConnectedCalendars(address, true)
     for (const calendar of calendars) {
       const integration = getConnectedCalendarIntegration(

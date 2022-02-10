@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { TimeSlot } from '../../../../types/Meeting'
 import {
+  getAccountFromDB,
   getConnectedCalendars,
   getSlotsForAccount,
   initDB,
@@ -41,9 +42,8 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
         ...meetings.map(it => ({ start: it.start, end: it.end, source: 'mww' }))
       )
 
-      // TODO: review this
-      const isPro = true
-      if (isPro) {
+      const account = await getAccountFromDB(address)
+      if (account.is_pro) {
         const calendars = await getConnectedCalendars(address, true)
         for (const calendar of calendars) {
           const integration = getConnectedCalendarIntegration(
