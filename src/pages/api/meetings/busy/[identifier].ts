@@ -41,6 +41,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
         ...meetings.map(it => ({ start: it.start, end: it.end, source: 'mww' }))
       )
 
+      // TODO: review this
       const isPro = true
       if (isPro) {
         const calendars = await getConnectedCalendars(address, true)
@@ -52,7 +53,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
             calendar.payload
           )
 
-          // const googleCalendars = await integration.listCalendars()
           const externalSlots = await integration.getAvailability(
             startDate!.toISOString(),
             endDate!.toISOString(),
