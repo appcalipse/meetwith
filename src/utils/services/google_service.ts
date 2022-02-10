@@ -6,13 +6,17 @@ import {
   ConnectedCalendarProvider,
   NewCalendarEventType,
 } from '../../types/CalendarConnections'
-import { DBSlot, MeetingDecrypted } from '../../types/Meeting'
+import { MeetingDecrypted } from '../../types/Meeting'
 import { apiUrl } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
+import { ellipsizeAddress } from '../user_manager'
 import { MWWGoogleAuth } from './google_auth'
 
 export interface Calendar {
-  createEvent(event: MeetingDecrypted): Promise<NewCalendarEventType>
+  createEvent(
+    owner: string,
+    event: MeetingDecrypted
+  ): Promise<NewCalendarEventType>
 }
 
 export interface IntegrationCalendar {
@@ -92,12 +96,26 @@ export default class GoogleCalendarService implements Calendar {
     }
   }
 
-  async createEvent(event: MeetingDecrypted): Promise<NewCalendarEventType> {
+  async createEvent(
+    owner: string,
+    event: MeetingDecrypted
+  ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
+        const otherParticipants = [
+          event.participants
+            ?.filter(it => it.account_address !== owner)
+            .map(it => ellipsizeAddress(it.account_address)),
+        ]
         const payload: calendar_v3.Schema$Event = {
-          summary: 'Meet With Wallet Scheduled Event', // TODO: implement
-          description: event.content || 'A meeting description', // TODO: implement
+          summary: `Meet with ${
+            otherParticipants.length
+              ? otherParticipants.join(', ')
+              : 'other participants'
+          }`,
+          description: `${
+            event.content ? event.content + '\n' : ''
+          }Your meeting will happen on ${event.meeting_url}`,
           start: {
             dateTime: new Date(event.start).toISOString(),
             timeZone: 'UTC',
@@ -106,21 +124,21 @@ export default class GoogleCalendarService implements Calendar {
             dateTime: new Date(event.end).toISOString(),
             timeZone: 'UTC',
           },
-          attendees: [], // TODO: implement
+          attendees: [],
           reminders: {
             useDefault: false,
             overrides: [{ method: 'email', minutes: 10 }],
           },
+          // https://lukeboyle.com/blog/posts/google-calendar-api-color-id
+          colorId: '8',
+          creator: {
+            displayName: 'Meet With Wallet',
+          },
         }
 
-        // is this required?
         if (event.meeting_url) {
-          payload['location'] = event.meeting_url
+          payload['location'] = 'Online @ Meet With Wallet'
         }
-
-        // if (event.meeting_url) {
-        //   payload["conferenceData"] = event.mee;
-        // }
 
         const calendar = google.calendar({
           version: 'v3',
