@@ -11,9 +11,10 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
+import { AccountContext } from '../../providers/AccountProvider'
 import {
   ConnectedCalendar,
   ConnectedCalendarCore,
@@ -34,6 +35,8 @@ const ConnectCalendar = () => {
   const [calendarConnections, setCalendarConnections] = useState<
     ConnectedCalendarCore[]
   >([])
+
+  const { currentAccount } = useContext(AccountContext)
 
   const loadCalendars = async () => {
     setLoading(true)
@@ -74,12 +77,10 @@ const ConnectCalendar = () => {
   }
 
   const { isOpen, onOpen, onClose } = useDisclosure()
-  // TODO: implement this
-  const isPro = true
   const textColor = useColorModeValue('gray.700', 'gray.300')
   let content
 
-  if (!isPro) {
+  if (!currentAccount?.is_pro) {
     content = (
       <VStack>
         <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
@@ -102,7 +103,7 @@ const ConnectCalendar = () => {
         </Text>
       </VStack>
     )
-  } else if (isPro) {
+  } else if (currentAccount.is_pro) {
     if (firstFetch) {
       content = (
         <VStack alignItems="center">
@@ -176,7 +177,7 @@ const ConnectCalendar = () => {
         mt={4}
         alignSelf="flex-start"
         leftIcon={<FaPlus />}
-        disabled={!isPro}
+        disabled={!currentAccount?.is_pro}
       >
         Add calendar connection
       </Button>
