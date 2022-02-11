@@ -9,6 +9,10 @@ const getAccountUrl = async (req: NextApiRequest, res: NextApiResponse) => {
     const { identifier } = req.query
     try {
       const account = await getAccountFromDB(identifier as string)
+      if (account.is_invited) {
+        res.status(404).send('Not found')
+        return
+      }
       res.status(200).json({ calendar_url: getAccountCalendarUrl(account) })
     } catch (e) {
       res.status(404).send('Not found')
