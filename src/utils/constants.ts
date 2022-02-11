@@ -1,14 +1,14 @@
 const apiUrl =
   process.env.NEXT_PUBLIC_ENV !== 'production'
     ? process.env.NEXT_PUBLIC_ENV !== 'development'
-      ? 'http://localhost:3000/api'
+      ? 'http://localhost:3001/api'
       : 'https://meet-with-wallet-git-develop-appcalipse.vercel.app/api'
     : 'https://meetwithwallet.xyz/api'
 const isProduction = process.env.NEXT_PUBLIC_ENV === 'production'
 const appUrl =
   process.env.NEXT_PUBLIC_ENV !== 'production'
     ? process.env.NEXT_PUBLIC_ENV !== 'development'
-      ? 'http://localhost:3000/'
+      ? 'http://localhost:3001/'
       : 'https://meet-with-wallet-git-develop-appcalipse.vercel.app/'
     : 'https://meetwithwallet.xyz/'
 
