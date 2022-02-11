@@ -8,6 +8,7 @@ import {
   getAccountNotificationSubscriptions,
 } from './database'
 import { newMeetingEmail } from './email_helper'
+import { sendEPNSNotification } from './epns_helper'
 
 export interface ParticipantInfoForNotification {
   address: string
@@ -38,17 +39,20 @@ export const notifyForNewMeeting = async (
   for (let i = 0; i < participants.length; i++) {
     const participant = participants[i]
 
-    if (participant.subscriptions.notification_types.length > 0) {
-      for (
-        let j = 0;
-        j < participant.subscriptions.notification_types.length;
-        j++
-      ) {
-        const notification_type =
-          participant.subscriptions.notification_types[j]
-        switch (notification_type.channel) {
-          case NotificationChannel.EMAIL:
-            if (participant.type === ParticipantType.Owner) {
+    if (
+      participant.type === ParticipantType.Owner ||
+      participant.type === ParticipantType.Invitee
+    ) {
+      if (participant.subscriptions.notification_types.length > 0) {
+        for (
+          let j = 0;
+          j < participant.subscriptions.notification_types.length;
+          j++
+        ) {
+          const notification_type =
+            participant.subscriptions.notification_types[j]
+          switch (notification_type.channel) {
+            case NotificationChannel.EMAIL:
               await newMeetingEmail(
                 notification_type.destination,
                 participants.map(participant => participant.address),
@@ -56,9 +60,20 @@ export const notifyForNewMeeting = async (
                 new Date(meeting.start),
                 new Date(meeting.end)
               )
-            }
-            break
-          default:
+              break
+            case NotificationChannel.EPNS:
+              if (participant.type === ParticipantType.Owner) {
+                await sendEPNSNotification(
+                  [notification_type.destination],
+                  participants
+                    .map(participant => participant.address)
+                    .join(', '),
+                  'new meeting'
+                )
+              }
+              break
+            default:
+          }
         }
       }
     }
