@@ -13,7 +13,7 @@ import { useLogin } from '../../session/login'
 import { Account, MeetingType } from '../../types/Account'
 import { DBSlot, MeetingDecrypted } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
-import { getAccount, getMeetings } from '../../utils/api_helper'
+import { getAccount, getBusySlots, getMeetings } from '../../utils/api_helper'
 import {
   durationToHumanReadable,
   isSlotAvailable,
@@ -180,7 +180,7 @@ const PublicCalendar: React.FC = () => {
     const monthStart = startOfMonth(currentMonth)
     const monthEnd = endOfMonth(currentMonth)
 
-    const meetings = await getMeetings(identifier, monthStart, monthEnd)
+    const meetings = await getBusySlots(identifier, monthStart, monthEnd)
 
     setMeetings(meetings)
   }

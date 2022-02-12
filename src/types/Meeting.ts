@@ -26,11 +26,14 @@ export interface CreationRequestParticipantMapping {
   privateInfo: Encrypted
 }
 
-export interface DBSlot {
-  id?: string
-  created_at?: Date
+export interface TimeSlot {
   start: Date
   end: Date
+}
+
+export interface DBSlot extends TimeSlot {
+  id?: string
+  created_at?: Date
   account_pub_key: string
   meeting_info_file_path: string
 }

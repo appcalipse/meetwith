@@ -1,18 +1,32 @@
+import { Auth } from 'googleapis'
+import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
+
 export interface ConnectResponse {
   url: string
 }
 
 export enum ConnectedCalendarProvider {
-  GOOGLE = 'google',
-  APPLE = 'apple',
+  GOOGLE = 'Google',
+  ICLOUD = 'iCloud',
+  OUTLOOK = 'Outlook',
+  OFFICE = 'Office 365',
 }
 
-export interface ConnectedCalendarCorePayload {
+export const ConnectedCalendarIcons = {
+  [ConnectedCalendarProvider.GOOGLE]: FaGoogle,
+  [ConnectedCalendarProvider.ICLOUD]: FaApple,
+  [ConnectedCalendarProvider.OFFICE]: FaMicrosoft,
+  [ConnectedCalendarProvider.OUTLOOK]: FaMicrosoft,
+}
+
+export interface ConnectedCalendarCore {
   provider: ConnectedCalendarProvider
   email: string
   sync: boolean
-  token: string
-  refresh_token: string
+}
+
+export interface ConnectedCalendarCorePayload extends ConnectedCalendarCore {
+  payload: Auth.Credentials
 }
 
 export interface ConnectedCalendar extends ConnectedCalendarCorePayload {
@@ -20,4 +34,13 @@ export interface ConnectedCalendar extends ConnectedCalendarCorePayload {
   account_address: string
   updated?: Date
   created: Date
+}
+
+export type NewCalendarEventType = {
+  uid: string
+  id: string
+  type: string
+  password: string
+  url: string
+  additionalInfo: Record<string, any>
 }
