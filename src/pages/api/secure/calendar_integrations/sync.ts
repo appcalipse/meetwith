@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { Account } from '../../../../types/Account'
 import { MeetingDecrypted, ParticipantType } from '../../../../types/Meeting'
+import { isProAccount } from '../../../../types/Subscription'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { decryptMeeting } from '../../../../utils/calendar_manager'
 import {
@@ -16,7 +17,7 @@ const syncCalendarsIfNeeded = async (
   meeting: MeetingDecrypted
 ) => {
   const account = await getAccountFromDB(address)
-  if (account.is_pro) {
+  if (isProAccount(account)) {
     const calendars = await getConnectedCalendars(address, true)
     for (const calendar of calendars) {
       const integration = getConnectedCalendarIntegration(

@@ -29,10 +29,8 @@ import {
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
-import {
-  getAccountCalendarUrl,
-  getEmbedCode,
-} from '../../utils/calendar_manager'
+import { syncSubscriptions } from '../../utils/api_helper'
+import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import AvailabilityConfig from '../availabilities/availability-config'
 import IPFSLink from '../IPFSLink'
@@ -182,7 +180,6 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
   const accountUrl = getAccountCalendarUrl(currentAccount!, false)
-  // For showing embedded calendar version: const embedCode = getEmbedCode(currentAccount!, false)
 
   const menuClicked = (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })

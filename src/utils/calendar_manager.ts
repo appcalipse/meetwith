@@ -17,12 +17,7 @@ import {
 } from 'eth-crypto'
 import { v4 as uuidv4 } from 'uuid'
 
-import {
-  Account,
-  DayAvailability,
-  MeetingType,
-  PremiumAccount,
-} from '../types/Account'
+import { Account, DayAvailability, MeetingType } from '../types/Account'
 import {
   CreationRequestParticipantMapping,
   DBSlot,
@@ -34,6 +29,7 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '../types/Meeting'
+import { isProAccount, Plans } from '../types/Subscription'
 import { logEvent } from './analytics'
 import {
   createMeeting,
@@ -369,23 +365,14 @@ const durationToHumanReadable = (duration: number): string => {
 }
 
 const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
-  if ((account as PremiumAccount).calendar_url) {
-    return `${appUrl}${(account as PremiumAccount).calendar_url}`
+  if (isProAccount(account)) {
+    return `${appUrl}${
+      account.subscriptions.filter(sub => sub.plan_id === Plans.PRO)[0].domain
+    }`
   }
   return `${appUrl}address/${
     ellipsize ? getAccountDisplayName(account) : account!.address
   }`
-}
-
-const getEmbedCode = (account: Account, ellipsize?: boolean) => {
-  if ((account as PremiumAccount).calendar_url) {
-    return `<iframe src="${appUrl}embed/${
-      (account as PremiumAccount).calendar_url
-    }"></iframe>`
-  }
-  return `<iframe src="${appUrl}embed/${
-    ellipsize ? getAccountDisplayName(account) : account!.address
-  }"></iframe>`
 }
 
 const generateDefaultMeetingType = (): MeetingType => {
@@ -424,7 +411,6 @@ export {
   generateDefaultMeetingType,
   generateIcs,
   getAccountCalendarUrl,
-  getEmbedCode,
   isSlotAvailable,
   isTimeInsideAvailabilities,
   scheduleMeeting,

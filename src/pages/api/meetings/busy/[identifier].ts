@@ -2,6 +2,7 @@ import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { TimeSlot } from '../../../../types/Meeting'
+import { isProAccount } from '../../../../types/Subscription'
 import {
   getAccountFromDB,
   getConnectedCalendars,
@@ -43,7 +44,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       )
 
       const account = await getAccountFromDB(address)
-      if (account.is_pro) {
+      if (isProAccount(account)) {
         const calendars = await getConnectedCalendars(address, true)
         for (const calendar of calendars) {
           const integration = getConnectedCalendarIntegration(

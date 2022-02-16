@@ -11,6 +11,7 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
+  MeetingType,
   SimpleAccountInfo,
 } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
@@ -25,6 +26,7 @@ import {
   MeetingCreationRequest,
   ParticipantType,
 } from '../types/Meeting'
+import { Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
   MeetingCreationError,
@@ -260,6 +262,10 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
       account.preferences_path
     )) as AccountPreferences
 
+    account.subscriptions = await getSubscriptionFromDBForAccount(
+      account.address
+    )
+
     return account
   } else {
     Sentry.captureException(error)
@@ -333,7 +339,7 @@ const isSlotFree = async (
   const account = await getAccountFromDB(account_address)
 
   const minTime = account.preferences?.availableTypes.filter(
-    mt => mt.id === meetingTypeId
+    (mt: MeetingType) => mt.id === meetingTypeId
   )
 
   if (minTime && minTime.length > 0) {
@@ -645,6 +651,42 @@ const removeConnectedCalendar = async (
   }
 
   return data as ConnectedCalendar
+}
+
+export const getSubscriptionFromDBForAccount = async (
+  accountAddress: string
+): Promise<Subscription[]> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select()
+    .eq('owner_account', accountAddress.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  if (data) {
+    return data as Subscription[]
+  }
+  return []
+}
+
+export const updateAccountSubscriptions = async (
+  subscriptions: Subscription[]
+): Promise<Subscription[]> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .upsert(subscriptions, { onConflict: 'domain' })
+
+  if (error) {
+    console.log(error)
+    Sentry.captureException(error)
+  }
+
+  if (data) {
+    return data as Subscription[]
+  }
+  return []
 }
 
 export {
