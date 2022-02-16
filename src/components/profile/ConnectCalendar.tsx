@@ -16,11 +16,11 @@ import { FaPlus } from 'react-icons/fa'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import {
-  ConnectedCalendar,
   ConnectedCalendarCore,
   ConnectedCalendarIcons,
   ConnectedCalendarProvider,
 } from '../../types/CalendarConnections'
+import { isProAccount } from '../../types/Subscription'
 import {
   deleteConnectedCalendar,
   getGoogleAuthConnectUrl,
@@ -80,13 +80,15 @@ const ConnectCalendar = () => {
   const textColor = useColorModeValue('gray.700', 'gray.300')
   let content
 
-  if (!currentAccount?.is_pro) {
+  const proAccount = isProAccount(currentAccount!)
+
+  if (!proAccount) {
     content = (
       <VStack>
         <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
         <HStack pt={8}>
           <Text mb={10} fontSize="lg">
-            You haven&apos;t connected any callendar yet
+            You haven&apos;t connected any calendar yet
           </Text>
         </HStack>
         <Text>
@@ -103,7 +105,7 @@ const ConnectCalendar = () => {
         </Text>
       </VStack>
     )
-  } else if (currentAccount.is_pro) {
+  } else {
     if (firstFetch) {
       content = (
         <VStack alignItems="center">
@@ -127,7 +129,7 @@ const ConnectCalendar = () => {
             alt="Loading..."
           />
           <HStack pt={8}>
-            <Text fontSize="lg">You didn&apos;t connect any callendar yet</Text>
+            <Text fontSize="lg">You didn&apos;t connect any calendar yet</Text>
           </HStack>
         </VStack>
       )
@@ -177,7 +179,7 @@ const ConnectCalendar = () => {
         mt={4}
         alignSelf="flex-start"
         leftIcon={<FaPlus />}
-        disabled={!currentAccount?.is_pro}
+        disabled={!proAccount}
       >
         Add calendar connection
       </Button>
