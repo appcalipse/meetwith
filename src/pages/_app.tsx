@@ -68,7 +68,8 @@ function MyApp({
         >
           <Head>
             <title>
-              Meeting scheduler for #web3 - Meet with Wallet - meetwthwallet.xyz
+              Meeting scheduler for #web3 - Meet with Wallet -
+              meetwithwallet.xyz
             </title>
             <meta
               name="description"
