@@ -8,7 +8,9 @@ import {
   getAccountNotificationSubscriptions,
 } from './database'
 import { newMeetingEmail } from './email_helper'
-import { sendEPNSNotification } from './epns_helper'
+import { sendEPNSNotification } from './epns_helper_production'
+import { sendEPNSNotificationStaging } from './epns_helper_staging'
+import { ellipsizeAddress } from './user_manager'
 
 export interface ParticipantInfoForNotification {
   address: string
@@ -62,15 +64,25 @@ export const notifyForNewMeeting = async (
               )
               break
             case NotificationChannel.EPNS:
-              if (participant.type === ParticipantType.Owner) {
-                await sendEPNSNotification(
-                  [notification_type.destination],
-                  participants
-                    .map(participant => participant.address)
-                    .join(', '),
-                  'new meeting'
-                )
+              const parameters = {
+                destination_addresses: [notification_type.destination],
+                title: 'New meeting scheduled',
+                message: participants
+                  .map(participant => ellipsizeAddress(participant.address))
+                  .join(', '),
               }
+
+              process.env.NEXT_PUBLIC_ENV === 'production'
+                ? await sendEPNSNotification(
+                    parameters.destination_addresses,
+                    parameters.title,
+                    parameters.message
+                  )
+                : await sendEPNSNotificationStaging(
+                    parameters.destination_addresses,
+                    parameters.title,
+                    parameters.message
+                  )
               break
             default:
           }
