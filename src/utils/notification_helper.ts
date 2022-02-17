@@ -63,7 +63,9 @@ export const notifyForNewMeeting = async (
                 new Date(meeting.end)
               )
               break
+
             case NotificationChannel.EPNS:
+              //TODO check account is pro
               const parameters = {
                 destination_addresses: [notification_type.destination],
                 title: 'New meeting scheduled',

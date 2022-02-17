@@ -13,7 +13,10 @@ import {
   AccountPreferences,
   SimpleAccountInfo,
 } from '../types/Account'
-import { AccountNotifications } from '../types/AccountNotifications'
+import {
+  AccountNotifications,
+  NotificationChannel,
+} from '../types/AccountNotifications'
 import {
   ConnectedCalendar,
   ConnectedCalendarCorePayload,
@@ -502,6 +505,13 @@ const setAccountNotificationSubscriptions = async (
   address: string,
   notifications: AccountNotifications
 ): Promise<AccountNotifications> => {
+  // TODO - add actual pro validation
+  if (!false) {
+    notifications.notification_types = notifications.notification_types.filter(
+      n => n.channel === NotificationChannel.EMAIL
+    )
+  }
+
   const { _, error } = await db.supabase
     .from('account_notifications')
     .upsert(notifications, { onConflict: 'account_address' })
