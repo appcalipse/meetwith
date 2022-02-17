@@ -136,9 +136,14 @@ const NotificationsConfig: React.FC = () => {
           size="md"
           isChecked={epnsNotifications}
           onChange={e => setEPNSNotifications(e.target.checked)}
+          isDisabled={true}
         />
         <Text>
-          EPNS (<Link href="account">Go Pro</Link> to enable it)
+          EPNS (
+          <Link href="/dashboard/details" shallow>
+            Go Pro
+          </Link>{' '}
+          to enable it)
         </Text>
       </HStack>
       <Text>
