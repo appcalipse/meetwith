@@ -10,6 +10,7 @@ export interface Account {
   name?: string
   avatar?: string
   is_invited: boolean
+  is_pro?: boolean
 }
 
 export interface SimpleAccountInfo {

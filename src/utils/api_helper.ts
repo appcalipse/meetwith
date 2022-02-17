@@ -2,8 +2,13 @@ import * as Sentry from '@sentry/browser'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
 import { AccountNotifications } from '../types/AccountNotifications'
-import { ConnectResponse } from '../types/CalendarConnections'
-import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
+import {
+  ConnectedCalendarCore,
+  ConnectedCalendarCorePayload,
+  ConnectedCalendarProvider,
+  ConnectResponse,
+} from '../types/CalendarConnections'
+import { DBSlot, DBSlotEnhanced, MeetingDecrypted } from '../types/Meeting'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
 import { getCurrentAccount, getSignature } from './storage'
@@ -134,6 +139,25 @@ export const getMeetings = async (
   }))
 }
 
+export const getBusySlots = async (
+  accountIdentifier: string,
+  start?: Date,
+  end?: Date,
+  limit?: number,
+  offset?: number
+): Promise<DBSlot[]> => {
+  const response = (await internalFetch(
+    `/meetings/busy/${accountIdentifier}?limit=${limit || undefined}&offset=${
+      offset || 0
+    }&start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`
+  )) as DBSlot[]
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
+
 export const getMeetingsForDashboard = async (
   accountIdentifier: string,
   end: Date,
@@ -231,4 +255,54 @@ export const signup = async (
     timezone,
     nonce,
   })) as Account
+}
+
+export const listConnectedCalendars = async (
+  syncOnly?: boolean
+): Promise<ConnectedCalendarCore[]> => {
+  return (await internalFetch(
+    `/secure/calendar_integrations?syncOnly=${syncOnly ? 'true' : 'false'}`
+  )) as ConnectedCalendarCore[]
+}
+
+export const deleteConnectedCalendar = async (
+  email: string,
+  provider: ConnectedCalendarProvider
+): Promise<ConnectedCalendarCore[]> => {
+  return (await internalFetch(`/secure/calendar_integrations`, 'DELETE', {
+    email,
+    provider,
+  })) as ConnectedCalendarCore[]
+}
+
+export const updateConnectedCalendarSync = async (
+  email: string,
+  provider: ConnectedCalendarProvider,
+  sync: boolean
+): Promise<ConnectedCalendarCore[]> => {
+  return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
+    email,
+    provider,
+    sync,
+  })) as ConnectedCalendarCore[]
+}
+
+export const updateConnectedCalendarPayload = async (
+  email: string,
+  provider: ConnectedCalendarProvider,
+  payload: ConnectedCalendarCorePayload['payload']
+): Promise<ConnectedCalendarCore[]> => {
+  return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
+    email,
+    provider,
+    payload,
+  })) as ConnectedCalendarCore[]
+}
+
+export const syncExternalCalendars = async (
+  meetingId: MeetingDecrypted['id']
+): Promise<ConnectedCalendarCore[]> => {
+  return (await internalFetch(`/secure/calendar_integrations/sync`, 'POST', {
+    meetingId,
+  })) as ConnectedCalendarCore[]
 }

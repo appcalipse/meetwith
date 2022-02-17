@@ -17,6 +17,7 @@ import { AccountNotifications } from '../types/AccountNotifications'
 import {
   ConnectedCalendar,
   ConnectedCalendarCorePayload,
+  ConnectedCalendarProvider,
 } from '../types/CalendarConnections'
 import {
   DBSlot,
@@ -530,12 +531,19 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
 }
 
 const getConnectedCalendars = async (
-  address: string
+  address: string,
+  syncOnly?: boolean
 ): Promise<ConnectedCalendar[]> => {
-  const { data, error } = await db.supabase
+  const query = db.supabase
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
+
+  if (syncOnly) {
+    query.eq('sync', true)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     Sentry.captureException(error)
@@ -548,17 +556,89 @@ const getConnectedCalendars = async (
   return []
 }
 
-const addConnectedCalendar = async (
+const connectedCalendarExists = async (
+  address: string,
+  email: string,
+  provider: ConnectedCalendarProvider
+): Promise<boolean> => {
+  const { data, count, error } = await db.supabase
+    .from('connected_calendars')
+    .select('*', { count: 'exact' })
+    .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return count > 0
+}
+
+const addOrUpdateConnectedCalendar = async (
   address: string,
   payload: ConnectedCalendarCorePayload
 ): Promise<ConnectedCalendar> => {
+  const existingConnection = await connectedCalendarExists(
+    address,
+    payload.email,
+    payload.provider
+  )
+  let queryPromise
+  if (existingConnection) {
+    queryPromise = db.supabase
+      .from('connected_calendars')
+      .update({ ...payload, updated: new Date() })
+      .eq('account_address', address.toLowerCase())
+      .eq('email', payload.email.toLowerCase())
+      .eq('provider', payload.provider)
+  } else {
+    queryPromise = db.supabase
+      .from('connected_calendars')
+      .insert({ ...payload, created: new Date(), account_address: address })
+  }
+
+  const { data, error } = await queryPromise
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return data as ConnectedCalendar
+}
+
+const changeConnectedCalendarSync = async (
+  address: string,
+  email: string,
+  provider: ConnectedCalendarProvider,
+  sync?: boolean,
+  payload?: ConnectedCalendarCorePayload['payload']
+): Promise<ConnectedCalendar> => {
   const { data, error } = await db.supabase
     .from('connected_calendars')
-    .upsert(
-      { ...payload, created: new Date(), account_address: address },
-      { onConflict: 'refresh_token' }
-    )
+    .update({ sync, payload, updated: new Date() })
     .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return data as ConnectedCalendar
+}
+
+const removeConnectedCalendar = async (
+  address: string,
+  email: string,
+  provider: ConnectedCalendarProvider
+): Promise<ConnectedCalendar> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .delete()
+    .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
 
   if (error) {
     Sentry.captureException(error)
@@ -568,7 +648,9 @@ const addConnectedCalendar = async (
 }
 
 export {
-  addConnectedCalendar,
+  addOrUpdateConnectedCalendar,
+  changeConnectedCalendarSync,
+  connectedCalendarExists,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
@@ -580,6 +662,7 @@ export {
   initAccountDBForWallet,
   initDB,
   isSlotFree,
+  removeConnectedCalendar,
   saveEmailToDB,
   saveMeeting,
   setAccountNotificationSubscriptions,
