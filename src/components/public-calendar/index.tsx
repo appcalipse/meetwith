@@ -9,7 +9,6 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '../../providers/AccountProvider'
-import { useLogin } from '../../session/login'
 import { Account, MeetingType } from '../../types/Account'
 import { DBSlot, MeetingDecrypted } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
@@ -29,7 +28,9 @@ import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
 
 interface InternalSchedule {
+  scheduleType: string
   startTime: Date
+  guestEmail: string
   name?: string
   content?: string
   meetingUrl?: string
@@ -57,15 +58,15 @@ const PublicCalendar: React.FC = () => {
   useEffect(() => {
     if (logged && unloggedSchedule) {
       confirmSchedule(
+        unloggedSchedule.scheduleType,
         unloggedSchedule.startTime,
+        unloggedSchedule.guestEmail,
         unloggedSchedule.name,
         unloggedSchedule.content,
         unloggedSchedule.meetingUrl
       )
     }
   }, [currentAccount])
-
-  const { handleLogin } = useLogin()
 
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -113,18 +114,15 @@ const PublicCalendar: React.FC = () => {
   }
 
   const confirmSchedule = async (
+    scheduleType: string,
     startTime: Date,
+    guestEmail?: string,
     name?: string,
     content?: string,
     meetingUrl?: string
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
-    if (!logged) {
-      setUnloggedSchedule({ startTime, name, content, meetingUrl })
-      await handleLogin()
-      return false
-    }
 
     const start = zonedTimeToUtc(
       startTime,
@@ -135,12 +133,13 @@ const PublicCalendar: React.FC = () => {
 
     try {
       const meeting = await scheduleMeeting(
-        currentAccount!.address,
         account!.address,
         [],
         selectedType.id,
         start,
         end,
+        currentAccount?.address,
+        guestEmail,
         name,
         content,
         meetingUrl

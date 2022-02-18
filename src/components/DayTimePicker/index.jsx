@@ -1,6 +1,7 @@
 import { Button } from '@chakra-ui/button'
 import { Box } from '@chakra-ui/layout'
 import {
+  FormControl,
   FormLabel,
   HStack,
   Icon,
@@ -19,7 +20,9 @@ import React, { useState } from 'react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
 
 import { AccountContext } from '../../providers/AccountProvider'
+import { useLogin } from '../../session/login'
 import { logEvent } from '../../utils/analytics'
+import { isValidEmail } from '../../utils/validations'
 import Calendar from './calendar'
 import { Failed, Success } from './Feedback'
 import { FailedIcon, SuccessIcon } from './Icons'
@@ -43,6 +46,8 @@ function DayTimePicker({
   isSchedulingExternal,
   reset,
 }) {
+  const { handleLogin } = useLogin()
+
   const [pickedDay, setPickedDay] = useState(null)
   const [pickedTime, setPickedTime] = useState(null)
   const [showPickTime, setShowPickTime] = useState(false)
@@ -51,8 +56,10 @@ function DayTimePicker({
   const [name, setName] = useState('')
   const [isScheduling, setIsScheduling] = useState(false)
   const [customMeeting, setCustomMeeting] = useState(false)
+  const [scheduleType, setScheduleType] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
-  const { currentAccount } = React.useContext(AccountContext)
+  const { currentAccount, logged } = React.useContext(AccountContext)
 
   React.useEffect(() => {
     if (reset) {
@@ -101,7 +108,14 @@ function DayTimePicker({
       return
     }
     setIsScheduling(true)
-    const success = await onConfirm(pickedTime, name, content, meetingUrl)
+    const success = await onConfirm(
+      scheduleType,
+      pickedTime,
+      guestEmail,
+      name,
+      content,
+      meetingUrl
+    )
     setIsScheduling(false)
     willStartScheduling(!success)
   }
@@ -111,6 +125,15 @@ function DayTimePicker({
     setShowConfirm(false)
     setShowPickTime(true)
   }
+
+  const handleScheduleType = async type => {
+    setScheduleType(type)
+    if (type === 'wallet') {
+      await handleLogin()
+    }
+  }
+
+  const isEmailValid = isValidEmail(guestEmail)
 
   const color = useColorModeValue('orange.500', 'orange.400')
 
@@ -184,7 +207,7 @@ function DayTimePicker({
               <FormLabel>Your name (optional)</FormLabel>
               <Input
                 type="text"
-                disabled={isLoading || isScheduling || isSchedulingExternal}
+                disabled={isScheduling}
                 placeholder="Your name or an identifier (if you want to provide)"
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -194,7 +217,7 @@ function DayTimePicker({
               <FormLabel>Information (optional)</FormLabel>
               <Textarea
                 type="text"
-                disabled={isLoading || isScheduling || isSchedulingExternal}
+                disabled={isScheduling}
                 placeholder="Any information you want to share prior to the meeting?"
                 value={content}
                 onChange={e => setContent(e.target.value)}
@@ -205,7 +228,7 @@ function DayTimePicker({
                   colorScheme="orange"
                   size="lg"
                   mr={4}
-                  isDisabled={isLoading || isScheduling || isSchedulingExternal}
+                  isDisabled={isScheduling}
                   defaultChecked={!customMeeting}
                   onChange={e => setCustomMeeting(!e.target.checked)}
                 />
@@ -227,16 +250,52 @@ function DayTimePicker({
                   mb={4}
                   type="text"
                   placeholder="insert a custom meeting url"
-                  disabled={isLoading || isScheduling || isSchedulingExternal}
+                  disabled={isScheduling}
                   value={meetingUrl}
                   onChange={e => setMeetingUrl(e.target.value)}
                 />
               )}
 
+              {!logged && (
+                <Text textAlign="left" color="gray" mb="4">
+                  Please{' '}
+                  <Button
+                    variant="link"
+                    colorScheme="orange"
+                    onClick={() => handleScheduleType('wallet')}
+                  >
+                    sign in with wallet
+                  </Button>{' '}
+                  or{' '}
+                  <Button
+                    variant="link"
+                    colorScheme="orange"
+                    onClick={() => handleScheduleType('guest')}
+                  >
+                    schedule as guest
+                  </Button>
+                  .
+                </Text>
+              )}
+
+              {scheduleType === 'guest' && (
+                <FormControl isInvalid={!isEmailValid}>
+                  <Input
+                    autoFocus
+                    mb={4}
+                    type="email"
+                    placeholder="insert your email"
+                    disabled={isScheduling}
+                    value={guestEmail}
+                    onChange={e => setGuestEmail(e.target.value)}
+                  />
+                </FormControl>
+              )}
+
               <Button
                 isFullWidth
-                disabled={isLoading || isScheduling || isSchedulingExternal}
-                isLoading={isScheduling || isSchedulingExternal}
+                disabled={(!logged && !isEmailValid) || isScheduling}
+                isLoading={isScheduling}
                 onClick={handleConfirm}
                 colorScheme="orange"
                 mt={2}

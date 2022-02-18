@@ -3,7 +3,14 @@ import React from 'react'
 import DayTimePicker from './DayTimePicker'
 
 interface MeetSlotPickerProps {
-  onSchedule: (startTime: Date, content: string) => void
+  onSchedule: (
+    scheduleType: string,
+    startTime: Date,
+    guestEmail: string,
+    name: string,
+    content: string,
+    meetingUrl: string
+  ) => void
   timeSlotAvailability: (slot: Date) => boolean
   slotDurationInMinutes: number
   onDayChange?: (day: Date) => void

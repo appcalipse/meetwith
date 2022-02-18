@@ -60,7 +60,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           participant.type
         )
       ) {
-        tasks.push(syncCalendarsIfNeeded(participant.account_address, meeting))
+        tasks.push(syncCalendarsIfNeeded(participant.account_address!, meeting))
       }
     }
 

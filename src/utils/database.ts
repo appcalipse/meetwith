@@ -393,7 +393,7 @@ const saveMeeting = async (
   let i = 0
 
   const existingAccounts = await getExistingAccountsFromDB(
-    meeting.participants_mapping.map(p => p.account_address)
+    meeting.participants_mapping.map(p => p.account_address!)
   )
   const ownerAccount =
     meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
@@ -407,7 +407,7 @@ const saveMeeting = async (
     if (
       existingAccounts
         .map(account => account.address)
-        .includes(participant.account_address) &&
+        .includes(participant.account_address!) &&
       participant.type === ParticipantType.Owner
     ) {
       // only validate slot if meeting is being scheduled ons omeones calendar and not by itself
@@ -415,12 +415,12 @@ const saveMeeting = async (
         ownerAccount &&
         ownerAccount.account_address === participant.account_address &&
         ownerAccount.account_address !== schedulerAccount?.account_address &&
-        (await !isSlotFree(
-          participant.account_address,
+        !isSlotFree(
+          participant.account_address!,
           new Date(meeting.start),
           new Date(meeting.end),
           meeting.meetingTypeId
-        ))
+        )
       ) {
         throw new TimeNotAvailableError()
       }
@@ -431,12 +431,12 @@ const saveMeeting = async (
     if (
       existingAccounts
         .map(account => account.address)
-        .includes(participant.account_address)
+        .includes(participant.account_address!)
     ) {
-      account = await getAccountFromDB(participant.account_address)
+      account = await getAccountFromDB(participant.account_address!)
     } else {
       account = await initAccountDBForWallet(
-        participant.account_address,
+        participant.account_address!,
         '',
         'UTC',
         0,

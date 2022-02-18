@@ -10,6 +10,7 @@ export enum ParticipantType {
   Scheduler = 'scheduler',
   Owner = 'owner',
   Invitee = 'invitee',
+  Guest = 'guest',
 }
 
 export interface MeetingCreationRequest {
@@ -20,7 +21,8 @@ export interface MeetingCreationRequest {
 }
 
 export interface CreationRequestParticipantMapping {
-  account_address: string
+  account_address?: string
+  email?: string
   slot_id: string
   type: ParticipantType
   privateInfo: Encrypted
@@ -43,7 +45,7 @@ export interface DBSlotEnhanced extends DBSlot {
 }
 
 export interface ParticipantBaseInfo {
-  account_address: string
+  account_address?: string
   type: ParticipantType
 }
 
@@ -51,6 +53,7 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
   status: ParticipationStatus
   slot_id: string
   name?: string
+  email?: string
 }
 
 export interface IPFSMeetingInfo {
