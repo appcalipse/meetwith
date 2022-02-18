@@ -52,12 +52,13 @@ import { getSignature } from './storage'
 import { getAccountDisplayName } from './user_manager'
 
 const scheduleMeeting = async (
-  source_account_address: string,
   target_account_address: string,
   extra_participants: string[],
   meetingTypeId: string,
   startTime: Date,
   endTime: Date,
+  source_account_address?: string,
+  guest_email?: string,
   sourceName?: string,
   meetingContent?: string,
   meetingUrl?: string
@@ -79,7 +80,7 @@ const scheduleMeeting = async (
     ))
   ) {
     const allAccounts = await getExistingAccounts([
-      source_account_address,
+      source_account_address ? source_account_address : '',
       target_account_address,
       ...extra_participants,
     ])
@@ -101,8 +102,8 @@ const scheduleMeeting = async (
             : ParticipationStatus.Pending,
         slot_id: uuidv4(),
         name: account.address == source_account_address ? sourceName : '',
+        email: guest_email,
       }
-
       participants.push(participant)
     }
 
@@ -124,6 +125,17 @@ const scheduleMeeting = async (
       participants.push(participant)
     }
 
+    if (guest_email) {
+      const participant: ParticipantInfo = {
+        type: ParticipantType.Guest,
+        status: ParticipationStatus.Accepted,
+        email: guest_email,
+        name: sourceName,
+        slot_id: uuidv4(),
+      }
+
+      participants.push(participant)
+    }
     const privateInfo: IPFSMeetingInfo = {
       created_at: new Date(),
       participants: participants,
@@ -135,7 +147,10 @@ const scheduleMeeting = async (
     const participantsMappings = []
     for (const participant of participants) {
       const participantMapping: CreationRequestParticipantMapping = {
-        account_address: participant.account_address,
+        account_address: participant.account_address
+          ? participant.account_address
+          : '',
+        email: participant.account_address ? '' : participant.email,
         slot_id: participant.slot_id,
         type: participant.type,
         privateInfo: await encryptWithPublicKey(
@@ -157,7 +172,7 @@ const scheduleMeeting = async (
 
     const slot = await createMeeting(meeting)
 
-    const schedulerAccount = await getAccount(source_account_address)
+    const schedulerAccount = await getAccount(source_account_address!)
 
     // now that we have successfully created the event, then we will try to
     // intergate with the external calendars that the user has
