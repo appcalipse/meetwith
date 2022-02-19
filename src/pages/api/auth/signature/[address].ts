@@ -9,9 +9,9 @@ const getDefaultSignature = async (
   res: NextApiResponse
 ) => {
   if (req.method === 'GET') {
-    const { identifier } = req.query
+    const { address } = req.query
     try {
-      const account = await getAccountFromDB(identifier as string)
+      const account = await getAccountFromDB((address as string).toLowerCase())
       res
         .status(200)
         .json({ message: DEFAULT_MESSAGE(account.nonce), nonce: account.nonce })
