@@ -16,9 +16,7 @@ const syncCalendarsIfNeeded = async (
   meeting: MeetingDecrypted
 ) => {
   const account = await getAccountFromDB(address)
-  // TODO: check if the account is pro
-  const isPro = true
-  if (isPro) {
+  if (account.is_pro) {
     const calendars = await getConnectedCalendars(address, true)
     for (const calendar of calendars) {
       const integration = getConnectedCalendarIntegration(
@@ -28,7 +26,7 @@ const syncCalendarsIfNeeded = async (
         calendar.payload
       )
 
-      await integration.createEvent(meeting)
+      await integration.createEvent(account.address, meeting)
     }
   }
 }
@@ -50,7 +48,20 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       req.session.account.signature
     )
 
-    // TODO: make sure that the user can call this endpoint
+    let canSyncSchedules = false
+    for (const participant of meeting.participants) {
+      if (participant.account_address === req.session.account.address) {
+        canSyncSchedules = true
+        break
+      }
+    }
+
+    if (!canSyncSchedules) {
+      res
+        .status(403)
+        .send("You can't sync schedules in a meeting you don't belong to.")
+      return
+    }
 
     // schedule for other users, if they are also pro
     const tasks: Promise<any>[] = []
