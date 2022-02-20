@@ -10,9 +10,8 @@ import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
 
 import { CookieConsent } from '../components/CookieConsent'
-import Footer from '../components/Footer'
 import Loading from '../components/Loading'
-import { Navbar } from '../components/Navbar'
+import { BaseLayout } from '../layouts/Base'
 import { AccountProvider } from '../providers/AccountProvider'
 import { validateAuthenticationApp } from '../session/core'
 import customTheme from '../styles/theme'
@@ -137,22 +136,20 @@ function MyApp({
             <meta name="msapplication-TileColor" content="#1a202c" />
             <meta name="theme-color" content="#f35826"></meta>
           </Head>
-          {loading ? (
-            <Flex
-              width="100%"
-              height="100%"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Loading />
-            </Flex>
-          ) : (
-            <>
-              <Navbar />
+          <BaseLayout>
+            {loading ? (
+              <Flex
+                width="100%"
+                height="100%"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Loading />
+              </Flex>
+            ) : (
               <Component {...customProps} />
-              <Footer />
-            </>
-          )}
+            )}
+          </BaseLayout>
         </AccountProvider>
         <CookieConsent consentCookie={consentCookie as boolean} />
       </CookiesProvider>
