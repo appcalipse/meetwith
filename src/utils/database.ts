@@ -415,12 +415,12 @@ const saveMeeting = async (
         ownerAccount &&
         ownerAccount.account_address === participant.account_address &&
         ownerAccount.account_address !== schedulerAccount?.account_address &&
-        !isSlotFree(
+        (await !isSlotFree(
           participant.account_address!,
           new Date(meeting.start),
           new Date(meeting.end),
           meeting.meetingTypeId
-        )
+        ))
       ) {
         throw new TimeNotAvailableError()
       }

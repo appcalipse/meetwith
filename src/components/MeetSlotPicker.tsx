@@ -1,10 +1,11 @@
 import React from 'react'
 
+import { SchedulingType } from '../types/Meeting'
 import DayTimePicker from './DayTimePicker'
 
 interface MeetSlotPickerProps {
   onSchedule: (
-    scheduleType: string,
+    scheduleType: SchedulingType,
     startTime: Date,
     guestEmail: string,
     name: string,

@@ -13,6 +13,11 @@ export enum ParticipantType {
   Guest = 'guest',
 }
 
+export enum SchedulingType {
+  REGULAR,
+  GUEST,
+}
+
 export interface MeetingCreationRequest {
   participants_mapping: CreationRequestParticipantMapping[]
   meetingTypeId: string
@@ -22,10 +27,10 @@ export interface MeetingCreationRequest {
 
 export interface CreationRequestParticipantMapping {
   account_address?: string
-  email?: string
   slot_id: string
   type: ParticipantType
   privateInfo: Encrypted
+  email?: string
 }
 
 export interface TimeSlot {
