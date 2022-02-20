@@ -33,6 +33,7 @@ import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
+  SchedulingType,
 } from '../types/Meeting'
 import { logEvent } from './analytics'
 import {
@@ -40,7 +41,6 @@ import {
   getAccount,
   getExistingAccounts,
   isSlotFree,
-  listConnectedCalendars,
   syncExternalCalendars,
 } from './api_helper'
 import { appUrl } from './constants'
@@ -52,6 +52,7 @@ import { getSignature } from './storage'
 import { getAccountDisplayName } from './user_manager'
 
 const scheduleMeeting = async (
+  schedulingType: SchedulingType,
   target_account_address: string,
   extra_participants: string[],
   meetingTypeId: string,
@@ -125,7 +126,7 @@ const scheduleMeeting = async (
       participants.push(participant)
     }
 
-    if (guest_email) {
+    if (schedulingType === SchedulingType.GUEST) {
       const participant: ParticipantInfo = {
         type: ParticipantType.Guest,
         status: ParticipationStatus.Accepted,
@@ -170,7 +171,13 @@ const scheduleMeeting = async (
       meetingTypeId,
     }
 
-    const slot = await createMeeting(meeting)
+    let slot: DBSlotEnhanced
+    if (schedulingType === SchedulingType.GUEST) {
+      slot = await createMeeting(meeting)
+    } else {
+      //TODO: add endpoint for this case
+      slot = await createMeeting(meeting)
+    }
 
     const schedulerAccount = await getAccount(source_account_address!)
 
