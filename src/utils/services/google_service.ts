@@ -105,7 +105,11 @@ export default class GoogleCalendarService implements Calendar {
         const otherParticipants = [
           event.participants
             ?.filter(it => it.account_address !== owner)
-            .map(it => ellipsizeAddress(it.account_address)),
+            .map(it =>
+              it.account_address
+                ? ellipsizeAddress(it.account_address!)
+                : it.email
+            ),
         ]
         const payload: calendar_v3.Schema$Event = {
           summary: `Meet with ${

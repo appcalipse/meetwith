@@ -28,7 +28,7 @@ import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
 
 interface InternalSchedule {
-  scheduleType: string
+  scheduleType: SchedulingType
   startTime: Date
   guestEmail: string
   name?: string
@@ -133,6 +133,7 @@ const PublicCalendar: React.FC = () => {
 
     try {
       const meeting = await scheduleMeeting(
+        scheduleType,
         account!.address,
         [],
         selectedType.id,
