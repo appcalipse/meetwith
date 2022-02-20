@@ -25,6 +25,7 @@ import { zonedTimeToUtc } from 'date-fns-tz'
 import { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '../../../providers/AccountProvider'
+import { SchedulingType } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import { scheduleMeeting } from '../../../utils/calendar_manager'
 import { MeetingWithYourselfError } from '../../../utils/errors'
@@ -129,6 +130,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
     try {
       const meeting = await scheduleMeeting(
+        SchedulingType.REGULAR,
         currentAccount!.address,
         [
           ...Array.from(new Set(participants.map(p => p.toLowerCase()))).filter(
