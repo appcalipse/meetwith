@@ -24,14 +24,14 @@ import { addHours, addMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { useContext, useEffect, useState } from 'react'
 
-import { AccountContext } from '../../providers/AccountProvider'
-import { logEvent } from '../../utils/analytics'
-import { scheduleMeeting } from '../../utils/calendar_manager'
-import { MeetingWithYourselfError } from '../../utils/errors'
-import { getAddressDisplayForInput } from '../../utils/user_manager'
-import { ChipInput } from '../chip-input'
-import { SingleDatepicker } from '../input-date-picker'
-import { InputTimePicker } from '../input-time-picker'
+import { AccountContext } from '../../../providers/AccountProvider'
+import { logEvent } from '../../../utils/analytics'
+import { scheduleMeeting } from '../../../utils/calendar_manager'
+import { MeetingWithYourselfError } from '../../../utils/errors'
+import { getAddressDisplayForInput } from '../../../utils/user_manager'
+import { ChipInput } from '../../chip-input'
+import { SingleDatepicker } from '../../input-date-picker'
+import { InputTimePicker } from '../../input-time-picker'
 
 export interface ScheduleModalProps {
   isOpen: boolean

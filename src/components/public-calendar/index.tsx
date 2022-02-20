@@ -10,7 +10,7 @@ import React, { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
-import { DBSlot, MeetingDecrypted } from '../../types/Meeting'
+import { DBSlot, MeetingDecrypted, SchedulingType } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
 import { getAccount, getBusySlots, getMeetings } from '../../utils/api_helper'
 import {
@@ -114,7 +114,7 @@ const PublicCalendar: React.FC = () => {
   }
 
   const confirmSchedule = async (
-    scheduleType: string,
+    scheduleType: SchedulingType,
     startTime: Date,
     guestEmail?: string,
     name?: string,
