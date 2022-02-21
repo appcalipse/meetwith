@@ -26,7 +26,7 @@ const epnsCoreSettings: EPNSSettings = {
 
 const epnsCommSettings: EPNSSettings = {
   network: 'homestead',
-  contractAddress: '0xb3971bcef2d791bc4027bbfedfb47319a4aaaaaa',
+  contractAddress: '0xb3971BCef2D791bc4027BbfedFb47319A4AAaaAa',
   contractABI: JSON.stringify(CommABI),
 }
 
@@ -37,7 +37,7 @@ export const sendEPNSNotification = async (
 ) => {
   const sdk = new epnsHelper(
     networkToMonitor,
-    '59d30ec85b8ee937ceeeb9a4e74c8b1478a31b86a992168155ab1eff4542bd3f', //process.env.BACKEND_WALLET_PVT_KEY!,
+    process.env.BACKEND_WALLET_PVT_KEY!,
     '0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b',
     networkSettings,
     epnsCoreSettings,
