@@ -70,6 +70,12 @@ const initAccountDBForWallet = async (
     throw new Error('Invalid address')
   }
 
+  try {
+    //make sure account doesn't exist
+    await getAccountFromDB(address)
+    return await updateAccountFromInvite(address, signature, timezone, nonce)
+  } catch (error) {}
+
   const newIdentity = EthCrypto.createIdentity()
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
@@ -129,7 +135,13 @@ const updateAccountFromInvite = async (
   timezone: string,
   nonce: number
 ): Promise<Account> => {
-  //fetch this before chaning internal pub key
+  const exitingAccount = await getAccountFromDB(account_address)
+  if (!exitingAccount.is_invited) {
+    // do not screw up accounts that already have been set up
+    return exitingAccount
+  }
+
+  //fetch this before changing internal pub key
   const currentMeetings = await getSlotsForAccount(account_address)
 
   const newIdentity = EthCrypto.createIdentity()
