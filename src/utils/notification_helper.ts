@@ -1,3 +1,6 @@
+import { format } from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
+
 import {
   AccountNotifications,
   NotificationChannel,
@@ -66,12 +69,16 @@ export const notifyForNewMeeting = async (
 
             case NotificationChannel.EPNS:
               //TODO check account is pro
+
               const parameters = {
                 destination_addresses: [notification_type.destination],
                 title: 'New meeting scheduled',
-                message: participants
+                message: `${format(
+                  utcToZonedTime(meeting.start, participant.timezone),
+                  'PPPPpp'
+                )} - ${participants
                   .map(participant => ellipsizeAddress(participant.address))
-                  .join(', '),
+                  .join(', ')}`,
               }
 
               process.env.NEXT_PUBLIC_ENV === 'production'
