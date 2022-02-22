@@ -70,28 +70,31 @@ export const notifyForNewMeeting = async (
             case NotificationChannel.EPNS:
               //TODO check account is pro
 
-              const parameters = {
-                destination_addresses: [notification_type.destination],
-                title: 'New meeting scheduled',
-                message: `${format(
-                  utcToZonedTime(meeting.start, participant.timezone),
-                  'PPPPpp'
-                )} - ${participants
-                  .map(participant => ellipsizeAddress(participant.address))
-                  .join(', ')}`,
-              }
+              const account = await getAccountFromDB(participant.address)
+              if (account.is_pro) {
+                const parameters = {
+                  destination_addresses: [notification_type.destination],
+                  title: 'New meeting scheduled',
+                  message: `${format(
+                    utcToZonedTime(meeting.start, participant.timezone),
+                    'PPPPpp'
+                  )} - ${participants
+                    .map(participant => ellipsizeAddress(participant.address))
+                    .join(', ')}`,
+                }
 
-              process.env.NEXT_PUBLIC_ENV === 'production'
-                ? await sendEPNSNotification(
-                    parameters.destination_addresses,
-                    parameters.title,
-                    parameters.message
-                  )
-                : await sendEPNSNotificationStaging(
-                    parameters.destination_addresses,
-                    parameters.title,
-                    parameters.message
-                  )
+                process.env.NEXT_PUBLIC_ENV === 'production'
+                  ? await sendEPNSNotification(
+                      parameters.destination_addresses,
+                      parameters.title,
+                      parameters.message
+                    )
+                  : await sendEPNSNotificationStaging(
+                      parameters.destination_addresses,
+                      parameters.title,
+                      parameters.message
+                    )
+              }
               break
             default:
           }
