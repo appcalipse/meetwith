@@ -518,7 +518,9 @@ const setAccountNotificationSubscriptions = async (
   notifications: AccountNotifications
 ): Promise<AccountNotifications> => {
   // TODO - add actual pro validation
-  if (!false) {
+
+  const account = await getAccountFromDB(address)
+  if (!account.is_pro) {
     notifications.notification_types = notifications.notification_types.filter(
       n => n.channel === NotificationChannel.EMAIL
     )
