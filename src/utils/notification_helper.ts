@@ -1,3 +1,6 @@
+import { format } from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
+
 import {
   AccountNotifications,
   NotificationChannel,
@@ -8,6 +11,9 @@ import {
   getAccountNotificationSubscriptions,
 } from './database'
 import { newMeetingEmail } from './email_helper'
+import { sendEPNSNotification } from './epns_helper_production'
+import { sendEPNSNotificationStaging } from './epns_helper_staging'
+import { ellipsizeAddress } from './user_manager'
 
 export interface ParticipantInfoForNotification {
   address: string
@@ -38,17 +44,20 @@ export const notifyForNewMeeting = async (
   for (let i = 0; i < participants.length; i++) {
     const participant = participants[i]
 
-    if (participant.subscriptions.notification_types.length > 0) {
-      for (
-        let j = 0;
-        j < participant.subscriptions.notification_types.length;
-        j++
-      ) {
-        const notification_type =
-          participant.subscriptions.notification_types[j]
-        switch (notification_type.channel) {
-          case NotificationChannel.EMAIL:
-            if (participant.type === ParticipantType.Owner) {
+    if (
+      participant.type === ParticipantType.Owner ||
+      participant.type === ParticipantType.Invitee
+    ) {
+      if (participant.subscriptions.notification_types.length > 0) {
+        for (
+          let j = 0;
+          j < participant.subscriptions.notification_types.length;
+          j++
+        ) {
+          const notification_type =
+            participant.subscriptions.notification_types[j]
+          switch (notification_type.channel) {
+            case NotificationChannel.EMAIL:
               await newMeetingEmail(
                 notification_type.destination,
                 participants.map(participant => participant.address),
@@ -56,9 +65,39 @@ export const notifyForNewMeeting = async (
                 new Date(meeting.start),
                 new Date(meeting.end)
               )
-            }
-            break
-          default:
+              break
+
+            case NotificationChannel.EPNS:
+              //TODO check account is pro
+
+              const account = await getAccountFromDB(participant.address)
+              if (account.is_pro) {
+                const parameters = {
+                  destination_addresses: [notification_type.destination],
+                  title: 'New meeting scheduled',
+                  message: `${format(
+                    utcToZonedTime(meeting.start, participant.timezone),
+                    'PPPPpp'
+                  )} - ${participants
+                    .map(participant => ellipsizeAddress(participant.address))
+                    .join(', ')}`,
+                }
+
+                process.env.NEXT_PUBLIC_ENV === 'production'
+                  ? await sendEPNSNotification(
+                      parameters.destination_addresses,
+                      parameters.title,
+                      parameters.message
+                    )
+                  : await sendEPNSNotificationStaging(
+                      parameters.destination_addresses,
+                      parameters.title,
+                      parameters.message
+                    )
+              }
+              break
+            default:
+          }
         }
       }
     }

@@ -14,7 +14,10 @@ import {
   MeetingType,
   SimpleAccountInfo,
 } from '../types/Account'
-import { AccountNotifications } from '../types/AccountNotifications'
+import {
+  AccountNotifications,
+  NotificationChannel,
+} from '../types/AccountNotifications'
 import {
   ConnectedCalendar,
   ConnectedCalendarCorePayload,
@@ -68,6 +71,12 @@ const initAccountDBForWallet = async (
   if (!isValidEVMAddress(address)) {
     throw new Error('Invalid address')
   }
+
+  try {
+    //make sure account doesn't exist
+    await getAccountFromDB(address)
+    return await updateAccountFromInvite(address, signature, timezone, nonce)
+  } catch (error) {}
 
   const newIdentity = EthCrypto.createIdentity()
 
@@ -128,7 +137,13 @@ const updateAccountFromInvite = async (
   timezone: string,
   nonce: number
 ): Promise<Account> => {
-  //fetch this before chaning internal pub key
+  const exitingAccount = await getAccountFromDB(account_address)
+  if (!exitingAccount.is_invited) {
+    // do not screw up accounts that already have been set up
+    return exitingAccount
+  }
+
+  //fetch this before changing internal pub key
   const currentMeetings = await getSlotsForAccount(account_address)
 
   const newIdentity = EthCrypto.createIdentity()
@@ -508,6 +523,15 @@ const setAccountNotificationSubscriptions = async (
   address: string,
   notifications: AccountNotifications
 ): Promise<AccountNotifications> => {
+  // TODO - add actual pro validation
+
+  const account = await getAccountFromDB(address)
+  if (!account.is_pro) {
+    notifications.notification_types = notifications.notification_types.filter(
+      n => n.channel === NotificationChannel.EMAIL
+    )
+  }
+
   const { _, error } = await db.supabase
     .from('account_notifications')
     .upsert(notifications, { onConflict: 'account_address' })
