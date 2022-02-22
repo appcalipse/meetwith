@@ -5,6 +5,7 @@ import {
   FormLabel,
   HStack,
   Input,
+  Link,
   Spacer,
   Switch,
   Text,
@@ -33,6 +34,7 @@ const NotificationsConfig: React.FC = () => {
   const [loadingInitialInfo, setLoadingInitialInfo] = useState(true)
   const [email, setEmail] = useState('')
   const [emailNotifications, setEmailNotifications] = useState(false)
+  const [epnsNotifications, setEPNSNotifications] = useState(false)
 
   useEffect(() => {
     fetchSubscriptions()
@@ -45,6 +47,9 @@ const NotificationsConfig: React.FC = () => {
         case NotificationChannel.EMAIL:
           setEmail(subs.notification_types[i].destination)
           setEmailNotifications(true)
+          break
+        case NotificationChannel.EPNS:
+          setEPNSNotifications(true)
           break
         default:
       }
@@ -80,9 +85,19 @@ const NotificationsConfig: React.FC = () => {
         destination: email,
       })
     }
+    if (epnsNotifications) {
+      subs.notification_types.push({
+        channel: NotificationChannel.EPNS,
+        destination: currentAccount!.address,
+      })
+    }
 
     await setNotificationSubscriptions(subs)
-    logEvent('Set notifications', [NotificationChannel.EMAIL])
+
+    logEvent(
+      'Set notifications',
+      subs.notification_types.map(sub => sub.channel)
+    )
 
     setLoading(false)
   }
@@ -116,9 +131,28 @@ const NotificationsConfig: React.FC = () => {
       <Spacer />
 
       <HStack py={4}>
-        <Switch colorScheme="orange" size="md" isDisabled={true} />
-        <Text>EPNS (Coming soon)</Text>
+        <Switch
+          colorScheme="orange"
+          size="md"
+          isChecked={epnsNotifications}
+          onChange={e => setEPNSNotifications(e.target.checked)}
+          isDisabled={true}
+        />
+        <Text>
+          EPNS (
+          <Link href="/dashboard/details" shallow>
+            Go Pro
+          </Link>{' '}
+          to enable it)
+        </Text>
       </HStack>
+      <Text>
+        Make sure you subscribe to{' '}
+        <Link isExternal href="https://app.epns.io">
+          Meet with Wallet channel
+        </Link>{' '}
+        on EPNS.
+      </Text>
 
       <Spacer />
 
