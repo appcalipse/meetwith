@@ -122,8 +122,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
     const start = zonedTimeToUtc(
       _start,
-      currentAccount?.preferences?.timezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone
+      Intl.DateTimeFormat().resolvedOptions().timeZone
     )
     const end = addMinutes(new Date(start), duration)
 
