@@ -79,10 +79,7 @@ const Meetings: React.FC = () => {
           <MeetingCard
             key={meeting.id}
             meeting={meeting}
-            timezone={
-              currentAccount?.preferences?.timezone ||
-              Intl.DateTimeFormat().resolvedOptions().timeZone
-            }
+            timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
           />
         ))}
         {!noMoreFetch && !firstFetch && (
