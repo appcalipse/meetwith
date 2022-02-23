@@ -63,7 +63,11 @@ export default class GoogleCalendarService implements Calendar {
     )
     myGoogleAuth.setCredentials(googleCredentials)
 
-    const isExpired = () => myGoogleAuth.isTokenExpiring()
+    const isExpired = () => {
+      const expired = myGoogleAuth.isTokenExpiring()
+      console.log(expired)
+      return expired
+    }
 
     const refreshAccessToken = () =>
       myGoogleAuth
@@ -86,7 +90,6 @@ export default class GoogleCalendarService implements Calendar {
         })
         .catch(err => {
           Sentry.captureException(err)
-          console.error(err)
           return myGoogleAuth
         })
 
