@@ -1,10 +1,20 @@
 import { BigNumber } from 'ethers'
 
-import { Account } from './Account'
 import { SupportedChain } from './chains'
 
-export enum Plans {
+export interface PlanInfo {
+  plan: Plan
+  usdPrice: number
+}
+
+export enum Plan {
   PRO = 1,
+}
+
+export const existingPlans: PlanInfo[] = [{ plan: Plan.PRO, usdPrice: 30 }]
+
+export const getPlanInfo = (plan: Plan): PlanInfo | undefined => {
+  return existingPlans.find(_plan => _plan.plan === plan)
 }
 
 export interface Subscription {
@@ -31,8 +41,4 @@ export enum SpecialDomainType {
   CUSTOM = 'CUSTOM',
   ENS = 'ENS',
   UNSTOPPABLE_DOMAINS = 'UNSTOPPABLE_DOMAINS',
-}
-
-export const isProAccount = (account: Account): boolean => {
-  return account.subscriptions?.some(sub => sub.plan_id === Plans.PRO)
 }

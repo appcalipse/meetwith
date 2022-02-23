@@ -2,7 +2,6 @@ import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { TimeSlot } from '../../../../types/Meeting'
-import { isProAccount } from '../../../../types/Subscription'
 import {
   getAccountFromDB,
   getConnectedCalendars,
@@ -11,6 +10,7 @@ import {
 } from '../../../../utils/database'
 import { AccountNotFoundError } from '../../../../utils/errors'
 import { getConnectedCalendarIntegration } from '../../../../utils/services/connected_calendars_factory'
+import { isProAccount } from '../../../../utils/subscription_manager'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {

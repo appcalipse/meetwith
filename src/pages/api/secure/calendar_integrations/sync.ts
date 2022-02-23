@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { Account } from '../../../../types/Account'
 import { MeetingDecrypted, ParticipantType } from '../../../../types/Meeting'
-import { isProAccount } from '../../../../types/Subscription'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { decryptMeeting } from '../../../../utils/calendar_manager'
 import {
@@ -11,6 +10,7 @@ import {
   getMeetingFromDB,
 } from '../../../../utils/database'
 import { getConnectedCalendarIntegration } from '../../../../utils/services/connected_calendars_factory'
+import { isProAccount } from '../../../../utils/subscription_manager'
 
 const syncCalendarsIfNeeded = async (
   address: Account['address'],

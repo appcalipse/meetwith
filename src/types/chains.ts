@@ -7,6 +7,7 @@ export interface ChainInfo {
   nativeTokenSymbol: string
   subscriptionContractAddess: string
   registerContractAddress: string
+  acceptableTokens: AcceptedTokenInfo[]
 }
 
 export enum SupportedChain {
@@ -18,17 +19,27 @@ export enum SupportedChain {
   METIS_STARTDUST = 'METIS_STARTDUST',
 }
 
+export enum AcceptedToken {
+  DAI = 'DAI',
+  USDC = 'USDC',
+}
+
+export interface AcceptedTokenInfo {
+  token: AcceptedToken
+  contractAddress: string
+}
+
 export const supportedChains: ChainInfo[] = [
-  {
-    chain: SupportedChain.POLYGON_MATIC,
-    id: 1,
-    name: 'Polygon',
-    rpcUrl: 'https://api.polygon.io/v2',
-    testnet: false,
-    nativeTokenSymbol: 'MATIC',
-    subscriptionContractAddess: '0xcc7f7D0Dd776a5ea17683eF6253DF8aCD3CBFA63',
-    registerContractAddress: '0x1DF8FcA6035342eeD37c3C10dcD4cC1B4030628D',
-  },
+  // {
+  //   chain: SupportedChain.POLYGON_MATIC,
+  //   id: 1,
+  //   name: 'Polygon',
+  //   rpcUrl: 'https://api.polygon.io/v2',
+  //   testnet: false,
+  //   nativeTokenSymbol: 'MATIC',
+  //   subscriptionContractAddess: '0xcc7f7D0Dd776a5ea17683eF6253DF8aCD3CBFA63',
+  //   registerContractAddress: '0x1DF8FcA6035342eeD37c3C10dcD4cC1B4030628D',
+  // },
   {
     chain: SupportedChain.POLYGON_MUMBAI,
     id: 80001,
@@ -36,8 +47,14 @@ export const supportedChains: ChainInfo[] = [
     rpcUrl: 'https://rpc-mumbai.matic.today',
     testnet: true,
     nativeTokenSymbol: 'MATIC',
-    subscriptionContractAddess: '0xcc7f7D0Dd776a5ea17683eF6253DF8aCD3CBFA63',
-    registerContractAddress: '0x1DF8FcA6035342eeD37c3C10dcD4cC1B4030628D',
+    subscriptionContractAddess: '0xFf8d4104D0bcE4ad3480326Ea8202514CBF09B6C',
+    registerContractAddress: '0xe4F495ddE614F07212A1cAFEdbdD45250040ccb1',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.DAI,
+        contractAddress: '0xA2de063a9Fe5A68ddb1CF85890A30893b117be2d',
+      },
+    ],
   },
   //   {
   //     chain: SupportedChain.HARMONY,

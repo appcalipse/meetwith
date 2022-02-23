@@ -43,6 +43,7 @@ import {
 import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
 import { notifyForNewMeeting } from './notification_helper'
+import { isProAccount } from './subscription_manager'
 import { isValidEVMAddress } from './validations'
 
 const db: any = { ready: false }
@@ -523,10 +524,8 @@ const setAccountNotificationSubscriptions = async (
   address: string,
   notifications: AccountNotifications
 ): Promise<AccountNotifications> => {
-  // TODO - add actual pro validation
-
   const account = await getAccountFromDB(address)
-  if (!account.is_pro) {
+  if (!isProAccount(account)) {
     notifications.notification_types = notifications.notification_types.filter(
       n => n.channel === NotificationChannel.EMAIL
     )
