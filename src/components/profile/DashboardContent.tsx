@@ -191,7 +191,8 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })
     if (mode === EditMode.SIGNOUT) {
-      await api.logout().then(() => logout())
+      await api.logout()
+      logout()
       router.push(`/`)
     } else {
       router.push(`/dashboard/${mode}`, undefined, { shallow: true })
