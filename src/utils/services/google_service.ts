@@ -90,8 +90,6 @@ export default class GoogleCalendarService implements Calendar {
         })
         .catch(err => {
           Sentry.captureException(err)
-          //console.error(err)
-          console.error('Erro ao gerar token')
           return myGoogleAuth
         })
 
