@@ -46,9 +46,9 @@ export const Navbar = () => {
       width="100%"
       top="0"
       zIndex={999}
+      bg={useColorModeValue('#F8F8FA', 'gray.900')}
     >
       <Flex
-        bgGradient={bgGradient}
         backdropFilter={'auto'}
         backdropBlur={'24px'}
         color={useColorModeValue('gray.600', 'white')}

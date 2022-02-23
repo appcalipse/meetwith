@@ -1,6 +1,6 @@
 import '../styles/globals.css'
 
-import { ChakraProvider, Flex } from '@chakra-ui/react'
+import { Box, ChakraProvider, Flex, useColorModeValue } from '@chakra-ui/react'
 import { extendTheme } from '@chakra-ui/react'
 import cookie from 'cookie'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
@@ -137,18 +137,22 @@ function MyApp({
             <meta name="theme-color" content="#f35826"></meta>
           </Head>
           <BaseLayout>
-            {loading ? (
-              <Flex
-                width="100%"
-                height="100%"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Loading />
-              </Flex>
-            ) : (
-              <Component {...customProps} />
-            )}
+            <Box bg={useColorModeValue('#F8F8FA', 'gray.900')}>
+              {loading ? (
+                <Flex
+                  width="100%"
+                  height="100%"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Loading />
+                </Flex>
+              ) : (
+                <Box>
+                  <Component {...customProps} />
+                </Box>
+              )}
+            </Box>
           </BaseLayout>
         </AccountProvider>
         <CookieConsent consentCookie={consentCookie as boolean} />

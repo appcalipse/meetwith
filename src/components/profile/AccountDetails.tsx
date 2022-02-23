@@ -1,5 +1,13 @@
-import { Spacer, Text, VStack } from '@chakra-ui/layout'
-import { Button, Input } from '@chakra-ui/react'
+import { Box, Flex, Spacer, Text, VStack } from '@chakra-ui/layout'
+import {
+  Button,
+  Input,
+  List,
+  ListIcon,
+  ListItem,
+  OrderedList,
+  UnorderedList,
+} from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
 import { useContext, useState } from 'react'
 
@@ -99,6 +107,54 @@ const AccountDetails: React.FC = () => {
       >
         Save details
       </Button>
+      <Text mt={10} fontSize="2xl" color="#323F4B" fontWeight="medium">
+        Subscription
+      </Text>
+      <Flex mt={10} width="100%">
+        <VStack bg="white" width="49%" height="300px" py={5} borderRadius={10}>
+          <Text width="100%" textAlign="left" ml={30} fontWeight="medium">
+            Pro - $30 / year
+          </Text>
+          <UnorderedList fontSize="12px" width="75%" textAlign="left" ml={30}>
+            <ListItem>Customizable booking link</ListItem>
+            <ListItem>
+              External calendar connections (Google and iCloud)
+            </ListItem>
+            <ListItem>Unlimited meeting configurations</ListItem>
+            <ListItem>
+              Email, Push, EPNS and Discord Notifications (optional)
+            </ListItem>
+            <ListItem>Schedule meetings with multiple participants</ListItem>
+            <ListItem>
+              Request payment for meeting scheduling (coming soon)
+            </ListItem>
+          </UnorderedList>
+          <Button width="90%" colorScheme="orange">
+            Subscribe to Pro
+          </Button>
+        </VStack>
+        <Spacer />
+        <VStack
+          borderColor="#F35826"
+          borderWidth={2}
+          bg="white"
+          width="47%"
+          height="300px"
+          py={5}
+          borderRadius={10}
+        >
+          <Text width="100%" textAlign="left" ml={30} fontWeight="medium">
+            Free - $0 / forever
+          </Text>
+          <UnorderedList fontSize="12px" width="75%" textAlign="left" ml={30}>
+            <ListItem>Public page for scheduling meetings</ListItem>
+            <ListItem>Configurable availability</ListItem>
+            <ListItem>Web3 powered meeting room</ListItem>
+            <ListItem>Single meeting configuration</ListItem>
+            <ListItem>Only 1:1 meetings</ListItem>
+          </UnorderedList>
+        </VStack>
+      </Flex>
     </VStack>
   )
 }

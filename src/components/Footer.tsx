@@ -62,7 +62,7 @@ export default function SmallWithLogoLeft() {
 
   return (
     <Box
-      bg={useColorModeValue('gray.50', 'gray.900')}
+      bg={useColorModeValue('#F8F8FA', 'gray.900')}
       color={useColorModeValue('gray.700', 'gray.200')}
       display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
     >
