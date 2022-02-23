@@ -20,12 +20,12 @@ import {
   ConnectedCalendarIcons,
   ConnectedCalendarProvider,
 } from '../../types/CalendarConnections'
-import { isProAccount } from '../../types/Subscription'
 import {
   deleteConnectedCalendar,
   getGoogleAuthConnectUrl,
   listConnectedCalendars,
 } from '../../utils/api_helper'
+import { isProAccount } from '../../utils/subscription_manager'
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import ConnectedCalendarCard from '../ConnectedCalendars/ConnectedCalendarCard'
 
