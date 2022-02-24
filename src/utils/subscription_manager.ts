@@ -10,7 +10,7 @@ import {
   Plan,
   Subscription,
 } from '../types/Subscription'
-import { syncSubscriptions } from './api_helper'
+import { getSubscriptionForDomain, syncSubscriptions } from './api_helper'
 
 const YEAR_DURATION = 31536000
 
@@ -103,6 +103,11 @@ export const subscribeToPlan = async (
 ): Promise<Subscription> => {
   if (!window.ethereum) {
     throw Error('Please connect a wallet')
+  }
+
+  const subExists = await getSubscriptionForDomain(domain)
+  if (subExists) {
+    throw Error('Domain already registered')
   }
 
   const chainInfo = getChainInfo(chain)
