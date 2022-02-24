@@ -1,12 +1,15 @@
 import { Spacer, Text, VStack } from '@chakra-ui/layout'
 import { Button, Input } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
-import { useContext, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { SocialLinkType } from '../../types/Account'
+import { AcceptedToken, SupportedChain } from '../../types/chains'
+import { Plan } from '../../types/Subscription'
 import { logEvent } from '../../utils/analytics'
-import { saveAccountChanges } from '../../utils/api_helper'
+import { saveAccountChanges, syncSubscriptions } from '../../utils/api_helper'
+import { subscribeToPlan } from '../../utils/subscription_manager'
 
 const AccountDetails: React.FC = () => {
   const { currentAccount, login } = useContext(AccountContext)
@@ -30,6 +33,14 @@ const AccountDetails: React.FC = () => {
     socialLinks.filter(link => link.type === SocialLinkType.TELEGRAM)[0]?.url ||
       ''
   )
+
+  const getSubs = async () => {
+    const subscriptions = await syncSubscriptions()
+  }
+
+  useEffect(() => {
+    getSubs()
+  }, [])
 
   const saveDetails = async () => {
     setLoading(true)

@@ -1,3 +1,5 @@
+import { Subscription } from './Subscription'
+
 export interface Account {
   id: string
   created: Date
@@ -10,23 +12,12 @@ export interface Account {
   name?: string
   avatar?: string
   is_invited: boolean
-  is_pro?: boolean
+  subscriptions: Subscription[]
 }
 
 export interface SimpleAccountInfo {
   address: string
   internal_pub_key: string
-}
-
-export enum SpecialDomainType {
-  ENS = 'ENS',
-  UNSTOPPABLE_DOMAINS = 'UNSTOPPABLE_DOMAINS',
-}
-
-export interface PremiumAccount extends Account {
-  special_domain: string
-  special_domain_type: SpecialDomainType
-  calendar_url: string
 }
 
 export interface MeetingType {

@@ -9,6 +9,7 @@ import {
   ConnectResponse,
 } from '../types/CalendarConnections'
 import { DBSlot, DBSlotEnhanced, MeetingDecrypted } from '../types/Meeting'
+import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
 import { getCurrentAccount, getSignature } from './storage'
@@ -305,4 +306,16 @@ export const syncExternalCalendars = async (
   return (await internalFetch(`/secure/calendar_integrations/sync`, 'POST', {
     meetingId,
   })) as ConnectedCalendarCore[]
+}
+
+export const syncSubscriptions = async (): Promise<Subscription[]> => {
+  return (await internalFetch(`/secure/subscriptions/sync`)) as Subscription[]
+}
+
+export const getSubscriptionForDomain = async (
+  domain: string
+): Promise<Subscription | undefined> => {
+  return (await internalFetch(
+    `/secure/subscriptions/check/${domain}`
+  )) as Subscription
 }

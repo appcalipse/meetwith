@@ -13,6 +13,7 @@ import {
 import { newMeetingEmail } from './email_helper'
 import { sendEPNSNotification } from './epns_helper_production'
 import { sendEPNSNotificationStaging } from './epns_helper_staging'
+import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress } from './user_manager'
 
 export interface ParticipantInfoForNotification {
@@ -68,10 +69,8 @@ export const notifyForNewMeeting = async (
               break
 
             case NotificationChannel.EPNS:
-              //TODO check account is pro
-
               const account = await getAccountFromDB(participant.address)
-              if (account.is_pro) {
+              if (isProAccount(account)) {
                 const parameters = {
                   destination_addresses: [notification_type.destination],
                   title: 'New meeting scheduled',
