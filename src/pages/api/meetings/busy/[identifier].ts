@@ -10,6 +10,7 @@ import {
 } from '../../../../utils/database'
 import { AccountNotFoundError } from '../../../../utils/errors'
 import { getConnectedCalendarIntegration } from '../../../../utils/services/connected_calendars_factory'
+import { isProAccount } from '../../../../utils/subscription_manager'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -43,7 +44,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       )
 
       const account = await getAccountFromDB(address)
-      if (account.is_pro) {
+      if (isProAccount(account)) {
         const calendars = await getConnectedCalendars(address, true)
         for (const calendar of calendars) {
           const integration = getConnectedCalendarIntegration(

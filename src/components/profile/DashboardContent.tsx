@@ -186,7 +186,6 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
   const accountUrl = getAccountCalendarUrl(currentAccount!, false)
-  // For showing embedded calendar version: const embedCode = getEmbedCode(currentAccount!, false)
 
   const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })
