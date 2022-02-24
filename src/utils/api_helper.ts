@@ -311,3 +311,11 @@ export const syncExternalCalendars = async (
 export const syncSubscriptions = async (): Promise<Subscription[]> => {
   return (await internalFetch(`/secure/subscriptions/sync`)) as Subscription[]
 }
+
+export const getSubscriptionForDomain = async (
+  domain: string
+): Promise<Subscription | undefined> => {
+  return (await internalFetch(
+    `/secure/subscriptions/check/${domain}`
+  )) as Subscription
+}

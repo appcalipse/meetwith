@@ -96,7 +96,6 @@ const initAccountDBForWallet = async (
 
   if (error) {
     Sentry.captureException(error)
-    console.error(error)
     throw new Error("Account couldn't be created")
   }
 
@@ -682,34 +681,92 @@ export const getSubscriptionFromDBForAccount = async (
   const { data, error } = await db.supabase
     .from('subscriptions')
     .select()
+    .gt('expiry_time', new Date().toISOString())
     .eq('owner_account', accountAddress.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    return []
+  }
+
+  if (data) {
+    let subscriptions = data as Subscription[]
+
+    const collisionExists = await db.supabase
+      .from('subscriptions')
+      .select()
+      .neq('owner_account', accountAddress.toLowerCase())
+      .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
+
+    if (collisionExists.error) {
+      Sentry.captureException(error)
+    }
+
+    // If for any reason some smart ass registered a domain manually on the blockchain, but such domain already existed for someone else and is not expired, we remove it here
+    for (const collision of collisionExists.data) {
+      if (
+        (collision as Subscription).registered_at <
+        subscriptions.find(s => s.domain === collision.domain)!.registered_at
+      ) {
+        subscriptions = subscriptions.filter(s => s.domain !== collision.domain)
+      }
+    }
+
+    return subscriptions
+  }
+  return []
+}
+
+export const getSubscription = async (
+  domain: string
+): Promise<Subscription | undefined> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select()
+    .ilike('domain', domain)
+    .gt('expiry_time', new Date().toISOString())
+    .order('registered_at', { ascending: true })
 
   if (error) {
     Sentry.captureException(error)
   }
 
   if (data) {
-    return data as Subscription[]
+    return data[0] as Subscription
   }
-  return []
+  return undefined
 }
 
 export const updateAccountSubscriptions = async (
   subscriptions: Subscription[]
 ): Promise<Subscription[]> => {
-  const { data, error } = await db.supabase
-    .from('subscriptions')
-    .upsert(subscriptions, { onConflict: 'domain' })
+  for (const subscription of subscriptions) {
+    const { data, error } = await db.supabase
+      .from('subscriptions')
+      .update({
+        expiry_time: subscription.expiry_time,
+        config_ipfs_hash: subscription.config_ipfs_hash,
+        plan_id: subscription.plan_id,
+      })
+      .eq('domain', subscription.domain)
+      .eq('owner_account', subscription.owner_account)
 
-  if (error) {
-    console.log(error)
-    Sentry.captureException(error)
+    if (error && error.length > 0) {
+      Sentry.captureException(error)
+    }
+
+    if (!data || data.length == 0) {
+      const { data, error } = await db.supabase
+        .from('subscriptions')
+        .insert(subscription)
+
+      if (error) {
+        Sentry.captureException(error)
+      }
+    }
   }
 
-  if (data) {
-    return data as Subscription[]
-  }
-  return []
+  return subscriptions
 }
 
 export {

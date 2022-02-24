@@ -42,8 +42,6 @@ const AccountDetails: React.FC = () => {
     getSubs()
   }, [])
 
-  //subscribeToPlan(currentAccount!.address, Plan.PRO, SupportedChain.POLYGON_MUMBAI, 1000, "mydomain")
-
   const saveDetails = async () => {
     setLoading(true)
 
