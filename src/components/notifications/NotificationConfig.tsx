@@ -12,6 +12,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import NextLink from 'next/link'
 import { useContext, useState } from 'react'
 import { useEffect } from 'react'
 
@@ -140,9 +141,9 @@ const NotificationsConfig: React.FC = () => {
         />
         <Text>
           EPNS (
-          <Link href="/dashboard/details" shallow>
-            Go Pro
-          </Link>{' '}
+          <NextLink href="/dashboard/details" shallow passHref>
+            <Link>Go Pro</Link>
+          </NextLink>{' '}
           to enable it)
         </Text>
       </HStack>
