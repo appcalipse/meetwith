@@ -27,7 +27,7 @@ export default function FAQ() {
           great experience to schedule meetings at the same time that our
           product meets the ethos of a decentralized web (and is built with the
           strong collaboration of our users). Also, enough of using your email
-          to create an account and logo into tools right?
+          to create an account and log into tools right?
         </Text>
         <Heading
           size="lg"

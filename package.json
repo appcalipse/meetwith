@@ -2,7 +2,7 @@
   "name": "meet-with-wallet",
   "private": true,
   "scripts": {
-    "dev": "NEXT_PUBLIC_ENV=local next dev",
+    "dev": "NEXT_PUBLIC_ENV=local doppler run next dev",
     "build": "next build",
     "static": "next build && next export",
     "start": "next start",
