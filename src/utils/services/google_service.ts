@@ -65,7 +65,6 @@ export default class GoogleCalendarService implements Calendar {
 
     const isExpired = () => {
       const expired = myGoogleAuth.isTokenExpiring()
-      console.log(expired)
       return expired
     }
 
