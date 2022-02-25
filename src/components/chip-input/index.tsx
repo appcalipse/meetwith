@@ -11,10 +11,10 @@ import { BadgeChip } from './chip'
 
 const DEFAULT_STOP_KEYS = ['Tab', 'Space', 'Enter', 'Escape', 'Comma']
 
-export interface ChipInputProps {
-  onChange?: (data: string[]) => void
+interface ChipInputProps {
+  onChange: (data: string[]) => void
   isReadOnly?: boolean
-  initialItems?: string[]
+  currentItems: string[]
   renderItem?: (item: string) => string
   placeholder?: string
   // chakra props that we want to propagate
@@ -24,12 +24,11 @@ export interface ChipInputProps {
 export const ChipInput: React.FC<ChipInputProps> = ({
   onChange,
   isReadOnly = false,
-  initialItems = [],
+  currentItems = [],
   renderItem = item => item,
   size = 'md',
   placeholder = 'Type do add items',
 }) => {
-  const [labels, setLabels] = useState(initialItems)
   const [current, setCurrent] = useState('')
 
   const addItem = (items: string[], pasting?: boolean) => {
@@ -39,8 +38,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       return
     }
 
-    const newState = [...labels, ...items.map(item => item.trim())]
-    setLabels(newState)
+    const newState = [...currentItems, ...items.map(item => item.trim())]
     setCurrent('')
     if (onChange) {
       onChange(newState)
@@ -48,19 +46,16 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   }
 
   const removeItem = (idx: number) => {
-    const copy = [...labels]
+    const copy = [...currentItems]
     copy.splice(idx, 1)
-    setLabels(copy)
-    if (onChange) {
-      onChange(copy)
-    }
+    onChange(copy)
   }
 
   const onRemoveItem = (idx: number) => {
     removeItem(idx)
   }
 
-  const badges = labels.map((it, idx) => {
+  const badges = currentItems.map((it, idx) => {
     return (
       <Box key={`${idx}-${it}`}>
         <BadgeChip onRemove={() => onRemoveItem(idx)} allowRemove={!isReadOnly}>
@@ -92,8 +87,8 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       addItem([current])
     }
     // and support backspace as a natural way to remove the last item in the input
-    else if (ev.code === 'Backspace' && labels.length && !current) {
-      removeItem(labels.length - 1)
+    else if (ev.code === 'Backspace' && currentItems.length && !current) {
+      removeItem(currentItems.length - 1)
     }
   }
 
@@ -129,7 +124,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
           value={current}
           onChange={onTextChange}
           onBlur={onLostFocus}
-          placeholder={labels.length ? '' : placeholder}
+          placeholder={currentItems.length ? '' : placeholder}
           onKeyDown={onKeyDown}
         />
       </Box>
