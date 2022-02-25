@@ -137,22 +137,20 @@ function MyApp({
             <meta name="theme-color" content="#f35826"></meta>
           </Head>
           <BaseLayout>
-            <Box bg={useColorModeValue('#F8F8FA', 'gray.900')}>
-              {loading ? (
-                <Flex
-                  width="100%"
-                  height="100%"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Loading />
-                </Flex>
-              ) : (
-                <Box>
-                  <Component {...customProps} />
-                </Box>
-              )}
-            </Box>
+            {loading ? (
+              <Flex
+                width="100%"
+                height="100%"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Loading />
+              </Flex>
+            ) : (
+              <Box>
+                <Component {...customProps} />
+              </Box>
+            )}
           </BaseLayout>
         </AccountProvider>
         <CookieConsent consentCookie={consentCookie as boolean} />

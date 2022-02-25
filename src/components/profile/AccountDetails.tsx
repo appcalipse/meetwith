@@ -7,19 +7,23 @@ import {
   ListItem,
   OrderedList,
   UnorderedList,
+  useColorModeValue,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
-import { useContext, useState } from 'react'
+import { useContext, useRef, useState } from 'react'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { SocialLinkType } from '../../types/Account'
 import { logEvent } from '../../utils/analytics'
 import { saveAccountChanges } from '../../utils/api_helper'
+import SubscriptionDialog from './SubscriptionDialog'
 
 const AccountDetails: React.FC = () => {
   const { currentAccount, login } = useContext(AccountContext)
+  const cancelDialogRef = useRef<any>()
 
   const [loading, setLoading] = useState(false)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const socialLinks = currentAccount?.preferences?.socialLinks || []
 
@@ -66,7 +70,7 @@ const AccountDetails: React.FC = () => {
   }
 
   return (
-    <VStack p={4} alignItems="start">
+    <VStack p={4} mb={10} alignItems="start">
       <Text>Description (optional)</Text>
       <Textarea
         value={description}
@@ -111,7 +115,14 @@ const AccountDetails: React.FC = () => {
         Subscription
       </Text>
       <Flex mt={10} width="100%">
-        <VStack bg="white" width="49%" height="300px" py={5} borderRadius={10}>
+        <VStack
+          shadow="sm"
+          bg={useColorModeValue('gray.50', 'gray.700')}
+          width="49%"
+          height="300px"
+          py={5}
+          borderRadius={10}
+        >
           <Text width="100%" textAlign="left" ml={30} fontWeight="medium">
             Pro - $30 / year
           </Text>
@@ -129,7 +140,12 @@ const AccountDetails: React.FC = () => {
               Request payment for meeting scheduling (coming soon)
             </ListItem>
           </UnorderedList>
-          <Button width="90%" colorScheme="orange">
+          <Button
+            width="90%"
+            mt={50}
+            colorScheme="orange"
+            onClick={() => setIsDialogOpen(true)}
+          >
             Subscribe to Pro
           </Button>
         </VStack>
@@ -137,7 +153,7 @@ const AccountDetails: React.FC = () => {
         <VStack
           borderColor="#F35826"
           borderWidth={2}
-          bg="white"
+          bg={useColorModeValue('white', 'gray.700')}
           width="47%"
           height="300px"
           py={5}
@@ -154,6 +170,11 @@ const AccountDetails: React.FC = () => {
             <ListItem>Only 1:1 meetings</ListItem>
           </UnorderedList>
         </VStack>
+        <SubscriptionDialog
+          isDialogOpen={isDialogOpen}
+          onDialogClose={() => setIsDialogOpen(false)}
+          cancelDialogRef={cancelDialogRef}
+        />
       </Flex>
     </VStack>
   )
