@@ -689,7 +689,7 @@ export const getSubscriptionFromDBForAccount = async (
     return []
   }
 
-  if (data) {
+  if (data && data.length > 0) {
     let subscriptions = data as Subscription[]
 
     const collisionExists = await db.supabase
@@ -699,6 +699,7 @@ export const getSubscriptionFromDBForAccount = async (
       .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
 
     if (collisionExists.error) {
+      console.log(collisionExists.error)
       Sentry.captureException(error)
     }
 
