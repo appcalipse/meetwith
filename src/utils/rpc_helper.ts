@@ -1,51 +1,42 @@
-import { JsonRpcProvider } from '@ethersproject/providers'
+import * as Sentry from '@sentry/node'
 import { ethers } from 'ethers'
 
-interface AccountExtraProps {
-  name: string
-  avatar?: string
-}
+import { MWWSubscription } from '../abis/mww'
+import { ChainInfo, getMainnetChains, getTestnetChains } from '../types/chains'
+import { BlockchainSubscription } from '../types/Subscription'
 
-export const resolveExtraInfo = async (
-  address: string
-): Promise<AccountExtraProps | undefined> => {
-  return await resolveENS(address)
-}
+export const getBlockchainSubscriptionsForAccount = async (
+  accountAddress: string
+): Promise<BlockchainSubscription[]> => {
+  const subscriptions: BlockchainSubscription[] = []
 
-const resolveENS = async (
-  address: string
-): Promise<AccountExtraProps | undefined> => {
-  let provider: JsonRpcProvider
+  const chainsToCheck: ChainInfo[] =
+    process.env.NEXT_PUBLIC_ENV === 'production'
+      ? getMainnetChains()
+      : getTestnetChains()
 
-  if (window.ethereum && window.ethereum.chainId === '0x1') {
-    provider = new ethers.providers.Web3Provider(window.ethereum)
-  } else {
-    provider = new ethers.providers.InfuraProvider(
-      'homestead',
-      process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID
+  for (const chain of chainsToCheck) {
+    const provider = new ethers.providers.JsonRpcProvider(chain.rpcUrl)
+    const contract = new ethers.Contract(
+      chain.subscriptionContractAddess,
+      MWWSubscription,
+      provider
     )
+    try {
+      const domains = await contract.getDomainsForAccount(accountAddress)
+      for (const domain of domains) {
+        const subs = (await contract.subscriptions(
+          domain
+        )) as BlockchainSubscription
+        subscriptions.push({
+          ...subs,
+          chain: chain.chain,
+        })
+      }
+    } catch (e) {
+      Sentry.captureException(e)
+    }
   }
 
-  const name = await provider.lookupAddress(address)
-
-  if (!name) {
-    return undefined
-  }
-
-  const resolver = await provider.getResolver(name)
-
-  const validatedAddress = await resolver?.getAddress()
-
-  // Check to be sure the reverse record is correct.
-  if (address.toLowerCase() !== validatedAddress?.toLowerCase()) {
-    return undefined
-  }
-
-  const avatarInfo = await resolver?.getText('avatar')
-  const avatar = avatarInfo ? (await resolver?.getAvatar())?.url : undefined
-
-  return {
-    name,
-    avatar,
-  }
+  return subscriptions
 }
