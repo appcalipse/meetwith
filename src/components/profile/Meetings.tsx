@@ -79,10 +79,7 @@ const Meetings: React.FC = () => {
           <MeetingCard
             key={meeting.id}
             meeting={meeting}
-            timezone={
-              currentAccount?.preferences?.timezone ||
-              Intl.DateTimeFormat().resolvedOptions().timeZone
-            }
+            timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
           />
         ))}
         {!noMoreFetch && !firstFetch && (
@@ -109,7 +106,6 @@ const Meetings: React.FC = () => {
     fetchMeetings()
   }
 
-  const isLocalDevelopment = process.env.NEXT_PUBLIC_ENV === 'local'
   return (
     <Flex direction={'column'}>
       <ScheduleModal isOpen={isOpen} onClose={afterClose} onOpen={onOpen} />
@@ -118,7 +114,6 @@ const Meetings: React.FC = () => {
           onClick={onOpen}
           colorScheme="orange"
           isFullWidth={false}
-          display={isLocalDevelopment ? 'flex' : 'none'}
           float={'right'}
           mb={4}
           leftIcon={<FaPlus />}

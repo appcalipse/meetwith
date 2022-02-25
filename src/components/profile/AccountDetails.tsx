@@ -10,12 +10,15 @@ import {
   useColorModeValue,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
-import { useContext, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { SocialLinkType } from '../../types/Account'
+import { AcceptedToken, SupportedChain } from '../../types/chains'
+import { Plan } from '../../types/Subscription'
 import { logEvent } from '../../utils/analytics'
-import { saveAccountChanges } from '../../utils/api_helper'
+import { saveAccountChanges, syncSubscriptions } from '../../utils/api_helper'
+import { subscribeToPlan } from '../../utils/subscription_manager'
 import SubscriptionDialog from './SubscriptionDialog'
 
 const AccountDetails: React.FC = () => {
@@ -42,6 +45,14 @@ const AccountDetails: React.FC = () => {
     socialLinks.filter(link => link.type === SocialLinkType.TELEGRAM)[0]?.url ||
       ''
   )
+
+  const getSubs = async () => {
+    const subscriptions = await syncSubscriptions()
+  }
+
+  useEffect(() => {
+    getSubs()
+  }, [])
 
   const saveDetails = async () => {
     setLoading(true)

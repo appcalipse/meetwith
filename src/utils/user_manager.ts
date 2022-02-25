@@ -2,12 +2,12 @@ import WalletConnectProvider from '@walletconnect/web3-provider'
 import Web3 from 'web3'
 import Web3Modal from 'web3modal'
 
-import { Account, PremiumAccount } from '../types/Account'
+import { Account } from '../types/Account'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
 import { getAccount, initInvitedAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
-import { resolveExtraInfo } from './rpc_helper'
+import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, storeCurrentAccount } from './storage'
 import { saveSignature } from './storage'
 import { isValidEVMAddress } from './validations'
@@ -126,7 +126,7 @@ const loginOrSignup = async (
 }
 
 const getAccountDisplayName = (
-  account: Account | PremiumAccount,
+  account: Account,
   forceCustomDomain?: boolean
 ): string => {
   if (forceCustomDomain) {

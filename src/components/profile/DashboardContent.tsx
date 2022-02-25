@@ -20,19 +20,19 @@ import React, { useContext, useEffect, useState } from 'react'
 import { IconType } from 'react-icons'
 import {
   FaBell,
+  FaCalendarAlt,
   FaCalendarDay,
   FaCalendarPlus,
   FaCalendarWeek,
-  FaInfo,
+  FaInfoCircle,
   FaLock,
+  FaSignOutAlt,
 } from 'react-icons/fa'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
-import {
-  getAccountCalendarUrl,
-  getEmbedCode,
-} from '../../utils/calendar_manager'
+import * as api from '../../utils/api_helper'
+import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import AvailabilityConfig from '../availabilities/availability-config'
 import IPFSLink from '../IPFSLink'
@@ -50,6 +50,7 @@ export enum EditMode {
   TYPES = 'types',
   CALENDARS = 'calendars',
   NOTIFICATIONS = 'notifications',
+  SIGNOUT = 'signout',
 }
 
 interface LinkItemProps {
@@ -60,18 +61,23 @@ interface LinkItemProps {
 }
 const LinkItems: Array<LinkItemProps> = [
   { name: 'My meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
-  { name: 'Account Details', icon: FaInfo, mode: EditMode.DETAILS },
-  { name: 'Availabilities', icon: FaCalendarWeek, mode: EditMode.AVAILABILITY },
-  { name: 'Meeting types', icon: FaCalendarPlus, mode: EditMode.TYPES },
+  { name: 'Account Details', icon: FaInfoCircle, mode: EditMode.DETAILS },
+  { name: 'Availabilities', icon: FaCalendarAlt, mode: EditMode.AVAILABILITY },
+  { name: 'Meeting types', icon: FaCalendarWeek, mode: EditMode.TYPES },
+  {
+    name: 'Notifications Settings',
+    icon: FaBell,
+    mode: EditMode.NOTIFICATIONS,
+  },
   {
     name: 'Connected calendars',
     icon: FaCalendarPlus,
     mode: EditMode.CALENDARS,
   },
   {
-    name: 'Notifications',
-    icon: FaBell,
-    mode: EditMode.NOTIFICATIONS,
+    name: 'Sign Out',
+    icon: FaSignOutAlt,
+    mode: EditMode.SIGNOUT,
   },
 ]
 
@@ -150,10 +156,8 @@ const NavItem = ({
 const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
 }) => {
-  const { currentAccount } = useContext(AccountContext)
+  const { currentAccount, logout } = useContext(AccountContext)
   const router = useRouter()
-  // const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
-
   const toast = useToast()
   const { result } = router.query
 
@@ -182,11 +186,16 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
   const accountUrl = getAccountCalendarUrl(currentAccount!, false)
-  // For showing embedded calendar version: const embedCode = getEmbedCode(currentAccount!, false)
 
-  const menuClicked = (mode: EditMode) => {
+  const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })
-    router.push(`/dashboard/${mode}`, undefined, { shallow: true })
+    if (mode === EditMode.SIGNOUT) {
+      await api.logout()
+      logout()
+      router.push(`/`)
+    } else {
+      router.push(`/dashboard/${mode}`, undefined, { shallow: true })
+    }
   }
 
   const copyUrl = async () => {
