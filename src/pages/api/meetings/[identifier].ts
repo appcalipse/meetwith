@@ -11,7 +11,7 @@ import { AccountNotFoundError } from '../../../utils/errors'
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     initDB()
-
+    console.log('lisging')
     try {
       let meetings
       if (req.query.upcoming) {
