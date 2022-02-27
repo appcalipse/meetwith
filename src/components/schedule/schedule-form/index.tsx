@@ -15,6 +15,7 @@ import { useContext, useState } from 'react'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { useLogin } from '../../../session/login'
+import { ButtonType, Color } from '../../../styles/theme'
 import { SchedulingType } from '../../../types/Meeting'
 import { isValidEmail } from '../../../utils/validations'
 
@@ -110,7 +111,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
       <HStack my={4}>
         <Switch
-          colorScheme="orange"
+          colorScheme={Color.ORANGE}
           size="lg"
           mr={4}
           isDisabled={isScheduling}
@@ -118,7 +119,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           onChange={e => setCustomMeeting(!e.target.checked)}
         />
         <FormLabel mb="0">
-          <Text color="gray">
+          <Text color={Color.GRAY}>
             Use{' '}
             <Link isExternal href="https://huddle01.com">
               Huddle01
@@ -142,19 +143,19 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       )}
 
       {!logged && (
-        <Text textAlign="left" color="gray" mb="4">
+        <Text textAlign="left" color={Color.GRAY} mb="4">
           Please{' '}
           <Button
-            variant="link"
-            colorScheme="orange"
+            variant={ButtonType.LINK}
+            colorScheme={Color.ORANGE}
             onClick={() => handleScheduleType(SchedulingType.REGULAR)}
           >
             sign in with wallet
           </Button>{' '}
           or{' '}
           <Button
-            variant="link"
-            colorScheme="orange"
+            variant={ButtonType.LINK}
+            colorScheme={Color.ORANGE}
             onClick={() => handleScheduleType(SchedulingType.GUEST)}
           >
             schedule as guest
@@ -184,7 +185,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         }
         isLoading={isScheduling || isSchedulingExternal}
         onClick={handleConfirm}
-        colorScheme="orange"
+        colorScheme={Color.ORANGE}
         mt={2}
       >
         {isScheduling ? 'Scheduling...' : 'Schedule'}

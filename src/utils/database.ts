@@ -389,7 +389,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
 
 const saveMeeting = async (
   meeting: MeetingCreationRequest,
-  requesterAddress: string
+  requesterAddress?: string
 ): Promise<DBSlotEnhanced> => {
   if (
     new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
@@ -414,7 +414,6 @@ const saveMeeting = async (
     meeting.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
-
   for (const participant of meeting.participants_mapping) {
     if (
       existingAccounts
@@ -446,14 +445,6 @@ const saveMeeting = async (
         .includes(participant.account_address!)
     ) {
       account = await getAccountFromDB(participant.account_address!)
-    } else {
-      account = await initAccountDBForWallet(
-        participant.account_address!,
-        '',
-        'UTC',
-        0,
-        true
-      )
     }
 
     const path = await addContentToIPFS(participant.privateInfo)
@@ -462,7 +453,8 @@ const saveMeeting = async (
       id: participant.slot_id,
       start: meeting.start,
       end: meeting.end,
-      account_pub_key: account.internal_pub_key,
+      account_pub_key: account! ? account.internal_pub_key : participant.email,
+      //guest_email: participant.email,
       meeting_info_file_path: path,
     }
 
