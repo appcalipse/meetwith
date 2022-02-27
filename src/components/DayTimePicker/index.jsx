@@ -46,10 +46,8 @@ function DayTimePicker({
     if (reset) {
       setPickedDay(null)
       setPickedTime(null)
-      setContent('')
       setShowPickTime(false)
       setShowConfirm(false)
-      setIsScheduling(false)
     }
   }, [reset])
 

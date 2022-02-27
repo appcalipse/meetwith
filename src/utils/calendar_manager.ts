@@ -38,6 +38,7 @@ import {
 import { logEvent } from './analytics'
 import {
   createMeeting,
+  createMeetingAsGuest,
   getAccount,
   getExistingAccounts,
   isSlotFree,
@@ -103,7 +104,7 @@ const scheduleMeeting = async (
             : ParticipationStatus.Pending,
         slot_id: uuidv4(),
         name: account.address == source_account_address ? sourceName : '',
-        email: guest_email,
+        email: account.address ? '' : guest_email,
       }
       participants.push(participant)
     }
@@ -165,6 +166,7 @@ const scheduleMeeting = async (
     }
 
     const meeting: MeetingCreationRequest = {
+      type: schedulingType,
       start: startTime,
       end: endTime,
       participants_mapping: participantsMappings,
@@ -173,9 +175,8 @@ const scheduleMeeting = async (
 
     let slot: DBSlotEnhanced
     if (schedulingType === SchedulingType.GUEST) {
-      slot = await createMeeting(meeting)
+      slot = await createMeetingAsGuest(meeting)
     } else {
-      //TODO: add endpoint for this case
       slot = await createMeeting(meeting)
     }
 
@@ -252,13 +253,13 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
 
 const decryptMeeting = async (
   meeting: DBSlotEnhanced,
-  account: Account,
+  account?: Account,
   signature?: string
 ): Promise<MeetingDecrypted> => {
   const meetingInfo = JSON.parse(
     await getContentFromEncrypted(
-      account,
-      signature || getSignature(account.address)!,
+      account!,
+      signature || getSignature(account!.address)!,
       meeting.meeting_info_encrypted
     )
   ) as IPFSMeetingInfo

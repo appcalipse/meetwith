@@ -19,6 +19,7 @@ export enum SchedulingType {
 }
 
 export interface MeetingCreationRequest {
+  type: SchedulingType
   participants_mapping: CreationRequestParticipantMapping[]
   meetingTypeId: string
   start: Date
@@ -41,7 +42,8 @@ export interface TimeSlot {
 export interface DBSlot extends TimeSlot {
   id?: string
   created_at?: Date
-  account_pub_key: string
+  account_pub_key?: string
+  guest_email?: string
   meeting_info_file_path: string
 }
 

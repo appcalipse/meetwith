@@ -101,6 +101,12 @@ export const createMeeting = async (meeting: any): Promise<DBSlotEnhanced> => {
   )) as DBSlotEnhanced
 }
 
+export const createMeetingAsGuest = async (
+  meeting: any
+): Promise<DBSlotEnhanced> => {
+  return (await internalFetch(`/guest/`, 'POST', meeting)) as DBSlotEnhanced
+}
+
 export const isSlotFree = async (
   account_id: string,
   start: Date,
