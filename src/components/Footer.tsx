@@ -77,7 +77,7 @@ export default function SmallWithLogoLeft() {
         justify={{ base: 'center', md: 'space-between' }}
         align={{ base: 'center', md: 'center' }}
       >
-        <SimpleGrid columns={3} spacing={10} width="100%">
+        <SimpleGrid columns={[2, 3, 3]} spacing={10} width="100%">
           <Box>
             <Heading size={'sm'} pb={4}>
               Product
@@ -111,7 +111,7 @@ export default function SmallWithLogoLeft() {
               </Link>
             </Text>
             <Text textAlign="justify">
-              <Link href="mailto:me@israelcrisanto.com">Need Help</Link>
+              <Link href="mailto:support@meetwithwallet.xyz">Need Help</Link>
             </Text>
             <Text textAlign="justify">
               <Link
