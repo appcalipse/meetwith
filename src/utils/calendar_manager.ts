@@ -180,13 +180,26 @@ const scheduleMeeting = async (
       slot = await createMeeting(meeting)
     }
 
-    const schedulerAccount = await getAccount(source_account_address!)
+    if (source_account_address) {
+      const schedulerAccount = await getAccount(source_account_address!)
 
-    // now that we have successfully created the event, then we will try to
-    // intergate with the external calendars that the user has
-    await syncExternalCalendars(slot.id!)
+      // now that we have successfully created the event, then we will try to
+      // intergate with the external calendars that the user has
+      await syncExternalCalendars(slot.id!)
 
-    return await decryptMeeting(slot, schedulerAccount)
+      return await decryptMeeting(slot, schedulerAccount)
+    }
+
+    return {
+      id: meeting.meetingTypeId,
+      ...meeting,
+      created_at: meeting.start,
+      participants: [],
+      content: '',
+      meeting_url: '',
+      start: meeting.start,
+      end: meeting.end,
+    }
   } else {
     throw new TimeNotAvailableError()
   }

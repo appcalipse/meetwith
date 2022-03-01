@@ -24,7 +24,8 @@ export const newMeetingEmail = async (
   participantsDisplayNames: string[],
   timezone: string,
   start: Date,
-  end: Date
+  end: Date,
+  guest_email?: string
 ): Promise<boolean> => {
   const email = new Email({
     message: {
@@ -34,6 +35,15 @@ export const newMeetingEmail = async (
     transport: transporter,
   })
 
+  let guestDisplayName: string[]
+
+  if (guest_email) {
+    guestDisplayName = participantsDisplayNames.filter(e => {
+      return e !== ''
+    })
+    guestDisplayName.push(guest_email)
+  }
+
   try {
     await email.send({
       template: path.resolve('src', 'emails', 'new_meeting'),
@@ -41,7 +51,9 @@ export const newMeetingEmail = async (
         to: toEmail,
       },
       locals: {
-        participantsDisplay: participantsDisplayNames.join(', '),
+        participantsDisplay: guest_email
+          ? guestDisplayName!.join(', ')
+          : participantsDisplayNames.join(', '),
         meeting: {
           start: `${format(
             utcToZonedTime(start, timezone),

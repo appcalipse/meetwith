@@ -415,59 +415,68 @@ const saveMeeting = async (
       p => p.type === ParticipantType.Scheduler
     ) || null
   for (const participant of meeting.participants_mapping) {
-    if (
-      existingAccounts
-        .map(account => account.address)
-        .includes(participant.account_address!) &&
-      participant.type === ParticipantType.Owner
-    ) {
-      // only validate slot if meeting is being scheduled ons omeones calendar and not by itself
+    if (participant.account_address) {
       if (
-        ownerAccount &&
-        ownerAccount.account_address === participant.account_address &&
-        ownerAccount.account_address !== schedulerAccount?.account_address &&
-        (await !isSlotFree(
-          participant.account_address!,
-          new Date(meeting.start),
-          new Date(meeting.end),
-          meeting.meetingTypeId
-        ))
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!) &&
+        participant.type === ParticipantType.Owner
       ) {
-        throw new TimeNotAvailableError()
+        // only validate slot if meeting is being scheduled ons omeones calendar and not by itself
+        if (
+          ownerAccount &&
+          ownerAccount.account_address === participant.account_address &&
+          ownerAccount.account_address !== schedulerAccount?.account_address &&
+          (await !isSlotFree(
+            participant.account_address!,
+            new Date(meeting.start),
+            new Date(meeting.end),
+            meeting.meetingTypeId
+          ))
+        ) {
+          throw new TimeNotAvailableError()
+        }
       }
-    }
 
-    let account: Account
+      let account: Account
 
-    if (
-      existingAccounts
-        .map(account => account.address)
-        .includes(participant.account_address!)
-    ) {
-      account = await getAccountFromDB(participant.account_address!)
-    }
-
-    const path = await addContentToIPFS(participant.privateInfo)
-
-    const dbSlot: DBSlot = {
-      id: participant.slot_id,
-      start: meeting.start,
-      end: meeting.end,
-      account_pub_key: account! ? account.internal_pub_key : participant.email,
-      //guest_email: participant.email,
-      meeting_info_file_path: path,
-    }
-
-    slots.push(dbSlot)
-
-    if (participant.account_address === requesterAddress) {
-      index = i
-      meetingResponse = {
-        ...dbSlot,
-        meeting_info_encrypted: participant.privateInfo,
+      if (
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!)
+      ) {
+        account = await getAccountFromDB(participant.account_address!)
+      } else {
+        account = await initAccountDBForWallet(
+          participant.account_address!,
+          '',
+          'UTC',
+          0,
+          true
+        )
       }
+
+      const path = await addContentToIPFS(participant.privateInfo)
+
+      const dbSlot: DBSlot = {
+        id: participant.slot_id,
+        start: meeting.start,
+        end: meeting.end,
+        account_pub_key: account.internal_pub_key,
+        meeting_info_file_path: path,
+      }
+
+      slots.push(dbSlot)
+
+      if (participant.account_address === requesterAddress) {
+        index = i
+        meetingResponse = {
+          ...dbSlot,
+          meeting_info_encrypted: participant.privateInfo,
+        }
+      }
+      i++
     }
-    i++
   }
 
   const { data, error } = await db.supabase.from('slots').insert(slots)
