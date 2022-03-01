@@ -9,7 +9,7 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
     const { identifier, signature } = req.body
     try {
       const account = await getAccountFromDB(identifier as string)
-      console.log('login')
+
       // match signature and identifier
       // make sure people don't screw up others by sending requests to create accounts
       const recovered = checkSignature(signature, account.nonce)

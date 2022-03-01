@@ -1,6 +1,6 @@
 import { Box, Image, keyframes, Text } from '@chakra-ui/react'
 
-const Loading: React.FC = () => {
+const Loading: React.FC<{ label?: string }> = ({ label }) => {
   const spin = keyframes`
     50% {
         transform: rotate(360deg) scale(0.7, 0.7);
@@ -37,7 +37,7 @@ const Loading: React.FC = () => {
       </Box>
 
       <Text fontSize="sm" pt="7rem">
-        Loading
+        {label ? label : 'Loading...'}
       </Text>
     </Box>
   )
