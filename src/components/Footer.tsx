@@ -2,8 +2,10 @@ import {
   Box,
   chakra,
   Container,
+  Heading,
   Image,
   Link,
+  SimpleGrid,
   Stack,
   Text,
   useColorModeValue,
@@ -70,6 +72,81 @@ export default function SmallWithLogoLeft() {
         as={Stack}
         maxW={'6xl'}
         py={4}
+        direction={{ base: 'column', md: 'row' }}
+        spacing={4}
+        justify={{ base: 'center', md: 'space-between' }}
+        align={{ base: 'center', md: 'center' }}
+      >
+        <SimpleGrid columns={[2, 3, 3]} spacing={10} width="100%">
+          <Box>
+            <Heading size={'sm'} pb={4}>
+              Product
+            </Heading>
+            <Text textAlign="justify">
+              <NextLink href="/#pricing" passHref>
+                <Link>Pricing</Link>
+              </NextLink>
+            </Text>
+            <Text textAlign="justify">
+              <Link
+                href="https://meet-with-wallet.sleekplan.app/"
+                target="_blank"
+              >
+                Roadmap
+              </Link>
+            </Text>
+            <Text textAlign="justify">
+              <NextLink href="/#faq" passHref>
+                <Link>FAQ</Link>
+              </NextLink>
+            </Text>
+          </Box>
+          <Box>
+            <Heading size={'sm'} pb={4}>
+              Community
+            </Heading>
+            <Text textAlign="justify">
+              <Link href="https://discord.gg/an2q4xUkcR" target="_blank">
+                Discord
+              </Link>
+            </Text>
+            <Text textAlign="justify">
+              <Link href="mailto:support@meetwithwallet.xyz">Need Help</Link>
+            </Text>
+            <Text textAlign="justify">
+              <Link
+                href="https://meet-with-wallet.sleekplan.app/"
+                target="_blank"
+              >
+                Feature Requests
+              </Link>
+            </Text>
+          </Box>
+          <Box>
+            <Heading size={'sm'} pb={4}>
+              Legal
+            </Heading>
+            <Text textAlign="justify">
+              <NextLink href={'/legal/terms'} passHref>
+                <Link>Terms of Service</Link>
+              </NextLink>
+            </Text>
+            <Text textAlign="justify">
+              <NextLink href={'/legal/privacy'} passHref>
+                <Link>Privacy Policy</Link>
+              </NextLink>
+            </Text>
+            <Text textAlign="justify">
+              <NextLink href={'/legal/data-protection'} passHref>
+                <Link>Data Protection</Link>
+              </NextLink>
+            </Text>
+          </Box>
+        </SimpleGrid>
+      </Container>
+      <Container
+        as={Stack}
+        maxW={'6xl'}
         direction={{ base: 'column', md: 'row' }}
         spacing={4}
         justify={{ base: 'center', md: 'space-between' }}

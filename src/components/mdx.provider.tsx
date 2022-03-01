@@ -1,4 +1,10 @@
-import { Heading, ListItem, Text, UnorderedList } from '@chakra-ui/react'
+import {
+  Heading,
+  ListItem,
+  OrderedList,
+  Text,
+  UnorderedList,
+} from '@chakra-ui/react'
 import { MDXProvider } from '@mdx-js/react'
 import React from 'react'
 
@@ -20,6 +26,7 @@ const components = {
   ),
   p: ({ children }: any) => <Text fontSize="md">{children}</Text>,
   ul: UnorderedList,
+  ol: OrderedList,
   li: ({ children }: any) => <ListItem>{children}</ListItem>,
 }
 
