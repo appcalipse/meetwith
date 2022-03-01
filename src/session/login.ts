@@ -13,17 +13,13 @@ export const useLogin = () => {
     useContext(AccountContext)
   const toast = useToast()
   const handleLogin = async (useWaiting = true, forceRedirect = true) => {
-    console.log(' login clinet side')
     logEvent('Clicked to connect wallet')
     try {
       const account = await loginWithWallet(
         useWaiting ? setLoginIn : () => null
       )
 
-      console.log('acct', account)
-
-      // user could revoke wallet authorization any moment, independently
-      // from our system
+      // user could revoke wallet authorization any moment
       if (!account) {
         if (logged) {
           await router.push('/logout')
@@ -35,6 +31,16 @@ export const useLogin = () => {
       const provider = web3.currentProvider as any
       provider &&
         provider.on('accountsChanged', async (accounts: string[]) => {
+          // for this to get called, we need to have an account connected first
+          // if this changed, then the user removed the permission directly in
+          // the wallet manager, and we should logout the user right away,
+          // because the account provider will throw an exception and not ask the
+          // user to give the required permissions automatically
+          if (!accounts?.length) {
+            await router.push('/logout')
+            return
+          }
+
           const newAccount = await loginWithWallet(setLoginIn)
           if (newAccount) {
             login(newAccount)
@@ -47,7 +53,6 @@ export const useLogin = () => {
         await router.push('/dashboard')
       }
     } catch (error: any) {
-      console.log('error loging', error)
       Sentry.captureException(error)
       toast({
         title: 'Error',
