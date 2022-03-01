@@ -52,13 +52,18 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 <Text
                   textAlign="center"
                   mt={12}
-                >{`You meeting with ${getAccountDisplayName(
+                >{`Your meeting with ${getAccountDisplayName(
                   targetAccount
                 )} at ${format(
-                  utcToZonedTime(
-                    meeting!.start,
-                    schedulerAccount.preferences!.timezone
-                  ),
+                  schedulerAccount
+                    ? utcToZonedTime(
+                        meeting!.start,
+                        schedulerAccount!.preferences!.timezone
+                      )
+                    : utcToZonedTime(
+                        meeting!.start,
+                        targetAccount.preferences!.timezone
+                      ),
                   'LLLL'
                 )} was scheduled successfully.`}</Text>
               )}

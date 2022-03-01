@@ -70,7 +70,8 @@ export const notifyForNewMeeting = async (
                 participants.map(participant => participant.address!),
                 participant.timezone!,
                 new Date(meeting.start),
-                new Date(meeting.end)
+                new Date(meeting.end),
+                participant.guest_email
               )
             }
             break
@@ -85,7 +86,8 @@ export const notifyForNewMeeting = async (
         participants.map(participant => participant.address!),
         participant.timezone!,
         new Date(meeting.start),
-        new Date(meeting.end)
+        new Date(meeting.end),
+        participant.guest_email
       )
     }
   }
