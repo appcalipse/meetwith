@@ -266,7 +266,7 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
 
 const decryptMeeting = async (
   meeting: DBSlotEnhanced,
-  account?: Account,
+  account: Account,
   signature?: string
 ): Promise<MeetingDecrypted> => {
   const meetingInfo = JSON.parse(

@@ -10,11 +10,11 @@ import {
 import { newMeetingEmail } from './email_helper'
 
 export interface ParticipantInfoForNotification {
-  address?: string
-  timezone?: string
+  address: string
+  timezone: string
   type: ParticipantType
+  subscriptions: AccountNotifications
   guest_email?: string
-  subscriptions?: AccountNotifications
 }
 
 export const notifyForNewMeeting = async (
@@ -30,19 +30,18 @@ export const notifyForNewMeeting = async (
         account.address
       )
       participants.push({
-        address: account.address ? account.address : '',
-        timezone: account.preferences!.timezone
-          ? account.preferences!.timezone
-          : '',
+        address: account.address,
+        timezone: account.preferences!.timezone,
         type: participant.type,
-        guest_email: participant.email ? participant.email : '',
         subscriptions,
       })
     } else {
+      const subscriptions = await getAccountNotificationSubscriptions('')
       participants.push({
         address: '',
-        timezone: '',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         type: participant.type,
+        subscriptions,
         guest_email: participant.email,
       })
     }
@@ -71,7 +70,10 @@ export const notifyForNewMeeting = async (
                 participant.timezone!,
                 new Date(meeting.start),
                 new Date(meeting.end),
-                participant.guest_email
+                participants
+                  .map(participant => participant.guest_email)
+                  .toString()
+                  .replace(/,/g, '')
               )
             }
             break
@@ -79,7 +81,6 @@ export const notifyForNewMeeting = async (
         }
       }
     }
-
     if (participant.guest_email) {
       await newMeetingEmail(
         participant.guest_email,
