@@ -23,14 +23,13 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
     <VStack my={4} alignItems="start" justifyContent="center">
       {title && <Text fontSize="sm">{title}</Text>}
 
-      <HStack minH="24px" width="100%">
+      <HStack mt={0}>
         <Link
           href={`https://ipfs.io/ipfs/${ipfsHash}`}
           isExternal
           target="_blank"
           rel="noopener noreferrer"
           display="flex"
-          width="100%"
           alignItems="center"
           justifyContent="center"
           onClick={() => logEvent('Clicked IPFS link', { title })}
@@ -41,7 +40,7 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
             flex={1}
           >
             <Text
-              fontSize="0.8rem"
+              fontSize="sm"
               flex={1}
               textOverflow="ellipsis"
               textAlign="start"

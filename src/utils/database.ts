@@ -699,7 +699,6 @@ export const getSubscriptionFromDBForAccount = async (
       .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
 
     if (collisionExists.error) {
-      console.log(collisionExists.error)
       Sentry.captureException(error)
     }
 

@@ -60,34 +60,6 @@ export const getExistingAccounts = async (
   }
 }
 
-export const createAccount = async (
-  address: string,
-  signature: string,
-  timezone: string,
-  nonce: number
-): Promise<Account> => {
-  return (await internalFetch(`/accounts`, 'POST', {
-    address,
-    signature,
-    timezone,
-    nonce,
-  })) as Account
-}
-
-export const initInvitedAccount = async (
-  address: string,
-  signature: string,
-  timezone: string,
-  nonce: number
-): Promise<Account> => {
-  return (await internalFetch(`/accounts`, 'PUT', {
-    address,
-    signature,
-    timezone,
-    nonce,
-  })) as Account
-}
-
 export const saveAccountChanges = async (
   account: Account
 ): Promise<Account> => {

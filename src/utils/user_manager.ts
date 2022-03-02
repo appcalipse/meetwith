@@ -4,7 +4,7 @@ import Web3Modal from 'web3modal'
 
 import { Account } from '../types/Account'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { getAccount, initInvitedAccount, login, signup } from './api_helper'
+import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
@@ -22,6 +22,7 @@ const providerOptions = {
 }
 
 let web3: Web3
+let connectedProvider: any
 
 const loginWithWallet = async (
   setLoginIn: (loginIn: boolean) => void
@@ -32,8 +33,8 @@ const loginWithWallet = async (
   })
 
   try {
-    const provider = await web3Modal.connect()
-    web3 = new Web3(provider)
+    connectedProvider = await web3Modal.connect()
+    web3 = new Web3(connectedProvider)
 
     setLoginIn(true)
     const accounts = await web3.eth.getAccounts()
@@ -85,7 +86,8 @@ const loginOrSignup = async (
     account = await getAccount(accountAddress.toLowerCase())
     if (account.is_invited) {
       const { signature, nonce } = await generateSignature()
-      account = await initInvitedAccount(
+
+      account = await signup(
         accountAddress.toLowerCase(),
         signature,
         timezone,
@@ -163,6 +165,7 @@ const getParticipantDisplay = (
 }
 
 export {
+  connectedProvider,
   ellipsizeAddress,
   getAccountDisplayName,
   getAddressDisplayForInput,
