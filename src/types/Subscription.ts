@@ -5,13 +5,20 @@ import { SupportedChain } from './chains'
 export interface PlanInfo {
   plan: Plan
   usdPrice: number
+  name: string
 }
 
 export enum Plan {
   PRO = 1,
 }
 
-export const existingPlans: PlanInfo[] = [{ plan: Plan.PRO, usdPrice: 30 }]
+export const existingPlans: PlanInfo[] = [
+  {
+    plan: Plan.PRO,
+    usdPrice: process.env.NEXT_PUBLIC_ENV === 'production' ? 30 : 1,
+    name: 'Pro',
+  },
+]
 
 export const getPlanInfo = (plan: Plan): PlanInfo | undefined => {
   return existingPlans.find(_plan => _plan.plan === plan)
