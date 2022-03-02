@@ -42,8 +42,7 @@ export interface TimeSlot {
 export interface DBSlot extends TimeSlot {
   id?: string
   created_at?: Date
-  account_pub_key?: string
-  guest_email?: string
+  account_pub_key: string
   meeting_info_file_path: string
 }
 

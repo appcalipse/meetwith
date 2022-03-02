@@ -1,6 +1,6 @@
 export interface Account {
   id: string
-  created?: Date
+  created: Date
   address: string
   internal_pub_key: string
   encoded_signature: string
