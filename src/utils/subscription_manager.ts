@@ -17,8 +17,12 @@ import { connectedProvider } from './user_manager'
 
 export const YEAR_DURATION = 31536000
 
-export const isProAccount = (account: Account): boolean => {
-  return account.subscriptions?.some(sub => sub.plan_id === Plan.PRO)
+export const isProAccount = (account?: Account): boolean => {
+  return (
+    account !== undefined &&
+    account !== null &&
+    account!.subscriptions?.some(sub => sub.plan_id === Plan.PRO)
+  )
 }
 
 export const checkAllowance = async (
