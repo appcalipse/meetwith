@@ -108,7 +108,7 @@ export default class GoogleCalendarService implements Calendar {
             .map(it =>
               it.account_address
                 ? ellipsizeAddress(it.account_address!)
-                : it.email
+                : it.guest_email
             ),
         ]
         const payload: calendar_v3.Schema$Event = {

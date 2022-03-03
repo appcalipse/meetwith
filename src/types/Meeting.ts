@@ -31,7 +31,8 @@ export interface CreationRequestParticipantMapping {
   slot_id: string
   type: ParticipantType
   privateInfo: Encrypted
-  email?: string
+  timeZone?: string
+  guest_email?: string
 }
 
 export interface TimeSlot {
@@ -59,7 +60,7 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
   status: ParticipationStatus
   slot_id: string
   name?: string
-  email?: string
+  guest_email?: string
 }
 
 export interface IPFSMeetingInfo {

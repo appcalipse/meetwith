@@ -17,6 +17,7 @@ import {
 } from 'eth-crypto'
 import { v4 as uuidv4 } from 'uuid'
 
+import accounts from '../pages/api/secure/accounts'
 import {
   Account,
   DayAvailability,
@@ -104,7 +105,7 @@ const scheduleMeeting = async (
             : ParticipationStatus.Pending,
         slot_id: uuidv4(),
         name: account.address == source_account_address ? sourceName : '',
-        email: account.address ? '' : guest_email,
+        guest_email: account.address ? '' : guest_email,
       }
       participants.push(participant)
     }
@@ -131,7 +132,7 @@ const scheduleMeeting = async (
       const participant: ParticipantInfo = {
         type: ParticipantType.Guest,
         status: ParticipationStatus.Accepted,
-        email: guest_email,
+        guest_email,
         name: sourceName,
         slot_id: uuidv4(),
       }
@@ -152,7 +153,6 @@ const scheduleMeeting = async (
         account_address: participant.account_address
           ? participant.account_address
           : '',
-        email: participant.account_address ? '' : participant.email,
         slot_id: participant.slot_id,
         type: participant.type,
         privateInfo: await encryptWithPublicKey(
@@ -161,6 +161,10 @@ const scheduleMeeting = async (
           )[0]?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
           JSON.stringify(privateInfo)
         ),
+        timeZone: !participant.account_address
+          ? Intl.DateTimeFormat().resolvedOptions().timeZone
+          : '',
+        guest_email: participant.account_address ? '' : participant.guest_email,
       }
       participantsMappings.push(participantMapping)
     }

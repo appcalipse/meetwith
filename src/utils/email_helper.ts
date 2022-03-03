@@ -6,7 +6,7 @@ import nodemailer from 'nodemailer'
 import path from 'path'
 
 import { durationToHumanReadable } from './calendar_manager'
-import { ellipsizeAddress } from './user_manager'
+import { ellipsizeAddress, getParticipantDisplay } from './user_manager'
 
 const transporter = nodemailer.createTransport({
   host: 'smtppro.zoho.eu',
@@ -25,8 +25,7 @@ export const newMeetingEmail = async (
   participantsDisplayNames: string[],
   timezone: string,
   start: Date,
-  end: Date,
-  guest_email?: string
+  end: Date
 ): Promise<boolean> => {
   const email = new Email({
     message: {
@@ -36,19 +35,6 @@ export const newMeetingEmail = async (
     transport: transporter,
   })
 
-  const participants: string[] = []
-
-  if (guest_email && guest_email !== '') {
-    participants.push(guest_email)
-  }
-
-  participantsDisplayNames.forEach(participant => {
-    if (participant !== '') {
-      participant = ellipsizeAddress(participant)
-      participants.push(participant)
-    }
-  })
-
   try {
     await email.send({
       template: path.resolve('src', 'emails', 'new_meeting'),
@@ -56,7 +42,7 @@ export const newMeetingEmail = async (
         to: toEmail,
       },
       locals: {
-        participantsDisplay: participants.join(', '),
+        participantsDisplay: participantsDisplayNames.join(', '),
         meeting: {
           start: `${format(
             utcToZonedTime(start, timezone),
