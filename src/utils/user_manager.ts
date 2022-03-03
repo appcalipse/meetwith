@@ -155,7 +155,7 @@ const getParticipantDisplay = (
   if (participant.account_address === currentAccount?.address) {
     display = 'You'
   } else if (!participant.account_address) {
-    display = participant.email!
+    display = participant.guest_email!
   } else {
     display = participant.name || ellipsizeAddress(participant.account_address!)
   }

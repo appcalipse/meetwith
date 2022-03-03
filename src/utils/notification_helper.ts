@@ -8,21 +8,28 @@ import {
   getAccountNotificationSubscriptions,
 } from './database'
 import { newMeetingEmail } from './email_helper'
+import { ellipsizeAddress } from './user_manager'
 
 export interface ParticipantInfoForNotification {
   address: string
   timezone: string
   type: ParticipantType
   subscriptions: AccountNotifications
-  guest_email?: string
 }
 
 export const notifyForNewMeeting = async (
   meeting: MeetingCreationRequest
 ): Promise<void> => {
   const participants: ParticipantInfoForNotification[] = []
+
+  let participantsDisplay: string[] = []
+
   for (let i = 0; i < meeting.participants_mapping.length; i++) {
     const participant = meeting.participants_mapping[i]
+
+    console.log(meeting.participants_mapping)
+
+    console.log(participantsDisplay)
 
     if (participant.account_address) {
       const account = await getAccountFromDB(participant.account_address!)
@@ -35,15 +42,18 @@ export const notifyForNewMeeting = async (
         type: participant.type,
         subscriptions,
       })
+      participantsDisplay = participants.map(participant =>
+        ellipsizeAddress(participant.address)
+      )
     } else {
-      const subscriptions = await getAccountNotificationSubscriptions('')
-      participants.push({
-        address: '',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        type: participant.type,
-        subscriptions,
-        guest_email: participant.email,
-      })
+      participantsDisplay.push(participant.guest_email!)
+      await newMeetingEmail(
+        participant.guest_email!,
+        participantsDisplay,
+        participant.timeZone!,
+        new Date(meeting.start),
+        new Date(meeting.end)
+      )
     }
   }
 
@@ -52,44 +62,30 @@ export const notifyForNewMeeting = async (
 
     if (
       participant.address &&
-      participant.subscriptions!.notification_types.length > 0
+      participant.subscriptions.notification_types.length > 0
     ) {
       for (
         let j = 0;
-        j < participant.subscriptions!.notification_types.length;
+        j < participant.subscriptions.notification_types.length;
         j++
       ) {
         const notification_type =
-          participant.subscriptions!.notification_types[j]
+          participant.subscriptions.notification_types[j]
         switch (notification_type.channel) {
           case NotificationChannel.EMAIL:
             if (participant.type === ParticipantType.Owner) {
               await newMeetingEmail(
                 notification_type.destination,
-                participants.map(participant => participant.address!),
+                participantsDisplay,
                 participant.timezone!,
                 new Date(meeting.start),
-                new Date(meeting.end),
-                participants
-                  .map(participant => participant.guest_email)
-                  .toString()
-                  .replace(/,/g, '')
+                new Date(meeting.end)
               )
             }
             break
           default:
         }
       }
-    }
-    if (participant.guest_email) {
-      await newMeetingEmail(
-        participant.guest_email,
-        participants.map(participant => participant.address!),
-        participant.timezone!,
-        new Date(meeting.start),
-        new Date(meeting.end),
-        participant.guest_email
-      )
     }
   }
   return
