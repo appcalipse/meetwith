@@ -31,7 +31,7 @@ export interface CreationRequestParticipantMapping {
   slot_id: string
   type: ParticipantType
   privateInfo: Encrypted
-  timeZone?: string
+  timeZone: string
   guest_email?: string
 }
 
