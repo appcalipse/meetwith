@@ -216,7 +216,10 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     .match({ id: account.id })
 
   if (error) {
-    Sentry.captureException(error)
+    // Try-catch to handle browser error
+    try {
+      Sentry.captureException(error)
+    } catch {}
     //TODO: handle error
   }
 
@@ -283,7 +286,10 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
 
     return account
   } else {
-    Sentry.captureException(error)
+    // try-catch to handle browser error
+    try {
+      Sentry.captureException(error)
+    } catch {}
   }
 
   throw new AccountNotFoundError(identifier)
@@ -685,7 +691,9 @@ export const getSubscriptionFromDBForAccount = async (
     .eq('owner_account', accountAddress.toLowerCase())
 
   if (error) {
-    Sentry.captureException(error)
+    try {
+      Sentry.captureException(error)
+    } catch {}
     return []
   }
 
@@ -700,7 +708,10 @@ export const getSubscriptionFromDBForAccount = async (
 
     if (collisionExists.error) {
       console.log(collisionExists.error)
-      Sentry.captureException(error)
+      // Try-catch for handling browser
+      try {
+        Sentry.captureException(error)
+      } catch {}
     }
 
     // If for any reason some smart ass registered a domain manually on the blockchain, but such domain already existed for someone else and is not expired, we remove it here

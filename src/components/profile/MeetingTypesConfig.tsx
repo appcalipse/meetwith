@@ -2,6 +2,8 @@ import {
   Box,
   Button,
   Checkbox,
+  Grid,
+  GridItem,
   HStack,
   Icon,
   Input,
@@ -12,18 +14,24 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { ChangeEvent, useContext, useState } from 'react'
+import { ChangeEvent, useContext, useRef, useState } from 'react'
 import { FaArrowLeft, FaLock } from 'react-icons/fa'
+import { v4 as uuidv4, v4 } from 'uuid'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
 import { logEvent } from '../../utils/analytics'
-import { saveMeetingType } from '../../utils/api_helper'
+import { saveAccountChanges, saveMeetingType } from '../../utils/api_helper'
 import {
   durationToHumanReadable,
   getAccountCalendarUrl,
 } from '../../utils/calendar_manager'
+import {
+  getAccountFromDB,
+  updateAccountPreferences,
+} from '../../utils/database'
 import { getSlugFromText } from '../../utils/generic_utils'
+import NewMeetingDialog from './NewMeetingDialog'
 
 const MeetingTypesConfig: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -41,13 +49,13 @@ const MeetingTypesConfig: React.FC = () => {
       ) : (
         <VStack width="100%" alignItems={'flex-start'}>
           <Text>Your meeting types</Text>
-          <HStack flexWrap="wrap">
+          <Grid templateColumns="repeat(2, 1fr)" gap={4} flexWrap="wrap">
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
               const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
                 type.url
               }`
               return (
-                <Box key={index}>
+                <GridItem key={index}>
                   <MeetingTypeCard
                     onSelect={setSelectedType}
                     title={type.title}
@@ -55,12 +63,16 @@ const MeetingTypesConfig: React.FC = () => {
                     url={url}
                     typeId={type.id!}
                   />
-                  <Spacer />
-                </Box>
+                </GridItem>
               )
             })}
-            <AddTypeCard />
-          </HStack>
+            <GridItem>
+              <AddTypeCard
+                currentAccount={currentAccount}
+                accountAddress={currentAccount?.address}
+              />
+            </GridItem>
+          </Grid>
         </VStack>
       )}
     </Box>
@@ -137,26 +149,44 @@ const MeetingTypeCard: React.FC<CardProps> = ({
   )
 }
 
-const AddTypeCard: React.FC = () => {
+interface AddTypeCardProps {
+  currentAccount: Account | null | undefined
+  accountAddress: string | undefined
+}
+
+const AddTypeCard: React.FC<AddTypeCardProps> = ({
+  accountAddress,
+  currentAccount,
+}) => {
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
+  const cancelDialogRef = useRef<any>()
+
+  const createType = async () => {
+    logEvent('Created new type')
+    setIsDialogOpen(true)
+  }
+
   return (
     <Box alignSelf="stretch">
       <VStack
         cursor="pointer"
         borderRadius={8}
         p={4}
-        shadow={'md'}
         minW="280px"
         maxW="320px"
         alignItems="center"
         height={'100%'}
         justifyContent="center"
-        bgColor={useColorModeValue('gray.100', 'gray.700')}
       >
-        <Text mb={8} fontWeight="medium">
-          Add meeting type
-        </Text>
-        <Icon as={FaLock} size="2em" color="gray.500" />
-        <Text mt={2}>Coming soon</Text>
+        <Button colorScheme="orange" onClick={createType}>
+          + New Meeting Type
+        </Button>
+        <NewMeetingDialog
+          currentAccount={currentAccount}
+          isDialogOpen={isDialogOpen}
+          cancelDialogRef={cancelDialogRef}
+          onDialogClose={() => setIsDialogOpen(false)}
+        />
       </VStack>
     </Box>
   )
