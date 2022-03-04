@@ -26,6 +26,8 @@ let web3: Web3
 const loginWithWallet = async (
   setLoginIn: (loginIn: boolean) => void
 ): Promise<Account | undefined> => {
+  setLoginIn(true)
+
   const web3Modal = new Web3Modal({
     cacheProvider: true, // optional
     providerOptions, // required
@@ -35,18 +37,17 @@ const loginWithWallet = async (
     const provider = await web3Modal.connect()
     web3 = new Web3(provider)
 
-    setLoginIn(true)
     const accounts = await web3.eth.getAccounts()
 
     const account = await loginOrSignup(
       accounts[0].toLowerCase(),
       Intl.DateTimeFormat().resolvedOptions().timeZone
     )
-    setLoginIn(false)
     return account
   } catch (err) {
-    setLoginIn(false)
     return undefined
+  } finally {
+    setLoginIn(false)
   }
 }
 
@@ -68,7 +69,6 @@ const loginOrSignup = async (
   timezone: string
 ): Promise<Account> => {
   let account: Account
-
   const generateSignature = async () => {
     const nonce = Number(Math.random().toString(8).substring(2, 10))
     const signature = await signDefaultMessage(
