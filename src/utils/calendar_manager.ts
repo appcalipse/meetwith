@@ -161,9 +161,7 @@ const scheduleMeeting = async (
           )[0]?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
           JSON.stringify(privateInfo)
         ),
-        timeZone: !participant.account_address
-          ? Intl.DateTimeFormat().resolvedOptions().timeZone
-          : '',
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         guest_email: participant.account_address ? '' : participant.guest_email,
       }
       participantsMappings.push(participantMapping)

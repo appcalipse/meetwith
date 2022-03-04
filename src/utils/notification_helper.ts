@@ -27,10 +27,6 @@ export const notifyForNewMeeting = async (
   for (let i = 0; i < meeting.participants_mapping.length; i++) {
     const participant = meeting.participants_mapping[i]
 
-    console.log(meeting.participants_mapping)
-
-    console.log(participantsDisplay)
-
     if (participant.account_address) {
       const account = await getAccountFromDB(participant.account_address!)
       const subscriptions = await getAccountNotificationSubscriptions(
