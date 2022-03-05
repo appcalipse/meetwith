@@ -283,7 +283,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
                 setDomain(
                   e.target.value
                     .replace(/ /g, '')
-                    .replace(/[^\w.]|_/gi, '')
+                    .replace(/[^\w.]/gi, '')
                     .toLowerCase()
                 )
               }
