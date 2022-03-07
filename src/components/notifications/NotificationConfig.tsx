@@ -26,6 +26,7 @@ import {
   getNotificationSubscriptions,
   setNotificationSubscriptions,
 } from '../../utils/api_helper'
+import { isProAccount } from '../../utils/subscription_manager'
 import { isValidEmail } from '../../utils/validations'
 
 const NotificationsConfig: React.FC = () => {
@@ -103,13 +104,14 @@ const NotificationsConfig: React.FC = () => {
     setLoading(false)
   }
 
+  const isPro = isProAccount(currentAccount!)
+
   return (
     <VStack alignItems="start" flex={1} mb={8}>
-      <HStack py={4}>
+      <HStack py={4} alignItems="center">
         <Switch
           colorScheme="orange"
           size="md"
-          mr={4}
           isChecked={emailNotifications}
           onChange={e => setEmailNotifications(e.target.checked)}
         />
@@ -137,14 +139,19 @@ const NotificationsConfig: React.FC = () => {
           size="md"
           isChecked={epnsNotifications}
           onChange={e => setEPNSNotifications(e.target.checked)}
-          isDisabled={true}
+          isDisabled={!isPro}
         />
         <Text>
-          EPNS (
-          <NextLink href="/dashboard/details" shallow passHref>
-            <Link>Go Pro</Link>
-          </NextLink>{' '}
-          to enable it)
+          EPNS{' '}
+          {!isPro && (
+            <>
+              (
+              <NextLink href="/dashboard/details" shallow passHref>
+                <Link>Go Pro</Link>
+              </NextLink>{' '}
+              to enable it)
+            </>
+          )}
         </Text>
       </HStack>
       <Text>
