@@ -126,8 +126,7 @@ const PublicCalendar: React.FC = () => {
 
     const start = zonedTimeToUtc(
       startTime,
-      currentAccount?.preferences?.timezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone
+      Intl.DateTimeFormat().resolvedOptions().timeZone
     )
     const end = addMinutes(new Date(start), selectedType.duration)
 
@@ -206,8 +205,7 @@ const PublicCalendar: React.FC = () => {
       slot,
       meetings,
       account!.preferences!.availabilities,
-      account!.preferences!.timezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone
+      Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
 

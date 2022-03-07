@@ -1,3 +1,6 @@
+import { format } from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
+
 import {
   AccountNotifications,
   NotificationChannel,
@@ -8,6 +11,9 @@ import {
   getAccountNotificationSubscriptions,
 } from './database'
 import { newMeetingEmail } from './email_helper'
+import { sendEPNSNotification } from './epns_helper_production'
+import { sendEPNSNotificationStaging } from './epns_helper_staging'
+import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress } from './user_manager'
 
 export interface ParticipantInfoForNotification {
@@ -57,6 +63,8 @@ export const notifyForNewMeeting = async (
     const participant = participants[i]
 
     if (
+      (participant.type === ParticipantType.Owner ||
+        participant.type === ParticipantType.Invitee) &&
       participant.address &&
       participant.subscriptions.notification_types.length > 0
     ) {
@@ -69,14 +77,40 @@ export const notifyForNewMeeting = async (
           participant.subscriptions.notification_types[j]
         switch (notification_type.channel) {
           case NotificationChannel.EMAIL:
-            if (participant.type === ParticipantType.Owner) {
-              await newMeetingEmail(
-                notification_type.destination,
-                participantsDisplay,
-                participant.timezone!,
-                new Date(meeting.start),
-                new Date(meeting.end)
-              )
+            await newMeetingEmail(
+              notification_type.destination,
+              participantsDisplay,
+              participant.timezone!,
+              new Date(meeting.start),
+              new Date(meeting.end)
+            )
+            break
+
+          case NotificationChannel.EPNS:
+            const account = await getAccountFromDB(participant.address)
+            if (isProAccount(account)) {
+              const parameters = {
+                destination_addresses: [notification_type.destination],
+                title: 'New meeting scheduled',
+                message: `${format(
+                  utcToZonedTime(meeting.start, participant.timezone),
+                  'PPPPpp'
+                )} - ${participants
+                  .map(participant => ellipsizeAddress(participant.address))
+                  .join(', ')}`,
+              }
+
+              process.env.NEXT_PUBLIC_ENV === 'production'
+                ? await sendEPNSNotification(
+                    parameters.destination_addresses,
+                    parameters.title,
+                    parameters.message
+                  )
+                : await sendEPNSNotificationStaging(
+                    parameters.destination_addresses,
+                    parameters.title,
+                    parameters.message
+                  )
             }
             break
           default:

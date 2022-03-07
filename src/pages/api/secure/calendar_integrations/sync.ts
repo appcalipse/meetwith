@@ -10,13 +10,14 @@ import {
   getMeetingFromDB,
 } from '../../../../utils/database'
 import { getConnectedCalendarIntegration } from '../../../../utils/services/connected_calendars_factory'
+import { isProAccount } from '../../../../utils/subscription_manager'
 
 const syncCalendarsIfNeeded = async (
   address: Account['address'],
   meeting: MeetingDecrypted
 ) => {
   const account = await getAccountFromDB(address)
-  if (account.is_pro) {
+  if (isProAccount(account)) {
     const calendars = await getConnectedCalendars(address, true)
     for (const calendar of calendars) {
       const integration = getConnectedCalendarIntegration(
