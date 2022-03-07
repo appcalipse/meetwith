@@ -11,7 +11,6 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { addHours } from 'date-fns'
-import { decryptWithPrivateKey } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
@@ -19,7 +18,7 @@ import { AccountContext } from '../../providers/AccountProvider'
 import { DBSlot } from '../../types/Meeting'
 import { getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
-import { ScheduleModal } from '../schedule-modal'
+import { ScheduleModal } from '../schedule/schedule-modal'
 
 const Meetings: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)

@@ -27,76 +27,93 @@ export const notifyForNewMeeting = async (
   meeting: MeetingCreationRequest
 ): Promise<void> => {
   const participants: ParticipantInfoForNotification[] = []
+
+  let participantsDisplay: string[] = []
+
   for (let i = 0; i < meeting.participants_mapping.length; i++) {
     const participant = meeting.participants_mapping[i]
 
-    const account = await getAccountFromDB(participant.account_address)
-    const subscriptions = await getAccountNotificationSubscriptions(
-      account.address
-    )
-    participants.push({
-      address: account.address,
-      timezone: account.preferences!.timezone,
-      type: participant.type,
-      subscriptions,
-    })
+    if (participant.account_address) {
+      const account = await getAccountFromDB(participant.account_address!)
+      const subscriptions = await getAccountNotificationSubscriptions(
+        account.address
+      )
+      participants.push({
+        address: account.address,
+        timezone: account.preferences!.timezone,
+        type: participant.type,
+        subscriptions,
+      })
+      participantsDisplay = participants.map(participant =>
+        ellipsizeAddress(participant.address)
+      )
+    } else {
+      participantsDisplay.push(participant.guest_email!)
+      await newMeetingEmail(
+        participant.guest_email!,
+        participantsDisplay,
+        participant.timeZone!,
+        new Date(meeting.start),
+        new Date(meeting.end)
+      )
+    }
   }
 
   for (let i = 0; i < participants.length; i++) {
     const participant = participants[i]
 
     if (
-      participant.type === ParticipantType.Owner ||
-      participant.type === ParticipantType.Invitee
+      (participant.type === ParticipantType.Owner ||
+        participant.type === ParticipantType.Invitee) &&
+      participant.address &&
+      participant.subscriptions.notification_types.length > 0
     ) {
-      if (participant.subscriptions.notification_types.length > 0) {
-        for (
-          let j = 0;
-          j < participant.subscriptions.notification_types.length;
-          j++
-        ) {
-          const notification_type =
-            participant.subscriptions.notification_types[j]
-          switch (notification_type.channel) {
-            case NotificationChannel.EMAIL:
-              await newMeetingEmail(
-                notification_type.destination,
-                participants.map(participant => participant.address),
-                participant.timezone,
-                new Date(meeting.start),
-                new Date(meeting.end)
-              )
-              break
+      for (
+        let j = 0;
+        j < participant.subscriptions.notification_types.length;
+        j++
+      ) {
+        const notification_type =
+          participant.subscriptions.notification_types[j]
+        switch (notification_type.channel) {
+          case NotificationChannel.EMAIL:
+            await newMeetingEmail(
+              notification_type.destination,
+              participantsDisplay,
+              participant.timezone!,
+              new Date(meeting.start),
+              new Date(meeting.end)
+            )
+            break
 
-            case NotificationChannel.EPNS:
-              const account = await getAccountFromDB(participant.address)
-              if (isProAccount(account)) {
-                const parameters = {
-                  destination_addresses: [notification_type.destination],
-                  title: 'New meeting scheduled',
-                  message: `${format(
-                    utcToZonedTime(meeting.start, participant.timezone),
-                    'PPPPpp'
-                  )} - ${participants
-                    .map(participant => ellipsizeAddress(participant.address))
-                    .join(', ')}`,
-                }
-
-                process.env.NEXT_PUBLIC_ENV === 'production'
-                  ? await sendEPNSNotification(
-                      parameters.destination_addresses,
-                      parameters.title,
-                      parameters.message
-                    )
-                  : await sendEPNSNotificationStaging(
-                      parameters.destination_addresses,
-                      parameters.title,
-                      parameters.message
-                    )
+          case NotificationChannel.EPNS:
+            const account = await getAccountFromDB(participant.address)
+            if (isProAccount(account)) {
+              const parameters = {
+                destination_addresses: [notification_type.destination],
+                title: 'New meeting scheduled',
+                message: `${format(
+                  utcToZonedTime(meeting.start, participant.timezone),
+                  'PPPPpp'
+                )} - ${participants
+                  .map(participant => ellipsizeAddress(participant.address))
+                  .join(', ')}`,
               }
-              break
-            default:
-          }
+
+              process.env.NEXT_PUBLIC_ENV === 'production'
+                ? await sendEPNSNotification(
+                    parameters.destination_addresses,
+                    parameters.title,
+                    parameters.message
+                  )
+                : await sendEPNSNotificationStaging(
+                    parameters.destination_addresses,
+                    parameters.title,
+                    parameters.message
+                  )
+            }
+            break
+          default:
         }
       }
     }

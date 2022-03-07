@@ -25,15 +25,16 @@ import { zonedTimeToUtc } from 'date-fns-tz'
 import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 
-import { AccountContext } from '../../providers/AccountProvider'
-import { logEvent } from '../../utils/analytics'
-import { scheduleMeeting } from '../../utils/calendar_manager'
-import { MeetingWithYourselfError } from '../../utils/errors'
-import { isProAccount } from '../../utils/subscription_manager'
-import { getAddressDisplayForInput } from '../../utils/user_manager'
-import { ChipInput } from '../chip-input'
-import { SingleDatepicker } from '../input-date-picker'
-import { InputTimePicker } from '../input-time-picker'
+import { AccountContext } from '../../../providers/AccountProvider'
+import { SchedulingType } from '../../../types/Meeting'
+import { logEvent } from '../../../utils/analytics'
+import { scheduleMeeting } from '../../../utils/calendar_manager'
+import { MeetingWithYourselfError } from '../../../utils/errors'
+import { isProAccount } from '../../../utils/subscription_manager'
+import { getAddressDisplayForInput } from '../../../utils/user_manager'
+import { ChipInput } from '../../chip-input'
+import { SingleDatepicker } from '../../input-date-picker'
+import { InputTimePicker } from '../../input-time-picker'
 
 export interface ScheduleModalProps {
   isOpen: boolean
@@ -149,7 +150,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
     try {
       const meeting = await scheduleMeeting(
-        currentAccount!.address,
+        SchedulingType.REGULAR,
         currentAccount!.address,
         [
           ...Array.from(new Set(participants.map(p => p.toLowerCase()))).filter(
@@ -159,6 +160,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         'no_type',
         start,
         end,
+        currentAccount!.address,
+        '',
         currentAccount!.name,
         content,
         meetingUrl
