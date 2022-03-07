@@ -22,6 +22,7 @@ import {
 } from '@chakra-ui/react'
 import { addHours, addMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
+import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '../../../providers/AccountProvider'
@@ -53,12 +54,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [selectedDate, setDate] = useState(new Date())
   const [selectedTime, setTime] = useState('')
   const [content, setContent] = useState('')
+  const [inputError, setInputError] = useState(undefined as object | undefined)
   const [meetingUrl, setMeetingUrl] = useState('')
   const [duration, setDuration] = useState(30)
   const [isScheduling, setIsScheduling] = useState(false)
 
   const clearInfo = () => {
     setParticipants([])
+    setInputError(undefined)
     setDate(new Date())
     const minutes = Math.ceil(new Date().getMinutes() / 10) * 10
     setTime(
@@ -72,6 +75,23 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     setMeetingUrl('')
     setDuration(30)
     setIsScheduling(false)
+  }
+
+  const onParticipantsChange = (_participants: string[]) => {
+    if (!isProAccount(currentAccount!) && _participants.length > 1) {
+      setInputError(
+        <Text>
+          <NextLink href="/dashboard/details" shallow passHref>
+            <Link>Go PRO</Link>
+          </NextLink>{' '}
+          to be able to schedule meetings with more than one invitee
+        </Text>
+      )
+      participants.length == 0 && setParticipants([_participants[0]])
+      return
+    }
+
+    setParticipants(_participants)
   }
 
   useEffect(() => {
@@ -123,8 +143,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
     const start = zonedTimeToUtc(
       _start,
-      currentAccount?.preferences?.timezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone
+      Intl.DateTimeFormat().resolvedOptions().timeZone
     )
     const end = addMinutes(new Date(start), duration)
 
@@ -187,15 +206,17 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <FormControl>
             <FormLabel htmlFor="participants">Participants</FormLabel>
             <ChipInput
+              currentItems={participants}
               placeholder="Insert wallet addresses"
-              onChange={setParticipants}
+              onChange={onParticipantsChange}
               renderItem={item => {
                 return getAddressDisplayForInput(item)
               }}
             />
             <FormHelperText>
-              Separate participants by comma. You will be added automatically,
-              no need to insert yourself
+              {inputError
+                ? inputError
+                : 'Separate participants by comma. You will be added automatically, no need to insert yourself'}
             </FormHelperText>
           </FormControl>
           <FormControl sx={{ marginTop: '24px' }}>

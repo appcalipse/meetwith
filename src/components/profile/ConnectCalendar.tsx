@@ -16,7 +16,6 @@ import { FaPlus } from 'react-icons/fa'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import {
-  ConnectedCalendar,
   ConnectedCalendarCore,
   ConnectedCalendarIcons,
   ConnectedCalendarProvider,
@@ -26,6 +25,7 @@ import {
   getGoogleAuthConnectUrl,
   listConnectedCalendars,
 } from '../../utils/api_helper'
+import { isProAccount } from '../../utils/subscription_manager'
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import ConnectedCalendarCard from '../ConnectedCalendars/ConnectedCalendarCard'
 
@@ -77,16 +77,17 @@ const ConnectCalendar = () => {
   }
 
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const textColor = useColorModeValue('gray.700', 'gray.300')
   let content
 
-  if (!currentAccount?.is_pro) {
+  const proAccount = isProAccount(currentAccount!)
+
+  if (!proAccount) {
     content = (
       <VStack>
         <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
         <HStack pt={8}>
           <Text mb={10} fontSize="lg">
-            You haven&apos;t connected any callendar yet
+            You haven&apos;t connected any calendar yet
           </Text>
         </HStack>
         <Text>
@@ -103,7 +104,7 @@ const ConnectCalendar = () => {
         </Text>
       </VStack>
     )
-  } else if (currentAccount.is_pro) {
+  } else {
     if (firstFetch) {
       content = (
         <VStack alignItems="center">
@@ -127,7 +128,7 @@ const ConnectCalendar = () => {
             alt="Loading..."
           />
           <HStack pt={8}>
-            <Text fontSize="lg">You didn&apos;t connect any callendar yet</Text>
+            <Text fontSize="lg">You didn&apos;t connect any calendar yet</Text>
           </HStack>
         </VStack>
       )
@@ -152,10 +153,8 @@ const ConnectCalendar = () => {
   return (
     <Box>
       <VStack alignItems="flex-start" mb={8}>
-        <Heading fontSize="3xl" color={textColor}>
-          Connected calendars
-        </Heading>
-        <Text color={textColor}>
+        <Heading fontSize="3xl">Connected calendars</Heading>
+        <Text>
           When you connect a calendar we will use its events to block your
           availabilities and also to add your new events to it.
         </Text>
@@ -177,7 +176,7 @@ const ConnectCalendar = () => {
         mt={4}
         alignSelf="flex-start"
         leftIcon={<FaPlus />}
-        disabled={!currentAccount?.is_pro}
+        disabled={!proAccount}
       >
         Add calendar connection
       </Button>

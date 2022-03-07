@@ -3,9 +3,22 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { withSentryConfig } = require('@sentry/nextjs')
 
+// https://nextjs.org/docs/advanced-features/using-mdx
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const withMDX = require('@next/mdx')({
+  extension: /\.mdx?$/,
+  options: {
+    remarkPlugins: [],
+    rehypePlugins: [],
+    // If you use `MDXProvider`, uncomment the following line.
+    providerImportSource: '@mdx-js/react',
+  },
+})
+
 const moduleExports = {
   reactStrictMode: true,
   eslint: { dirs: ['src'] },
+  pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
 }
 
 const SentryWebpackPluginOptions = {
@@ -23,4 +36,6 @@ const SentryWebpackPluginOptions = {
 
 // Make sure adding Sentry options is the last code to run before exporting, to
 // ensure that your source maps include changes from all other Webpack plugins
-module.exports = withSentryConfig(moduleExports, SentryWebpackPluginOptions)
+module.exports = withMDX(
+  withSentryConfig(moduleExports, SentryWebpackPluginOptions)
+)

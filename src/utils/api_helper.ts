@@ -9,6 +9,7 @@ import {
   ConnectResponse,
 } from '../types/CalendarConnections'
 import { DBSlot, DBSlotEnhanced, MeetingDecrypted } from '../types/Meeting'
+import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
 import { AccountNotFoundError, ApiFetchError } from './errors'
 import { getCurrentAccount, getSignature } from './storage'
@@ -57,34 +58,6 @@ export const getExistingAccounts = async (
   } catch (e: any) {
     throw e
   }
-}
-
-export const createAccount = async (
-  address: string,
-  signature: string,
-  timezone: string,
-  nonce: number
-): Promise<Account> => {
-  return (await internalFetch(`/accounts`, 'POST', {
-    address,
-    signature,
-    timezone,
-    nonce,
-  })) as Account
-}
-
-export const initInvitedAccount = async (
-  address: string,
-  signature: string,
-  timezone: string,
-  nonce: number
-): Promise<Account> => {
-  return (await internalFetch(`/accounts`, 'PUT', {
-    address,
-    signature,
-    timezone,
-    nonce,
-  })) as Account
 }
 
 export const saveAccountChanges = async (
@@ -315,4 +288,16 @@ export const syncExternalCalendars = async (
   return (await internalFetch(`/secure/calendar_integrations/sync`, 'POST', {
     meetingId,
   })) as ConnectedCalendarCore[]
+}
+
+export const syncSubscriptions = async (): Promise<Subscription[]> => {
+  return (await internalFetch(`/secure/subscriptions/sync`)) as Subscription[]
+}
+
+export const getSubscriptionForDomain = async (
+  domain: string
+): Promise<Subscription | undefined> => {
+  return (await internalFetch(
+    `/secure/subscriptions/check/${domain}`
+  )) as Subscription
 }

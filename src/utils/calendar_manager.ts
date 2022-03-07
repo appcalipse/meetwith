@@ -36,6 +36,7 @@ import {
   ParticipationStatus,
   SchedulingType,
 } from '../types/Meeting'
+import { Plan } from '../types/Subscription'
 import { logEvent } from './analytics'
 import {
   createMeeting,
@@ -51,6 +52,7 @@ import { MeetingWithYourselfError, TimeNotAvailableError } from './errors'
 import { getSlugFromText } from './generic_utils'
 import { generateMeetingUrl } from './meeting_call_helper'
 import { getSignature } from './storage'
+import { isProAccount } from './subscription_manager'
 import { getAccountDisplayName } from './user_manager'
 
 const scheduleMeeting = async (
@@ -407,23 +409,14 @@ const durationToHumanReadable = (duration: number): string => {
 }
 
 const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
-  if ((account as PremiumAccount).calendar_url) {
-    return `${appUrl}${(account as PremiumAccount).calendar_url}`
+  if (isProAccount(account)) {
+    return `${appUrl}${
+      account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0].domain
+    }`
   }
   return `${appUrl}address/${
     ellipsize ? getAccountDisplayName(account) : account!.address
   }`
-}
-
-const getEmbedCode = (account: Account, ellipsize?: boolean) => {
-  if ((account as PremiumAccount).calendar_url) {
-    return `<iframe src="${appUrl}embed/${
-      (account as PremiumAccount).calendar_url
-    }"></iframe>`
-  }
-  return `<iframe src="${appUrl}embed/${
-    ellipsize ? getAccountDisplayName(account) : account!.address
-  }"></iframe>`
 }
 
 const generateDefaultMeetingType = (): MeetingType => {
@@ -462,7 +455,6 @@ export {
   generateDefaultMeetingType,
   generateIcs,
   getAccountCalendarUrl,
-  getEmbedCode,
   isSlotAvailable,
   isTimeInsideAvailabilities,
   scheduleMeeting,
