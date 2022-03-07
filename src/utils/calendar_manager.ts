@@ -17,13 +17,7 @@ import {
 } from 'eth-crypto'
 import { v4 as uuidv4 } from 'uuid'
 
-import accounts from '../pages/api/secure/accounts'
-import {
-  Account,
-  DayAvailability,
-  MeetingType,
-  PremiumAccount,
-} from '../types/Account'
+import { Account, DayAvailability, MeetingType } from '../types/Account'
 import {
   CreationRequestParticipantMapping,
   DBSlot,
