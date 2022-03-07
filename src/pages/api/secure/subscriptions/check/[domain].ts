@@ -10,7 +10,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const subscription = await getSubscription(req.query.domain as string)
 
-    return res.send(subscription)
+    if (subscription) {
+      return res.status(200).json(subscription)
+    }
   }
 
   res.status(404).send('Not found')

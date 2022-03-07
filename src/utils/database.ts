@@ -271,7 +271,7 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     .or(query)
     .order('created_at')
 
-  if (!error && data.length > 0) {
+  if (data.length > 0) {
     const account = data[0] as Account
     account.preferences = (await fetchContentFromIPFS(
       account.preferences_path
@@ -699,7 +699,6 @@ export const getSubscriptionFromDBForAccount = async (
       .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
 
     if (collisionExists.error) {
-      console.log(collisionExists.error)
       Sentry.captureException(error)
     }
 
