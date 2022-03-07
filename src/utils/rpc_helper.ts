@@ -25,9 +25,7 @@ export const getBlockchainSubscriptionsForAccount = async (
     try {
       const domains = await contract.getDomainsForAccount(accountAddress)
       for (const domain of domains) {
-        const subs = (await contract.subscriptions(
-          domain
-        )) as BlockchainSubscription
+        const subs = (await contract.domains(domain)) as BlockchainSubscription
         subscriptions.push({
           ...subs,
           chain: chain.chain,
