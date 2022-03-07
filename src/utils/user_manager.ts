@@ -1,10 +1,11 @@
 import WalletConnectProvider from '@walletconnect/web3-provider'
 import Web3 from 'web3'
-import Web3Modal from 'web3modal'
+import Web3Modal, { CHAIN_DATA_LIST } from 'web3modal'
 
 import { Account } from '../types/Account'
+import { supportedChains } from '../types/chains'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { getAccount, initInvitedAccount, login, signup } from './api_helper'
+import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
@@ -17,11 +18,16 @@ const providerOptions = {
     package: WalletConnectProvider, // required
     options: {
       infuraId: process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID,
+      rpc: supportedChains.reduce(
+        (obj, item) => Object.assign(obj, { [item.id]: item.rpcUrl }),
+        {}
+      ),
     },
   },
 }
 
 let web3: Web3
+let connectedProvider: any
 
 const loginWithWallet = async (
   setLoginIn: (loginIn: boolean) => void
@@ -34,8 +40,8 @@ const loginWithWallet = async (
   })
 
   try {
-    const provider = await web3Modal.connect()
-    web3 = new Web3(provider)
+    connectedProvider = await web3Modal.connect()
+    web3 = new Web3(connectedProvider)
 
     const accounts = await web3.eth.getAccounts()
 
@@ -85,7 +91,8 @@ const loginOrSignup = async (
     account = await getAccount(accountAddress.toLowerCase())
     if (account.is_invited) {
       const { signature, nonce } = await generateSignature()
-      account = await initInvitedAccount(
+
+      account = await signup(
         accountAddress.toLowerCase(),
         signature,
         timezone,
@@ -163,6 +170,7 @@ const getParticipantDisplay = (
 }
 
 export {
+  connectedProvider,
   ellipsizeAddress,
   getAccountDisplayName,
   getAddressDisplayForInput,
