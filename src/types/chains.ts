@@ -8,7 +8,7 @@ export interface ChainInfo {
   rpcUrl: string
   testnet: boolean
   nativeTokenSymbol: string
-  subscriptionContractAddess: string
+  domainContractAddess: string
   registarContractAddress: string
   acceptableTokens: AcceptedTokenInfo[]
   blockExplorerUrl: string
@@ -46,8 +46,8 @@ export const supportedChains: ChainInfo[] = [
     rpcUrl: 'https://matic-mumbai.chainstacklabs.com',
     testnet: true,
     nativeTokenSymbol: 'MATIC',
-    subscriptionContractAddess: '0x25D64EA72Cd90eDE499639E32040e10e70B0d45d',
-    registarContractAddress: '0x98FAb7cD7d3095b65B54115697CA998012bea037',
+    domainContractAddess: '0x87cEbF6684488998bd48C07E0691D31b64D30e2A',
+    registarContractAddress: '0xDD853a88ACbD365085D17448a97DD6123fE91b4A',
     blockExplorerUrl: 'https://mumbai.polygonscan.com',
     acceptableTokens: [
       {
@@ -56,7 +56,7 @@ export const supportedChains: ChainInfo[] = [
       },
       {
         token: AcceptedToken.DAI,
-        contractAddress: '0xcb7f6C752e00da963038f1BaE79aafBCa8473a36',
+        contractAddress: '0x9Cb38ff196107750Fe05FDE9a5c449319DD9f848',
       },
     ],
   },
@@ -68,8 +68,8 @@ export const supportedChains: ChainInfo[] = [
     rpcUrl: 'https://api.s0.b.hmny.io',
     testnet: true,
     nativeTokenSymbol: 'ONE',
-    subscriptionContractAddess: '0x0B63ea2262CD64fE3A032Fc220b5352Ff98c7EA3',
-    registarContractAddress: '0xC120601404c894a89CF0D08D52e3E1fc7943bA1c',
+    domainContractAddess: '0xa1C624685b0B5AF16be093bbc00ad525Be3f046B',
+    registarContractAddress: '0xC1A78C9ce8FC447030eDff6728822cfd6fFc1948',
     blockExplorerUrl: 'https://explorer.pops.one',
     acceptableTokens: [
       {
@@ -78,7 +78,7 @@ export const supportedChains: ChainInfo[] = [
       },
       {
         token: AcceptedToken.DAI,
-        contractAddress: '0xECfd0052945e235a1E4aE78C02F05F802282cb74',
+        contractAddress: '0x0C1d5a01ab6a8D3CAe7C03feF6cAF513E5A98E00',
       },
     ],
   },
@@ -91,8 +91,8 @@ export const supportedChains: ChainInfo[] = [
     rpcUrl: 'https://stardust.metis.io/?owner=588',
     testnet: true,
     nativeTokenSymbol: 'METIS',
-    subscriptionContractAddess: '0xd05d8e0Bf27951b649914A00EF9C9E8bEE8766b8',
-    registarContractAddress: '0xF134578d326479FD3aA7c9f861AA8F84FD1f4A82',
+    domainContractAddess: '0xECfd0052945e235a1E4aE78C02F05F802282cb74',
+    registarContractAddress: '0x13B5065B2586f0D457641b4C4FA09C2550843F42',
     blockExplorerUrl: 'https://stardust-explorer.metis.io',
     acceptableTokens: [
       {
@@ -101,7 +101,7 @@ export const supportedChains: ChainInfo[] = [
       },
       {
         token: AcceptedToken.DAI,
-        contractAddress: '0xD3F1eE2b69ffCF8AcD20ef79Fd6697Ceb99Ae024',
+        contractAddress: '0xFf8d4104D0bcE4ad3480326Ea8202514CBF09B6C',
       },
     ],
   },

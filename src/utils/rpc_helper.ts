@@ -18,7 +18,7 @@ export const getBlockchainSubscriptionsForAccount = async (
   for (const chain of chainsToCheck) {
     const provider = new ethers.providers.JsonRpcProvider(chain.rpcUrl)
     const contract = new ethers.Contract(
-      chain.subscriptionContractAddess,
+      chain.domainContractAddess,
       MWWSubscription,
       provider
     )
