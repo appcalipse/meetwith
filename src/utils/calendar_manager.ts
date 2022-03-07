@@ -28,11 +28,13 @@ import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
+  SchedulingType,
 } from '../types/Meeting'
 import { Plan } from '../types/Subscription'
 import { logEvent } from './analytics'
 import {
   createMeeting,
+  createMeetingAsGuest,
   getAccount,
   getExistingAccounts,
   isSlotFree,
@@ -48,12 +50,14 @@ import { isProAccount } from './subscription_manager'
 import { getAccountDisplayName } from './user_manager'
 
 const scheduleMeeting = async (
-  source_account_address: string,
+  schedulingType: SchedulingType,
   target_account_address: string,
   extra_participants: string[],
   meetingTypeId: string,
   startTime: Date,
   endTime: Date,
+  source_account_address?: string,
+  guest_email?: string,
   sourceName?: string,
   meetingContent?: string,
   meetingUrl?: string
@@ -75,7 +79,7 @@ const scheduleMeeting = async (
     ))
   ) {
     const allAccounts = await getExistingAccounts([
-      source_account_address,
+      source_account_address ? source_account_address : '',
       target_account_address,
       ...extra_participants,
     ])
@@ -97,8 +101,8 @@ const scheduleMeeting = async (
             : ParticipationStatus.Pending,
         slot_id: uuidv4(),
         name: account.address == source_account_address ? sourceName : '',
+        guest_email: account.address ? '' : guest_email,
       }
-
       participants.push(participant)
     }
 
@@ -120,6 +124,17 @@ const scheduleMeeting = async (
       participants.push(participant)
     }
 
+    if (schedulingType === SchedulingType.GUEST) {
+      const participant: ParticipantInfo = {
+        type: ParticipantType.Guest,
+        status: ParticipationStatus.Accepted,
+        guest_email,
+        name: sourceName,
+        slot_id: uuidv4(),
+      }
+
+      participants.push(participant)
+    }
     const privateInfo: IPFSMeetingInfo = {
       created_at: new Date(),
       participants: participants,
@@ -131,7 +146,9 @@ const scheduleMeeting = async (
     const participantsMappings = []
     for (const participant of participants) {
       const participantMapping: CreationRequestParticipantMapping = {
-        account_address: participant.account_address,
+        account_address: participant.account_address
+          ? participant.account_address
+          : '',
         slot_id: participant.slot_id,
         type: participant.type,
         privateInfo: await encryptWithPublicKey(
@@ -140,26 +157,47 @@ const scheduleMeeting = async (
           )[0]?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
           JSON.stringify(privateInfo)
         ),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        guest_email: participant.account_address ? '' : participant.guest_email,
       }
       participantsMappings.push(participantMapping)
     }
 
     const meeting: MeetingCreationRequest = {
+      type: schedulingType,
       start: startTime,
       end: endTime,
       participants_mapping: participantsMappings,
       meetingTypeId,
     }
 
-    const slot = await createMeeting(meeting)
+    let slot: DBSlotEnhanced
+    if (schedulingType === SchedulingType.GUEST) {
+      slot = await createMeetingAsGuest(meeting)
+    } else {
+      slot = await createMeeting(meeting)
+    }
 
-    const schedulerAccount = await getAccount(source_account_address)
+    if (source_account_address) {
+      const schedulerAccount = await getAccount(source_account_address!)
 
-    // now that we have successfully created the event, then we will try to
-    // intergate with the external calendars that the user has
-    await syncExternalCalendars(slot.id!)
+      // now that we have successfully created the event, then we will try to
+      // intergate with the external calendars that the user has
+      await syncExternalCalendars(slot.id!)
 
-    return await decryptMeeting(slot, schedulerAccount)
+      return await decryptMeeting(slot, schedulerAccount)
+    }
+
+    return {
+      id: meeting.meetingTypeId,
+      ...meeting,
+      created_at: meeting.start,
+      participants: [],
+      content: '',
+      meeting_url: '',
+      start: meeting.start,
+      end: meeting.end,
+    }
   } else {
     throw new TimeNotAvailableError()
   }
@@ -231,8 +269,8 @@ const decryptMeeting = async (
 ): Promise<MeetingDecrypted> => {
   const meetingInfo = JSON.parse(
     await getContentFromEncrypted(
-      account,
-      signature || getSignature(account.address)!,
+      account!,
+      signature || getSignature(account!.address)!,
       meeting.meeting_info_encrypted
     )
   ) as IPFSMeetingInfo

@@ -151,16 +151,21 @@ const getAddressDisplayForInput = (input: string) => {
 }
 
 const ellipsizeAddress = (address: string) =>
-  `${address.substring(0, 5)}...${address.substring(address.length - 5)}`
+  `${address?.substring(0, 5)}...${address?.substring(address.length - 5)}`
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,
   currentAccount?: Account | null
 ) => {
-  let display =
-    participant.account_address === currentAccount?.address
-      ? 'You'
-      : participant.name || ellipsizeAddress(participant.account_address)
+  let display: string
+
+  if (participant.account_address === currentAccount?.address) {
+    display = 'You'
+  } else if (!participant.account_address) {
+    display = participant.guest_email!
+  } else {
+    display = participant.name || ellipsizeAddress(participant.account_address!)
+  }
 
   if (participant.type === ParticipantType.Scheduler) {
     display = `${display} (Scheduler)`

@@ -46,6 +46,18 @@ const newTheme = {
   },
 }
 
+export enum ButtonType {
+  SOLID = 'solid',
+  OUTLINE = 'outline',
+  GHOST = 'ghost',
+  LINK = 'link',
+}
+
+export enum Color {
+  ORANGE = 'orange',
+  GRAY = 'gray',
+}
+
 // declare a variable for our theme and pass our overrides in the extendTheme method from chakra
 const customTheme = extendTheme(newTheme)
 
