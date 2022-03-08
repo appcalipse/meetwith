@@ -1,6 +1,6 @@
 import WalletConnectProvider from '@walletconnect/web3-provider'
 import Web3 from 'web3'
-import Web3Modal, { CHAIN_DATA_LIST } from 'web3modal'
+import Web3Modal from 'web3modal'
 
 import { Account } from '../types/Account'
 import { supportedChains } from '../types/chains'
@@ -9,7 +9,7 @@ import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
-import { getSignature, storeCurrentAccount } from './storage'
+import { getSignature } from './storage'
 import { saveSignature } from './storage'
 import { isValidEVMAddress } from './validations'
 
@@ -120,8 +120,6 @@ const loginOrSignup = async (
   if (!signature) {
     await signDefaultMessage(account.address, account.nonce)
   }
-
-  storeCurrentAccount(account)
 
   if (!signedUp) {
     // now that we have the signature, we need to check login agains the user signature

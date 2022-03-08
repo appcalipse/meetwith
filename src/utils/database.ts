@@ -1,3 +1,4 @@
+import { filter } from '@chakra-ui/react'
 import * as Sentry from '@sentry/node'
 import { createClient } from '@supabase/supabase-js'
 import { addMinutes, isAfter } from 'date-fns'
@@ -254,25 +255,18 @@ const getExistingAccountsFromDB = async (
   if (error) {
     Sentry.captureException(error)
     throw new Error("Couldn't get accounts")
-    // //TODO: handle error
   }
 
   return data
 }
 
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
-  const query = validate(identifier)
-    ? `id.eq.${identifier}`
-    : `address.ilike.${identifier.toLowerCase()},special_domain.ilike.${identifier},internal_pub_key.eq.${identifier}`
+  const { data, error } = await db.supabase.rpc('fetch_account', {
+    identifier: identifier,
+  })
 
-  const { data, error } = await db.supabase
-    .from('accounts')
-    .select()
-    .or(query)
-    .order('created_at')
-
-  if (data.length > 0) {
-    const account = data[0] as Account
+  if (data) {
+    const account = data as Account
     account.preferences = (await fetchContentFromIPFS(
       account.preferences_path
     )) as AccountPreferences

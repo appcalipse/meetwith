@@ -31,11 +31,9 @@ import {
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
-import * as api from '../../utils/api_helper'
 import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import AvailabilityConfig from '../availabilities/availability-config'
-import IPFSLink from '../IPFSLink'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
@@ -156,7 +154,7 @@ const NavItem = ({
 const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
 }) => {
-  const { currentAccount, logout } = useContext(AccountContext)
+  const { currentAccount } = useContext(AccountContext)
   const router = useRouter()
   const toast = useToast()
   const { result } = router.query

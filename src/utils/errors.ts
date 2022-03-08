@@ -12,6 +12,13 @@ export class AccountNotFoundError extends Error {
   }
 }
 
+export class InvalidSessionError extends Error {
+  constructor() {
+    super('Session was invalidated.')
+    this.name = 'InvalidSessionError'
+  }
+}
+
 export class MeetingNotFoundError extends Error {
   constructor(identifier: string) {
     super(`Meeting slot with identifier ${identifier} not found.`)
