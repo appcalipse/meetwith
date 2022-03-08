@@ -6,8 +6,8 @@ import {
   SESSION_COOKIE_NAME,
   sessionOptions,
 } from '../../../utils/auth/withSessionApiRoute'
+import { apiUrl } from '../../../utils/constants'
 import { checkSignature } from '../../../utils/cryptography'
-import { getAccountNonce } from '../../../utils/database'
 
 const notAuthorized = new Response('Auth required', {
   status: 401,
@@ -27,9 +27,15 @@ export async function middleware(req: NextRequest, ev: NextFetchEvent) {
   if (!session?.account) return notAuthorized
 
   try {
-    const nonce = await getAccountNonce(session.account.address)
+    //TODO remove this shitty from edge functions so no api for nonce have to exist, cause this middleware on edge functions cannot use the database.ts
+    const response = await (
+      await fetch(`${apiUrl}/accounts/nonce_hidden/${session.account.address}`)
+    ).json()
 
-    const recovered = checkSignature(session.account.signature, nonce)
+    const recovered = checkSignature(
+      session.account.signature,
+      response.nonce! as number
+    )
 
     if (session.account.address.toLowerCase() !== recovered.toLowerCase())
       return notAuthorized
