@@ -16,7 +16,7 @@ import {
   ApiFetchError,
   InvalidSessionError,
 } from './errors'
-import { getCurrentAccount, getSignature } from './storage'
+import { getSignature } from './storage'
 
 export const internalFetch = async (
   path: string,
