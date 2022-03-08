@@ -226,7 +226,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
 const getAccountNonce = async (identifier: string): Promise<number> => {
   const query = validate(identifier)
     ? `id.eq.${identifier}`
-    : `address.ilike.${identifier.toLowerCase()},special_domain.ilike.${identifier},internal_pub_key.eq.${identifier}`
+    : `address.ilike.${identifier.toLowerCase()},internal_pub_key.eq.${identifier}`
 
   const { data, error } = await db.supabase
     .from('accounts')
