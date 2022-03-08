@@ -70,7 +70,7 @@ export const checkAllowance = async (
       .mul(duration)
       .div(YEAR_DURATION)
     if (allowance.lt(amount)) {
-      return amount.sub(allowance)
+      return amount
     } else {
       return BigNumber.from(0)
     }
@@ -192,7 +192,7 @@ export const subscribeToPlan = async (
       if (!tokenInfo) {
         throw Error('Token not accepted')
       }
-      const missingApproval = await checkAllowance(
+      const neededApproval = await checkAllowance(
         accountAddress,
         plan,
         chain,
@@ -200,7 +200,7 @@ export const subscribeToPlan = async (
         duration
       )
 
-      if (missingApproval.gt(0)) {
+      if (neededApproval.gt(0)) {
         const tokenContract = new ethers.Contract(
           tokenInfo.contractAddress,
           ERC20,
@@ -208,7 +208,7 @@ export const subscribeToPlan = async (
         )
         await tokenContract.approve(
           chainInfo!.registarContractAddress,
-          missingApproval
+          neededApproval
         )
       }
 

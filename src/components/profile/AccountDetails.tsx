@@ -104,6 +104,8 @@ const AccountDetails: React.FC = () => {
 
   const subsPurchased = (sub: Subscription) => {
     setPurchased(sub)
+    setCurrentPlan(sub.plan_id)
+    updateAccountSubs()
     setTimeout(
       () => window.scrollTo(0, (subsRef.current as any).offsetTop - 60),
       500

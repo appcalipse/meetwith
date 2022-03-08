@@ -29,8 +29,6 @@ export interface IntegrationCalendar {
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
 export default class GoogleCalendarService implements Calendar {
-  private url = ''
-  private integrationName = ConnectedCalendarProvider.GOOGLE
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
 
   constructor(
@@ -121,7 +119,7 @@ export default class GoogleCalendarService implements Calendar {
           }`,
           description: `${
             event.content ? event.content + '\n' : ''
-          }Your meeting will happen on ${event.meeting_url}`,
+          }Your meeting will happen at ${event.meeting_url}`,
           start: {
             dateTime: new Date(event.start).toISOString(),
             timeZone: 'UTC',

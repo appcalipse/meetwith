@@ -5,12 +5,14 @@ import Web3Modal from 'web3modal'
 import { Account } from '../types/Account'
 import { supportedChains } from '../types/chains'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
+import { Plan } from '../types/Subscription'
 import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature } from './storage'
 import { saveSignature } from './storage'
+import { isProAccount } from './subscription_manager'
 import { isValidEVMAddress } from './validations'
 
 const providerOptions = {
@@ -132,10 +134,13 @@ const loginOrSignup = async (
 
 const getAccountDisplayName = (
   account: Account,
-  forceCustomDomain?: boolean
+  useENSorUD?: boolean
 ): string => {
-  if (forceCustomDomain) {
+  if (useENSorUD) {
     return account.name || ellipsizeAddress(account.address)
+  } else if (isProAccount(account)) {
+    return account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0]
+      .domain
   } else {
     return ellipsizeAddress(account.address)
   }

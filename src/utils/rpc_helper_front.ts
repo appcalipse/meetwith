@@ -1,5 +1,5 @@
 import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
-import { EthersProvider, Resolution } from '@unstoppabledomains/resolution'
+import { Resolution } from '@unstoppabledomains/resolution'
 import { ethers } from 'ethers'
 import Web3 from 'web3'
 
