@@ -173,6 +173,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             placeholder="insert your email"
             disabled={isScheduling}
             value={guestEmail}
+            onKeyPress={event =>
+              event.key === 'Enter' && isEmailValid && handleConfirm()
+            }
             onChange={e => setGuestEmail(e.target.value)}
           />
         </FormControl>
