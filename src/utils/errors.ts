@@ -14,7 +14,7 @@ export class AccountNotFoundError extends Error {
 
 export class InvalidSessionError extends Error {
   constructor() {
-    super(`Sessionn was invalidated.`)
+    super('Session was invalidated.')
     this.name = 'InvalidSessionError'
   }
 }
