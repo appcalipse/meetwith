@@ -59,7 +59,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                     meeting!.start,
                     Intl.DateTimeFormat().resolvedOptions().timeZone
                   ),
-                  'LLLL'
+                  'PPPpp'
                 )} was scheduled successfully.`}</Text>
               )}
             </Flex>
@@ -69,7 +69,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               Schedule another
             </Button>
             <MWWButton mr={3} onClick={() => router.push('/dashboard')}>
-              Go to dashboard
+              {schedulerAccount ? 'Go to dashboard' : 'Go home'}
             </MWWButton>
           </ModalFooter>
         </ModalContent>

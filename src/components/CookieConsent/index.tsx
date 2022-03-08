@@ -28,7 +28,7 @@ export const CookieConsent: React.FC<Props> = (props: Props) => {
   const boxColor = useColorModeValue('gray.800', 'white')
 
   return cookie ? null : (
-    <Box position="fixed" bottom={8} width="100%">
+    <Box position="fixed" bottom={8} width="100%" zIndex={10000}>
       <Box
         display="flex"
         m={'auto'}

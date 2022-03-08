@@ -196,7 +196,7 @@ export default function Pricing() {
               </Text>
             </HStack>
             <Text fontSize="sm" textAlign="center">
-              Paid in ETH, MATIC, USDC or DAI
+              Paid in ETH, MATIC, METIS, ONE, USDC or DAI
             </Text>
           </Box>
           <VStack
@@ -278,7 +278,7 @@ export default function Pricing() {
               </Text>
             </HStack>
             <Text fontSize="sm" textAlign="center">
-              Paid in ETH, MATIC, USDC or DAI
+              Paid in ETH, MATIC, METIS, ONE, USDC or DAI
             </Text>
           </Box>
           <VStack
@@ -355,7 +355,7 @@ export default function Pricing() {
               </Text>
             </HStack>
             <Text fontSize="sm" textAlign="center">
-              Paid in ETH, MATIC, USDC or DAI
+              Paid in ETH, MATIC, METIS, ONE, USDC or DAI
             </Text>
           </Box>
           <VStack

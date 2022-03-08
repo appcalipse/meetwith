@@ -2,7 +2,7 @@ import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { BigNumber, ethers } from 'ethers'
 
 import { ERC20 } from '../abis/erc20'
-import { MWWRegister, MWWSubscription } from '../abis/mww'
+import { MWWRegister } from '../abis/mww'
 import { Account } from '../types/Account'
 import { AcceptedToken, getChainInfo, SupportedChain } from '../types/chains'
 import {

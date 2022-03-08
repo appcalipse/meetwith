@@ -1,5 +1,4 @@
 import { Container } from '@chakra-ui/layout'
-import { useRouter } from 'next/router'
 import React from 'react'
 
 import DashboardContent, {
