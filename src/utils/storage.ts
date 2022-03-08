@@ -1,7 +1,4 @@
-import { Account } from '../types/Account'
-
 const SIGNATURE_KEY = 'current_user_sig'
-const ACCOUNT = 'current_account'
 
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
