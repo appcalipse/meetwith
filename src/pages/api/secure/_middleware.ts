@@ -27,7 +27,7 @@ export async function middleware(req: NextRequest, ev: NextFetchEvent) {
   if (!session?.account) return notAuthorized
 
   try {
-    //TODO remove this shitty from edge functions so no api for nonce have to exist
+    //TODO remove this shitty from edge functions so no api for nonce have to exist, cause this middleware on edge functions cannot use the database.ts
     const response = await (
       await fetch(`${apiUrl}/accounts/nonce_hidden/${session.account.address}`)
     ).json()

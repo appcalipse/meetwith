@@ -11,8 +11,12 @@ import {
 import { DBSlot, DBSlotEnhanced, MeetingDecrypted } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
-import { AccountNotFoundError, ApiFetchError } from './errors'
-import { getCurrentAccount, getSignature } from './storage'
+import {
+  AccountNotFoundError,
+  ApiFetchError,
+  InvalidSessionError,
+} from './errors'
+import { getSignature } from './storage'
 
 export const internalFetch = async (
   path: string,
@@ -206,17 +210,18 @@ export const getGoogleAuthConnectUrl = async (): Promise<ConnectResponse> => {
   )) as ConnectResponse
 }
 
-export const login = async (identifier: string): Promise<Account> => {
+export const login = async (accountAddress: string): Promise<Account> => {
   try {
-    const account = getCurrentAccount()
-    const signature = getSignature(account) || ''
+    const signature = getSignature(accountAddress) || ''
     return (await internalFetch(`/auth/login`, 'POST', {
-      identifier,
+      identifier: accountAddress,
       signature,
     })) as Account
   } catch (e: any) {
     if (e.status && e.status === 404) {
-      throw new AccountNotFoundError(identifier)
+      throw new AccountNotFoundError(accountAddress)
+    } else if (e.status && e.status === 401) {
+      throw new InvalidSessionError()
     }
     throw e
   }

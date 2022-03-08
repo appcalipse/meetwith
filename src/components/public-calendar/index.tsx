@@ -22,6 +22,8 @@ import {
   AccountNotFoundError,
   MeetingWithYourselfError,
 } from '../../utils/errors'
+import { isProAccount } from '../../utils/subscription_manager'
+import { isValidEVMAddress } from '../../utils/validations'
 import Loading from '../Loading'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
@@ -86,6 +88,10 @@ const PublicCalendar: React.FC = () => {
     try {
       const _account = await getAccount(identifier)
       if (_account.is_invited) {
+        router.push('/404')
+        return
+      }
+      if (!isValidEVMAddress(identifier) && !isProAccount(_account)) {
         router.push('/404')
         return
       }
