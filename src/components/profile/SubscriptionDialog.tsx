@@ -119,14 +119,14 @@ const SubscriptionDialog: React.FC<IProps> = ({
     ) {
       setCheckingCanSubscribe(true)
       try {
-        const missingAllowance = await checkAllowance(
+        const neededApproval = await checkAllowance(
           currentAccount!.address,
           Plan.PRO,
           currentChain!.chain,
           currentToken!.token,
           duration * YEAR_DURATION
         )
-        if (!missingAllowance.isZero()) {
+        if (!neededApproval.isZero()) {
           setNeedsAproval(true)
         }
       } catch (e: any) {
@@ -141,12 +141,6 @@ const SubscriptionDialog: React.FC<IProps> = ({
       }
       setCheckingCanSubscribe(false)
     }
-  }
-
-  const approveToken = async (amount: BigNumber) => {
-    setCheckingCanSubscribe(true)
-    await approveTokenSpending(currentChain!.chain, currentToken!.token, amount)
-    setCheckingCanSubscribe(false)
   }
 
   const subscribe = async () => {
@@ -204,16 +198,20 @@ const SubscriptionDialog: React.FC<IProps> = ({
         currentToken &&
         currentToken.contractAddress !== ethers.constants.AddressZero
       ) {
-        const missingAllowance = await checkAllowance(
+        const neededApproval = await checkAllowance(
           currentAccount!.address,
           Plan.PRO,
           currentChain!.chain,
           currentToken!.token,
           duration * YEAR_DURATION
         )
-        if (!missingAllowance.isZero()) {
+        if (!neededApproval.isZero()) {
           setNeedsAproval(true)
-          await approveToken(missingAllowance)
+          await approveTokenSpending(
+            currentChain!.chain,
+            currentToken!.token,
+            neededApproval
+          )
           setNeedsAproval(false)
         }
       }
@@ -253,7 +251,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
   useEffect(() => {
     updateSubscriptionDetails()
-  }, [currentToken, currentChain])
+  }, [currentToken, currentChain, duration])
 
   const chains = supportedChains.filter(chain =>
     process.env.NEX_PUBLIC_ENV === 'production' ? !chain.testnet : chain.testnet

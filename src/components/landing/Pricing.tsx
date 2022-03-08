@@ -195,7 +195,7 @@ export default function Pricing() {
                 /year
               </Text>
             </HStack>
-            <Text fontSize="sm" textAlign="center">
+            <Text fontSize="xs" textAlign="center">
               Paid in ETH, MATIC, METIS, ONE, USDC or DAI
             </Text>
           </Box>
@@ -277,7 +277,7 @@ export default function Pricing() {
                 /year
               </Text>
             </HStack>
-            <Text fontSize="sm" textAlign="center">
+            <Text fontSize="xs" textAlign="center">
               Paid in ETH, MATIC, METIS, ONE, USDC or DAI
             </Text>
           </Box>
@@ -354,7 +354,7 @@ export default function Pricing() {
                 /year
               </Text>
             </HStack>
-            <Text fontSize="sm" textAlign="center">
+            <Text fontSize="xs" textAlign="center">
               Paid in ETH, MATIC, METIS, ONE, USDC or DAI
             </Text>
           </Box>

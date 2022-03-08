@@ -30,7 +30,7 @@ import {
   MeetingCreationRequest,
   ParticipantType,
 } from '../types/Meeting'
-import { Subscription } from '../types/Subscription'
+import { Plan, Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
   MeetingCreationError,
@@ -747,6 +747,7 @@ export const updateAccountSubscriptions = async (
       .eq('owner_account', subscription.owner_account)
 
     if (error && error.length > 0) {
+      console.log(error)
       Sentry.captureException(error)
     }
 
