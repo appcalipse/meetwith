@@ -17,6 +17,11 @@ const colors = {
     700: '#7a2205',
     800: '#4b1200',
     900: '#1f0300',
+    // TO-DO: change to a better name after defining the new color scheme
+    link: '#f15624',
+  },
+  gray: {
+    link: '#3E4C67',
   },
 }
 
