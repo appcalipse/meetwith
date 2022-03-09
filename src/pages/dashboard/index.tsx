@@ -1,11 +1,10 @@
 import { Container } from '@chakra-ui/layout'
 import React from 'react'
 
-import DashboardContent, {
-  EditMode,
-} from '../../components/profile/DashboardContent'
+import DashboardContent from '../../components/profile/DashboardContent'
 import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
 import { withLoginRedirect } from '../../session/requireAuthentication'
+import { EditMode } from '../../types/Dashboard'
 
 const Dashboard: React.FC = () => {
   return (
