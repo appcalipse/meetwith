@@ -1,18 +1,7 @@
-import {
-  Box,
-  Button,
-  Input,
-  InputGroup,
-  InputRightElement,
-  Text,
-  Tooltip,
-  useColorModeValue,
-  useToast,
-  VStack,
-} from '@chakra-ui/react'
+import { Box, Text, useToast, VStack } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect } from 'react'
 import { IconType } from 'react-icons'
 import {
   FaBell,
@@ -29,6 +18,7 @@ import { EditMode } from '../../../types/Dashboard'
 import { logEvent } from '../../../utils/analytics'
 import { getAccountCalendarUrl } from '../../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../../utils/user_manager'
+import { CopyLinkButton } from './CopyLinkButton'
 import { NavItem } from './NavItem'
 
 interface LinkItemProps {
@@ -65,8 +55,6 @@ export const SideNav: React.FC<{ currentSection?: EditMode }> = ({
   const { currentAccount } = useContext(AccountContext)
   const router = useRouter()
   const toast = useToast()
-  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
-  const buttonColor = useColorModeValue('gray.600', 'gray.200')
 
   const { result } = router.query
 
@@ -106,22 +94,9 @@ export const SideNav: React.FC<{ currentSection?: EditMode }> = ({
     }
   }
 
-  const copyUrl = async () => {
-    logEvent('Copied calendar URL')
-    if ('clipboard' in navigator) {
-      await navigator.clipboard.writeText(accountUrl)
-    } else {
-      document.execCommand('copy', true, accountUrl)
-    }
-    setCopyFeedbackOpen(true)
-    setTimeout(() => {
-      setCopyFeedbackOpen(false)
-    }, 2000)
-  }
-
   return (
     <VStack
-      alignItems="start"
+      alignItems="center"
       minW="390px"
       px={8}
       borderRight="1px solid"
@@ -132,28 +107,16 @@ export const SideNav: React.FC<{ currentSection?: EditMode }> = ({
           <Jazzicon address={currentAccount.address} />
         </Box>
 
-        <Box>{getAccountDisplayName(currentAccount)}</Box>
+        <Text>{getAccountDisplayName(currentAccount)}</Text>
+      </Box>
 
-        <Box>
-          <Text fontSize="sm" mt={8} textAlign="start">
-            Your calendar link
-          </Text>
-          <InputGroup size="md">
-            <Input pr="4.5rem" type={'text'} disabled value={accountUrl} />
-            <InputRightElement width="4.5rem">
-              <Tooltip label="Copied" placement="top" isOpen={copyFeedbackOpen}>
-                <Button
-                  h="1.75rem"
-                  color={buttonColor}
-                  size="sm"
-                  onClick={copyUrl}
-                >
-                  Copy
-                </Button>
-              </Tooltip>
-            </InputRightElement>
-          </InputGroup>
-        </Box>
+      <Box>
+        <CopyLinkButton
+          url={accountUrl}
+          size="sm"
+          label="Copy my calendar link"
+          withIcon
+        />
       </Box>
 
       <VStack py={2} width="100%">
