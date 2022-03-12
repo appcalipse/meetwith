@@ -101,14 +101,17 @@ export const SideNav: React.FC<{ currentSection?: EditMode }> = ({
       px={8}
       borderRight="1px solid"
       borderColor="gray.200"
+      spacing={8}
     >
-      <Box width="100%" mb="4" textAlign="center">
-        <Box width="80px" height="80px" mb={4} mx="auto">
+      <VStack width="100%" textAlign="center">
+        <Box width="120px" height="120px" mb={2}>
           <Jazzicon address={currentAccount.address} />
         </Box>
 
-        <Text>{getAccountDisplayName(currentAccount)}</Text>
-      </Box>
+        <Text fontSize="lg" fontWeight={500}>
+          {getAccountDisplayName(currentAccount)}
+        </Text>
+      </VStack>
 
       <Box>
         <CopyLinkButton
