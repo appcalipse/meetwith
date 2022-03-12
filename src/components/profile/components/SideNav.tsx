@@ -28,22 +28,22 @@ interface LinkItemProps {
   locked?: boolean
 }
 const LinkItems: Array<LinkItemProps> = [
-  { name: 'My meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
-  { name: 'Account details', icon: FaInfoCircle, mode: EditMode.DETAILS },
+  { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
+  { name: 'Account Details', icon: FaInfoCircle, mode: EditMode.DETAILS },
   { name: 'Availabilities', icon: FaCalendarAlt, mode: EditMode.AVAILABILITY },
-  { name: 'Meeting types', icon: FaCalendarWeek, mode: EditMode.TYPES },
+  { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
   {
-    name: 'Notifications settings',
+    name: 'Notifications Settings',
     icon: FaBell,
     mode: EditMode.NOTIFICATIONS,
   },
   {
-    name: 'Connected calendars',
+    name: 'Connected Calendars',
     icon: FaCalendarPlus,
     mode: EditMode.CALENDARS,
   },
   {
-    name: 'Sign out',
+    name: 'Sign Out',
     icon: FaSignOutAlt,
     mode: EditMode.SIGNOUT,
   },
@@ -97,11 +97,13 @@ export const SideNav: React.FC<{ currentSection?: EditMode }> = ({
   return (
     <VStack
       alignItems="center"
-      minW="390px"
-      px={8}
-      borderRight="1px solid"
-      borderColor="gray.200"
+      flex={1}
+      maxW="360px"
       spacing={8}
+      py={12}
+      borderRadius={16}
+      // TO-DO: replace by new dark/light color scheme
+      bgColor={'transparent'}
     >
       <VStack width="100%" textAlign="center">
         <Box width="120px" height="120px" mb={2}>

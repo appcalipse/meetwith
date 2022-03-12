@@ -66,7 +66,6 @@ export const NavItem = ({
               bottom={0}
               width={16}
               borderRightRadius={9999}
-              zIndex={-1}
               backgroundColor="transparent"
               {...(selected
                 ? {
@@ -78,7 +77,14 @@ export const NavItem = ({
                     },
                   })}
             />
-            <Icon as={icon} width={6} mr="14" fontSize="16" color={iconColor} />
+            <Icon
+              as={icon}
+              width={6}
+              mr="14"
+              fontSize="16"
+              color={iconColor}
+              zIndex={Number(selected)}
+            />
           </>
         )}
         <Text flex={1} color={textColor}>
