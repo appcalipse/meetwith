@@ -9,7 +9,7 @@ import { EditMode } from '../../types/Dashboard'
 const Dashboard: React.FC = () => {
   return (
     <>
-      <Container maxW="6xl" mt={8} flex={1}>
+      <Container maxW="6xl" my={8} flex={1}>
         <DashboardContent currentSection={EditMode.MEETINGS} />
       </Container>
     </>
