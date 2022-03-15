@@ -9,9 +9,13 @@ export default function LogoutPage() {
   const { logout } = useContext(AccountContext)
 
   useEffect(() => {
-    logout()
-    router.replace('/')
+    doLogout()
   }, [])
+
+  const doLogout = async () => {
+    await logout()
+    await router.replace('/')
+  }
 
   return (
     <>
