@@ -34,8 +34,6 @@ let connectedProvider: any
 const loginWithWallet = async (
   setLoginIn: (loginIn: boolean) => void
 ): Promise<Account | undefined> => {
-  setLoginIn(true)
-
   const web3Modal = new Web3Modal({
     cacheProvider: true, // optional
     providerOptions, // required
@@ -44,6 +42,7 @@ const loginWithWallet = async (
   try {
     connectedProvider = await web3Modal.connect()
     web3 = new Web3(connectedProvider)
+    setLoginIn(true)
 
     const accounts = await web3.eth.getAccounts()
 
