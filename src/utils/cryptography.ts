@@ -15,7 +15,7 @@ const encryptContent = (signature: string, data: string): string => {
 }
 
 const decryptContent = (signature: string, encodedData: string): string => {
-  if (!signature) {
+  if (!signature || signature === '') {
     //if for any reason signature is not available anymore, unlog user
     window.location.assign('/logout')
     return ''

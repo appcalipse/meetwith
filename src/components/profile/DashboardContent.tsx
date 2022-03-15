@@ -156,6 +156,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
 }) => {
   const { currentAccount } = useContext(AccountContext)
   const router = useRouter()
+
   const toast = useToast()
   const { result } = router.query
 
@@ -191,6 +192,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       await router.push(`/logout`)
     } else {
       router.push(`/dashboard/${mode}`, undefined, { shallow: true })
+      window.scrollTo(0, 0)
     }
   }
 
@@ -225,6 +227,11 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   }
 
   const buttonColor = useColorModeValue('gray.600', 'gray.200')
+
+  if (!currentAccount) {
+    router.push('/')
+    return <></>
+  }
 
   return currentAccount ? (
     <HStack alignItems="start" width="100%" flexWrap="wrap">
