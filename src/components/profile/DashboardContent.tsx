@@ -276,17 +276,19 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         </Box>
 
         <Box py={2} width="100%">
-          {LinkItems.map(link => (
-            <NavItem
-              selected={currentSection === link.mode}
-              key={link.name}
-              text={link.name}
-              icon={link.icon}
-              mode={link.mode}
-              locked={link.locked || false}
-              changeMode={menuClicked}
-            ></NavItem>
-          ))}
+          {LinkItems.filter(link => link.mode != EditMode.CALENDARS).map(
+            link => (
+              <NavItem
+                selected={currentSection === link.mode}
+                key={link.name}
+                text={link.name}
+                icon={link.icon}
+                mode={link.mode}
+                locked={link.locked || false}
+                changeMode={menuClicked}
+              ></NavItem>
+            )
+          )}
         </Box>
       </VStack>
       <Box flex={1} px={8}>

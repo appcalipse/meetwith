@@ -169,7 +169,7 @@ const AccountDetails: React.FC = () => {
       <Spacer />
       <Spacer />
 
-      <Heading ref={subsRef} fontSize="2xl">
+      <Heading ref={subsRef} fontSize="2xl" id="subscriptions">
         Subscription
       </Heading>
 

@@ -18,6 +18,7 @@ import { ReactNode, useContext, useState } from 'react'
 import { FaAngry, FaCheckCircle } from 'react-icons/fa'
 
 import { AccountContext } from '../../providers/AccountProvider'
+import { Plan } from '../../types/Subscription'
 import { logEvent } from '../../utils/analytics'
 import { loginWithWallet } from '../../utils/user_manager'
 import AlertMeDialog from './AlertMeDialog'
@@ -49,7 +50,7 @@ export default function Pricing() {
 
   const toast = useToast()
 
-  const handleLogin = async () => {
+  const handleLogin = async (selectedPlan?: Plan) => {
     if (!currentAccount) {
       logEvent('Clicked to start on FREE plan')
       try {
@@ -60,7 +61,11 @@ export default function Pricing() {
         await login(account)
         logEvent('Signed in')
 
-        await router.push('/dashboard')
+        if (selectedPlan && selectedPlan === Plan.PRO) {
+          await router.push('/dashboard/details')
+        } else {
+          await router.push('/dashboard')
+        }
       } catch (error: any) {
         Sentry.captureException(error)
         toast({
@@ -74,7 +79,11 @@ export default function Pricing() {
         logEvent('Failed to sign in', error)
       }
     } else {
-      router.push('/dashboard')
+      if (selectedPlan && selectedPlan === Plan.PRO) {
+        await router.push('/dashboard/details')
+      } else {
+        await router.push('/dashboard')
+      }
     }
   }
 
@@ -150,7 +159,7 @@ export default function Pricing() {
                 colorScheme="orange"
                 variant="outline"
                 isLoading={loginIn}
-                onClick={handleLogin}
+                onClick={() => handleLogin()}
               >
                 Start now
               </Button>
@@ -159,27 +168,6 @@ export default function Pricing() {
         </PriceWrapper>
 
         <PriceWrapper>
-          <Box position="relative">
-            <Box
-              position="absolute"
-              top="-16px"
-              left="50%"
-              style={{ transform: 'translate(-50%)' }}
-            >
-              <Text
-                textTransform="uppercase"
-                bg={useColorModeValue('yellow.300', 'yellow.800')}
-                px={3}
-                py={1}
-                color={useColorModeValue('gray.900', 'gray.300')}
-                fontSize="sm"
-                fontWeight="600"
-                rounded="xl"
-              >
-                Coming soon
-              </Text>
-            </Box>
-          </Box>
           <Box py={4} px={12}>
             <Text fontWeight="500" fontSize="2xl" textAlign="center">
               Pro
@@ -232,9 +220,9 @@ export default function Pricing() {
                 w="full"
                 colorScheme="orange"
                 variant="outline"
-                onClick={() => setSelectedPlan('Pro')}
+                onClick={() => handleLogin(Plan.PRO)}
               >
-                Alert me
+                Go PRO
               </Button>
             </Box>
           </VStack>
