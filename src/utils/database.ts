@@ -490,6 +490,7 @@ const saveMeeting = async (
   }
 
   meetingResponse.id = data[index].id
+  meetingResponse.created_at = data[index].created_at
 
   await notifyForNewMeeting(meeting)
 
@@ -747,7 +748,7 @@ export const updateAccountSubscriptions = async (
       .eq('owner_account', subscription.owner_account)
 
     if (error && error.length > 0) {
-      console.log(error)
+      console.error(error)
       Sentry.captureException(error)
     }
 
