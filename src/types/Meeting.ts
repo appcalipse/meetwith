@@ -78,5 +78,6 @@ export interface MeetingDecrypted {
   end: Date
   participants: ParticipantInfo[]
   meeting_url: string
+  meeting_info_file_path: string
   content?: string
 }

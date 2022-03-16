@@ -13,7 +13,7 @@ export const useLogin = () => {
     useContext(AccountContext)
   const toast = useToast()
   const handleLogin = async (useWaiting = true, forceRedirect = true) => {
-    logEvent('Clicked to connect wallet')
+    !forceRedirect && logEvent('Clicked to connect wallet')
     try {
       const account = await loginWithWallet(
         useWaiting ? setLoginIn : () => null
@@ -21,8 +21,9 @@ export const useLogin = () => {
 
       // user could revoke wallet authorization any moment
       if (!account) {
-        if (logged) {
+        if (logged && forceRedirect) {
           await logout()
+          await router.push('/')
         }
         return
       }

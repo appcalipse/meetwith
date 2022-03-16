@@ -227,10 +227,6 @@ export const login = async (accountAddress: string): Promise<Account> => {
   }
 }
 
-export const logout = async (): Promise<Account> => {
-  return (await internalFetch(`/secure/auth/logout`)) as Account
-}
-
 export const signup = async (
   address: string,
   signature: string,

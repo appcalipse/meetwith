@@ -189,7 +189,7 @@ const scheduleMeeting = async (
     }
 
     return {
-      id: meeting.meetingTypeId,
+      id: slot.id!,
       ...meeting,
       created_at: meeting.start,
       participants: [],
@@ -197,6 +197,7 @@ const scheduleMeeting = async (
       meeting_url: '',
       start: meeting.start,
       end: meeting.end,
+      meeting_info_file_path: slot.meeting_info_file_path,
     }
   } else {
     throw new TimeNotAvailableError()
@@ -284,6 +285,7 @@ const decryptMeeting = async (
     meeting_url: meetingInfo.meeting_url,
     start: meeting.start,
     end: meeting.end,
+    meeting_info_file_path: meeting.meeting_info_file_path,
   }
 }
 
