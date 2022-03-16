@@ -169,6 +169,8 @@ const scheduleMeeting = async (
       end: endTime,
       participants_mapping: participantsMappings,
       meetingTypeId,
+      meeting_url: privateInfo['meeting_url'],
+      content: privateInfo['content'],
     }
 
     let slot: DBSlotEnhanced
@@ -180,11 +182,6 @@ const scheduleMeeting = async (
 
     if (source_account_address) {
       const schedulerAccount = await getAccount(source_account_address!)
-
-      // now that we have successfully created the event, then we will try to
-      // intergate with the external calendars that the user has
-      await syncExternalCalendars(slot.id!)
-
       return await decryptMeeting(slot, schedulerAccount)
     }
 

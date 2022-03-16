@@ -1,4 +1,3 @@
-import { filter } from '@chakra-ui/react'
 import * as Sentry from '@sentry/node'
 import { createClient } from '@supabase/supabase-js'
 import { addMinutes, isAfter } from 'date-fns'
@@ -45,6 +44,7 @@ import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
 import { notifyForNewMeeting } from './notification_helper'
 import { isProAccount } from './subscription_manager'
+import { syncCalendarForMeeting } from './sync_helper'
 import { isValidEVMAddress } from './validations'
 
 const db: any = { ready: false }
@@ -425,7 +425,7 @@ const saveMeeting = async (
           .includes(participant.account_address!) &&
         participant.type === ParticipantType.Owner
       ) {
-        // only validate slot if meeting is being scheduled ons omeones calendar and not by itself
+        // only validate slot if meeting is being scheduled on someones calendar and not by itself
         if (
           ownerAccount &&
           ownerAccount.account_address === participant.account_address &&
@@ -491,7 +491,9 @@ const saveMeeting = async (
 
   meetingResponse.id = data[index].id
 
+  // TODO: ideally notifications should not block the user request
   await notifyForNewMeeting(meeting)
+  await syncCalendarForMeeting(meeting)
 
   return meetingResponse
 }
