@@ -38,7 +38,6 @@ import {
   getAccount,
   getExistingAccounts,
   isSlotFree,
-  syncExternalCalendars,
 } from './api_helper'
 import { appUrl } from './constants'
 import { decryptContent } from './cryptography'
