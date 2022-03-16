@@ -290,7 +290,7 @@ export const updateConnectedCalendarPayload = async (
 export const syncExternalCalendars = async (
   meetingId: MeetingDecrypted['id']
 ): Promise<ConnectedCalendarCore[]> => {
-  return (await internalFetch(`/secure/calendar_integrations/sync`, 'POST', {
+  return (await internalFetch(`/calendar_integrations/sync`, 'POST', {
     meetingId,
   })) as ConnectedCalendarCore[]
 }

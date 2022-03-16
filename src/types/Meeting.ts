@@ -24,6 +24,8 @@ export interface MeetingCreationRequest {
   meetingTypeId: string
   start: Date
   end: Date
+  content?: string
+  meeting_url: string
 }
 
 export interface CreationRequestParticipantMapping {
