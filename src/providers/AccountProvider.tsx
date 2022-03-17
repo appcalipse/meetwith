@@ -3,6 +3,7 @@ import { useCookies } from 'react-cookie'
 
 import { Account } from '../types/Account'
 import { SESSION_COOKIE_NAME } from '../utils/auth/withSessionApiRoute'
+import { removeSignature } from '../utils/storage'
 
 interface IAccountContext {
   currentAccount?: Account | null
@@ -50,8 +51,13 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
     }))
   }
 
-  const logout = () => {
-    removeCookie(SESSION_COOKIE_NAME)
+  const logout = async () => {
+    removeCookie(SESSION_COOKIE_NAME, {
+      path: '/',
+      secure: process.env.NEXT_PUBLIC_ENV !== 'local',
+    })
+    userContext.currentAccount &&
+      removeSignature(userContext.currentAccount!.address)
     setUserContext(() => ({
       ...userContext,
       currentAccount: null,

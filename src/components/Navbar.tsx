@@ -33,10 +33,10 @@ export const Navbar = () => {
 
   const { handleLogin, currentAccount, logged, loginIn } = useLogin()
 
-  const bgGradient = `linear(to-b, ${useColorModeValue(
+  const bgGradient = `linear-gradient(${useColorModeValue(
     'white',
-    'gray.800'
-  )}, rgba(245, 247, 250, 0))`
+    '#1A202C'
+  )} 30%, rgba(245, 247, 250, 0) 100%) repeat scroll 0% 0%`
 
   return (
     <Box
@@ -46,9 +46,10 @@ export const Navbar = () => {
       width="100%"
       top="0"
       zIndex={999}
+      backdropFilter="blur(24px)"
+      bg={bgGradient}
     >
       <Flex
-        bgGradient={bgGradient}
         backdropFilter={'auto'}
         backdropBlur={'24px'}
         color={useColorModeValue('gray.600', 'white')}

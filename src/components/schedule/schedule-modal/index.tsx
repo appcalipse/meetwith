@@ -22,21 +22,24 @@ import {
 } from '@chakra-ui/react'
 import { addHours, addMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
+import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 
-import { AccountContext } from '../../providers/AccountProvider'
-import { logEvent } from '../../utils/analytics'
-import { scheduleMeeting } from '../../utils/calendar_manager'
-import { MeetingWithYourselfError } from '../../utils/errors'
-import { getAddressDisplayForInput } from '../../utils/user_manager'
-import { ChipInput } from '../chip-input'
-import { SingleDatepicker } from '../input-date-picker'
-import { InputTimePicker } from '../input-time-picker'
+import { AccountContext } from '../../../providers/AccountProvider'
+import { DBSlot, SchedulingType } from '../../../types/Meeting'
+import { logEvent } from '../../../utils/analytics'
+import { scheduleMeeting } from '../../../utils/calendar_manager'
+import { MeetingWithYourselfError } from '../../../utils/errors'
+import { isProAccount } from '../../../utils/subscription_manager'
+import { getAddressDisplayForInput } from '../../../utils/user_manager'
+import { ChipInput } from '../../chip-input'
+import { SingleDatepicker } from '../../input-date-picker'
+import { InputTimePicker } from '../../input-time-picker'
 
 export interface ScheduleModalProps {
   isOpen: boolean
   onOpen: () => void
-  onClose: () => void
+  onClose: (meeting?: DBSlot) => void
 }
 
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({
@@ -52,12 +55,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [selectedDate, setDate] = useState(new Date())
   const [selectedTime, setTime] = useState('')
   const [content, setContent] = useState('')
+  const [inputError, setInputError] = useState(undefined as object | undefined)
   const [meetingUrl, setMeetingUrl] = useState('')
   const [duration, setDuration] = useState(30)
   const [isScheduling, setIsScheduling] = useState(false)
 
   const clearInfo = () => {
     setParticipants([])
+    setInputError(undefined)
     setDate(new Date())
     const minutes = Math.ceil(new Date().getMinutes() / 10) * 10
     setTime(
@@ -71,6 +76,23 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     setMeetingUrl('')
     setDuration(30)
     setIsScheduling(false)
+  }
+
+  const onParticipantsChange = (_participants: string[]) => {
+    if (!isProAccount(currentAccount!) && _participants.length > 1) {
+      setInputError(
+        <Text>
+          <NextLink href="/dashboard/details" shallow passHref>
+            <Link>Go PRO</Link>
+          </NextLink>{' '}
+          to be able to schedule meetings with more than one invitee
+        </Text>
+      )
+      participants.length == 0 && setParticipants([_participants[0]])
+      return
+    }
+
+    setParticipants(_participants)
   }
 
   useEffect(() => {
@@ -119,17 +141,17 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     const _start = new Date(selectedDate)
     _start.setHours(Number(selectedTime.split(':')[0]))
     _start.setMinutes(Number(selectedTime.split(':')[1]))
+    _start.setSeconds(0)
 
     const start = zonedTimeToUtc(
       _start,
-      currentAccount?.preferences?.timezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone
+      Intl.DateTimeFormat().resolvedOptions().timeZone
     )
     const end = addMinutes(new Date(start), duration)
 
     try {
       const meeting = await scheduleMeeting(
-        currentAccount!.address,
+        SchedulingType.REGULAR,
         currentAccount!.address,
         [
           ...Array.from(new Set(participants.map(p => p.toLowerCase()))).filter(
@@ -139,6 +161,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         'no_type',
         start,
         end,
+        currentAccount!.address,
+        '',
         currentAccount!.name,
         content,
         meetingUrl
@@ -148,7 +172,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         participantsSize: meeting.participants.length,
       })
       clearInfo()
-      onClose()
+      onClose({
+        id: meeting.id,
+        created_at: new Date(meeting.created_at),
+        account_pub_key: currentAccount!.internal_pub_key,
+        meeting_info_file_path: meeting.meeting_info_file_path,
+        start: new Date(meeting.start),
+        end: new Date(meeting.end),
+      })
       return true
     } catch (e) {
       if (e instanceof MeetingWithYourselfError) {
@@ -184,15 +215,17 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <FormControl>
             <FormLabel htmlFor="participants">Participants</FormLabel>
             <ChipInput
+              currentItems={participants}
               placeholder="Insert wallet addresses"
-              onChange={setParticipants}
+              onChange={onParticipantsChange}
               renderItem={item => {
                 return getAddressDisplayForInput(item)
               }}
             />
             <FormHelperText>
-              Separate participants by comma. You will be added automatically,
-              no need to insert yourself
+              {inputError
+                ? inputError
+                : 'Separate participants by comma. You will be added automatically, no need to insert yourself'}
             </FormHelperText>
           </FormControl>
           <FormControl sx={{ marginTop: '24px' }}>

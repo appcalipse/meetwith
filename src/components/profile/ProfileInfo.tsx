@@ -5,11 +5,14 @@ import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useState } from 'react'
 import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
 
+import accounts from '../../pages/api/secure/accounts'
 import { Account, SocialLinkType } from '../../types/Account'
+import { Plan } from '../../types/Subscription'
 import {
   generateTelegramUrl,
   generateTwitterUrl,
 } from '../../utils/generic_utils'
+import { isProAccount } from '../../utils/subscription_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 
 interface ProfileInfoProps {

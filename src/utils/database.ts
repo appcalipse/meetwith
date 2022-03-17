@@ -11,12 +11,17 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
+  MeetingType,
   SimpleAccountInfo,
 } from '../types/Account'
-import { AccountNotifications } from '../types/AccountNotifications'
+import {
+  AccountNotifications,
+  NotificationChannel,
+} from '../types/AccountNotifications'
 import {
   ConnectedCalendar,
   ConnectedCalendarCorePayload,
+  ConnectedCalendarProvider,
 } from '../types/CalendarConnections'
 import {
   DBSlot,
@@ -24,6 +29,7 @@ import {
   MeetingCreationRequest,
   ParticipantType,
 } from '../types/Meeting'
+import { Plan, Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
   MeetingCreationError,
@@ -37,6 +43,8 @@ import {
 import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
 import { notifyForNewMeeting } from './notification_helper'
+import { isProAccount } from './subscription_manager'
+import { syncCalendarForMeeting } from './sync_helper'
 import { isValidEVMAddress } from './validations'
 
 const db: any = { ready: false }
@@ -66,6 +74,12 @@ const initAccountDBForWallet = async (
     throw new Error('Invalid address')
   }
 
+  try {
+    //make sure account doesn't exist
+    await getAccountFromDB(address)
+    return await updateAccountFromInvite(address, signature, timezone, nonce)
+  } catch (error) {}
+
   const newIdentity = EthCrypto.createIdentity()
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
@@ -83,7 +97,6 @@ const initAccountDBForWallet = async (
 
   if (error) {
     Sentry.captureException(error)
-    console.error(error)
     throw new Error("Account couldn't be created")
   }
 
@@ -125,7 +138,13 @@ const updateAccountFromInvite = async (
   timezone: string,
   nonce: number
 ): Promise<Account> => {
-  //fetch this before chaning internal pub key
+  const exitingAccount = await getAccountFromDB(account_address)
+  if (!exitingAccount.is_invited) {
+    // do not screw up accounts that already have been set up
+    return exitingAccount
+  }
+
+  //fetch this before changing internal pub key
   const currentMeetings = await getSlotsForAccount(account_address)
 
   const newIdentity = EthCrypto.createIdentity()
@@ -208,7 +227,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
 const getAccountNonce = async (identifier: string): Promise<number> => {
   const query = validate(identifier)
     ? `id.eq.${identifier}`
-    : `address.ilike.${identifier.toLowerCase()},special_domain.ilike.${identifier},internal_pub_key.eq.${identifier}`
+    : `address.ilike.${identifier.toLowerCase()},internal_pub_key.eq.${identifier}`
 
   const { data, error } = await db.supabase
     .from('accounts')
@@ -236,28 +255,25 @@ const getExistingAccountsFromDB = async (
   if (error) {
     Sentry.captureException(error)
     throw new Error("Couldn't get accounts")
-    // //TODO: handle error
   }
 
   return data
 }
 
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
-  const query = validate(identifier)
-    ? `id.eq.${identifier}`
-    : `address.ilike.${identifier.toLowerCase()},special_domain.ilike.${identifier},internal_pub_key.eq.${identifier}`
+  const { data, error } = await db.supabase.rpc('fetch_account', {
+    identifier: identifier,
+  })
 
-  const { data, error } = await db.supabase
-    .from('accounts')
-    .select()
-    .or(query)
-    .order('created_at')
-
-  if (!error && data.length > 0) {
-    const account = data[0] as Account
+  if (data) {
+    const account = data as Account
     account.preferences = (await fetchContentFromIPFS(
       account.preferences_path
     )) as AccountPreferences
+
+    account.subscriptions = await getSubscriptionFromDBForAccount(
+      account.address
+    )
 
     return account
   } else {
@@ -332,7 +348,7 @@ const isSlotFree = async (
   const account = await getAccountFromDB(account_address)
 
   const minTime = account.preferences?.availableTypes.filter(
-    mt => mt.id === meetingTypeId
+    (mt: MeetingType) => mt.id === meetingTypeId
   )
 
   if (minTime && minTime.length > 0) {
@@ -376,7 +392,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
 
 const saveMeeting = async (
   meeting: MeetingCreationRequest,
-  requesterAddress: string
+  requesterAddress?: string
 ): Promise<DBSlotEnhanced> => {
   if (
     new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
@@ -392,7 +408,7 @@ const saveMeeting = async (
   let i = 0
 
   const existingAccounts = await getExistingAccountsFromDB(
-    meeting.participants_mapping.map(p => p.account_address)
+    meeting.participants_mapping.map(p => p.account_address!)
   )
   const ownerAccount =
     meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
@@ -401,68 +417,69 @@ const saveMeeting = async (
     meeting.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
-
   for (const participant of meeting.participants_mapping) {
-    if (
-      existingAccounts
-        .map(account => account.address)
-        .includes(participant.account_address) &&
-      participant.type === ParticipantType.Owner
-    ) {
-      // only validate slot if meeting is being scheduled ons omeones calendar and not by itself
+    if (participant.account_address) {
       if (
-        ownerAccount &&
-        ownerAccount.account_address === participant.account_address &&
-        ownerAccount.account_address !== schedulerAccount?.account_address &&
-        (await !isSlotFree(
-          participant.account_address,
-          new Date(meeting.start),
-          new Date(meeting.end),
-          meeting.meetingTypeId
-        ))
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!) &&
+        participant.type === ParticipantType.Owner
       ) {
-        throw new TimeNotAvailableError()
+        // only validate slot if meeting is being scheduled on someones calendar and not by itself
+        if (
+          ownerAccount &&
+          ownerAccount.account_address === participant.account_address &&
+          ownerAccount.account_address !== schedulerAccount?.account_address &&
+          (await !isSlotFree(
+            participant.account_address!,
+            new Date(meeting.start),
+            new Date(meeting.end),
+            meeting.meetingTypeId
+          ))
+        ) {
+          throw new TimeNotAvailableError()
+        }
       }
-    }
 
-    let account: Account
+      let account: Account
 
-    if (
-      existingAccounts
-        .map(account => account.address)
-        .includes(participant.account_address)
-    ) {
-      account = await getAccountFromDB(participant.account_address)
-    } else {
-      account = await initAccountDBForWallet(
-        participant.account_address,
-        '',
-        'UTC',
-        0,
-        true
-      )
-    }
-
-    const path = await addContentToIPFS(participant.privateInfo)
-
-    const dbSlot: DBSlot = {
-      id: participant.slot_id,
-      start: meeting.start,
-      end: meeting.end,
-      account_pub_key: account.internal_pub_key,
-      meeting_info_file_path: path,
-    }
-
-    slots.push(dbSlot)
-
-    if (participant.account_address === requesterAddress) {
-      index = i
-      meetingResponse = {
-        ...dbSlot,
-        meeting_info_encrypted: participant.privateInfo,
+      if (
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!)
+      ) {
+        account = await getAccountFromDB(participant.account_address!)
+      } else {
+        account = await initAccountDBForWallet(
+          participant.account_address!,
+          '',
+          'UTC',
+          0,
+          true
+        )
       }
+
+      const path = await addContentToIPFS(participant.privateInfo)
+
+      const dbSlot: DBSlot = {
+        id: participant.slot_id,
+        start: meeting.start,
+        end: meeting.end,
+        account_pub_key: account.internal_pub_key,
+        meeting_info_file_path: path,
+      }
+
+      slots.push(dbSlot)
+
+      if (participant.account_address === requesterAddress) {
+        index = i
+        meetingResponse = {
+          ...dbSlot,
+          meeting_info_encrypted: participant.privateInfo,
+        }
+      }
+      i++
     }
-    i++
   }
 
   const { data, error } = await db.supabase.from('slots').insert(slots)
@@ -473,8 +490,11 @@ const saveMeeting = async (
   }
 
   meetingResponse.id = data[index].id
+  meetingResponse.created_at = data[index].created_at
 
+  // TODO: ideally notifications should not block the user request
   await notifyForNewMeeting(meeting)
+  await syncCalendarForMeeting(meeting)
 
   return meetingResponse
 }
@@ -501,6 +521,13 @@ const setAccountNotificationSubscriptions = async (
   address: string,
   notifications: AccountNotifications
 ): Promise<AccountNotifications> => {
+  const account = await getAccountFromDB(address)
+  if (!isProAccount(account)) {
+    notifications.notification_types = notifications.notification_types.filter(
+      n => n.channel === NotificationChannel.EMAIL
+    )
+  }
+
   const { _, error } = await db.supabase
     .from('account_notifications')
     .upsert(notifications, { onConflict: 'account_address' })
@@ -530,12 +557,19 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
 }
 
 const getConnectedCalendars = async (
-  address: string
+  address: string,
+  syncOnly?: boolean
 ): Promise<ConnectedCalendar[]> => {
-  const { data, error } = await db.supabase
+  const query = db.supabase
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
+
+  if (syncOnly) {
+    query.eq('sync', true)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     Sentry.captureException(error)
@@ -548,17 +582,49 @@ const getConnectedCalendars = async (
   return []
 }
 
-const addConnectedCalendar = async (
+const connectedCalendarExists = async (
+  address: string,
+  email: string,
+  provider: ConnectedCalendarProvider
+): Promise<boolean> => {
+  const { data, count, error } = await db.supabase
+    .from('connected_calendars')
+    .select('*', { count: 'exact' })
+    .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return count > 0
+}
+
+const addOrUpdateConnectedCalendar = async (
   address: string,
   payload: ConnectedCalendarCorePayload
 ): Promise<ConnectedCalendar> => {
-  const { data, error } = await db.supabase
-    .from('connected_calendars')
-    .upsert(
-      { ...payload, created: new Date(), account_address: address },
-      { onConflict: 'refresh_token' }
-    )
-    .eq('account_address', address.toLowerCase())
+  const existingConnection = await connectedCalendarExists(
+    address,
+    payload.email,
+    payload.provider
+  )
+  let queryPromise
+  if (existingConnection) {
+    queryPromise = db.supabase
+      .from('connected_calendars')
+      .update({ ...payload, updated: new Date() })
+      .eq('account_address', address.toLowerCase())
+      .eq('email', payload.email.toLowerCase())
+      .eq('provider', payload.provider)
+  } else {
+    queryPromise = db.supabase
+      .from('connected_calendars')
+      .insert({ ...payload, created: new Date(), account_address: address })
+  }
+
+  const { data, error } = await queryPromise
 
   if (error) {
     Sentry.captureException(error)
@@ -567,8 +633,145 @@ const addConnectedCalendar = async (
   return data as ConnectedCalendar
 }
 
+const changeConnectedCalendarSync = async (
+  address: string,
+  email: string,
+  provider: ConnectedCalendarProvider,
+  sync?: boolean,
+  payload?: ConnectedCalendarCorePayload['payload']
+): Promise<ConnectedCalendar> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .update({ sync, payload, updated: new Date() })
+    .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return data as ConnectedCalendar
+}
+
+const removeConnectedCalendar = async (
+  address: string,
+  email: string,
+  provider: ConnectedCalendarProvider
+): Promise<ConnectedCalendar> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .delete()
+    .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return data as ConnectedCalendar
+}
+
+export const getSubscriptionFromDBForAccount = async (
+  accountAddress: string
+): Promise<Subscription[]> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select()
+    .gt('expiry_time', new Date().toISOString())
+    .eq('owner_account', accountAddress.toLowerCase())
+
+  if (error) {
+    Sentry.captureException(error)
+    return []
+  }
+
+  if (data && data.length > 0) {
+    let subscriptions = data as Subscription[]
+
+    const collisionExists = await db.supabase
+      .from('subscriptions')
+      .select()
+      .neq('owner_account', accountAddress.toLowerCase())
+      .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
+
+    if (collisionExists.error) {
+      Sentry.captureException(error)
+    }
+
+    // If for any reason some smart ass registered a domain manually on the blockchain, but such domain already existed for someone else and is not expired, we remove it here
+    for (const collision of collisionExists.data) {
+      if (
+        (collision as Subscription).registered_at <
+        subscriptions.find(s => s.domain === collision.domain)!.registered_at
+      ) {
+        subscriptions = subscriptions.filter(s => s.domain !== collision.domain)
+      }
+    }
+
+    return subscriptions
+  }
+  return []
+}
+
+export const getSubscription = async (
+  domain: string
+): Promise<Subscription | undefined> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select()
+    .ilike('domain', domain)
+    .gt('expiry_time', new Date().toISOString())
+    .order('registered_at', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  if (data) {
+    return data[0] as Subscription
+  }
+  return undefined
+}
+
+export const updateAccountSubscriptions = async (
+  subscriptions: Subscription[]
+): Promise<Subscription[]> => {
+  for (const subscription of subscriptions) {
+    const { data, error } = await db.supabase
+      .from('subscriptions')
+      .update({
+        expiry_time: subscription.expiry_time,
+        config_ipfs_hash: subscription.config_ipfs_hash,
+        plan_id: subscription.plan_id,
+      })
+      .eq('domain', subscription.domain)
+      .eq('owner_account', subscription.owner_account)
+
+    if (error && error.length > 0) {
+      console.error(error)
+      Sentry.captureException(error)
+    }
+
+    if (!data || data.length == 0) {
+      const { data, error } = await db.supabase
+        .from('subscriptions')
+        .insert(subscription)
+
+      if (error) {
+        Sentry.captureException(error)
+      }
+    }
+  }
+
+  return subscriptions
+}
+
 export {
-  addConnectedCalendar,
+  addOrUpdateConnectedCalendar,
+  changeConnectedCalendarSync,
+  connectedCalendarExists,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
@@ -580,6 +783,7 @@ export {
   initAccountDBForWallet,
   initDB,
   isSlotFree,
+  removeConnectedCalendar,
   saveEmailToDB,
   saveMeeting,
   setAccountNotificationSubscriptions,

@@ -8,10 +8,10 @@ import {
   Spinner,
   Text,
   useDisclosure,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { addHours } from 'date-fns'
-import { decryptWithPrivateKey } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
@@ -19,7 +19,7 @@ import { AccountContext } from '../../providers/AccountProvider'
 import { DBSlot } from '../../types/Meeting'
 import { getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
-import { ScheduleModal } from '../schedule-modal'
+import { ScheduleModal } from '../schedule/schedule-modal'
 
 const Meetings: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -79,10 +79,7 @@ const Meetings: React.FC = () => {
           <MeetingCard
             key={meeting.id}
             meeting={meeting}
-            timezone={
-              currentAccount?.preferences?.timezone ||
-              Intl.DateTimeFormat().resolvedOptions().timeZone
-            }
+            timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
           />
         ))}
         {!noMoreFetch && !firstFetch && (
@@ -104,12 +101,26 @@ const Meetings: React.FC = () => {
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
-  const afterClose = () => {
+  const toast = useToast()
+
+  const afterClose = (meeting?: DBSlot) => {
+    if (meeting) {
+      meetings.push(meeting)
+      setMeetings(
+        meetings.sort((m1, m2) => m1.start.getTime() - m2.start.getTime())
+      )
+      toast({
+        title: 'Scheduled',
+        description: 'Meeting scheduled successfully.',
+        status: 'success',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    }
     onClose()
-    fetchMeetings()
   }
 
-  const isLocalDevelopment = process.env.NEXT_PUBLIC_ENV === 'local'
   return (
     <Flex direction={'column'}>
       <ScheduleModal isOpen={isOpen} onClose={afterClose} onOpen={onOpen} />
@@ -118,7 +129,6 @@ const Meetings: React.FC = () => {
           onClick={onOpen}
           colorScheme="orange"
           isFullWidth={false}
-          display={isLocalDevelopment ? 'flex' : 'none'}
           float={'right'}
           mb={4}
           leftIcon={<FaPlus />}
