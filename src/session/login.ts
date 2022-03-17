@@ -5,19 +5,26 @@ import { useContext } from 'react'
 
 import { AccountContext } from '../providers/AccountProvider'
 import { logEvent } from '../utils/analytics'
+import { InvalidSessionError } from '../utils/errors'
 import { loginWithWallet, web3 } from '../utils/user_manager'
 
 export const useLogin = () => {
-  const { currentAccount, logged, login, loginIn, setLoginIn } =
+  const { currentAccount, logged, login, loginIn, setLoginIn, logout } =
     useContext(AccountContext)
   const toast = useToast()
   const handleLogin = async (useWaiting = true, forceRedirect = true) => {
-    logEvent('Clicked to connect wallet')
+    !forceRedirect && logEvent('Clicked to connect wallet')
     try {
       const account = await loginWithWallet(
         useWaiting ? setLoginIn : () => null
       )
+
+      // user could revoke wallet authorization any moment
       if (!account) {
+        if (logged && forceRedirect) {
+          await logout()
+          await router.push('/')
+        }
         return
       }
 
@@ -25,6 +32,16 @@ export const useLogin = () => {
       const provider = web3.currentProvider as any
       provider &&
         provider.on('accountsChanged', async (accounts: string[]) => {
+          // for this to get called, we need to have an account connected first
+          // if this changed, then the user removed the permission directly in
+          // the wallet manager, and we should logout the user right away,
+          // because the account provider will throw an exception and not ask the
+          // user to give the required permissions automatically
+          if (!accounts?.length) {
+            await router.push('/logout')
+            return
+          }
+
           const newAccount = await loginWithWallet(setLoginIn)
           if (newAccount) {
             login(newAccount)
@@ -37,6 +54,10 @@ export const useLogin = () => {
         await router.push('/dashboard')
       }
     } catch (error: any) {
+      if (error instanceof InvalidSessionError) {
+        await router.push('/logout')
+        return
+      }
       Sentry.captureException(error)
       toast({
         title: 'Error',

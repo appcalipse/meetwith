@@ -10,27 +10,41 @@ export enum ParticipantType {
   Scheduler = 'scheduler',
   Owner = 'owner',
   Invitee = 'invitee',
+  Guest = 'guest',
+}
+
+export enum SchedulingType {
+  REGULAR,
+  GUEST,
 }
 
 export interface MeetingCreationRequest {
+  type: SchedulingType
   participants_mapping: CreationRequestParticipantMapping[]
   meetingTypeId: string
   start: Date
   end: Date
+  content?: string
+  meeting_url: string
 }
 
 export interface CreationRequestParticipantMapping {
-  account_address: string
+  account_address?: string
   slot_id: string
   type: ParticipantType
   privateInfo: Encrypted
+  timeZone: string
+  guest_email?: string
 }
 
-export interface DBSlot {
-  id?: string
-  created_at?: Date
+export interface TimeSlot {
   start: Date
   end: Date
+}
+
+export interface DBSlot extends TimeSlot {
+  id?: string
+  created_at?: Date
   account_pub_key: string
   meeting_info_file_path: string
 }
@@ -40,7 +54,7 @@ export interface DBSlotEnhanced extends DBSlot {
 }
 
 export interface ParticipantBaseInfo {
-  account_address: string
+  account_address?: string
   type: ParticipantType
 }
 
@@ -48,6 +62,7 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
   status: ParticipationStatus
   slot_id: string
   name?: string
+  guest_email?: string
 }
 
 export interface IPFSMeetingInfo {
@@ -65,5 +80,6 @@ export interface MeetingDecrypted {
   end: Date
   participants: ParticipantInfo[]
   meeting_url: string
+  meeting_info_file_path: string
   content?: string
 }

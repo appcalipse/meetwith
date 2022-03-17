@@ -11,41 +11,44 @@ import {
   Text,
   Tooltip,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
-import React, { useContext, useState } from 'react'
+import { useRouter } from 'next/router'
+import React, { useContext, useEffect, useState } from 'react'
 import { IconType } from 'react-icons'
 import {
   FaBell,
+  FaCalendarAlt,
   FaCalendarDay,
   FaCalendarPlus,
   FaCalendarWeek,
-  FaInfo,
+  FaInfoCircle,
   FaLock,
+  FaSignOutAlt,
 } from 'react-icons/fa'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
-import {
-  getAccountCalendarUrl,
-  getEmbedCode,
-} from '../../utils/calendar_manager'
+import { getAccountCalendarUrl } from '../../utils/calendar_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import AvailabilityConfig from '../availabilities/availability-config'
-import IPFSLink from '../IPFSLink'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
+import ConnectCalendar from './ConnectCalendar'
 import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
-enum EditMode {
-  MEETINGS,
-  AVAILABILITY,
-  DETAILS,
-  TYPES,
-  NOTIFICATIONS,
+export enum EditMode {
+  MEETINGS = 'meetings',
+  AVAILABILITY = 'availability',
+  DETAILS = 'details',
+  TYPES = 'types',
+  CALENDARS = 'calendars',
+  NOTIFICATIONS = 'notifications',
+  SIGNOUT = 'signout',
 }
 
 interface LinkItemProps {
@@ -56,13 +59,23 @@ interface LinkItemProps {
 }
 const LinkItems: Array<LinkItemProps> = [
   { name: 'My meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
-  { name: 'Account Details', icon: FaInfo, mode: EditMode.DETAILS },
-  { name: 'Availabilities', icon: FaCalendarWeek, mode: EditMode.AVAILABILITY },
-  { name: 'Meeting types', icon: FaCalendarPlus, mode: EditMode.TYPES },
+  { name: 'Account Details', icon: FaInfoCircle, mode: EditMode.DETAILS },
+  { name: 'Availabilities', icon: FaCalendarAlt, mode: EditMode.AVAILABILITY },
+  { name: 'Meeting types', icon: FaCalendarWeek, mode: EditMode.TYPES },
   {
-    name: 'Notifications',
+    name: 'Notifications Settings',
     icon: FaBell,
     mode: EditMode.NOTIFICATIONS,
+  },
+  {
+    name: 'Connected calendars',
+    icon: FaCalendarPlus,
+    mode: EditMode.CALENDARS,
+  },
+  {
+    name: 'Sign Out',
+    icon: FaSignOutAlt,
+    mode: EditMode.SIGNOUT,
   },
 ]
 
@@ -138,18 +151,49 @@ const NavItem = ({
   )
 }
 
-const DashboardContent: React.FC = () => {
+const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
+  currentSection,
+}) => {
   const { currentAccount } = useContext(AccountContext)
+  const router = useRouter()
 
-  const [currentEditMode, setCurrentEditMode] = useState(EditMode.MEETINGS)
+  const toast = useToast()
+  const { result } = router.query
+
+  useEffect(() => {
+    if (result === 'error') {
+      toast({
+        title: 'Error connecting calendar',
+        description:
+          'Please make sure to give access to Meet With Wallet within your calendar provider page.',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    } else if (result === 'success') {
+      toast({
+        title: 'Calendar connected',
+        description: "You've just connected a new calendar provider.",
+        status: 'success',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    }
+  }, [])
 
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
   const accountUrl = getAccountCalendarUrl(currentAccount!, false)
-  // For showing embedded calendar version: const embedCode = getEmbedCode(currentAccount!, false)
 
-  const menuClicked = (mode: EditMode) => {
-    setCurrentEditMode(mode)
+  const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })
+    if (mode === EditMode.SIGNOUT) {
+      await router.push(`/logout`)
+    } else {
+      router.push(`/dashboard/${mode}`, undefined, { shallow: true })
+      window.scrollTo(0, 0)
+    }
   }
 
   const copyUrl = async () => {
@@ -166,21 +210,28 @@ const DashboardContent: React.FC = () => {
   }
 
   const renderSelected = () => {
-    switch (currentEditMode) {
+    switch (currentSection) {
+      case EditMode.MEETINGS:
+        return <Meetings />
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig />
       case EditMode.DETAILS:
         return <AccountDetails />
-      case EditMode.MEETINGS:
-        return <Meetings />
       case EditMode.TYPES:
         return <MeetingTypesConfig />
+      case EditMode.CALENDARS:
+        return <ConnectCalendar />
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig />
     }
   }
 
   const buttonColor = useColorModeValue('gray.600', 'gray.200')
+
+  if (!currentAccount) {
+    router.push('/')
+    return <></>
+  }
 
   return currentAccount ? (
     <HStack alignItems="start" width="100%" flexWrap="wrap">
@@ -222,25 +273,22 @@ const DashboardContent: React.FC = () => {
               </InputRightElement>
             </InputGroup>
           </Box>
-
-          <IPFSLink
-            ipfsHash={currentAccount.preferences_path}
-            title="You account configuration hash on IPFS"
-          />
         </Box>
 
         <Box py={2} width="100%">
-          {LinkItems.map(link => (
-            <NavItem
-              selected={currentEditMode === link.mode}
-              key={link.name}
-              text={link.name}
-              icon={link.icon}
-              mode={link.mode}
-              locked={link.locked || false}
-              changeMode={menuClicked}
-            ></NavItem>
-          ))}
+          {LinkItems.filter(link => link.mode != EditMode.CALENDARS).map(
+            link => (
+              <NavItem
+                selected={currentSection === link.mode}
+                key={link.name}
+                text={link.name}
+                icon={link.icon}
+                mode={link.mode}
+                locked={link.locked || false}
+                changeMode={menuClicked}
+              ></NavItem>
+            )
+          )}
         </Box>
       </VStack>
       <Box flex={1} px={8}>

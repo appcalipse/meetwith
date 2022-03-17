@@ -5,12 +5,14 @@ import {
   FormLabel,
   HStack,
   Input,
+  Link,
   Spacer,
   Switch,
   Text,
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import NextLink from 'next/link'
 import { useContext, useState } from 'react'
 import { useEffect } from 'react'
 
@@ -24,6 +26,7 @@ import {
   getNotificationSubscriptions,
   setNotificationSubscriptions,
 } from '../../utils/api_helper'
+import { isProAccount } from '../../utils/subscription_manager'
 import { isValidEmail } from '../../utils/validations'
 
 const NotificationsConfig: React.FC = () => {
@@ -33,6 +36,7 @@ const NotificationsConfig: React.FC = () => {
   const [loadingInitialInfo, setLoadingInitialInfo] = useState(true)
   const [email, setEmail] = useState('')
   const [emailNotifications, setEmailNotifications] = useState(false)
+  const [epnsNotifications, setEPNSNotifications] = useState(false)
 
   useEffect(() => {
     fetchSubscriptions()
@@ -45,6 +49,9 @@ const NotificationsConfig: React.FC = () => {
         case NotificationChannel.EMAIL:
           setEmail(subs.notification_types[i].destination)
           setEmailNotifications(true)
+          break
+        case NotificationChannel.EPNS:
+          setEPNSNotifications(true)
           break
         default:
       }
@@ -80,20 +87,31 @@ const NotificationsConfig: React.FC = () => {
         destination: email,
       })
     }
+    if (epnsNotifications) {
+      subs.notification_types.push({
+        channel: NotificationChannel.EPNS,
+        destination: currentAccount!.address,
+      })
+    }
 
     await setNotificationSubscriptions(subs)
-    logEvent('Set notifications', [NotificationChannel.EMAIL])
+
+    logEvent(
+      'Set notifications',
+      subs.notification_types.map(sub => sub.channel)
+    )
 
     setLoading(false)
   }
 
+  const isPro = isProAccount(currentAccount!)
+
   return (
     <VStack alignItems="start" flex={1} mb={8}>
-      <HStack py={4}>
+      <HStack py={4} alignItems="center">
         <Switch
           colorScheme="orange"
           size="md"
-          mr={4}
           isChecked={emailNotifications}
           onChange={e => setEmailNotifications(e.target.checked)}
         />
@@ -116,9 +134,36 @@ const NotificationsConfig: React.FC = () => {
       <Spacer />
 
       <HStack py={4}>
-        <Switch colorScheme="orange" size="md" isDisabled={true} />
-        <Text>EPNS (Coming soon)</Text>
+        <Switch
+          colorScheme="orange"
+          size="md"
+          isChecked={epnsNotifications}
+          onChange={e => setEPNSNotifications(e.target.checked)}
+          isDisabled={!isPro}
+        />
+        <Text>
+          EPNS{' '}
+          {!isPro && (
+            <>
+              (
+              <NextLink href="/dashboard/details" shallow passHref>
+                <Link>Go Pro</Link>
+              </NextLink>{' '}
+              to enable it)
+            </>
+          )}
+        </Text>
       </HStack>
+      <Text>
+        Make sure you subscribe to{' '}
+        <Link
+          isExternal
+          href="https://app.epns.io/?channel=0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b"
+        >
+          Meet with Wallet channel
+        </Link>{' '}
+        on EPNS.
+      </Text>
 
       <Spacer />
 

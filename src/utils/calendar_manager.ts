@@ -17,12 +17,7 @@ import {
 } from 'eth-crypto'
 import { v4 as uuidv4 } from 'uuid'
 
-import {
-  Account,
-  DayAvailability,
-  MeetingType,
-  PremiumAccount,
-} from '../types/Account'
+import { Account, DayAvailability, MeetingType } from '../types/Account'
 import {
   CreationRequestParticipantMapping,
   DBSlot,
@@ -33,10 +28,13 @@ import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
+  SchedulingType,
 } from '../types/Meeting'
+import { Plan } from '../types/Subscription'
 import { logEvent } from './analytics'
 import {
   createMeeting,
+  createMeetingAsGuest,
   getAccount,
   getExistingAccounts,
   isSlotFree,
@@ -47,15 +45,18 @@ import { MeetingWithYourselfError, TimeNotAvailableError } from './errors'
 import { getSlugFromText } from './generic_utils'
 import { generateMeetingUrl } from './meeting_call_helper'
 import { getSignature } from './storage'
+import { isProAccount } from './subscription_manager'
 import { getAccountDisplayName } from './user_manager'
 
 const scheduleMeeting = async (
-  source_account_address: string,
+  schedulingType: SchedulingType,
   target_account_address: string,
   extra_participants: string[],
   meetingTypeId: string,
   startTime: Date,
   endTime: Date,
+  source_account_address?: string,
+  guest_email?: string,
   sourceName?: string,
   meetingContent?: string,
   meetingUrl?: string
@@ -77,7 +78,7 @@ const scheduleMeeting = async (
     ))
   ) {
     const allAccounts = await getExistingAccounts([
-      source_account_address,
+      source_account_address ? source_account_address : '',
       target_account_address,
       ...extra_participants,
     ])
@@ -99,8 +100,8 @@ const scheduleMeeting = async (
             : ParticipationStatus.Pending,
         slot_id: uuidv4(),
         name: account.address == source_account_address ? sourceName : '',
+        guest_email: account.address ? '' : guest_email,
       }
-
       participants.push(participant)
     }
 
@@ -122,6 +123,17 @@ const scheduleMeeting = async (
       participants.push(participant)
     }
 
+    if (schedulingType === SchedulingType.GUEST) {
+      const participant: ParticipantInfo = {
+        type: ParticipantType.Guest,
+        status: ParticipationStatus.Accepted,
+        guest_email,
+        name: sourceName,
+        slot_id: uuidv4(),
+      }
+
+      participants.push(participant)
+    }
     const privateInfo: IPFSMeetingInfo = {
       created_at: new Date(),
       participants: participants,
@@ -133,7 +145,9 @@ const scheduleMeeting = async (
     const participantsMappings = []
     for (const participant of participants) {
       const participantMapping: CreationRequestParticipantMapping = {
-        account_address: participant.account_address,
+        account_address: participant.account_address
+          ? participant.account_address
+          : '',
         slot_id: participant.slot_id,
         type: participant.type,
         privateInfo: await encryptWithPublicKey(
@@ -142,22 +156,45 @@ const scheduleMeeting = async (
           )[0]?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
           JSON.stringify(privateInfo)
         ),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        guest_email: participant.account_address ? '' : participant.guest_email,
       }
       participantsMappings.push(participantMapping)
     }
 
     const meeting: MeetingCreationRequest = {
+      type: schedulingType,
       start: startTime,
       end: endTime,
       participants_mapping: participantsMappings,
       meetingTypeId,
+      meeting_url: privateInfo['meeting_url'],
+      content: privateInfo['content'],
     }
 
-    const slot = await createMeeting(meeting)
+    let slot: DBSlotEnhanced
+    if (schedulingType === SchedulingType.GUEST) {
+      slot = await createMeetingAsGuest(meeting)
+    } else {
+      slot = await createMeeting(meeting)
+    }
 
-    const schedulerAccount = await getAccount(source_account_address)
+    if (source_account_address) {
+      const schedulerAccount = await getAccount(source_account_address!)
+      return await decryptMeeting(slot, schedulerAccount)
+    }
 
-    return await decryptMeeting(slot, schedulerAccount)
+    return {
+      id: slot.id!,
+      ...meeting,
+      created_at: meeting.start,
+      participants: [],
+      content: '',
+      meeting_url: '',
+      start: meeting.start,
+      end: meeting.end,
+      meeting_info_file_path: slot.meeting_info_file_path,
+    }
   } else {
     throw new TimeNotAvailableError()
   }
@@ -224,12 +261,13 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
 
 const decryptMeeting = async (
   meeting: DBSlotEnhanced,
-  account: Account
+  account: Account,
+  signature?: string
 ): Promise<MeetingDecrypted> => {
   const meetingInfo = JSON.parse(
     await getContentFromEncrypted(
-      account,
-      getSignature(account.address)!,
+      account!,
+      signature || getSignature(account!.address)!,
       meeting.meeting_info_encrypted
     )
   ) as IPFSMeetingInfo
@@ -243,6 +281,7 @@ const decryptMeeting = async (
     meeting_url: meetingInfo.meeting_url,
     start: meeting.start,
     end: meeting.end,
+    meeting_info_file_path: meeting.meeting_info_file_path,
   }
 }
 
@@ -362,23 +401,14 @@ const durationToHumanReadable = (duration: number): string => {
 }
 
 const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
-  if ((account as PremiumAccount).calendar_url) {
-    return `${appUrl}${(account as PremiumAccount).calendar_url}`
+  if (isProAccount(account)) {
+    return `${appUrl}${
+      account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0].domain
+    }`
   }
   return `${appUrl}address/${
     ellipsize ? getAccountDisplayName(account) : account!.address
   }`
-}
-
-const getEmbedCode = (account: Account, ellipsize?: boolean) => {
-  if ((account as PremiumAccount).calendar_url) {
-    return `<iframe src="${appUrl}embed/${
-      (account as PremiumAccount).calendar_url
-    }"></iframe>`
-  }
-  return `<iframe src="${appUrl}embed/${
-    ellipsize ? getAccountDisplayName(account) : account!.address
-  }"></iframe>`
 }
 
 const generateDefaultMeetingType = (): MeetingType => {
@@ -417,7 +447,6 @@ export {
   generateDefaultMeetingType,
   generateIcs,
   getAccountCalendarUrl,
-  getEmbedCode,
   isSlotAvailable,
   isTimeInsideAvailabilities,
   scheduleMeeting,
