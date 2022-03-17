@@ -254,7 +254,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }, [currentToken, currentChain, duration])
 
   const chains = supportedChains.filter(chain =>
-    process.env.NEX_PUBLIC_ENV === 'production' ? !chain.testnet : chain.testnet
+    process.env.NEXT_PUBLIC_ENV === 'production'
+      ? !chain.testnet
+      : chain.testnet
   )
 
   return (
