@@ -6,7 +6,7 @@ import {
   ConnectedCalendarProvider,
   NewCalendarEventType,
 } from '../../types/CalendarConnections'
-import { MeetingDecrypted } from '../../types/Meeting'
+import { MeetingCreationRequest } from '../../types/Meeting'
 import { apiUrl } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
 import { ellipsizeAddress } from '../user_manager'
@@ -15,7 +15,7 @@ import { MWWGoogleAuth } from './google_auth'
 export interface Calendar {
   createEvent(
     owner: string,
-    event: MeetingDecrypted
+    details: MeetingCreationRequest
   ): Promise<NewCalendarEventType>
 }
 
@@ -98,12 +98,12 @@ export default class GoogleCalendarService implements Calendar {
 
   async createEvent(
     owner: string,
-    event: MeetingDecrypted
+    details: MeetingCreationRequest
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
         const otherParticipants = [
-          event.participants
+          details.participants_mapping
             ?.filter(it => it.account_address !== owner)
             .map(it =>
               it.account_address
@@ -118,14 +118,14 @@ export default class GoogleCalendarService implements Calendar {
               : 'other participants'
           }`,
           description: `${
-            event.content ? event.content + '\n' : ''
-          }Your meeting will happen at ${event.meeting_url}`,
+            details.content ? details.content + '\n' : ''
+          }Your meeting will happen at ${details.meeting_url}`,
           start: {
-            dateTime: new Date(event.start).toISOString(),
+            dateTime: new Date(details.start).toISOString(),
             timeZone: 'UTC',
           },
           end: {
-            dateTime: new Date(event.end).toISOString(),
+            dateTime: new Date(details.end).toISOString(),
             timeZone: 'UTC',
           },
           attendees: [],
@@ -140,7 +140,7 @@ export default class GoogleCalendarService implements Calendar {
           },
         }
 
-        if (event.meeting_url) {
+        if (details.meeting_url) {
           payload['location'] = 'Online @ Meet With Wallet'
         }
 

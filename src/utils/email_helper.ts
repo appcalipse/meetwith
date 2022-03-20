@@ -6,7 +6,6 @@ import nodemailer from 'nodemailer'
 import path from 'path'
 
 import { durationToHumanReadable } from './calendar_manager'
-import { ellipsizeAddress, getParticipantDisplay } from './user_manager'
 
 const transporter = nodemailer.createTransport({
   host: 'smtppro.zoho.eu',

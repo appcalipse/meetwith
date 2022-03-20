@@ -68,7 +68,12 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
             <Button m={4} onClick={onClose} variant="ghost">
               Schedule another
             </Button>
-            <MWWButton mr={3} onClick={() => router.push('/dashboard')}>
+            <MWWButton
+              mr={3}
+              onClick={() =>
+                schedulerAccount ? router.push('/dashboard') : router.push('/')
+              }
+            >
               {schedulerAccount ? 'Go to dashboard' : 'Go home'}
             </MWWButton>
           </ModalFooter>

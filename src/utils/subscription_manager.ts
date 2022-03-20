@@ -12,10 +12,9 @@ import {
   Subscription,
 } from '../types/Subscription'
 import { getSubscriptionForDomain, syncSubscriptions } from './api_helper'
+import { YEAR_DURATION_IN_SECONDS } from './constants'
 import { validateChainToActOn } from './rpc_helper_front'
 import { connectedProvider } from './user_manager'
-
-export const YEAR_DURATION = 31536000
 
 export const isProAccount = (account?: Account): boolean => {
   return (
@@ -68,7 +67,7 @@ export const checkAllowance = async (
     const amount = ethers.utils
       .parseUnits(price.toString(), decimals)
       .mul(duration)
-      .div(YEAR_DURATION)
+      .div(YEAR_DURATION_IN_SECONDS)
     if (allowance.lt(amount)) {
       return amount
     } else {
@@ -136,7 +135,7 @@ export const getNativePriceForDuration = async (
       await contract.getNativeConvertedValue(planInfo.usdPrice)
     ).amountInNative
       .mul(duration)
-      .div(YEAR_DURATION)
+      .div(YEAR_DURATION_IN_SECONDS)
 
     return value
   } else {
@@ -229,7 +228,7 @@ export const subscribeToPlan = async (
         await contract.getNativeConvertedValue(planInfo.usdPrice)
       ).amountInNative
         .mul(duration)
-        .div(YEAR_DURATION)
+        .div(YEAR_DURATION_IN_SECONDS)
 
       tx = await contract.purchaseWithNative(
         plan,

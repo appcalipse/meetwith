@@ -24,6 +24,8 @@ export interface MeetingCreationRequest {
   meetingTypeId: string
   start: Date
   end: Date
+  content?: string
+  meeting_url: string
 }
 
 export interface CreationRequestParticipantMapping {
@@ -78,5 +80,6 @@ export interface MeetingDecrypted {
   end: Date
   participants: ParticipantInfo[]
   meeting_url: string
+  meeting_info_file_path: string
   content?: string
 }
