@@ -5,7 +5,7 @@ import { useContext } from 'react'
 
 import { AccountContext } from '../providers/AccountProvider'
 import { logEvent } from '../utils/analytics'
-import * as api from '../utils/api_helper'
+import { InvalidSessionError } from '../utils/errors'
 import { loginWithWallet, web3 } from '../utils/user_manager'
 
 export const useLogin = () => {
@@ -22,7 +22,7 @@ export const useLogin = () => {
       // user could revoke wallet authorization any moment
       if (!account) {
         if (logged) {
-          await router.push('/logout')
+          await logout()
         }
         return
       }
@@ -53,6 +53,10 @@ export const useLogin = () => {
         await router.push('/dashboard')
       }
     } catch (error: any) {
+      if (error instanceof InvalidSessionError) {
+        await router.push('/logout')
+        return
+      }
       Sentry.captureException(error)
       toast({
         title: 'Error',

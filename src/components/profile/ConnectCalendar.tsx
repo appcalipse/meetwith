@@ -77,7 +77,6 @@ const ConnectCalendar = () => {
   }
 
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const textColor = useColorModeValue('gray.700', 'gray.300')
   let content
 
   const proAccount = isProAccount(currentAccount!)
@@ -154,10 +153,8 @@ const ConnectCalendar = () => {
   return (
     <Box>
       <VStack alignItems="flex-start" mb={8}>
-        <Heading fontSize="3xl" color={textColor}>
-          Connected calendars
-        </Heading>
-        <Text color={textColor}>
+        <Heading fontSize="3xl">Connected calendars</Heading>
+        <Text>
           When you connect a calendar we will use its events to block your
           availabilities and also to add your new events to it.
         </Text>

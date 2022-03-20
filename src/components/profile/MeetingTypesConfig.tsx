@@ -31,6 +31,7 @@ import {
   updateAccountPreferences,
 } from '../../utils/database'
 import { getSlugFromText } from '../../utils/generic_utils'
+import { isProAccount } from '../../utils/subscription_manager'
 import NewMeetingDialog from './NewMeetingDialog'
 
 const MeetingTypesConfig: React.FC = () => {
@@ -169,7 +170,6 @@ const AddTypeCard: React.FC<AddTypeCardProps> = ({
   return (
     <Box alignSelf="stretch">
       <VStack
-        cursor="pointer"
         borderRadius={8}
         p={4}
         minW="280px"
@@ -178,7 +178,11 @@ const AddTypeCard: React.FC<AddTypeCardProps> = ({
         height={'100%'}
         justifyContent="center"
       >
-        <Button colorScheme="orange" onClick={createType}>
+        <Button
+          disabled={!isProAccount(currentAccount as Account)}
+          colorScheme="orange"
+          onClick={createType}
+        >
           + New Meeting Type
         </Button>
         <NewMeetingDialog

@@ -15,6 +15,11 @@ const encryptContent = (signature: string, data: string): string => {
 }
 
 const decryptContent = (signature: string, encodedData: string): string => {
+  if (!signature) {
+    //if for any reason signature is not available anymore, unlog user
+    window.location.assign('/logout')
+    return ''
+  }
   const message = CryptoJS.AES.decrypt(encodedData, signature).toString(
     CryptoJS.enc.Utf8
   )

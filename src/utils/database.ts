@@ -1,3 +1,4 @@
+import { filter } from '@chakra-ui/react'
 import * as Sentry from '@sentry/node'
 import { createClient } from '@supabase/supabase-js'
 import { addMinutes, isAfter } from 'date-fns'
@@ -29,7 +30,7 @@ import {
   MeetingCreationRequest,
   ParticipantType,
 } from '../types/Meeting'
-import { Subscription } from '../types/Subscription'
+import { Plan, Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
   MeetingCreationError,
@@ -229,7 +230,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
 const getAccountNonce = async (identifier: string): Promise<number> => {
   const query = validate(identifier)
     ? `id.eq.${identifier}`
-    : `address.ilike.${identifier.toLowerCase()},special_domain.ilike.${identifier},internal_pub_key.eq.${identifier}`
+    : `address.ilike.${identifier.toLowerCase()},internal_pub_key.eq.${identifier}`
 
   const { data, error } = await db.supabase
     .from('accounts')
@@ -257,25 +258,18 @@ const getExistingAccountsFromDB = async (
   if (error) {
     Sentry.captureException(error)
     throw new Error("Couldn't get accounts")
-    // //TODO: handle error
   }
 
   return data
 }
 
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
-  const query = validate(identifier)
-    ? `id.eq.${identifier}`
-    : `address.ilike.${identifier.toLowerCase()},special_domain.ilike.${identifier},internal_pub_key.eq.${identifier}`
+  const { data, error } = await db.supabase.rpc('fetch_account', {
+    identifier: identifier,
+  })
 
-  const { data, error } = await db.supabase
-    .from('accounts')
-    .select()
-    .or(query)
-    .order('created_at')
-
-  if (!error && data.length > 0) {
-    const account = data[0] as Account
+  if (data) {
+    const account = data as Account
     account.preferences = (await fetchContentFromIPFS(
       account.preferences_path
     )) as AccountPreferences
@@ -404,7 +398,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
 
 const saveMeeting = async (
   meeting: MeetingCreationRequest,
-  requesterAddress: string
+  requesterAddress?: string
 ): Promise<DBSlotEnhanced> => {
   if (
     new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
@@ -420,7 +414,7 @@ const saveMeeting = async (
   let i = 0
 
   const existingAccounts = await getExistingAccountsFromDB(
-    meeting.participants_mapping.map(p => p.account_address)
+    meeting.participants_mapping.map(p => p.account_address!)
   )
   const ownerAccount =
     meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
@@ -429,68 +423,69 @@ const saveMeeting = async (
     meeting.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
-
   for (const participant of meeting.participants_mapping) {
-    if (
-      existingAccounts
-        .map(account => account.address)
-        .includes(participant.account_address) &&
-      participant.type === ParticipantType.Owner
-    ) {
-      // only validate slot if meeting is being scheduled ons omeones calendar and not by itself
+    if (participant.account_address) {
       if (
-        ownerAccount &&
-        ownerAccount.account_address === participant.account_address &&
-        ownerAccount.account_address !== schedulerAccount?.account_address &&
-        (await !isSlotFree(
-          participant.account_address,
-          new Date(meeting.start),
-          new Date(meeting.end),
-          meeting.meetingTypeId
-        ))
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!) &&
+        participant.type === ParticipantType.Owner
       ) {
-        throw new TimeNotAvailableError()
+        // only validate slot if meeting is being scheduled ons omeones calendar and not by itself
+        if (
+          ownerAccount &&
+          ownerAccount.account_address === participant.account_address &&
+          ownerAccount.account_address !== schedulerAccount?.account_address &&
+          (await !isSlotFree(
+            participant.account_address!,
+            new Date(meeting.start),
+            new Date(meeting.end),
+            meeting.meetingTypeId
+          ))
+        ) {
+          throw new TimeNotAvailableError()
+        }
       }
-    }
 
-    let account: Account
+      let account: Account
 
-    if (
-      existingAccounts
-        .map(account => account.address)
-        .includes(participant.account_address)
-    ) {
-      account = await getAccountFromDB(participant.account_address)
-    } else {
-      account = await initAccountDBForWallet(
-        participant.account_address,
-        '',
-        'UTC',
-        0,
-        true
-      )
-    }
-
-    const path = await addContentToIPFS(participant.privateInfo)
-
-    const dbSlot: DBSlot = {
-      id: participant.slot_id,
-      start: meeting.start,
-      end: meeting.end,
-      account_pub_key: account.internal_pub_key,
-      meeting_info_file_path: path,
-    }
-
-    slots.push(dbSlot)
-
-    if (participant.account_address === requesterAddress) {
-      index = i
-      meetingResponse = {
-        ...dbSlot,
-        meeting_info_encrypted: participant.privateInfo,
+      if (
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!)
+      ) {
+        account = await getAccountFromDB(participant.account_address!)
+      } else {
+        account = await initAccountDBForWallet(
+          participant.account_address!,
+          '',
+          'UTC',
+          0,
+          true
+        )
       }
+
+      const path = await addContentToIPFS(participant.privateInfo)
+
+      const dbSlot: DBSlot = {
+        id: participant.slot_id,
+        start: meeting.start,
+        end: meeting.end,
+        account_pub_key: account.internal_pub_key,
+        meeting_info_file_path: path,
+      }
+
+      slots.push(dbSlot)
+
+      if (participant.account_address === requesterAddress) {
+        index = i
+        meetingResponse = {
+          ...dbSlot,
+          meeting_info_encrypted: participant.privateInfo,
+        }
+      }
+      i++
     }
-    i++
   }
 
   const { data, error } = await db.supabase.from('slots').insert(slots)
@@ -707,11 +702,7 @@ export const getSubscriptionFromDBForAccount = async (
       .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
 
     if (collisionExists.error) {
-      console.log(collisionExists.error)
-      // Try-catch for handling browser
-      try {
-        Sentry.captureException(error)
-      } catch {}
+      Sentry.captureException(error)
     }
 
     // If for any reason some smart ass registered a domain manually on the blockchain, but such domain already existed for someone else and is not expired, we remove it here
@@ -764,6 +755,7 @@ export const updateAccountSubscriptions = async (
       .eq('owner_account', subscription.owner_account)
 
     if (error && error.length > 0) {
+      console.log(error)
       Sentry.captureException(error)
     }
 
