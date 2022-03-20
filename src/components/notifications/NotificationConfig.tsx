@@ -167,11 +167,6 @@ const NotificationsConfig: React.FC = () => {
 
       <Spacer />
 
-      <HStack py={4}>
-        <Switch colorScheme="orange" size="md" isDisabled={true} />
-        <Text>Browser Push notification (Coming soon)</Text>
-      </HStack>
-
       <Spacer />
       <Button
         isLoading={loading}
