@@ -1,3 +1,4 @@
+import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { BigNumber, ethers } from 'ethers'
 
 import { ERC20 } from '../abis/erc20'
@@ -11,11 +12,17 @@ import {
   Subscription,
 } from '../types/Subscription'
 import { getSubscriptionForDomain, syncSubscriptions } from './api_helper'
+import { validateChainToActOn } from './rpc_helper_front'
+import { connectedProvider } from './user_manager'
 
-const YEAR_DURATION = 31536000
+export const YEAR_DURATION = 31536000
 
-export const isProAccount = (account: Account): boolean => {
-  return account.subscriptions?.some(sub => sub.plan_id === Plan.PRO)
+export const isProAccount = (account?: Account): boolean => {
+  return (
+    account !== undefined &&
+    account !== null &&
+    account!.subscriptions?.some(sub => sub.plan_id === Plan.PRO)
+  )
 }
 
 export const checkAllowance = async (
@@ -25,35 +32,45 @@ export const checkAllowance = async (
   token: AcceptedToken,
   duration: number
 ): Promise<BigNumber> => {
-  if (!window.ethereum) {
+  if (!connectedProvider) {
     throw Error('Please connect a wallet')
   }
   const price = getPlanInfo(plan)?.usdPrice
   if (price) {
     const chainInfo = getChainInfo(chain)
-    const provider = new ethers.providers.Web3Provider(window.ethereum)
+
+    const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
+
+    try {
+      await validateChainToActOn(chain, provider)
+    } catch (e) {
+      throw Error('Please connect to the correct network')
+    }
+
     const tokenInfo = chainInfo!.acceptableTokens.find(
       _token => _token.token === token
     )
     if (!tokenInfo) {
       throw Error('Token not accepted')
     }
+
     const tokenContract = new ethers.Contract(
       tokenInfo.contractAddress,
       ERC20,
       provider.getSigner()
     )
+
     const decimals = await tokenContract.decimals()
     const allowance = await tokenContract.allowance(
       accountAddress.toLocaleLowerCase(),
-      chainInfo!.registerContractAddress
+      chainInfo!.registarContractAddress
     )
     const amount = ethers.utils
       .parseUnits(price.toString(), decimals)
       .mul(duration)
       .div(YEAR_DURATION)
     if (allowance.lt(amount)) {
-      return amount.sub(allowance)
+      return amount
     } else {
       return BigNumber.from(0)
     }
@@ -62,22 +79,56 @@ export const checkAllowance = async (
   }
 }
 
+export const approveTokenSpending = async (
+  chain: SupportedChain,
+  token: AcceptedToken,
+  amount: BigNumber
+): Promise<void> => {
+  const chainInfo = getChainInfo(chain)
+  const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
+
+  try {
+    await validateChainToActOn(chain, provider)
+  } catch (e) {
+    throw Error('Please connect to the correct network')
+  }
+
+  const tokenInfo = chainInfo!.acceptableTokens.find(
+    _token => _token.token === token
+  )
+  if (!tokenInfo) {
+    throw Error('Token not accepted')
+  }
+
+  const tokenContract = new ethers.Contract(
+    tokenInfo.contractAddress,
+    ERC20,
+    provider.getSigner()
+  )
+
+  const tx = await tokenContract.approve(
+    chainInfo!.registarContractAddress,
+    amount
+  )
+  await tx.wait()
+}
+
 export const getNativePriceForDuration = async (
   plan: Plan,
   duration: number,
   chain: SupportedChain
 ): Promise<BigNumber> => {
-  if (!window.ethereum) {
+  if (!connectedProvider) {
     throw Error('Please connect a wallet')
   }
 
-  const provider = new ethers.providers.Web3Provider(window.ethereum)
+  const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
   const chainInfo = getChainInfo(chain)
   const planInfo = getPlanInfo(plan)
   if (planInfo) {
     const price = planInfo.usdPrice
     const contract = new ethers.Contract(
-      chainInfo!.registerContractAddress,
+      chainInfo!.registarContractAddress,
       MWWRegister,
       provider.getSigner()
     )
@@ -99,40 +150,49 @@ export const subscribeToPlan = async (
   chain: SupportedChain,
   duration: number,
   domain: string,
-  token?: AcceptedToken
-): Promise<Subscription> => {
-  if (!window.ethereum) {
+  token: AcceptedToken
+): Promise<TransactionResponse> => {
+  if (!connectedProvider) {
     throw Error('Please connect a wallet')
   }
 
-  const subExists = await getSubscriptionForDomain(domain)
-  if (subExists) {
-    throw Error('Domain already registered')
+  try {
+    const subExists = await getSubscriptionForDomain(domain)
+    if (subExists) {
+      throw Error('Domain already registered')
+    }
+  } catch (e: any) {
+    if (e.status !== 404) {
+      throw e
+    }
   }
 
   const chainInfo = getChainInfo(chain)
-  const provider = new ethers.providers.Web3Provider(window.ethereum)
+  const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
 
-  if ((await provider.getNetwork()).chainId !== chainInfo?.id) {
-    throw Error(`Please switch you wallet to ${chainInfo?.name}`)
+  try {
+    await validateChainToActOn(chain, provider)
+  } catch (e) {
+    throw Error('Please connect to the correct network')
   }
 
   const contract = new ethers.Contract(
-    chainInfo!.registerContractAddress,
+    chainInfo!.registarContractAddress,
     MWWRegister,
     provider.getSigner()
   )
 
   try {
-    let sub: BlockchainSubscription
-    if (token) {
-      const tokenInfo = chainInfo!.acceptableTokens.find(
-        _token => _token.token === token
-      )
+    let tx: TransactionResponse
+    const tokenInfo = chainInfo!.acceptableTokens.find(
+      _token => _token.token === token
+    )
+
+    if (tokenInfo?.contractAddress !== ethers.constants.AddressZero) {
       if (!tokenInfo) {
         throw Error('Token not accepted')
       }
-      const missingApproval = await checkAllowance(
+      const neededApproval = await checkAllowance(
         accountAddress,
         plan,
         chain,
@@ -140,19 +200,19 @@ export const subscribeToPlan = async (
         duration
       )
 
-      if (missingApproval.gt(0)) {
+      if (neededApproval.gt(0)) {
         const tokenContract = new ethers.Contract(
           tokenInfo.contractAddress,
           ERC20,
           provider.getSigner()
         )
         await tokenContract.approve(
-          chainInfo!.registerContractAddress,
-          missingApproval
+          chainInfo!.registarContractAddress,
+          neededApproval
         )
       }
 
-      sub = await contract.purchaseWithToken(
+      tx = await contract.purchaseWithToken(
         tokenInfo.contractAddress,
         plan,
         accountAddress.toLocaleLowerCase(),
@@ -170,7 +230,8 @@ export const subscribeToPlan = async (
       ).amountInNative
         .mul(duration)
         .div(YEAR_DURATION)
-      sub = await contract.purchaseWithNative(
+
+      tx = await contract.purchaseWithNative(
         plan,
         accountAddress.toLocaleLowerCase(),
         duration,
@@ -179,13 +240,20 @@ export const subscribeToPlan = async (
         { value }
       )
     }
-
-    await syncSubscriptions()
-
-    return convertBlockchainSubscriptionToSubscription(sub)
+    return tx
   } catch (error) {
+    // TODO handle insufficient funds error
     throw error
   }
+}
+
+export const confirmSubscription = async (
+  tx: TransactionResponse,
+  domain: string
+): Promise<Subscription | undefined> => {
+  await tx.wait()
+  const subscriptions = await syncSubscriptions()
+  return subscriptions.find(sub => sub.domain === domain)
 }
 
 export const convertBlockchainSubscriptionToSubscription = (

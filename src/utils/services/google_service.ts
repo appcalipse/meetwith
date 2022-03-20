@@ -29,8 +29,6 @@ export interface IntegrationCalendar {
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
 export default class GoogleCalendarService implements Calendar {
-  private url = ''
-  private integrationName = ConnectedCalendarProvider.GOOGLE
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
 
   constructor(
@@ -107,7 +105,11 @@ export default class GoogleCalendarService implements Calendar {
         const otherParticipants = [
           event.participants
             ?.filter(it => it.account_address !== owner)
-            .map(it => ellipsizeAddress(it.account_address)),
+            .map(it =>
+              it.account_address
+                ? ellipsizeAddress(it.account_address!)
+                : it.guest_email
+            ),
         ]
         const payload: calendar_v3.Schema$Event = {
           summary: `Meet with ${
@@ -117,7 +119,7 @@ export default class GoogleCalendarService implements Calendar {
           }`,
           description: `${
             event.content ? event.content + '\n' : ''
-          }Your meeting will happen on ${event.meeting_url}`,
+          }Your meeting will happen at ${event.meeting_url}`,
           start: {
             dateTime: new Date(event.start).toISOString(),
             timeZone: 'UTC',

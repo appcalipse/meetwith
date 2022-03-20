@@ -52,14 +52,14 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 <Text
                   textAlign="center"
                   mt={12}
-                >{`You meeting with ${getAccountDisplayName(
+                >{`Your meeting with ${getAccountDisplayName(
                   targetAccount
                 )} at ${format(
                   utcToZonedTime(
                     meeting!.start,
-                    schedulerAccount.preferences!.timezone
+                    Intl.DateTimeFormat().resolvedOptions().timeZone
                   ),
-                  'LLLL'
+                  'PPPpp'
                 )} was scheduled successfully.`}</Text>
               )}
             </Flex>
@@ -69,7 +69,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               Schedule another
             </Button>
             <MWWButton mr={3} onClick={() => router.push('/dashboard')}>
-              Go to dashboard
+              {schedulerAccount ? 'Go to dashboard' : 'Go home'}
             </MWWButton>
           </ModalFooter>
         </ModalContent>

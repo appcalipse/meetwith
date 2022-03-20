@@ -1,13 +1,17 @@
+import { ethers } from 'ethers'
+
 export interface ChainInfo {
   chain: SupportedChain
   id: number
   name: string
+  fullName: string
   rpcUrl: string
   testnet: boolean
   nativeTokenSymbol: string
-  subscriptionContractAddess: string
-  registerContractAddress: string
+  domainContractAddess: string
+  registarContractAddress: string
   acceptableTokens: AcceptedTokenInfo[]
+  blockExplorerUrl: string
 }
 
 export enum SupportedChain {
@@ -20,6 +24,10 @@ export enum SupportedChain {
 }
 
 export enum AcceptedToken {
+  ETHER = 'ETHER',
+  MATIC = 'MATIC',
+  METIS = 'METIS',
+  ONE = 'ONE',
   DAI = 'DAI',
   USDC = 'USDC',
 }
@@ -30,87 +38,73 @@ export interface AcceptedTokenInfo {
 }
 
 export const supportedChains: ChainInfo[] = [
-  // {
-  //   chain: SupportedChain.POLYGON_MATIC,
-  //   id: 1,
-  //   name: 'Polygon',
-  //   rpcUrl: 'https://api.polygon.io/v2',
-  //   testnet: false,
-  //   nativeTokenSymbol: 'MATIC',
-  //   subscriptionContractAddess: '0xcc7f7D0Dd776a5ea17683eF6253DF8aCD3CBFA63',
-  //   registerContractAddress: '0x1DF8FcA6035342eeD37c3C10dcD4cC1B4030628D',
-  // },
   {
     chain: SupportedChain.POLYGON_MUMBAI,
     id: 80001,
     name: 'Mumbai',
-    rpcUrl: 'https://rpc-mumbai.matic.today',
+    fullName: 'Mumbai',
+    rpcUrl: 'https://matic-mumbai.chainstacklabs.com',
     testnet: true,
     nativeTokenSymbol: 'MATIC',
-    subscriptionContractAddess: '0xFf8d4104D0bcE4ad3480326Ea8202514CBF09B6C',
-    registerContractAddress: '0xe4F495ddE614F07212A1cAFEdbdD45250040ccb1',
+    domainContractAddess: '0x87cEbF6684488998bd48C07E0691D31b64D30e2A',
+    registarContractAddress: '0xDD853a88ACbD365085D17448a97DD6123fE91b4A',
+    blockExplorerUrl: 'https://mumbai.polygonscan.com',
     acceptableTokens: [
       {
+        token: AcceptedToken.MATIC,
+        contractAddress: ethers.constants.AddressZero,
+      },
+      {
         token: AcceptedToken.DAI,
-        contractAddress: '0xA2de063a9Fe5A68ddb1CF85890A30893b117be2d',
+        contractAddress: '0x9Cb38ff196107750Fe05FDE9a5c449319DD9f848',
       },
     ],
   },
   {
     chain: SupportedChain.HARMONY_TESTNET,
-    id: 1,
-    name: 'Harmon Testnet',
+    id: 1666700000,
+    name: 'Harmony Testnet',
+    fullName: 'Harmony Testnet Shard 0',
     rpcUrl: 'https://api.s0.b.hmny.io',
     testnet: true,
     nativeTokenSymbol: 'ONE',
-    subscriptionContractAddess: '0x16B589300B32C967CA3fd4386Ae904F93FC2B53e',
-    registerContractAddress: '0xF134578d326479FD3aA7c9f861AA8F84FD1f4A82',
+    domainContractAddess: '0xa1C624685b0B5AF16be093bbc00ad525Be3f046B',
+    registarContractAddress: '0xC1A78C9ce8FC447030eDff6728822cfd6fFc1948',
+    blockExplorerUrl: 'https://explorer.pops.one',
     acceptableTokens: [
       {
+        token: AcceptedToken.ONE,
+        contractAddress: ethers.constants.AddressZero,
+      },
+      {
         token: AcceptedToken.DAI,
-        contractAddress: '0xD3F1eE2b69ffCF8AcD20ef79Fd6697Ceb99Ae024',
+        contractAddress: '0x0C1d5a01ab6a8D3CAe7C03feF6cAF513E5A98E00',
       },
     ],
   },
 
   {
     chain: SupportedChain.METIS_STARTDUST,
-    id: 1,
+    id: 588,
     name: 'Metis Stardust',
+    fullName: 'Metis Stardust Testnet',
     rpcUrl: 'https://stardust.metis.io/?owner=588',
     testnet: true,
     nativeTokenSymbol: 'METIS',
-    subscriptionContractAddess: '0x2809e5Cf4776640D0Da184605B0c82F803e97EFc',
-    registerContractAddress: '0xcc7f7D0Dd776a5ea17683eF6253DF8aCD3CBFA63',
+    domainContractAddess: '0xECfd0052945e235a1E4aE78C02F05F802282cb74',
+    registarContractAddress: '0x13B5065B2586f0D457641b4C4FA09C2550843F42',
+    blockExplorerUrl: 'https://stardust-explorer.metis.io',
     acceptableTokens: [
       {
+        token: AcceptedToken.METIS,
+        contractAddress: ethers.constants.AddressZero,
+      },
+      {
         token: AcceptedToken.DAI,
-        contractAddress: '0x2B1a67268BD808781bf5Eb761f1c43987dfa8E33',
+        contractAddress: '0xFf8d4104D0bcE4ad3480326Ea8202514CBF09B6C',
       },
     ],
   },
-  //   {
-  //     chain: SupportedChain.HARMONY,
-  //     id: 1,
-  //     name: 'Harmony',
-  //     rpcUrl: 'https://api.harmony.one',
-  //     testnet: false,
-  //     nativeTokenSymbol: 'ONE',
-  //     subscriptionContractAddess: '0x9c8c6f9f8e8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
-  //     registerContractAddress: '0x9c8c6f9f8e8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
-  //   },
-  //
-  //   {
-  //     chain: SupportedChain.METIS_ANDROMEDA,
-  //     id: 1,
-  //     name: 'Metis Andromeda',
-  //     rpcUrl: 'https://andromeda.metis.io/?owner=1088',
-  //     testnet: false,
-  //     nativeTokenSymbol: 'METIS',
-  //     subscriptionContractAddess: '0x9c8c6f9f8e8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
-  //     registerContractAddress: '0x9c8c6f9f8e8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f',
-  //   },
-  //
 ]
 
 export const getTestnetChains = (): ChainInfo[] => {

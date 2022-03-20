@@ -3,13 +3,16 @@ import Web3 from 'web3'
 import Web3Modal from 'web3modal'
 
 import { Account } from '../types/Account'
+import { supportedChains } from '../types/chains'
 import { ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { getAccount, initInvitedAccount, login, signup } from './api_helper'
+import { Plan } from '../types/Subscription'
+import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
-import { getSignature, storeCurrentAccount } from './storage'
+import { getSignature } from './storage'
 import { saveSignature } from './storage'
+import { isProAccount } from './subscription_manager'
 import { isValidEVMAddress } from './validations'
 
 const providerOptions = {
@@ -17,11 +20,16 @@ const providerOptions = {
     package: WalletConnectProvider, // required
     options: {
       infuraId: process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID,
+      rpc: supportedChains.reduce(
+        (obj, item) => Object.assign(obj, { [item.id]: item.rpcUrl }),
+        {}
+      ),
     },
   },
 }
 
 let web3: Web3
+let connectedProvider: any
 
 const loginWithWallet = async (
   setLoginIn: (loginIn: boolean) => void
@@ -34,8 +42,8 @@ const loginWithWallet = async (
   })
 
   try {
-    const provider = await web3Modal.connect()
-    web3 = new Web3(provider)
+    connectedProvider = await web3Modal.connect()
+    web3 = new Web3(connectedProvider)
 
     const accounts = await web3.eth.getAccounts()
 
@@ -85,7 +93,8 @@ const loginOrSignup = async (
     account = await getAccount(accountAddress.toLowerCase())
     if (account.is_invited) {
       const { signature, nonce } = await generateSignature()
-      account = await initInvitedAccount(
+
+      account = await signup(
         accountAddress.toLowerCase(),
         signature,
         timezone,
@@ -114,8 +123,6 @@ const loginOrSignup = async (
     await signDefaultMessage(account.address, account.nonce)
   }
 
-  storeCurrentAccount(account)
-
   if (!signedUp) {
     // now that we have the signature, we need to check login agains the user signature
     // and only then generate the session
@@ -127,10 +134,13 @@ const loginOrSignup = async (
 
 const getAccountDisplayName = (
   account: Account,
-  forceCustomDomain?: boolean
+  useENSorUD?: boolean
 ): string => {
-  if (forceCustomDomain) {
+  if (useENSorUD) {
     return account.name || ellipsizeAddress(account.address)
+  } else if (isProAccount(account)) {
+    return account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0]
+      .domain
   } else {
     return ellipsizeAddress(account.address)
   }
@@ -144,16 +154,21 @@ const getAddressDisplayForInput = (input: string) => {
 }
 
 const ellipsizeAddress = (address: string) =>
-  `${address.substring(0, 5)}...${address.substring(address.length - 5)}`
+  `${address?.substring(0, 5)}...${address?.substring(address.length - 5)}`
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,
   currentAccount?: Account | null
 ) => {
-  let display =
-    participant.account_address === currentAccount?.address
-      ? 'You'
-      : participant.name || ellipsizeAddress(participant.account_address)
+  let display: string
+
+  if (participant.account_address === currentAccount?.address) {
+    display = 'You'
+  } else if (!participant.account_address) {
+    display = participant.guest_email!
+  } else {
+    display = participant.name || ellipsizeAddress(participant.account_address!)
+  }
 
   if (participant.type === ParticipantType.Scheduler) {
     display = `${display} (Scheduler)`
@@ -163,6 +178,7 @@ const getParticipantDisplay = (
 }
 
 export {
+  connectedProvider,
   ellipsizeAddress,
   getAccountDisplayName,
   getAddressDisplayForInput,

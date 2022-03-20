@@ -1,12 +1,15 @@
-import { Account } from '../types/Account'
-
 const SIGNATURE_KEY = 'current_user_sig'
-const ACCOUNT = 'current_account'
 
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
     `${SIGNATURE_KEY}:${account_address.toLowerCase()}`,
     signature
+  )
+}
+
+const removeSignature = (account_address: string) => {
+  window.localStorage.removeItem(
+    `${SIGNATURE_KEY}:${account_address.toLowerCase()}`
   )
 }
 
@@ -20,12 +23,4 @@ const getSignature = (account_address: string): string | null => {
   }
 }
 
-const storeCurrentAccount = (account: Account) => {
-  window.localStorage.setItem(ACCOUNT, account.address.toLowerCase())
-}
-
-const getCurrentAccount = (): string => {
-  return window.localStorage.getItem(ACCOUNT) as string
-}
-
-export { getCurrentAccount, getSignature, saveSignature, storeCurrentAccount }
+export { getSignature, removeSignature, saveSignature }

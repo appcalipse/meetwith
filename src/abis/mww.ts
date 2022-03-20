@@ -1,4 +1,4 @@
-export const MWWSubscription = [
+export const MWWDomain = [
   {
     inputs: [
       {
@@ -119,34 +119,6 @@ export const MWWSubscription = [
   {
     inputs: [
       {
-        internalType: 'uint256',
-        name: 'planId',
-        type: 'uint256',
-      },
-      {
-        internalType: 'address',
-        name: 'planOwner',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: 'duration',
-        type: 'uint256',
-      },
-      {
-        internalType: 'string',
-        name: 'domain',
-        type: 'string',
-      },
-      {
-        internalType: 'string',
-        name: 'ipfsHash',
-        type: 'string',
-      },
-    ],
-    name: 'addSubscription',
-    outputs: [
-      {
         components: [
           {
             internalType: 'address',
@@ -179,9 +151,17 @@ export const MWWSubscription = [
             type: 'uint256',
           },
         ],
-        internalType: 'struct MWWStructs.Subscription',
+        internalType: 'struct MWWStructs.Domain[]',
+        name: 'domainsToAdd',
+        type: 'tuple[]',
+      },
+    ],
+    name: 'addDomains',
+    outputs: [
+      {
+        internalType: 'bool',
         name: '',
-        type: 'tuple',
+        type: 'bool',
       },
     ],
     stateMutability: 'nonpayable',
@@ -235,7 +215,7 @@ export const MWWSubscription = [
             type: 'uint256',
           },
         ],
-        internalType: 'struct MWWStructs.Subscription',
+        internalType: 'struct MWWStructs.Domain',
         name: '',
         type: 'tuple',
       },
@@ -256,9 +236,53 @@ export const MWWSubscription = [
         type: 'string',
       },
     ],
-    name: 'changeSubscriptionConfigHash',
+    name: 'changeDomainConfigHash',
     outputs: [],
     stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'string',
+        name: '',
+        type: 'string',
+      },
+    ],
+    name: 'domains',
+    outputs: [
+      {
+        internalType: 'address',
+        name: 'owner',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'planId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'expiryTime',
+        type: 'uint256',
+      },
+      {
+        internalType: 'string',
+        name: 'domain',
+        type: 'string',
+      },
+      {
+        internalType: 'string',
+        name: 'configIpfsHash',
+        type: 'string',
+      },
+      {
+        internalType: 'uint256',
+        name: 'registeredAt',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -482,56 +506,12 @@ export const MWWSubscription = [
             type: 'uint256',
           },
         ],
-        internalType: 'struct MWWStructs.Subscription',
+        internalType: 'struct MWWStructs.Domain',
         name: '',
         type: 'tuple',
       },
     ],
     stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'string',
-        name: '',
-        type: 'string',
-      },
-    ],
-    name: 'subscriptions',
-    outputs: [
-      {
-        internalType: 'address',
-        name: 'owner',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: 'planId',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'expiryTime',
-        type: 'uint256',
-      },
-      {
-        internalType: 'string',
-        name: 'domain',
-        type: 'string',
-      },
-      {
-        internalType: 'string',
-        name: 'configIpfsHash',
-        type: 'string',
-      },
-      {
-        internalType: 'uint256',
-        name: 'registeredAt',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -622,6 +602,19 @@ export const MWWRegister = [
     name: 'addPlan',
     outputs: [],
     stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'domainContract',
+    outputs: [
+      {
+        internalType: 'contract MWWDomain',
+        name: '',
+        type: 'address',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -749,7 +742,7 @@ export const MWWRegister = [
             type: 'uint256',
           },
         ],
-        internalType: 'struct MWWStructs.Subscription',
+        internalType: 'struct MWWStructs.Domain',
         name: '',
         type: 'tuple',
       },
@@ -825,7 +818,7 @@ export const MWWRegister = [
             type: 'uint256',
           },
         ],
-        internalType: 'struct MWWStructs.Subscription',
+        internalType: 'struct MWWStructs.Domain',
         name: '',
         type: 'tuple',
       },
@@ -879,22 +872,9 @@ export const MWWRegister = [
         type: 'address',
       },
     ],
-    name: 'setSubscriptionContract',
+    name: 'setDomainContract',
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'subscriptionContract',
-    outputs: [
-      {
-        internalType: 'contract MWWSubscription',
-        name: '',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -932,9 +912,5 @@ export const MWWRegister = [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
-  },
-  {
-    stateMutability: 'payable',
-    type: 'receive',
   },
 ]
