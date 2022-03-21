@@ -40,8 +40,6 @@ function DayTimePicker({
   const [showPickTime, setShowPickTime] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  const { currentAccount } = React.useContext(AccountContext)
-
   React.useEffect(() => {
     if (reset) {
       setPickedDay(null)
