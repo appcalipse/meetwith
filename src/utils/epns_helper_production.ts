@@ -37,7 +37,7 @@ export const sendEPNSNotification = async (
 ) => {
   const sdk = new epnsHelper(
     networkToMonitor,
-    process.env.BACKEND_WALLET_PVT_KEY!,
+    process.env.BACKEND_NOTIFIER_WALLET_PVT_KEY!,
     '0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b',
     networkSettings,
     epnsCoreSettings,
