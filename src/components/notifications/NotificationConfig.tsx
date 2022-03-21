@@ -96,10 +96,9 @@ const NotificationsConfig: React.FC = () => {
 
     await setNotificationSubscriptions(subs)
 
-    logEvent(
-      'Set notifications',
-      subs.notification_types.map(sub => sub.channel)
-    )
+    logEvent('Set notifications', {
+      channels: subs.notification_types.map(sub => sub.channel),
+    })
 
     setLoading(false)
   }
