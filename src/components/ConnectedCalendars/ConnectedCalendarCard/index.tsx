@@ -13,11 +13,10 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import React, { useState } from 'react'
-import { ChangeEvent, ChangeEventHandler } from 'react'
+import { ChangeEvent } from 'react'
 import { IconType } from 'react-icons'
 import { FaUnlink } from 'react-icons/fa'
 
-import { AccountContext } from '../../../providers/AccountProvider'
 import { ConnectedCalendarProvider } from '../../../types/CalendarConnections'
 import { updateConnectedCalendarSync } from '../../../utils/api_helper'
 import DisconnectCalendarDialog from '../DisconnectCalendarDialog'
@@ -102,7 +101,7 @@ const ConnectedCalendarCard: React.FC<{
           disabled={isUpdating}
         ></Switch>
         <Text color={textColor}>
-          Add new meet with wallet events to this calendar
+          Add new Meet with Wallet events to this calendar
         </Text>
         {isUpdating ? <Spinner /> : false}
       </HStack>

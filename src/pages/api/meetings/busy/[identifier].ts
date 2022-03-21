@@ -45,7 +45,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
       const account = await getAccountFromDB(address)
       if (isProAccount(account)) {
-        const calendars = await getConnectedCalendars(address, true)
+        const calendars = await getConnectedCalendars(address, false)
         for (const calendar of calendars) {
           const integration = getConnectedCalendarIntegration(
             address,
