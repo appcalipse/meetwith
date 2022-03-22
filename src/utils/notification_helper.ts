@@ -54,7 +54,8 @@ export const notifyForNewMeeting = async (
         participantsDisplay,
         participant.timeZone!,
         new Date(meeting.start),
-        new Date(meeting.end)
+        new Date(meeting.end),
+        meeting.meeting_url
       )
     }
   }
@@ -82,7 +83,8 @@ export const notifyForNewMeeting = async (
               participantsDisplay,
               participant.timezone!,
               new Date(meeting.start),
-              new Date(meeting.end)
+              new Date(meeting.end),
+              meeting.meeting_url
             )
             break
 
