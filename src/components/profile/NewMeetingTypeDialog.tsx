@@ -26,13 +26,14 @@ interface IProps {
   currentAccount: Account | null | undefined
 }
 
-const NewMeetingDialog: React.FC<IProps> = ({
+const NewMeetingTypeDialog: React.FC<IProps> = ({
   isDialogOpen,
   cancelDialogRef,
   onDialogClose,
   currentAccount,
 }) => {
   const [title, setTitle] = useState<string | undefined>(undefined)
+  const [loading, setLoading] = useState<boolean>(false)
   const [duration, setDuration] = useState<number>(30)
   const [minAdvanceTime, setMinAdvanceTime] = useState<any>({
     offset: '1',
@@ -40,6 +41,7 @@ const NewMeetingDialog: React.FC<IProps> = ({
   })
 
   const createMeetingType = async () => {
+    setLoading(true)
     const minAdvanceMinutes =
       Number(minAdvanceTime.offset) * minAdvanceTime.amount
     currentAccount?.preferences?.availableTypes.push({
@@ -59,6 +61,7 @@ const NewMeetingDialog: React.FC<IProps> = ({
       isOpen={isDialogOpen}
       leastDestructiveRef={cancelDialogRef}
       onClose={onDialogClose}
+      blockScrollOnMount={false}
     >
       <AlertDialogOverlay>
         <AlertDialogContent>
@@ -122,13 +125,19 @@ const NewMeetingDialog: React.FC<IProps> = ({
           </AlertDialogBody>
 
           <AlertDialogFooter>
-            <Button color="black" ref={cancelDialogRef} onClick={onDialogClose}>
+            <Button
+              color="black"
+              ref={cancelDialogRef}
+              isLoading={loading}
+              onClick={onDialogClose}
+            >
               Cancel
             </Button>
             <Button
               colorScheme="orange"
               onClick={() => createMeetingType()}
               ml={3}
+              isLoading={loading}
             >
               Create
             </Button>
@@ -139,4 +148,4 @@ const NewMeetingDialog: React.FC<IProps> = ({
   )
 }
 
-export default NewMeetingDialog
+export default NewMeetingTypeDialog
