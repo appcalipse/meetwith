@@ -9,7 +9,7 @@ const SENTRY_DSN = Sentry.init({
   environment: process.env.NEXT_PUBLIC_ENV,
   // Adjust this value in production, or use tracesSampler for greater control
   tracesSampleRate: 0,
-  silent: process.env.NEXT_PUBLIC_ENV === 'production', // Suppresses all logs
+  silent: process.env.NEXT_PUBLIC_ENV !== 'development', // Suppresses all logs
   enabled: process.env.NEXT_PUBLIC_ENV !== 'local',
   // ...
   // Note: if you want to override the automatic release value, do not set a
