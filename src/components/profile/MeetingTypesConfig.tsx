@@ -32,7 +32,7 @@ import {
 } from '../../utils/database'
 import { getSlugFromText } from '../../utils/generic_utils'
 import { isProAccount } from '../../utils/subscription_manager'
-import NewMeetingDialog from './NewMeetingDialog'
+import NewMeetingDialog from './NewMeetingTypeDialog'
 
 const MeetingTypesConfig: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -68,10 +68,7 @@ const MeetingTypesConfig: React.FC = () => {
               )
             })}
             <GridItem>
-              <AddTypeCard
-                currentAccount={currentAccount}
-                accountAddress={currentAccount?.address}
-              />
+              <AddTypeCard currentAccount={currentAccount} />
             </GridItem>
           </Grid>
         </VStack>
@@ -152,18 +149,14 @@ const MeetingTypeCard: React.FC<CardProps> = ({
 
 interface AddTypeCardProps {
   currentAccount: Account | null | undefined
-  accountAddress: string | undefined
 }
 
-const AddTypeCard: React.FC<AddTypeCardProps> = ({
-  accountAddress,
-  currentAccount,
-}) => {
+const AddTypeCard: React.FC<AddTypeCardProps> = ({ currentAccount }) => {
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
   const cancelDialogRef = useRef<any>()
 
   const createType = async () => {
-    logEvent('Created new type')
+    logEvent('Clicked to create new meeting type')
     setIsDialogOpen(true)
   }
 
@@ -179,7 +172,7 @@ const AddTypeCard: React.FC<AddTypeCardProps> = ({
         justifyContent="center"
       >
         <Button
-          disabled={!isProAccount(currentAccount as Account)}
+          // disabled={!isProAccount(currentAccount as Account)}
           colorScheme="orange"
           onClick={createType}
         >

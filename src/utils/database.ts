@@ -217,10 +217,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     .match({ id: account.id })
 
   if (error) {
-    // Try-catch to handle browser error
-    try {
-      Sentry.captureException(error)
-    } catch {}
+    Sentry.captureException(error)
     //TODO: handle error
   }
 
@@ -280,10 +277,7 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
 
     return account
   } else {
-    // try-catch to handle browser error
-    try {
-      Sentry.captureException(error)
-    } catch {}
+    Sentry.captureException(error)
   }
 
   throw new AccountNotFoundError(identifier)
