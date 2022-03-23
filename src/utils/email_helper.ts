@@ -16,7 +16,8 @@ export const newMeetingEmail = async (
   participantsDisplayNames: string[],
   timezone: string,
   start: Date,
-  end: Date
+  end: Date,
+  meetingUrl?: string
 ): Promise<boolean> => {
   const email = new Email()
   const locals = {
@@ -27,6 +28,7 @@ export const newMeetingEmail = async (
         'PPPPpp'
       )} - ${timezone}`,
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
+      url: meetingUrl,
     },
   }
 
@@ -35,7 +37,7 @@ export const newMeetingEmail = async (
     locals
   )
 
-  const msg = {
+  const msg: sgMail.MailDataRequired = {
     to: toEmail,
     from: FROM,
     subject: rendered.subject!,
