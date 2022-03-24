@@ -8,6 +8,7 @@ import {
   Spinner,
   Text,
   useDisclosure,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { addHours } from 'date-fns'
@@ -100,9 +101,24 @@ const Meetings: React.FC = () => {
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
-  const afterClose = () => {
+  const toast = useToast()
+
+  const afterClose = (meeting?: DBSlot) => {
+    if (meeting) {
+      meetings.push(meeting)
+      setMeetings(
+        meetings.sort((m1, m2) => m1.start.getTime() - m2.start.getTime())
+      )
+      toast({
+        title: 'Scheduled',
+        description: 'Meeting scheduled successfully.',
+        status: 'success',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    }
     onClose()
-    fetchMeetings()
   }
 
   return (

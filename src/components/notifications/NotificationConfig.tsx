@@ -96,10 +96,9 @@ const NotificationsConfig: React.FC = () => {
 
     await setNotificationSubscriptions(subs)
 
-    logEvent(
-      'Set notifications',
-      subs.notification_types.map(sub => sub.channel)
-    )
+    logEvent('Set notifications', {
+      channels: subs.notification_types.map(sub => sub.channel),
+    })
 
     setLoading(false)
   }
@@ -166,11 +165,6 @@ const NotificationsConfig: React.FC = () => {
       </Text>
 
       <Spacer />
-
-      <HStack py={4}>
-        <Switch colorScheme="orange" size="md" isDisabled={true} />
-        <Text>Browser Push notification (Coming soon)</Text>
-      </HStack>
 
       <Spacer />
       <Button

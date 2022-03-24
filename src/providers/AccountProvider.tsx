@@ -51,7 +51,7 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
     }))
   }
 
-  const logout = () => {
+  const logout = async () => {
     removeCookie(SESSION_COOKIE_NAME, {
       path: '/',
       secure: process.env.NEXT_PUBLIC_ENV !== 'local',

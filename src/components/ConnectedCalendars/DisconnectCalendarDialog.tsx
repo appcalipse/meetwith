@@ -28,6 +28,7 @@ const DisconnectCalendarDialog: React.FC<DisconnectCalendarProps> = ({
     setBusy(true)
     await onDelete()
     setBusy(false)
+    onClose()
   }
 
   return (

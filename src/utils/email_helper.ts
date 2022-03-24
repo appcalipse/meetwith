@@ -1,57 +1,52 @@
+import sgMail from '@sendgrid/mail'
 import * as Sentry from '@sentry/node'
 import { differenceInMinutes, format } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import Email from 'email-templates'
-import nodemailer from 'nodemailer'
 import path from 'path'
 
 import { durationToHumanReadable } from './calendar_manager'
-import { ellipsizeAddress, getParticipantDisplay } from './user_manager'
 
-const transporter = nodemailer.createTransport({
-  host: 'smtppro.zoho.eu',
-  port: 465,
-  secure: true, // true for 465, false for other ports
-  auth: {
-    user: process.env.NEXT_EMAIL_ACCOUNT,
-    pass: process.env.NEXT_EMAIL_PASSWORD,
-  },
-})
+const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
 
-const FROM = '"Meet with Wallet" <it_people@meetwithwallet.xyz>'
+sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
 
 export const newMeetingEmail = async (
   toEmail: string,
   participantsDisplayNames: string[],
   timezone: string,
   start: Date,
-  end: Date
+  end: Date,
+  meetingUrl?: string
 ): Promise<boolean> => {
-  const email = new Email({
-    message: {
-      from: FROM,
+  const email = new Email()
+  const locals = {
+    participantsDisplay: participantsDisplayNames.join(', '),
+    meeting: {
+      start: `${format(
+        utcToZonedTime(start, timezone),
+        'PPPPpp'
+      )} - ${timezone}`,
+      duration: durationToHumanReadable(differenceInMinutes(end, start)),
+      url: meetingUrl,
     },
-    send: process.env.NEXT_PUBLIC_ENV !== 'local',
-    transport: transporter,
-  })
+  }
+
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'new_meeting')}`,
+    locals
+  )
+
+  const msg: sgMail.MailDataRequired = {
+    to: toEmail,
+    from: FROM,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+  }
 
   try {
-    await email.send({
-      template: path.resolve('src', 'emails', 'new_meeting'),
-      message: {
-        to: toEmail,
-      },
-      locals: {
-        participantsDisplay: participantsDisplayNames.join(', '),
-        meeting: {
-          start: `${format(
-            utcToZonedTime(start, timezone),
-            'PPPPpp'
-          )} - ${timezone}`,
-          duration: durationToHumanReadable(differenceInMinutes(end, start)),
-        },
-      },
-    })
+    await sgMail.send(msg)
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
