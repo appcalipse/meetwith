@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Flex,
+  Heading,
   HStack,
   Image,
   Spacer,
@@ -123,6 +124,7 @@ const Meetings: React.FC = () => {
 
   return (
     <Flex direction={'column'}>
+      <Heading fontSize="2xl">My Meetings</Heading>
       <ScheduleModal isOpen={isOpen} onClose={afterClose} onOpen={onOpen} />
       <Box>
         <Button

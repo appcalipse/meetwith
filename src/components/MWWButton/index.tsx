@@ -1,5 +1,4 @@
 import {
-  As,
   Button,
   ButtonProps,
   LinkProps,
