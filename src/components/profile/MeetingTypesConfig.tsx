@@ -5,13 +5,13 @@ import {
   Flex,
   Grid,
   GridItem,
+  Heading,
   HStack,
   Icon,
   Input,
   Select,
   Spacer,
   Text,
-  Tooltip,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
@@ -32,6 +32,7 @@ import {
 } from '../../utils/database'
 import { getSlugFromText } from '../../utils/generic_utils'
 import { isProAccount } from '../../utils/subscription_manager'
+import { CopyLinkButton } from './components/CopyLinkButton'
 import NewMeetingDialog from './NewMeetingTypeDialog'
 
 const MeetingTypesConfig: React.FC = () => {
@@ -49,7 +50,7 @@ const MeetingTypesConfig: React.FC = () => {
         />
       ) : (
         <VStack width="100%" alignItems={'flex-start'}>
-          <Text>Your meeting types</Text>
+          <Heading fontSize="2xl">Your meeting types</Heading>
           <Grid templateColumns="repeat(2, 1fr)" gap={4} flexWrap="wrap">
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
               const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
@@ -90,24 +91,9 @@ const MeetingTypeCard: React.FC<CardProps> = ({
   duration,
   onSelect,
 }) => {
-  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
-
   const openType = () => {
     logEvent('Clicked to edit meeting type')
     onSelect(typeId)
-  }
-
-  const copyLink = async () => {
-    logEvent('Copied link to meeting type')
-    if ('clipboard' in navigator) {
-      await navigator.clipboard.writeText(url)
-    } else {
-      document.execCommand('copy', true, url)
-    }
-    setCopyFeedbackOpen(true)
-    setTimeout(() => {
-      setCopyFeedbackOpen(false)
-    }, 2000)
   }
 
   return (
@@ -126,16 +112,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
         <Text>Duration: {durationToHumanReadable(duration)}</Text>
 
         <HStack width="100%" pt={4}>
-          <Tooltip label="Copied" placement="top" isOpen={copyFeedbackOpen}>
-            <Button
-              flex={1}
-              colorScheme="orange"
-              variant="outline"
-              onClick={copyLink}
-            >
-              Copy link
-            </Button>
-          </Tooltip>
+          <CopyLinkButton url={url} />
           <Button flex={1} colorScheme="orange" onClick={openType}>
             Edit
           </Button>

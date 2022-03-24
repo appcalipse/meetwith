@@ -137,7 +137,7 @@ export default function SmallWithLogoLeft() {
               </NextLink>
             </Text>
             <Text textAlign="justify">
-              <NextLink href={'/legal/data-protection'} passHref>
+              <NextLink href={'/legal/dpa'} passHref>
                 <Link>Data Protection</Link>
               </NextLink>
             </Text>
