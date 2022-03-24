@@ -8,7 +8,6 @@ import {
   FormLabel,
   Heading,
   HStack,
-  Icon,
   Input,
   ListItem,
   UnorderedList,
@@ -115,7 +114,7 @@ const AccountDetails: React.FC = () => {
 
   return (
     <VStack p={4} mb={10} alignItems="start">
-      <Heading fontSize="3xl">Account Details</Heading>
+      <Heading fontSize="2xl">Account Details</Heading>
       <IPFSLink
         ipfsHash={currentAccount!.preferences_path}
         title="Your account information is public and stored on IPFS. Your current IPFS link is"

@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Heading,
   Spacer,
   Text,
   useColorModeValue,
@@ -77,6 +78,7 @@ const AvailabilityConfig: React.FC = () => {
 
   return (
     <VStack alignItems="start" flex={1} mb={8}>
+      <Heading fontSize="2xl">Availabilities</Heading>
       <Box width="100%">
         <Text pb={2}>Your timezone</Text>
         <TimezoneSelector value={timezone} onChange={onChangeTz} />
