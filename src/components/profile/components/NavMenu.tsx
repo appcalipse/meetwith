@@ -49,7 +49,7 @@ const LinkItems: Array<LinkItemProps> = [
   },
 ]
 
-export const SideNav: React.FC<{ currentSection?: EditMode }> = ({
+export const NavMenu: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
 }) => {
   const { currentAccount } = useContext(AccountContext)
@@ -101,6 +101,7 @@ export const SideNav: React.FC<{ currentSection?: EditMode }> = ({
       maxW="360px"
       spacing={8}
       py={12}
+      overflow="hidden"
       borderRadius={16}
       // TO-DO: replace by new dark/light color scheme
       bgColor={'transparent'}
@@ -118,7 +119,7 @@ export const SideNav: React.FC<{ currentSection?: EditMode }> = ({
       <Box>
         <CopyLinkButton
           url={accountUrl}
-          size="sm"
+          size="md"
           label="Copy my calendar link"
           withIcon
         />

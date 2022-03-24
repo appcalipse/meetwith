@@ -19,7 +19,7 @@ export const CopyLinkButton = ({
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
   const copyLink = async () => {
-    logEvent('Copied link to meeting type')
+    logEvent('Copied link', { url })
     if ('clipboard' in navigator) {
       await navigator.clipboard.writeText(url)
     } else {

@@ -3,10 +3,13 @@ import {
   Flex,
   FlexProps,
   Icon,
+  Slide,
+  SlideFade,
   Text,
   useColorModeValue,
+  useDisclosure,
 } from '@chakra-ui/react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { IconType } from 'react-icons'
 import { FaLock } from 'react-icons/fa'
 
@@ -65,23 +68,33 @@ export const NavItem = ({
               top={0}
               bottom={0}
               width={16}
-              borderRightRadius={9999}
+              borderRightRadius={999}
               backgroundColor="transparent"
-              {...(selected
-                ? {
-                    bgGradient: 'linear(to-r, orange.400, orange.500)',
-                  }
-                : {
-                    _groupHover: {
-                      backgroundColor: hoverColor,
-                    },
-                  })}
+              _groupHover={{
+                backgroundColor: hoverColor,
+              }}
             />
+            <Slide
+              direction="left"
+              in={selected}
+              style={{ position: 'absolute' }}
+            >
+              <Box
+                position={'absolute'}
+                left={0}
+                top={0}
+                height="100%"
+                width={16}
+                borderRightRadius={999}
+                bgGradient="linear(to-r, orange.400, orange.500)"
+              />
+            </Slide>
             <Icon
               as={icon}
               width={6}
               mr="14"
               fontSize="16"
+              transition="color 0.3s"
               color={iconColor}
               zIndex={Number(selected)}
             />
@@ -95,6 +108,7 @@ export const NavItem = ({
             mr="4"
             fontSize="16"
             color={lockedColor}
+            transition="color 0.3s"
             _groupHover={{
               color: lockedColor,
             }}
