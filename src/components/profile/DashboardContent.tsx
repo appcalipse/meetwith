@@ -8,7 +8,7 @@ import AvailabilityConfig from '../availabilities/availability-config'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
-import { SideNav } from './components/SideNav'
+import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
 import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
@@ -63,10 +63,10 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
 
   return currentAccount ? (
     <HStack alignItems="start" width="100%" flexWrap="wrap">
-      <SideNav currentSection={currentSection} />
-      <Box flex={1} px={8}>
-        {renderSelected()}
+      <Box flex={4}>
+        <NavMenu currentSection={currentSection} />
       </Box>
+      <Box flex={8}>{renderSelected()}</Box>
     </HStack>
   ) : (
     <Flex
