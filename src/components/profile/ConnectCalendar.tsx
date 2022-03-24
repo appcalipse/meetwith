@@ -153,7 +153,7 @@ const ConnectCalendar = () => {
   return (
     <Box>
       <VStack alignItems="flex-start" mb={8}>
-        <Heading fontSize="3xl">Connected calendars</Heading>
+        <Heading fontSize="2xl">Connected Calendars</Heading>
         <Text>
           When you connect a calendar we will use its events to block your
           availabilities and also to add your new events to it.

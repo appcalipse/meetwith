@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Heading,
   HStack,
   Icon,
   Input,
@@ -40,7 +41,7 @@ const MeetingTypesConfig: React.FC = () => {
         />
       ) : (
         <VStack width="100%" alignItems={'flex-start'}>
-          <Text>Your meeting types</Text>
+          <Heading fontSize="2xl">Meeting Types</Heading>
           <HStack flexWrap="wrap">
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
               const url = `${getAccountCalendarUrl(currentAccount!, false)}/${

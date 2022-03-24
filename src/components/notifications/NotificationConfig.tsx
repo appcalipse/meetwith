@@ -3,6 +3,7 @@ import {
   FormControl,
   FormHelperText,
   FormLabel,
+  Heading,
   HStack,
   Input,
   Link,
@@ -107,6 +108,7 @@ const NotificationsConfig: React.FC = () => {
 
   return (
     <VStack alignItems="start" flex={1} mb={8}>
+      <Heading fontSize="2xl">Notification Settings</Heading>
       <HStack py={4} alignItems="center">
         <Switch
           colorScheme="orange"
