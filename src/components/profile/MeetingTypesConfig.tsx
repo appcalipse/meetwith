@@ -21,24 +21,28 @@ import { FaArrowLeft, FaLock } from 'react-icons/fa'
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
 import { logEvent } from '../../utils/analytics'
-import { saveAccountChanges, saveMeetingType } from '../../utils/api_helper'
+import { saveMeetingType } from '../../utils/api_helper'
 import {
   durationToHumanReadable,
   getAccountCalendarUrl,
 } from '../../utils/calendar_manager'
-import {
-  getAccountFromDB,
-  updateAccountPreferences,
-} from '../../utils/database'
 import { getSlugFromText } from '../../utils/generic_utils'
 import { isProAccount } from '../../utils/subscription_manager'
 import { CopyLinkButton } from './components/CopyLinkButton'
-import NewMeetingDialog from './NewMeetingTypeDialog'
+import NewMeetingTypeDialog from './NewMeetingTypeDialog'
 
 const MeetingTypesConfig: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
 
   const [selectedType, setSelectedType] = useState<string>('')
+
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
+  const cancelDialogRef = useRef<any>()
+
+  const createType = async () => {
+    logEvent('Clicked to create new meeting type')
+    setIsDialogOpen(true)
+  }
 
   return (
     <Box>
@@ -69,7 +73,28 @@ const MeetingTypesConfig: React.FC = () => {
               )
             })}
           </Grid>
-          <AddTypeCard currentAccount={currentAccount} />
+          <VStack
+            borderRadius={8}
+            alignItems="center"
+            pt={4}
+            pb={4}
+            height={'100%'}
+            justifyContent="center"
+          >
+            <Button
+              disabled={!isProAccount(currentAccount!)}
+              colorScheme="orange"
+              onClick={createType}
+            >
+              + New Meeting Type
+            </Button>
+            <NewMeetingTypeDialog
+              currentAccount={currentAccount}
+              isDialogOpen={isDialogOpen}
+              cancelDialogRef={cancelDialogRef}
+              onDialogClose={() => setIsDialogOpen(false)}
+            />
+          </VStack>
         </VStack>
       )}
     </Box>
@@ -117,47 +142,6 @@ const MeetingTypeCard: React.FC<CardProps> = ({
             Edit
           </Button>
         </HStack>
-      </VStack>
-    </Box>
-  )
-}
-
-interface AddTypeCardProps {
-  currentAccount: Account | null | undefined
-}
-
-const AddTypeCard: React.FC<AddTypeCardProps> = ({ currentAccount }) => {
-  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
-  const cancelDialogRef = useRef<any>()
-
-  const createType = async () => {
-    logEvent('Clicked to create new meeting type')
-    setIsDialogOpen(true)
-  }
-
-  return (
-    <Box>
-      <VStack
-        borderRadius={8}
-        alignItems="center"
-        pt={4}
-        pb={4}
-        height={'100%'}
-        justifyContent="center"
-      >
-        <Button
-          disabled={!isProAccount(currentAccount as Account)}
-          colorScheme="orange"
-          onClick={createType}
-        >
-          + New Meeting Type
-        </Button>
-        <NewMeetingDialog
-          currentAccount={currentAccount}
-          isDialogOpen={isDialogOpen}
-          cancelDialogRef={cancelDialogRef}
-          onDialogClose={() => setIsDialogOpen(false)}
-        />
       </VStack>
     </Box>
   )
