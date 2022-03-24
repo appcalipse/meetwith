@@ -9,15 +9,19 @@ export default function LogoutPage() {
   const { logout } = useContext(AccountContext)
 
   useEffect(() => {
-    logout()
-    router.replace('/')
+    doLogout()
   }, [])
+
+  const doLogout = async () => {
+    await logout()
+    await router.push('/')
+  }
 
   return (
     <>
       <Container maxW="7xl" mt={8} flex={1}>
         <VStack alignItems="center" py={10} px={6}>
-          <Loading label="Logging you out..." />
+          <Loading label="Logging out..." />
         </VStack>
       </Container>
     </>

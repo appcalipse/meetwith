@@ -227,10 +227,6 @@ export const login = async (accountAddress: string): Promise<Account> => {
   }
 }
 
-export const logout = async (): Promise<Account> => {
-  return (await internalFetch(`/secure/auth/logout`)) as Account
-}
-
 export const signup = async (
   address: string,
   signature: string,
@@ -284,14 +280,6 @@ export const updateConnectedCalendarPayload = async (
     email,
     provider,
     payload,
-  })) as ConnectedCalendarCore[]
-}
-
-export const syncExternalCalendars = async (
-  meetingId: MeetingDecrypted['id']
-): Promise<ConnectedCalendarCore[]> => {
-  return (await internalFetch(`/secure/calendar_integrations/sync`, 'POST', {
-    meetingId,
   })) as ConnectedCalendarCore[]
 }
 

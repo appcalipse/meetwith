@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import {
-  addOrUpdateConnectedCalendar,
   changeConnectedCalendarSync,
   getConnectedCalendars,
   removeConnectedCalendar,

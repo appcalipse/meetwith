@@ -18,7 +18,7 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react'
-import { BigNumber, ethers } from 'ethers'
+import { ethers } from 'ethers'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaMinus, FaPlus } from 'react-icons/fa'
 
@@ -31,13 +31,13 @@ import {
   supportedChains,
 } from '../../types/chains'
 import { Plan, Subscription } from '../../types/Subscription'
+import { YEAR_DURATION_IN_SECONDS } from '../../utils/constants'
 import { checkValidDomain } from '../../utils/rpc_helper_front'
 import {
   approveTokenSpending,
   checkAllowance,
   confirmSubscription,
   subscribeToPlan,
-  YEAR_DURATION,
 } from '../../utils/subscription_manager'
 
 interface IProps {
@@ -124,7 +124,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
           Plan.PRO,
           currentChain!.chain,
           currentToken!.token,
-          duration * YEAR_DURATION
+          duration * YEAR_DURATION_IN_SECONDS
         )
         if (!neededApproval.isZero()) {
           setNeedsAproval(true)
@@ -168,7 +168,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
       })
       setCheckingCanSubscribe(false)
       return
-    } else if (duration * YEAR_DURATION < YEAR_DURATION) {
+    } else if (duration * YEAR_DURATION_IN_SECONDS < YEAR_DURATION_IN_SECONDS) {
       toast({
         title: 'Error',
         description: 'You must subscribe for at least 1 year',
@@ -203,7 +203,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
           Plan.PRO,
           currentChain!.chain,
           currentToken!.token,
-          duration * YEAR_DURATION
+          duration * YEAR_DURATION_IN_SECONDS
         )
         if (!neededApproval.isZero()) {
           setNeedsAproval(true)
@@ -221,7 +221,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
         currentAccount!.address,
         Plan.PRO,
         currentChain!.chain,
-        duration * YEAR_DURATION,
+        duration * YEAR_DURATION_IN_SECONDS,
         domain,
         currentToken!.token
       )
@@ -254,7 +254,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }, [currentToken, currentChain, duration])
 
   const chains = supportedChains.filter(chain =>
-    process.env.NEX_PUBLIC_ENV === 'production' ? !chain.testnet : chain.testnet
+    process.env.NEXT_PUBLIC_ENV === 'production'
+      ? !chain.testnet
+      : chain.testnet
   )
 
   return (

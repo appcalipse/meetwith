@@ -18,6 +18,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
 }) => {
   const { currentAccount } = useContext(AccountContext)
   const router = useRouter()
+
   const toast = useToast()
   const { result } = router.query
 

@@ -26,7 +26,7 @@ import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '../../../providers/AccountProvider'
-import { SchedulingType } from '../../../types/Meeting'
+import { DBSlot, SchedulingType } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import { scheduleMeeting } from '../../../utils/calendar_manager'
 import { MeetingWithYourselfError } from '../../../utils/errors'
@@ -39,7 +39,7 @@ import { InputTimePicker } from '../../input-time-picker'
 export interface ScheduleModalProps {
   isOpen: boolean
   onOpen: () => void
-  onClose: () => void
+  onClose: (meeting?: DBSlot) => void
 }
 
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({
@@ -141,6 +141,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     const _start = new Date(selectedDate)
     _start.setHours(Number(selectedTime.split(':')[0]))
     _start.setMinutes(Number(selectedTime.split(':')[1]))
+    _start.setSeconds(0)
 
     const start = zonedTimeToUtc(
       _start,
@@ -171,7 +172,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         participantsSize: meeting.participants.length,
       })
       clearInfo()
-      onClose()
+      onClose({
+        id: meeting.id,
+        created_at: new Date(meeting.created_at),
+        account_pub_key: currentAccount!.internal_pub_key,
+        meeting_info_file_path: meeting.meeting_info_file_path,
+        start: new Date(meeting.start),
+        end: new Date(meeting.end),
+      })
       return true
     } catch (e) {
       if (e instanceof MeetingWithYourselfError) {

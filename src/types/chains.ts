@@ -105,6 +105,80 @@ export const supportedChains: ChainInfo[] = [
       },
     ],
   },
+  {
+    chain: SupportedChain.POLYGON_MATIC,
+    id: 137,
+    name: 'Polygon',
+    fullName: 'Polygon Mainnet',
+    rpcUrl: 'https://polygon-rpc.com',
+    testnet: false,
+    nativeTokenSymbol: 'MATIC',
+    domainContractAddess: '0xB054ef071881a35a276dc434D95BF087a957736b',
+    registarContractAddress: '0xf652014545758Bae52A019CAf671a29A6B117759',
+    blockExplorerUrl: 'https://polygonscan.com',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.MATIC,
+        contractAddress: ethers.constants.AddressZero,
+      },
+      {
+        token: AcceptedToken.DAI,
+        contractAddress: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+      },
+    ],
+  },
+  {
+    chain: SupportedChain.HARMONY,
+    id: 1666600000,
+    name: 'Harmony',
+    fullName: 'Harmony Mainnet Shard 0',
+    rpcUrl: 'https://api.harmony.one',
+    testnet: false,
+    nativeTokenSymbol: 'ONE',
+    domainContractAddess: '0x45eB1cFf81A01DdC89eE2C4ad122fFB260e0C5e1',
+    registarContractAddress: '0x1DF8FcA6035342eeD37c3C10dcD4cC1B4030628D',
+    blockExplorerUrl: 'https://explorer.harmony.one',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.ONE,
+        contractAddress: ethers.constants.AddressZero,
+      },
+      {
+        token: AcceptedToken.DAI,
+        contractAddress: '0xef977d2f931c1978db5f6747666fa1eacb0d0339',
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0x985458e523db3d53125813ed68c274899e9dfab4',
+      },
+    ],
+  },
+  {
+    chain: SupportedChain.METIS_ANDROMEDA,
+    id: 1088,
+    name: 'Metis',
+    fullName: 'Metis Andromeda Mainnet',
+    rpcUrl: 'https://andromeda.metis.io/?owner=1088',
+    testnet: false,
+    nativeTokenSymbol: 'METIS',
+    domainContractAddess: '0xECfd0052945e235a1E4aE78C02F05F802282cb74',
+    registarContractAddress: '0x13B5065B2586f0D457641b4C4FA09C2550843F42',
+    blockExplorerUrl: 'https://andromeda-explorer.metis.io',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.METIS,
+        contractAddress: ethers.constants.AddressZero,
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0xea32a96608495e54156ae48931a7c20f0dcc1a21',
+      },
+    ],
+  },
 ]
 
 export const getTestnetChains = (): ChainInfo[] => {

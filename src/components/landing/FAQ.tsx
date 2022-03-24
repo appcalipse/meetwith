@@ -48,15 +48,15 @@ export default function FAQ() {
           py={4}
           color={useColorModeValue('gray.700', 'gray.100')}
         >
-          What does the &quot;Alpha&quot; means?
+          Is Meet with Wallet fully developed?
         </Heading>
         <Text pb={2}>
           Meet with Wallet is a new platform, and therefore there is still a lot
           of work to be done, including ensuring you will not encounter any bugs
-          while using it. For this reason we are still considering it a product
-          in Alpha stage. But, this does not means that it is not supposed to
-          work properly. If you dinf any bigs, please report to us in our
-          Discord.
+          while using it. For this reason we are still considering it the
+          product in its early stage. But, this does not means that it is not
+          supposed to work properly. If you find any bugs, please report to us
+          in our Discord.
         </Text>
         <Heading
           size="lg"
