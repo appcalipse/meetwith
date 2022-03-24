@@ -683,9 +683,7 @@ export const getSubscriptionFromDBForAccount = async (
     .eq('owner_account', accountAddress.toLowerCase())
 
   if (error) {
-    try {
-      Sentry.captureException(error)
-    } catch {}
+    Sentry.captureException(error)
     return []
   }
 

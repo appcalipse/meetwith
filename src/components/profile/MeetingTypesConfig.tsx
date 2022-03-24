@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Flex,
   Grid,
   GridItem,
   HStack,
@@ -16,7 +17,6 @@ import {
 } from '@chakra-ui/react'
 import { ChangeEvent, useContext, useRef, useState } from 'react'
 import { FaArrowLeft, FaLock } from 'react-icons/fa'
-import { v4 as uuidv4, v4 } from 'uuid'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
@@ -67,10 +67,8 @@ const MeetingTypesConfig: React.FC = () => {
                 </GridItem>
               )
             })}
-            <GridItem>
-              <AddTypeCard currentAccount={currentAccount} />
-            </GridItem>
           </Grid>
+          <AddTypeCard currentAccount={currentAccount} />
         </VStack>
       )}
     </Box>
@@ -161,18 +159,17 @@ const AddTypeCard: React.FC<AddTypeCardProps> = ({ currentAccount }) => {
   }
 
   return (
-    <Box alignSelf="stretch">
+    <Box>
       <VStack
         borderRadius={8}
-        p={4}
-        minW="280px"
-        maxW="320px"
         alignItems="center"
+        pt={4}
+        pb={4}
         height={'100%'}
         justifyContent="center"
       >
         <Button
-          // disabled={!isProAccount(currentAccount as Account)}
+          disabled={!isProAccount(currentAccount as Account)}
           colorScheme="orange"
           onClick={createType}
         >
