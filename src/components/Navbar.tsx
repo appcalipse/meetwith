@@ -84,7 +84,6 @@ export const Navbar = () => {
                       src="/assets/logo.svg"
                       alt="Meet with Wallet"
                     />
-                    <Badge colorScheme="orange">Alpha</Badge>
                   </HStack>
                 </Link>
               </NextLink>
