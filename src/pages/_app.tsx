@@ -19,8 +19,6 @@ import customTheme from '../styles/theme'
 import { Account } from '../types/Account'
 import { initAnalytics, pageView } from '../utils/analytics'
 
-const theme = extendTheme(customTheme)
-
 interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
   currentAccount?: Account | null
@@ -61,7 +59,7 @@ function MyApp({
   }
 
   return (
-    <ChakraProvider theme={theme}>
+    <ChakraProvider theme={customTheme}>
       <ChakraMDXProvider>
         <CookiesProvider>
           <AccountProvider

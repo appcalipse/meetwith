@@ -2,17 +2,20 @@ import {
   Box,
   Button,
   Checkbox,
+  Flex,
+  Grid,
+  GridItem,
+  Heading,
   HStack,
   Icon,
   Input,
   Select,
   Spacer,
   Text,
-  Tooltip,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { ChangeEvent, useContext, useState } from 'react'
+import { ChangeEvent, useContext, useRef, useState } from 'react'
 import { FaArrowLeft, FaLock } from 'react-icons/fa'
 
 import { AccountContext } from '../../providers/AccountProvider'
@@ -24,11 +27,22 @@ import {
   getAccountCalendarUrl,
 } from '../../utils/calendar_manager'
 import { getSlugFromText } from '../../utils/generic_utils'
+import { isProAccount } from '../../utils/subscription_manager'
+import { CopyLinkButton } from './components/CopyLinkButton'
+import NewMeetingTypeDialog from './NewMeetingTypeDialog'
 
 const MeetingTypesConfig: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
 
   const [selectedType, setSelectedType] = useState<string>('')
+
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
+  const cancelDialogRef = useRef<any>()
+
+  const createType = async () => {
+    logEvent('Clicked to create new meeting type')
+    setIsDialogOpen(true)
+  }
 
   return (
     <Box>
@@ -40,14 +54,14 @@ const MeetingTypesConfig: React.FC = () => {
         />
       ) : (
         <VStack width="100%" alignItems={'flex-start'}>
-          <Text>Your meeting types</Text>
-          <HStack flexWrap="wrap">
+          <Heading fontSize="2xl">Your meeting types</Heading>
+          <Grid templateColumns="repeat(2, 1fr)" gap={4} flexWrap="wrap">
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
               const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
                 type.url
               }`
               return (
-                <Box key={index}>
+                <GridItem key={index}>
                   <MeetingTypeCard
                     onSelect={setSelectedType}
                     title={type.title}
@@ -55,12 +69,32 @@ const MeetingTypesConfig: React.FC = () => {
                     url={url}
                     typeId={type.id!}
                   />
-                  <Spacer />
-                </Box>
+                </GridItem>
               )
             })}
-            <AddTypeCard />
-          </HStack>
+          </Grid>
+          <VStack
+            borderRadius={8}
+            alignItems="center"
+            pt={4}
+            pb={4}
+            height={'100%'}
+            justifyContent="center"
+          >
+            <Button
+              disabled={!isProAccount(currentAccount!)}
+              colorScheme="orange"
+              onClick={createType}
+            >
+              + New Meeting Type
+            </Button>
+            <NewMeetingTypeDialog
+              currentAccount={currentAccount}
+              isDialogOpen={isDialogOpen}
+              cancelDialogRef={cancelDialogRef}
+              onDialogClose={() => setIsDialogOpen(false)}
+            />
+          </VStack>
         </VStack>
       )}
     </Box>
@@ -82,24 +116,9 @@ const MeetingTypeCard: React.FC<CardProps> = ({
   duration,
   onSelect,
 }) => {
-  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
-
   const openType = () => {
     logEvent('Clicked to edit meeting type')
     onSelect(typeId)
-  }
-
-  const copyLink = async () => {
-    logEvent('Copied link to meeting type')
-    if ('clipboard' in navigator) {
-      await navigator.clipboard.writeText(url)
-    } else {
-      document.execCommand('copy', true, url)
-    }
-    setCopyFeedbackOpen(true)
-    setTimeout(() => {
-      setCopyFeedbackOpen(false)
-    }, 2000)
   }
 
   return (
@@ -118,45 +137,11 @@ const MeetingTypeCard: React.FC<CardProps> = ({
         <Text>Duration: {durationToHumanReadable(duration)}</Text>
 
         <HStack width="100%" pt={4}>
-          <Tooltip label="Copied" placement="top" isOpen={copyFeedbackOpen}>
-            <Button
-              flex={1}
-              colorScheme="orange"
-              variant="outline"
-              onClick={copyLink}
-            >
-              Copy link
-            </Button>
-          </Tooltip>
+          <CopyLinkButton url={url} />
           <Button flex={1} colorScheme="orange" onClick={openType}>
             Edit
           </Button>
         </HStack>
-      </VStack>
-    </Box>
-  )
-}
-
-const AddTypeCard: React.FC = () => {
-  return (
-    <Box alignSelf="stretch">
-      <VStack
-        cursor="pointer"
-        borderRadius={8}
-        p={4}
-        shadow={'md'}
-        minW="280px"
-        maxW="320px"
-        alignItems="center"
-        height={'100%'}
-        justifyContent="center"
-        bgColor={useColorModeValue('gray.100', 'gray.700')}
-      >
-        <Text mb={8} fontWeight="medium">
-          Add meeting type
-        </Text>
-        <Icon as={FaLock} size="2em" color="gray.500" />
-        <Text mt={2}>Coming soon</Text>
       </VStack>
     </Box>
   )
