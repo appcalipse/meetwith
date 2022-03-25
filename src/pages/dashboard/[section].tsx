@@ -2,11 +2,10 @@ import { Container } from '@chakra-ui/layout'
 import { useRouter } from 'next/router'
 import React from 'react'
 
-import DashboardContent, {
-  EditMode,
-} from '../../components/profile/DashboardContent'
+import DashboardContent from '../../components/profile/DashboardContent'
 import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
 import { withLoginRedirect } from '../../session/requireAuthentication'
+import { EditMode } from '../../types/Dashboard'
 
 const Dashboard: React.FC = () => {
   const router = useRouter()
