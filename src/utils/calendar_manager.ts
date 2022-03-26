@@ -8,6 +8,7 @@ import {
   getMonth,
   getYear,
   isAfter,
+  parseISO,
 } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import {
@@ -201,6 +202,7 @@ const scheduleMeeting = async (
 }
 
 const generateIcs = async (meeting: MeetingDecrypted) => {
+  console.log(meeting.start)
   const event = {
     uid: meeting.id,
     start: [
@@ -242,7 +244,7 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
 
   const icsFile = await ics.createEvent(event)
 
-  if (!icsFile.error) {
+  if (!icsFile.error && window) {
     const url = window.URL.createObjectURL(
       new Blob([icsFile.value], { type: 'text/plain' })
     )
@@ -254,8 +256,14 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
     link.click()
     link.parentNode!.removeChild(link)
     logEvent('Downloaded .ics')
-  } else {
+  } else if (icsFile.error) {
     console.error(icsFile.error)
+  } else {
+    try {
+      console.log(window)
+    } catch {
+      return icsFile
+    }
   }
 }
 
