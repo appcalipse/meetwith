@@ -45,15 +45,16 @@ export const newMeetingEmail = async (
     locals
   )
 
-  const icsFile = generateIcs({
+  const icsFile = await generateIcs({
     meeting_url: meetingUrl as string,
-    start: utcToZonedTime(start, timezone),
-    end,
+    start: new Date(utcToZonedTime(start, timezone)),
+    end: new Date(end),
     id: id as string,
-    created_at: created_at as Date,
+    created_at: new Date(created_at as Date),
     meeting_info_file_path,
     participants: [],
   })
+  console.log(icsFile)
 
   const blob = new Blob([icsFile.value], { type: 'text/plain' })
   const base64content = Buffer.from(await blob.text()).toString('base64')
