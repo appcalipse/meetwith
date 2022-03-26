@@ -10,14 +10,11 @@ import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
 
 const Home: NextPage = () => {
   return (
-    <main>
+    <main data-testid="main-container">
       <Container maxW="9xl">
         <Hero />
-
         <Features />
-
         <Pricing />
-
         <FAQ />
       </Container>
     </main>
