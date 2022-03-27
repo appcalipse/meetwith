@@ -5,14 +5,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '../types/AccountNotifications'
-import {
-  DBSlot,
-  DBSlotEnhanced,
-  MeetingCreationRequest,
-  MeetingICS,
-  ParticipantType,
-} from '../types/Meeting'
-import { decryptMeeting } from './calendar_manager'
+import { MeetingICS, ParticipantType } from '../types/Meeting'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
