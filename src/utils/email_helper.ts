@@ -15,11 +15,7 @@ import { durationToHumanReadable, generateIcs } from './calendar_manager'
 
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
 
-sgMail.setApiKey(
-  process.env.NEXT_PUBLIC_ENV !== 'production'
-    ? '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'
-    : process.env.SENDGRID_API_KEY!
-)
+sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
 
 export const newMeetingEmail = async (
   toEmail: string,
@@ -59,7 +55,7 @@ export const newMeetingEmail = async (
       type: ParticipantType.Guest,
     })
   })
-  const icsFile = await generateIcs({
+  const icsBlob = await generateIcs({
     meeting_url: meetingUrl as string,
     start: new Date(utcToZonedTime(start, timezone)),
     end: new Date(end),
@@ -69,8 +65,7 @@ export const newMeetingEmail = async (
     participants,
   })
 
-  const blob = new Blob([icsFile.value], { type: 'text/plain' })
-  const base64content = Buffer.from(await blob.text()).toString('base64')
+  const base64content = Buffer.from(await icsBlob.text()).toString('base64')
 
   const msg: sgMail.MailDataRequired = {
     to: toEmail,
@@ -81,7 +76,7 @@ export const newMeetingEmail = async (
     attachments: [
       {
         content: base64content,
-        filename: 'meeting.ics',
+        filename: `invite_${id}.ics`,
         type: 'text/plain',
         disposition: 'attachment',
       },
