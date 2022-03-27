@@ -134,6 +134,17 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
     decodeData()
   }, [])
 
+  const downloadIcs = async (info: MeetingDecrypted) => {
+    const url = window.URL.createObjectURL(await generateIcs(info))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `${meeting.id}.ics`)
+
+    document.body.appendChild(link)
+    link.click()
+    link.parentNode!.removeChild(link)
+  }
+
   const bgColor = useColorModeValue('gray.100', 'gray.900')
 
   return (
@@ -185,7 +196,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
           <Button
             colorScheme="orange"
             variant="outline"
-            onClick={() => generateIcs(info)}
+            onClick={() => downloadIcs(info)}
           >
             Download .ics
           </Button>

@@ -53,6 +53,11 @@ export interface DBSlotEnhanced extends DBSlot {
   meeting_info_encrypted: Encrypted
 }
 
+export interface MeetingICS {
+  db_slot: DBSlot
+  meeting: MeetingCreationRequest
+}
+
 export interface ParticipantBaseInfo {
   account_address?: string
   type: ParticipantType
