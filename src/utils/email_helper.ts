@@ -6,6 +6,11 @@ import Email from 'email-templates'
 import { Blob } from 'node:buffer'
 import path from 'path'
 
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '../types/Meeting'
 import { durationToHumanReadable, generateIcs } from './calendar_manager'
 
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
@@ -45,6 +50,15 @@ export const newMeetingEmail = async (
     locals
   )
 
+  const participants: ParticipantInfo[] = []
+  participantsDisplayNames.map(participant => {
+    participants.push({
+      name: participant,
+      slot_id: 'null',
+      status: ParticipationStatus.Accepted,
+      type: ParticipantType.Guest,
+    })
+  })
   const icsFile = await generateIcs({
     meeting_url: meetingUrl as string,
     start: new Date(utcToZonedTime(start, timezone)),
@@ -52,9 +66,8 @@ export const newMeetingEmail = async (
     id: id as string,
     created_at: new Date(created_at as Date),
     meeting_info_file_path,
-    participants: [],
+    participants,
   })
-  console.log(icsFile)
 
   const blob = new Blob([icsFile.value], { type: 'text/plain' })
   const base64content = Buffer.from(await blob.text()).toString('base64')
