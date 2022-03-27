@@ -3,9 +3,15 @@ import * as Sentry from '@sentry/node'
 import { differenceInMinutes, format } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import Email from 'email-templates'
+import { Blob } from 'node:buffer'
 import path from 'path'
 
-import { durationToHumanReadable } from './calendar_manager'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '../types/Meeting'
+import { durationToHumanReadable, generateIcs } from './calendar_manager'
 
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
 
@@ -17,7 +23,10 @@ export const newMeetingEmail = async (
   timezone: string,
   start: Date,
   end: Date,
-  meetingUrl?: string
+  meeting_info_file_path: string,
+  meetingUrl?: string,
+  id?: string | undefined,
+  created_at?: Date
 ): Promise<boolean> => {
   const email = new Email()
   const locals = {
@@ -37,12 +46,41 @@ export const newMeetingEmail = async (
     locals
   )
 
+  const participants: ParticipantInfo[] = []
+  participantsDisplayNames.map(participant => {
+    participants.push({
+      name: participant,
+      slot_id: 'null',
+      status: ParticipationStatus.Accepted,
+      type: ParticipantType.Guest,
+    })
+  })
+  const icsBlob = await generateIcs({
+    meeting_url: meetingUrl as string,
+    start: new Date(utcToZonedTime(start, timezone)),
+    end: new Date(end),
+    id: id as string,
+    created_at: new Date(created_at as Date),
+    meeting_info_file_path,
+    participants,
+  })
+
+  const base64content = Buffer.from(await icsBlob.text()).toString('base64')
+
   const msg: sgMail.MailDataRequired = {
     to: toEmail,
     from: FROM,
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
+    attachments: [
+      {
+        content: base64content,
+        filename: `invite_${id}.ics`,
+        type: 'text/plain',
+        disposition: 'attachment',
+      },
+    ],
   }
 
   try {

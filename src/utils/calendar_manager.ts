@@ -200,7 +200,7 @@ const scheduleMeeting = async (
   }
 }
 
-const generateIcs = async (meeting: MeetingDecrypted) => {
+const generateIcs = async (meeting: MeetingDecrypted): Promise<Blob> => {
   const event = {
     uid: meeting.id,
     start: [
@@ -242,21 +242,7 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
 
   const icsFile = await ics.createEvent(event)
 
-  if (!icsFile.error) {
-    const url = window.URL.createObjectURL(
-      new Blob([icsFile.value], { type: 'text/plain' })
-    )
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `${meeting.id}.ics`)
-
-    document.body.appendChild(link)
-    link.click()
-    link.parentNode!.removeChild(link)
-    logEvent('Downloaded .ics')
-  } else {
-    console.error(icsFile.error)
-  }
+  return new Blob([icsFile.value], { type: 'text/plain' })
 }
 
 const decryptMeeting = async (

@@ -27,6 +27,7 @@ import {
   DBSlot,
   DBSlotEnhanced,
   MeetingCreationRequest,
+  MeetingICS,
   ParticipantType,
 } from '../types/Meeting'
 import { Plan, Subscription } from '../types/Subscription'
@@ -493,7 +494,11 @@ const saveMeeting = async (
   meetingResponse.created_at = data[index].created_at
 
   // TODO: ideally notifications should not block the user request
-  await notifyForNewMeeting(meeting)
+  const meetingICS: MeetingICS = {
+    db_slot: meetingResponse,
+    meeting,
+  }
+  await notifyForNewMeeting(meetingICS)
   await syncCalendarForMeeting(meeting)
 
   return meetingResponse
