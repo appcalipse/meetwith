@@ -1,6 +1,9 @@
 import {
   Button,
+  Circle,
   Flex,
+  HStack,
+  Icon,
   Image,
   Modal,
   ModalBody,
@@ -10,9 +13,11 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
+  useColorModeValue,
 } from '@chakra-ui/react'
 import { format, utcToZonedTime } from 'date-fns-tz'
 import router from 'next/router'
+import { FaBell } from 'react-icons/fa'
 
 import { Account } from '../../types/Account'
 import { MeetingDecrypted } from '../../types/Meeting'
@@ -24,6 +29,7 @@ interface IProps {
   onClose: () => void
   targetAccount: Account
   schedulerAccount: Account
+  accountScheduledMeetings: number
   meeting?: MeetingDecrypted
 }
 
@@ -32,11 +38,23 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   onClose,
   targetAccount,
   schedulerAccount,
+  accountScheduledMeetings,
   meeting,
 }) => {
+  const notificationsAlertBackground = useColorModeValue('gray.100', 'gray.600')
+  const notificationsAlertIconBachground = useColorModeValue(
+    'gray.700',
+    'gray.500'
+  )
+
   return (
     <>
-      <Modal blockScrollOnMount={false} isOpen={isOpen} onClose={onClose}>
+      <Modal
+        blockScrollOnMount={false}
+        size="lg"
+        isOpen={isOpen}
+        onClose={onClose}
+      >
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Meeting scheduled</ModalHeader>
@@ -63,6 +81,33 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 )} was scheduled successfully.`}</Text>
               )}
             </Flex>
+            {schedulerAccount &&
+              schedulerAccount.subscriptions.length === 0 &&
+              accountScheduledMeetings <= 3 && (
+                <HStack mt={12} p={3} bg={notificationsAlertBackground}>
+                  <Circle
+                    size="30px"
+                    bg={notificationsAlertIconBachground}
+                    mr="2"
+                  >
+                    <Icon as={FaBell} color="white" />
+                  </Circle>
+                  <Text fontSize="sm">
+                    Make sure you don&apos;t miss your meetings by configuring
+                    your notifications.
+                  </Text>
+                  <Button
+                    colorScheme="orange"
+                    variant="outline"
+                    size="small"
+                    p={2}
+                    fontSize="xs"
+                    onClick={() => router.push('/dashboard/notifications')}
+                  >
+                    Configure
+                  </Button>
+                </HStack>
+              )}
           </ModalBody>
           <ModalFooter>
             <Button m={4} onClick={onClose} variant="ghost">
