@@ -21,6 +21,7 @@ import { FaBell } from 'react-icons/fa'
 
 import { Account } from '../../types/Account'
 import { MeetingDecrypted } from '../../types/Meeting'
+import { getMeetingsScheduled } from '../../utils/storage'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import MWWButton from '../MWWButton'
 
@@ -29,7 +30,7 @@ interface IProps {
   onClose: () => void
   targetAccount: Account
   schedulerAccount: Account
-  accountScheduledMeetings: number
+  accountNotificationSubs: number
   meeting?: MeetingDecrypted
 }
 
@@ -38,13 +39,16 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   onClose,
   targetAccount,
   schedulerAccount,
-  accountScheduledMeetings,
+  accountNotificationSubs,
   meeting,
 }) => {
   const notificationsAlertBackground = useColorModeValue('gray.100', 'gray.600')
   const notificationsAlertIconBachground = useColorModeValue(
     'gray.700',
     'gray.500'
+  )
+  const accountMeetingsScheduled = getMeetingsScheduled(
+    schedulerAccount.address
   )
 
   return (
@@ -82,8 +86,8 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               )}
             </Flex>
             {schedulerAccount &&
-              schedulerAccount.subscriptions.length === 0 &&
-              accountScheduledMeetings <= 3 && (
+              accountNotificationSubs === 0 &&
+              accountMeetingsScheduled <= 3 && (
                 <HStack mt={12} p={3} bg={notificationsAlertBackground}>
                   <Circle
                     size="30px"

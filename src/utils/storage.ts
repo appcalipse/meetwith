@@ -24,7 +24,7 @@ const getSignature = (account_address: string): string | null => {
   }
 }
 
-const getMeetingsScheduled = (account_address: string) => {
+const saveMeetingsScheduled = (account_address: string) => {
   let currentSchedules: number
   currentSchedules = parseInt(
     window.localStorage.getItem(
@@ -35,16 +35,29 @@ const getMeetingsScheduled = (account_address: string) => {
   if (!currentSchedules) {
     window.localStorage.setItem(
       `${SCHEDULES}:${account_address.toLowerCase()}`,
-      `${(currentSchedules = 1).toString()}`
+      `${(currentSchedules = 1)}`
     )
   } else if (currentSchedules >= 1) {
     window.localStorage.setItem(
       `${SCHEDULES}:${account_address.toLowerCase()}`,
-      `${(currentSchedules = currentSchedules + 1).toString()}`
+      `${(currentSchedules = currentSchedules + 1)}`
     )
   }
+}
 
+const getMeetingsScheduled = (account_address: string) => {
+  const currentSchedules = parseInt(
+    window.localStorage.getItem(
+      `${SCHEDULES}:${account_address.toLowerCase()}`
+    )!
+  )
   return currentSchedules
 }
 
-export { getMeetingsScheduled, getSignature, removeSignature, saveSignature }
+export {
+  getMeetingsScheduled,
+  getSignature,
+  removeSignature,
+  saveMeetingsScheduled,
+  saveSignature,
+}
