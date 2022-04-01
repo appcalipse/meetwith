@@ -21,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   // if user did not complete the cicle, just log it and go to the dashboard page again
   if (error) {
     Sentry.captureException(error)
-    res.redirect(`/dashboard/calendars?result=error`)
+    res.redirect(`/dashboard/calendars?calendarResult=error`)
     return
   }
 
@@ -72,7 +72,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   await addOrUpdateConnectedCalendar(req.session.account.address, payload)
 
-  res.redirect(`/dashboard/calendars?result=success`)
+  res.redirect(`/dashboard/calendars?calendarResult=success`)
 }
 
 export default withSessionRoute(handler)

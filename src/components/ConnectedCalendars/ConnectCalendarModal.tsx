@@ -2,6 +2,7 @@ import {
   Button,
   Heading,
   HStack,
+  Image,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -10,7 +11,7 @@ import {
   ModalOverlay,
 } from '@chakra-ui/react'
 import { useState } from 'react'
-import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
+import { FaApple, FaMicrosoft } from 'react-icons/fa'
 
 import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
 
@@ -52,7 +53,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
             <HStack p="10" justifyContent="center">
               <Button
                 onClick={selectOption(ConnectedCalendarProvider.GOOGLE)}
-                leftIcon={<FaGoogle />}
+                leftIcon={<Image src="/assets/google.svg" size="24px" />}
                 variant="outline"
                 isLoading={loading === ConnectedCalendarProvider.GOOGLE}
               >
