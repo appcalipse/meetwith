@@ -142,7 +142,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
     )
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', `${meeting.id}.ics`)
+    link.setAttribute('download', `meeting_${meeting.id}.ics`)
 
     document.body.appendChild(link)
     link.click()

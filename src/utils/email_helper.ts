@@ -73,7 +73,7 @@ export const newMeetingEmail = async (
     attachments: [
       {
         content: Buffer.from(icsFile.value!).toString('base64'),
-        filename: `invite_${id}.ics`,
+        filename: `meeting_${id}.ics`,
         type: 'text/plain',
         disposition: 'attachment',
       },
