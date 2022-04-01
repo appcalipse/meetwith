@@ -134,7 +134,7 @@ export default class GoogleCalendarService implements Calendar {
             overrides: [{ method: 'email', minutes: 10 }],
           },
           // https://lukeboyle.com/blog/posts/google-calendar-api-color-id
-          colorId: '8',
+          colorId: '6',
           creator: {
             displayName: 'Meet With Wallet',
           },
