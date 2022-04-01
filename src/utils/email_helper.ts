@@ -3,7 +3,6 @@ import * as Sentry from '@sentry/node'
 import { differenceInMinutes, format } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import Email from 'email-templates'
-import { Blob } from 'node:buffer'
 import path from 'path'
 
 import {
@@ -55,7 +54,7 @@ export const newMeetingEmail = async (
       type: ParticipantType.Guest,
     })
   })
-  const icsBlob = await generateIcs({
+  const icsFile = generateIcs({
     meeting_url: meetingUrl as string,
     start: new Date(utcToZonedTime(start, timezone)),
     end: new Date(end),
@@ -65,8 +64,6 @@ export const newMeetingEmail = async (
     participants,
   })
 
-  const base64content = Buffer.from(await icsBlob.text()).toString('base64')
-
   const msg: sgMail.MailDataRequired = {
     to: toEmail,
     from: FROM,
@@ -75,7 +72,7 @@ export const newMeetingEmail = async (
     text: rendered.text,
     attachments: [
       {
-        content: base64content,
+        content: Buffer.from(icsFile.value!).toString('base64'),
         filename: `invite_${id}.ics`,
         type: 'text/plain',
         disposition: 'attachment',

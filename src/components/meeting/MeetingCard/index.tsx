@@ -134,8 +134,12 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
     decodeData()
   }, [])
 
-  const downloadIcs = async (info: MeetingDecrypted) => {
-    const url = window.URL.createObjectURL(await generateIcs(info))
+  const downloadIcs = (info: MeetingDecrypted) => {
+    const icsFile = generateIcs(info)
+
+    const url = window.URL.createObjectURL(
+      new Blob([icsFile.value!], { type: 'text/plain' })
+    )
     const link = document.createElement('a')
     link.href = url
     link.setAttribute('download', `${meeting.id}.ics`)
