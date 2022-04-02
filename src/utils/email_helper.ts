@@ -56,7 +56,7 @@ export const newMeetingEmail = async (
   })
   const icsFile = generateIcs({
     meeting_url: meetingUrl as string,
-    start: new Date(utcToZonedTime(start, timezone)),
+    start: new Date(start),
     end: new Date(end),
     id: id as string,
     created_at: new Date(created_at as Date),
