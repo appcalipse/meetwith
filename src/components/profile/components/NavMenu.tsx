@@ -56,10 +56,10 @@ export const NavMenu: React.FC<{ currentSection?: EditMode }> = ({
   const router = useRouter()
   const toast = useToast()
 
-  const { result } = router.query
+  const { calendarResult } = router.query
 
   useEffect(() => {
-    if (result === 'error') {
+    if (calendarResult === 'error') {
       toast({
         title: 'Error connecting calendar',
         description:
@@ -69,7 +69,7 @@ export const NavMenu: React.FC<{ currentSection?: EditMode }> = ({
         position: 'top',
         isClosable: true,
       })
-    } else if (result === 'success') {
+    } else if (calendarResult === 'success') {
       toast({
         title: 'Calendar connected',
         description: "You've just connected a new calendar provider.",

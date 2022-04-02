@@ -5,7 +5,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '../types/AccountNotifications'
-import { MeetingCreationRequest, ParticipantType } from '../types/Meeting'
+import { MeetingICS, ParticipantType } from '../types/Meeting'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
@@ -24,14 +24,14 @@ export interface ParticipantInfoForNotification {
 }
 
 export const notifyForNewMeeting = async (
-  meeting: MeetingCreationRequest
+  meeting_ics: MeetingICS
 ): Promise<void> => {
   const participants: ParticipantInfoForNotification[] = []
 
   let participantsDisplay: string[] = []
 
-  for (let i = 0; i < meeting.participants_mapping.length; i++) {
-    const participant = meeting.participants_mapping[i]
+  for (let i = 0; i < meeting_ics.meeting.participants_mapping.length; i++) {
+    const participant = meeting_ics.meeting.participants_mapping[i]
 
     if (participant.account_address) {
       const account = await getAccountFromDB(participant.account_address!)
@@ -53,9 +53,12 @@ export const notifyForNewMeeting = async (
         participant.guest_email!,
         participantsDisplay,
         participant.timeZone!,
-        new Date(meeting.start),
-        new Date(meeting.end),
-        meeting.meeting_url
+        new Date(meeting_ics.meeting.start),
+        new Date(meeting_ics.meeting.end),
+        meeting_ics.db_slot.meeting_info_file_path,
+        meeting_ics.meeting.meeting_url,
+        meeting_ics.db_slot.id,
+        meeting_ics.db_slot.created_at
       )
     }
   }
@@ -82,9 +85,12 @@ export const notifyForNewMeeting = async (
               notification_type.destination,
               participantsDisplay,
               participant.timezone!,
-              new Date(meeting.start),
-              new Date(meeting.end),
-              meeting.meeting_url
+              new Date(meeting_ics.meeting.start),
+              new Date(meeting_ics.meeting.end),
+              meeting_ics.db_slot.meeting_info_file_path,
+              meeting_ics.meeting.meeting_url,
+              meeting_ics.db_slot.id,
+              meeting_ics.db_slot.created_at
             )
             break
 
@@ -95,7 +101,10 @@ export const notifyForNewMeeting = async (
                 destination_addresses: [notification_type.destination],
                 title: 'New meeting scheduled',
                 message: `${format(
-                  utcToZonedTime(meeting.start, participant.timezone),
+                  utcToZonedTime(
+                    meeting_ics.meeting.start,
+                    participant.timezone
+                  ),
                   'PPPPpp'
                 )} - ${participants
                   .map(participant => ellipsizeAddress(participant.address))

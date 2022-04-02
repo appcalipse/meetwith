@@ -12,7 +12,11 @@ import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
 import { DBSlot, MeetingDecrypted, SchedulingType } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
-import { getAccount, getBusySlots, getMeetings } from '../../utils/api_helper'
+import {
+  getAccount,
+  getBusySlots,
+  getNotificationSubscriptions,
+} from '../../utils/api_helper'
 import {
   durationToHumanReadable,
   isSlotAvailable,
@@ -22,6 +26,7 @@ import {
   AccountNotFoundError,
   MeetingWithYourselfError,
 } from '../../utils/errors'
+import { saveMeetingsScheduled } from '../../utils/storage'
 import { isProAccount } from '../../utils/subscription_manager'
 import { isValidEVMAddress } from '../../utils/validations'
 import Loading from '../Loading'
@@ -81,6 +86,7 @@ const PublicCalendar: React.FC = () => {
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
     undefined as MeetingDecrypted | undefined
   )
+  const [notificationsSubs, setNotificationSubs] = useState(0)
 
   const toast = useToast()
 
@@ -119,6 +125,11 @@ const PublicCalendar: React.FC = () => {
     }
   }
 
+  const fetchNotificationSubscriptions = async () => {
+    const subs = await getNotificationSubscriptions()
+    setNotificationSubs(subs.notification_types.length)
+  }
+
   const confirmSchedule = async (
     scheduleType: SchedulingType,
     startTime: Date,
@@ -151,6 +162,8 @@ const PublicCalendar: React.FC = () => {
         meetingUrl
       )
       await updateMeetings(account!.address)
+      saveMeetingsScheduled(currentAccount!.address)
+      fetchNotificationSubscriptions()
       setLastScheduledMeeting(meeting)
       logEvent('Scheduled a meeting', {
         fromPublicCalendar: true,
@@ -270,6 +283,7 @@ const PublicCalendar: React.FC = () => {
             targetAccount={account!}
             schedulerAccount={currentAccount!}
             meeting={lastScheduledMeeting}
+            accountNotificationSubs={notificationsSubs}
             isOpen={isOpen}
             onClose={_onClose}
           />
