@@ -89,7 +89,10 @@ export default function FAQ() {
         </Heading>
         <Text pb={2}>
           Check our high-level feature roadmap{' '}
-          <Link href="https://meet-with-wallet.sleekplan.app/" isExternal>
+          <Link
+            href="https://app.dework.xyz/meet-with-wallet/mww-roadmap/board/"
+            isExternal
+          >
             here
           </Link>{' '}
           and vote on what you want to be done next. You can also be an active
