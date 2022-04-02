@@ -162,7 +162,7 @@ const PublicCalendar: React.FC = () => {
         meetingUrl
       )
       await updateMeetings(account!.address)
-      saveMeetingsScheduled(currentAccount!.address)
+      currentAccount && saveMeetingsScheduled(currentAccount!.address)
       fetchNotificationSubscriptions()
       setLastScheduledMeeting(meeting)
       logEvent('Scheduled a meeting', {
