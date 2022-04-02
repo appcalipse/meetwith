@@ -89,7 +89,7 @@ export default function SmallWithLogoLeft() {
             </Text>
             <Text textAlign="justify">
               <Link
-                href="https://meet-with-wallet.sleekplan.app/"
+                href="https://app.dework.xyz/meet-with-wallet/mww-roadmap/board"
                 target="_blank"
               >
                 Roadmap
@@ -115,7 +115,7 @@ export default function SmallWithLogoLeft() {
             </Text>
             <Text textAlign="justify">
               <Link
-                href="https://meet-with-wallet.sleekplan.app/"
+                href="https://app.dework.xyz/meet-with-wallet/mww-roadmap/community"
                 target="_blank"
               >
                 Feature Requests
