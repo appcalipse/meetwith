@@ -47,9 +47,9 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
     'gray.700',
     'gray.500'
   )
-  const accountMeetingsScheduled = getMeetingsScheduled(
-    schedulerAccount.address
-  )
+  const accountMeetingsScheduled = schedulerAccount
+    ? getMeetingsScheduled(schedulerAccount.address)
+    : 0
 
   return (
     <>
