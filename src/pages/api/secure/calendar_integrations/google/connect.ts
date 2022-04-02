@@ -13,7 +13,6 @@ const scopes = [
   'https://www.googleapis.com/auth/calendar.events.freebusy',
   'https://www.googleapis.com/auth/calendar.freebusy',
   'https://www.googleapis.com/auth/calendar.events.owned',
-  'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
 ]
 
 export default async function handler(
@@ -33,7 +32,6 @@ export default async function handler(
     const authUrl = oAuth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
-      prompt: 'consent',
     })
 
     res.status(200).json({ url: authUrl })

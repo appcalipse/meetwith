@@ -7,7 +7,6 @@ import {
   Link,
   Spinner,
   Text,
-  useColorModeValue,
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'

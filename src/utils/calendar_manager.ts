@@ -15,6 +15,7 @@ import {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { createEvent, EventAttributes, ReturnObject } from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '../types/Account'
@@ -31,7 +32,6 @@ import {
   SchedulingType,
 } from '../types/Meeting'
 import { Plan } from '../types/Subscription'
-import { logEvent } from './analytics'
 import {
   createMeeting,
   createMeetingAsGuest,
@@ -200,8 +200,8 @@ const scheduleMeeting = async (
   }
 }
 
-const generateIcs = async (meeting: MeetingDecrypted) => {
-  const event = {
+const generateIcs = (meeting: MeetingDecrypted): ReturnObject => {
+  const event: EventAttributes = {
     uid: meeting.id,
     start: [
       getYear(meeting.start),
@@ -229,6 +229,7 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
       getHours(meeting.created_at!),
       getMinutes(meeting.created_at!),
     ],
+
     //        status: 'CONFIRMED',
     // organizer: { name: 'Admin', email: 'Race@BolderBOULDER.com' },
     // attendees: [
@@ -238,25 +239,8 @@ const generateIcs = async (meeting: MeetingDecrypted) => {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const ics = require('ics')
 
-  const icsFile = await ics.createEvent(event)
-
-  if (!icsFile.error) {
-    const url = window.URL.createObjectURL(
-      new Blob([icsFile.value], { type: 'text/plain' })
-    )
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `${meeting.id}.ics`)
-
-    document.body.appendChild(link)
-    link.click()
-    link.parentNode!.removeChild(link)
-    logEvent('Downloaded .ics')
-  } else {
-    console.error(icsFile.error)
-  }
+  return createEvent(event)
 }
 
 const decryptMeeting = async (
