@@ -11,11 +11,9 @@ const Dashboard: React.FC = () => {
   const router = useRouter()
   const { section } = router.query
   return (
-    <>
-      <Container maxW="6xl" mt={8} flex={1}>
-        <DashboardContent currentSection={section as EditMode} />
-      </Container>
-    </>
+    <Container data-testid={`dashboard-${section}`} maxW="6xl" mt={8} flex={1}>
+      <DashboardContent currentSection={section as EditMode} />
+    </Container>
   )
 }
 

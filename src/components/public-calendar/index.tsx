@@ -216,7 +216,7 @@ const PublicCalendar: React.FC = () => {
   }
 
   return (
-    <Container maxW="7xl" mt={8} flex={1}>
+    <Container data-testid="calendar-container" maxW="7xl" mt={8} flex={1}>
       {loading ? (
         <Flex
           width="100%"
