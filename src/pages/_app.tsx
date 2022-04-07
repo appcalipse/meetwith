@@ -1,7 +1,6 @@
 import '../styles/globals.css'
 
 import { Box, ChakraProvider, Flex, useColorModeValue } from '@chakra-ui/react'
-import { extendTheme } from '@chakra-ui/react'
 import cookie from 'cookie'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
@@ -68,15 +67,28 @@ function MyApp({
           >
             <Head>
               <title>
-                Meeting scheduler for #web3 - Meet with Wallet -
-                meetwithwallet.xyz
+                {router.pathname !== '/address/[...address]'
+                  ? 'Meeting scheduler for #web3 - Meet with Wallet - meetwithwallet.xyz'
+                  : 'Calendar on Meet with Wallet - Schedule a meeting in #web3 style'}
               </title>
               <meta
                 name="description"
-                content="Meet with wallet provides an easy way to share you calendar and let people find the perfect time to meet with you, always ensuring your data is private. Booking for FREE by simply connecting a crypto wallet (No transaction is needed)."
+                content={
+                  router.pathname !== '/address/[...address]'
+                    ? 'Meet with wallet provides an easy way to share you calendar and let people find the perfect time to meet with you, always ensuring your data is private. Booking for FREE by simply connecting a crypto wallet (No transaction is needed).'
+                    : 'Schedule a meeting by simply connecting your web3 wallet, or use your email and schedule as a guest.'
+                }
               />
 
-              <meta property="og:url" content="https://meetwithwallet.xyz/" />
+              <meta
+                property="og:url"
+                content={
+                  router.pathname !== '/address/[...address]'
+                    ? 'https://meetwithwallet.xyz/'
+                    : 'https://meetwithwallet.xyz/address/' +
+                      router.query.address
+                }
+              />
               <meta property="og:type" content="website" />
               <meta
                 property="og:title"
@@ -84,7 +96,11 @@ function MyApp({
               />
               <meta
                 property="og:description"
-                content="Meet with wallet provides an easy way to share you calendar and let people find the perfect time to meet with you, always ensuring your data is private. Booking for FREE by simply connecting a crypto wallet (No transaction is needed)."
+                content={
+                  router.pathname !== '/address/[...address]'
+                    ? 'Meet with wallet provides an easy way to share you calendar and let people find the perfect time to meet with you, always ensuring your data is private. Booking for FREE by simply connecting a crypto wallet (No transaction is needed).'
+                    : 'Schedule a meeting by simply connecting your web3 wallet, or use your email and schedule as a guest.'
+                }
               />
               <meta
                 property="og:image"
