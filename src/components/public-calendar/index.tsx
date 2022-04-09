@@ -165,7 +165,7 @@ const PublicCalendar: React.FC = () => {
       )
       await updateMeetings(account!.address)
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
-      fetchNotificationSubscriptions()
+      currentAccount && (await fetchNotificationSubscriptions())
       setLastScheduledMeeting(meeting)
       logEvent('Scheduled a meeting', {
         fromPublicCalendar: true,
@@ -206,12 +206,13 @@ const PublicCalendar: React.FC = () => {
   }
 
   const updateMeetings = async (identifier: string) => {
+    setCheckingSlots(true)
     const monthStart = startOfMonth(currentMonth)
     const monthEnd = endOfMonth(currentMonth)
-
     const meetings = await getBusySlots(identifier, monthStart, monthEnd)
 
     setMeetings(meetings)
+    setCheckingSlots(false)
   }
 
   useEffect(() => {
