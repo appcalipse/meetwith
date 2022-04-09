@@ -12,7 +12,6 @@ import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
 
-import { AccountContext } from '../../providers/AccountProvider'
 import { logEvent } from '../../utils/analytics'
 import { ScheduleForm } from '../schedule/schedule-form'
 import Calendar from './calendar'

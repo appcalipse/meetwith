@@ -8,13 +8,14 @@ import {
   ConnectedCalendarProvider,
   ConnectResponse,
 } from '../types/CalendarConnections'
-import { DBSlot, DBSlotEnhanced, MeetingDecrypted } from '../types/Meeting'
+import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
   ApiFetchError,
   InvalidSessionError,
+  TimeNotAvailableError,
 } from './errors'
 import { getSignature } from './storage'
 
@@ -70,22 +71,38 @@ export const saveAccountChanges = async (
   return (await internalFetch(`/secure/accounts`, 'POST', account)) as Account
 }
 
-export const createMeeting = async (meeting: any): Promise<DBSlotEnhanced> => {
-  return (await internalFetch(
-    `/secure/meetings`,
-    'POST',
-    meeting
-  )) as DBSlotEnhanced
-}
-
-export const createMeetingAsGuest = async (
+export const scheduleMeeting = async (
   meeting: any
 ): Promise<DBSlotEnhanced> => {
-  return (await internalFetch(
-    `/meetings/guest`,
-    'POST',
-    meeting
-  )) as DBSlotEnhanced
+  try {
+    return (await internalFetch(
+      `/secure/meetings`,
+      'POST',
+      meeting
+    )) as DBSlotEnhanced
+  } catch (e: any) {
+    if (e.status && e.status === 409) {
+      throw new TimeNotAvailableError()
+    }
+    throw e
+  }
+}
+
+export const scheduleMeetingAsGuest = async (
+  meeting: any
+): Promise<DBSlotEnhanced> => {
+  try {
+    return (await internalFetch(
+      `/meetings/guest`,
+      'POST',
+      meeting
+    )) as DBSlotEnhanced
+  } catch (e: any) {
+    if (e.status && e.status === 409) {
+      throw new TimeNotAvailableError()
+    }
+    throw e
+  }
 }
 
 export const isSlotFree = async (
