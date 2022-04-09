@@ -1,5 +1,6 @@
 import {
   Box,
+  Flex,
   HStack,
   Icon,
   Text,
@@ -102,41 +103,42 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
         />
       )}
 
-      {showPickTime &&
-        (checkingSlots ? (
-          <Box>
-            <Loading label="Checking availability" />
-          </Box>
-        ) : (
-          <Popup>
-            <PopupHeader>
-              <HStack mb={4} cursor="pointer" onClick={handleClosePickTime}>
-                <Icon as={FaArrowLeft} size="1.5em" color={color} />
-                <Text ml={3} color={color}>
-                  Back
+      {showPickTime && (
+        <Popup>
+          <PopupHeader>
+            <HStack mb={4} cursor="pointer" onClick={handleClosePickTime}>
+              <Icon as={FaArrowLeft} size="1.5em" color={color} />
+              <Text ml={3} color={color}>
+                Back
+              </Text>
+            </HStack>
+            <HStack alignItems="flex-start">
+              <Box mt="4px">
+                <FaCalendar />
+              </Box>
+              <VStack alignItems="flex-start">
+                <Text>{format(pickedDay!, 'PPPP')}</Text>
+                <Text fontSize="sm">
+                  Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
                 </Text>
-              </HStack>
-              <HStack alignItems="flex-start">
-                <Box mt="4px">
-                  <FaCalendar />
-                </Box>
-                <VStack alignItems="flex-start">
-                  <Text>{format(pickedDay!, 'PPPP')}</Text>
-                  <Text fontSize="sm">
-                    Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
-                  </Text>
-                </VStack>
-              </HStack>
-            </PopupHeader>
+              </VStack>
+            </HStack>
+          </PopupHeader>
 
+          {checkingSlots ? (
+            <Flex m={8} justifyContent="center">
+              <Loading label="Checking availability" />
+            </Flex>
+          ) : (
             <TimeSlots
               pickedDay={pickedDay}
               slotSizeMinutes={slotDurationInMinutes}
               validator={timeSlotAvailability}
               pickTime={handlePickTime}
             />
-          </Popup>
-        ))}
+          )}
+        </Popup>
+      )}
 
       {showConfirm && (
         <Popup>

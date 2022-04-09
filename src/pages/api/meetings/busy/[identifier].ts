@@ -1,4 +1,5 @@
 import { withSentry } from '@sentry/nextjs'
+import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { TimeSlot } from '../../../../types/Meeting'
@@ -54,18 +55,22 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
             calendar.payload
           )
 
-          const externalSlots = await integration.getAvailability(
-            startDate!.toISOString(),
-            endDate!.toISOString(),
-            'primary'
-          )
-          busySlots.push(
-            ...externalSlots.map(it => ({
-              start: new Date(it.start),
-              end: new Date(it.end),
-              source: 'google',
-            }))
-          )
+          try {
+            const externalSlots = await integration.getAvailability(
+              startDate!.toISOString(),
+              endDate!.toISOString(),
+              'primary'
+            )
+            busySlots.push(
+              ...externalSlots.map(it => ({
+                start: new Date(it.start),
+                end: new Date(it.end),
+                source: 'google',
+              }))
+            )
+          } catch (e: any) {
+            Sentry.captureException(e)
+          }
         }
       }
 
@@ -75,7 +80,8 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       if (error instanceof AccountNotFoundError) {
         res.status(404).json({ error: error.message })
       }
-      console.error(error)
+      Sentry.captureException(error)
+      res.status(500).send(error)
       return
     }
   }
