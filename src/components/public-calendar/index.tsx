@@ -50,6 +50,7 @@ const PublicCalendar: React.FC = () => {
   const { currentAccount, logged } = useContext(AccountContext)
 
   const [account, setAccount] = useState(null as Account | null)
+  const [checkingSlots, setCheckingSlots] = useState(false)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
     null as InternalSchedule | null
   )
@@ -286,6 +287,7 @@ const PublicCalendar: React.FC = () => {
                 }}
                 isSchedulingExternal={isScheduling}
                 slotDurationInMinutes={selectedType.duration}
+                checkingSlots={checkingSlots}
                 timeSlotAvailability={validateSlot}
               />
             </Box>
