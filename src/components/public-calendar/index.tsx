@@ -25,6 +25,7 @@ import {
 import {
   AccountNotFoundError,
   MeetingWithYourselfError,
+  TimeNotAvailableError,
 } from '../../utils/errors'
 import { saveMeetingsScheduled } from '../../utils/storage'
 import { isProAccount } from '../../utils/subscription_manager'
@@ -49,6 +50,7 @@ const PublicCalendar: React.FC = () => {
   const { currentAccount, logged } = useContext(AccountContext)
 
   const [account, setAccount] = useState(null as Account | null)
+  const [checkingSlots, setCheckingSlots] = useState(false)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
     null as InternalSchedule | null
   )
@@ -163,7 +165,7 @@ const PublicCalendar: React.FC = () => {
       )
       await updateMeetings(account!.address)
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
-      fetchNotificationSubscriptions()
+      currentAccount && (await fetchNotificationSubscriptions())
       setLastScheduledMeeting(meeting)
       logEvent('Scheduled a meeting', {
         fromPublicCalendar: true,
@@ -182,6 +184,15 @@ const PublicCalendar: React.FC = () => {
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof TimeNotAvailableError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else throw e
     }
     setIsScheduling(false)
@@ -195,12 +206,13 @@ const PublicCalendar: React.FC = () => {
   }
 
   const updateMeetings = async (identifier: string) => {
+    setCheckingSlots(true)
     const monthStart = startOfMonth(currentMonth)
     const monthEnd = endOfMonth(currentMonth)
-
     const meetings = await getBusySlots(identifier, monthStart, monthEnd)
 
     setMeetings(meetings)
+    setCheckingSlots(false)
   }
 
   useEffect(() => {
@@ -224,7 +236,8 @@ const PublicCalendar: React.FC = () => {
       slot,
       meetings,
       account!.preferences!.availabilities,
-      Intl.DateTimeFormat().resolvedOptions().timeZone
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      account!.preferences!.timezone
     )
   }
 
@@ -275,6 +288,7 @@ const PublicCalendar: React.FC = () => {
                 }}
                 isSchedulingExternal={isScheduling}
                 slotDurationInMinutes={selectedType.duration}
+                checkingSlots={checkingSlots}
                 timeSlotAvailability={validateSlot}
               />
             </Box>
