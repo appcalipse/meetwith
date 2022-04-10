@@ -6,11 +6,7 @@ import {
   MeetingCreationRequest,
 } from '../../../../types/Meeting'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
-import {
-  getAccountFromDB,
-  initDB,
-  saveMeeting,
-} from '../../../../utils/database'
+import { initDB, saveMeeting } from '../../../../utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -19,9 +15,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (!req.session.account?.address) {
       const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
 
-      const meetingResult: DBSlotEnhanced = await saveMeeting(meeting)
+      try {
+        const meetingResult: DBSlotEnhanced = await saveMeeting(meeting)
 
-      res.status(200).json(meetingResult)
+        res.status(200).json(meetingResult)
+      } catch (e) {
+        res.status(409).send(e)
+      }
       return
     } else {
       res.status(503).send('You cant schedule a meeting as guest')

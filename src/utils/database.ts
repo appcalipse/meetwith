@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node'
 import { createClient } from '@supabase/supabase-js'
 import { addMinutes, isAfter } from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
   Encrypted,
@@ -40,6 +41,7 @@ import {
 import {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
+  isTimeInsideAvailabilities,
 } from './calendar_manager'
 import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
@@ -411,9 +413,14 @@ const saveMeeting = async (
   const existingAccounts = await getExistingAccountsFromDB(
     meeting.participants_mapping.map(p => p.account_address!)
   )
-  const ownerAccount =
+  const ownerParticipant =
     meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
     null
+
+  const ownerAccount = ownerParticipant
+    ? await getAccountFromDB(ownerParticipant.account_address!)
+    : null
+
   const schedulerAccount =
     meeting.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
@@ -428,15 +435,24 @@ const saveMeeting = async (
       ) {
         // only validate slot if meeting is being scheduled on someones calendar and not by itself
         if (
-          ownerAccount &&
-          ownerAccount.account_address === participant.account_address &&
-          ownerAccount.account_address !== schedulerAccount?.account_address &&
-          (await !isSlotFree(
+          ownerParticipant &&
+          ownerParticipant.account_address === participant.account_address &&
+          ownerParticipant.account_address !==
+            schedulerAccount?.account_address &&
+          ((await !isSlotFree(
             participant.account_address!,
             new Date(meeting.start),
             new Date(meeting.end),
             meeting.meetingTypeId
-          ))
+          )) ||
+            !isTimeInsideAvailabilities(
+              utcToZonedTime(
+                meeting.start,
+                ownerAccount!.preferences!.timezone!
+              ),
+              utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
+              ownerAccount!.preferences!.availabilities
+            ))
         ) {
           throw new TimeNotAvailableError()
         }
