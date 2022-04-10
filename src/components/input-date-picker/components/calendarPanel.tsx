@@ -9,7 +9,7 @@ import {
 } from '@chakra-ui/react'
 import { format, isSameDay, setMonth } from 'date-fns'
 import isBefore from 'date-fns/isBefore'
-import { RenderProps } from 'dayzed'
+import { DateObj, RenderProps } from 'dayzed'
 import React from 'react'
 
 import { DatepickerBackBtns, DatepickerForwardBtns } from './dateNavBtns'
@@ -62,6 +62,13 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({
               />
             </HStack>
             <Divider />
+            <SimpleGrid columns={7} spacing={1} textAlign="center" w="100%">
+              {calendar.weeks[0].map((dateObj, idx) => (
+                <Box key={idx}>
+                  {format((dateObj as DateObj).date, 'iiiiii')}
+                </Box>
+              ))}
+            </SimpleGrid>
             <SimpleGrid columns={7} spacing={1} textAlign="center">
               {calendar.weeks.map((week, weekIdx) => {
                 return week.map((dateObj, index) => {

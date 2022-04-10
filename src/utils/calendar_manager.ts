@@ -9,7 +9,7 @@ import {
   getYear,
   isAfter,
 } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
+import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import {
   decryptWithPrivateKey,
   Encrypted,
@@ -33,11 +33,11 @@ import {
 } from '../types/Meeting'
 import { Plan } from '../types/Subscription'
 import {
-  createMeeting,
-  createMeetingAsGuest,
   getAccount,
   getExistingAccounts,
   isSlotFree,
+  scheduleMeeting as apiScheduleMeeting,
+  scheduleMeetingAsGuest,
 } from './api_helper'
 import { appUrl } from './constants'
 import { decryptContent } from './cryptography'
@@ -172,28 +172,32 @@ const scheduleMeeting = async (
       content: privateInfo['content'],
     }
 
-    let slot: DBSlotEnhanced
-    if (schedulingType === SchedulingType.GUEST) {
-      slot = await createMeetingAsGuest(meeting)
-    } else {
-      slot = await createMeeting(meeting)
-    }
+    try {
+      let slot: DBSlotEnhanced
+      if (schedulingType === SchedulingType.GUEST) {
+        slot = await scheduleMeetingAsGuest(meeting)
+      } else {
+        slot = await apiScheduleMeeting(meeting)
+      }
 
-    if (source_account_address) {
-      const schedulerAccount = await getAccount(source_account_address!)
-      return await decryptMeeting(slot, schedulerAccount)
-    }
+      if (source_account_address) {
+        const schedulerAccount = await getAccount(source_account_address!)
+        return await decryptMeeting(slot, schedulerAccount)
+      }
 
-    return {
-      id: slot.id!,
-      ...meeting,
-      created_at: meeting.start,
-      participants: [],
-      content: '',
-      meeting_url: '',
-      start: meeting.start,
-      end: meeting.end,
-      meeting_info_file_path: slot.meeting_info_file_path,
+      return {
+        id: slot.id!,
+        ...meeting,
+        created_at: meeting.start,
+        participants: [],
+        content: '',
+        meeting_url: '',
+        start: meeting.start,
+        end: meeting.end,
+        meeting_info_file_path: slot.meeting_info_file_path,
+      }
+    } catch (error: any) {
+      throw error
     }
   } else {
     throw new TimeNotAvailableError()
@@ -284,6 +288,7 @@ const isSlotAvailable = (
   slotTime: Date,
   meetings: DBSlot[],
   availabilities: DayAvailability[],
+  userSchedulingTimezone: string,
   targetTimezone: string
 ): boolean => {
   const start = slotTime
@@ -292,10 +297,17 @@ const isSlotAvailable = (
     return false
   }
 
-  const startForTarget = utcToZonedTime(start, targetTimezone)
-  const end = addMinutes(startForTarget, slotDurationInMinutes)
+  const end = addMinutes(start, slotDurationInMinutes)
 
-  if (!isTimeInsideAvailabilities(startForTarget, end, availabilities)) {
+  const startOnUTC = zonedTimeToUtc(start, userSchedulingTimezone)
+  const startForTarget = utcToZonedTime(startOnUTC, targetTimezone)
+
+  const endOnUTC = zonedTimeToUtc(end, userSchedulingTimezone)
+  const endForTarget = utcToZonedTime(endOnUTC, targetTimezone)
+
+  if (
+    !isTimeInsideAvailabilities(startForTarget, endForTarget, availabilities)
+  ) {
     return false
   }
 
@@ -311,12 +323,12 @@ const isSlotAvailable = (
 }
 
 const isTimeInsideAvailabilities = (
-  start: Date,
-  end: Date,
-  availabilities: DayAvailability[]
+  startOnTargetTimezone: Date,
+  endOnTargetTimezone: Date,
+  targetAvailabilities: DayAvailability[]
 ): boolean => {
-  const startTime = format(start, 'HH:mm')
-  let endTime = format(end, 'HH:mm')
+  const startTime = format(startOnTargetTimezone, 'HH:mm')
+  let endTime = format(endOnTargetTimezone, 'HH:mm')
   if (endTime === '00:00') {
     endTime = '24:00'
   }
@@ -338,11 +350,11 @@ const isTimeInsideAvailabilities = (
 
   //After midnight
   if (compareTimes(startTime, endTime) > 0) {
-    endTime = `${getHours(end) + 24}:00`
+    endTime = `${getHours(endOnTargetTimezone) + 24}:00`
   }
 
-  for (const availability of availabilities) {
-    if (availability.weekday === getDay(start)) {
+  for (const availability of targetAvailabilities) {
+    if (availability.weekday === getDay(startOnTargetTimezone)) {
       for (const range of availability.ranges) {
         if (compareTimes(startTime, range.start) >= 0) {
           if (compareTimes(endTime, range.end) <= 0) {
