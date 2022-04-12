@@ -227,6 +227,12 @@ export const getGoogleAuthConnectUrl = async (): Promise<ConnectResponse> => {
   )) as ConnectResponse
 }
 
+export const getOffice365ConnectUrl = async (): Promise<ConnectResponse> => {
+  return (await internalFetch(
+    `/secure/calendar_integrations/office365/connect`
+  )) as ConnectResponse
+}
+
 export const login = async (accountAddress: string): Promise<Account> => {
   try {
     const signature = getSignature(accountAddress) || ''
