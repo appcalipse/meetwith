@@ -60,6 +60,14 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 Google
               </Button>
               <Button
+                onClick={selectOption(ConnectedCalendarProvider.OFFICE)}
+                leftIcon={<FaMicrosoft />}
+                variant="outline"
+                isLoading={loading === ConnectedCalendarProvider.OFFICE}
+              >
+                Office 365
+              </Button>
+              <Button
                 onClick={selectOption(ConnectedCalendarProvider.ICLOUD)}
                 leftIcon={<FaApple />}
                 variant="outline"
@@ -74,14 +82,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 disabled
               >
                 Outlook (soon)
-              </Button>
-              <Button
-                onClick={selectOption(ConnectedCalendarProvider.OFFICE)}
-                leftIcon={<FaMicrosoft />}
-                variant="outline"
-                disabled
-              >
-                Office 365 (soon)
               </Button>
             </HStack>
           </ModalBody>

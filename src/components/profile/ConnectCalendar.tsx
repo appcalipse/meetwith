@@ -22,6 +22,7 @@ import {
 import {
   deleteConnectedCalendar,
   getGoogleAuthConnectUrl,
+  getOffice365ConnectUrl,
   listConnectedCalendars,
 } from '../../utils/api_helper'
 import { isProAccount } from '../../utils/subscription_manager'
@@ -58,8 +59,12 @@ const ConnectCalendar = () => {
   const onSelect = async (provider: ConnectedCalendarProvider) => {
     switch (provider) {
       case ConnectedCalendarProvider.GOOGLE:
-        const { url } = await getGoogleAuthConnectUrl()
-        window.location.assign(url)
+        const { url: googleUrl } = await getGoogleAuthConnectUrl()
+        window.location.assign(googleUrl)
+        break
+      case ConnectedCalendarProvider.OFFICE:
+        const { url: officeUrl } = await getOffice365ConnectUrl()
+        window.location.assign(officeUrl)
         break
       default:
         throw new Error(`Invalid provider selected: ${provider}`)
