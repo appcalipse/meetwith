@@ -1,16 +1,12 @@
 import * as Sentry from '@sentry/browser'
-import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
-import { Auth, calendar_v3, google } from 'googleapis'
 
 import {
   ConnectedCalendarProvider,
   NewCalendarEventType,
 } from '../../types/CalendarConnections'
 import { MeetingCreationRequest } from '../../types/Meeting'
-import { apiUrl } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
 import { ellipsizeAddress } from '../user_manager'
-import { MWWGoogleAuth } from './google_auth'
 
 export interface Calendar {
   createEvent(
