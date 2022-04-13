@@ -71,9 +71,9 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 onClick={selectOption(ConnectedCalendarProvider.ICLOUD)}
                 leftIcon={<FaApple />}
                 variant="outline"
-                disabled
+                isLoading={loading === ConnectedCalendarProvider.ICLOUD}
               >
-                iCloud (soon)
+                iCloud
               </Button>
               <Button
                 onClick={selectOption(ConnectedCalendarProvider.OUTLOOK)}

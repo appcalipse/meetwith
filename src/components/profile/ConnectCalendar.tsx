@@ -66,6 +66,11 @@ const ConnectCalendar = () => {
         const { url: officeUrl } = await getOffice365ConnectUrl()
         window.location.assign(officeUrl)
         break
+      case ConnectedCalendarProvider.ICLOUD:
+        ///const { url: iCloudUrl } = await getOffice365ConnectUrl()
+        //window.location.assign(officeUrl)
+        // TODO: add logic to collect user and password here
+        break
       default:
         throw new Error(`Invalid provider selected: ${provider}`)
     }
