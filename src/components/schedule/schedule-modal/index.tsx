@@ -208,7 +208,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         toast({
           title: 'Failed to schedule meeting',
           description:
-            'There was an issue scheduling your meeting. Please get in touch with us',
+            'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
           status: 'error',
           duration: 5000,
           position: 'top',
