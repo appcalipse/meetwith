@@ -1,4 +1,5 @@
 import { withSentry } from '@sentry/nextjs'
+import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import {
@@ -11,6 +12,10 @@ import {
   initDB,
   saveMeeting,
 } from '../../../../utils/database'
+import {
+  MeetingCreationError,
+  TimeNotAvailableError,
+} from '../../../../utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -38,7 +43,14 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
       res.status(200).json(meetingResult)
     } catch (e) {
-      res.status(500).send(e)
+      if (e instanceof TimeNotAvailableError) {
+        res.status(409).send(e)
+      } else if (e instanceof MeetingCreationError) {
+        res.status(412).send(e)
+      } else {
+        Sentry.captureException(e)
+        res.status(500).send(e)
+      }
     }
 
     return

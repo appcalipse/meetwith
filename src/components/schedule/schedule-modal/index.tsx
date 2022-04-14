@@ -30,6 +30,7 @@ import { DBSlot, SchedulingType } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import { scheduleMeeting } from '../../../utils/calendar_manager'
 import {
+  MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '../../../utils/errors'
@@ -198,6 +199,16 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         toast({
           title: 'Failed to schedule meeting',
           description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
           status: 'error',
           duration: 5000,
           position: 'top',
