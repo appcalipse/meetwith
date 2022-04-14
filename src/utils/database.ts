@@ -514,8 +514,13 @@ const saveMeeting = async (
     db_slot: meetingResponse,
     meeting,
   }
-  await notifyForNewMeeting(meetingICS)
-  await syncCalendarForMeeting(meeting)
+
+  try {
+    await notifyForNewMeeting(meetingICS)
+    await syncCalendarForMeeting(meeting)
+  } catch (err) {
+    Sentry.captureException(err)
+  }
 
   return meetingResponse
 }
