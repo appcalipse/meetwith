@@ -15,6 +15,7 @@ import {
   AccountNotFoundError,
   ApiFetchError,
   InvalidSessionError,
+  MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
 import { getSignature } from './storage'
@@ -83,6 +84,8 @@ export const scheduleMeeting = async (
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
+    } else if (e.status && e.status === 412) {
+      throw new MeetingCreationError()
     }
     throw e
   }
