@@ -24,6 +24,7 @@ import {
 } from '../../utils/calendar_manager'
 import {
   AccountNotFoundError,
+  MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '../../utils/errors'
@@ -188,6 +189,16 @@ const PublicCalendar: React.FC = () => {
         toast({
           title: 'Failed to schedule meeting',
           description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue scheduling your meeting. Please get in touch with us',
           status: 'error',
           duration: 5000,
           position: 'top',
