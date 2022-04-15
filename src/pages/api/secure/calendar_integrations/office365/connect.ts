@@ -38,7 +38,7 @@ export default async function handler(
       response_type: 'code',
       scope: scopes.join(' '),
       client_id: credentials.client_id,
-      redirect_uri: `${apiUrl}/api/integrations/office365calendar/callbac`,
+      redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
       state,
     }
     const query = stringify(params)
