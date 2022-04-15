@@ -4,6 +4,7 @@ import {
   ConnectedCalendarCorePayload,
   ConnectedCalendarProvider,
 } from '../../../../../types/CalendarConnections'
+import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
 import { apiUrl } from '../../../../../utils/constants'
 import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
 
@@ -14,10 +15,10 @@ const credentials = {
 
 const scopes = ['offline_access', 'Calendars.Read', 'Calendars.ReadWrite']
 
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse
-) {
+): Promise<void> {
   const { code, error } = req.query
 
   if (typeof code !== 'string') {
@@ -40,7 +41,7 @@ export default async function handler(
     grant_type: 'authorization_code',
     code,
     scope: scopes.join(' '),
-    redirect_uri: `${apiUrl}/api/integrations/office365calendar/callback`,
+    redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
     client_secret: credentials.client_secret,
   })
 
@@ -58,7 +59,11 @@ export default async function handler(
   const responseBody = await response.json()
 
   if (!response.ok) {
-    return res.redirect('/apps/installed?error=' + JSON.stringify(responseBody))
+    res.redirect(
+      '/dashboard/calendars?calendarResult=error&error=' +
+        JSON.stringify(responseBody)
+    )
+    return
   }
 
   const whoami = await fetch('https://graph.microsoft.com/v1.0/me', {
@@ -83,3 +88,5 @@ export default async function handler(
   await addOrUpdateConnectedCalendar(req.session.account.address, payload)
   res.redirect(`/dashboard/calendars?calendarResult=success`)
 }
+
+export default withSessionRoute(handler)

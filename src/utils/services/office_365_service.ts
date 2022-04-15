@@ -104,7 +104,7 @@ export default class Office365CalendarService implements Calendar {
           credential.expiry_date = Math.round(
             new Date().getTime() / 1000 + responseBody.expires_in
           )
-
+          console.log('CHANGE', responseBody)
           return changeConnectedCalendarSync(
             address,
             email,
@@ -140,6 +140,8 @@ export default class Office365CalendarService implements Calendar {
       const accessToken = await this.auth.getToken()
 
       const calendarId = '' // required?
+      const body = JSON.stringify(this.translateEvent(owner, details))
+      console.log('request', body)
 
       const response = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendar/${calendarId}events`,
@@ -149,7 +151,7 @@ export default class Office365CalendarService implements Calendar {
             Authorization: 'Bearer ' + accessToken,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(this.translateEvent(owner, details)),
+          body,
         }
       )
 
@@ -183,10 +185,12 @@ export default class Office365CalendarService implements Calendar {
           : 'other participants'
       }`,
       body: {
-        contentType: 'TEXT',
+        contentType: 'HTML',
         content: `${
           details.content ? details.content + '\n' : ''
-        }Your meeting will happen at ${details.meeting_url}`,
+        }Your meeting will happen at <a hred="${details.meeting_url}">${
+          details.meeting_url
+        }</a>`,
       },
       start: {
         dateTime: new Date(details.start).toISOString(),
@@ -203,7 +207,15 @@ export default class Office365CalendarService implements Calendar {
       //     },
       //     type: "required",
       //   })),
-      location: 'Online @ Meet With Wallet',
+      location: {
+        displayName: 'Online @ Meet With Wallet',
+      },
+      isOnlineMeeting: true,
+      onlineMeetingUrl: details.meeting_url,
+      onlineMeeting: {
+        conferenceId: `${new Date().getTime()}`,
+        joinUrl: details.meeting_url,
+      },
     }
   }
 
