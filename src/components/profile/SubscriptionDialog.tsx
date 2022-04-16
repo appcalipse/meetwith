@@ -31,6 +31,7 @@ import {
   supportedChains,
 } from '../../types/chains'
 import { Plan, Subscription } from '../../types/Subscription'
+import { logEvent } from '../../utils/analytics'
 import { YEAR_DURATION_IN_SECONDS } from '../../utils/constants'
 import { checkValidDomain } from '../../utils/rpc_helper_front'
 import {
@@ -192,6 +193,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
       setCheckingCanSubscribe(false)
       return
     }
+
+    logEvent('Started subscription', { currentChain, currentToken, domain })
+
     setNeedsAproval(false)
     try {
       if (
@@ -231,6 +235,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
       setWaitingConfirmation(false)
       setCheckingCanSubscribe(false)
       onSuccessPurchase && onSuccessPurchase(sub!)
+      logEvent('Subscription', { currentChain, currentToken, domain })
       onDialogClose()
     } catch (e: any) {
       setTxRunning(false)
@@ -248,6 +253,10 @@ const SubscriptionDialog: React.FC<IProps> = ({
       updateSubscriptionDetails()
     }
   }
+
+  useEffect(() => {
+    isDialogOpen && logEvent('Opened suscription dialog')
+  }, [isDialogOpen])
 
   useEffect(() => {
     updateSubscriptionDetails()
