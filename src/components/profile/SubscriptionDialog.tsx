@@ -255,7 +255,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   useEffect(() => {
-    isDialogOpen && logEvent('Opened suscription dialog')
+    isDialogOpen && logEvent('Opened subscription dialog')
   }, [isDialogOpen])
 
   useEffect(() => {
