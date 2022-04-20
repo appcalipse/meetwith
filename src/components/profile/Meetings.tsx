@@ -56,7 +56,7 @@ const Meetings: React.FC = () => {
 
   if (firstFetch) {
     content = (
-      <VStack alignItems="center">
+      <VStack alignItems="center" mb={8}>
         <Image src="/assets/schedule.svg" height="200px" alt="Loading..." />
         <HStack pt={8}>
           <Spinner />
@@ -66,7 +66,7 @@ const Meetings: React.FC = () => {
     )
   } else if (meetings.length === 0) {
     content = (
-      <VStack alignItems="center">
+      <VStack alignItems="center" mb={8}>
         <Image src="/assets/no_meetings.svg" height="200px" alt="Loading..." />
         <HStack pt={8}>
           <Text fontSize="lg">You have no scheduled meetings</Text>
@@ -75,7 +75,7 @@ const Meetings: React.FC = () => {
     )
   } else {
     content = (
-      <VStack>
+      <VStack mb={8}>
         {meetings.map(meeting => (
           <MeetingCard
             key={meeting.id}
