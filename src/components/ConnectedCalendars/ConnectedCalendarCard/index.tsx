@@ -12,8 +12,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import React, { useState } from 'react'
-import { ChangeEvent } from 'react'
+import React, { ChangeEvent, useState } from 'react'
 import { IconType } from 'react-icons'
 import { FaUnlink } from 'react-icons/fa'
 
@@ -54,9 +53,15 @@ const ConnectedCalendarCard: React.FC<{
       borderRadius="lg"
       justifyContent="space-between"
       flexWrap="wrap"
-      minWidth="360px"
+      minWidth="335px"
     >
-      <HStack justifyContent="space-between" mb="8">
+      <HStack
+        flexDirection={{ base: 'column-reverse', md: 'row' }}
+        alignItems={{ base: 'flex-start', md: 'center' }}
+        justifyContent="space-between"
+        mb="8"
+        gridGap={4}
+      >
         <HStack>
           <Circle
             size="60px"

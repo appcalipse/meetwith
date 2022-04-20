@@ -87,7 +87,13 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
   return (
-    <HStack alignItems="start" minH="40px" width="100%">
+    <HStack
+      alignItems="start"
+      minH="40px"
+      width="100%"
+      flexDirection={{ base: 'column', md: 'row' }}
+      gridGap={2}
+    >
       <Checkbox
         pt={2}
         colorScheme="orange"
@@ -135,6 +141,7 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
 
       {isSelected && !times.some(time => time.end === '24:00') && (
         <IconButton
+          margin="0"
           color={iconColor}
           aria-label="add"
           icon={<FaPlus size={18} />}
