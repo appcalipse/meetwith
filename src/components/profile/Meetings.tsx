@@ -124,21 +124,32 @@ const Meetings: React.FC = () => {
 
   return (
     <Flex direction={'column'}>
-      <Heading fontSize="2xl">My Meetings</Heading>
-      <ScheduleModal isOpen={isOpen} onClose={afterClose} onOpen={onOpen} />
-      <Box>
+      <HStack justifyContent="center" alignItems="flex-start" mb={4}>
+        <Heading flex={1} fontSize="2xl">
+          My Meetings
+        </Heading>
         <Button
           onClick={onOpen}
           colorScheme="orange"
-          isFullWidth={false}
-          float={'right'}
+          display={{ base: 'none', md: 'block' }}
+          mt={{ base: 4, md: 0 }}
           mb={4}
           leftIcon={<FaPlus />}
         >
           New meeting
         </Button>
-      </Box>
+      </HStack>
+      <Button
+        onClick={onOpen}
+        colorScheme="orange"
+        display={{ base: 'block', md: 'none' }}
+        mb={8}
+        leftIcon={<FaPlus />}
+      >
+        New meeting
+      </Button>
       {content}
+      <ScheduleModal isOpen={isOpen} onClose={afterClose} onOpen={onOpen} />
     </Flex>
   )
 }

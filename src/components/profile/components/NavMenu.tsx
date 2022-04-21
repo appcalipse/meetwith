@@ -67,7 +67,7 @@ export const NavMenu: React.FC<{
   const toast = useToast()
 
   const { calendarResult } = router.query
-  const mobileMenuBg = useColorModeValue('white', 'gray.800')
+  const menuBg = useColorModeValue('white', 'gray.800')
 
   useEffect(() => {
     if (calendarResult === 'error') {
@@ -107,7 +107,7 @@ export const NavMenu: React.FC<{
   }
 
   return (
-    <Box>
+    <Box borderRadius={{ base: 0, md: 16 }} bgColor={menuBg}>
       {!isMenuOpen ? (
         <VStack
           alignItems="center"
@@ -157,6 +157,7 @@ export const NavMenu: React.FC<{
       ) : (
         <Slide direction="right" in={isMenuOpen}>
           <VStack
+            bgColor={menuBg}
             alignItems="center"
             spacing={8}
             py={12}
@@ -167,8 +168,6 @@ export const NavMenu: React.FC<{
             width={'100vw'}
             height={'100vh'}
             overflowY="auto"
-            // TO-DO: replace by new dark/light color scheme
-            backgroundColor={mobileMenuBg}
           >
             <VStack width="100%" textAlign="center">
               <Box width="120px" height="120px" mb={2}>

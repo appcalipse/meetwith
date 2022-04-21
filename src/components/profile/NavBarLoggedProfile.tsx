@@ -1,5 +1,5 @@
 import { useColorModeValue } from '@chakra-ui/color-mode'
-import { Box, Flex, Image, Text } from '@chakra-ui/react'
+import { Box, Flex, Image, Text, useBreakpointValue } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
@@ -27,6 +27,16 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
   const openMenu = () => {
     setNavOpen(true)
   }
+
+  const variant = useBreakpointValue({ base: 'base', md: 'md' })
+
+  const action = () => {
+    if (variant === 'base') {
+      openMenu()
+    } else {
+      goToDashboard()
+    }
+  }
   const closeMenu = () => {
     setNavOpen(false)
   }
@@ -34,14 +44,13 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
   return (
     <Flex>
       <Flex
-        display={{ base: 'none', md: 'flex' }}
         borderRadius={6}
         px={4}
         py={2}
         shadow={'md'}
         justifyContent="center"
         alignItems="center"
-        onClick={goToDashboard}
+        onClick={action}
         cursor="pointer"
         _hover={{
           bg: useColorModeValue('gray.100', 'gray.500'),
@@ -50,7 +59,11 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         transition="all 0.3s"
         backgroundColor={useColorModeValue('white', 'gray.600')}
       >
-        <Text mr={2} fontSize={'sm'} display={'inline-block'}>
+        <Text
+          mr={2}
+          fontSize={'sm'}
+          display={{ base: 'none', md: 'inline-block' }}
+        >
           {accountName}
         </Text>
         <Box width="24px" height="24px">
@@ -69,38 +82,6 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         </Box>
       </Flex>
 
-      <Flex
-        display={{ base: 'flex', md: 'none' }}
-        borderRadius={6}
-        px={4}
-        py={2}
-        shadow={'md'}
-        justifyContent="center"
-        alignItems="center"
-        onClick={openMenu}
-        cursor="pointer"
-        _hover={{
-          bg: useColorModeValue('gray.100', 'gray.500'),
-          boxShadow: 'lg',
-        }}
-        transition="all 0.3s"
-        backgroundColor={useColorModeValue('white', 'gray.600')}
-      >
-        <Box width="24px" height="24px">
-          {props.account.avatar ? (
-            <Image
-              src={props.account.avatar}
-              alt="Account avatar"
-              width="24px"
-              height="24px"
-              borderRadius="50%"
-              objectFit="cover"
-            />
-          ) : (
-            <Jazzicon address={props.account.address} />
-          )}
-        </Box>
-      </Flex>
       {navOpen && (
         <NavMenu
           currentSection={section as EditMode}

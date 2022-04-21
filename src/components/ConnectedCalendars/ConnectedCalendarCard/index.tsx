@@ -55,13 +55,7 @@ const ConnectedCalendarCard: React.FC<{
       flexWrap="wrap"
       minWidth="335px"
     >
-      <HStack
-        flexDirection={{ base: 'column-reverse', md: 'row' }}
-        alignItems={{ base: 'flex-start', md: 'center' }}
-        justifyContent="space-between"
-        mb="8"
-        gridGap={4}
-      >
+      <HStack justifyContent="space-between" mb="8">
         <HStack>
           <Circle
             size="60px"
@@ -74,21 +68,20 @@ const ConnectedCalendarCard: React.FC<{
             <Heading fontSize="xl" color={textColor}>
               {props.name}
             </Heading>
-            <Text size="xs" color={textColor} isTruncated maxWidth="200">
+            <Text size="xs" color={textColor} isTruncated>
               {props.email}
             </Text>
           </VStack>
         </HStack>
-        <Stack>
-          <Button
-            onClick={onOpen}
-            leftIcon={<FaUnlink />}
-            variant="link"
-            color={textColor}
-          >
-            Disconnect
-          </Button>
-        </Stack>
+        <Button
+          display={{ base: 'none', md: 'block' }}
+          onClick={onOpen}
+          leftIcon={<FaUnlink />}
+          variant="link"
+          color={textColor}
+        >
+          Disconnect
+        </Button>
         <DisconnectCalendarDialog
           isOpen={isOpen}
           onClose={onClose}
@@ -110,6 +103,16 @@ const ConnectedCalendarCard: React.FC<{
         </Text>
         {isUpdating ? <Spinner /> : false}
       </HStack>
+
+      <Button
+        display={{ base: 'block', md: 'none' }}
+        onClick={onOpen}
+        leftIcon={<FaUnlink />}
+        variant="outline"
+        color={textColor}
+      >
+        Disconnect
+      </Button>
     </Stack>
   )
 }
