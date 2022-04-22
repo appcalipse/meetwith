@@ -1,6 +1,5 @@
-import { Box, Flex, HStack, useToast } from '@chakra-ui/react'
-import { useRouter } from 'next/router'
-import React, { useContext, useEffect } from 'react'
+import { Box, Flex, HStack } from '@chakra-ui/react'
+import React, { useContext } from 'react'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { EditMode } from '../../types/Dashboard'
@@ -37,10 +36,10 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
 
   return currentAccount ? (
     <HStack alignItems="start" width="100%" flexWrap="wrap">
-      <Box flex={4}>
+      <Box flex={{ base: '0', md: '4' }} mr={{ base: 0, md: 18 }}>
         <NavMenu currentSection={currentSection} />
       </Box>
-      <Box flex={8}>{renderSelected()}</Box>
+      <Box flex={{ base: '1', md: '8' }}>{renderSelected()}</Box>
     </HStack>
   ) : (
     <Flex
