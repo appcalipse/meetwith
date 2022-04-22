@@ -12,8 +12,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import React, { useState } from 'react'
-import { ChangeEvent } from 'react'
+import React, { ChangeEvent, useState } from 'react'
 import { IconType } from 'react-icons'
 import { FaUnlink } from 'react-icons/fa'
 
@@ -54,7 +53,7 @@ const ConnectedCalendarCard: React.FC<{
       borderRadius="lg"
       justifyContent="space-between"
       flexWrap="wrap"
-      minWidth="360px"
+      minWidth="335px"
     >
       <HStack justifyContent="space-between" mb="8">
         <HStack>
@@ -69,21 +68,20 @@ const ConnectedCalendarCard: React.FC<{
             <Heading fontSize="xl" color={textColor}>
               {props.name}
             </Heading>
-            <Text size="xs" color={textColor} isTruncated maxWidth="200">
+            <Text size="xs" color={textColor} isTruncated>
               {props.email}
             </Text>
           </VStack>
         </HStack>
-        <Stack>
-          <Button
-            onClick={onOpen}
-            leftIcon={<FaUnlink />}
-            variant="link"
-            color={textColor}
-          >
-            Disconnect
-          </Button>
-        </Stack>
+        <Button
+          display={{ base: 'none', md: 'block' }}
+          onClick={onOpen}
+          leftIcon={<FaUnlink />}
+          variant="link"
+          color={textColor}
+        >
+          Disconnect
+        </Button>
         <DisconnectCalendarDialog
           isOpen={isOpen}
           onClose={onClose}
@@ -105,6 +103,16 @@ const ConnectedCalendarCard: React.FC<{
         </Text>
         {isUpdating ? <Spinner /> : false}
       </HStack>
+
+      <Button
+        display={{ base: 'block', md: 'none' }}
+        onClick={onOpen}
+        leftIcon={<FaUnlink />}
+        variant="outline"
+        color={textColor}
+      >
+        Disconnect
+      </Button>
     </Stack>
   )
 }
