@@ -1,5 +1,5 @@
 import { Auth } from 'googleapis'
-import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
+import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
 export interface ConnectResponse {
   url: string
@@ -8,15 +8,15 @@ export interface ConnectResponse {
 export enum ConnectedCalendarProvider {
   GOOGLE = 'Google',
   ICLOUD = 'iCloud',
-  OUTLOOK = 'Outlook',
   OFFICE = 'Office 365',
+  WEBDAV = 'Webdav',
 }
 
 export const ConnectedCalendarIcons = {
   [ConnectedCalendarProvider.GOOGLE]: FaGoogle,
   [ConnectedCalendarProvider.ICLOUD]: FaApple,
   [ConnectedCalendarProvider.OFFICE]: FaMicrosoft,
-  [ConnectedCalendarProvider.OUTLOOK]: FaMicrosoft,
+  [ConnectedCalendarProvider.WEBDAV]: FaCalendarAlt,
 }
 
 export interface ConnectedCalendarCore {
@@ -26,7 +26,7 @@ export interface ConnectedCalendarCore {
 }
 
 export interface ConnectedCalendarCorePayload extends ConnectedCalendarCore {
-  payload: Auth.Credentials
+  payload: any
 }
 
 export interface ConnectedCalendar extends ConnectedCalendarCorePayload {
@@ -34,6 +34,11 @@ export interface ConnectedCalendar extends ConnectedCalendarCorePayload {
   account_address: string
   updated?: Date
   created: Date
+  webdav?: {
+    url: string
+    user: string
+    secret: string
+  }
 }
 
 export type NewCalendarEventType = {

@@ -9,28 +9,23 @@ import {
   createAccount,
   createCalendarObject,
   DAVAccount,
-  deleteCalendarObject,
+  DAVCalendar,
   fetchCalendarObjects,
   fetchCalendars,
   getBasicAuthHeaders,
-  updateCalendarObject,
 } from 'tsdav'
 import { v4 as uuidv4 } from 'uuid'
 
-import {
-  ConnectedCalendarProvider,
-  NewCalendarEventType,
-} from '../../types/CalendarConnections'
+import { NewCalendarEventType } from '../../types/CalendarConnections'
 import { MeetingCreationRequest } from '../../types/Meeting'
-import { apiUrl } from '../constants'
-import { changeConnectedCalendarSync } from '../database'
 import { ellipsizeAddress } from '../user_manager'
-import { MWWGoogleAuth } from './google_auth'
 
 export const CALDAV_CALENDAR_TYPE = 'caldav'
 
 import toArray from 'dayjs/plugin/toArray'
 import utc from 'dayjs/plugin/utc'
+
+import { decryptContent } from '../cryptography'
 dayjs.extend(toArray)
 dayjs.extend(utc)
 
@@ -96,7 +91,7 @@ export interface CaldavCredentials {
   password: string
 }
 
-export default class AppleCalendarService implements Calendar {
+export default class WebdavCalendarService implements Calendar {
   private url = ''
   private credentials: Record<string, string> = {}
   private headers: Record<string, string> = {}
@@ -105,19 +100,22 @@ export default class AppleCalendarService implements Calendar {
     address: string,
     email: string,
     credential: CaldavCredentials,
-    url?: string
+    encripted = true
   ) {
-    // todo make sure that this is encrypted
-    const {
+    const symetricKey = process.env.SYMETRIC_KEY!
+
+    const { username, password, url } =
+      typeof credential === 'string' ? JSON.parse(credential) : credential
+
+    this.url = url
+    this.credentials = {
       username,
-      password,
-      url: credentialURL,
-    } = typeof credential === 'string' ? JSON.parse(credential) : credential
-
-    this.url = url || credentialURL
-
-    this.credentials = { username, password }
-    this.headers = getBasicAuthHeaders({ username, password })
+      password: !encripted ? password : decryptContent(symetricKey, password),
+    }
+    this.headers = getBasicAuthHeaders({
+      username,
+      password: this.credentials.password,
+    })
   }
 
   /**
@@ -133,6 +131,8 @@ export default class AppleCalendarService implements Calendar {
   ): Promise<NewCalendarEventType> {
     try {
       const calendars = await this.listCalendars()
+
+      console.log('calendars', calendars)
 
       const uid = uuidv4()
       const otherParticipants = [
@@ -156,11 +156,15 @@ export default class AppleCalendarService implements Calendar {
             ? otherParticipants.join(', ')
             : 'other participants'
         }`,
+        url: details.meeting_url,
         description: `${
           details.content ? details.content + '\n' : ''
         }Your meeting will happen at ${details.meeting_url}`,
         location: 'Online @ Meet With Wallet',
-        //organizer: { name:  },
+        organizer: {
+          name: 'Meet With Wallet',
+          email: 'contact@meetwithwallet.xyz',
+        },
         /** according to https://datatracker.ietf.org/doc/html/rfc2446#section-3.2.1, in a published iCalendar component.
          * "Attendees" MUST NOT be present
          * `attendees: this.getAttendees(event.attendees),`
@@ -169,16 +173,25 @@ export default class AppleCalendarService implements Calendar {
 
       if (error || !iCalString) throw new Error('Error creating iCalString')
 
+      console.log('ical', iCalString)
+
       // We create the event directly on iCal
       const responses = await Promise.all(
         calendars.map(calendar =>
+          // this.client.createCalendarObject({
+          //   calendar,
+          //   filename: `${uid}.ics`,
+          //   // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
+          //   iCalString: iCalString.replace(/METHOD:[^\r\n]+\r\n/g, ''),
+          //   headers: this.headers,
+          // })
+
           createCalendarObject({
-            calendar: {
-              url: calendar.externalId,
-            },
+            calendar,
             filename: `${uid}.ics`,
             // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-            iCalString: iCalString.replace(/METHOD:[^\r\n]+\r\n/g, ''),
+            //iCalString: 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//ZContent.net//Zap Calendar 1.0//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nBEGIN:VEVENT\nSUMMARY:Abraham Lincoln\nUID:c7614cff-3549-4a00-9152-d25cc1fe077d\nSEQUENCE:0\nSTATUS:CONFIRMED\nTRANSP:TRANSPARENT\nRRULE:FREQ=YEARLY;INTERVAL=1;BYMONTH=2;BYMONTHDAY=12\nDTSTART:2022020422\nDTEND:20220422\nDTSTAMP:20220421T170000\nCATEGORIES:U.S. Presidents,Civil War People\nLOCATION:Hodgenville, Kentucky\nGEO:37.5739497;-85.7399606\nDESCRIPTION:Born February 12, 1809\nSixteenth President (1861-1865)\n\n\n\n \nhttp://AmericanHistoryCalendar.com\nURL:http://americanhistorycalendar.com/peoplecalendar/1,328-abraham-lincol\n n\nEND:VEVENT\nEND:VCALENDAR',
+            iCalString,
             headers: this.headers,
           })
         )
@@ -187,7 +200,7 @@ export default class AppleCalendarService implements Calendar {
       if (responses.some(r => !r.ok)) {
         throw new Error(
           `Error creating event: ${(
-            await Promise.all(responses.map(r => r.text()))
+            await Promise.all(responses.map(r => JSON.stringify(r.statusText)))
           ).join(', ')}`
         )
       }
@@ -247,7 +260,7 @@ export default class AppleCalendarService implements Calendar {
     return Promise.resolve(events)
   }
 
-  async listCalendars(): Promise<IntegrationCalendar[]> {
+  async listCalendars() {
     try {
       const account = await this.getAccount()
 
@@ -256,20 +269,19 @@ export default class AppleCalendarService implements Calendar {
         headers: this.headers,
       })
 
-      return calendars.reduce<IntegrationCalendar[]>(
-        (newCalendars, calendar) => {
-          if (!calendar.components?.includes('VEVENT')) return newCalendars
+      // return calendars;
+      return calendars.reduce<DAVCalendar[]>((newCalendars, calendar) => {
+        if (!calendar.components?.includes('VEVENT')) return newCalendars
 
-          newCalendars.push({
-            externalId: calendar.url,
-            name: calendar.displayName ?? '',
-            primary: false,
-            integration: 'Apple',
-          })
-          return newCalendars
-        },
-        []
-      )
+        // newCalendars.push({
+        //   externalId: calendar.url,
+        //   name: calendar.displayName ?? '',
+        //   primary: false,
+        //   integration: 'Apple',
+        // })
+        newCalendars.push(calendar)
+        return newCalendars
+      }, [])
     } catch (reason) {
       console.error(reason)
 

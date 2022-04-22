@@ -1,19 +1,27 @@
 import {
   Button,
+  FormControl,
+  FormLabel,
   Heading,
   HStack,
   Image,
+  Input,
+  Link,
   Modal,
   ModalBody,
   ModalCloseButton,
   ModalContent,
   ModalHeader,
   ModalOverlay,
+  Text,
+  useToast,
+  VStack,
 } from '@chakra-ui/react'
 import { useState } from 'react'
-import { FaApple, FaMicrosoft } from 'react-icons/fa'
+import { FaApple, FaCalendarAlt, FaMicrosoft } from 'react-icons/fa'
 
 import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
+import WebDavDetailsPanel from './WebDavCalendarDetail'
 
 interface ConnectCalendarProps {
   isOpen: boolean
@@ -29,11 +37,19 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   const [loading, setLoading] = useState<
     ConnectedCalendarProvider | undefined
   >()
+  const [selecteProvider, setSelectedProvider] = useState<
+    ConnectedCalendarProvider | undefined
+  >()
   const selectOption = (provider: ConnectedCalendarProvider) => async () => {
     setLoading(provider)
     await onSelect(provider)
+    setSelectedProvider(provider)
     setLoading(undefined)
   }
+
+  const toast = useToast()
+
+  const onWebdavSuccess = () => {}
 
   return (
     <Modal
@@ -50,40 +66,70 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <HStack p="10" justifyContent="center">
-              <Button
-                onClick={selectOption(ConnectedCalendarProvider.GOOGLE)}
-                leftIcon={<Image src="/assets/google.svg" size="24px" />}
-                variant="outline"
-                isLoading={loading === ConnectedCalendarProvider.GOOGLE}
+            <VStack>
+              <HStack p="10" justifyContent="center">
+                <Button
+                  onClick={selectOption(ConnectedCalendarProvider.GOOGLE)}
+                  leftIcon={<Image src="/assets/google.svg" size="24px" />}
+                  variant="outline"
+                  isLoading={loading === ConnectedCalendarProvider.GOOGLE}
+                >
+                  Google
+                </Button>
+                <Button
+                  onClick={selectOption(ConnectedCalendarProvider.OFFICE)}
+                  leftIcon={<FaMicrosoft />}
+                  variant="outline"
+                  isLoading={loading === ConnectedCalendarProvider.OFFICE}
+                >
+                  Office 365
+                </Button>
+                <Button
+                  onClick={selectOption(ConnectedCalendarProvider.ICLOUD)}
+                  leftIcon={<FaApple />}
+                  variant={
+                    selecteProvider === ConnectedCalendarProvider.ICLOUD
+                      ? 'solid'
+                      : 'outline'
+                  }
+                  isLoading={loading === ConnectedCalendarProvider.ICLOUD}
+                >
+                  iCloud
+                </Button>
+                <Button
+                  onClick={selectOption(ConnectedCalendarProvider.WEBDAV)}
+                  leftIcon={<FaCalendarAlt />}
+                  variant={
+                    selecteProvider === ConnectedCalendarProvider.WEBDAV
+                      ? 'solid'
+                      : 'outline'
+                  }
+                  isLoading={loading === ConnectedCalendarProvider.WEBDAV}
+                >
+                  Webdav
+                </Button>
+              </HStack>
+              <VStack
+                hidden={selecteProvider !== ConnectedCalendarProvider.ICLOUD}
+                p="10"
+                pt="0"
               >
-                Google
-              </Button>
-              <Button
-                onClick={selectOption(ConnectedCalendarProvider.OFFICE)}
-                leftIcon={<FaMicrosoft />}
-                variant="outline"
-                isLoading={loading === ConnectedCalendarProvider.OFFICE}
+                <WebDavDetailsPanel
+                  isApple={true}
+                  onSuccess={onWebdavSuccess}
+                />
+              </VStack>
+              <VStack
+                hidden={selecteProvider !== ConnectedCalendarProvider.WEBDAV}
+                p="10"
+                pt="0"
               >
-                Office 365
-              </Button>
-              <Button
-                onClick={selectOption(ConnectedCalendarProvider.ICLOUD)}
-                leftIcon={<FaApple />}
-                variant="outline"
-                isLoading={loading === ConnectedCalendarProvider.ICLOUD}
-              >
-                iCloud
-              </Button>
-              <Button
-                onClick={selectOption(ConnectedCalendarProvider.OUTLOOK)}
-                leftIcon={<FaMicrosoft />}
-                variant="outline"
-                disabled
-              >
-                Outlook (soon)
-              </Button>
-            </HStack>
+                <WebDavDetailsPanel
+                  isApple={false}
+                  onSuccess={onWebdavSuccess}
+                />
+              </VStack>
+            </VStack>
           </ModalBody>
         </ModalContent>
       </ModalOverlay>
