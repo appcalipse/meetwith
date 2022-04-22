@@ -56,7 +56,7 @@ const Meetings: React.FC = () => {
 
   if (firstFetch) {
     content = (
-      <VStack alignItems="center">
+      <VStack alignItems="center" mb={8}>
         <Image src="/assets/schedule.svg" height="200px" alt="Loading..." />
         <HStack pt={8}>
           <Spinner />
@@ -66,7 +66,7 @@ const Meetings: React.FC = () => {
     )
   } else if (meetings.length === 0) {
     content = (
-      <VStack alignItems="center">
+      <VStack alignItems="center" mb={8}>
         <Image src="/assets/no_meetings.svg" height="200px" alt="Loading..." />
         <HStack pt={8}>
           <Text fontSize="lg">You have no scheduled meetings</Text>
@@ -75,7 +75,7 @@ const Meetings: React.FC = () => {
     )
   } else {
     content = (
-      <VStack>
+      <VStack mb={8}>
         {meetings.map(meeting => (
           <MeetingCard
             key={meeting.id}
@@ -124,21 +124,32 @@ const Meetings: React.FC = () => {
 
   return (
     <Flex direction={'column'}>
-      <Heading fontSize="2xl">My Meetings</Heading>
-      <ScheduleModal isOpen={isOpen} onClose={afterClose} onOpen={onOpen} />
-      <Box>
+      <HStack justifyContent="center" alignItems="flex-start" mb={4}>
+        <Heading flex={1} fontSize="2xl">
+          My Meetings
+        </Heading>
         <Button
           onClick={onOpen}
           colorScheme="orange"
-          isFullWidth={false}
-          float={'right'}
+          display={{ base: 'none', md: 'block' }}
+          mt={{ base: 4, md: 0 }}
           mb={4}
           leftIcon={<FaPlus />}
         >
           New meeting
         </Button>
-      </Box>
+      </HStack>
+      <Button
+        onClick={onOpen}
+        colorScheme="orange"
+        display={{ base: 'block', md: 'none' }}
+        mb={8}
+        leftIcon={<FaPlus />}
+      >
+        New meeting
+      </Button>
       {content}
+      <ScheduleModal isOpen={isOpen} onClose={afterClose} onOpen={onOpen} />
     </Flex>
   )
 }

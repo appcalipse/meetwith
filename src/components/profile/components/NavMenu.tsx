@@ -1,4 +1,12 @@
-import { Box, Text, useToast, VStack } from '@chakra-ui/react'
+import {
+  Box,
+  CloseButton,
+  Slide,
+  Text,
+  useColorModeValue,
+  useToast,
+  VStack,
+} from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect } from 'react'
@@ -49,14 +57,17 @@ const LinkItems: Array<LinkItemProps> = [
   },
 ]
 
-export const NavMenu: React.FC<{ currentSection?: EditMode }> = ({
-  currentSection,
-}) => {
+export const NavMenu: React.FC<{
+  currentSection?: EditMode
+  isMenuOpen?: boolean
+  closeMenu?: () => void
+}> = ({ currentSection, isMenuOpen, closeMenu }) => {
   const { currentAccount } = useContext(AccountContext)
   const router = useRouter()
   const toast = useToast()
 
   const { calendarResult } = router.query
+  const menuBg = useColorModeValue('white', 'gray.800')
 
   useEffect(() => {
     if (calendarResult === 'error') {
@@ -91,53 +102,117 @@ export const NavMenu: React.FC<{ currentSection?: EditMode }> = ({
       await router.push(`/logout`)
     } else {
       router.push(`/dashboard/${mode}`, undefined, { shallow: true })
+      isMenuOpen && closeMenu!()
     }
   }
 
   return (
-    <VStack
-      alignItems="center"
-      flex={1}
-      maxW="360px"
-      spacing={8}
-      py={12}
-      overflow="hidden"
-      borderRadius={16}
-      // TO-DO: replace by new dark/light color scheme
-      bgColor={'transparent'}
-    >
-      <VStack width="100%" textAlign="center">
-        <Box width="120px" height="120px" mb={2}>
-          <Jazzicon address={currentAccount.address} />
-        </Box>
+    <Box borderRadius={{ base: 0, md: 16 }} bgColor={menuBg}>
+      {!isMenuOpen ? (
+        <VStack
+          alignItems="center"
+          flex={1}
+          maxW={'360px'}
+          spacing={8}
+          py={12}
+          overflow="hidden"
+          borderRadius={16}
+          display={{ base: 'none', md: 'flex' }}
+          // TO-DO: replace by new dark/light color scheme
+          backgroundColor={'transparent'}
+        >
+          <VStack width="100%" textAlign="center">
+            <Box width="120px" height="120px" mb={2}>
+              <Jazzicon address={currentAccount.address} />
+            </Box>
 
-        <Text fontSize="lg" fontWeight={500}>
-          {getAccountDisplayName(currentAccount)}
-        </Text>
-      </VStack>
+            <Text fontSize="lg" fontWeight={500}>
+              {getAccountDisplayName(currentAccount)}
+            </Text>
+          </VStack>
 
-      <Box>
-        <CopyLinkButton
-          url={accountUrl}
-          size="md"
-          label="Copy my calendar link"
-          withIcon
-        />
-      </Box>
+          <Box>
+            <CopyLinkButton
+              url={accountUrl}
+              size="md"
+              label="Copy my calendar link"
+              withIcon
+            />
+          </Box>
 
-      <VStack py={2} width="100%">
-        {LinkItems.map(link => (
-          <NavItem
-            selected={currentSection === link.mode}
-            key={link.name}
-            text={link.name}
-            icon={link.icon}
-            mode={link.mode}
-            locked={link.locked || false}
-            changeMode={menuClicked}
-          ></NavItem>
-        ))}
-      </VStack>
-    </VStack>
+          <VStack py={2} width="100%">
+            {LinkItems.map(link => (
+              <NavItem
+                selected={currentSection === link.mode}
+                key={link.name}
+                text={link.name}
+                icon={link.icon}
+                mode={link.mode}
+                locked={link.locked || false}
+                changeMode={menuClicked}
+              ></NavItem>
+            ))}
+          </VStack>
+        </VStack>
+      ) : (
+        <Slide direction="right" in={isMenuOpen}>
+          <VStack
+            bgColor={menuBg}
+            alignItems="center"
+            spacing={8}
+            py={12}
+            display={{ base: 'flex', md: 'none' }}
+            position={'fixed'}
+            top={'0'}
+            left={'0'}
+            width={'100vw'}
+            height={'100vh'}
+            overflowY="auto"
+          >
+            <VStack width="100%" textAlign="center">
+              <Box width="120px" height="120px" mb={2}>
+                <Jazzicon address={currentAccount.address} />
+              </Box>
+
+              <Text fontSize="lg" fontWeight={500}>
+                {getAccountDisplayName(currentAccount)}
+              </Text>
+            </VStack>
+
+            <Box>
+              <CopyLinkButton
+                url={accountUrl}
+                size="md"
+                label="Copy my calendar link"
+                withIcon
+              />
+            </Box>
+
+            <VStack py={2} width="100%">
+              {LinkItems.map(link => (
+                <NavItem
+                  selected={currentSection === link.mode}
+                  key={link.name}
+                  text={link.name}
+                  icon={link.icon}
+                  mode={link.mode}
+                  locked={link.locked || false}
+                  changeMode={menuClicked}
+                ></NavItem>
+              ))}
+            </VStack>
+            {isMenuOpen && (
+              <CloseButton
+                onClick={closeMenu}
+                position="fixed"
+                top="0"
+                right="20px"
+                size="lg"
+              />
+            )}
+          </VStack>
+        </Slide>
+      )}
+    </Box>
   )
 }
