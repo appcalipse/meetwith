@@ -113,7 +113,7 @@ const AccountDetails: React.FC = () => {
   }
 
   return (
-    <VStack p={4} mb={10} alignItems="start">
+    <VStack mb={8} alignItems="start" flex={1}>
       <Heading fontSize="2xl">Account Details</Heading>
       <IPFSLink
         ipfsHash={currentAccount!.preferences_path}
@@ -180,7 +180,11 @@ const AccountDetails: React.FC = () => {
         </Alert>
       )}
 
-      <Flex width="100%">
+      <Flex
+        width="100%"
+        flexDirection={{ base: 'column', md: 'row' }}
+        gridGap={2}
+      >
         <SubscriptionCard
           subscription={
             currentAccount?.subscriptions?.filter(

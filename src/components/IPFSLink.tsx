@@ -38,6 +38,7 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
             display={loading ? 'none' : 'flex'}
             flexWrap="nowrap"
             flex={1}
+            wordBreak="break-all"
           >
             <Text
               fontSize="sm"
