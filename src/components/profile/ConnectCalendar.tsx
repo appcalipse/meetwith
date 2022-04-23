@@ -159,7 +159,7 @@ const ConnectCalendar = () => {
   }
 
   return (
-    <Box>
+    <Box mb={8}>
       <VStack alignItems="flex-start" mb={8}>
         <Heading fontSize="2xl">Connected Calendars</Heading>
         <Text>
