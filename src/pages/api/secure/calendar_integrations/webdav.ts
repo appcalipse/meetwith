@@ -7,7 +7,7 @@ import {
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { encryptContent } from '../../../../utils/cryptography'
 import { addOrUpdateConnectedCalendar } from '../../../../utils/database'
-import WebdavCalendarService from '../../../../utils/services/webdav_service'
+import CaldavCalendarService from '../../../../utils/services/caldav.service'
 
 async function handler(
   req: NextApiRequest,
@@ -39,7 +39,7 @@ async function handler(
   } else if (req.method === 'PROPFIND') {
     try {
       const { username, url, password } = req.body as any
-      const caldavService = new WebdavCalendarService(
+      const caldavService = new CaldavCalendarService(
         req.session.account.address,
         username,
         { password, username, url },

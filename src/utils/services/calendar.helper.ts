@@ -1,4 +1,5 @@
-import { MeetingCreationRequest } from '../../types/Meeting'
+import { MeetingCreationRequest } from '@/types/Meeting'
+
 import { ellipsizeAddress } from '../user_manager'
 
 export const CalendarServiceHelper = {

@@ -25,6 +25,7 @@ export const ThemeSwitcher: React.FC = () => {
       >
         <BsSun />
         <Switch
+          data-testid="change-theme"
           pt={1}
           colorScheme="orange"
           size="md"
@@ -45,7 +46,11 @@ export const ThemeSwitcher: React.FC = () => {
           onClick={doToggle}
           color={useColorModeValue('grey.500', 'grey.400')}
         >
-          {colorMode === 'light' ? <BsMoon /> : <BsSun />}
+          {colorMode === 'light' ? (
+            <BsMoon data-testid="dark-mode" />
+          ) : (
+            <BsSun data-testid="light-mode" />
+          )}
         </Button>
       </Stack>
     </>

@@ -34,11 +34,6 @@ export interface ConnectedCalendar extends ConnectedCalendarCorePayload {
   account_address: string
   updated?: Date
   created: Date
-  webdav?: {
-    url: string
-    user: string
-    secret: string
-  }
 }
 
 export type NewCalendarEventType = {

@@ -5,20 +5,13 @@ import { Auth, calendar_v3, google } from 'googleapis'
 import {
   ConnectedCalendarProvider,
   NewCalendarEventType,
-} from '../../types/CalendarConnections'
-import { MeetingCreationRequest } from '../../types/Meeting'
+} from '@/types/CalendarConnections'
+import { MeetingCreationRequest } from '@/types/Meeting'
+
 import { apiUrl } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
-import { CalendarServiceHelper } from './calendar-helper'
-import { MWWGoogleAuth } from './google_auth'
-import { CalendarService } from './types'
-
-export interface IntegrationCalendar {
-  externalId: string
-  integration: string
-  name: string
-  primary: boolean
-}
+import { CalendarServiceHelper } from './calendar.helper'
+import { CalendarService, MWWGoogleAuth } from './common.types'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 

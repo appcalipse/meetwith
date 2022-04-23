@@ -3,12 +3,13 @@ import * as Sentry from '@sentry/browser'
 import {
   ConnectedCalendarProvider,
   NewCalendarEventType,
-} from '../../types/CalendarConnections'
-import { MeetingCreationRequest } from '../../types/Meeting'
+} from '@/types/CalendarConnections'
+import { MeetingCreationRequest } from '@/types/Meeting'
+
 import { changeConnectedCalendarSync } from '../database'
 import { ellipsizeAddress } from '../user_manager'
-import { CalendarServiceHelper } from './calendar-helper'
-import { CalendarService } from './types'
+import { CalendarServiceHelper } from './calendar.helper'
+import { CalendarService } from './common.types'
 
 export type BufferedBusyTime = {
   start: string
@@ -21,13 +22,6 @@ export type BatchResponse = {
 
 export type SubResponse = {
   body: { value: { start: { dateTime: string }; end: { dateTime: string } }[] }
-}
-
-export interface IntegrationCalendar {
-  externalId: string
-  integration: string
-  name: string
-  primary: boolean
 }
 
 interface TokenResponse {
@@ -99,7 +93,6 @@ export default class Office365CalendarService implements CalendarService {
           credential.expiry_date = Math.round(
             new Date().getTime() / 1000 + responseBody.expires_in
           )
-          console.log('CHANGE', responseBody)
           return changeConnectedCalendarSync(
             address,
             email,
@@ -152,12 +145,7 @@ export default class Office365CalendarService implements CalendarService {
 
       return handleErrorsJson(response)
     } catch (error) {
-      console.error(
-        'There was an error contacting office 365 calendar service: ',
-        error
-      )
-      console.error(error)
-
+      Sentry.captureException(error)
       throw error
     }
   }
@@ -246,7 +234,7 @@ export default class Office365CalendarService implements CalendarService {
         })
       })
       .catch(err => {
-        console.log(err)
+        Sentry.captureException(err)
         return Promise.reject([])
       })
   }
