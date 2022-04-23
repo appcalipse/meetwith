@@ -1,9 +1,8 @@
 import * as Sentry from '@sentry/browser'
 import dayjs from 'dayjs'
-import { DateArray, DurationObject, Person } from 'ics'
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ICAL = require('ical.js')
-
+import toArray from 'dayjs/plugin/toArray'
+import utc from 'dayjs/plugin/utc'
+import { DateArray, DurationObject } from 'ics'
 import { createEvent } from 'ics'
 import {
   createAccount,
@@ -16,19 +15,21 @@ import {
 } from 'tsdav'
 import { v4 as uuidv4 } from 'uuid'
 
-import { NewCalendarEventType } from '../../types/CalendarConnections'
-import { MeetingCreationRequest } from '../../types/Meeting'
-
-export const CALDAV_CALENDAR_TYPE = 'caldav'
-
-import toArray from 'dayjs/plugin/toArray'
-import utc from 'dayjs/plugin/utc'
+import { NewCalendarEventType } from '@/types/CalendarConnections'
+import { MeetingCreationRequest } from '@/types/Meeting'
 
 import { decryptContent } from '../cryptography'
-import { CalendarServiceHelper } from './calendar-helper'
-import { CalendarService } from './types'
+import { CalendarServiceHelper } from './calendar.helper'
+import { CalendarService } from './common.types'
+
+// ical.js has no ts typing
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ICAL = require('ical.js')
+
 dayjs.extend(toArray)
 dayjs.extend(utc)
+
+const CALDAV_CALENDAR_TYPE = 'caldav'
 
 export type BufferedBusyTime = {
   start: string
@@ -41,13 +42,6 @@ export type BatchResponse = {
 
 export type SubResponse = {
   body: { value: { start: { dateTime: string }; end: { dateTime: string } }[] }
-}
-
-export interface IntegrationCalendar {
-  externalId: string
-  integration: string
-  name: string
-  primary: boolean
 }
 
 export const convertDate = (date: string): DateArray =>
@@ -86,7 +80,7 @@ export interface CaldavCredentials {
  * - username (usually an email)
  * - password
  */
-export default class WebdavCalendarService implements CalendarService {
+export default class CaldavCalendarService implements CalendarService {
   private url = ''
   private credentials: Record<string, string> = {}
   private headers: Record<string, string> = {}
@@ -183,8 +177,7 @@ export default class WebdavCalendarService implements CalendarService {
         additionalInfo: {},
       }
     } catch (reason) {
-      console.error(reason)
-
+      Sentry.captureException(reason)
       throw reason
     }
   }
@@ -238,22 +231,13 @@ export default class WebdavCalendarService implements CalendarService {
         headers: this.headers,
       })
 
-      // return calendars;
       return calendars.reduce<DAVCalendar[]>((newCalendars, calendar) => {
         if (!calendar.components?.includes('VEVENT')) return newCalendars
-
-        // newCalendars.push({
-        //   externalId: calendar.url,
-        //   name: calendar.displayName ?? '',
-        //   primary: false,
-        //   integration: 'Apple',
-        // })
         newCalendars.push(calendar)
         return newCalendars
       }, [])
     } catch (reason) {
-      console.error(reason)
-
+      Sentry.captureException(reason)
       throw reason
     }
   }
