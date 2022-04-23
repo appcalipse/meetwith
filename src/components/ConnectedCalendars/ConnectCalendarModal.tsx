@@ -67,7 +67,12 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
           <ModalCloseButton />
           <ModalBody>
             <VStack>
-              <HStack p="10" justifyContent="center">
+              <HStack
+                p="10"
+                flexDirection={{ base: 'column', md: 'row' }}
+                justifyContent="center"
+                gridGap={{ base: '16px', md: '0' }}
+              >
                 <Button
                   onClick={selectOption(ConnectedCalendarProvider.GOOGLE)}
                   leftIcon={<Image src="/assets/google.svg" size="24px" />}

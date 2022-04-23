@@ -53,9 +53,13 @@ const MeetingTypesConfig: React.FC = () => {
           goBack={() => setSelectedType('')}
         />
       ) : (
-        <VStack width="100%" alignItems={'flex-start'}>
+        <VStack width="100%" maxW="100%" alignItems={'flex-start'}>
           <Heading fontSize="2xl">Your meeting types</Heading>
-          <Grid templateColumns="repeat(2, 1fr)" gap={4} flexWrap="wrap">
+          <Grid
+            templateColumns="repeat(auto-fit, minmax(300px, 1fr))"
+            gap={4}
+            flexWrap="wrap"
+          >
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
               const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
                 type.url
