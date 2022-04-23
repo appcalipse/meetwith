@@ -7,13 +7,8 @@ import {
 import { MeetingCreationRequest } from '../../types/Meeting'
 import { changeConnectedCalendarSync } from '../database'
 import { ellipsizeAddress } from '../user_manager'
-
-export interface Calendar {
-  createEvent(
-    owner: string,
-    details: MeetingCreationRequest
-  ): Promise<NewCalendarEventType>
-}
+import { CalendarServiceHelper } from './calendar-helper'
+import { CalendarService } from './types'
 
 export type BufferedBusyTime = {
   start: string
@@ -56,7 +51,7 @@ export type O365AuthCredentials = {
   refresh_token: string
 }
 
-export default class Office365CalendarService implements Calendar {
+export default class Office365CalendarService implements CalendarService {
   private auth: { getToken: () => Promise<string> }
 
   constructor(
@@ -179,18 +174,10 @@ export default class Office365CalendarService implements Calendar {
     ]
 
     return {
-      subject: `Meet with ${
-        otherParticipants.length
-          ? otherParticipants.join(', ')
-          : 'other participants'
-      }`,
+      subject: CalendarServiceHelper.getMeetingSummary(owner, details),
       body: {
-        contentType: 'HTML',
-        content: `${
-          details.content ? details.content + '\n' : ''
-        }Your meeting will happen at <a hred="${details.meeting_url}">${
-          details.meeting_url
-        }</a>`,
+        contentType: 'TEXT',
+        content: CalendarServiceHelper.getMeetingTitle(details),
       },
       start: {
         dateTime: new Date(details.start).toISOString(),
@@ -200,15 +187,8 @@ export default class Office365CalendarService implements Calendar {
         dateTime: new Date(details.end).toISOString(),
         timeZone: 'UTC',
       },
-      //   attendees: event.attendees.map((attendee) => ({
-      //     emailAddress: {
-      //       address: attendee.email,
-      //       name: attendee.name,
-      //     },
-      //     type: "required",
-      //   })),
       location: {
-        displayName: 'Online @ Meet With Wallet',
+        displayName: CalendarServiceHelper.getMeetingLocation(),
       },
       isOnlineMeeting: true,
       onlineMeetingUrl: details.meeting_url,

@@ -18,7 +18,6 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { NewCalendarEventType } from '../../types/CalendarConnections'
 import { MeetingCreationRequest } from '../../types/Meeting'
-import { ellipsizeAddress } from '../user_manager'
 
 export const CALDAV_CALENDAR_TYPE = 'caldav'
 
@@ -26,15 +25,10 @@ import toArray from 'dayjs/plugin/toArray'
 import utc from 'dayjs/plugin/utc'
 
 import { decryptContent } from '../cryptography'
+import { CalendarServiceHelper } from './calendar-helper'
+import { CalendarService } from './types'
 dayjs.extend(toArray)
 dayjs.extend(utc)
-
-export interface Calendar {
-  createEvent(
-    owner: string,
-    details: MeetingCreationRequest
-  ): Promise<NewCalendarEventType>
-}
 
 export type BufferedBusyTime = {
   start: string
@@ -54,11 +48,6 @@ export interface IntegrationCalendar {
   integration: string
   name: string
   primary: boolean
-}
-
-interface TokenResponse {
-  access_token: string
-  expires_in: number
 }
 
 export const convertDate = (date: string): DateArray =>
@@ -91,7 +80,13 @@ export interface CaldavCredentials {
   password: string
 }
 
-export default class WebdavCalendarService implements Calendar {
+/**
+ * Generic CalDAV Integration service. It requires:
+ * - caldav service base URL
+ * - username (usually an email)
+ * - password
+ */
+export default class WebdavCalendarService implements CalendarService {
   private url = ''
   private credentials: Record<string, string> = {}
   private headers: Record<string, string> = {}
@@ -131,37 +126,20 @@ export default class WebdavCalendarService implements Calendar {
   ): Promise<NewCalendarEventType> {
     try {
       const calendars = await this.listCalendars()
-
-      console.log('calendars', calendars)
-
       const uid = uuidv4()
-      const otherParticipants = [
-        details.participants_mapping
-          ?.filter(it => it.account_address !== owner)
-          .map(it =>
-            it.account_address
-              ? ellipsizeAddress(it.account_address!)
-              : it.guest_email
-          ),
-      ]
 
-      // We create local ICS files
+      // We need to create local ICS files
       const { error, value: iCalString } = createEvent({
         uid,
         startInputType: 'utc',
         start: convertDate(new Date(details.start).toISOString()),
         duration: getDuration(details.start, details.end),
-        title: `Meet with ${
-          otherParticipants.length
-            ? otherParticipants.join(', ')
-            : 'other participants'
-        }`,
+        title: CalendarServiceHelper.getMeetingSummary(owner, details),
         url: details.meeting_url,
-        description: `${
-          details.content ? details.content + '\n' : ''
-        }Your meeting will happen at ${details.meeting_url}`,
-        location: 'Online @ Meet With Wallet',
+        description: CalendarServiceHelper.getMeetingTitle(details),
+        location: CalendarServiceHelper.getMeetingLocation(),
         organizer: {
+          // required by some services
           name: 'Meet With Wallet',
           email: 'contact@meetwithwallet.xyz',
         },
@@ -178,19 +156,10 @@ export default class WebdavCalendarService implements Calendar {
       // We create the event directly on iCal
       const responses = await Promise.all(
         calendars.map(calendar =>
-          // this.client.createCalendarObject({
-          //   calendar,
-          //   filename: `${uid}.ics`,
-          //   // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-          //   iCalString: iCalString.replace(/METHOD:[^\r\n]+\r\n/g, ''),
-          //   headers: this.headers,
-          // })
-
           createCalendarObject({
             calendar,
             filename: `${uid}.ics`,
             // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-            //iCalString: 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//ZContent.net//Zap Calendar 1.0//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nBEGIN:VEVENT\nSUMMARY:Abraham Lincoln\nUID:c7614cff-3549-4a00-9152-d25cc1fe077d\nSEQUENCE:0\nSTATUS:CONFIRMED\nTRANSP:TRANSPARENT\nRRULE:FREQ=YEARLY;INTERVAL=1;BYMONTH=2;BYMONTHDAY=12\nDTSTART:2022020422\nDTEND:20220422\nDTSTAMP:20220421T170000\nCATEGORIES:U.S. Presidents,Civil War People\nLOCATION:Hodgenville, Kentucky\nGEO:37.5739497;-85.7399606\nDESCRIPTION:Born February 12, 1809\nSixteenth President (1861-1865)\n\n\n\n \nhttp://AmericanHistoryCalendar.com\nURL:http://americanhistorycalendar.com/peoplecalendar/1,328-abraham-lincol\n n\nEND:VEVENT\nEND:VCALENDAR',
             iCalString,
             headers: this.headers,
           })
