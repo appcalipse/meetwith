@@ -8,12 +8,7 @@ Thanks for Looking to contribute to this repo. We are happy to see your interest
 
 ## Guidelines
 
-- Continue to follow the alphabetical ordering that is in place per section.
-- Add one link per Pull Request.
-- Make sure the PR title is in the format of `Add repository-name` *for e.g.*: `Add awesome-python`
-- Use a short descriptive commit message. *for e.g.*: ❌Update README.md ✔Add Git to the CheatSheets
 - Search previous Pull Requests or Issues before making a new one, as yours may be a duplicate.
-- Don't mention "Awesome" in the repository name while adding a link in the README, if you are adding an awesome repository . *for e.g.*: ❌Awesome-Python  ✔Python
 
 ## Pull Request Pro Tips
 
