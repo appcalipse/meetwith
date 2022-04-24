@@ -25,9 +25,11 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## External Documentation
 
-To leadn mo
+To learn more:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API
+- [Smart Contracts](https://cryptozombies.io/) - to learn more about smart contracts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Contribute
+
+Contributions are welcomed! Please read the [contribution guidelines](CONTRIBUTING.md) first.
