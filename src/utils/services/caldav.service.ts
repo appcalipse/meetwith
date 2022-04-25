@@ -1,7 +1,5 @@
 import * as Sentry from '@sentry/browser'
-import dayjs from 'dayjs'
-import toArray from 'dayjs/plugin/toArray'
-import utc from 'dayjs/plugin/utc'
+import { differenceInMinutes } from 'date-fns'
 import { DateArray, DurationObject } from 'ics'
 import { createEvent } from 'ics'
 import {
@@ -26,9 +24,6 @@ import { CalendarService } from './common.types'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ICAL = require('ical.js')
 
-dayjs.extend(toArray)
-dayjs.extend(utc)
-
 const CALDAV_CALENDAR_TYPE = 'caldav'
 
 export type BufferedBusyTime = {
@@ -44,18 +39,21 @@ export type SubResponse = {
   body: { value: { start: { dateTime: string }; end: { dateTime: string } }[] }
 }
 
-export const convertDate = (date: string): DateArray =>
-  dayjs(date)
-    .utc()
-    .toArray()
-    .slice(0, 6)
-    .map((v, i) => (i === 1 ? v + 1 : v)) as DateArray
+export const convertDate = (date: Date): DateArray => {
+  return [
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate(),
+    date.getUTCHours(),
+    date.getUTCMinutes(),
+  ] as DateArray
+}
 
 export const getDuration = (
   start: string | Date,
   end: string | Date
 ): DurationObject => ({
-  minutes: dayjs(end).diff(dayjs(start), 'minute'),
+  minutes: differenceInMinutes(new Date(end), new Date(start)),
 })
 
 export function handleErrorsJson(response: Response) {
@@ -126,7 +124,7 @@ export default class CaldavCalendarService implements CalendarService {
       const { error, value: iCalString } = createEvent({
         uid,
         startInputType: 'utc',
-        start: convertDate(new Date(details.start).toISOString()),
+        start: convertDate(new Date(details.start)),
         duration: getDuration(details.start, details.end),
         title: CalendarServiceHelper.getMeetingSummary(owner, details),
         url: details.meeting_url,
