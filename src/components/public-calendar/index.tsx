@@ -32,6 +32,7 @@ import { saveMeetingsScheduled } from '../../utils/storage'
 import { isProAccount } from '../../utils/subscription_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import { isValidEVMAddress } from '../../utils/validations'
+import { Head } from '../Head'
 import Loading from '../Loading'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
@@ -46,7 +47,7 @@ interface InternalSchedule {
   meetingUrl?: string
 }
 
-const PublicCalendar: React.FC = () => {
+const PublicCalendar: React.FC<{ url?: string }> = ({ url }) => {
   const router = useRouter()
 
   const { currentAccount, logged } = useContext(AccountContext)
@@ -259,68 +260,79 @@ const PublicCalendar: React.FC = () => {
   }
 
   return (
-    <Container data-testid="calendar-container" maxW="7xl" mt={8} flex={1}>
-      {loading ? (
-        <Flex
-          width="100%"
-          height="100%"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Loading />
-        </Flex>
-      ) : (
-        <Box>
-          <Flex wrap="wrap" justifyContent="center">
-            <Box
-              flex="1"
-              minW={{ base: '300px', md: '500px' }}
-              maxW="600px"
-              p={8}
-            >
-              <ProfileInfo account={account!} />
-              <Select
-                disabled={readyToSchedule}
-                placeholder="Select option"
-                mt={8}
-                value={selectedType.id}
-                onChange={e => e.target.value && changeType(e.target.value)}
-              >
-                {account!.preferences!.availableTypes.map(type => (
-                  <option key={type.id} value={type.id}>
-                    {type.title ? `${type.title} - ` : ''}
-                    {durationToHumanReadable(type.duration)}
-                  </option>
-                ))}
-              </Select>
-            </Box>
-
-            <Box flex="2" p={8}>
-              <MeetSlotPicker
-                reset={reset}
-                onMonthChange={(day: Date) => setCurrentMonth(day)}
-                onSchedule={confirmSchedule}
-                willStartScheduling={willStartScheduling => {
-                  setReadyToSchedule(willStartScheduling)
-                }}
-                isSchedulingExternal={isScheduling}
-                slotDurationInMinutes={selectedType.duration}
-                checkingSlots={checkingSlots}
-                timeSlotAvailability={validateSlot}
-              />
-            </Box>
+    <>
+      <Head
+        title="calendar on Meet with Wallet - Schedule a meeting in #web3 style"
+        description={
+          //TODO: I didn't test this yet because I was having issues when updating my description (when running on my machine)
+          account?.preferences?.description ||
+          'Schedule a meeting by simply connecting your web3 wallet, or use your email and schedule as a guest.'
+        }
+        url={url}
+      />
+      <Container maxW="7xl" mt={8} flex={1}>
+        {loading ? (
+          <Flex
+            width="100%"
+            height="100%"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Loading />
           </Flex>
-          <MeetingScheduledDialog
-            targetAccount={account!}
-            schedulerAccount={currentAccount!}
-            meeting={lastScheduledMeeting}
-            accountNotificationSubs={notificationsSubs}
-            isOpen={isOpen}
-            onClose={_onClose}
-          />
-        </Box>
-      )}
-    </Container>
+        ) : (
+          <Box>
+            <Flex wrap="wrap" justifyContent="center">
+              <Box
+                flex="1"
+                minW={{ base: '300px', md: '500px' }}
+                maxW="600px"
+                p={8}
+              >
+                <ProfileInfo account={account!} />
+                <Select
+                  disabled={readyToSchedule}
+                  placeholder="Select option"
+                  mt={8}
+                  value={selectedType.id}
+                  onChange={e => e.target.value && changeType(e.target.value)}
+                >
+                  {account!.preferences!.availableTypes.map(type => (
+                    <option key={type.id} value={type.id}>
+                      {type.title ? `${type.title} - ` : ''}
+                      {durationToHumanReadable(type.duration)}
+                    </option>
+                  ))}
+                </Select>
+              </Box>
+
+              <Box flex="2" p={8}>
+                <MeetSlotPicker
+                  reset={reset}
+                  onMonthChange={(day: Date) => setCurrentMonth(day)}
+                  onSchedule={confirmSchedule}
+                  willStartScheduling={willStartScheduling => {
+                    setReadyToSchedule(willStartScheduling)
+                  }}
+                  isSchedulingExternal={isScheduling}
+                  slotDurationInMinutes={selectedType.duration}
+                  checkingSlots={checkingSlots}
+                  timeSlotAvailability={validateSlot}
+                />
+              </Box>
+            </Flex>
+            <MeetingScheduledDialog
+              targetAccount={account!}
+              schedulerAccount={currentAccount!}
+              meeting={lastScheduledMeeting}
+              accountNotificationSubs={notificationsSubs}
+              isOpen={isOpen}
+              onClose={_onClose}
+            />
+          </Box>
+        )}
+      </Container>
+    </>
   )
 }
 
