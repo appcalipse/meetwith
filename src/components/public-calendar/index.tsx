@@ -33,7 +33,6 @@ import { isProAccount } from '../../utils/subscription_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 import { isValidEVMAddress } from '../../utils/validations'
 import { Head } from '../Head'
-import Loading from '../Loading'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
@@ -47,25 +46,30 @@ interface InternalSchedule {
   meetingUrl?: string
 }
 
-const PublicCalendar: React.FC<{ url?: string }> = ({ url }) => {
+const PublicCalendar: React.FC<{ url: string; account: Account }> = ({
+  url,
+  account,
+}) => {
   const router = useRouter()
 
   const { currentAccount, logged } = useContext(AccountContext)
 
-  const [account, setAccount] = useState(null as Account | null)
   const [checkingSlots, setCheckingSlots] = useState(false)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
     null as InternalSchedule | null
   )
 
+  //TODO: Ideally, this should not be necessary, but we have one of the components trying to access the local storage
+  // and the calendar does not render well when it is rendered on the server side
+  const [isSSR, setIsSSR] = useState(true)
+
   useEffect(() => {
-    if (!account) {
-      const address = router.query.address ? router.query.address[0] : null
-      if (address) {
-        checkUser(address)
-      }
+    const address = router.query.address ? router.query.address[0] : null
+    if (address) {
+      checkUser(address)
     }
-  }, [router.query])
+    setIsSSR(false)
+  }, [router.query, account])
 
   useEffect(() => {
     if (logged && unloggedSchedule) {
@@ -80,7 +84,6 @@ const PublicCalendar: React.FC<{ url?: string }> = ({ url }) => {
     }
   }, [currentAccount])
 
-  const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [meetings, setMeetings] = useState([] as DBSlot[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
@@ -97,23 +100,20 @@ const PublicCalendar: React.FC<{ url?: string }> = ({ url }) => {
 
   const checkUser = async (identifier: string) => {
     try {
-      const _account = await getAccount(identifier)
-      if (_account.is_invited) {
+      if (account.is_invited) {
         router.push('/404')
         return
       }
-      if (!isValidEVMAddress(identifier) && !isProAccount(_account)) {
+      if (!isValidEVMAddress(identifier) && !isProAccount(account)) {
         router.push('/404')
         return
       }
-      setAccount(_account)
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = _account.preferences!.availableTypes.find(
+      const type = account.preferences!.availableTypes.find(
         t => t.url === typeOnRoute
       )
-      setSelectedType(type || _account.preferences!.availableTypes[0])
-      updateMeetings(_account.address)
-      setLoading(false)
+      setSelectedType(type || account.preferences!.availableTypes[0])
+      updateMeetings(account.address)
     } catch (e) {
       if (!(e instanceof AccountNotFoundError)) {
         Sentry.captureException(e)
@@ -235,7 +235,7 @@ const PublicCalendar: React.FC<{ url?: string }> = ({ url }) => {
 
   useEffect(() => {
     account && updateMeetings(account.address)
-  }, [currentMonth])
+  }, [currentMonth, account])
 
   const changeType = (typeId: string) => {
     const type = account!.preferences!.availableTypes.find(
@@ -264,48 +264,38 @@ const PublicCalendar: React.FC<{ url?: string }> = ({ url }) => {
       <Head
         title="calendar on Meet with Wallet - Schedule a meeting in #web3 style"
         description={
-          //TODO: I didn't test this yet because I was having issues when updating my description (when running on my machine)
-          account?.preferences?.description ||
+          account.preferences?.description ||
           'Schedule a meeting by simply connecting your web3 wallet, or use your email and schedule as a guest.'
         }
         url={url}
       />
       <Container maxW="7xl" mt={8} flex={1}>
-        {loading ? (
-          <Flex
-            width="100%"
-            height="100%"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Loading />
-          </Flex>
-        ) : (
-          <Box>
-            <Flex wrap="wrap" justifyContent="center">
-              <Box
-                flex="1"
-                minW={{ base: '300px', md: '500px' }}
-                maxW="600px"
-                p={8}
+        <Box>
+          <Flex wrap="wrap" justifyContent="center">
+            <Box
+              flex="1"
+              minW={{ base: '300px', md: '500px' }}
+              maxW="600px"
+              p={8}
+            >
+              <ProfileInfo account={account!} />
+              <Select
+                disabled={readyToSchedule}
+                placeholder="Select option"
+                mt={8}
+                value={selectedType.id}
+                onChange={e => e.target.value && changeType(e.target.value)}
               >
-                <ProfileInfo account={account!} />
-                <Select
-                  disabled={readyToSchedule}
-                  placeholder="Select option"
-                  mt={8}
-                  value={selectedType.id}
-                  onChange={e => e.target.value && changeType(e.target.value)}
-                >
-                  {account!.preferences!.availableTypes.map(type => (
-                    <option key={type.id} value={type.id}>
-                      {type.title ? `${type.title} - ` : ''}
-                      {durationToHumanReadable(type.duration)}
-                    </option>
-                  ))}
-                </Select>
-              </Box>
+                {account!.preferences!.availableTypes.map(type => (
+                  <option key={type.id} value={type.id}>
+                    {type.title ? `${type.title} - ` : ''}
+                    {durationToHumanReadable(type.duration)}
+                  </option>
+                ))}
+              </Select>
+            </Box>
 
+            {isSSR ? null : (
               <Box flex="2" p={8}>
                 <MeetSlotPicker
                   reset={reset}
@@ -320,7 +310,9 @@ const PublicCalendar: React.FC<{ url?: string }> = ({ url }) => {
                   timeSlotAvailability={validateSlot}
                 />
               </Box>
-            </Flex>
+            )}
+          </Flex>
+          {isSSR ? null : (
             <MeetingScheduledDialog
               targetAccount={account!}
               schedulerAccount={currentAccount!}
@@ -329,8 +321,8 @@ const PublicCalendar: React.FC<{ url?: string }> = ({ url }) => {
               isOpen={isOpen}
               onClose={_onClose}
             />
-          </Box>
-        )}
+          )}
+        </Box>
       </Container>
     </>
   )
