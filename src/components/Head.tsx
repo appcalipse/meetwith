@@ -1,5 +1,4 @@
 import NextHead from 'next/head'
-import { MetaHTMLAttributes } from 'react'
 
 interface HeadProps {
   url: string
