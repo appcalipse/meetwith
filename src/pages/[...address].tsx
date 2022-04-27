@@ -1,16 +1,11 @@
 import { NextPage } from 'next'
 import Router from 'next/router'
-import React from 'react'
 
-import PublicCalendar from '../components/public-calendar'
-import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
 import { isValidEVMAddress } from '../utils/validations'
 
-const Schedule: NextPage = () => <PublicCalendar />
+const Redirect: NextPage = () => null
 
-const EnhancedSchedule = forceAuthenticationCheck(Schedule)
-
-EnhancedSchedule.getInitialProps = async ctx => {
+Redirect.getInitialProps = async ctx => {
   const address = ctx.query.address
   let serverSide = false
 
@@ -32,4 +27,4 @@ EnhancedSchedule.getInitialProps = async ctx => {
   return {}
 }
 
-export default EnhancedSchedule
+export default Redirect

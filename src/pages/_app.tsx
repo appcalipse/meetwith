@@ -1,7 +1,6 @@
 import '../styles/globals.css'
 
-import { Box, ChakraProvider, Flex, useColorModeValue } from '@chakra-ui/react'
-import { extendTheme } from '@chakra-ui/react'
+import { ChakraProvider } from '@chakra-ui/react'
 import cookie from 'cookie'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
@@ -10,7 +9,6 @@ import { CookiesProvider } from 'react-cookie'
 
 import { CookieConsent } from '../components/CookieConsent'
 import { Head } from '../components/Head'
-import Loading from '../components/Loading'
 import { ChakraMDXProvider } from '../components/mdx.provider'
 import { BaseLayout } from '../layouts/Base'
 import { AccountProvider } from '../providers/AccountProvider'
@@ -33,10 +31,8 @@ function MyApp({
   currentAccount,
   checkAuthOnClient,
 }: MyAppProps) {
-  const [loading, setLoading] = React.useState(true)
   React.useEffect(() => {
     const initApp = async () => {
-      setLoading(false)
       await initAnalytics()
       pageView(router.asPath)
     }
@@ -68,18 +64,7 @@ function MyApp({
           >
             <Head />
             <BaseLayout>
-              {loading ? (
-                <Flex
-                  width="100%"
-                  height="100%"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Loading />
-                </Flex>
-              ) : (
-                <Component {...customProps} />
-              )}
+              <Component {...customProps} />
             </BaseLayout>
           </AccountProvider>
           <CookieConsent consentCookie={consentCookie as boolean} />
