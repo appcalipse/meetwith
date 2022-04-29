@@ -68,28 +68,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   )
 
   useEffect(() => {
-    //TODO: I don't thing that we need a try/catch here now, do we?
-    try {
-      const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account.preferences!.availableTypes.find(
-        t => t.url === typeOnRoute
-      )
-      setSelectedType(type || account.preferences!.availableTypes[0])
-      updateMeetings(account.address)
-    } catch (e) {
-      // TODO: does this capture exception still make sense now?
-      Sentry.captureException(e)
-      toast({
-        title: 'Ops!',
-        description: 'Something went wrong :(',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-      router.push('/404')
-    }
-  }, [account])
+    const typeOnRoute = router.query.address ? router.query.address[1] : null
+    const type = account.preferences!.availableTypes.find(
+      t => t.url === typeOnRoute
+    )
+    setSelectedType(type || account.preferences!.availableTypes[0])
+    updateMeetings(account.address)
+  }, [account, router.query.address])
 
   useEffect(() => {
     if (logged && unloggedSchedule) {
@@ -215,9 +200,23 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     setCheckingSlots(true)
     const monthStart = startOfMonth(currentMonth)
     const monthEnd = endOfMonth(currentMonth)
-    const meetings = await getBusySlots(identifier, monthStart, monthEnd)
 
-    setMeetings(meetings)
+    try {
+      const meetings = await getBusySlots(identifier, monthStart, monthEnd)
+      setMeetings(meetings)
+    } catch (e) {
+      Sentry.captureException(e)
+      toast({
+        title: 'Ops!',
+        description: 'Something went wrong :(',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      router.push('/404')
+    }
+
     setCheckingSlots(false)
   }
 
