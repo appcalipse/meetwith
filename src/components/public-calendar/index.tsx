@@ -13,7 +13,6 @@ import { Account, MeetingType } from '../../types/Account'
 import { DBSlot, MeetingDecrypted, SchedulingType } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
 import {
-  getAccount,
   getBusySlots,
   getNotificationSubscriptions,
 } from '../../utils/api_helper'
@@ -23,15 +22,12 @@ import {
   scheduleMeeting,
 } from '../../utils/calendar_manager'
 import {
-  AccountNotFoundError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '../../utils/errors'
 import { saveMeetingsScheduled } from '../../utils/storage'
-import { isProAccount } from '../../utils/subscription_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
-import { isValidEVMAddress } from '../../utils/validations'
 import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
@@ -46,10 +42,22 @@ interface InternalSchedule {
   meetingUrl?: string
 }
 
-const PublicCalendar: React.FC<{ url: string; account: Account }> = ({
+export interface PublicCalendarProps {
+  url: string
+  account: Account
+  serverSideRender: boolean
+}
+
+const PublicCalendar: React.FC<PublicCalendarProps> = ({
   url,
   account,
+  serverSideRender,
 }) => {
+  const [isSSR, setIsSSR] = useState(serverSideRender)
+  useEffect(() => {
+    setIsSSR(false)
+  }, [])
+
   const router = useRouter()
 
   const { currentAccount, logged } = useContext(AccountContext)
@@ -59,17 +67,29 @@ const PublicCalendar: React.FC<{ url: string; account: Account }> = ({
     null as InternalSchedule | null
   )
 
-  //TODO: Ideally, this should not be necessary, but we have one of the components trying to access the local storage
-  // and the calendar does not render well when it is rendered on the server side
-  const [isSSR, setIsSSR] = useState(true)
-
   useEffect(() => {
-    const address = router.query.address ? router.query.address[0] : null
-    if (address) {
-      checkUser(address)
+    //TODO: I don't thing that we need a try/catch here now, do we?
+    try {
+      const typeOnRoute = router.query.address ? router.query.address[1] : null
+      const type = account.preferences!.availableTypes.find(
+        t => t.url === typeOnRoute
+      )
+      setSelectedType(type || account.preferences!.availableTypes[0])
+      updateMeetings(account.address)
+    } catch (e) {
+      // TODO: does this capture exception still make sense now?
+      Sentry.captureException(e)
+      toast({
+        title: 'Ops!',
+        description: 'Something went wrong :(',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      router.push('/404')
     }
-    setIsSSR(false)
-  }, [router.query, account])
+  }, [account])
 
   useEffect(() => {
     if (logged && unloggedSchedule) {
@@ -97,38 +117,6 @@ const PublicCalendar: React.FC<{ url: string; account: Account }> = ({
   const [notificationsSubs, setNotificationSubs] = useState(0)
 
   const toast = useToast()
-
-  const checkUser = async (identifier: string) => {
-    try {
-      if (account.is_invited) {
-        router.push('/404')
-        return
-      }
-      if (!isValidEVMAddress(identifier) && !isProAccount(account)) {
-        router.push('/404')
-        return
-      }
-      const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account.preferences!.availableTypes.find(
-        t => t.url === typeOnRoute
-      )
-      setSelectedType(type || account.preferences!.availableTypes[0])
-      updateMeetings(account.address)
-    } catch (e) {
-      if (!(e instanceof AccountNotFoundError)) {
-        Sentry.captureException(e)
-        toast({
-          title: 'Ops!',
-          description: 'Something went wrong :(',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      }
-      router.push('/404')
-    }
-  }
 
   const fetchNotificationSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()
