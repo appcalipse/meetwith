@@ -53,8 +53,7 @@ EnhancedSchedule.getInitialProps = async ctx => {
 
     return { currentUrl, account, serverSideRender: serverSide }
   } catch (e) {
-    if (!(e instanceof AccountNotFoundError) && !serverSide) {
-      // does sentry work on the server side?
+    if (!(e instanceof AccountNotFoundError)) {
       Sentry.captureException(e)
     }
 
