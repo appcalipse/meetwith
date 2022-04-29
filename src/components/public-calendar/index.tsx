@@ -222,8 +222,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }
 
   useEffect(() => {
-    account && updateMeetings(account.address)
-  }, [currentMonth, account])
+    updateMeetings(account.address)
+  }, [currentMonth])
 
   const changeType = (typeId: string) => {
     const type = account!.preferences!.availableTypes.find(
