@@ -1,3 +1,4 @@
+//TODO: should we migrate to @sentry/nextjs?
 import * as Sentry from '@sentry/browser'
 import { NextPage } from 'next'
 import Router from 'next/router'
