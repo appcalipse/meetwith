@@ -48,7 +48,6 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
         content={description}
         key="twitter:description"
       />
-      {/*TODO: Ask for an image fits better for twitter */}
       <meta name="twitter:image" content={ogImage} key="twitter:image" />
       <meta
         name="viewport"
