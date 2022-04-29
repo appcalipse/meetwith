@@ -31,7 +31,6 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
         key="og:description"
       />
       <meta property="og:image" content={ogImage} key="og:image" />
-
       <meta
         name="twitter:card"
         content="summary_large_image"
@@ -49,8 +48,8 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
         content={description}
         key="twitter:description"
       />
+      {/*TODO: Ask for an image fits better for twitter */}
       <meta name="twitter:image" content={ogImage} key="twitter:image" />
-
       <meta
         name="viewport"
         content="initial-scale=1, width=device-width"
@@ -75,7 +74,6 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
       />
       <link rel="manifest" href="/site.webmanifest" />
       <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#f35826" />
-
       <meta
         name="msapplication-TileColor"
         content="#1a202c"
