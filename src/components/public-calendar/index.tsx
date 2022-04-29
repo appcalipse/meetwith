@@ -42,7 +42,7 @@ interface InternalSchedule {
   meetingUrl?: string
 }
 
-export interface PublicCalendarProps {
+interface PublicCalendarProps {
   url: string
   account: Account
   serverSideRender: boolean

@@ -4,17 +4,22 @@ import { NextPage } from 'next'
 import Router from 'next/router'
 import React from 'react'
 
-import PublicCalendar, {
-  PublicCalendarProps,
-} from '../../components/public-calendar'
+import PublicCalendar from '../../components/public-calendar'
 import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
+import { Account } from '../../types/Account'
 import { getAccount } from '../../utils/api_helper'
 import { AccountNotFoundError } from '../../utils/errors'
 import { isProAccount } from '../../utils/subscription_manager'
 import { isValidEVMAddress } from '../../utils/validations'
 
-const Schedule: NextPage<PublicCalendarProps> = props => (
-  <PublicCalendar {...props} />
+interface ScheduleProps {
+  currentUrl: string
+  account: Account
+  serverSideRender: boolean
+}
+
+const Schedule: NextPage<ScheduleProps> = ({ currentUrl, ...rest }) => (
+  <PublicCalendar {...rest} url={currentUrl} />
 )
 
 const EnhancedSchedule: NextPage = forceAuthenticationCheck(Schedule)
