@@ -15,8 +15,6 @@ const defaultProps: HeadProps = {
   ogImage: 'https://meetwithwallet.xyz/assets/opengraph.jpg',
 }
 
-//TODO: add a note about why I've added key and moved stuff here
-// https://nextjs.org/docs/api-reference/next/head, see `key` usage
 export const Head: React.FC<Partial<HeadProps>> = props => {
   const { title, description, url, ogImage } = { ...defaultProps, ...props }
 
@@ -34,7 +32,6 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
       />
       <meta property="og:image" content={ogImage} key="og:image" />
 
-      {/* TODO does this summary_large_image looks right? ********/}
       <meta
         name="twitter:card"
         content="summary_large_image"
