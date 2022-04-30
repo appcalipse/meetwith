@@ -34,6 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(400).json({ message: '`code` must be a string' })
     return
   }
+
   if (!credentials) {
     res
       .status(400)
