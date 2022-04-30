@@ -24,7 +24,9 @@ export const CalendarServiceHelper = {
   getMeetingTitle: (details: MeetingCreationRequest) => {
     return `${
       details.content ? details.content + '\n' : ''
-    }Your meeting will happen at ${details.meeting_url}`
+    }Your meeting will happen at ${
+      details.meeting_url ? details.meeting_url : 'Meet With Wallet'
+    }`
   },
 
   getMeetingLocation: () => {
