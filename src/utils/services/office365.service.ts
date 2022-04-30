@@ -129,7 +129,6 @@ export default class Office365CalendarService implements CalendarService {
 
       const calendarId = '' // required?
       const body = JSON.stringify(this.translateEvent(owner, details))
-      console.log('request', body)
 
       const response = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendar/${calendarId}events`,
