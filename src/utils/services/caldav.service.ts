@@ -143,8 +143,6 @@ export default class CaldavCalendarService implements CalendarService {
 
       if (error || !iCalString) throw new Error('Error creating iCalString')
 
-      console.log('ical', iCalString)
-
       // We create the event directly on iCal
       const responses = await Promise.all(
         calendars.map(calendar =>
