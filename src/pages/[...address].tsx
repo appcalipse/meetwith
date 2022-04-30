@@ -15,7 +15,6 @@ Redirect.getInitialProps = async ctx => {
   if (address && address[0] && isValidEVMAddress(address[0])) {
     const newLocation = `/address/${address[0]}`
     if (serverSide) {
-      //TODO: why is it 302? isn't 302 temporary
       ctx.res!.writeHead(302, {
         Location: newLocation,
       })
