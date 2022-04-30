@@ -10,7 +10,6 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react'
-import { Router, useRouter } from 'next/router'
 import { useState } from 'react'
 
 import {
@@ -26,7 +25,7 @@ interface WebDavDetailsPanelProps {
     username: string
     password: string
   }
-  onSuccess: () => void
+  onSuccess?: () => void
 }
 
 const APPLE_DISCLAIMER = (
@@ -35,11 +34,11 @@ const APPLE_DISCLAIMER = (
     <Link href="https://appleid.apple.com/account/manage">
       https://appleid.apple.com/account/manage
     </Link>
-    . Your credentials will be stored and encrypted.
+    . Your credentials will be encrypted and then stored.
   </Text>
 )
 const GENERIC_DISCLAIMER = (
-  <Text>Your credentials will be stored and encrypted.</Text>
+  <Text>Your credentials will be encrypted and then stored.</Text>
 )
 const APPLE_WEBDAV_URL = 'https://caldav.icloud.com'
 
@@ -95,7 +94,6 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           username,
           password,
         })
-        // window.location.reload();
         window.location.href = '/dashboard/calendars?calendarResult=success'
       } else {
         await addOrUpdateWebdav({
@@ -105,7 +103,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
         })
         window.location.href = '/dashboard/calendars?calendarResult=success'
       }
-      onSuccess()
+      !!onSuccess && onSuccess()
     } finally {
       setLoading(false)
     }
