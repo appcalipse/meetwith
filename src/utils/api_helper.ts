@@ -43,12 +43,12 @@ export const internalFetch = async (
   throw new ApiFetchError(response.status, response.statusText)
 }
 
-export const getAccount = async (identifer: string): Promise<Account> => {
+export const getAccount = async (identifier: string): Promise<Account> => {
   try {
-    return (await internalFetch(`/accounts/${identifer}`)) as Account
+    return (await internalFetch(`/accounts/${identifier}`)) as Account
   } catch (e: any) {
     if (e.status && e.status === 404) {
-      throw new AccountNotFoundError(identifer)
+      throw new AccountNotFoundError(identifier)
     }
     throw e
   }
