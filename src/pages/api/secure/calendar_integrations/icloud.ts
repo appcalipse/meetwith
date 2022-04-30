@@ -23,8 +23,6 @@ async function handler(
     const symetricKey = process.env.SYMETRIC_KEY!
     const details: any = req.body as any
 
-    console.log('request', symetricKey, details)
-
     const payload: ConnectedCalendarCorePayload = {
       provider: ConnectedCalendarProvider.ICLOUD,
       email: details.username!,

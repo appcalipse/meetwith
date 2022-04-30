@@ -3,6 +3,7 @@ import {
   Button,
   FormControl,
   FormLabel,
+  HStack,
   Input,
   InputGroup,
   InputRightElement,
@@ -112,7 +113,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
   return (
     <Box>
       {isApple ? APPLE_DISCLAIMER : GENERIC_DISCLAIMER}
-      <FormControl pt={2}>
+      <FormControl pt={2} display={isApple ? 'none' : 'block'}>
         <FormLabel>URL</FormLabel>
         <Input
           value={url}
@@ -148,7 +149,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           </InputRightElement>
         </InputGroup>
       </FormControl>
-      <div
+      <Box
         style={{
           display: 'flex',
           alignItems: 'end',
@@ -164,7 +165,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
         >
           Connect
         </Button>
-      </div>
+      </Box>
     </Box>
   )
 }
