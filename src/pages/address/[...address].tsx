@@ -9,8 +9,6 @@ import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck
 import { Account } from '../../types/Account'
 import { getAccount } from '../../utils/api_helper'
 import { AccountNotFoundError } from '../../utils/errors'
-import { isProAccount } from '../../utils/subscription_manager'
-import { isValidEVMAddress } from '../../utils/validations'
 
 interface ScheduleProps {
   currentUrl: string
@@ -25,33 +23,32 @@ const Schedule: NextPage<ScheduleProps> = ({ currentUrl, ...rest }) => (
 const EnhancedSchedule: NextPage = forceAuthenticationCheck(Schedule)
 
 EnhancedSchedule.getInitialProps = async ctx => {
+  const address = ctx.query.address
   const serverSide = Boolean(ctx.res)
 
-  const redirectTo404 = () => {
+  const redirectTo = (path: string) => {
     if (serverSide) {
+      //TODO: when redirecting to 404, should I use which code here? 302 seems appropriate
       ctx.res!.writeHead(302, {
-        Location: '/404',
+        Location: path,
       })
       ctx.res!.end()
     } else {
-      Router.replace('404')
+      Router.replace(path)
     }
+    return
   }
 
-  const address = ctx.query.address
-
-  if (!address || !address[0] || !isValidEVMAddress(address[0])) {
-    return redirectTo404()
+  if (!address || !address[0]) {
+    return redirectTo('/404')
   }
 
   try {
     const account = await getAccount(address[0])
 
+    //TODO: what this is_invited means?
     if (account.is_invited) {
-      return redirectTo404()
-    }
-    if (!isValidEVMAddress(address[0]) && !isProAccount(account)) {
-      return redirectTo404()
+      return redirectTo('/404')
     }
 
     const host = ctx.req?.headers.host
@@ -63,7 +60,7 @@ EnhancedSchedule.getInitialProps = async ctx => {
       Sentry.captureException(e)
     }
 
-    return redirectTo404()
+    return redirectTo('/404')
   }
 }
 
