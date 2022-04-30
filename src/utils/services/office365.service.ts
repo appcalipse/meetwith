@@ -31,7 +31,7 @@ interface TokenResponse {
 
 export function handleErrorsJson(response: Response) {
   if (!response.ok) {
-    response.json().then(console.log)
+    response.json().then(console.error)
     throw Error(response.statusText)
   }
   return response.json()

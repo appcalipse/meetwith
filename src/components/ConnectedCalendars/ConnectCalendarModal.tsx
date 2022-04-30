@@ -1,20 +1,14 @@
 import {
   Button,
-  FormControl,
-  FormLabel,
   Heading,
   HStack,
   Image,
-  Input,
-  Link,
   Modal,
   ModalBody,
   ModalCloseButton,
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  Text,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useState } from 'react'
@@ -46,10 +40,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
     setSelectedProvider(provider)
     setLoading(undefined)
   }
-
-  const toast = useToast()
-
-  const onWebdavSuccess = () => {}
 
   return (
     <Modal
@@ -119,20 +109,14 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 p="10"
                 pt="0"
               >
-                <WebDavDetailsPanel
-                  isApple={true}
-                  onSuccess={onWebdavSuccess}
-                />
+                <WebDavDetailsPanel isApple={true} />
               </VStack>
               <VStack
                 hidden={selecteProvider !== ConnectedCalendarProvider.WEBDAV}
                 p="10"
                 pt="0"
               >
-                <WebDavDetailsPanel
-                  isApple={false}
-                  onSuccess={onWebdavSuccess}
-                />
+                <WebDavDetailsPanel isApple={false} />
               </VStack>
             </VStack>
           </ModalBody>
