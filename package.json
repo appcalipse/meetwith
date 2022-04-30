@@ -9,7 +9,10 @@
     "lint": "next lint",
     "typecheck": "tsc --pretty --noEmit",
     "prepare": "husky install",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@chakra-ui/icons": "^1.1.1",
@@ -50,6 +53,7 @@
     "ethers": "^5.5.4",
     "framer-motion": "^4",
     "googleapis": "^92.0.0",
+    "ical.js": "^1.5.0",
     "ics": "^2.35.0",
     "ipfs": "^0.59.1",
     "ipfs-http-client": "^54.0.2",
@@ -70,6 +74,7 @@
     "slugify": "^1.6.5",
     "styled-components": "^4.2.0",
     "timezones-list": "^3.0.1",
+    "tsdav": "^2.0.2",
     "uuid": "^8.3.2",
     "web3": "^1.6.0",
     "web3modal": "^1.9.4"
@@ -78,9 +83,14 @@
     "@babel/core": "^7.16.0",
     "@babel/plugin-proposal-class-properties": "^7.16.0",
     "@babel/plugin-proposal-decorators": "^7.16.4",
+    "@faker-js/faker": "^6.2.0",
+    "@testing-library/jest-dom": "^5.16.3",
+    "@testing-library/react": "^12.1.4",
     "@types/amplitude-js": "^8.0.2",
     "@types/crypto-js": "^4.0.2",
     "@types/email-templates": "^8.0.4",
+    "@types/ical": "^0.8.0",
+    "@types/jest": "^27.4.1",
     "@types/node": "16.11.7",
     "@types/nodemailer": "^6.4.4",
     "@types/orbit-db": "https://github.com/orbitdb/orbit-db-types.git",
@@ -103,8 +113,12 @@
     "eslint-plugin-tailwindcss": "^1.17.2",
     "husky": "^7.0.4",
     "ipfs-core-types": "^0.8.3",
+    "jest": "^27.5.1",
     "lint-staged": "^12.3.1",
     "prettier": "^2.5.0",
     "typescript": "4.4.4"
+  },
+  "_moduleAliases": {
+    "@": "src"
   }
 }
