@@ -4,11 +4,11 @@ import { NextPage } from 'next'
 import Router from 'next/router'
 import React from 'react'
 
-import PublicCalendar from '../../components/public-calendar'
-import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
-import { Account } from '../../types/Account'
-import { getAccount } from '../../utils/api_helper'
-import { AccountNotFoundError } from '../../utils/errors'
+import PublicCalendar from '@/components/public-calendar'
+import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
+import { Account } from '@/types/Account'
+import { getAccount } from '@/utils/api_helper'
+import { AccountNotFoundError } from '@/utils/errors'
 
 interface ScheduleProps {
   currentUrl: string
