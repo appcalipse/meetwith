@@ -30,6 +30,7 @@ import {
 } from '../../utils/errors'
 import { saveMeetingsScheduled } from '../../utils/storage'
 import { isProAccount } from '../../utils/subscription_manager'
+import { getAccountDisplayName } from '../../utils/user_manager'
 import { isValidEVMAddress } from '../../utils/validations'
 import Loading from '../Loading'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
@@ -150,6 +151,10 @@ const PublicCalendar: React.FC = () => {
     )
     const end = addMinutes(new Date(start), selectedType.duration)
 
+    const targetName = getAccountDisplayName(account!)
+    if (scheduleType !== SchedulingType.GUEST && !name) {
+      name = getAccountDisplayName(currentAccount!)
+    }
     try {
       const meeting = await scheduleMeeting(
         scheduleType,
@@ -161,6 +166,7 @@ const PublicCalendar: React.FC = () => {
         currentAccount?.address,
         guestEmail,
         name,
+        targetName,
         content,
         meetingUrl
       )

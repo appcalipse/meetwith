@@ -10,8 +10,7 @@ import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
-import { getSignature } from './storage'
-import { saveSignature } from './storage'
+import { getSignature, saveSignature } from './storage'
 import { isProAccount } from './subscription_manager'
 import { isValidEVMAddress } from './validations'
 
@@ -157,11 +156,15 @@ const ellipsizeAddress = (address: string) =>
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,
+  targetAccountAddress?: string,
   currentAccount?: Account | null
 ) => {
   let display: string
 
-  if (participant.account_address === currentAccount?.address) {
+  if (
+    participant.account_address === currentAccount?.address ||
+    participant.account_address === targetAccountAddress
+  ) {
     display = 'You'
   } else if (!participant.account_address) {
     display = participant.guest_email!
