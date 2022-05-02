@@ -249,7 +249,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   return (
     <>
       <Head
-        title="calendar on Meet with Wallet - Schedule a meeting in #web3 style"
+        title={`${getAccountDisplayName(
+          account
+        )}'s calendar on Meet with Wallet - Schedule a meeting in #web3 style`}
         description={
           account.preferences?.description ||
           'Schedule a meeting by simply connecting your web3 wallet, or use your email and schedule as a guest.'
