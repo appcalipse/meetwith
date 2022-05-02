@@ -91,8 +91,32 @@ describe('PublicCalendar /[...address] - getInitialProps', () => {
     expect(props).toBeUndefined()
   })
 
-  //TODO: I'm not sure what is_invited really means
-  it.todo('redirects to /404 is the account is_invited')
+  it('redirects to /404 is the account is_invited property is true', async () => {
+    // given
+    const address = '_PRO_DOMAIN_'
+    const ctx: Partial<NextPageContext> = {
+      query: { address: [address] },
+      req: { headers: { host: 'http://localhost:3000' } } as any,
+      asPath: '/address/' + address,
+      res: {} as any,
+    }
+    const account = {
+      address,
+      is_invited: true,
+    } as Account
+
+    when(getAccount)
+      .calledWith(ctx.query!.address![0])
+      .mockResolvedValue(account)
+
+    // when
+    const props = await PublicCalendar.getInitialProps!(ctx as any)
+
+    // then
+    expect(redirectTo).toHaveBeenCalledTimes(1)
+    expect(redirectTo).toHaveBeenCalledWith('/404', 302, ctx)
+    expect(props).toBeUndefined()
+  })
 
   it('returns the expected properties when the account exists and is a PRO account', async () => {
     // given
