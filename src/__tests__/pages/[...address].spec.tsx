@@ -49,7 +49,7 @@ describe('PublicCalendar /[...address] - getInitialProps', () => {
 
   it('redirects to /404 if the user was not found', async () => {
     // given
-    const address = 'non_prop_user'
+    const address = '_address_'
     const ctx: Partial<NextPageContext> = {
       query: { address: [address] },
     }
@@ -69,7 +69,7 @@ describe('PublicCalendar /[...address] - getInitialProps', () => {
 
   it('redirects to /404 if the account is not PRO', async () => {
     // given
-    const address = 'non_prop_user'
+    const address = '_address_'
     const ctx: Partial<NextPageContext> = {
       query: { address: [address] },
     }
@@ -93,7 +93,7 @@ describe('PublicCalendar /[...address] - getInitialProps', () => {
 
   it('redirects to /404 is the account is_invited property is true', async () => {
     // given
-    const address = '_PRO_DOMAIN_'
+    const address = '_address_'
     const ctx: Partial<NextPageContext> = {
       query: { address: [address] },
       req: { headers: { host: 'http://localhost:3000' } } as any,
@@ -120,7 +120,7 @@ describe('PublicCalendar /[...address] - getInitialProps', () => {
 
   it('returns the expected properties when the account exists and is a PRO account', async () => {
     // given
-    const address = 'pro_user'
+    const address = '_address_'
     const ctx: Partial<NextPageContext> = {
       query: { address: [address] },
       req: { headers: { host: 'http://localhost:3000' } } as any,
