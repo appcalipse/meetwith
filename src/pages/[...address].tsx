@@ -22,7 +22,6 @@ const Schedule: NextPage<ScheduleProps> = ({ currentUrl, ...rest }) => {
   return <PublicCalendar {...rest} url={currentUrl} />
 }
 
-//TODO: why do we force authentication here?
 const EnhancedSchedule = forceAuthenticationCheck(Schedule)
 
 EnhancedSchedule.getInitialProps = async ctx => {
