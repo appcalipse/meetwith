@@ -18,9 +18,9 @@ import { connectedProvider } from './user_manager'
 
 export const isProAccount = (account?: Account): boolean => {
   return (
-    account !== undefined &&
-    account !== null &&
-    account!.subscriptions?.some(sub => sub.plan_id === Plan.PRO)
+    account?.subscriptions?.some(
+      sub => sub.plan_id === Plan.PRO && new Date(sub.expiry_time) > new Date()
+    ) || false
   )
 }
 
