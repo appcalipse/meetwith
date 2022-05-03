@@ -4,7 +4,11 @@ import Web3Modal from 'web3modal'
 
 import { Account } from '../types/Account'
 import { supportedChains } from '../types/chains'
-import { ParticipantInfo, ParticipantType } from '../types/Meeting'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  SchedulingType,
+} from '../types/Meeting'
 import { Plan } from '../types/Subscription'
 import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
@@ -157,17 +161,24 @@ const ellipsizeAddress = (address: string) =>
 const getParticipantDisplay = (
   participant: ParticipantInfo,
   targetAccountAddress?: string,
-  currentAccount?: Account | null
+  currentAccount?: Account | null,
+  schedulingType?: SchedulingType
 ) => {
   let display: string
 
   if (
-    participant.account_address === currentAccount?.address ||
-    participant.account_address === targetAccountAddress
+    (schedulingType !== SchedulingType.GUEST &&
+      participant.account_address === currentAccount?.address) ||
+    (schedulingType !== SchedulingType.GUEST &&
+      participant.account_address === targetAccountAddress)
   ) {
     display = 'You'
   } else if (!participant.account_address) {
-    display = participant.guest_email!
+    if (participant.name) {
+      display = `${participant.name} (${participant.guest_email})`
+    } else {
+      display = participant.guest_email!
+    }
   } else {
     display = participant.name || ellipsizeAddress(participant.account_address!)
   }
