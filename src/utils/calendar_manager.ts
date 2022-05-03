@@ -162,7 +162,12 @@ const scheduleMeeting = async (
           JSON.stringify(privateInfo)
         ),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        name: getParticipantDisplay(participant, target_account_address),
+        name: getParticipantDisplay(
+          participant,
+          target_account_address,
+          undefined,
+          schedulingType
+        ),
         guest_email: participant.account_address ? '' : participant.guest_email,
       }
       participantsMappings.push(participantMapping)
