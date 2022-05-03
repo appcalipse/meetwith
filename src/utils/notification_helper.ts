@@ -47,7 +47,7 @@ export const notifyForNewMeeting = async (
       })
       participantsDisplay = participants.map(participant => participant.name)
     } else {
-      participantsDisplay.push(participant.guest_email!)
+      participantsDisplay.push(participant.name)
       await newMeetingEmail(
         participant.guest_email!,
         participantsDisplay,
