@@ -17,10 +17,14 @@ import { validateChainToActOn } from './rpc_helper_front'
 import { connectedProvider } from './user_manager'
 
 export const isProAccount = (account?: Account): boolean => {
-  return (
-    account?.subscriptions?.some(
-      sub => sub.plan_id === Plan.PRO && new Date(sub.expiry_time) > new Date()
-    ) || false
+  return Boolean(getActiveProSubscription(account))
+}
+
+export const getActiveProSubscription = (
+  account?: Account
+): Subscription | undefined => {
+  return account?.subscriptions?.find(
+    sub => sub.plan_id === Plan.PRO && new Date(sub.expiry_time) > new Date()
   )
 }
 
