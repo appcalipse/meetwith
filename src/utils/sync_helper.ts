@@ -1,7 +1,7 @@
 import { Account } from '../types/Account'
 import { MeetingCreationRequest, ParticipantType } from '../types/Meeting'
 import { getAccountFromDB, getConnectedCalendars } from './database'
-import { getConnectedCalendarIntegration } from './services/connected_calendars_factory'
+import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { isProAccount } from './subscription_manager'
 
 export const syncCalendarWithAccount = async (

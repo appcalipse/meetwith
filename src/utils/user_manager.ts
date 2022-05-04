@@ -4,15 +4,17 @@ import Web3Modal from 'web3modal'
 
 import { Account } from '../types/Account'
 import { supportedChains } from '../types/chains'
-import { ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { Plan } from '../types/Subscription'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  SchedulingType,
+} from '../types/Meeting'
 import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
-import { getSignature } from './storage'
-import { saveSignature } from './storage'
-import { isProAccount } from './subscription_manager'
+import { getSignature, saveSignature } from './storage'
+import { getActiveProSubscription } from './subscription_manager'
 import { isValidEVMAddress } from './validations'
 
 const providerOptions = {
@@ -137,12 +139,12 @@ const getAccountDisplayName = (
 ): string => {
   if (useENSorUD) {
     return account.name || ellipsizeAddress(account.address)
-  } else if (isProAccount(account)) {
-    return account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0]
-      .domain
-  } else {
-    return ellipsizeAddress(account.address)
   }
+
+  return (
+    getActiveProSubscription(account)?.domain ||
+    ellipsizeAddress(account.address)
+  )
 }
 
 const getAddressDisplayForInput = (input: string) => {
@@ -157,14 +159,25 @@ const ellipsizeAddress = (address: string) =>
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,
-  currentAccount?: Account | null
+  targetAccountAddress?: string,
+  currentAccount?: Account | null,
+  schedulingType?: SchedulingType
 ) => {
   let display: string
 
-  if (participant.account_address === currentAccount?.address) {
+  if (
+    (schedulingType !== SchedulingType.GUEST &&
+      participant.account_address === currentAccount?.address) ||
+    (schedulingType !== SchedulingType.GUEST &&
+      participant.account_address === targetAccountAddress)
+  ) {
     display = 'You'
   } else if (!participant.account_address) {
-    display = participant.guest_email!
+    if (participant.name) {
+      display = `${participant.name} (${participant.guest_email})`
+    } else {
+      display = participant.guest_email!
+    }
   } else {
     display = participant.name || ellipsizeAddress(participant.account_address!)
   }

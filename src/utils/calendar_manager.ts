@@ -46,7 +46,7 @@ import { getSlugFromText } from './generic_utils'
 import { generateMeetingUrl } from './meeting_call_helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
-import { getAccountDisplayName } from './user_manager'
+import { getAccountDisplayName, getParticipantDisplay } from './user_manager'
 
 const scheduleMeeting = async (
   schedulingType: SchedulingType,
@@ -58,6 +58,7 @@ const scheduleMeeting = async (
   source_account_address?: string,
   guest_email?: string,
   sourceName?: string,
+  targetName?: string,
   meetingContent?: string,
   meetingUrl?: string
 ): Promise<MeetingDecrypted> => {
@@ -99,7 +100,12 @@ const scheduleMeeting = async (
             ? ParticipationStatus.Accepted
             : ParticipationStatus.Pending,
         slot_id: uuidv4(),
-        name: account.address == source_account_address ? sourceName : '',
+        name:
+          account.address == source_account_address
+            ? sourceName
+            : account.address == target_account_address
+            ? targetName
+            : '',
         guest_email: account.address ? '' : guest_email,
       }
       participants.push(participant)
@@ -141,7 +147,6 @@ const scheduleMeeting = async (
       meeting_url: meetingUrl || (await generateMeetingUrl()),
       change_history_paths: [],
     }
-
     const participantsMappings = []
     for (const participant of participants) {
       const participantMapping: CreationRequestParticipantMapping = {
@@ -157,6 +162,12 @@ const scheduleMeeting = async (
           JSON.stringify(privateInfo)
         ),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        name: getParticipantDisplay(
+          participant,
+          target_account_address,
+          undefined,
+          schedulingType
+        ),
         guest_email: participant.account_address ? '' : participant.guest_email,
       }
       participantsMappings.push(participantMapping)

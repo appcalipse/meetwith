@@ -32,6 +32,7 @@ import {
 import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
 import { getParticipantDisplay } from '../../../utils/user_manager'
 import IPFSLink from '../../IPFSLink'
+
 interface MeetingCardProps {
   meeting: DBSlot
   timezone: string
@@ -184,7 +185,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             <Text>
               {info.participants
                 .map(participant =>
-                  getParticipantDisplay(participant, currentAccount)
+                  getParticipantDisplay(participant, '', currentAccount)
                 )
                 .join(', ')}
             </Text>

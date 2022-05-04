@@ -5,30 +5,17 @@ import { Auth, calendar_v3, google } from 'googleapis'
 import {
   ConnectedCalendarProvider,
   NewCalendarEventType,
-} from '../../types/CalendarConnections'
-import { MeetingCreationRequest } from '../../types/Meeting'
+} from '@/types/CalendarConnections'
+import { MeetingCreationRequest } from '@/types/Meeting'
+
 import { apiUrl } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
-import { ellipsizeAddress } from '../user_manager'
-import { MWWGoogleAuth } from './google_auth'
-
-export interface Calendar {
-  createEvent(
-    owner: string,
-    details: MeetingCreationRequest
-  ): Promise<NewCalendarEventType>
-}
-
-export interface IntegrationCalendar {
-  externalId: string
-  integration: string
-  name: string
-  primary: boolean
-}
+import { CalendarServiceHelper } from './calendar.helper'
+import { CalendarService, MWWGoogleAuth } from './common.types'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
-export default class GoogleCalendarService implements Calendar {
+export default class GoogleCalendarService implements CalendarService {
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
 
   constructor(
@@ -102,24 +89,9 @@ export default class GoogleCalendarService implements Calendar {
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
-        const otherParticipants = [
-          details.participants_mapping
-            ?.filter(it => it.account_address !== owner)
-            .map(it =>
-              it.account_address
-                ? ellipsizeAddress(it.account_address!)
-                : it.guest_email
-            ),
-        ]
         const payload: calendar_v3.Schema$Event = {
-          summary: `Meet with ${
-            otherParticipants.length
-              ? otherParticipants.join(', ')
-              : 'other participants'
-          }`,
-          description: `${
-            details.content ? details.content + '\n' : ''
-          }Your meeting will happen at ${details.meeting_url}`,
+          summary: CalendarServiceHelper.getMeetingSummary(owner, details),
+          description: CalendarServiceHelper.getMeetingTitle(details),
           start: {
             dateTime: new Date(details.start).toISOString(),
             timeZone: 'UTC',
@@ -141,7 +113,7 @@ export default class GoogleCalendarService implements Calendar {
         }
 
         if (details.meeting_url) {
-          payload['location'] = 'Online @ Meet With Wallet'
+          payload['location'] = CalendarServiceHelper.getMeetingLocation()
         }
 
         const calendar = google.calendar({
