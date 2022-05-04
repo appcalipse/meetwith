@@ -10,7 +10,7 @@ import {
   initDB,
 } from '../../../../utils/database'
 import { AccountNotFoundError } from '../../../../utils/errors'
-import { getConnectedCalendarIntegration } from '../../../../utils/services/connected_calendars_factory'
+import { getConnectedCalendarIntegration } from '../../../../utils/services/connected_calendars.factory'
 import { isProAccount } from '../../../../utils/subscription_manager'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {

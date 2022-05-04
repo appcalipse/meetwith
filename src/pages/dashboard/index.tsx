@@ -8,11 +8,9 @@ import { EditMode } from '../../types/Dashboard'
 
 const Dashboard: React.FC = () => {
   return (
-    <>
-      <Container maxW="6xl" my={8} flex={1}>
-        <DashboardContent currentSection={EditMode.MEETINGS} />
-      </Container>
-    </>
+    <Container data-testid="dashboard-container" maxW="6xl" my={8} flex={1}>
+      <DashboardContent currentSection={EditMode.MEETINGS} />
+    </Container>
   )
 }
 
