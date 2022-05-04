@@ -1,13 +1,17 @@
 import * as Sentry from '@sentry/browser'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
-import { AccountNotifications } from '../types/AccountNotifications'
+import {
+  AccountNotifications,
+  DiscordNotificationType,
+} from '../types/AccountNotifications'
 import {
   ConnectedCalendarCore,
   ConnectedCalendarCorePayload,
   ConnectedCalendarProvider,
   ConnectResponse,
 } from '../types/CalendarConnections'
+import { DiscordUserInfo } from '../types/DiscordUserInfo'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
@@ -313,4 +317,12 @@ export const getSubscriptionForDomain = async (
   return (await internalFetch(
     `/secure/subscriptions/check/${domain}`
   )) as Subscription
+}
+
+export const generateDiscordNotification = async (
+  discordCode: string
+): Promise<DiscordNotificationType> => {
+  return (await internalFetch(`/secure/discord`, 'POST', {
+    discordCode,
+  })) as DiscordNotificationType
 }

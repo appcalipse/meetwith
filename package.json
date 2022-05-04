@@ -44,6 +44,7 @@
     "date-fns": "^2.28.0",
     "date-fns-tz": "^1.2.2",
     "dayzed": "^3.2.2",
+    "discord.js": "^12.5.3",
     "email-templates": "^8.0.8",
     "eth-crypto": "^2.1.0",
     "ethereumjs-util": "^7.1.3",

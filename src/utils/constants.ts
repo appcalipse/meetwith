@@ -17,10 +17,21 @@ const DEFAULT_MESSAGE = (nonce: number) =>
 
 const YEAR_DURATION_IN_SECONDS = 31536000
 
+const MWW_DISCORD_SERVER = 'https://discord.gg/an2q4xUkcR'
+
+const discordRedirectUrl =
+  process.env.NEXT_PUBLIC_ENV !== 'production'
+    ? process.env.NEXT_PUBLIC_ENV !== 'development'
+      ? 'http://localhost:3000/dashboard/notifications?discordResult=true'
+      : 'https://meet-with-wallet-git-develop-appcalipse.vercel.app/dashboard/notifications?discordResult=true'
+    : 'https://meetiwithwallet.xyz/dashboard/notifications?discordResult=true'
+
 export {
   apiUrl,
   appUrl,
   DEFAULT_MESSAGE,
+  discordRedirectUrl,
   isProduction,
+  MWW_DISCORD_SERVER,
   YEAR_DURATION_IN_SECONDS,
 }

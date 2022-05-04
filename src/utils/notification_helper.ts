@@ -13,6 +13,7 @@ import {
 import { newMeetingEmail } from './email_helper'
 import { sendEPNSNotification } from './epns_helper_production'
 import { sendEPNSNotificationStaging } from './epns_helper_staging'
+import { dmAccount } from './services/discord_helper'
 import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress } from './user_manager'
 
@@ -79,52 +80,70 @@ export const notifyForNewMeeting = async (
       ) {
         const notification_type =
           participant.subscriptions.notification_types[j]
-        switch (notification_type.channel) {
-          case NotificationChannel.EMAIL:
-            await newMeetingEmail(
-              notification_type.destination,
-              participantsDisplay,
-              participant.timezone!,
-              new Date(meeting_ics.meeting.start),
-              new Date(meeting_ics.meeting.end),
-              meeting_ics.db_slot.meeting_info_file_path,
-              meeting_ics.meeting.meeting_url,
-              meeting_ics.db_slot.id,
-              meeting_ics.db_slot.created_at
-            )
-            break
 
-          case NotificationChannel.EPNS:
-            const account = await getAccountFromDB(participant.address)
-            if (isProAccount(account)) {
-              const parameters = {
-                destination_addresses: [notification_type.destination],
-                title: 'New meeting scheduled',
-                message: `${format(
-                  utcToZonedTime(
-                    meeting_ics.meeting.start,
-                    participant.timezone
-                  ),
-                  'PPPPpp'
-                )} - ${participants
-                  .map(participant => ellipsizeAddress(participant.address))
-                  .join(', ')}`,
+        if (!notification_type.disabled) {
+          switch (notification_type.channel) {
+            case NotificationChannel.EMAIL:
+              await newMeetingEmail(
+                notification_type.destination,
+                participantsDisplay,
+                participant.timezone!,
+                new Date(meeting_ics.meeting.start),
+                new Date(meeting_ics.meeting.end),
+                meeting_ics.db_slot.meeting_info_file_path,
+                meeting_ics.meeting.meeting_url,
+                meeting_ics.db_slot.id,
+                meeting_ics.db_slot.created_at
+              )
+              break
+
+            case NotificationChannel.DISCORD:
+              const accountForDiscord = await getAccountFromDB(
+                participant.address
+              )
+              if (isProAccount(accountForDiscord)) {
+                await dmAccount(
+                  participant.address,
+                  notification_type.destination,
+                  `You got a new meeting dude, and it will be here: ${meeting_ics.meeting.meeting_url}`
+                )
               }
+              break
 
-              process.env.NEXT_PUBLIC_ENV === 'production'
-                ? await sendEPNSNotification(
-                    parameters.destination_addresses,
-                    parameters.title,
-                    parameters.message
-                  )
-                : await sendEPNSNotificationStaging(
-                    parameters.destination_addresses,
-                    parameters.title,
-                    parameters.message
-                  )
-            }
-            break
-          default:
+            case NotificationChannel.EPNS:
+              const accountForEmail = await getAccountFromDB(
+                participant.address
+              )
+              if (isProAccount(accountForEmail)) {
+                const parameters = {
+                  destination_addresses: [notification_type.destination],
+                  title: 'New meeting scheduled',
+                  message: `${format(
+                    utcToZonedTime(
+                      meeting_ics.meeting.start,
+                      participant.timezone
+                    ),
+                    'PPPPpp'
+                  )} - ${participants
+                    .map(participant => ellipsizeAddress(participant.address))
+                    .join(', ')}`,
+                }
+
+                process.env.NEXT_PUBLIC_ENV === 'production'
+                  ? await sendEPNSNotification(
+                      parameters.destination_addresses,
+                      parameters.title,
+                      parameters.message
+                    )
+                  : await sendEPNSNotificationStaging(
+                      parameters.destination_addresses,
+                      parameters.title,
+                      parameters.message
+                    )
+              }
+              break
+            default:
+          }
         }
       }
     }
