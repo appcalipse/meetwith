@@ -7,6 +7,8 @@ import {
   useColorModeValue,
 } from '@chakra-ui/react'
 
+import { MWW_DISCORD_SERVER } from '../../utils/constants'
+
 export default function FAQ() {
   return (
     <Container maxW="7xl" id="faq">
@@ -97,7 +99,7 @@ export default function FAQ() {
           </Link>{' '}
           and vote on what you want to be done next. You can also be an active
           member in our community through our{' '}
-          <Link isExternal href="https://discord.gg/an2q4xUkcR">
+          <Link isExternal href={MWW_DISCORD_SERVER}>
             Discord
           </Link>
         </Text>
