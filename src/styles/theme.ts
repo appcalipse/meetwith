@@ -32,6 +32,9 @@ const newTheme = {
       body: {
         bg: mode('gray.50', 'gray.700')(props),
       },
+      '*, *::before, &::after': {
+        borderColor: mode('gray.300', 'whiteAlpha.300')(props),
+      },
     }),
   },
   config,
