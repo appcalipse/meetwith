@@ -16,6 +16,8 @@ import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
 
+import { MWW_DISCORD_SERVER } from '../utils/constants'
+
 const Logo = () => {
   return (
     <NextLink href={'/'} passHref>
@@ -106,7 +108,7 @@ export default function SmallWithLogoLeft() {
               Community
             </Heading>
             <Text textAlign="justify">
-              <Link href="https://discord.gg/an2q4xUkcR" target="_blank">
+              <Link href={MWW_DISCORD_SERVER} target="_blank">
                 Discord
               </Link>
             </Text>
@@ -169,10 +171,7 @@ export default function SmallWithLogoLeft() {
           >
             <FaTwitter />
           </SocialButton>
-          <SocialButton
-            label={'Discord'}
-            href={'https://discord.gg/an2q4xUkcR'}
-          >
+          <SocialButton label={'Discord'} href={MWW_DISCORD_SERVER}>
             <FaDiscord />
           </SocialButton>
         </Stack>
