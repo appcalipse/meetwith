@@ -105,7 +105,15 @@ export const notifyForNewMeeting = async (
                 await dmAccount(
                   participant.address,
                   notification_type.destination,
-                  `You got a new meeting dude, and it will be here: ${meeting_ics.meeting.meeting_url}`
+                  `New meeting scheduled. ${format(
+                    utcToZonedTime(
+                      meeting_ics.meeting.start,
+                      participant.timezone
+                    ),
+                    'PPPPpp'
+                  )} - ${participants
+                    .map(participant => ellipsizeAddress(participant.address))
+                    .join(', ')}`
                 )
               }
               break
