@@ -1,13 +1,17 @@
 import * as Sentry from '@sentry/browser'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
-import { AccountNotifications } from '../types/AccountNotifications'
+import {
+  AccountNotifications,
+  DiscordNotificationType,
+} from '../types/AccountNotifications'
 import {
   ConnectedCalendarCore,
   ConnectedCalendarCorePayload,
   ConnectedCalendarProvider,
   ConnectResponse,
 } from '../types/CalendarConnections'
+import { DiscordUserInfo } from '../types/DiscordUserInfo'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
@@ -36,19 +40,19 @@ export const internalFetch = async (
     ...options,
     body: (body && JSON.stringify(body)) || null,
   })
-  if (response.status === 200) {
+  if (response.status >= 200 && response.status < 300) {
     return await response.json()
   }
 
   throw new ApiFetchError(response.status, response.statusText)
 }
 
-export const getAccount = async (identifer: string): Promise<Account> => {
+export const getAccount = async (identifier: string): Promise<Account> => {
   try {
-    return (await internalFetch(`/accounts/${identifer}`)) as Account
+    return (await internalFetch(`/accounts/${identifier}`)) as Account
   } catch (e: any) {
     if (e.status && e.status === 404) {
-      throw new AccountNotFoundError(identifer)
+      throw new AccountNotFoundError(identifier)
     }
     throw e
   }
@@ -230,6 +234,24 @@ export const getGoogleAuthConnectUrl = async (): Promise<ConnectResponse> => {
   )) as ConnectResponse
 }
 
+export const getOffice365ConnectUrl = async (): Promise<ConnectResponse> => {
+  return (await internalFetch(
+    `/secure/calendar_integrations/office365/connect`
+  )) as ConnectResponse
+}
+
+export const addOrUpdateICloud = async (details: any): Promise<any> => {
+  return (await internalFetch(`/secure/calendar_integrations/icloud`, 'POST', {
+    ...details,
+  })) as any
+}
+
+export const addOrUpdateWebdav = async (details: any): Promise<any> => {
+  return (await internalFetch(`/secure/calendar_integrations/webdav`, 'POST', {
+    ...details,
+  })) as any
+}
+
 export const login = async (accountAddress: string): Promise<Account> => {
   try {
     const signature = getSignature(accountAddress) || ''
@@ -313,4 +335,34 @@ export const getSubscriptionForDomain = async (
   return (await internalFetch(
     `/secure/subscriptions/check/${domain}`
   )) as Subscription
+}
+
+export const validateWebdav = async (
+  url: string,
+  username: string,
+  password: string
+): Promise<any> => {
+  return fetch(`${apiUrl}/secure/calendar_integrations/webdav`, {
+    method: 'PROPFIND',
+    mode: 'cors',
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+    },
+    body: JSON.stringify({
+      url,
+      username,
+      password,
+    }),
+  })
+    .then(res => res.status >= 200 && res.status < 300)
+    .catch(() => false)
+}
+
+export const generateDiscordNotification = async (
+  discordCode: string
+): Promise<DiscordNotificationType> => {
+  return (await internalFetch(`/secure/discord`, 'POST', {
+    discordCode,
+  })) as DiscordNotificationType
 }

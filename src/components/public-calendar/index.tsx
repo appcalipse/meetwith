@@ -13,7 +13,6 @@ import { Account, MeetingType } from '../../types/Account'
 import { DBSlot, MeetingDecrypted, SchedulingType } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
 import {
-  getAccount,
   getBusySlots,
   getNotificationSubscriptions,
 } from '../../utils/api_helper'
@@ -23,15 +22,13 @@ import {
   scheduleMeeting,
 } from '../../utils/calendar_manager'
 import {
-  AccountNotFoundError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '../../utils/errors'
 import { saveMeetingsScheduled } from '../../utils/storage'
-import { isProAccount } from '../../utils/subscription_manager'
-import { isValidEVMAddress } from '../../utils/validations'
-import Loading from '../Loading'
+import { getAccountDisplayName } from '../../utils/user_manager'
+import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
@@ -45,25 +42,39 @@ interface InternalSchedule {
   meetingUrl?: string
 }
 
-const PublicCalendar: React.FC = () => {
+interface PublicCalendarProps {
+  url: string
+  account: Account
+  serverSideRender: boolean
+}
+
+const PublicCalendar: React.FC<PublicCalendarProps> = ({
+  url,
+  account,
+  serverSideRender,
+}) => {
+  const [isSSR, setIsSSR] = useState(serverSideRender)
+  useEffect(() => {
+    setIsSSR(false)
+  }, [])
+
   const router = useRouter()
 
   const { currentAccount, logged } = useContext(AccountContext)
 
-  const [account, setAccount] = useState(null as Account | null)
   const [checkingSlots, setCheckingSlots] = useState(false)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
     null as InternalSchedule | null
   )
 
   useEffect(() => {
-    if (!account) {
-      const address = router.query.address ? router.query.address[0] : null
-      if (address) {
-        checkUser(address)
-      }
-    }
-  }, [router.query])
+    const typeOnRoute = router.query.address ? router.query.address[1] : null
+    const type = account.preferences!.availableTypes.find(
+      t => t.url === typeOnRoute
+    )
+    setSelectedType(type || account.preferences!.availableTypes[0])
+    updateMeetings(account.address)
+  }, [account, router.query.address])
 
   useEffect(() => {
     if (logged && unloggedSchedule) {
@@ -78,7 +89,6 @@ const PublicCalendar: React.FC = () => {
     }
   }, [currentAccount])
 
-  const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [meetings, setMeetings] = useState([] as DBSlot[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
@@ -92,41 +102,6 @@ const PublicCalendar: React.FC = () => {
   const [notificationsSubs, setNotificationSubs] = useState(0)
 
   const toast = useToast()
-
-  const checkUser = async (identifier: string) => {
-    try {
-      const _account = await getAccount(identifier)
-      if (_account.is_invited) {
-        router.push('/404')
-        return
-      }
-      if (!isValidEVMAddress(identifier) && !isProAccount(_account)) {
-        router.push('/404')
-        return
-      }
-      setAccount(_account)
-      const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = _account.preferences!.availableTypes.find(
-        t => t.url === typeOnRoute
-      )
-      setSelectedType(type || _account.preferences!.availableTypes[0])
-      updateMeetings(_account.address)
-      setLoading(false)
-    } catch (e) {
-      if (!(e instanceof AccountNotFoundError)) {
-        Sentry.captureException(e)
-        toast({
-          title: 'Ops!',
-          description: 'Something went wrong :(',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      }
-      router.push('/404')
-    }
-  }
 
   const fetchNotificationSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()
@@ -150,6 +125,10 @@ const PublicCalendar: React.FC = () => {
     )
     const end = addMinutes(new Date(start), selectedType.duration)
 
+    const targetName = getAccountDisplayName(account!)
+    if (scheduleType !== SchedulingType.GUEST && !name) {
+      name = getAccountDisplayName(currentAccount!)
+    }
     try {
       const meeting = await scheduleMeeting(
         scheduleType,
@@ -161,6 +140,7 @@ const PublicCalendar: React.FC = () => {
         currentAccount?.address,
         guestEmail,
         name,
+        targetName,
         content,
         meetingUrl
       )
@@ -220,14 +200,28 @@ const PublicCalendar: React.FC = () => {
     setCheckingSlots(true)
     const monthStart = startOfMonth(currentMonth)
     const monthEnd = endOfMonth(currentMonth)
-    const meetings = await getBusySlots(identifier, monthStart, monthEnd)
 
-    setMeetings(meetings)
+    try {
+      const meetings = await getBusySlots(identifier, monthStart, monthEnd)
+      setMeetings(meetings)
+    } catch (e) {
+      Sentry.captureException(e)
+      toast({
+        title: 'Ops!',
+        description: 'Something went wrong :(',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      router.push('/404')
+    }
+
     setCheckingSlots(false)
   }
 
   useEffect(() => {
-    account && updateMeetings(account.address)
+    updateMeetings(account.address)
   }, [currentMonth])
 
   const changeType = (typeId: string) => {
@@ -253,17 +247,18 @@ const PublicCalendar: React.FC = () => {
   }
 
   return (
-    <Container maxW="7xl" mt={8} flex={1}>
-      {loading ? (
-        <Flex
-          width="100%"
-          height="100%"
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Loading />
-        </Flex>
-      ) : (
+    <>
+      <Head
+        title={`${getAccountDisplayName(
+          account
+        )}'s calendar on Meet with Wallet - Schedule a meeting in #web3 style`}
+        description={
+          account.preferences?.description ||
+          'Schedule a meeting by simply connecting your web3 wallet, or use your email and schedule as a guest.'
+        }
+        url={url}
+      />
+      <Container maxW="7xl" mt={8} flex={1}>
         <Box>
           <Flex wrap="wrap" justifyContent="center">
             <Box
@@ -289,32 +284,36 @@ const PublicCalendar: React.FC = () => {
               </Select>
             </Box>
 
-            <Box flex="2" p={8}>
-              <MeetSlotPicker
-                reset={reset}
-                onMonthChange={(day: Date) => setCurrentMonth(day)}
-                onSchedule={confirmSchedule}
-                willStartScheduling={willStartScheduling => {
-                  setReadyToSchedule(willStartScheduling)
-                }}
-                isSchedulingExternal={isScheduling}
-                slotDurationInMinutes={selectedType.duration}
-                checkingSlots={checkingSlots}
-                timeSlotAvailability={validateSlot}
-              />
-            </Box>
+            {isSSR ? null : (
+              <Box flex="2" p={8}>
+                <MeetSlotPicker
+                  reset={reset}
+                  onMonthChange={(day: Date) => setCurrentMonth(day)}
+                  onSchedule={confirmSchedule}
+                  willStartScheduling={willStartScheduling => {
+                    setReadyToSchedule(willStartScheduling)
+                  }}
+                  isSchedulingExternal={isScheduling}
+                  slotDurationInMinutes={selectedType.duration}
+                  checkingSlots={checkingSlots}
+                  timeSlotAvailability={validateSlot}
+                />
+              </Box>
+            )}
           </Flex>
-          <MeetingScheduledDialog
-            targetAccount={account!}
-            schedulerAccount={currentAccount!}
-            meeting={lastScheduledMeeting}
-            accountNotificationSubs={notificationsSubs}
-            isOpen={isOpen}
-            onClose={_onClose}
-          />
+          {isSSR ? null : (
+            <MeetingScheduledDialog
+              targetAccount={account!}
+              schedulerAccount={currentAccount!}
+              meeting={lastScheduledMeeting}
+              accountNotificationSubs={notificationsSubs}
+              isOpen={isOpen}
+              onClose={_onClose}
+            />
+          )}
         </Box>
-      )}
-    </Container>
+      </Container>
+    </>
   )
 }
 
