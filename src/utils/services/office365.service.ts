@@ -219,6 +219,7 @@ export default class Office365CalendarService implements CalendarService {
             .then((responseBody: BatchResponse) =>
               responseBody.responses.reduce(
                 (acc: BufferedBusyTime[], subResponse) =>
+                  subResponse.body.value &&
                   acc.concat(
                     subResponse.body.value.map(evt => {
                       return {
