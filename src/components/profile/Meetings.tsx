@@ -131,7 +131,7 @@ const Meetings: React.FC = () => {
         <Button
           onClick={onOpen}
           colorScheme="orange"
-          display={{ base: 'none', md: 'block' }}
+          display={{ base: 'none', md: 'flex' }}
           mt={{ base: 4, md: 0 }}
           mb={4}
           leftIcon={<FaPlus />}
@@ -142,7 +142,7 @@ const Meetings: React.FC = () => {
       <Button
         onClick={onOpen}
         colorScheme="orange"
-        display={{ base: 'block', md: 'none' }}
+        display={{ base: 'flex', md: 'none' }}
         mb={8}
         leftIcon={<FaPlus />}
       >

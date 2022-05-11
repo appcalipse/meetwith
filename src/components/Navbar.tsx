@@ -42,6 +42,7 @@ export const Navbar = () => {
 
   return (
     <Box
+      id="navbar-container"
       as="header"
       display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
       position="fixed"
@@ -136,7 +137,12 @@ const DesktopNav = () => {
   const linkHoverColor = useColorModeValue('gray.800', 'white')
 
   return (
-    <Stack direction={'row'} spacing={4} alignItems="center">
+    <Stack
+      id="navbar-desktop"
+      direction={'row'}
+      spacing={4}
+      alignItems="center"
+    >
       {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
         navItem => (
           <Box key={navItem.label}>
@@ -204,6 +210,7 @@ const MobileNav = () => {
 
   return (
     <Stack
+      id="navbar-mobile"
       bg={useColorModeValue('white', 'gray.800')}
       p={4}
       display={{ md: 'none' }}
