@@ -13,7 +13,7 @@ import {
   setAccountNotificationSubscriptions,
 } from '../database'
 
-const client = new Client({ ws: { intents: [Intents.ALL] } })
+const client = new Client({ ws: { intents: [Intents.FLAGS.DIRECT_MESSAGES] } })
 let ready = false
 
 client.on('ready', () => {
