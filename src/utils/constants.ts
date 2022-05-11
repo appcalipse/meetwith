@@ -24,7 +24,7 @@ const discordRedirectUrl =
     ? process.env.NEXT_PUBLIC_ENV !== 'development'
       ? 'http://localhost:3000/dashboard/notifications?discordResult=true'
       : 'https://meet-with-wallet-git-develop-appcalipse.vercel.app/dashboard/notifications?discordResult=true'
-    : 'https://meetiwithwallet.xyz/dashboard/notifications?discordResult=true'
+    : 'https://meetwithwallet.xyz/dashboard/notifications?discordResult=true'
 
 export {
   apiUrl,
