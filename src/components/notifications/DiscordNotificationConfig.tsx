@@ -45,7 +45,7 @@ const DicordNotificationConfig: React.FC<Props> = ({
   const [notificationOn, setNotificationsOn] = useState(notificationEnabled)
 
   const validateDiscord = async () => {
-    if (!discordNotification) {
+    if (!discordNotification || discordNotification.disabled) {
       const { discordResult, code } = router.query
 
       const subscribeToDiscord = async (code: string) => {
