@@ -65,7 +65,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
               ...externalSlots.map(it => ({
                 start: new Date(it.start),
                 end: new Date(it.end),
-                source: 'google',
+                source: calendar.provider,
               }))
             )
           } catch (e: any) {
