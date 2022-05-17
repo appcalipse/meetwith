@@ -132,7 +132,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           value={username}
           type="text"
           onChange={event => setUsername(event.target.value)}
-          placeholder="Calendar Username"
+          placeholder="Calendar Username" // TODO: it was email for me, is it not always email? Change the FormLabel if necessary
         />
       </FormControl>
       <FormControl pt={2}>
