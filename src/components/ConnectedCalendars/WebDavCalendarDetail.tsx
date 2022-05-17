@@ -3,7 +3,6 @@ import {
   Button,
   FormControl,
   FormLabel,
-  HStack,
   Input,
   InputGroup,
   InputRightElement,
@@ -32,7 +31,11 @@ interface WebDavDetailsPanelProps {
 const APPLE_DISCLAIMER = (
   <Text align={'justify'}>
     Generate an app specific password to use with <b>Meet With Wallet</b> at{' '}
-    <Link href="https://appleid.apple.com/account/manage">
+    <Link
+      rel="nofollow"
+      target="_blank"
+      href="https://appleid.apple.com/account/manage"
+    >
       https://appleid.apple.com/account/manage
     </Link>
     . Your credentials will be encrypted and then stored.
