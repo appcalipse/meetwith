@@ -124,7 +124,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
         />
       </FormControl>
       <FormControl pt={2}>
-        <FormLabel>UserName</FormLabel>
+        <FormLabel>Username</FormLabel>
         <Input
           value={username}
           type="text"
