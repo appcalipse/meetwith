@@ -107,8 +107,8 @@ const ConnectCalendar = () => {
           >
             Go PRO&nbsp;
           </Link>
-          and start connecting as many calendars you want (Google, iCloud,
-          Outlook or Office).
+          and connect as many calendars you want (Google, iCloud, Office or any
+          that supports Webdav interface)
         </Text>
       </VStack>
     )
