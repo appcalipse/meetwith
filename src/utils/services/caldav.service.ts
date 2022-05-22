@@ -181,15 +181,15 @@ export default class CaldavCalendarService implements CalendarService {
   async getAvailability(
     dateFrom: string,
     dateTo: string,
-    calendarId: string
+    _calendarId: string
   ): Promise<EventBusyDate[]> {
-    const objects = (
+    const calendars = await this.listCalendars()
+
+    const calendarObjectsFromEveryCalendar = (
       await Promise.all(
-        [calendarId].map(sc =>
+        calendars.map(calendar =>
           fetchCalendarObjects({
-            calendar: {
-              url: sc,
-            },
+            calendar,
             headers: this.headers,
             expand: true,
             timeRange: {
@@ -201,7 +201,7 @@ export default class CaldavCalendarService implements CalendarService {
       )
     ).flat()
 
-    const events = objects
+    const events = calendarObjectsFromEveryCalendar
       .filter(e => !!e.data)
       .map(object => {
         const jcalData = ICAL.parse(object.data)

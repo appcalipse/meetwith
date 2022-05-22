@@ -21,7 +21,7 @@ describe('Caldav Service > convertDate', () => {
     ])
   })
 
-  it('should cosider always as UTC date', () => {
+  it('should consider always as UTC date', () => {
     // given
     const date = new Date('2022-01-01 00:00:00')
 
