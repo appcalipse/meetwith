@@ -18,6 +18,7 @@ import {
   FaCalendarPlus,
   FaCalendarWeek,
   FaInfoCircle,
+  FaLock,
   FaSignOutAlt,
 } from 'react-icons/fa'
 
@@ -49,6 +50,11 @@ const LinkItems: Array<LinkItemProps> = [
     name: 'Connected Calendars',
     icon: FaCalendarPlus,
     mode: EditMode.CALENDARS,
+  },
+  {
+    name: 'Meeting gates',
+    icon: FaLock,
+    mode: EditMode.GATES,
   },
   {
     name: 'Sign Out',
