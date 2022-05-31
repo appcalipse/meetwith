@@ -55,9 +55,9 @@ const newTheme = {
       },
     },
     Button: {
-      baseStyle: {
-        color: 'white',
-      },
+      baseStyle: (props: ThemeProviderProps) => ({
+        color: mode('gray.700', 'white')(props),
+      }),
     },
   },
 }
