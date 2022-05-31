@@ -1,5 +1,7 @@
 import * as Sentry from '@sentry/browser'
 
+import { GateConditionObject } from '@/types/TokenGating'
+
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
 import {
   AccountNotifications,
@@ -365,4 +367,26 @@ export const generateDiscordNotification = async (
   return (await internalFetch(`/secure/discord`, 'POST', {
     discordCode,
   })) as DiscordNotificationType
+}
+
+export const getGateCondition = async (
+  id: string
+): Promise<GateConditionObject | null> => {
+  return (await internalFetch(`/gate/${id}`)) as GateConditionObject | null
+}
+
+export const getGateConditionsForAccount = async (
+  accountAddress: string
+): Promise<GateConditionObject[]> => {
+  return (await internalFetch(
+    `/gate/account/${accountAddress}`
+  )) as GateConditionObject[]
+}
+
+export const saveGateCondition = async (
+  gateCondition: GateConditionObject
+): Promise<boolean> => {
+  return (await internalFetch(`/secure/gate`, 'POST', {
+    gateCondition,
+  })) as unknown as boolean
 }

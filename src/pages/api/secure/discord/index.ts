@@ -11,7 +11,7 @@ import { initDB } from '../../../../utils/database'
 import {
   generateDiscordAuthToken,
   getDiscordAccountInfo,
-} from '../../../../utils/services/discord_helper'
+} from '../../../../utils/services/discord.helper'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
