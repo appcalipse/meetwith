@@ -10,7 +10,7 @@
     "typecheck": "tsc --pretty --noEmit",
     "prepare": "husky install",
     "postinstall": "patch-package",
-    "test": "jest",
+    "test": "NEXT_PUBLIC_ENV=local doppler run jest",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch"
   },
