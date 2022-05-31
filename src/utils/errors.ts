@@ -40,6 +40,13 @@ export class MeetingCreationError extends Error {
   }
 }
 
+export class UnauthorizedError extends Error {
+  constructor() {
+    super("You don't have access to this resource.")
+    this.name = 'UnauthorizedError'
+  }
+}
+
 export class ApiFetchError extends Error {
   status: number
 

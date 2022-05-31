@@ -9,6 +9,8 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
+import { GateCondition, GateConditionObject } from '@/types/TokenGating'
+
 import {
   Account,
   AccountPreferences,
@@ -37,6 +39,7 @@ import {
   MeetingCreationError,
   MeetingNotFoundError,
   TimeNotAvailableError,
+  UnauthorizedError,
 } from '../utils/errors'
 import {
   generateDefaultAvailabilities,
@@ -794,6 +797,73 @@ export const updateAccountSubscriptions = async (
   return subscriptions
 }
 
+const upsertGateCondition = async (
+  ownerAccount: string,
+  gateCondition: GateConditionObject
+): Promise<boolean> => {
+  if (gateCondition.id) {
+    const response = await db.supabase
+      .from('gate_definition')
+      .select()
+      .eq('id', gateCondition.id)
+
+    if (response.error) {
+      Sentry.captureException(response.error)
+      return false
+    } else if (response.data[0].owner !== ownerAccount) {
+      throw new UnauthorizedError()
+    }
+  }
+
+  const { _, error } = await db.supabase.from('gate_definition').upsert([
+    {
+      definition: gateCondition.definition,
+      title: gateCondition.title,
+      owner: ownerAccount.toLowerCase(),
+    },
+  ])
+
+  if (!error) {
+    return true
+  }
+  console.log(error)
+  Sentry.captureException(error)
+
+  return false
+}
+
+const getGateCondition = async (
+  conditionId: string
+): Promise<GateConditionObject | null> => {
+  const { data, error } = await db.supabase
+    .from('gate_definition')
+    .select()
+    .eq('id', conditionId)
+
+  if (!error) {
+    return data[0] as GateConditionObject
+  }
+  Sentry.captureException(error)
+
+  return null
+}
+
+const getGateConditionsForAccount = async (
+  ownerAccount: string
+): Promise<GateConditionObject[]> => {
+  const { data, error } = await db.supabase
+    .from('gate_definition')
+    .select()
+    .eq('owner', ownerAccount.toLowerCase())
+
+  if (!error) {
+    return data as GateConditionObject[]
+  }
+  Sentry.captureException(error)
+
+  return []
+}
+
 export {
   addOrUpdateConnectedCalendar,
   changeConnectedCalendarSync,
@@ -803,6 +873,8 @@ export {
   getAccountNotificationSubscriptions,
   getConnectedCalendars,
   getExistingAccountsFromDB,
+  getGateCondition,
+  getGateConditionsForAccount,
   getMeetingFromDB,
   getSlotsForAccount,
   getSlotsForDashboard,
@@ -815,4 +887,5 @@ export {
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
   updateAccountPreferences,
+  upsertGateCondition,
 }
