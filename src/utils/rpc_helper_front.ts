@@ -1,4 +1,8 @@
-import { JsonRpcProvider, Web3Provider } from '@ethersproject/providers'
+import {
+  BaseProvider,
+  JsonRpcProvider,
+  Web3Provider,
+} from '@ethersproject/providers'
 import { Resolution } from '@unstoppabledomains/resolution'
 import { ethers } from 'ethers'
 import Web3 from 'web3'
@@ -182,4 +186,26 @@ export const checkValidDomain = async (
     }
   }
   return true
+}
+
+export const getProvider = (chain: SupportedChain): BaseProvider | null => {
+  let provider
+  const chainInfo = getChainInfo(chain)
+  if (!chainInfo) return null
+  if (window && window.ethereum && window.ethereum.chainId === chainInfo?.id) {
+    provider = new ethers.providers.Web3Provider(window.ethereum)
+  } else {
+    if (
+      chainInfo.chain === SupportedChain.POLYGON_MATIC &&
+      process.env.NEXT_PUBLIC_ENV === 'production'
+    ) {
+      provider = new ethers.providers.InfuraProvider(
+        'homestead',
+        process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID
+      )
+    } else {
+      provider = new ethers.providers.JsonRpcProvider(chainInfo.rpcUrl)
+    }
+  }
+  return provider
 }

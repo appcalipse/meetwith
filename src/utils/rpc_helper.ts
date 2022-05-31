@@ -1,8 +1,15 @@
+import { BaseProvider } from '@ethersproject/providers'
 import * as Sentry from '@sentry/node'
 import { ethers } from 'ethers'
 
 import { MWWDomain } from '../abis/mww'
-import { ChainInfo, getMainnetChains, getTestnetChains } from '../types/chains'
+import {
+  ChainInfo,
+  getChainInfo,
+  getMainnetChains,
+  getTestnetChains,
+  SupportedChain,
+} from '../types/chains'
 import { BlockchainSubscription } from '../types/Subscription'
 
 export const getBlockchainSubscriptionsForAccount = async (
@@ -16,11 +23,11 @@ export const getBlockchainSubscriptionsForAccount = async (
       : getTestnetChains()
 
   for (const chain of chainsToCheck) {
-    const provider = new ethers.providers.JsonRpcProvider(chain.rpcUrl)
+    const provider = getProviderBackend(chain.chain)
     const contract = new ethers.Contract(
       chain.domainContractAddess,
       MWWDomain,
-      provider
+      provider!
     )
     try {
       const domains = await contract.getDomainsForAccount(accountAddress)
@@ -37,4 +44,15 @@ export const getBlockchainSubscriptionsForAccount = async (
   }
 
   return subscriptions
+}
+
+export const getProviderBackend = (
+  chain: SupportedChain
+): BaseProvider | null => {
+  const chainInfo = getChainInfo(chain)
+  if (!chainInfo) return null
+
+  const provider = new ethers.providers.JsonRpcProvider(chainInfo.rpcUrl)
+
+  return provider
 }
