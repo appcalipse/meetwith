@@ -47,7 +47,6 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         borderRadius={6}
         px={4}
         py={2}
-        shadow={'md'}
         justifyContent="center"
         alignItems="center"
         onClick={action}
@@ -57,7 +56,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
           boxShadow: 'lg',
         }}
         transition="all 0.3s"
-        backgroundColor={useColorModeValue('white', 'gray.600')}
+        backgroundColor={useColorModeValue('#F8F8FA', 'gray.600')}
       >
         <Text
           mr={2}
