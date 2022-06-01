@@ -1,35 +1,60 @@
+import * as Sentry from '@sentry/nextjs'
 import { NextPage } from 'next'
-import Router from 'next/router'
 import React from 'react'
+
+import redirectTo from '@/utils/redirect'
 
 import PublicCalendar from '../components/public-calendar'
 import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
+import { Account } from '../types/Account'
+import { getAccount } from '../utils/api_helper'
+import { AccountNotFoundError } from '../utils/errors'
+import { isProAccount } from '../utils/subscription_manager'
 import { isValidEVMAddress } from '../utils/validations'
 
-const Schedule: NextPage = () => <PublicCalendar />
+interface ScheduleProps {
+  currentUrl: string
+  account: Account
+  serverSideRender: boolean
+}
+
+const Schedule: NextPage<ScheduleProps> = ({ currentUrl, ...rest }) => {
+  return <PublicCalendar {...rest} url={currentUrl} />
+}
 
 const EnhancedSchedule = forceAuthenticationCheck(Schedule)
 
 EnhancedSchedule.getInitialProps = async ctx => {
   const address = ctx.query.address
-  let serverSide = false
+  const serverSide = Boolean(ctx.res)
 
-  if (ctx.res) {
-    serverSide = true
+  if (!address || !address[0]) {
+    return redirectTo('/404', 302, ctx)
   }
-  if (address && address[0] && isValidEVMAddress(address[0])) {
+
+  if (isValidEVMAddress(address[0])) {
     const newLocation = `/address/${address[0]}`
-    if (serverSide) {
-      ctx.res!.writeHead(302, {
-        Location: newLocation,
-      })
-      ctx.res!.end()
-    } else {
-      Router.replace(newLocation)
-    }
+    return redirectTo(newLocation, 302, ctx)
   }
 
-  return {}
+  try {
+    const account = await getAccount(address[0])
+
+    if (account.is_invited || !isProAccount(account)) {
+      return redirectTo('/404', 302, ctx)
+    }
+
+    const host = ctx.req?.headers.host
+    const currentUrl = host && ctx.asPath ? host + ctx.asPath : ''
+
+    return { currentUrl, account, serverSideRender: serverSide }
+  } catch (e) {
+    if (!(e instanceof AccountNotFoundError)) {
+      Sentry.captureException(e)
+    }
+
+    return redirectTo('/404', 302, ctx)
+  }
 }
 
 export default EnhancedSchedule

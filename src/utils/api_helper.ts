@@ -1,13 +1,17 @@
 import * as Sentry from '@sentry/browser'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
-import { AccountNotifications } from '../types/AccountNotifications'
+import {
+  AccountNotifications,
+  DiscordNotificationType,
+} from '../types/AccountNotifications'
 import {
   ConnectedCalendarCore,
   ConnectedCalendarCorePayload,
   ConnectedCalendarProvider,
   ConnectResponse,
 } from '../types/CalendarConnections'
+import { DiscordUserInfo } from '../types/DiscordUserInfo'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
@@ -43,12 +47,12 @@ export const internalFetch = async (
   throw new ApiFetchError(response.status, response.statusText)
 }
 
-export const getAccount = async (identifer: string): Promise<Account> => {
+export const getAccount = async (identifier: string): Promise<Account> => {
   try {
-    return (await internalFetch(`/accounts/${identifer}`)) as Account
+    return (await internalFetch(`/accounts/${identifier}`)) as Account
   } catch (e: any) {
     if (e.status && e.status === 404) {
-      throw new AccountNotFoundError(identifer)
+      throw new AccountNotFoundError(identifier)
     }
     throw e
   }
@@ -353,4 +357,12 @@ export const validateWebdav = async (
   })
     .then(res => res.status >= 200 && res.status < 300)
     .catch(() => false)
+}
+
+export const generateDiscordNotification = async (
+  discordCode: string
+): Promise<DiscordNotificationType> => {
+  return (await internalFetch(`/secure/discord`, 'POST', {
+    discordCode,
+  })) as DiscordNotificationType
 }

@@ -6,10 +6,23 @@ export interface AccountNotifications {
 export enum NotificationChannel {
   EMAIL = 'email',
   EPNS = 'epns',
-  BROWSER_PUSH = 'browser_push',
+  DISCORD = 'discord',
 }
 
 export interface NotificationType {
   channel: NotificationChannel
   destination: string
+  disabled: boolean
+}
+
+export interface AuthToken {
+  access_token: string
+  expires_in: number
+  token_type: string
+  refresh_token: string
+}
+
+export interface DiscordNotificationType extends NotificationType {
+  accessToken: AuthToken
+  inMWWServer: boolean
 }

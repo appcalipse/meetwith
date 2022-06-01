@@ -9,13 +9,12 @@ import {
   ParticipantType,
   SchedulingType,
 } from '../types/Meeting'
-import { Plan } from '../types/Subscription'
 import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, saveSignature } from './storage'
-import { isProAccount } from './subscription_manager'
+import { getActiveProSubscription } from './subscription_manager'
 import { isValidEVMAddress } from './validations'
 
 const providerOptions = {
@@ -140,12 +139,12 @@ const getAccountDisplayName = (
 ): string => {
   if (useENSorUD) {
     return account.name || ellipsizeAddress(account.address)
-  } else if (isProAccount(account)) {
-    return account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0]
-      .domain
-  } else {
-    return ellipsizeAddress(account.address)
   }
+
+  return (
+    getActiveProSubscription(account)?.domain ||
+    ellipsizeAddress(account.address)
+  )
 }
 
 const getAddressDisplayForInput = (input: string) => {

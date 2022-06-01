@@ -43,7 +43,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   meeting,
 }) => {
   const notificationsAlertBackground = useColorModeValue('gray.100', 'gray.600')
-  const notificationsAlertIconBachground = useColorModeValue(
+  const notificationsAlertIconBackground = useColorModeValue(
     'gray.700',
     'gray.500'
   )
@@ -91,7 +91,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 <HStack mt={12} p={3} bg={notificationsAlertBackground}>
                   <Circle
                     size="30px"
-                    bg={notificationsAlertIconBachground}
+                    bg={notificationsAlertIconBackground}
                     mr="2"
                   >
                     <Icon as={FaBell} color="white" />

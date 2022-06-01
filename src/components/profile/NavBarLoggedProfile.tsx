@@ -28,15 +28,11 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
     setNavOpen(true)
   }
 
-  const variant = useBreakpointValue({ base: 'base', md: 'md' })
+  const variantAction = useBreakpointValue({
+    base: openMenu,
+    md: goToDashboard,
+  })
 
-  const action = () => {
-    if (variant === 'base') {
-      openMenu()
-    } else {
-      goToDashboard()
-    }
-  }
   const closeMenu = () => {
     setNavOpen(false)
   }
@@ -49,7 +45,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         py={2}
         justifyContent="center"
         alignItems="center"
-        onClick={action}
+        onClick={variantAction}
         cursor="pointer"
         _hover={{
           bg: useColorModeValue('gray.100', 'gray.500'),
