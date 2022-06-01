@@ -47,10 +47,12 @@ export const notifyForNewMeeting = async (
       })
       participantsDisplay = participants.map(participant => participant.name)
     } else {
+      const namesDisplay = ['You (Scheduler)', ...participantsDisplay]
       participantsDisplay.push(participant.name)
+
       await newMeetingEmail(
         participant.guest_email!,
-        participantsDisplay,
+        namesDisplay,
         participant.timeZone!,
         new Date(meeting_ics.meeting.start),
         new Date(meeting_ics.meeting.end),
@@ -78,11 +80,17 @@ export const notifyForNewMeeting = async (
       ) {
         const notification_type =
           participant.subscriptions.notification_types[j]
+        const filterNames = (name: string) => {
+          return name !== participant.name
+        }
+        const filteredNames = participantsDisplay.filter(filterNames)
+        const namesDisplay = ['You', ...filteredNames]
+
         switch (notification_type.channel) {
           case NotificationChannel.EMAIL:
             await newMeetingEmail(
               notification_type.destination,
-              participantsDisplay,
+              namesDisplay,
               participant.timezone!,
               new Date(meeting_ics.meeting.start),
               new Date(meeting_ics.meeting.end),
@@ -105,9 +113,7 @@ export const notifyForNewMeeting = async (
                     participant.timezone
                   ),
                   'PPPPpp'
-                )} - ${participants
-                  .map(participant => participant.name)
-                  .join(', ')}`,
+                )}- ${participant.timezone} - ${namesDisplay.join(', ')}`,
               }
 
               process.env.NEXT_PUBLIC_ENV === 'production'

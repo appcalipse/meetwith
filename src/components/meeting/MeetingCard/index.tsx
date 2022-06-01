@@ -20,6 +20,8 @@ import { format, utcToZonedTime } from 'date-fns-tz'
 import { Encrypted } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
 
+import { getParticipantDisplay } from '@/utils/user_manager'
+
 import { AccountContext } from '../../../providers/AccountProvider'
 import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
@@ -30,7 +32,6 @@ import {
   generateIcs,
 } from '../../../utils/calendar_manager'
 import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
-import { getParticipantDisplay } from '../../../utils/user_manager'
 import IPFSLink from '../../IPFSLink'
 
 interface MeetingCardProps {
@@ -150,7 +151,14 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
     link.parentNode!.removeChild(link)
   }
 
-  const bgColor = useColorModeValue('gray.100', 'gray.900')
+  const bgColor = useColorModeValue('white', 'gray.900')
+
+  const getNamesDisplay = (meeting: MeetingDecrypted) => {
+    const namesDisplay = meeting.participants
+      .map(participant => getParticipantDisplay(participant, currentAccount))
+      .join(', ')
+    return namesDisplay
+  }
 
   return (
     <Box
@@ -182,13 +190,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             <Text>
               <strong>Participants</strong>
             </Text>
-            <Text>
-              {info.participants
-                .map(participant =>
-                  getParticipantDisplay(participant, '', currentAccount)
-                )
-                .join(', ')}
-            </Text>
+            <Text>{getNamesDisplay(info)}</Text>
           </VStack>
           {info.content && (
             <Box>

@@ -160,24 +160,21 @@ const ellipsizeAddress = (address: string) =>
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,
-  targetAccountAddress?: string,
   currentAccount?: Account | null,
   schedulingType?: SchedulingType
 ) => {
   let display: string
 
   if (
-    (schedulingType !== SchedulingType.GUEST &&
-      participant.account_address === currentAccount?.address) ||
-    (schedulingType !== SchedulingType.GUEST &&
-      participant.account_address === targetAccountAddress)
+    schedulingType !== SchedulingType.GUEST &&
+    participant.account_address === currentAccount?.address
   ) {
     display = 'You'
   } else if (!participant.account_address) {
     if (participant.name) {
-      display = `${participant.name} (${participant.guest_email})`
+      display = `${participant.name} - ${participant.guest_email} (Scheduler)`
     } else {
-      display = participant.guest_email!
+      display = `${participant.guest_email} (Scheduler)`
     }
   } else {
     display = participant.name || ellipsizeAddress(participant.account_address!)
