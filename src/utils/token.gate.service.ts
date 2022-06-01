@@ -1,4 +1,10 @@
-import { ConditionRelation, GateCondition } from '@/types/TokenGating'
+import { BigNumber } from 'ethers'
+
+import {
+  ConditionRelation,
+  GateCondition,
+  GateConditionObject,
+} from '@/types/TokenGating'
 
 import { getTokenBalance } from './token.service'
 
@@ -32,4 +38,45 @@ export const isConditionValid = async (
       return isValid.some(valid => valid === true)
     }
   }
+}
+
+export const safeConvertConditionFromAPI = (
+  object: GateCondition
+): GateCondition => {
+  for (const element of object.elements) {
+    if (element.minimumBalance) {
+      element.minimumBalance = BigNumber.from(element.minimumBalance)
+    }
+  }
+  for (let condition of object.conditions) {
+    condition = safeConvertConditionFromAPI(condition)
+  }
+  return object
+}
+
+export const toHumanReadable = (gateCondition: GateCondition): string => {
+  let text = 'User must hold '
+  if (gateCondition.elements.length > 0) {
+    for (let i = 0; i < gateCondition.elements.length; i++) {
+      const element = gateCondition.elements[i]
+      if (element.minimumBalance && !element.minimumBalance.isZero()) {
+        let amount = element.minimumBalance
+        if (element.decimals) {
+          amount = amount.div(
+            BigNumber.from((10 ** element.decimals).toString())
+          )
+        }
+        text += `${amount.toNumber()} of `
+      }
+      text += `${element.tokenName} (${element.tokenSymbol})`
+      if (gateCondition.elements.length !== i + 1) {
+        if (gateCondition.relation === ConditionRelation.AND) {
+          text += ' and '
+        } else {
+          text += ' or '
+        }
+      }
+    }
+  }
+  return text
 }

@@ -53,7 +53,7 @@ export const getTokenInfo = async (
       await contract.baseURI()
       isNFT = true
     } catch (error) {
-      decimals = await contract.decimals()
+      decimals = (await contract.decimals()).toNumber()
     }
 
     return {
@@ -66,7 +66,6 @@ export const getTokenInfo = async (
       minimumBalance: BigNumber.from(0),
     }
   } catch (error) {
-    console.log(error)
     return null
   }
 }
