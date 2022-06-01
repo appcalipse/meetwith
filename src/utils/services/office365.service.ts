@@ -127,7 +127,7 @@ export default class Office365CalendarService implements CalendarService {
     try {
       const accessToken = await this.auth.getToken()
 
-      const calendarId = '' // required?
+      const calendarId = '' // required? @ramon: yes, lucklily it works cause it creates on the default one
       const body = JSON.stringify(this.translateEvent(owner, details))
 
       const response = await fetch(
@@ -197,44 +197,45 @@ export default class Office365CalendarService implements CalendarService {
     const filter = `?startdatetime=${encodeURIComponent(
       dateFromParsed.toISOString()
     )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}`
-    return this.auth
-      .getToken()
-      .then(accessToken => {
-        return Promise.resolve([calendarId]).then(ids => {
-          const requests = ids.map((calendarId, id) => ({
-            id,
-            method: 'GET',
-            url: `/me/calendars/${calendarId}/calendarView${filter}`,
-          }))
 
-          return fetch('https://graph.microsoft.com/v1.0/$batch', {
-            method: 'POST',
-            headers: {
-              Authorization: 'Bearer ' + accessToken,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ requests }),
-          })
-            .then(handleErrorsJson)
-            .then((responseBody: BatchResponse) =>
-              responseBody.responses.reduce(
-                (acc: BufferedBusyTime[], subResponse) =>
-                  acc.concat(
-                    subResponse.body.value.map(evt => {
-                      return {
-                        start: evt.start.dateTime + 'Z',
-                        end: evt.end.dateTime + 'Z',
-                      }
-                    })
-                  ),
-                []
-              )
-            )
-        })
+    try {
+      const accessToken = await this.auth.getToken()
+
+      const calIdResponse = await fetch(
+        'https://graph.microsoft.com/v1.0/me/calendars',
+        {
+          method: 'GET',
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+      const calIdJson = await handleErrorsJson(calIdResponse)
+      const calendarId = calIdJson.value.find(
+        (cal: any) => cal.isDefaultCalendar
+      ).id
+      const eventsResponse = await fetch(
+        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/calendarView${filter}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+      const eventsJson = await handleErrorsJson(eventsResponse)
+
+      return eventsJson.value.map((evt: any) => {
+        return {
+          start: evt.start.dateTime + 'Z',
+          end: evt.end.dateTime + 'Z',
+        }
       })
-      .catch(err => {
-        Sentry.captureException(err)
-        return Promise.reject([])
-      })
+    } catch (err) {
+      Sentry.captureException(err)
+      return Promise.reject([])
+    }
   }
 }
