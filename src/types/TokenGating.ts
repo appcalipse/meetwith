@@ -47,3 +47,13 @@ export const DummyGateElement = {
     : SupportedChain.POLYGON_MUMBAI,
   minimumBalance: BigNumber.from(0),
 }
+
+export enum GateUsageType {
+  MeetingSchedule = 'MeetingSchedule',
+}
+
+export interface GateUsage {
+  gate_id: string
+  type: GateUsageType
+  gated_entity_id: string
+}

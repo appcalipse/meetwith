@@ -47,6 +47,13 @@ export class UnauthorizedError extends Error {
   }
 }
 
+export class GateInUseError extends Error {
+  constructor() {
+    super("This gate is being used and therefore can't be deleted.")
+    this.name = 'GateInUseError'
+  }
+}
+
 export class ApiFetchError extends Error {
   status: number
 

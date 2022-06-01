@@ -17,7 +17,6 @@ import { useState } from 'react'
 import {
   ConditionRelation,
   DummyGateElement,
-  GateCondition,
   GateConditionObject,
   TokenInterface,
 } from '@/types/TokenGating'
@@ -26,36 +25,40 @@ import { saveGateCondition } from '@/utils/api_helper'
 import { TokenGateComponent } from './TokenGateComponent'
 
 interface AddGateObjectDialogProps {
-  onAdd: (gateConditionObject: GateConditionObject) => void
-  isOpen: boolean
+  onGateSave: (gateConditionObject: GateConditionObject) => void
+  selectedGate?: GateConditionObject
+  onChange: (gate: GateConditionObject) => void
   onClose: () => void
 }
 
-const DEFAULT_OBJECT = {
-  relation: ConditionRelation.AND,
-  elements: [DummyGateElement],
-  conditions: [],
+export const DEFAULT_CONDITION_OBJECT: GateConditionObject = {
+  title: '',
+  definition: {
+    relation: ConditionRelation.AND,
+    elements: [DummyGateElement],
+    conditions: [],
+  },
 }
 
 export const AddGateObjectDialog: React.FC<
   AddGateObjectDialogProps
 > = props => {
-  const [gateConditionObject, setGateConditionObject] =
-    useState<GateCondition>(DEFAULT_OBJECT)
-
   const toast = useToast()
 
-  const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(false)
 
   const validateElements = (): boolean => {
-    for (const element of gateConditionObject.elements) {
+    for (const element of props.selectedGate!.definition.elements) {
       if (
         !element.tokenName ||
         !element.tokenSymbol ||
         !element.chain ||
         !element.tokenAddress ||
-        !(element.type === TokenInterface.ERC20 && element.decimals)
+        !(
+          element.type === TokenInterface.ERC20 &&
+          element.decimals !== undefined &&
+          element.decimals !== null
+        )
       ) {
         return false
       }
@@ -64,14 +67,13 @@ export const AddGateObjectDialog: React.FC<
   }
 
   const close = () => {
-    setGateConditionObject(DEFAULT_OBJECT)
     props.onClose()
   }
 
   const save = async () => {
     setLoading(true)
 
-    if (!title) {
+    if (!props.selectedGate!.title) {
       toast({
         title: 'Missing information',
         description:
@@ -92,11 +94,9 @@ export const AddGateObjectDialog: React.FC<
         isClosable: true,
       })
     } else {
-      const result = await saveGateCondition({
-        title,
-        definition: gateConditionObject,
-      })
+      const result = await saveGateCondition(props.selectedGate!)
       if (result) {
+        props.onGateSave(props.selectedGate!)
         close()
       } else {
         toast({
@@ -112,34 +112,54 @@ export const AddGateObjectDialog: React.FC<
     setLoading(false)
   }
 
-  return (
-    <Modal blockScrollOnMount={false} isOpen={props.isOpen} onClose={close}>
-      <ModalOverlay />
-      <ModalContent maxW="45rem">
-        <ModalHeader>Create new meeting gate</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          <FormControl mb={4}>
-            <FormLabel>Meeting gate title</FormLabel>
-            <Input
-              value={title}
-              type="text"
-              placeholder="Give your new gate a title"
-              onChange={event => setTitle(event.target.value)}
-            />
-          </FormControl>
+  const updateInfo = (gate: GateConditionObject) => {
+    props.onChange(gate)
+  }
 
-          <TokenGateComponent
-            updateTokenGate={gateObject => setGateConditionObject(gateObject)}
-            tokenGate={gateConditionObject}
-          />
-        </ModalBody>
-        <ModalFooter>
-          <Button colorScheme="orange" onClick={save} isLoading={loading}>
-            Save
-          </Button>
-        </ModalFooter>
-      </ModalContent>
+  return (
+    <Modal
+      blockScrollOnMount={false}
+      isOpen={props.selectedGate !== undefined}
+      onClose={close}
+    >
+      <ModalOverlay />
+      {props.selectedGate && (
+        <ModalContent maxW="45rem">
+          <ModalHeader>Create new meeting gate</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <FormControl mb={4}>
+              <FormLabel>Meeting gate title</FormLabel>
+              <Input
+                value={props.selectedGate!.title}
+                type="text"
+                placeholder="Give your new gate a title"
+                onChange={event =>
+                  updateInfo({
+                    ...props.selectedGate!,
+                    title: event.target.value,
+                  })
+                }
+              />
+            </FormControl>
+
+            <TokenGateComponent
+              updateTokenGate={gateObject =>
+                updateInfo({
+                  ...props.selectedGate!,
+                  definition: { ...gateObject },
+                })
+              }
+              tokenGate={props.selectedGate!.definition}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="orange" onClick={save} isLoading={loading}>
+              Save
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      )}
     </Modal>
   )
 }

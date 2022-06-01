@@ -9,7 +9,11 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import { GateCondition, GateConditionObject } from '@/types/TokenGating'
+import {
+  ConditionRelation,
+  GateCondition,
+  GateConditionObject,
+} from '@/types/TokenGating'
 
 import {
   Account,
@@ -36,6 +40,7 @@ import {
 import { Plan, Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
+  GateInUseError,
   MeetingCreationError,
   MeetingNotFoundError,
   TimeNotAvailableError,
@@ -815,18 +820,64 @@ const upsertGateCondition = async (
     }
   }
 
-  const { _, error } = await db.supabase.from('gate_definition').upsert([
-    {
-      definition: gateCondition.definition,
-      title: gateCondition.title,
-      owner: ownerAccount.toLowerCase(),
-    },
-  ])
+  const toUpsert = {
+    definition: gateCondition.definition,
+    title: gateCondition.title,
+    owner: ownerAccount.toLowerCase(),
+  }
+
+  if (gateCondition.id) {
+    ;(toUpsert as any).id = gateCondition.id
+  }
+
+  const { _, error } = await db.supabase
+    .from('gate_definition')
+    .upsert([toUpsert])
 
   if (!error) {
     return true
   }
-  console.log(error)
+  Sentry.captureException(error)
+
+  return false
+}
+
+const deleteGateCondition = async (
+  ownerAccount: string,
+  idToDelete: string
+): Promise<boolean> => {
+  const response = await db.supabase
+    .from('gate_definition')
+    .select()
+    .eq('id', idToDelete)
+
+  if (response.error) {
+    Sentry.captureException(response.error)
+    return false
+  } else if (response.data[0].owner !== ownerAccount) {
+    throw new UnauthorizedError()
+  }
+
+  const usageResponse = await db.supabase
+    .from('gate_usage')
+    .select()
+    .eq('gate_id', idToDelete)
+
+  if (usageResponse.error) {
+    Sentry.captureException(response.error)
+    return false
+  } else if (usageResponse.data.length > 0) {
+    throw new GateInUseError()
+  }
+
+  const { _, error } = await db.supabase
+    .from('gate_definition')
+    .delete()
+    .eq('id', idToDelete)
+
+  if (!error) {
+    return true
+  }
   Sentry.captureException(error)
 
   return false
@@ -868,6 +919,7 @@ export {
   addOrUpdateConnectedCalendar,
   changeConnectedCalendarSync,
   connectedCalendarExists,
+  deleteGateCondition,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,

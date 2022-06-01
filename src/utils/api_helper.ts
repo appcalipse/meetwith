@@ -13,18 +13,19 @@ import {
   ConnectedCalendarProvider,
   ConnectResponse,
 } from '../types/CalendarConnections'
-import { DiscordUserInfo } from '../types/DiscordUserInfo'
 import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
   ApiFetchError,
+  GateInUseError,
   InvalidSessionError,
   MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
 import { getSignature } from './storage'
+import { safeConvertConditionFromAPI } from './token.gate.service'
 
 export const internalFetch = async (
   path: string,
@@ -372,21 +373,53 @@ export const generateDiscordNotification = async (
 export const getGateCondition = async (
   id: string
 ): Promise<GateConditionObject | null> => {
-  return (await internalFetch(`/gate/${id}`)) as GateConditionObject | null
+  const result = (await internalFetch(
+    `/gate/${id}`
+  )) as GateConditionObject | null
+  if (result) {
+    result.definition = safeConvertConditionFromAPI(result.definition)
+  }
+  return result
 }
 
 export const getGateConditionsForAccount = async (
   accountAddress: string
 ): Promise<GateConditionObject[]> => {
-  return (await internalFetch(
+  const result = (await internalFetch(
     `/gate/account/${accountAddress}`
   )) as GateConditionObject[]
+
+  return result.map(gateCondition => {
+    return {
+      ...gateCondition,
+      definition: safeConvertConditionFromAPI(gateCondition.definition),
+    }
+  })
 }
 
 export const saveGateCondition = async (
   gateCondition: GateConditionObject
 ): Promise<boolean> => {
-  return (await internalFetch(`/secure/gate`, 'POST', {
-    gateCondition,
-  })) as unknown as boolean
+  return (
+    (await internalFetch(`/secure/gate`, 'POST', {
+      gateCondition,
+    })) as any
+  ).result as boolean
+}
+
+export const deleteGateCondition = async (id: string): Promise<boolean> => {
+  try {
+    return (
+      (await internalFetch(`/secure/gate`, 'DELETE', {
+        id,
+      })) as any
+    ).result as boolean
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new GateInUseError()
+      }
+    }
+    throw e
+  }
 }
