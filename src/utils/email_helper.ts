@@ -23,6 +23,7 @@ export const newMeetingEmail = async (
   start: Date,
   end: Date,
   meeting_info_file_path: string,
+  templatePath: string,
   meetingUrl?: string,
   id?: string | undefined,
   created_at?: Date
@@ -39,9 +40,8 @@ export const newMeetingEmail = async (
       url: meetingUrl,
     },
   }
-
   const rendered = await email.renderAll(
-    `${path.resolve('src', 'emails', 'new_meeting')}`,
+    `${path.resolve('src', 'emails', `${templatePath}`)}`,
     locals
   )
 
