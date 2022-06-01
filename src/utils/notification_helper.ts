@@ -57,6 +57,7 @@ export const notifyForNewMeeting = async (
         new Date(meeting_ics.meeting.start),
         new Date(meeting_ics.meeting.end),
         meeting_ics.db_slot.meeting_info_file_path,
+        'new_meeting_guest',
         meeting_ics.meeting.meeting_url,
         meeting_ics.db_slot.id,
         meeting_ics.db_slot.created_at
@@ -95,6 +96,7 @@ export const notifyForNewMeeting = async (
               new Date(meeting_ics.meeting.start),
               new Date(meeting_ics.meeting.end),
               meeting_ics.db_slot.meeting_info_file_path,
+              'new_meeting',
               meeting_ics.meeting.meeting_url,
               meeting_ics.db_slot.id,
               meeting_ics.db_slot.created_at

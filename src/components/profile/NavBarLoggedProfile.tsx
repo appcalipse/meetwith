@@ -56,7 +56,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
           boxShadow: 'lg',
         }}
         transition="all 0.3s"
-        backgroundColor={useColorModeValue('#F8F8FA', 'gray.600')}
+        backgroundColor={useColorModeValue('white', 'gray.600')}
       >
         <Text
           mr={2}
