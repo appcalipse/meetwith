@@ -67,24 +67,27 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
     return null
   }
 
+  const bgColor = useColorModeValue('white', 'gray.900')
+
   const label = defineLabel(meeting.start, meeting.end)
   return (
     <>
       <Box
-        boxShadow="base"
+        shadow="md"
         width="100%"
-        borderWidth="1px"
         borderRadius="lg"
         overflow="hidden"
+        bgColor={bgColor}
       >
         <Box p="6">
-          <VStack alignItems="start">
+          <VStack alignItems="start" position="relative">
             {label && (
               <Badge
                 borderRadius="full"
                 px="2"
                 colorScheme={label.color}
                 alignSelf="flex-end"
+                position="absolute"
               >
                 {label.text}
               </Badge>
@@ -151,14 +154,14 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
     link.parentNode!.removeChild(link)
   }
 
-  const bgColor = useColorModeValue('white', 'gray.900')
-
   const getNamesDisplay = (meeting: MeetingDecrypted) => {
     return getAllParticipantsDisplayName(
       meeting.participants,
       currentAccount!.address
     )
   }
+
+  const bgColor = useColorModeValue('gray.50', 'gray.700')
 
   return (
     <Box
