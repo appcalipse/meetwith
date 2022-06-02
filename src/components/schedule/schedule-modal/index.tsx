@@ -159,7 +159,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     try {
       const meeting = await scheduleMeeting(
         SchedulingType.REGULAR,
-        '',
+        currentAccount!.address,
         [
           ...Array.from(new Set(participants.map(p => p.toLowerCase()))).filter(
             p => p !== currentAccount!.address.toLowerCase()
