@@ -46,13 +46,16 @@ export const notifyForNewMeeting = async (
     })
   )
 
+  const hasScheduler = participantsInfo.some(
+    participant => participant.type === ParticipantType.Scheduler
+  )
+
   for (let i = 0; i < participantsInfo.length; i++) {
     const participant = participantsInfo[i]
 
     const displayNames = getAllParticipantsDisplayName(
       participantsInfo,
-      participant.account_address,
-      meeting_ics.meeting.type
+      participant.account_address
     )
 
     if (
@@ -72,7 +75,7 @@ export const notifyForNewMeeting = async (
         meeting_ics.db_slot.created_at
       )
     } else if (
-      (participant.type === ParticipantType.Owner ||
+      ((participant.type === ParticipantType.Owner && hasScheduler) ||
         participant.type === ParticipantType.Invitee) &&
       participant.account_address &&
       participant.notifications &&
@@ -117,8 +120,7 @@ export const notifyForNewMeeting = async (
                     true
                   )} - ${getAllParticipantsDisplayName(
                     participantsInfo,
-                    participant.account_address,
-                    meeting_ics.meeting.type
+                    participant.account_address
                   )}`
                 )
               }
@@ -138,8 +140,7 @@ export const notifyForNewMeeting = async (
                     true
                   )} - ${getAllParticipantsDisplayName(
                     participantsInfo,
-                    participant.account_address,
-                    meeting_ics.meeting.type
+                    participant.account_address
                   )}`,
                 }
 

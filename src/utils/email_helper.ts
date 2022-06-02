@@ -44,7 +44,7 @@ export const newMeetingEmail = async (
     `${path.resolve(
       'src',
       'emails',
-      `${forGuest ? 'new_meeting' : 'new_meeting_guest'}`
+      `${!forGuest ? 'new_meeting' : 'new_meeting_guest'}`
     )}`,
     locals
   )
