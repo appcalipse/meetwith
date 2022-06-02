@@ -5,13 +5,13 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import {
   DiscordNotificationType,
   NotificationChannel,
-} from '../../../../types/AccountNotifications'
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
-import { initDB } from '../../../../utils/database'
+} from '@/types/AccountNotifications'
+import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
+import { initDB } from '@/utils/database'
 import {
   generateDiscordAuthToken,
   getDiscordAccountInfo,
-} from '../../../../utils/services/discord.helper'
+} from '@/utils/services/discord.helper'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {

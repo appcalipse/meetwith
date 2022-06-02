@@ -15,7 +15,9 @@ export const sessionOptions = {
   ttl: YEAR_DURATION_IN_SECONDS,
   // secure: true should be used in production (HTTPS) but can't be used in development (HTTP)
   cookieOptions: {
-    secure: process.env.NEXT_PUBLIC_ENV !== 'local',
+    secure:
+      process.env.NEXT_PUBLIC_ENV === 'production' ||
+      process.env.NEXT_PUBLIC_ENV === 'development',
     httpOnly: false,
   },
 }

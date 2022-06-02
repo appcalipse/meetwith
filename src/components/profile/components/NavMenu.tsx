@@ -51,11 +51,6 @@ const LinkItems: Array<LinkItemProps> = [
     icon: FaCalendarPlus,
     mode: EditMode.CALENDARS,
   },
-  // {
-  //   name: 'Meeting gates',
-  //   icon: FaDoorClosed,
-  //   mode: EditMode.GATES,
-  // },
   {
     name: 'Sign Out',
     icon: FaSignOutAlt,
