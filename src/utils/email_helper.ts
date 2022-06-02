@@ -1,7 +1,6 @@
 import sgMail from '@sendgrid/mail'
 import * as Sentry from '@sentry/node'
-import { differenceInMinutes, format } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
+import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
@@ -10,7 +9,11 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '../types/Meeting'
-import { durationToHumanReadable, generateIcs } from './calendar_manager'
+import {
+  dateToHumanReadable,
+  durationToHumanReadable,
+  generateIcs,
+} from './calendar_manager'
 
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
 
@@ -18,40 +21,43 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
 
 export const newMeetingEmail = async (
   toEmail: string,
-  participantsDisplayNames: string[],
+  participantsDisplayNames: string,
   timezone: string,
   start: Date,
   end: Date,
   meeting_info_file_path: string,
-  templatePath: string,
+  forGuest: boolean,
   meetingUrl?: string,
   id?: string | undefined,
   created_at?: Date
 ): Promise<boolean> => {
   const email = new Email()
   const locals = {
-    participantsDisplay: participantsDisplayNames.join(', '),
+    participantsDisplay: participantsDisplayNames,
     meeting: {
-      start: `${format(
-        utcToZonedTime(start, timezone),
-        'PPPPpp'
-      )} - ${timezone}`,
+      start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
       url: meetingUrl,
     },
   }
   const rendered = await email.renderAll(
-    `${path.resolve('src', 'emails', `${templatePath}`)}`,
+    `${path.resolve(
+      'src',
+      'emails',
+      `${forGuest ? 'new_meeting' : 'new_meeting_guest'}`
+    )}`,
     locals
   )
 
   const participants: ParticipantInfo[] = []
-  participantsDisplayNames.map(participant => {
+
+  //Creating "mock" MeetingDecrypted information to generate the ics
+  participantsDisplayNames.split(', ').map(participant => {
     participants.push({
       name: participant,
       slot_id: 'null',
       status: ParticipationStatus.Accepted,
-      type: ParticipantType.Guest,
+      type: ParticipantType.Scheduler,
     })
   })
   const icsFile = generateIcs({

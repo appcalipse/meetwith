@@ -159,21 +159,24 @@ const ellipsizeAddress = (address: string) =>
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,
-  currentAccount?: Account | null,
+  currentAccountAddress?: string,
   schedulingType?: SchedulingType
-) => {
+): string => {
   let display: string
 
   if (
     schedulingType !== SchedulingType.GUEST &&
-    participant.account_address === currentAccount?.address
+    participant.account_address === currentAccountAddress
   ) {
     display = 'You'
-  } else if (!participant.account_address) {
+  } else if (
+    participant.guest_email &&
+    schedulingType === SchedulingType.GUEST
+  ) {
     if (participant.name) {
-      display = `${participant.name} - ${participant.guest_email} (Scheduler)`
+      display = `${participant.name} - ${participant.guest_email}`
     } else {
-      display = `${participant.guest_email} (Scheduler)`
+      display = `${participant.guest_email}`
     }
   } else {
     display = participant.name || ellipsizeAddress(participant.account_address!)
@@ -186,11 +189,33 @@ const getParticipantDisplay = (
   return display
 }
 
+const getAllParticipantsDisplayName = (
+  participants: ParticipantInfo[],
+  currentAccountAddress?: string,
+  schedulingType?: SchedulingType
+): string => {
+  let displayNames = []
+  for (const participant of participants) {
+    displayNames.push(
+      getParticipantDisplay(participant, currentAccountAddress, schedulingType)
+    )
+  }
+
+  displayNames = displayNames.sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: 'base' })
+  )
+  const youIndex = displayNames.findIndex(name => name.includes('You'))
+  const element = displayNames.splice(youIndex, 1)[0]
+  displayNames.splice(0, 0, element)
+  return displayNames.join(', ')
+}
+
 export {
   connectedProvider,
   ellipsizeAddress,
   getAccountDisplayName,
   getAddressDisplayForInput,
+  getAllParticipantsDisplayName,
   getParticipantDisplay,
   loginOrSignup,
   loginWithWallet,

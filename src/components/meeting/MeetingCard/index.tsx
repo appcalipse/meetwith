@@ -16,17 +16,17 @@ import {
   isAfter,
   isWithinInterval,
 } from 'date-fns'
-import { format, utcToZonedTime } from 'date-fns-tz'
 import { Encrypted } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
 
-import { getParticipantDisplay } from '@/utils/user_manager'
+import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
 import {
+  dateToHumanReadable,
   decryptMeeting,
   durationToHumanReadable,
   generateIcs,
@@ -91,7 +91,7 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
             )}
             <Box>
               <strong>When</strong>:{' '}
-              {format(utcToZonedTime(meeting.start, timezone), 'PPPPp')}
+              {dateToHumanReadable(meeting.start, timezone, false)}
             </Box>
             <HStack>
               <strong>Duration</strong>:{' '}
@@ -154,10 +154,10 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
   const bgColor = useColorModeValue('white', 'gray.900')
 
   const getNamesDisplay = (meeting: MeetingDecrypted) => {
-    const namesDisplay = meeting.participants
-      .map(participant => getParticipantDisplay(participant, currentAccount))
-      .join(', ')
-    return namesDisplay
+    return getAllParticipantsDisplayName(
+      meeting.participants,
+      currentAccount!.address
+    )
   }
 
   return (

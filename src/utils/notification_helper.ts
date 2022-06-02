@@ -1,11 +1,15 @@
-import { format } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
-
 import {
   AccountNotifications,
   NotificationChannel,
 } from '../types/AccountNotifications'
-import { MeetingICS, ParticipantType } from '../types/Meeting'
+import {
+  MeetingICS,
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+  SchedulingType,
+} from '../types/Meeting'
+import { dateToHumanReadable } from './calendar_manager'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
@@ -15,90 +19,84 @@ import { sendEPNSNotification } from './epns_helper_production'
 import { sendEPNSNotificationStaging } from './epns_helper_staging'
 import { dmAccount } from './services/discord_helper'
 import { isProAccount } from './subscription_manager'
-import { ellipsizeAddress } from './user_manager'
+import { getAllParticipantsDisplayName } from './user_manager'
 
-export interface ParticipantInfoForNotification {
-  address: string
-  name: string
+export interface ParticipantInfoForNotification extends ParticipantInfo {
   timezone: string
-  type: ParticipantType
-  subscriptions: AccountNotifications
+  notifications?: AccountNotifications
 }
 
 export const notifyForNewMeeting = async (
   meeting_ics: MeetingICS
 ): Promise<void> => {
-  const participants: ParticipantInfoForNotification[] = []
+  const participantsInfo: ParticipantInfoForNotification[] = await Promise.all(
+    meeting_ics.meeting.participants_mapping.map(async map => {
+      return {
+        account_address: map.account_address,
+        name: map.name,
+        slot_id: map.slot_id,
+        timezone: map.timeZone,
+        type: map.type,
+        guest_email: map.guest_email,
+        notifications: map.account_address
+          ? await getAccountNotificationSubscriptions(map.account_address)
+          : undefined,
+        status: ParticipationStatus.Accepted, //will not be used
+      }
+    })
+  )
 
-  let participantsDisplay: string[] = []
+  for (let i = 0; i < participantsInfo.length; i++) {
+    const participant = participantsInfo[i]
 
-  for (let i = 0; i < meeting_ics.meeting.participants_mapping.length; i++) {
-    const participant = meeting_ics.meeting.participants_mapping[i]
+    const displayNames = getAllParticipantsDisplayName(
+      participantsInfo,
+      participant.account_address,
+      meeting_ics.meeting.type
+    )
 
-    if (participant.account_address) {
-      const account = await getAccountFromDB(participant.account_address!)
-      const subscriptions = await getAccountNotificationSubscriptions(
-        account.address
-      )
-      participants.push({
-        address: account.address,
-        name: participant.name,
-        timezone: account.preferences!.timezone,
-        type: participant.type,
-        subscriptions,
-      })
-      participantsDisplay = participants.map(participant => participant.name)
-    } else {
-      const namesDisplay = ['You (Scheduler)', ...participantsDisplay]
-      participantsDisplay.push(participant.name)
-
+    if (
+      meeting_ics.meeting.type === SchedulingType.GUEST &&
+      participant.guest_email
+    ) {
       await newMeetingEmail(
         participant.guest_email!,
-        namesDisplay,
-        participant.timeZone!,
+        displayNames,
+        participant.timezone,
         new Date(meeting_ics.meeting.start),
         new Date(meeting_ics.meeting.end),
         meeting_ics.db_slot.meeting_info_file_path,
-        'new_meeting_guest',
+        true,
         meeting_ics.meeting.meeting_url,
         meeting_ics.db_slot.id,
         meeting_ics.db_slot.created_at
       )
-    }
-  }
-
-  for (let i = 0; i < participants.length; i++) {
-    const participant = participants[i]
-
-    if (
+    } else if (
       (participant.type === ParticipantType.Owner ||
         participant.type === ParticipantType.Invitee) &&
-      participant.address &&
-      participant.subscriptions.notification_types.length > 0
+      participant.account_address &&
+      participant.notifications &&
+      participant.notifications?.notification_types.length > 0
     ) {
       for (
         let j = 0;
-        j < participant.subscriptions.notification_types.length;
+        j < participant.notifications.notification_types.length;
         j++
       ) {
         const notification_type =
-          participant.subscriptions.notification_types[j]
-        const filterNames = (name: string) => {
-          return name !== participant.name
-        }
-        const filteredNames = participantsDisplay.filter(filterNames)
-        const namesDisplay = ['You', ...filteredNames]
+          participant.notifications.notification_types[j]
+
         if (!notification_type.disabled) {
           switch (notification_type.channel) {
             case NotificationChannel.EMAIL:
               await newMeetingEmail(
                 notification_type.destination,
-                namesDisplay,
-                participant.timezone!,
+                displayNames,
+                participant.timezone,
                 new Date(meeting_ics.meeting.start),
                 new Date(meeting_ics.meeting.end),
                 meeting_ics.db_slot.meeting_info_file_path,
-                'new_meeting',
+                false,
                 meeting_ics.meeting.meeting_url,
                 meeting_ics.db_slot.id,
                 meeting_ics.db_slot.created_at
@@ -107,40 +105,42 @@ export const notifyForNewMeeting = async (
 
             case NotificationChannel.DISCORD:
               const accountForDiscord = await getAccountFromDB(
-                participant.address
+                participant.account_address
               )
               if (isProAccount(accountForDiscord)) {
                 await dmAccount(
-                  participant.address,
+                  participant.account_address,
                   notification_type.destination,
-                  `New meeting scheduled. ${format(
-                    utcToZonedTime(
-                      meeting_ics.meeting.start,
-                      participant.timezone
-                    ),
-                    'PPPPpp'
-                  )} - ${participants
-                    .map(participant => ellipsizeAddress(participant.address))
-                    .join(', ')}`
+                  `New meeting scheduled. ${dateToHumanReadable(
+                    meeting_ics.meeting.start,
+                    participant.timezone,
+                    true
+                  )} - ${getAllParticipantsDisplayName(
+                    participantsInfo,
+                    participant.account_address,
+                    meeting_ics.meeting.type
+                  )}`
                 )
               }
               break
 
             case NotificationChannel.EPNS:
               const accountForEmail = await getAccountFromDB(
-                participant.address
+                participant.account_address
               )
               if (isProAccount(accountForEmail)) {
                 const parameters = {
                   destination_addresses: [notification_type.destination],
                   title: 'New meeting scheduled',
-                  message: `${format(
-                    utcToZonedTime(
-                      meeting_ics.meeting.start,
-                      participant.timezone
-                    ),
-                    'PPPPpp'
-                  )} - ${participant.timezone} - ${namesDisplay.join(', ')}`,
+                  message: `${dateToHumanReadable(
+                    meeting_ics.meeting.start,
+                    participant.timezone,
+                    true
+                  )} - ${getAllParticipantsDisplayName(
+                    participantsInfo,
+                    participant.account_address,
+                    meeting_ics.meeting.type
+                  )}`,
                 }
 
                 process.env.NEXT_PUBLIC_ENV === 'production'
