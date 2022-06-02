@@ -10,7 +10,6 @@ export enum ParticipantType {
   Scheduler = 'scheduler',
   Owner = 'owner',
   Invitee = 'invitee',
-  Guest = 'guest',
 }
 
 export enum SchedulingType {
