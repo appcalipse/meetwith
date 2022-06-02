@@ -183,7 +183,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       onClose({
         id: meeting.id,
         created_at: new Date(meeting.created_at),
-        account_pub_key: currentAccount!.internal_pub_key,
+        account_address: currentAccount!.address,
         meeting_info_file_path: meeting.meeting_info_file_path,
         start: new Date(meeting.start),
         end: new Date(meeting.end),
