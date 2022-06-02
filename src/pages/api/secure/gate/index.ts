@@ -3,12 +3,8 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { GateConditionObject } from '@/types/TokenGating'
 import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
+import { deleteGateCondition, upsertGateCondition } from '@/utils/database'
 import { GateInUseError, UnauthorizedError } from '@/utils/errors'
-
-import {
-  deleteGateCondition,
-  upsertGateCondition,
-} from '../../../../utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
