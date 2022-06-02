@@ -159,20 +159,14 @@ const ellipsizeAddress = (address: string) =>
 
 const getParticipantDisplay = (
   participant: ParticipantInfo,
-  currentAccountAddress?: string,
-  schedulingType?: SchedulingType
+  noScheduler: boolean,
+  currentAccountAddress?: string
 ): string => {
   let display: string
 
-  if (
-    schedulingType !== SchedulingType.GUEST &&
-    participant.account_address === currentAccountAddress
-  ) {
+  if (participant.account_address === currentAccountAddress) {
     display = 'You'
-  } else if (
-    participant.guest_email &&
-    schedulingType === SchedulingType.GUEST
-  ) {
+  } else if (participant.guest_email) {
     if (participant.name) {
       display = `${participant.name} - ${participant.guest_email}`
     } else {
@@ -182,7 +176,10 @@ const getParticipantDisplay = (
     display = participant.name || ellipsizeAddress(participant.account_address!)
   }
 
-  if (participant.type === ParticipantType.Scheduler) {
+  if (
+    participant.type === ParticipantType.Scheduler ||
+    (noScheduler && participant.type === ParticipantType.Owner)
+  ) {
     display = `${display} (Scheduler)`
   }
 
@@ -191,13 +188,15 @@ const getParticipantDisplay = (
 
 const getAllParticipantsDisplayName = (
   participants: ParticipantInfo[],
-  currentAccountAddress?: string,
-  schedulingType?: SchedulingType
+  currentAccountAddress?: string
 ): string => {
   let displayNames = []
+  const noScheduler = !participants.some(
+    participant => participant.type === ParticipantType.Scheduler
+  )
   for (const participant of participants) {
     displayNames.push(
-      getParticipantDisplay(participant, currentAccountAddress, schedulingType)
+      getParticipantDisplay(participant, noScheduler, currentAccountAddress)
     )
   }
 
