@@ -203,7 +203,7 @@ const updateAccountFromInvite = async (
     const { _, error } = await db.supabase
       .from('slots')
       .update({
-        account_pub_key: newIdentity.publicKey,
+        account_address: newIdentity.address,
         meeting_info_file_path: newEncryptedPath,
       })
       .match({ id: slot.id })
@@ -309,7 +309,7 @@ const getSlotsForAccount = async (
   const { data, error } = await db.supabase
     .from('slots')
     .select()
-    .eq('account_pub_key', account.internal_pub_key)
+    .eq('account_address', account.address)
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
@@ -337,7 +337,7 @@ const getSlotsForDashboard = async (
   const { data, error } = await db.supabase
     .from('slots')
     .select()
-    .eq('account_pub_key', account.internal_pub_key)
+    .eq('account_address', account.address)
     .gte('end', _end)
     .range(offset, offset + limit)
     .order('start')
@@ -490,7 +490,7 @@ const saveMeeting = async (
         id: participant.slot_id,
         start: meeting.start,
         end: meeting.end,
-        account_pub_key: account.internal_pub_key,
+        account_address: account.address,
         meeting_info_file_path: path,
       }
 
