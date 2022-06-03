@@ -5,5 +5,6 @@ export enum EditMode {
   TYPES = 'types',
   CALENDARS = 'calendars',
   NOTIFICATIONS = 'notifications',
+  GATES = 'gates',
   SIGNOUT = 'signout',
 }

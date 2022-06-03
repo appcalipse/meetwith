@@ -6,6 +6,7 @@ import { EditMode } from '../../types/Dashboard'
 import AvailabilityConfig from '../availabilities/availability-config'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
+import { TokenGateConfig } from '../token-gate/TokenGateConfig'
 import AccountDetails from './AccountDetails'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
@@ -31,6 +32,8 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         return <ConnectCalendar />
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig />
+      case EditMode.GATES:
+        return <TokenGateConfig />
     }
   }
 
