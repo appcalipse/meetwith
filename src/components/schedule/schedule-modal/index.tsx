@@ -168,6 +168,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         currentAccount!.address,
         '',
         currentAccount!.name,
+        '',
         content,
         meetingUrl
       )
