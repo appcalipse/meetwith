@@ -146,6 +146,11 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaAngry} color="red.500" />
+                Single integration with Google calendar, iCloud, Office 365 or
+                WEBDAV
+              </ListItem>
+              <ListItem>
+                <ListIcon as={FaAngry} color="red.500" />
                 Fixed booking link with wallet address
               </ListItem>
               <ListItem>
@@ -212,7 +217,8 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Integrations (Google calendar and iCloud)
+                Unlimited integrations (Google calendar, iCloud, Office 365 and
+                WEBDAV)
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
