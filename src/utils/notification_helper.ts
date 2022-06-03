@@ -13,7 +13,7 @@ import {
 import { newMeetingEmail } from './email_helper'
 import { sendEPNSNotification } from './epns_helper_production'
 import { sendEPNSNotificationStaging } from './epns_helper_staging'
-import { dmAccount } from './services/discord_helper'
+import { dmAccount } from './services/discord.helper'
 import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress } from './user_manager'
 
