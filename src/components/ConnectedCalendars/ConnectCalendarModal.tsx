@@ -44,11 +44,11 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
       case ConnectedCalendarProvider.GOOGLE:
         const { url: googleUrl } = await getGoogleAuthConnectUrl()
         window.location.assign(googleUrl)
-        break
+        return
       case ConnectedCalendarProvider.OFFICE:
         const { url: officeUrl } = await getOffice365ConnectUrl()
         window.location.assign(officeUrl)
-        break
+        return
       case ConnectedCalendarProvider.ICLOUD:
       case ConnectedCalendarProvider.WEBDAV:
         // no redirect, these providers will handle the logic
