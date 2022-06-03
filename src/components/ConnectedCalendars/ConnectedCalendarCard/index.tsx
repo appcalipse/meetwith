@@ -20,7 +20,7 @@ import { ConnectedCalendarProvider } from '../../../types/CalendarConnections'
 import { updateConnectedCalendarSync } from '../../../utils/api_helper'
 import DisconnectCalendarDialog from '../DisconnectCalendarDialog'
 
-const ConnectedCalendarCard: React.FC<{
+export interface ConnectedCalendarCardProps {
   name: ConnectedCalendarProvider
   email: string
   icon: IconType
@@ -29,7 +29,9 @@ const ConnectedCalendarCard: React.FC<{
     email: string,
     provider: ConnectedCalendarProvider
   ) => Promise<void>
-}> = props => {
+}
+
+const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const textColor = useColorModeValue('gray.700', 'gray.300')
   const [isUpdating, setUpdating] = useState(false)
