@@ -21,22 +21,71 @@ import {
 } from '../../types/CalendarConnections'
 import {
   deleteConnectedCalendar,
-  getGoogleAuthConnectUrl,
-  getOffice365ConnectUrl,
   listConnectedCalendars,
 } from '../../utils/api_helper'
 import { isProAccount } from '../../utils/subscription_manager'
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
-import ConnectedCalendarCard from '../ConnectedCalendars/ConnectedCalendarCard'
+import ConnectedCalendarCard, {
+  ConnectedCalendarCardProps,
+} from '../ConnectedCalendars/ConnectedCalendarCard'
+
+const GoProCTA = () => (
+  <VStack>
+    <Text>
+      <Link
+        rel="pricing"
+        href="/#pricing"
+        colorScheme="orange"
+        fontWeight="bold"
+      >
+        Go PRO&nbsp;
+      </Link>
+      and connect as many calendars you want (Google, iCloud, Office or any that
+      supports Webdav interface)
+    </Text>
+  </VStack>
+)
+
+const ConnectedCalendars: React.FC<{
+  calendarConnections: ConnectedCalendarCore[]
+  onDelete: ConnectedCalendarCardProps['onDelete']
+}> = ({ calendarConnections, onDelete }) => {
+  if (calendarConnections.length === 0) {
+    return (
+      <VStack>
+        <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
+        <HStack pt={8}>
+          <Text fontSize="lg">You didn&apos;t connect any calendar yet</Text>
+        </HStack>
+      </VStack>
+    )
+  }
+
+  return (
+    <Box>
+      {calendarConnections.map((connection, idx) => (
+        <ConnectedCalendarCard
+          key={`connected-${connection.provider}-${idx}`}
+          name={connection.provider}
+          email={connection.email}
+          icon={ConnectedCalendarIcons[connection.provider]}
+          onDelete={onDelete}
+          sync={connection.sync}
+        />
+      ))}
+    </Box>
+  )
+}
 
 const ConnectCalendar = () => {
   const [loading, setLoading] = useState(true)
-  const [firstFetch, setFirstFetch] = useState(true)
   const [calendarConnections, setCalendarConnections] = useState<
     ConnectedCalendarCore[]
   >([])
 
   const { currentAccount } = useContext(AccountContext)
+
+  const { isOpen, onOpen, onClose } = useDisclosure()
 
   const loadCalendars = async () => {
     setLoading(true)
@@ -44,7 +93,6 @@ const ConnectCalendar = () => {
       .then(data => {
         setCalendarConnections(data)
         setLoading(false)
-        setFirstFetch(false)
       })
       .catch(error => {
         console.error(error)
@@ -56,25 +104,21 @@ const ConnectCalendar = () => {
     loadCalendars()
   }, [])
 
-  const onSelect = async (provider: ConnectedCalendarProvider) => {
-    switch (provider) {
-      case ConnectedCalendarProvider.GOOGLE:
-        const { url: googleUrl } = await getGoogleAuthConnectUrl()
-        window.location.assign(googleUrl)
-        break
-      case ConnectedCalendarProvider.OFFICE:
-        const { url: officeUrl } = await getOffice365ConnectUrl()
-        window.location.assign(officeUrl)
-        break
-      case ConnectedCalendarProvider.ICLOUD:
-      case ConnectedCalendarProvider.WEBDAV:
-        // no redirect, these providers will handle the logic
-        break
-      default:
-        throw new Error(`Invalid provider selected: ${provider}`)
-    }
-    return
+  if (loading) {
+    return (
+      <VStack alignItems="center">
+        <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
+        <HStack pt={8}>
+          <Spinner />
+          <Text fontSize="lg">Checking your calendars...</Text>
+        </HStack>
+      </VStack>
+    )
   }
+
+  const proAccount = isProAccount(currentAccount!)
+  const hasReachedConnectionCountLimit =
+    !proAccount && calendarConnections.length > 0
 
   const onDelete = async (
     email: string,
@@ -82,80 +126,6 @@ const ConnectCalendar = () => {
   ) => {
     await deleteConnectedCalendar(email, provider)
     await loadCalendars()
-  }
-
-  const { isOpen, onOpen, onClose } = useDisclosure()
-  let content
-
-  const proAccount = isProAccount(currentAccount!)
-
-  if (!proAccount) {
-    content = (
-      <VStack>
-        <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
-        <HStack pt={8}>
-          <Text mb={10} fontSize="lg">
-            You haven&apos;t connected any calendar yet
-          </Text>
-        </HStack>
-        <Text>
-          <Link
-            rel="pricing"
-            href="/#pricing"
-            colorScheme="orange"
-            fontWeight="bold"
-          >
-            Go PRO&nbsp;
-          </Link>
-          and connect as many calendars you want (Google, iCloud, Office or any
-          that supports Webdav interface)
-        </Text>
-      </VStack>
-    )
-  } else {
-    if (firstFetch) {
-      content = (
-        <VStack alignItems="center">
-          <Image
-            src="/assets/no_calendars.svg"
-            height="200px"
-            alt="Loading..."
-          />
-          <HStack pt={8}>
-            <Spinner />
-            <Text fontSize="lg">Checking your calendars...</Text>
-          </HStack>
-        </VStack>
-      )
-    } else if (calendarConnections.length === 0) {
-      content = (
-        <VStack>
-          <Image
-            src="/assets/no_calendars.svg"
-            height="200px"
-            alt="Loading..."
-          />
-          <HStack pt={8}>
-            <Text fontSize="lg">You didn&apos;t connect any calendar yet</Text>
-          </HStack>
-        </VStack>
-      )
-    } else if (calendarConnections.length > 0) {
-      content = (
-        <Box>
-          {calendarConnections.map((connection, idx) => (
-            <ConnectedCalendarCard
-              key={`connected-${connection.provider}-${idx}`}
-              name={connection.provider}
-              email={connection.email}
-              icon={ConnectedCalendarIcons[connection.provider]}
-              onDelete={onDelete}
-              sync={connection.sync}
-            />
-          ))}
-        </Box>
-      )
-    }
   }
 
   return (
@@ -168,13 +138,14 @@ const ConnectCalendar = () => {
         </Text>
       </VStack>
 
-      {content}
-
-      <ConnectCalendarModal
-        isOpen={isOpen}
-        onClose={onClose}
-        onSelect={onSelect}
+      <ConnectedCalendars
+        calendarConnections={calendarConnections}
+        onDelete={onDelete}
       />
+
+      <ConnectCalendarModal isOpen={isOpen} onClose={onClose} />
+
+      {hasReachedConnectionCountLimit && <GoProCTA />}
 
       <Button
         onClick={onOpen}
@@ -184,7 +155,7 @@ const ConnectCalendar = () => {
         mt={4}
         alignSelf="flex-start"
         leftIcon={<FaPlus />}
-        disabled={!proAccount}
+        disabled={hasReachedConnectionCountLimit}
       >
         Add calendar connection
       </Button>
