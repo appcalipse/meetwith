@@ -17,7 +17,6 @@ import { AccountContext } from '../../providers/AccountProvider'
 import {
   ConnectedCalendarCore,
   ConnectedCalendarIcons,
-  ConnectedCalendarProvider,
 } from '../../types/CalendarConnections'
 import {
   deleteConnectedCalendar,
@@ -25,9 +24,8 @@ import {
 } from '../../utils/api_helper'
 import { isProAccount } from '../../utils/subscription_manager'
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
-import ConnectedCalendarCard, {
-  ConnectedCalendarCardProps,
-} from '../ConnectedCalendars/ConnectedCalendarCard'
+import { ConnectedCalendarCard } from '../ConnectedCalendars/ConnectedCalendarCard'
+import { DisabledCalendarCard } from '../ConnectedCalendars/DisabledCalendarCard'
 
 const GoProCTA = () => (
   <VStack>
@@ -47,10 +45,11 @@ const GoProCTA = () => (
 )
 
 const ConnectedCalendars: React.FC<{
-  calendarConnections: ConnectedCalendarCore[]
-  onDelete: ConnectedCalendarCardProps['onDelete']
-}> = ({ calendarConnections, onDelete }) => {
-  if (calendarConnections.length === 0) {
+  activeCalendarConnections: ConnectedCalendarCore[]
+  disabledCalendarConnections: ConnectedCalendarCore[]
+  onDelete: () => Promise<void>
+}> = ({ activeCalendarConnections, disabledCalendarConnections, onDelete }) => {
+  if (activeCalendarConnections.length === 0) {
     return (
       <VStack>
         <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
@@ -63,14 +62,35 @@ const ConnectedCalendars: React.FC<{
 
   return (
     <Box>
-      {calendarConnections.map((connection, idx) => (
+      {activeCalendarConnections.map((connection, idx) => (
         <ConnectedCalendarCard
           key={`connected-${connection.provider}-${idx}`}
           name={connection.provider}
           email={connection.email}
           icon={ConnectedCalendarIcons[connection.provider]}
-          onDelete={onDelete}
           sync={connection.sync}
+          onDelete={async () => {
+            await deleteConnectedCalendar(connection.email, connection.provider)
+            await onDelete()
+          }}
+        />
+      ))}
+
+      {disabledCalendarConnections.length > 0 && (
+        <Text>
+          Here is a list of your connected calendars that are not active because
+          you don&apos;t have a PRO plan active:
+        </Text>
+      )}
+      {disabledCalendarConnections.map((connection, idx) => (
+        <DisabledCalendarCard
+          key={`connected-${connection.provider}-${idx}`}
+          name={connection.provider}
+          email={connection.email}
+          onDelete={async () => {
+            await deleteConnectedCalendar(connection.email, connection.provider)
+            await onDelete()
+          }}
         />
       ))}
     </Box>
@@ -116,17 +136,16 @@ const ConnectCalendar = () => {
     )
   }
 
-  const proAccount = isProAccount(currentAccount!)
-  const hasReachedConnectionCountLimit =
-    !proAccount && calendarConnections.length > 0
+  const isPro = isProAccount(currentAccount!)
 
-  const onDelete = async (
-    email: string,
-    provider: ConnectedCalendarProvider
-  ) => {
-    await deleteConnectedCalendar(email, provider)
-    await loadCalendars()
-  }
+  const hasReachedConnectionCountLimit =
+    !isPro && calendarConnections.length > 3
+
+  const activeCalendarConnections = isPro
+    ? calendarConnections
+    : calendarConnections.slice(0, 1)
+
+  const disabledCalendarConnections = isPro ? [] : calendarConnections.slice(1)
 
   return (
     <Box mb={8}>
@@ -139,8 +158,9 @@ const ConnectCalendar = () => {
       </VStack>
 
       <ConnectedCalendars
-        calendarConnections={calendarConnections}
-        onDelete={onDelete}
+        activeCalendarConnections={activeCalendarConnections}
+        disabledCalendarConnections={disabledCalendarConnections}
+        onDelete={loadCalendars}
       />
 
       <ConnectCalendarModal isOpen={isOpen} onClose={onClose} />

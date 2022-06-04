@@ -4,14 +4,12 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { TimeSlot } from '../../../../types/Meeting'
 import {
-  getAccountFromDB,
   getConnectedCalendars,
   getSlotsForAccount,
   initDB,
 } from '../../../../utils/database'
 import { AccountNotFoundError } from '../../../../utils/errors'
 import { getConnectedCalendarIntegration } from '../../../../utils/services/connected_calendars.factory'
-import { isProAccount } from '../../../../utils/subscription_manager'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -28,51 +26,70 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
           ? new Date(Number(req.query.end as string))
           : undefined
 
-      const meetings = await getSlotsForAccount(
-        address,
-        startDate,
-        endDate,
-        req.query.limit !== 'undefined'
-          ? Number(req.query.limit as string)
-          : undefined,
-        req.query.offset !== 'undefined'
-          ? Number(req.query.offset as string)
-          : undefined
-      )
+      const getMWWEvents = async () => {
+        const meetings = await getSlotsForAccount(
+          address,
+          startDate,
+          endDate,
+          req.query.limit !== 'undefined'
+            ? Number(req.query.limit as string)
+            : undefined,
+          req.query.offset !== 'undefined'
+            ? Number(req.query.offset as string)
+            : undefined
+        )
 
-      busySlots.push(
-        ...meetings.map(it => ({ start: it.start, end: it.end, source: 'mww' }))
-      )
-
-      const account = await getAccountFromDB(address)
-      if (isProAccount(account)) {
-        const calendars = await getConnectedCalendars(address, false)
-        for (const calendar of calendars) {
-          const integration = getConnectedCalendarIntegration(
-            address,
-            calendar.email,
-            calendar.provider,
-            calendar.payload
-          )
-
-          try {
-            const externalSlots = await integration.getAvailability(
-              startDate!.toISOString(),
-              endDate!.toISOString(),
-              'primary'
-            )
-            busySlots.push(
-              ...externalSlots.map(it => ({
-                start: new Date(it.start),
-                end: new Date(it.end),
-                source: calendar.provider,
-              }))
-            )
-          } catch (e: any) {
-            Sentry.captureException(e)
-          }
-        }
+        busySlots.push(
+          ...meetings.map(it => ({
+            start: it.start,
+            end: it.end,
+            source: 'mww',
+          }))
+        )
       }
+
+      const getIntegratedCalendarEvents = async () => {
+        const calendars = await getConnectedCalendars(address, {
+          activeOnly: true,
+        })
+
+        await Promise.all(
+          calendars.map(async calendar => {
+            console.log('calendar', calendar)
+            const integration = getConnectedCalendarIntegration(
+              address,
+              calendar.email,
+              calendar.provider,
+              calendar.payload
+            )
+
+            console.log('integration', integration)
+
+            try {
+              console.log('fetching slots')
+              const externalSlots = await integration.getAvailability(
+                startDate!.toISOString(),
+                endDate!.toISOString(),
+                'primary'
+              )
+              console.log('externalSlots', externalSlots)
+              busySlots.push(
+                ...externalSlots.map(it => ({
+                  start: new Date(it.start),
+                  end: new Date(it.end),
+                  source: calendar.provider,
+                }))
+              )
+            } catch (e: any) {
+              Sentry.captureException(e)
+            }
+          })
+        )
+      }
+
+      await Promise.all([getMWWEvents(), getIntegratedCalendarEvents()])
+
+      console.log('busySlots', busySlots)
 
       res.status(200).json(busySlots)
       return

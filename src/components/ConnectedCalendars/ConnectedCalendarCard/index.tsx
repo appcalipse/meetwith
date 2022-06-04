@@ -25,10 +25,7 @@ export interface ConnectedCalendarCardProps {
   email: string
   icon: IconType
   sync: boolean
-  onDelete: (
-    email: string,
-    provider: ConnectedCalendarProvider
-  ) => Promise<void>
+  onDelete: () => Promise<void>
 }
 
 const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
@@ -87,7 +84,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
         <DisconnectCalendarDialog
           isOpen={isOpen}
           onClose={onClose}
-          onDelete={() => props.onDelete(props.email, props.name)}
+          onDelete={props.onDelete}
         />
       </HStack>
 
@@ -119,4 +116,4 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
   )
 }
 
-export default ConnectedCalendarCard
+export { ConnectedCalendarCard }
