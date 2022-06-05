@@ -147,7 +147,7 @@ export default function Pricing() {
               <ListItem>
                 <ListIcon as={FaAngry} color="red.500" />
                 Single integration with Google calendar, iCloud, Office 365 or
-                WEBDAV
+                WebDAV
               </ListItem>
               <ListItem>
                 <ListIcon as={FaAngry} color="red.500" />
@@ -218,7 +218,7 @@ export default function Pricing() {
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
                 Unlimited integrations (Google calendar, iCloud, Office 365 and
-                WEBDAV)
+                WebDAV)
               </ListItem>
             </List>
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>

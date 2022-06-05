@@ -39,7 +39,7 @@ const GoProCTA = () => (
         Go PRO&nbsp;
       </Link>
       and connect as many calendars you want (Google, iCloud, Office or any that
-      supports Webdav interface)
+      supports WebDAV interface)
     </Text>
   </VStack>
 )
