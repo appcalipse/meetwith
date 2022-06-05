@@ -139,7 +139,7 @@ const ConnectCalendar = () => {
   const isPro = isProAccount(currentAccount!)
 
   const hasReachedConnectionCountLimit =
-    !isPro && calendarConnections.length > 3
+    !isPro && calendarConnections.length > 0
 
   const activeCalendarConnections = isPro
     ? calendarConnections
