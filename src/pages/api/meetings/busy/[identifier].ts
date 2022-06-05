@@ -55,7 +55,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
         await Promise.all(
           calendars.map(async calendar => {
-            console.log('calendar', calendar)
             const integration = getConnectedCalendarIntegration(
               address,
               calendar.email,
@@ -63,16 +62,12 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
               calendar.payload
             )
 
-            console.log('integration', integration)
-
             try {
-              console.log('fetching slots')
               const externalSlots = await integration.getAvailability(
                 startDate!.toISOString(),
                 endDate!.toISOString(),
                 'primary'
               )
-              console.log('externalSlots', externalSlots)
               busySlots.push(
                 ...externalSlots.map(it => ({
                   start: new Date(it.start),
@@ -88,8 +83,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       await Promise.all([getMWWEvents(), getIntegratedCalendarEvents()])
-
-      console.log('busySlots', busySlots)
 
       res.status(200).json(busySlots)
       return
