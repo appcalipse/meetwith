@@ -29,7 +29,7 @@ import { DisabledCalendarCard } from '../ConnectedCalendars/DisabledCalendarCard
 
 const GoProCTA = () => (
   <VStack>
-    <Text>
+    <Text py="6">
       <Link
         rel="pricing"
         href="/#pricing"
@@ -77,7 +77,7 @@ const ConnectedCalendars: React.FC<{
       ))}
 
       {disabledCalendarConnections.length > 0 && (
-        <Text>
+        <Text py="6">
           Here is a list of your connected calendars that are not active because
           you don&apos;t have a PRO plan active:
         </Text>
