@@ -65,8 +65,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
             try {
               const externalSlots = await integration.getAvailability(
                 startDate!.toISOString(),
-                endDate!.toISOString(),
-                'primary'
+                endDate!.toISOString()
               )
               busySlots.push(
                 ...externalSlots.map(it => ({
