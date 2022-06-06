@@ -596,7 +596,7 @@ const getConnectedCalendars = async (
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
-    .order('id', { ascending: false })
+    .order('id', { ascending: true })
 
   const [{ data, error }, account] = await Promise.all([
     query,
