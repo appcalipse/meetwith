@@ -10,6 +10,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
@@ -30,14 +31,11 @@ import { DisabledCalendarCard } from '../ConnectedCalendars/DisabledCalendarCard
 const GoProCTA = () => (
   <VStack>
     <Text py="6">
-      <Link
-        rel="pricing"
-        href="/#pricing"
-        colorScheme="orange"
-        fontWeight="bold"
-      >
-        Go PRO&nbsp;
-      </Link>
+      <NextLink href="/dashboard/details" shallow passHref>
+        <Link colorScheme="orange" fontWeight="bold">
+          Go PRO
+        </Link>
+      </NextLink>{' '}
       and connect as many calendars you want (Google, iCloud, Office or any that
       supports WebDAV interface)
     </Text>
