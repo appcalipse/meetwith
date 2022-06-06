@@ -37,7 +37,7 @@ import {
   MeetingICS,
   ParticipantType,
 } from '../types/Meeting'
-import { Plan, Subscription } from '../types/Subscription'
+import { Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
   GateInUseError,
@@ -58,7 +58,7 @@ import { isProAccount } from './subscription_manager'
 import { syncCalendarForMeeting } from './sync_helper'
 import { isValidEVMAddress } from './validations'
 
-const db: any = { ready: false }
+const db: { ready: boolean } & Record<string, any> = { ready: false }
 
 const initDB = () => {
   if (!db.ready) {
@@ -592,28 +592,41 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
 
 const getConnectedCalendars = async (
   address: string,
-  syncOnly?: boolean
+  {
+    syncOnly,
+    activeOnly,
+  }: {
+    syncOnly?: boolean
+    activeOnly?: boolean
+  }
 ): Promise<ConnectedCalendar[]> => {
   const query = db.supabase
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
+    .order('id', { ascending: true })
 
-  if (syncOnly) {
-    query.eq('sync', true)
-  }
-
-  const { data, error } = await query
+  const [{ data, error }, account] = await Promise.all([
+    query,
+    getAccountFromDB(address),
+  ])
 
   if (error) {
     Sentry.captureException(error)
   }
 
-  if (data) {
-    return data as ConnectedCalendar[]
+  if (!data) {
+    return []
   }
 
-  return []
+  const connectedCalendars: ConnectedCalendar[] =
+    !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
+
+  if (syncOnly) {
+    return connectedCalendars.filter(({ sync }) => sync)
+  }
+
+  return connectedCalendars
 }
 
 const connectedCalendarExists = async (
@@ -621,7 +634,7 @@ const connectedCalendarExists = async (
   email: string,
   provider: ConnectedCalendarProvider
 ): Promise<boolean> => {
-  const { data, count, error } = await db.supabase
+  const { count, error } = await db.supabase
     .from('connected_calendars')
     .select('*', { count: 'exact' })
     .eq('account_address', address.toLowerCase())
@@ -789,7 +802,7 @@ export const updateAccountSubscriptions = async (
     }
 
     if (!data || data.length == 0) {
-      const { data, error } = await db.supabase
+      const { error } = await db.supabase
         .from('subscriptions')
         .insert(subscription)
 

@@ -14,19 +14,22 @@ import {
 import { useState } from 'react'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
+import {
+  getGoogleAuthConnectUrl,
+  getOffice365ConnectUrl,
+} from '@/utils/api_helper'
+
 import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
 import WebDavDetailsPanel from './WebDavCalendarDetail'
 
 interface ConnectCalendarProps {
   isOpen: boolean
   onClose: () => void
-  onSelect: (provider: ConnectedCalendarProvider) => Promise<void>
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   isOpen,
   onClose,
-  onSelect,
 }) => {
   const [loading, setLoading] = useState<
     ConnectedCalendarProvider | undefined
@@ -36,7 +39,24 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   >()
   const selectOption = (provider: ConnectedCalendarProvider) => async () => {
     setLoading(provider)
-    await onSelect(provider)
+
+    switch (provider) {
+      case ConnectedCalendarProvider.GOOGLE:
+        const { url: googleUrl } = await getGoogleAuthConnectUrl()
+        window.location.assign(googleUrl)
+        return
+      case ConnectedCalendarProvider.OFFICE:
+        const { url: officeUrl } = await getOffice365ConnectUrl()
+        window.location.assign(officeUrl)
+        return
+      case ConnectedCalendarProvider.ICLOUD:
+      case ConnectedCalendarProvider.WEBDAV:
+        // no redirect, these providers will handle the logic
+        break
+      default:
+        throw new Error(`Invalid provider selected: ${provider}`)
+    }
+
     setSelectedProvider(provider)
     setLoading(undefined)
   }
