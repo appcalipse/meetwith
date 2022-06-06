@@ -2,25 +2,25 @@ import { Account } from '../types/Account'
 import { MeetingCreationRequest, ParticipantType } from '../types/Meeting'
 import { getAccountFromDB, getConnectedCalendars } from './database'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
-import { isProAccount } from './subscription_manager'
 
 export const syncCalendarWithAccount = async (
   targetAccount: Account['address'],
   event: MeetingCreationRequest
 ) => {
   const account = await getAccountFromDB(targetAccount)
-  if (isProAccount(account)) {
-    const calendars = await getConnectedCalendars(targetAccount, true)
-    for (const calendar of calendars) {
-      const integration = getConnectedCalendarIntegration(
-        targetAccount,
-        calendar.email,
-        calendar.provider,
-        calendar.payload
-      )
+  const calendars = await getConnectedCalendars(targetAccount, {
+    syncOnly: true,
+    activeOnly: true,
+  })
+  for (const calendar of calendars) {
+    const integration = getConnectedCalendarIntegration(
+      targetAccount,
+      calendar.email,
+      calendar.provider,
+      calendar.payload
+    )
 
-      await integration.createEvent(account.address, { ...event })
-    }
+    await integration.createEvent(account.address, { ...event })
   }
 }
 
