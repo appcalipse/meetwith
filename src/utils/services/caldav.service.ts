@@ -180,8 +180,7 @@ export default class CaldavCalendarService implements CalendarService {
 
   async getAvailability(
     dateFrom: string,
-    dateTo: string,
-    _calendarId: string
+    dateTo: string
   ): Promise<EventBusyDate[]> {
     const calendars = await this.listCalendars()
 
