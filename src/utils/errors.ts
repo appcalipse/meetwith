@@ -40,6 +40,20 @@ export class MeetingCreationError extends Error {
   }
 }
 
+export class UnauthorizedError extends Error {
+  constructor() {
+    super("You don't have access to this resource.")
+    this.name = 'UnauthorizedError'
+  }
+}
+
+export class GateInUseError extends Error {
+  constructor() {
+    super("This gate is being used and therefore can't be deleted.")
+    this.name = 'GateInUseError'
+  }
+}
+
 export class ApiFetchError extends Error {
   status: number
 

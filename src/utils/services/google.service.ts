@@ -156,8 +156,7 @@ export default class GoogleCalendarService implements CalendarService {
 
   async getAvailability(
     dateFrom: string,
-    dateTo: string,
-    calendarId: string
+    dateTo: string
   ): Promise<EventBusyDate[]> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
@@ -166,7 +165,7 @@ export default class GoogleCalendarService implements CalendarService {
           auth: myGoogleAuth,
         })
 
-        Promise.resolve([calendarId])
+        Promise.resolve(['primary'])
           .then(calsIds => {
             calendar.freebusy.query(
               {
