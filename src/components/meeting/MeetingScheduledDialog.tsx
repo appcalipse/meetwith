@@ -15,9 +15,10 @@ import {
   Text,
   useColorModeValue,
 } from '@chakra-ui/react'
-import { format, utcToZonedTime } from 'date-fns-tz'
 import router from 'next/router'
 import { FaBell } from 'react-icons/fa'
+
+import { dateToHumanReadable } from '@/utils/calendar_manager'
 
 import { Account } from '../../types/Account'
 import { MeetingDecrypted } from '../../types/Meeting'
@@ -76,12 +77,10 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                   mt={12}
                 >{`Your meeting with ${getAccountDisplayName(
                   targetAccount
-                )} at ${format(
-                  utcToZonedTime(
-                    meeting!.start,
-                    Intl.DateTimeFormat().resolvedOptions().timeZone
-                  ),
-                  'PPPpp'
+                )} at ${dateToHumanReadable(
+                  meeting!.start,
+                  Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  false
                 )} was scheduled successfully.`}</Text>
               )}
             </Flex>

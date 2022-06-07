@@ -402,8 +402,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
 }
 
 const saveMeeting = async (
-  meeting: MeetingCreationRequest,
-  requesterAddress?: string
+  meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
   if (
     new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
@@ -433,6 +432,7 @@ const saveMeeting = async (
     meeting.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
+
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
       if (
@@ -441,26 +441,34 @@ const saveMeeting = async (
           .includes(participant.account_address!) &&
         participant.type === ParticipantType.Owner
       ) {
-        // only validate slot if meeting is being scheduled on someones calendar and not by itself
-        if (
+        // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
+        const participantIsOwner = Boolean(
           ownerParticipant &&
-          ownerParticipant.account_address === participant.account_address &&
-          ownerParticipant.account_address !==
-            schedulerAccount?.account_address &&
-          ((await !isSlotFree(
+            ownerParticipant.account_address === participant.account_address
+        )
+        const ownerIsNotScheduler = Boolean(
+          ownerParticipant &&
+            schedulerAccount &&
+            ownerParticipant.account_address !==
+              schedulerAccount.account_address
+        )
+        const slotIsTaken = async () =>
+          !(await isSlotFree(
             participant.account_address!,
             new Date(meeting.start),
             new Date(meeting.end),
             meeting.meetingTypeId
-          )) ||
-            !isTimeInsideAvailabilities(
-              utcToZonedTime(
-                meeting.start,
-                ownerAccount!.preferences!.timezone!
-              ),
-              utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
-              ownerAccount!.preferences!.availabilities
-            ))
+          ))
+        const isTimeAvailable = () =>
+          isTimeInsideAvailabilities(
+            utcToZonedTime(meeting.start, ownerAccount!.preferences!.timezone!),
+            utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
+            ownerAccount!.preferences!.availabilities
+          )
+        if (
+          participantIsOwner &&
+          ownerIsNotScheduler &&
+          (!isTimeAvailable() || (await slotIsTaken()))
         ) {
           throw new TimeNotAvailableError()
         }
@@ -496,7 +504,11 @@ const saveMeeting = async (
 
       slots.push(dbSlot)
 
-      if (participant.account_address === requesterAddress) {
+      if (
+        participant.account_address === schedulerAccount?.account_address ||
+        (!schedulerAccount &&
+          participant.account_address === ownerAccount?.address)
+      ) {
         index = i
         meetingResponse = {
           ...dbSlot,
@@ -517,13 +529,14 @@ const saveMeeting = async (
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
-  // TODO: ideally notifications should not block the user request
   const meetingICS: MeetingICS = {
     db_slot: meetingResponse,
     meeting,
   }
 
   try {
+    // TODO: ideally notifications should not block the user request
+    // to remove the awaits after moving away from vercel
     await notifyForNewMeeting(meetingICS)
     await syncCalendarForMeeting(meeting)
   } catch (err) {
