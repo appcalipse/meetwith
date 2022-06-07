@@ -49,7 +49,7 @@ export interface ScheduleModalProps {
   onClose: (meeting?: DBSlot) => void
 }
 
-export const ScheduleModal: React.FC<ScheduleModalProps> = ({
+export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
   isOpen,
   onOpen,
   onClose,

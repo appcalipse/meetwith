@@ -10,6 +10,12 @@ import EthCrypto, {
 import { validate } from 'uuid'
 
 import {
+  ConditionRelation,
+  GateCondition,
+  GateConditionObject,
+} from '@/types/TokenGating'
+
+import {
   Account,
   AccountPreferences,
   MeetingType,
@@ -31,12 +37,14 @@ import {
   MeetingICS,
   ParticipantType,
 } from '../types/Meeting'
-import { Plan, Subscription } from '../types/Subscription'
+import { Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
+  GateInUseError,
   MeetingCreationError,
   MeetingNotFoundError,
   TimeNotAvailableError,
+  UnauthorizedError,
 } from '../utils/errors'
 import {
   generateDefaultAvailabilities,
@@ -50,7 +58,7 @@ import { isProAccount } from './subscription_manager'
 import { syncCalendarForMeeting } from './sync_helper'
 import { isValidEVMAddress } from './validations'
 
-const db: any = { ready: false }
+const db: { ready: boolean } & Record<string, any> = { ready: false }
 
 const initDB = () => {
   if (!db.ready) {
@@ -597,28 +605,41 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
 
 const getConnectedCalendars = async (
   address: string,
-  syncOnly?: boolean
+  {
+    syncOnly,
+    activeOnly,
+  }: {
+    syncOnly?: boolean
+    activeOnly?: boolean
+  }
 ): Promise<ConnectedCalendar[]> => {
   const query = db.supabase
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
+    .order('id', { ascending: true })
 
-  if (syncOnly) {
-    query.eq('sync', true)
-  }
-
-  const { data, error } = await query
+  const [{ data, error }, account] = await Promise.all([
+    query,
+    getAccountFromDB(address),
+  ])
 
   if (error) {
     Sentry.captureException(error)
   }
 
-  if (data) {
-    return data as ConnectedCalendar[]
+  if (!data) {
+    return []
   }
 
-  return []
+  const connectedCalendars: ConnectedCalendar[] =
+    !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
+
+  if (syncOnly) {
+    return connectedCalendars.filter(({ sync }) => sync)
+  }
+
+  return connectedCalendars
 }
 
 const connectedCalendarExists = async (
@@ -626,7 +647,7 @@ const connectedCalendarExists = async (
   email: string,
   provider: ConnectedCalendarProvider
 ): Promise<boolean> => {
-  const { data, count, error } = await db.supabase
+  const { count, error } = await db.supabase
     .from('connected_calendars')
     .select('*', { count: 'exact' })
     .eq('account_address', address.toLowerCase())
@@ -794,7 +815,7 @@ export const updateAccountSubscriptions = async (
     }
 
     if (!data || data.length == 0) {
-      const { data, error } = await db.supabase
+      const { error } = await db.supabase
         .from('subscriptions')
         .insert(subscription)
 
@@ -807,15 +828,131 @@ export const updateAccountSubscriptions = async (
   return subscriptions
 }
 
+const upsertGateCondition = async (
+  ownerAccount: string,
+  gateCondition: GateConditionObject
+): Promise<boolean> => {
+  if (gateCondition.id) {
+    const response = await db.supabase
+      .from('gate_definition')
+      .select()
+      .eq('id', gateCondition.id)
+
+    if (response.error) {
+      Sentry.captureException(response.error)
+      return false
+    } else if (response.data[0].owner !== ownerAccount) {
+      throw new UnauthorizedError()
+    }
+  }
+
+  const toUpsert = {
+    definition: gateCondition.definition,
+    title: gateCondition.title,
+    owner: ownerAccount.toLowerCase(),
+  }
+
+  if (gateCondition.id) {
+    ;(toUpsert as any).id = gateCondition.id
+  }
+
+  const { _, error } = await db.supabase
+    .from('gate_definition')
+    .upsert([toUpsert])
+
+  if (!error) {
+    return true
+  }
+  Sentry.captureException(error)
+
+  return false
+}
+
+const deleteGateCondition = async (
+  ownerAccount: string,
+  idToDelete: string
+): Promise<boolean> => {
+  const response = await db.supabase
+    .from('gate_definition')
+    .select()
+    .eq('id', idToDelete)
+
+  if (response.error) {
+    Sentry.captureException(response.error)
+    return false
+  } else if (response.data[0].owner !== ownerAccount) {
+    throw new UnauthorizedError()
+  }
+
+  const usageResponse = await db.supabase
+    .from('gate_usage')
+    .select()
+    .eq('gate_id', idToDelete)
+
+  if (usageResponse.error) {
+    Sentry.captureException(response.error)
+    return false
+  } else if (usageResponse.data.length > 0) {
+    throw new GateInUseError()
+  }
+
+  const { _, error } = await db.supabase
+    .from('gate_definition')
+    .delete()
+    .eq('id', idToDelete)
+
+  if (!error) {
+    return true
+  }
+  Sentry.captureException(error)
+
+  return false
+}
+
+const getGateCondition = async (
+  conditionId: string
+): Promise<GateConditionObject | null> => {
+  const { data, error } = await db.supabase
+    .from('gate_definition')
+    .select()
+    .eq('id', conditionId)
+
+  if (!error) {
+    return data[0] as GateConditionObject
+  }
+  Sentry.captureException(error)
+
+  return null
+}
+
+const getGateConditionsForAccount = async (
+  ownerAccount: string
+): Promise<GateConditionObject[]> => {
+  const { data, error } = await db.supabase
+    .from('gate_definition')
+    .select()
+    .eq('owner', ownerAccount.toLowerCase())
+
+  if (!error) {
+    return data as GateConditionObject[]
+  }
+  Sentry.captureException(error)
+
+  return []
+}
+
 export {
   addOrUpdateConnectedCalendar,
   changeConnectedCalendarSync,
   connectedCalendarExists,
+  deleteGateCondition,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
   getConnectedCalendars,
   getExistingAccountsFromDB,
+  getGateCondition,
+  getGateConditionsForAccount,
   getMeetingFromDB,
   getSlotsForAccount,
   getSlotsForDashboard,
@@ -828,4 +965,5 @@ export {
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
   updateAccountPreferences,
+  upsertGateCondition,
 }

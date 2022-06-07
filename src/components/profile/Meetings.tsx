@@ -19,7 +19,7 @@ import { AccountContext } from '../../providers/AccountProvider'
 import { DBSlot } from '../../types/Meeting'
 import { getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
-import { ScheduleModal } from '../schedule/schedule-modal'
+import { ScheduleMeetingDialog } from '../schedule/schedule-meeting-dialog'
 
 const Meetings: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -151,7 +151,11 @@ const Meetings: React.FC = () => {
         New meeting
       </Button>
       {content}
-      <ScheduleModal isOpen={isOpen} onClose={afterClose} onOpen={onOpen} />
+      <ScheduleMeetingDialog
+        isOpen={isOpen}
+        onClose={afterClose}
+        onOpen={onOpen}
+      />
     </Flex>
   )
 }

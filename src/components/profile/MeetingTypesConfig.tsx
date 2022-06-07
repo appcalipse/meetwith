@@ -130,7 +130,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
       <VStack
         borderRadius={8}
         p={4}
-        shadow={'md'}
+        shadow={'sm'}
         minW="280px"
         maxW="320px"
         alignItems="flex-start"

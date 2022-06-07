@@ -17,6 +17,7 @@ import {
   FaCalendarDay,
   FaCalendarPlus,
   FaCalendarWeek,
+  FaDoorClosed,
   FaInfoCircle,
   FaSignOutAlt,
 } from 'react-icons/fa'
