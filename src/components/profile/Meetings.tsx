@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   Flex,
   Heading,
@@ -127,6 +126,9 @@ const Meetings: React.FC = () => {
       <HStack justifyContent="center" alignItems="flex-start" mb={4}>
         <Heading flex={1} fontSize="2xl">
           My Meetings
+          <Text fontSize="sm" fontWeight={100} mt={1}>
+            Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+          </Text>
         </Heading>
         <Button
           onClick={onOpen}
