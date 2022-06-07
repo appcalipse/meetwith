@@ -433,27 +433,34 @@ const saveMeeting = async (
           .includes(participant.account_address!) &&
         participant.type === ParticipantType.Owner
       ) {
-        // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashbaord for example)
-        if (
+        // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
+        const participantIsOwner = Boolean(
           ownerParticipant &&
-          ownerParticipant.account_address === participant.account_address &&
-          schedulerAccount &&
-          ownerParticipant.account_address !==
-            schedulerAccount.account_address &&
-          ((await !isSlotFree(
+            ownerParticipant.account_address === participant.account_address
+        )
+        const ownerIsNotScheduler = Boolean(
+          ownerParticipant &&
+            schedulerAccount &&
+            ownerParticipant.account_address !==
+              schedulerAccount.account_address
+        )
+        const slotIsTaken = async () =>
+          !(await isSlotFree(
             participant.account_address!,
             new Date(meeting.start),
             new Date(meeting.end),
             meeting.meetingTypeId
-          )) ||
-            !isTimeInsideAvailabilities(
-              utcToZonedTime(
-                meeting.start,
-                ownerAccount!.preferences!.timezone!
-              ),
-              utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
-              ownerAccount!.preferences!.availabilities
-            ))
+          ))
+        const isTimeAvailable = () =>
+          isTimeInsideAvailabilities(
+            utcToZonedTime(meeting.start, ownerAccount!.preferences!.timezone!),
+            utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
+            ownerAccount!.preferences!.availabilities
+          )
+        if (
+          participantIsOwner &&
+          ownerIsNotScheduler &&
+          (!isTimeAvailable() || (await slotIsTaken()))
         ) {
           throw new TimeNotAvailableError()
         }
