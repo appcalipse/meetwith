@@ -399,12 +399,10 @@ export const getGateConditionsForAccount = async (
 
 export const saveGateCondition = async (
   gateCondition: GateConditionObject
-): Promise<boolean> => {
-  return (
-    (await internalFetch(`/secure/gate`, 'POST', {
-      gateCondition,
-    })) as any
-  ).result as boolean
+): Promise<GateConditionObject> => {
+  return (await internalFetch(`/secure/gate`, 'POST', {
+    gateCondition,
+  })) as GateConditionObject
 }
 
 export const deleteGateCondition = async (id: string): Promise<boolean> => {
