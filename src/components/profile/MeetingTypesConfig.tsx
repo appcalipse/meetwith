@@ -164,11 +164,15 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
 
   const convertMinutes = (minutes: number) => {
     if (minutes < 60) {
-      return { amount: minutes, type: 'minutes' }
+      return { amount: minutes, type: 'minutes', isEmpty: false }
     } else if (minutes < 60 * 24) {
-      return { amount: Math.floor(minutes / 60), type: 'hours' }
+      return { amount: Math.floor(minutes / 60), type: 'hours', isEmpty: false }
     } else {
-      return { amount: Math.floor(minutes / (60 * 24)), type: 'days' }
+      return {
+        amount: Math.floor(minutes / (60 * 24)),
+        type: 'days',
+        isEmpty: false,
+      }
     }
   }
 
@@ -197,10 +201,11 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
           : 60 * 24),
     }
 
-    const account = await saveMeetingType(meetingType)
-    login(account)
-    logEvent('Updated meeting type', meetingType)
+    // const account = await saveMeetingType(meetingType)
+    // login(account)
+    // logEvent('Updated meeting type', meetingType)
 
+    console.log(meetingType)
     //TODO handle error
 
     setLoading(false)
@@ -252,11 +257,12 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
         <Input
           width="140px"
           type="number"
-          value={minAdvanceTime.amount >= 0 ? minAdvanceTime.amount : ''}
+          value={!minAdvanceTime.isEmpty ? minAdvanceTime.amount : ''}
           onChange={e => {
             setMinAdvanceTime({
-              amount: Number(e.target.value),
+              amount: e.target.value != '' ? Number(e.target.value) : 0,
               type: minAdvanceTime.type,
+              isEmpty: e.target.value === '',
             })
           }}
         />
@@ -266,6 +272,7 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
             setMinAdvanceTime({
               amount: minAdvanceTime.amount,
               type: e.target.value,
+              isEmpty: false,
             })
           }}
         >
