@@ -20,16 +20,15 @@ import { ConnectedCalendarProvider } from '../../../types/CalendarConnections'
 import { updateConnectedCalendarSync } from '../../../utils/api_helper'
 import DisconnectCalendarDialog from '../DisconnectCalendarDialog'
 
-const ConnectedCalendarCard: React.FC<{
+export interface ConnectedCalendarCardProps {
   name: ConnectedCalendarProvider
   email: string
   icon: IconType
   sync: boolean
-  onDelete: (
-    email: string,
-    provider: ConnectedCalendarProvider
-  ) => Promise<void>
-}> = props => {
+  onDelete: () => Promise<void>
+}
+
+const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const textColor = useColorModeValue('gray.700', 'gray.300')
   const [isUpdating, setUpdating] = useState(false)
@@ -85,7 +84,7 @@ const ConnectedCalendarCard: React.FC<{
         <DisconnectCalendarDialog
           isOpen={isOpen}
           onClose={onClose}
-          onDelete={() => props.onDelete(props.email, props.name)}
+          onDelete={props.onDelete}
         />
       </HStack>
 
@@ -117,4 +116,4 @@ const ConnectedCalendarCard: React.FC<{
   )
 }
 
-export default ConnectedCalendarCard
+export { ConnectedCalendarCard }

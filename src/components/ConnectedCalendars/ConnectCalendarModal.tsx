@@ -14,19 +14,22 @@ import {
 import { useState } from 'react'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
+import {
+  getGoogleAuthConnectUrl,
+  getOffice365ConnectUrl,
+} from '@/utils/api_helper'
+
 import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
 import WebDavDetailsPanel from './WebDavCalendarDetail'
 
 interface ConnectCalendarProps {
   isOpen: boolean
   onClose: () => void
-  onSelect: (provider: ConnectedCalendarProvider) => Promise<void>
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   isOpen,
   onClose,
-  onSelect,
 }) => {
   const [loading, setLoading] = useState<
     ConnectedCalendarProvider | undefined
@@ -36,12 +39,27 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   >()
   const selectOption = (provider: ConnectedCalendarProvider) => async () => {
     setLoading(provider)
-    await onSelect(provider)
+
+    switch (provider) {
+      case ConnectedCalendarProvider.GOOGLE:
+        const { url: googleUrl } = await getGoogleAuthConnectUrl()
+        window.location.assign(googleUrl)
+        return
+      case ConnectedCalendarProvider.OFFICE:
+        const { url: officeUrl } = await getOffice365ConnectUrl()
+        window.location.assign(officeUrl)
+        return
+      case ConnectedCalendarProvider.ICLOUD:
+      case ConnectedCalendarProvider.WEBDAV:
+        // no redirect, these providers will handle the logic
+        break
+      default:
+        throw new Error(`Invalid provider selected: ${provider}`)
+    }
+
     setSelectedProvider(provider)
     setLoading(undefined)
   }
-
-  const buttonColor = useColorModeValue('gray.700', 'white')
 
   return (
     <Modal
@@ -69,7 +87,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                   onClick={selectOption(ConnectedCalendarProvider.GOOGLE)}
                   leftIcon={<FaGoogle />}
                   variant="outline"
-                  color={buttonColor}
                   isLoading={loading === ConnectedCalendarProvider.GOOGLE}
                 >
                   Google
@@ -78,7 +95,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                   onClick={selectOption(ConnectedCalendarProvider.OFFICE)}
                   leftIcon={<FaMicrosoft />}
                   variant="outline"
-                  color={buttonColor}
                   isLoading={loading === ConnectedCalendarProvider.OFFICE}
                 >
                   Office 365
@@ -86,7 +102,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 <Button
                   onClick={selectOption(ConnectedCalendarProvider.ICLOUD)}
                   leftIcon={<FaApple />}
-                  color={buttonColor}
                   variant={
                     selectedProvider === ConnectedCalendarProvider.ICLOUD
                       ? 'solid'
@@ -99,7 +114,6 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 <Button
                   onClick={selectOption(ConnectedCalendarProvider.WEBDAV)}
                   leftIcon={<FaCalendarAlt />}
-                  color={buttonColor}
                   variant={
                     selectedProvider === ConnectedCalendarProvider.WEBDAV
                       ? 'solid'

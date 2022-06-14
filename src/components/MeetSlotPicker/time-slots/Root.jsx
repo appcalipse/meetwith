@@ -10,7 +10,7 @@ function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
   const filtered = timeSlots.filter(slot => {
     return validator ? validator(slot) : true
   })
-  const borderColor = useColorModeValue('gray.200', 'gray.700')
+  const borderColor = useColorModeValue('gray.200', 'gray.600')
 
   return (
     <>

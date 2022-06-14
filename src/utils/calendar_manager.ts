@@ -131,7 +131,7 @@ const scheduleMeeting = async (
 
     if (schedulingType === SchedulingType.GUEST) {
       const participant: ParticipantInfo = {
-        type: ParticipantType.Guest,
+        type: ParticipantType.Scheduler,
         status: ParticipationStatus.Accepted,
         guest_email,
         name: sourceName,
@@ -162,12 +162,7 @@ const scheduleMeeting = async (
           JSON.stringify(privateInfo)
         ),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        name: getParticipantDisplay(
-          participant,
-          target_account_address,
-          undefined,
-          schedulingType
-        ),
+        name: sourceName || '',
         guest_email: participant.account_address ? '' : participant.guest_email,
       }
       participantsMappings.push(participantMapping)
@@ -407,6 +402,18 @@ const durationToHumanReadable = (duration: number): string => {
   return `${duration} min`
 }
 
+const dateToHumanReadable = (
+  date: Date,
+  timezone: string,
+  includeTimezone: boolean
+): string => {
+  let result = `${format(utcToZonedTime(date, timezone), 'PPPPpp')}`
+  if (includeTimezone) {
+    result += ` - ${timezone}`
+  }
+  return result
+}
+
 const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
   if (isProAccount(account)) {
     return `${appUrl}${
@@ -447,6 +454,7 @@ const allSlots = generateAllSlots()
 
 export {
   allSlots,
+  dateToHumanReadable,
   decryptMeeting,
   defaultTimeRange,
   durationToHumanReadable,

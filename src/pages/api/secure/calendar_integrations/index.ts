@@ -19,7 +19,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const calendars = await getConnectedCalendars(
       req.session.account!.address,
-      syncOnly === 'true'
+      { syncOnly: syncOnly === 'true', activeOnly: false }
     )
     res.status(200).json(
       calendars.map(it => ({

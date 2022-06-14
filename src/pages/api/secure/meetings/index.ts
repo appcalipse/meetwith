@@ -36,10 +36,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      const meetingResult: DBSlotEnhanced = await saveMeeting(
-        meeting,
-        account.address
-      )
+      const meetingResult: DBSlotEnhanced = await saveMeeting(meeting)
 
       res.status(200).json(meetingResult)
     } catch (e) {
