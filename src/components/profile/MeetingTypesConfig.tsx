@@ -2,7 +2,6 @@ import {
   Box,
   Button,
   Checkbox,
-  Flex,
   Grid,
   GridItem,
   Heading,
@@ -257,7 +256,7 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
         <Input
           width="140px"
           type="number"
-          value={minAdvanceTime.amount}
+          value={minAdvanceTime.amount.toString()}
           onChange={e => {
             setMinAdvanceTime({
               amount: Number(e.target.value),
