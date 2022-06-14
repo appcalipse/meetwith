@@ -14,7 +14,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         req.session.account!.address,
         gateObject
       )
-      res.status(200).json({ result: upserted })
+      res.status(200).json(upserted)
     } catch (err: any) {
       if (err instanceof UnauthorizedError) {
         res.status(503).json({
