@@ -840,7 +840,7 @@ const upsertGateCondition = async (
 
     if (response.error) {
       Sentry.captureException(response.error)
-      return false
+      return null
     } else if (response.data[0].owner !== ownerAccount) {
       throw new UnauthorizedError()
     }
