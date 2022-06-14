@@ -48,14 +48,10 @@ export const TokenGateConfig = () => {
   >(undefined)
 
   const onGateSave = (gateCondition: GateConditionObject) => {
-    if (!gateCondition.id) {
-      setConfigs([...configs, gateCondition])
-    } else {
-      let _configs = [...configs]
-      _configs = _configs.filter(config => config.id !== gateCondition.id)
-      _configs.push(gateCondition)
-      setConfigs(_configs)
-    }
+    let _configs = [...configs]
+    _configs = _configs.filter(config => config.id !== gateCondition.id)
+    _configs.push(gateCondition)
+    setConfigs(_configs)
   }
 
   const fetchConfigs = async () => {
