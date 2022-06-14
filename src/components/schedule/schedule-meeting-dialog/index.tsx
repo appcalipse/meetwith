@@ -35,7 +35,10 @@ import {
   TimeNotAvailableError,
 } from '../../../utils/errors'
 import { isProAccount } from '../../../utils/subscription_manager'
-import { getAddressDisplayForInput } from '../../../utils/user_manager'
+import {
+  getAccountDisplayName,
+  getAddressDisplayForInput,
+} from '../../../utils/user_manager'
 import { ChipInput } from '../../chip-input'
 import { SingleDatepicker } from '../../input-date-picker'
 import { InputTimePicker } from '../../input-time-picker'
@@ -46,7 +49,7 @@ export interface ScheduleModalProps {
   onClose: (meeting?: DBSlot) => void
 }
 
-export const ScheduleModal: React.FC<ScheduleModalProps> = ({
+export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
   isOpen,
   onOpen,
   onClose,
@@ -167,7 +170,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         end,
         currentAccount!.address,
         '',
-        currentAccount!.name,
+        getAccountDisplayName(currentAccount!),
         '',
         content,
         meetingUrl

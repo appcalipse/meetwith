@@ -25,13 +25,8 @@ export interface CalendarService {
    *
    * @param dateFrom initial date to query
    * @param dateTo final date to query
-   * @param calendarId target user id, required because an external service may have multiple calendars
    */
-  getAvailability(
-    dateFrom: string,
-    dateTo: string,
-    calendarId: string
-  ): Promise<EventBusyDate[]>
+  getAvailability(dateFrom: string, dateTo: string): Promise<EventBusyDate[]>
 }
 
 export class MWWGoogleAuth extends google.auth.OAuth2 {

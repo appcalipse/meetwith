@@ -43,7 +43,6 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         borderRadius={6}
         px={4}
         py={2}
-        shadow={'md'}
         justifyContent="center"
         alignItems="center"
         onClick={variantAction}

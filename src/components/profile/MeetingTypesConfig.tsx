@@ -3,8 +3,6 @@ import {
   Button,
   Checkbox,
   Flex,
-  Grid,
-  GridItem,
   Heading,
   HStack,
   Icon,
@@ -55,17 +53,13 @@ const MeetingTypesConfig: React.FC = () => {
       ) : (
         <VStack width="100%" maxW="100%" alignItems={'flex-start'}>
           <Heading fontSize="2xl">Your meeting types</Heading>
-          <Grid
-            templateColumns="repeat(auto-fit, minmax(300px, 1fr))"
-            gap={4}
-            flexWrap="wrap"
-          >
+          <Flex flexWrap="wrap">
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
               const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
                 type.url
               }`
               return (
-                <GridItem key={index}>
+                <>
                   <MeetingTypeCard
                     onSelect={setSelectedType}
                     title={type.title}
@@ -73,10 +67,11 @@ const MeetingTypesConfig: React.FC = () => {
                     url={url}
                     typeId={type.id!}
                   />
-                </GridItem>
+                  <Spacer />
+                </>
               )
             })}
-          </Grid>
+          </Flex>
           <VStack
             borderRadius={8}
             alignItems="center"
@@ -126,11 +121,11 @@ const MeetingTypeCard: React.FC<CardProps> = ({
   }
 
   return (
-    <Box alignSelf="stretch">
+    <Box alignSelf="stretch" mb={4}>
       <VStack
         borderRadius={8}
         p={4}
-        shadow={'md'}
+        shadow={'sm'}
         minW="280px"
         maxW="320px"
         alignItems="flex-start"
@@ -169,11 +164,15 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
 
   const convertMinutes = (minutes: number) => {
     if (minutes < 60) {
-      return { amount: minutes, type: 'minutes' }
+      return { amount: minutes, type: 'minutes', isEmpty: false }
     } else if (minutes < 60 * 24) {
-      return { amount: Math.floor(minutes / 60), type: 'hours' }
+      return { amount: Math.floor(minutes / 60), type: 'hours', isEmpty: false }
     } else {
-      return { amount: Math.floor(minutes / (60 * 24)), type: 'days' }
+      return {
+        amount: Math.floor(minutes / (60 * 24)),
+        type: 'days',
+        isEmpty: false,
+      }
     }
   }
 
@@ -202,10 +201,11 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
           : 60 * 24),
     }
 
-    const account = await saveMeetingType(meetingType)
-    login(account)
-    logEvent('Updated meeting type', meetingType)
+    // const account = await saveMeetingType(meetingType)
+    // login(account)
+    // logEvent('Updated meeting type', meetingType)
 
+    console.log(meetingType)
     //TODO handle error
 
     setLoading(false)
@@ -257,11 +257,12 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
         <Input
           width="140px"
           type="number"
-          value={minAdvanceTime.amount}
+          value={!minAdvanceTime.isEmpty ? minAdvanceTime.amount : ''}
           onChange={e => {
             setMinAdvanceTime({
-              amount: Number(e.target.value),
+              amount: e.target.value != '' ? Number(e.target.value) : 0,
               type: minAdvanceTime.type,
+              isEmpty: e.target.value === '',
             })
           }}
         />
@@ -271,6 +272,7 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
             setMinAdvanceTime({
               amount: minAdvanceTime.amount,
               type: e.target.value,
+              isEmpty: false,
             })
           }}
         >

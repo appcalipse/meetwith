@@ -16,21 +16,22 @@ import {
   isAfter,
   isWithinInterval,
 } from 'date-fns'
-import { format, utcToZonedTime } from 'date-fns-tz'
 import { Encrypted } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
+
+import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
 import {
+  dateToHumanReadable,
   decryptMeeting,
   durationToHumanReadable,
   generateIcs,
 } from '../../../utils/calendar_manager'
 import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
-import { getParticipantDisplay } from '../../../utils/user_manager'
 import IPFSLink from '../../IPFSLink'
 
 interface MeetingCardProps {
@@ -66,31 +67,34 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
     return null
   }
 
+  const bgColor = useColorModeValue('white', 'gray.900')
+
   const label = defineLabel(meeting.start, meeting.end)
   return (
     <>
       <Box
-        boxShadow="base"
+        shadow="md"
         width="100%"
-        borderWidth="1px"
         borderRadius="lg"
         overflow="hidden"
+        bgColor={bgColor}
       >
         <Box p="6">
-          <VStack alignItems="start">
+          <VStack alignItems="start" position="relative">
             {label && (
               <Badge
                 borderRadius="full"
                 px="2"
                 colorScheme={label.color}
                 alignSelf="flex-end"
+                position="absolute"
               >
                 {label.text}
               </Badge>
             )}
             <Box>
               <strong>When</strong>:{' '}
-              {format(utcToZonedTime(meeting.start, timezone), 'PPPPp')}
+              {dateToHumanReadable(meeting.start, timezone, false)}
             </Box>
             <HStack>
               <strong>Duration</strong>:{' '}
@@ -150,7 +154,14 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
     link.parentNode!.removeChild(link)
   }
 
-  const bgColor = useColorModeValue('gray.100', 'gray.900')
+  const getNamesDisplay = (meeting: MeetingDecrypted) => {
+    return getAllParticipantsDisplayName(
+      meeting.participants,
+      currentAccount!.address
+    )
+  }
+
+  const bgColor = useColorModeValue('gray.50', 'gray.700')
 
   return (
     <Box
@@ -182,13 +193,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             <Text>
               <strong>Participants</strong>
             </Text>
-            <Text>
-              {info.participants
-                .map(participant =>
-                  getParticipantDisplay(participant, '', currentAccount)
-                )
-                .join(', ')}
-            </Text>
+            <Text>{getNamesDisplay(info)}</Text>
           </VStack>
           {info.content && (
             <Box>

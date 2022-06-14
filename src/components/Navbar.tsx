@@ -36,7 +36,7 @@ export const Navbar = () => {
   const { handleLogin, currentAccount, logged, loginIn } = useLogin()
 
   const bgGradient = `linear-gradient(${useColorModeValue(
-    'white',
+    '#F8F8FA',
     '#1A202C'
   )} 30%, rgba(245, 247, 250, 0) 100%) repeat scroll 0% 0%`
 
