@@ -252,7 +252,7 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
         <Input
           width="140px"
           type="number"
-          value={minAdvanceTime.amount > 0 ? minAdvanceTime.amount : ''}
+          value={minAdvanceTime.amount >= 0 ? minAdvanceTime.amount : ''}
           onChange={e => {
             setMinAdvanceTime({
               amount: Number(e.target.value),
