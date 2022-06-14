@@ -200,7 +200,7 @@ export const getProvider = (chain: SupportedChain): BaseProvider | null => {
       process.env.NEXT_PUBLIC_ENV === 'production'
     ) {
       provider = new ethers.providers.InfuraProvider(
-        'homestead',
+        'matic',
         process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID
       )
     } else {
