@@ -831,7 +831,7 @@ export const updateAccountSubscriptions = async (
 const upsertGateCondition = async (
   ownerAccount: string,
   gateCondition: GateConditionObject
-): Promise<boolean> => {
+): Promise<GateConditionObject | null> => {
   if (gateCondition.id) {
     const response = await db.supabase
       .from('gate_definition')
@@ -856,16 +856,16 @@ const upsertGateCondition = async (
     ;(toUpsert as any).id = gateCondition.id
   }
 
-  const { _, error } = await db.supabase
+  const { data, error } = await db.supabase
     .from('gate_definition')
     .upsert([toUpsert])
 
   if (!error) {
-    return true
+    return data[0] as GateConditionObject
   }
   Sentry.captureException(error)
 
-  return false
+  return null
 }
 
 const deleteGateCondition = async (
