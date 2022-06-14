@@ -2,8 +2,7 @@ import {
   Box,
   Button,
   Checkbox,
-  Grid,
-  GridItem,
+  Flex,
   Heading,
   HStack,
   Icon,
@@ -54,17 +53,13 @@ const MeetingTypesConfig: React.FC = () => {
       ) : (
         <VStack width="100%" maxW="100%" alignItems={'flex-start'}>
           <Heading fontSize="2xl">Your meeting types</Heading>
-          <Grid
-            templateColumns="repeat(auto-fit, minmax(300px, 1fr))"
-            gap={4}
-            flexWrap="wrap"
-          >
+          <Flex flexWrap="wrap">
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
               const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
                 type.url
               }`
               return (
-                <GridItem key={index}>
+                <>
                   <MeetingTypeCard
                     onSelect={setSelectedType}
                     title={type.title}
@@ -72,10 +67,11 @@ const MeetingTypesConfig: React.FC = () => {
                     url={url}
                     typeId={type.id!}
                   />
-                </GridItem>
+                  <Spacer />
+                </>
               )
             })}
-          </Grid>
+          </Flex>
           <VStack
             borderRadius={8}
             alignItems="center"
@@ -125,7 +121,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
   }
 
   return (
-    <Box alignSelf="stretch">
+    <Box alignSelf="stretch" mb={4}>
       <VStack
         borderRadius={8}
         p={4}
@@ -256,7 +252,7 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
         <Input
           width="140px"
           type="number"
-          value={minAdvanceTime.amount.toString()}
+          value={minAdvanceTime.amount > 0 ? minAdvanceTime.amount : ''}
           onChange={e => {
             setMinAdvanceTime({
               amount: Number(e.target.value),
