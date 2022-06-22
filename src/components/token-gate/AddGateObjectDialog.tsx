@@ -35,7 +35,7 @@ export const DEFAULT_CONDITION_OBJECT: GateConditionObject = {
   title: '',
   definition: {
     relation: ConditionRelation.AND,
-    elements: [DummyGateElement],
+    elements: [{ ...DummyGateElement }],
     conditions: [],
   },
 }
