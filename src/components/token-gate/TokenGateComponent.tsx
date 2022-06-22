@@ -50,7 +50,7 @@ export const TokenGateComponent = (props: TokenGateComponentProps) => {
 
   const addGateElement = () => {
     const gate = { ...props.tokenGate }
-    gate.elements.push(DummyGateElement)
+    gate.elements.push({ ...DummyGateElement })
     props.updateTokenGate(gate)
   }
 
