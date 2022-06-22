@@ -39,6 +39,7 @@ export const getTokenInfo = async (
       'function symbol() public view returns (string symbol)', //ERC20 or ERC721
       'function decimals() public view returns (uint256 decimals)', //ERC20
       'function baseURI() public view returns (string)', //ERC721
+      'function tokenURI(uint256 tokenId) public view returns (string)', //ERC721
     ],
     provider
   ) as ethers.Contract
@@ -53,7 +54,15 @@ export const getTokenInfo = async (
       await contract.baseURI()
       isNFT = true
     } catch (error) {
-      decimals = (await contract.decimals()).toNumber()
+      for (const i of [0, 1, 100, 1000, 10000]) {
+        try {
+          await contract.tokenURI(i)
+          isNFT = true
+        } catch (error) {}
+      }
+      if (!isNFT) {
+        decimals = (await contract.decimals()).toNumber()
+      }
     }
 
     return {
