@@ -201,11 +201,10 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
           : 60 * 24),
     }
 
-    // const account = await saveMeetingType(meetingType)
-    // login(account)
-    // logEvent('Updated meeting type', meetingType)
+    const account = await saveMeetingType(meetingType)
+    login(account)
+    logEvent('Updated meeting type', meetingType)
 
-    console.log(meetingType)
     //TODO handle error
 
     setLoading(false)
