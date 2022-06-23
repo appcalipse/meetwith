@@ -1,24 +1,24 @@
-import { MeetingCreationRequest } from '@/types/Meeting'
+import { MeetingCreationRequest, ParticipationStatus } from '@/types/Meeting'
 
-import { ellipsizeAddress } from '../user_manager'
+import { getAllParticipantsDisplayName } from '../user_manager'
 
 export const CalendarServiceHelper = {
   getMeetingSummary: (owner: string, details: MeetingCreationRequest) => {
-    const otherParticipants = [
-      details.participants_mapping
-        ?.filter(it => it.account_address !== owner)
-        .map(it =>
-          it.account_address
-            ? ellipsizeAddress(it.account_address!)
-            : it.guest_email
-        ),
-    ]
+    const displayNames = getAllParticipantsDisplayName(
+      details.participants_mapping.map(map => {
+        return {
+          account_address: map.account_address,
+          name: map.name,
+          slot_id: map.slot_id,
+          type: map.type,
+          guest_email: map.guest_email,
+          status: ParticipationStatus.Accepted, //will not be used for now
+        }
+      }),
+      owner
+    )
 
-    return `Meet with ${
-      otherParticipants.length
-        ? otherParticipants.join(', ')
-        : 'other participants'
-    }`
+    return `Meeting: ${displayNames}`
   },
 
   getMeetingTitle: (details: MeetingCreationRequest) => {
