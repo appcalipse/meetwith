@@ -1,6 +1,8 @@
 import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { fetchWalletPOAPs } from '@/utils/services/poap.helper'
+
 import {
   getSlotsForAccount,
   getSlotsForDashboard,
