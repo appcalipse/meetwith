@@ -43,3 +43,31 @@ export const fetchWalletPOAPs = async (address: string): Promise<POAP[]> => {
 
   return []
 }
+
+export const checkWalletHoldsEventPOAP = async (
+  address: string,
+  eventId: number
+): Promise<POAP[]> => {
+  const response = await fetch(
+    `${POAP_API_URL}/actions/scan/${address}/${eventId}`,
+    {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'X-API-Key': process.env.POAP_API_KEY!,
+      },
+    }
+  )
+  if (response.status >= 200 && response.status < 300) {
+    const poaps = await response.json()
+    console.log(poaps)
+    return poaps as POAP[]
+  } else {
+    console.log(response)
+    Sentry.captureException(response.statusText)
+  }
+
+  return []
+}
