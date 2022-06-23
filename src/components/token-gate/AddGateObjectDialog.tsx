@@ -54,11 +54,8 @@ export const AddGateObjectDialog: React.FC<
         !element.tokenSymbol ||
         !element.chain ||
         !element.tokenAddress ||
-        !(
-          element.type === TokenInterface.ERC20 &&
-          element.decimals !== undefined &&
-          element.decimals !== null
-        )
+        (element.type === TokenInterface.ERC20 &&
+          (element.decimals === undefined || element.decimals === null))
       ) {
         return false
       }
