@@ -28,7 +28,7 @@ function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
                 justifyContent="center"
                 _hover={{ cursor: 'pointer', color: 'orange.400' }}
               >
-                {format(slot, 'HH:mm')}
+                {format(slot, 'HH:mm a')}
               </Flex>
             )
           })}
