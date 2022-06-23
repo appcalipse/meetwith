@@ -41,7 +41,7 @@ export const notifyForNewMeeting = async (
         notifications: map.account_address
           ? await getAccountNotificationSubscriptions(map.account_address)
           : undefined,
-        status: ParticipationStatus.Accepted, //will not be used
+        status: ParticipationStatus.Accepted, //will not be used for now
       }
     })
   )
