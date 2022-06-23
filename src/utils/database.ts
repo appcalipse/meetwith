@@ -9,11 +9,7 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import {
-  ConditionRelation,
-  GateCondition,
-  GateConditionObject,
-} from '@/types/TokenGating'
+import { GateConditionObject } from '@/types/TokenGating'
 
 import {
   Account,
@@ -482,11 +478,12 @@ const saveMeeting = async (
           .includes(participant.account_address!)
       ) {
         account = await getAccountFromDB(participant.account_address!)
+        participant.timeZone = account.preferences!.timezone
       } else {
         account = await initAccountDBForWallet(
           participant.account_address!,
           '',
-          'UTC',
+          participant.timeZone,
           0,
           true
         )

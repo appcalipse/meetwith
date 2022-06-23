@@ -24,6 +24,7 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
+import { POAP } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
 
@@ -420,4 +421,14 @@ export const deleteGateCondition = async (id: string): Promise<boolean> => {
     }
     throw e
   }
+}
+
+export const getWalletPOAPs = async (
+  accountAddress: string
+): Promise<POAP[]> => {
+  const result = (await internalFetch(
+    `/integrations/poap/${accountAddress}`
+  )) as POAP[]
+
+  return result
 }
