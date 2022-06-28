@@ -8,15 +8,17 @@ export enum TokenInterface {
   ERC20 = 'ERC20',
   ERC721 = 'ERC721/NFT',
   ERC1155 = 'ERC1155',
+  POAP = 'POAP',
 }
 
 export interface TokenGateElement {
   tokenName: string
   tokenAddress: string
   tokenSymbol: string
-  chain: SupportedChain
   type: TokenInterface
   minimumBalance: BigNumber
+  chain?: SupportedChain
+  tokenLogo?: string
   decimals?: number
 }
 

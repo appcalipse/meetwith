@@ -32,7 +32,7 @@ import { toHumanReadable } from '@/utils/token.gate.service'
 
 import {
   AddGateObjectDialog,
-  DEFAULT_CONDITION_OBJECT,
+  getDefaultConditionClone,
 } from './AddGateObjectDialog'
 
 export const TokenGateConfig = () => {
@@ -119,7 +119,7 @@ export const TokenGateConfig = () => {
 
       <Button
         colorScheme="orange"
-        onClick={() => setSelectedGate(DEFAULT_CONDITION_OBJECT)}
+        onClick={() => setSelectedGate(getDefaultConditionClone())}
       >
         Add new
       </Button>
