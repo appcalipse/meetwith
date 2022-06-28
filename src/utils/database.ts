@@ -938,6 +938,40 @@ const getGateConditionsForAccount = async (
   return []
 }
 
+const getAppToken = async (tokenType: string): Promise<any | null> => {
+  const { data, error } = await db.supabase
+    .from('application_tokens')
+    .select()
+    .eq('type', tokenType)
+
+  if (!error) {
+    return data[0]
+  }
+
+  return null
+}
+
+const upsertAppToken = async (
+  tokenType: string,
+  token: object
+): Promise<void> => {
+  const { _, error } = await db.supabase.from('application_tokens').upsert(
+    [
+      {
+        type: tokenType,
+        token,
+      },
+    ],
+    { onConflict: 'type' }
+  )
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  return
+}
+
 export {
   addOrUpdateConnectedCalendar,
   changeConnectedCalendarSync,
@@ -946,6 +980,7 @@ export {
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
+  getAppToken,
   getConnectedCalendars,
   getExistingAccountsFromDB,
   getGateCondition,
@@ -962,5 +997,6 @@ export {
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
   updateAccountPreferences,
+  upsertAppToken,
   upsertGateCondition,
 }

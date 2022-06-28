@@ -24,7 +24,7 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
-import { POAP } from './services/poap.helper'
+import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
 
@@ -431,4 +431,33 @@ export const getWalletPOAPs = async (
   )) as POAP[]
 
   return result
+}
+
+export const getWalletPOAP = async (
+  accountAddress: string,
+  eventId: number
+): Promise<POAP | null> => {
+  const result = (await internalFetch(
+    `/integrations/poap/${accountAddress}?eventId=${eventId}`
+  )) as POAP[]
+
+  if (result.length > 0) {
+    return result[0] as POAP
+  }
+  return null
+}
+
+export const getPOAPEvent = async (
+  eventId: number
+): Promise<POAPEvent | null> => {
+  try {
+    return (await internalFetch(
+      `/integrations/poap/event/${eventId}`
+    )) as POAPEvent
+  } catch (e) {
+    if (e instanceof ApiFetchError && e.status === 404) {
+      return null
+    }
+    throw e
+  }
 }

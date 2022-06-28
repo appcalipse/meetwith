@@ -12,6 +12,8 @@ import {
   ModalOverlay,
   useToast,
 } from '@chakra-ui/react'
+import { BigNumber } from 'ethers'
+import { stringify } from 'querystring'
 import { useState } from 'react'
 
 import {
@@ -31,13 +33,19 @@ interface AddGateObjectDialogProps {
   onClose: () => void
 }
 
-export const DEFAULT_CONDITION_OBJECT: GateConditionObject = {
+const DEFAULT_CONDITION_OBJECT: GateConditionObject = {
   title: '',
   definition: {
     relation: ConditionRelation.AND,
     elements: [{ ...DummyGateElement }],
     conditions: [],
   },
+}
+
+export const getDefaultConditionClone = () => {
+  const clone = JSON.parse(JSON.stringify(DEFAULT_CONDITION_OBJECT))
+  clone.definition.elements[0].minimumBalance = BigNumber.from(0)
+  return clone
 }
 
 export const AddGateObjectDialog: React.FC<
@@ -49,21 +57,32 @@ export const AddGateObjectDialog: React.FC<
 
   const validateElements = (): boolean => {
     for (const element of props.selectedGate!.definition.elements) {
-      if (
-        !element.tokenName ||
-        !element.tokenSymbol ||
-        !element.chain ||
-        !element.tokenAddress ||
-        (element.type === TokenInterface.ERC20 &&
-          (element.decimals === undefined || element.decimals === null))
-      ) {
+      if (!element.tokenName || !element.tokenAddress) {
         return false
+      }
+
+      if (
+        [
+          TokenInterface.ERC20,
+          TokenInterface.ERC721,
+          TokenInterface.ERC1155,
+        ].includes(element.type)
+      ) {
+        if (
+          !element.tokenSymbol ||
+          !element.chain ||
+          (element.type === TokenInterface.ERC20 &&
+            (element.decimals === undefined || element.decimals === null))
+        ) {
+          return false
+        }
       }
     }
     return true
   }
 
   const close = () => {
+    props.onChange(getDefaultConditionClone())
     props.onClose()
   }
 
@@ -110,7 +129,7 @@ export const AddGateObjectDialog: React.FC<
   }
 
   const updateInfo = (gate: GateConditionObject) => {
-    props.onChange(gate)
+    props.onChange({ ...gate })
   }
 
   return (

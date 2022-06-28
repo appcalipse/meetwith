@@ -1,8 +1,9 @@
 import * as Sentry from '@sentry/node'
 import { Client, Intents } from 'discord.js'
 
+import { AuthToken } from '@/types/Account'
+
 import {
-  AuthToken,
   DiscordNotificationType,
   NotificationChannel,
 } from '../../types/AccountNotifications'
@@ -54,7 +55,10 @@ export const generateDiscordAuthToken = async (
 
     const oauthData = await oauthResult.json()
 
-    return oauthData
+    return {
+      ...oauthData,
+      created_at: new Date().getTime(),
+    }
   } catch (error) {
     console.error(error)
     Sentry.captureException(error)
@@ -77,8 +81,10 @@ export const getDiscordOAuthToken = async (
   if (!discordSubs) return null
 
   if (
+    discordSubs.accessToken.created_at &&
     !discordSubs.disabled &&
-    discordSubs.accessToken.expires_in <= new Date().getTime()
+    discordSubs.accessToken.created_at + discordSubs.accessToken.expires_in <=
+      new Date().getTime()
   ) {
     return discordSubs.accessToken
   }
@@ -100,7 +106,10 @@ export const getDiscordOAuthToken = async (
 
   const oauthData = await oauthResult.json()
 
-  return oauthData
+  return {
+    ...oauthData,
+    created_at: new Date(),
+  }
 }
 
 export const getDiscordAccountInfo = async (

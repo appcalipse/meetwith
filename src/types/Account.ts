@@ -1,5 +1,13 @@
 import { Subscription } from './Subscription'
 
+export interface AuthToken {
+  access_token: string
+  expires_in: number
+  created_at: number
+  token_type: string
+  refresh_token: string
+}
+
 export interface Account {
   id: string
   created: Date
