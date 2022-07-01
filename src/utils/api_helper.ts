@@ -450,14 +450,11 @@ export const getWalletPOAP = async (
 export const getPOAPEvent = async (
   eventId: number
 ): Promise<POAPEvent | null> => {
-  try {
-    return (await internalFetch(
-      `/integrations/poap/event/${eventId}`
-    )) as POAPEvent
-  } catch (e) {
-    if (e instanceof ApiFetchError && e.status === 404) {
-      return null
-    }
-    throw e
+  const event = (await internalFetch(
+    `/integrations/poap/event/${eventId}`
+  )) as POAPEvent
+  if (!event.id) {
+    return null
   }
+  return event
 }

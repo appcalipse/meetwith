@@ -1,7 +1,7 @@
-import { BigNumber, ethers } from 'ethers'
+import { BigNumber, Contract } from 'ethers'
 
 import { SupportedChain } from '@/types/chains'
-import { TokenGateElement, TokenInterface } from '@/types/TokenGating'
+import { GateInterface, TokenGateElement } from '@/types/TokenGating'
 
 import { getProvider } from './rpc_helper_front'
 
@@ -13,11 +13,11 @@ export const getTokenBalance = async (
   const provider = getProvider(chain)
   if (!provider) return BigNumber.from(0)
 
-  const contract = new ethers.Contract(
+  const contract = new Contract(
     tokenAddress,
     ['function balanceOf(address owner) public view returns (uint256 balance)'],
     provider
-  ) as ethers.Contract
+  ) as Contract
 
   const balance = await contract.balanceOf(walletAddress)
 
@@ -31,7 +31,7 @@ export const getTokenInfo = async (
   const provider = getProvider(chain)
   if (!provider) return null
 
-  const contract = new ethers.Contract(
+  const contract = new Contract(
     tokenAddress,
     [
       'function balanceOf(address owner) public view returns (uint256 balance)', //ERC20 or ERC721
@@ -42,7 +42,7 @@ export const getTokenInfo = async (
       'function tokenURI(uint256 tokenId) public view returns (string)', //ERC721
     ],
     provider
-  ) as ethers.Contract
+  ) as Contract
 
   try {
     const name = await contract.name()
@@ -66,12 +66,12 @@ export const getTokenInfo = async (
     }
 
     return {
-      tokenName: name,
-      tokenSymbol: symbol,
-      tokenAddress: tokenAddress,
+      itemName: name,
+      itemSymbol: symbol,
+      itemId: tokenAddress,
       decimals,
       chain: chain,
-      type: isNFT ? TokenInterface.ERC721 : TokenInterface.ERC20,
+      type: isNFT ? GateInterface.ERC721 : GateInterface.ERC20,
       minimumBalance: BigNumber.from(0),
     }
   } catch (error) {

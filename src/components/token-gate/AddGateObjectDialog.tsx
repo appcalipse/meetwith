@@ -20,7 +20,7 @@ import {
   ConditionRelation,
   DummyGateElement,
   GateConditionObject,
-  TokenInterface,
+  GateInterface,
 } from '@/types/TokenGating'
 import { saveGateCondition } from '@/utils/api_helper'
 
@@ -57,21 +57,21 @@ export const AddGateObjectDialog: React.FC<
 
   const validateElements = (): boolean => {
     for (const element of props.selectedGate!.definition.elements) {
-      if (!element.tokenName || !element.tokenAddress) {
+      if (!element.itemName || !element.itemId) {
         return false
       }
 
       if (
         [
-          TokenInterface.ERC20,
-          TokenInterface.ERC721,
-          TokenInterface.ERC1155,
+          GateInterface.ERC20,
+          GateInterface.ERC721,
+          GateInterface.ERC1155,
         ].includes(element.type)
       ) {
         if (
-          !element.tokenSymbol ||
+          !element.itemSymbol ||
           !element.chain ||
-          (element.type === TokenInterface.ERC20 &&
+          (element.type === GateInterface.ERC20 &&
             (element.decimals === undefined || element.decimals === null))
         ) {
           return false

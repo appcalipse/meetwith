@@ -29,7 +29,7 @@ import {
   getTestnetChains,
   SupportedChain,
 } from '@/types/chains'
-import { TokenGateElement, TokenInterface } from '@/types/TokenGating'
+import { GateInterface, TokenGateElement } from '@/types/TokenGating'
 import { getPOAPEvent } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
 import { useDebounce } from '@/utils/generic_utils'
@@ -64,7 +64,7 @@ export const TokenGateElementComponent = (
     setMinimumBalance(value)
   }
 
-  const setType = (type: TokenInterface) => {
+  const setType = (type: GateInterface) => {
     const info = props.tokenInfo
     info.type = type
     props.onChange(info, props.position)
@@ -72,7 +72,7 @@ export const TokenGateElementComponent = (
 
   const setTokenAddress = (address: string) => {
     const info = props.tokenInfo
-    info.tokenAddress = address
+    info.itemId = address
     props.onChange(info, props.position)
   }
 
@@ -86,7 +86,7 @@ export const TokenGateElementComponent = (
     <Flex
       position="relative"
       borderRadius={6}
-      borderColor={props.tokenInfo.tokenName ? 'orange.500' : 'gray.500'}
+      borderColor={props.tokenInfo.itemName ? 'orange.500' : 'gray.500'}
       borderWidth={2}
     >
       <Box position="absolute" right={0} top={0}>
@@ -103,18 +103,18 @@ export const TokenGateElementComponent = (
           <FormLabel>Type</FormLabel>
           <Select
             value={props.tokenInfo.type}
-            onChange={e => setType(e.target.value as TokenInterface)}
+            onChange={e => setType(e.target.value as GateInterface)}
           >
-            <option value={TokenInterface.ERC20}>ERC20</option>
-            <option value={TokenInterface.ERC721}>NFT/ERC721</option>
-            <option value={TokenInterface.POAP}>POAP</option>
+            <option value={GateInterface.ERC20}>ERC20</option>
+            <option value={GateInterface.ERC721}>NFT/ERC721</option>
+            <option value={GateInterface.POAP}>POAP</option>
           </Select>
         </FormControl>
 
         {[
-          TokenInterface.ERC20,
-          TokenInterface.ERC721,
-          TokenInterface.ERC1155,
+          GateInterface.ERC20,
+          GateInterface.ERC721,
+          GateInterface.ERC1155,
         ].includes(props.tokenInfo!.type) && (
           <TokenForm
             tokenInfo={props.tokenInfo}
@@ -127,7 +127,7 @@ export const TokenGateElementComponent = (
           />
         )}
 
-        {props.tokenInfo.type === TokenInterface.POAP && (
+        {props.tokenInfo.type === GateInterface.POAP && (
           <POAPForm
             tokenInfo={props.tokenInfo}
             onChange={props.onChange}
@@ -166,7 +166,7 @@ const TokenForm: React.FC<{
 
   const chains = isProduction ? getMainnetChains() : getTestnetChains()
 
-  const debouncedTokenAddress = useDebounce(tokenInfo?.tokenAddress, 300)
+  const debouncedTokenAddress = useDebounce(tokenInfo?.itemId, 300)
 
   useEffect(() => {
     checkTokenInfo()
@@ -175,16 +175,13 @@ const TokenForm: React.FC<{
   const checkTokenInfo = async () => {
     setLoadingToken(true)
     setInvalidTokenAddress(false)
-    if (isValidEVMAddress(tokenInfo!.tokenAddress)) {
-      const info = await getTokenInfo(
-        tokenInfo!.tokenAddress,
-        tokenInfo!.chain!
-      )
+    if (isValidEVMAddress(tokenInfo!.itemId)) {
+      const info = await getTokenInfo(tokenInfo!.itemId, tokenInfo!.chain!)
       let _tokenInfo: TokenGateElement = {
-        type: TokenInterface.ERC20,
-        tokenName: '',
-        tokenSymbol: '',
-        tokenAddress: tokenInfo!.tokenAddress,
+        type: GateInterface.ERC20,
+        itemName: '',
+        itemSymbol: '',
+        itemId: tokenInfo!.itemId,
         chain: tokenInfo!.chain,
         minimumBalance: tokenInfo!.minimumBalance,
       }
@@ -193,7 +190,7 @@ const TokenForm: React.FC<{
           ...info,
           minimumBalance: tokenInfo!.minimumBalance,
         }
-      } else if (tokenInfo!.tokenAddress) {
+      } else if (tokenInfo!.itemId) {
         setInvalidTokenAddress(true)
       }
       onChange(_tokenInfo, position)
@@ -221,21 +218,21 @@ const TokenForm: React.FC<{
         <FormLabel>Token address</FormLabel>
         <InputGroup>
           <Input
-            value={tokenInfo?.tokenAddress}
+            value={tokenInfo?.itemId}
             type="text"
             placeholder="0x0000000000000000000000000000000000000000"
             onChange={event => setTokenAddress(event.target.value)}
           />
         </InputGroup>
         <FormErrorMessage>
-          Address is invalid and token information couldn&apos;t be fetch
+          Address is invalid and token information couldn&apos;t be fetched
         </FormErrorMessage>
       </FormControl>
 
       <HStack mt={2}>
         <InputGroup>
           <Input
-            value={tokenInfo?.tokenName}
+            value={tokenInfo?.itemName}
             type="text"
             disabled
             placeholder="Name"
@@ -248,7 +245,7 @@ const TokenForm: React.FC<{
         </InputGroup>
         <InputGroup>
           <Input
-            value={tokenInfo?.tokenSymbol}
+            value={tokenInfo?.itemSymbol}
             type="text"
             disabled
             placeholder="Symbol"
@@ -266,7 +263,7 @@ const TokenForm: React.FC<{
             size="sm"
             variant="ghost"
             onClick={() => setHaveMinimumAmount(true)}
-            disabled={tokenInfo?.tokenName === ''}
+            disabled={tokenInfo?.itemName === ''}
           >
             Set a minimium amount
           </Button>
@@ -308,7 +305,7 @@ const POAPForm: React.FC<{
   const [loadingToken, setLoadingToken] = useState(false)
   const [invalidTokenAddress, setInvalidTokenAddress] = useState(false)
 
-  const debouncedTokenAddress = useDebounce(tokenInfo?.tokenAddress, 300)
+  const debouncedTokenAddress = useDebounce(tokenInfo?.itemId, 300)
 
   useEffect(() => {
     checkTokenInfo()
@@ -318,23 +315,23 @@ const POAPForm: React.FC<{
     setLoadingToken(true)
     setInvalidTokenAddress(false)
     let _tokenInfo: TokenGateElement = {
-      type: TokenInterface.POAP,
-      tokenName: '',
-      tokenSymbol: '',
-      tokenAddress: tokenInfo!.tokenAddress,
+      type: GateInterface.POAP,
+      itemName: '',
+      itemSymbol: '',
+      itemId: tokenInfo!.itemId,
       minimumBalance: BigNumber.from(1),
     }
-    if (!isNaN(parseInt(tokenInfo!.tokenAddress))) {
-      const info = await getPOAPEvent(parseInt(tokenInfo!.tokenAddress))
+    if (!isNaN(parseInt(tokenInfo!.itemId))) {
+      const info = await getPOAPEvent(parseInt(tokenInfo!.itemId))
 
       if (info) {
         _tokenInfo = {
           ..._tokenInfo,
-          tokenName: info.name,
-          tokenSymbol: '',
-          tokenLogo: info.image_url,
+          itemName: info.name,
+          itemSymbol: '',
+          itemLogo: info.image_url,
         }
-      } else if (tokenInfo!.tokenAddress) {
+      } else if (tokenInfo!.itemId) {
         setInvalidTokenAddress(true)
       }
     }
@@ -350,7 +347,7 @@ const POAPForm: React.FC<{
         <FormLabel>Event Id</FormLabel>
         <InputGroup>
           <Input
-            value={tokenInfo?.tokenAddress}
+            value={tokenInfo?.itemId}
             type="number"
             placeholder="1234"
             onChange={event => setTokenAddress(event.target.value)}
@@ -361,7 +358,7 @@ const POAPForm: React.FC<{
 
       <HStack mt={2}>
         <Box p={2}>
-          {!tokenInfo?.tokenName ? (
+          {!tokenInfo?.itemName ? (
             <Box position="relative">
               <Box
                 width={'32px'}
@@ -374,12 +371,12 @@ const POAPForm: React.FC<{
               )}
             </Box>
           ) : (
-            <Image w={'40px'} src={tokenInfo?.tokenLogo} />
+            <Image w={'40px'} src={tokenInfo?.itemLogo} />
           )}
         </Box>
         <InputGroup>
           <Input
-            value={tokenInfo?.tokenName}
+            value={tokenInfo?.itemName}
             type="text"
             disabled
             placeholder="Name"

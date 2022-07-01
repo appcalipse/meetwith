@@ -4,11 +4,7 @@ import Web3Modal from 'web3modal'
 
 import { Account } from '../types/Account'
 import { supportedChains } from '../types/chains'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  SchedulingType,
-} from '../types/Meeting'
+import { ParticipantInfo, ParticipantType } from '../types/Meeting'
 import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
