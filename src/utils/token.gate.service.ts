@@ -3,7 +3,7 @@ import { BigNumber } from 'ethers'
 import {
   ConditionRelation,
   GateCondition,
-  TokenInterface,
+  GateInterface,
 } from '@/types/TokenGating'
 
 import { getWalletPOAP } from './api_helper'
@@ -19,20 +19,20 @@ export const isConditionValid = async (
       let balance = BigNumber.from(0)
       if (
         [
-          TokenInterface.ERC20,
-          TokenInterface.ERC721,
-          TokenInterface.ERC1155,
+          GateInterface.ERC20,
+          GateInterface.ERC721,
+          GateInterface.ERC1155,
         ].includes(element.type)
       ) {
         balance = await getTokenBalance(
           targetAddress,
-          element.tokenAddress,
+          element.itemId,
           element.chain!
         )
-      } else if (element.type === TokenInterface.POAP) {
+      } else if (element.type === GateInterface.POAP) {
         const poap = await getWalletPOAP(
           targetAddress,
-          Number(parseInt(element.tokenAddress))
+          Number(parseInt(element.itemId))
         )
         balance = BigNumber.from(poap ? 1 : 0)
       }
@@ -85,7 +85,7 @@ export const toHumanReadable = (gateCondition: GateCondition): string => {
         }
         text += `${amount.toNumber()} of `
       }
-      text += `${element.tokenName} (${element.tokenSymbol})`
+      text += `${element.itemName} (${element.itemSymbol})`
       if (gateCondition.elements.length !== i + 1) {
         if (gateCondition.relation === ConditionRelation.AND) {
           text += ' and '
