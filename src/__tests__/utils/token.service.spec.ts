@@ -1,17 +1,90 @@
-import { BigNumber } from 'ethers'
+// @ts-nocheck
+
+import { BigNumber, ethers } from 'ethers'
 
 import { SupportedChain } from '@/types/chains'
-import { TokenInterface } from '@/types/TokenGating'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 
+import {
+  DAI_ELEMENT,
+  NFT_ELEMENT,
+  USDC_ELEMENT,
+  USDT_ELEMENT,
+} from '../../testing/mocks'
+
 describe('get balance for tokens', () => {
+  beforeAll(() => {
+    jest
+      .spyOn(ethers, 'Contract' as any)
+      .mockImplementation(
+        (
+          addressOrName: string,
+          contractInterface: ethers.ContractInterface,
+          signerOrProvider?: ethers.Signer | Provider
+        ) => {
+          return {
+            name: async () => {
+              switch (addressOrName) {
+                case USDT_ELEMENT.itemId:
+                  return Promise.resolve(USDT_ELEMENT.itemName)
+                case NFT_ELEMENT.itemId:
+                  return Promise.resolve(NFT_ELEMENT.itemName)
+              }
+            },
+            symbol: async () => {
+              switch (addressOrName) {
+                case USDT_ELEMENT.itemId:
+                  return Promise.resolve(USDT_ELEMENT.itemSymbol)
+                case NFT_ELEMENT.itemId:
+                  return Promise.resolve(NFT_ELEMENT.itemSymbol)
+              }
+            },
+            decimals: async () => {
+              switch (addressOrName) {
+                case USDT_ELEMENT.itemId:
+                  return Promise.resolve(BigNumber.from(18))
+                case NFT_ELEMENT.itemId:
+                  return Promise.resolve(0)
+              }
+            },
+            baseURI: async () => {
+              switch (addressOrName) {
+                case USDT_ELEMENT.itemId:
+                  throw new Error('Not a NFT')
+                case NFT_ELEMENT.itemId:
+                  return Promise.resolve('fakeBaseURi')
+              }
+            },
+            balanceOf: async (walletAddress: string) => {
+              switch (addressOrName) {
+                case DAI_ELEMENT.itemId:
+                  return Promise.resolve(BigNumber.from((1e18).toString()))
+                case USDT_ELEMENT.itemId:
+                  return Promise.resolve(BigNumber.from(0))
+                case USDC_ELEMENT.itemId:
+                  return Promise.resolve(BigNumber.from(0))
+                case NFT_ELEMENT.itemId:
+                  return Promise.resolve(BigNumber.from(1))
+                default:
+                  return Promise.resolve(BigNumber.from(0))
+              }
+            },
+          }
+        }
+      )
+  })
+
+  afterAll(() => {
+    jest.unmock('ethers')
+  })
+
   const WALLET_ADDRESS = '0x4F834fbb8b10F2cCbCBcA08D183aF3b9bdfCb2be'
 
   it('returns 0 because wallet has no balance of Mumbai USDT', async () => {
     const balance = await getTokenBalance(
       WALLET_ADDRESS,
-      '0x36fEe18b265FBf21A89AD63ea158F342a7C64abB',
-      SupportedChain.POLYGON_MUMBAI
+      USDT_ELEMENT.itemId,
+      USDT_ELEMENT.chain!
     )
     expect(balance).toEqual(BigNumber.from(0))
   })
@@ -19,8 +92,8 @@ describe('get balance for tokens', () => {
   it('returns more than zero cause wallet has balance of a mock DAI', async () => {
     const balance = await getTokenBalance(
       WALLET_ADDRESS,
-      '0xcb7f6c752e00da963038f1bae79aafbca8473a36',
-      SupportedChain.POLYGON_MUMBAI
+      DAI_ELEMENT.itemId,
+      DAI_ELEMENT.chain!
     )
     expect(balance).toEqual(BigNumber.from((1e18).toString()))
   })
@@ -28,37 +101,31 @@ describe('get balance for tokens', () => {
   it('returns one cause wallet holds NFT', async () => {
     const balance = await getTokenBalance(
       WALLET_ADDRESS,
-      '0x72B6Dc1003E154ac71c76D3795A3829CfD5e33b9',
-      SupportedChain.POLYGON_MATIC
+      NFT_ELEMENT.itemId,
+      NFT_ELEMENT.chain!
     )
     expect(balance).toEqual(BigNumber.from(1))
   })
 
   it('returns token info for NFT', async () => {
-    const tokenInfo = await getTokenInfo(
-      '0x72B6Dc1003E154ac71c76D3795A3829CfD5e33b9',
-      SupportedChain.POLYGON_MATIC
-    )
-    expect(tokenInfo?.tokenName).toEqual('Non-Fungible Matic')
-    expect(tokenInfo?.tokenSymbol).toEqual('NFM')
-    expect(tokenInfo?.type).toEqual(TokenInterface.ERC721)
-    expect(tokenInfo?.chain).toEqual(SupportedChain.POLYGON_MATIC)
-    expect(tokenInfo?.tokenAddress).toEqual(
-      '0x72B6Dc1003E154ac71c76D3795A3829CfD5e33b9'
-    )
+    const tokenInfo = await getTokenInfo(NFT_ELEMENT.itemId, NFT_ELEMENT.chain!)
+
+    expect(tokenInfo?.itemName).toEqual(NFT_ELEMENT.itemName)
+    expect(tokenInfo?.itemSymbol).toEqual(NFT_ELEMENT.itemSymbol)
+    expect(tokenInfo?.type).toEqual(NFT_ELEMENT.type)
+    expect(tokenInfo?.chain).toEqual(NFT_ELEMENT.chain!)
+    expect(tokenInfo?.itemId).toEqual(NFT_ELEMENT.itemId)
   })
 
   it('returns token info for ERC20', async () => {
     const tokenInfo = await getTokenInfo(
-      '0x36fEe18b265FBf21A89AD63ea158F342a7C64abB',
-      SupportedChain.POLYGON_MUMBAI
+      USDT_ELEMENT.itemId,
+      USDT_ELEMENT.chain!
     )
-    expect(tokenInfo?.tokenName).toEqual('Tether USD Test Token')
-    expect(tokenInfo?.tokenSymbol).toEqual('USDT')
-    expect(tokenInfo?.type).toEqual(TokenInterface.ERC20)
-    expect(tokenInfo?.chain).toEqual(SupportedChain.POLYGON_MUMBAI)
-    expect(tokenInfo?.tokenAddress).toEqual(
-      '0x36fEe18b265FBf21A89AD63ea158F342a7C64abB'
-    )
+    expect(tokenInfo?.itemName).toEqual(USDT_ELEMENT.itemName)
+    expect(tokenInfo?.itemSymbol).toEqual(USDT_ELEMENT.itemSymbol)
+    expect(tokenInfo?.type).toEqual(USDT_ELEMENT.type)
+    expect(tokenInfo?.chain).toEqual(USDT_ELEMENT.chain!)
+    expect(tokenInfo?.itemId).toEqual(USDT_ELEMENT.itemId)
   })
 })
