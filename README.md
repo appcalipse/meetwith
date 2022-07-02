@@ -30,6 +30,31 @@ To learn more:
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API
 - [Smart Contracts](https://cryptozombies.io/) - to learn more about smart contracts
 
+## Docker image
+
+### Building
+
+```
+docker build --build-arg DOPPLER_TOKEN="$(doppler configs tokens create docker --max-age 100m --plain)" -t nextjs-docker .
+```
+
+### Running
+
+```
+docker run -p 3000:3000 -e DOPPLER_TOKEN="TOKEN" nextjs-docker
+```
+
+## Deployment
+
+```
+export DOPPLER_TOKEN="token"
+export PORT="port"
+export NODE_ENV="production or development"
+
+copilot deploy
+```
+
+
 ## Contribute
 
 Contributions are welcomed! Please read the [contribution guidelines](CONTRIBUTING.md) first.
