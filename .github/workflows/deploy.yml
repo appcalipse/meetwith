@@ -1,0 +1,49 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Deploy
+    
+on: [pull_request]
+# TODO: this is the wrong event, use the one bellow instead
+# on:
+  # push:
+  #   branches:    
+  #     - 'main'
+  #     - 'develop'
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install AWS Copilot
+      run: sudo curl -Lo /usr/local/bin/copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux && sudo chmod +x /usr/local/bin/copilot && copilot --help
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-region: eu-west-1
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
+
+    - name: github.ref
+      run: echo ${{github.ref}}
+
+    - name: Deploy in the Preview env
+      # TODO: change to refs/head/develop
+      if: ${{ github.ref == 'refs/pull/8/merge' }}
+      run: copilot deploy -e dev
+      env:
+        NEXT_PUBLIC_ENV: preview
+        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
+
+    - name: Deploy in the Production env
+      if: ${{ github.ref == 'refs/heads/main' }}
+      run: copilot deploy -e production
+      env:
+        NEXT_PUBLIC_ENV: production
+        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
+

@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "doppler run --config dev next dev",
-    "build": "next build",
+    "build": "doppler run next build",
     "static": "next build && next export",
     "start": "next start",
     "lint": "next lint",
