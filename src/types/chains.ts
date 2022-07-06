@@ -15,9 +15,11 @@ export interface ChainInfo {
 }
 
 export enum SupportedChain {
+  ETHEREUM = 'ETHEREUM',
   POLYGON_MATIC = 'POLYGON_MATIC',
   POLYGON_MUMBAI = 'POLYGON_MUMBAI',
   HARMONY = 'HARMONY',
+  RINEKBY = 'RINEKBY',
   HARMONY_TESTNET = 'HARMONY_TESTNET',
   METIS_ANDROMEDA = 'METIS_ANDROMEDA',
   METIS_STARTDUST = 'METIS_STARTDUST',
@@ -39,10 +41,32 @@ export interface AcceptedTokenInfo {
 
 export const supportedChains: ChainInfo[] = [
   {
+    chain: SupportedChain.RINEKBY,
+    id: 4,
+    name: 'Rinkeby',
+    fullName: 'Ethereum Rinkeby',
+    rpcUrl: 'https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+    testnet: true,
+    nativeTokenSymbol: 'ETH',
+    domainContractAddess: '0x342cc148d27Ae69acA7Cc56BafEd0D4c3f06695F',
+    registarContractAddress: '0x0B63ea2262CD64fE3A032Fc220b5352Ff98c7EA3',
+    blockExplorerUrl: 'https://rinkeby.etherscan.com',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.ETHER,
+        contractAddress: ethers.constants.AddressZero,
+      },
+      {
+        token: AcceptedToken.DAI,
+        contractAddress: '0xCEaB09d857B7fB420C01BFFba2976F9D5eB38f0F',
+      },
+    ],
+  },
+  {
     chain: SupportedChain.POLYGON_MUMBAI,
     id: 80001,
     name: 'Mumbai',
-    fullName: 'Mumbai',
+    fullName: 'Polygon Mumbai',
     rpcUrl: 'https://matic-mumbai.chainstacklabs.com',
     testnet: true,
     nativeTokenSymbol: 'MATIC',
@@ -102,6 +126,33 @@ export const supportedChains: ChainInfo[] = [
       {
         token: AcceptedToken.DAI,
         contractAddress: '0xFf8d4104D0bcE4ad3480326Ea8202514CBF09B6C',
+      },
+    ],
+  },
+  {
+    chain: SupportedChain.ETHEREUM,
+    id: 1,
+    name: 'Ethereum',
+    fullName: 'Ethereum',
+    rpcUrl:
+      'https://eth-mainnet.nodereal.io/v1/1659dfb40aa24bbb8153a677b98064d7',
+    testnet: false,
+    nativeTokenSymbol: 'ETH',
+    domainContractAddess: '0x444463a3892EA730e43e3B54E8e45005a9Fe1fbd',
+    registarContractAddress: '0x7721a7C1472A565534A80511734Bc84fB27eb0a2',
+    blockExplorerUrl: 'https://etherscan.com',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.ETHER,
+        contractAddress: ethers.constants.AddressZero,
+      },
+      {
+        token: AcceptedToken.DAI,
+        contractAddress: '0x6b175474e89094c44da98b954eedeac495271d0f',
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
       },
     ],
   },
