@@ -83,6 +83,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
       case SupportedChain.HARMONY:
       case SupportedChain.HARMONY_TESTNET:
         return '/assets/chains/Harmony.svg'
+      case SupportedChain.ETHEREUM:
+      case SupportedChain.RINEKBY:
+        return '/assets/chains/ethereum.svg'
       default:
         break
     }
@@ -101,7 +104,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
       case AcceptedToken.ONE:
         return '/assets/chains/Harmony.svg'
       case AcceptedToken.ETHER:
-        return '/assets/chains/Ethereum.svg'
+        return '/assets/chains/ethereum.svg'
       default:
         break
     }
