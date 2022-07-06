@@ -24,6 +24,7 @@ export const getBlockchainSubscriptionsForAccount = async (
 
   for (const chain of chainsToCheck) {
     const provider = getProviderBackend(chain.chain)
+
     const contract = new ethers.Contract(
       chain.domainContractAddess,
       MWWDomain,
