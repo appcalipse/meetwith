@@ -358,14 +358,15 @@ const isSlotFree = async (
     (mt: MeetingType) => mt.id === meetingTypeId
   )
 
-  if (minTime && minTime.length > 0) {
-    if (
-      !minTime[0].minAdvanceTime ||
-      isAfter(addMinutes(new Date(), minTime[0].minAdvanceTime), start)
-    ) {
-      return false
-    }
+  if (
+    minTime &&
+    minTime.length > 0 &&
+    minTime[0].minAdvanceTime &&
+    isAfter(addMinutes(new Date(), minTime[0].minAdvanceTime), start)
+  ) {
+    return false
   }
+
   return (
     (await (await getSlotsForAccount(account_address, start, end)).length) == 0
   )

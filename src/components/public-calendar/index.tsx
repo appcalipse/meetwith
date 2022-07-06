@@ -18,6 +18,7 @@ import {
 } from '../../utils/api_helper'
 import {
   durationToHumanReadable,
+  getAccountDomainUrl,
   isSlotAvailable,
   scheduleMeeting,
 } from '../../utils/calendar_manager'
@@ -229,7 +230,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       t => t.id === typeId
     )!
     setSelectedType(type)
-    router.push(`/${account!.address}/${type.url}`, undefined, {
+    router.push(`/${getAccountDomainUrl(account!)}/${type.url}`, undefined, {
       shallow: true,
     })
   }
