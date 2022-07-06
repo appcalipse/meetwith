@@ -46,7 +46,11 @@ import { getSlugFromText } from './generic_utils'
 import { generateMeetingUrl } from './meeting_call_helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
-import { getAccountDisplayName, getParticipantDisplay } from './user_manager'
+import {
+  ellipsizeAddress,
+  getAccountDisplayName,
+  getParticipantDisplay,
+} from './user_manager'
 
 const scheduleMeeting = async (
   schedulingType: SchedulingType,
@@ -414,15 +418,26 @@ const dateToHumanReadable = (
   return result
 }
 
-const getAccountCalendarUrl = (account: Account, ellipsize?: boolean) => {
+const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
+  if (isProAccount(account)) {
+    return account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0]
+      .domain
+  }
+  return `address/${
+    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+  }`
+}
+
+const getAccountCalendarUrl = (
+  account: Account,
+  ellipsize?: boolean
+): string => {
   if (isProAccount(account)) {
     return `${appUrl}${
       account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0].domain
     }`
   }
-  return `${appUrl}address/${
-    ellipsize ? getAccountDisplayName(account) : account!.address
-  }`
+  return `${appUrl}${getAccountDomainUrl(account, ellipsize)}`
 }
 
 const generateDefaultMeetingType = (): MeetingType => {
@@ -462,6 +477,7 @@ export {
   generateDefaultMeetingType,
   generateIcs,
   getAccountCalendarUrl,
+  getAccountDomainUrl,
   isSlotAvailable,
   isTimeInsideAvailabilities,
   scheduleMeeting,
