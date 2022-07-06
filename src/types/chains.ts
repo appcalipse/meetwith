@@ -19,7 +19,7 @@ export enum SupportedChain {
   POLYGON_MATIC = 'POLYGON_MATIC',
   POLYGON_MUMBAI = 'POLYGON_MUMBAI',
   HARMONY = 'HARMONY',
-  RINEKBY = 'RINEKBY',
+  RINKEBY = 'RINKEBY',
   HARMONY_TESTNET = 'HARMONY_TESTNET',
   METIS_ANDROMEDA = 'METIS_ANDROMEDA',
   METIS_STARTDUST = 'METIS_STARTDUST',
@@ -41,14 +41,14 @@ export interface AcceptedTokenInfo {
 
 export const supportedChains: ChainInfo[] = [
   {
-    chain: SupportedChain.RINEKBY,
+    chain: SupportedChain.RINKEBY,
     id: 4,
     name: 'Rinkeby',
     fullName: 'Ethereum Rinkeby',
     rpcUrl: 'https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
     testnet: true,
     nativeTokenSymbol: 'ETH',
-    domainContractAddess: '0x342cc148d27Ae69acA7Cc56BafEd0D4c3f06695F',
+    domainContractAddess: '0xc1a78c9ce8fc447030edff6728822cfd6ffc1948',
     registarContractAddress: '0x0B63ea2262CD64fE3A032Fc220b5352Ff98c7EA3',
     blockExplorerUrl: 'https://rinkeby.etherscan.com',
     acceptableTokens: [
