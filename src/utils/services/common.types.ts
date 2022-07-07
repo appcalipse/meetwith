@@ -17,7 +17,9 @@ export interface CalendarService {
    */
   createEvent(
     owner: string,
-    details: MeetingCreationRequest
+    details: MeetingCreationRequest,
+    slot_id: string,
+    meeting_creation_time: Date
   ): Promise<NewCalendarEventType>
 
   /**
@@ -27,18 +29,4 @@ export interface CalendarService {
    * @param dateTo final date to query
    */
   getAvailability(dateFrom: string, dateTo: string): Promise<EventBusyDate[]>
-}
-
-export class MWWGoogleAuth extends google.auth.OAuth2 {
-  constructor(client_id: string, client_secret: string, redirect_uri?: string) {
-    super(client_id, client_secret, redirect_uri)
-  }
-
-  isTokenExpiring() {
-    return super.isTokenExpiring()
-  }
-
-  async refreshToken(token: string | null | undefined) {
-    return super.refreshToken(token)
-  }
 }
