@@ -3,9 +3,10 @@ import { BigNumber } from 'ethers'
 import {
   ConditionRelation,
   GateCondition,
-  GateConditionObject,
+  GateInterface,
 } from '@/types/TokenGating'
 
+import { getWalletPOAP } from './api_helper'
 import { getTokenBalance } from './token.service'
 
 export const isConditionValid = async (
@@ -15,12 +16,28 @@ export const isConditionValid = async (
   if (gateCondition.elements.length > 0) {
     const isValid = []
     for (const element of gateCondition.elements) {
-      const balance = await getTokenBalance(
-        targetAddress,
-        element.tokenAddress,
-        element.chain
-      )
-      isValid.push(element.minimumBalance.lte(balance))
+      let balance = BigNumber.from(0)
+      if (
+        [
+          GateInterface.ERC20,
+          GateInterface.ERC721,
+          GateInterface.ERC1155,
+        ].includes(element.type)
+      ) {
+        balance = await getTokenBalance(
+          targetAddress,
+          element.itemId,
+          element.chain!
+        )
+      } else if (element.type === GateInterface.POAP) {
+        const poap = await getWalletPOAP(
+          targetAddress,
+          Number(parseInt(element.itemId))
+        )
+        balance = BigNumber.from(poap ? 1 : 0)
+      }
+
+      isValid.push(balance.gt(0) && element.minimumBalance.lte(balance))
     }
     if (gateCondition.relation === ConditionRelation.AND) {
       return isValid.every(valid => valid === true)
@@ -68,7 +85,7 @@ export const toHumanReadable = (gateCondition: GateCondition): string => {
         }
         text += `${amount.toNumber()} of `
       }
-      text += `${element.tokenName} (${element.tokenSymbol})`
+      text += `${element.itemName} (${element.itemSymbol})`
       if (gateCondition.elements.length !== i + 1) {
         if (gateCondition.relation === ConditionRelation.AND) {
           text += ' and '

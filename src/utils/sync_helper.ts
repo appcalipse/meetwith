@@ -5,7 +5,9 @@ import { getConnectedCalendarIntegration } from './services/connected_calendars.
 
 export const syncCalendarWithAccount = async (
   targetAccount: Account['address'],
-  event: MeetingCreationRequest
+  event: MeetingCreationRequest,
+  slot_id: string,
+  meeting_creation_time: Date
 ) => {
   const account = await getAccountFromDB(targetAccount)
   const calendars = await getConnectedCalendars(targetAccount, {
@@ -20,21 +22,30 @@ export const syncCalendarWithAccount = async (
       calendar.payload
     )
 
-    await integration.createEvent(account.address, { ...event })
+    await integration.createEvent(
+      targetAccount,
+      event,
+      slot_id,
+      meeting_creation_time
+    )
   }
 }
 
-export const syncCalendarForMeeting = async (event: MeetingCreationRequest) => {
+export const syncCalendarForMeeting = async (
+  event: MeetingCreationRequest,
+  meeting_creation_time: Date
+) => {
   // schedule for other users, if they are also pro
   const tasks: Promise<any>[] = []
   for (const participant of event.participants_mapping) {
-    if (
-      [ParticipantType.Scheduler, ParticipantType.Owner].includes(
-        participant.type
+    tasks.push(
+      syncCalendarWithAccount(
+        participant.account_address!,
+        event,
+        participant.slot_id,
+        meeting_creation_time
       )
-    ) {
-      tasks.push(syncCalendarWithAccount(participant.account_address!, event))
-    }
+    )
   }
 
   await Promise.all(tasks)

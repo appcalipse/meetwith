@@ -46,17 +46,20 @@ export const notifyForNewMeeting = async (
     })
   )
 
-  const hasScheduler = participantsInfo.some(
-    participant => participant.type === ParticipantType.Scheduler
+  const ownerParticipant =
+    participantsInfo.find(p => p.type === ParticipantType.Owner) || null
+
+  const schedulerParticipant =
+    participantsInfo.find(p => p.type === ParticipantType.Scheduler) || null
+
+  const ownerIsNotScheduler = Boolean(
+    ownerParticipant &&
+      ownerParticipant?.account_address !==
+        schedulerParticipant?.account_address
   )
 
   for (let i = 0; i < participantsInfo.length; i++) {
     const participant = participantsInfo[i]
-
-    const displayNames = getAllParticipantsDisplayName(
-      participantsInfo,
-      participant.account_address
-    )
 
     if (
       meeting_ics.meeting.type === SchedulingType.GUEST &&
@@ -64,18 +67,19 @@ export const notifyForNewMeeting = async (
     ) {
       await newMeetingEmail(
         participant.guest_email!,
-        displayNames,
+        participantsInfo,
         participant.timezone,
         new Date(meeting_ics.meeting.start),
         new Date(meeting_ics.meeting.end),
         meeting_ics.db_slot.meeting_info_file_path,
         true,
+        undefined,
         meeting_ics.meeting.meeting_url,
         meeting_ics.db_slot.id,
         meeting_ics.db_slot.created_at
       )
     } else if (
-      ((participant.type === ParticipantType.Owner && hasScheduler) ||
+      ((participant.type === ParticipantType.Owner && ownerIsNotScheduler) ||
         participant.type === ParticipantType.Invitee) &&
       participant.account_address &&
       participant.notifications &&
@@ -94,14 +98,15 @@ export const notifyForNewMeeting = async (
             case NotificationChannel.EMAIL:
               await newMeetingEmail(
                 notification_type.destination,
-                displayNames,
+                participantsInfo,
                 participant.timezone,
                 new Date(meeting_ics.meeting.start),
                 new Date(meeting_ics.meeting.end),
                 meeting_ics.db_slot.meeting_info_file_path,
                 false,
+                participant.account_address,
                 meeting_ics.meeting.meeting_url,
-                meeting_ics.db_slot.id,
+                participant.slot_id,
                 meeting_ics.db_slot.created_at
               )
               break
