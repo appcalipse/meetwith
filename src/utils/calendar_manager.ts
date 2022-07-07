@@ -44,6 +44,7 @@ import { decryptContent } from './cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors'
 import { getSlugFromText } from './generic_utils'
 import { generateMeetingUrl } from './meeting_call_helper'
+import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
 import {
@@ -144,6 +145,7 @@ const scheduleMeeting = async (
 
       participants.push(participant)
     }
+
     const privateInfo: IPFSMeetingInfo = {
       created_at: new Date(),
       participants: participants,
@@ -166,8 +168,9 @@ const scheduleMeeting = async (
           JSON.stringify(privateInfo)
         ),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        name: sourceName || '',
+        name: participant.name || '',
         guest_email: participant.account_address ? '' : participant.guest_email,
+        status: participant.status,
       }
       participantsMappings.push(participantMapping)
     }
@@ -214,7 +217,10 @@ const scheduleMeeting = async (
   }
 }
 
-const generateIcs = (meeting: MeetingDecrypted): ReturnObject => {
+const generateIcs = (
+  meeting: MeetingDecrypted,
+  ownerAddress: string
+): ReturnObject => {
   const event: EventAttributes = {
     uid: meeting.id,
     start: [
@@ -231,11 +237,16 @@ const generateIcs = (meeting: MeetingDecrypted): ReturnObject => {
       getHours(meeting.end),
       getMinutes(meeting.end),
     ],
-    title: `Meeting: ${meeting.participants
-      .map(participant => participant.name || participant.account_address)
-      .join(', ')}`,
-    description: meeting.content,
+    title: CalendarServiceHelper.getMeetingTitle(
+      ownerAddress,
+      meeting.participants
+    ),
+    description: CalendarServiceHelper.getMeetingSummary(
+      meeting.content,
+      meeting.meeting_url
+    ),
     url: meeting.meeting_url,
+    location: meeting.meeting_url,
     created: [
       getYear(meeting.created_at!),
       getMonth(meeting.created_at!) + 1,
@@ -243,16 +254,17 @@ const generateIcs = (meeting: MeetingDecrypted): ReturnObject => {
       getHours(meeting.created_at!),
       getMinutes(meeting.created_at!),
     ],
-
+    organizer: {
+      // required by some services
+      name: 'Meet with Wallet',
+      email: 'contact@meetwithwallet.xyz',
+    },
     //        status: 'CONFIRMED',
-    // organizer: { name: 'Admin', email: 'Race@BolderBOULDER.com' },
     // attendees: [
     //   { name: 'Adam Gibbons', email: 'adam@example.com', rsvp: true, partstat: 'ACCEPTED', role: 'REQ-PARTICIPANT' },
     //   { name: 'Brittany Seaton', email: 'brittany@example2.org', dir: 'https://linkedin.com/in/brittanyseaton', role: 'OPT-PARTICIPANT' }
     // ]
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
 
   return createEvent(event)
 }
@@ -465,6 +477,7 @@ const generateAllSlots = () => {
   allSlots.push('24:00')
   return allSlots
 }
+
 const allSlots = generateAllSlots()
 
 export {

@@ -62,10 +62,8 @@ export const checkWalletHoldsEventPOAP = async (
   )
   if (response.status >= 200 && response.status < 300) {
     const poaps = await response.json()
-    console.log(poaps)
     return poaps as POAP[]
   } else {
-    console.log(response)
     Sentry.captureException(response.statusText)
   }
 

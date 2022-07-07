@@ -4,16 +4,13 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '../types/Meeting'
+import { ParticipantInfo } from '../types/Meeting'
 import {
   dateToHumanReadable,
   durationToHumanReadable,
   generateIcs,
 } from './calendar_manager'
+import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
 
@@ -21,19 +18,23 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
 
 export const newMeetingEmail = async (
   toEmail: string,
-  participantsDisplayNames: string,
+  participants: ParticipantInfo[],
   timezone: string,
   start: Date,
   end: Date,
   meeting_info_file_path: string,
   forGuest: boolean,
+  destinationAccountAddress?: string,
   meetingUrl?: string,
   id?: string | undefined,
   created_at?: Date
 ): Promise<boolean> => {
   const email = new Email()
   const locals = {
-    participantsDisplay: participantsDisplayNames,
+    participantsDisplay: getAllParticipantsDisplayName(
+      participants,
+      destinationAccountAddress
+    ),
     meeting: {
       start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
@@ -49,26 +50,18 @@ export const newMeetingEmail = async (
     locals
   )
 
-  const participants: ParticipantInfo[] = []
-
-  //Creating "mock" MeetingDecrypted information to generate the ics
-  participantsDisplayNames.split(', ').map(participant => {
-    participants.push({
-      name: participant,
-      slot_id: 'null',
-      status: ParticipationStatus.Accepted,
-      type: ParticipantType.Scheduler,
-    })
-  })
-  const icsFile = generateIcs({
-    meeting_url: meetingUrl as string,
-    start: new Date(start),
-    end: new Date(end),
-    id: id as string,
-    created_at: new Date(created_at as Date),
-    meeting_info_file_path,
-    participants,
-  })
+  const icsFile = generateIcs(
+    {
+      meeting_url: meetingUrl as string,
+      start: new Date(start),
+      end: new Date(end),
+      id: id as string,
+      created_at: new Date(created_at as Date),
+      meeting_info_file_path,
+      participants,
+    },
+    destinationAccountAddress || ''
+  )
 
   const msg: sgMail.MailDataRequired = {
     to: toEmail,
