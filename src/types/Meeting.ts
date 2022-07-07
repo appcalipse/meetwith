@@ -34,6 +34,7 @@ export interface CreationRequestParticipantMapping {
   privateInfo: Encrypted
   timeZone: string
   name: string
+  status: ParticipationStatus
   guest_email?: string
 }
 

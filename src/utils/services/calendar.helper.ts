@@ -1,35 +1,25 @@
-import { MeetingCreationRequest, ParticipationStatus } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/Meeting'
 
 import { getAllParticipantsDisplayName } from '../user_manager'
 
 export const CalendarServiceHelper = {
-  getMeetingSummary: (owner: string, details: MeetingCreationRequest) => {
+  getMeetingTitle: (
+    slotOwnerAccountAddress: string,
+    participants: ParticipantInfo[]
+  ) => {
     const displayNames = getAllParticipantsDisplayName(
-      details.participants_mapping.map(map => {
-        return {
-          account_address: map.account_address,
-          name: map.name,
-          slot_id: map.slot_id,
-          type: map.type,
-          guest_email: map.guest_email,
-          status: ParticipationStatus.Accepted, //will not be used for now
-        }
-      }),
-      owner
+      participants,
+      slotOwnerAccountAddress
     )
 
     return `Meeting: ${displayNames}`
   },
 
-  getMeetingTitle: (details: MeetingCreationRequest) => {
+  getMeetingSummary: (meetingDescription?: string, meeting_url?: string) => {
     return `${
-      details.content ? details.content + '\n' : ''
+      meetingDescription ? meetingDescription + '\n' : ''
     }Your meeting will happen at ${
-      details.meeting_url ? details.meeting_url : 'Meet With Wallet'
+      meeting_url ? meeting_url : 'Meet With Wallet'
     }`
-  },
-
-  getMeetingLocation: () => {
-    return 'Online @ Meet With Wallet'
   },
 }
