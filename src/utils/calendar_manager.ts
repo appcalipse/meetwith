@@ -35,7 +35,7 @@ import { Plan } from '../types/Subscription'
 import {
   getAccount,
   getExistingAccounts,
-  isSlotFree,
+  isSlotFreeApiCall,
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
 } from './api_helper'
@@ -47,11 +47,7 @@ import { generateMeetingUrl } from './meeting_call_helper'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
-import {
-  ellipsizeAddress,
-  getAccountDisplayName,
-  getParticipantDisplay,
-} from './user_manager'
+import { ellipsizeAddress } from './user_manager'
 
 const scheduleMeeting = async (
   schedulingType: SchedulingType,
@@ -76,12 +72,14 @@ const scheduleMeeting = async (
 
   if (
     source_account_address === target_account_address ||
-    (await isSlotFree(
-      target_account_address,
-      startTime,
-      endTime,
-      meetingTypeId
-    ))
+    (
+      await isSlotFreeApiCall(
+        target_account_address,
+        startTime,
+        endTime,
+        meetingTypeId
+      )
+    ).isFree
   ) {
     const allAccounts = await getExistingAccounts([
       source_account_address ? source_account_address : '',
