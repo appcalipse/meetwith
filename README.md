@@ -4,7 +4,7 @@ Meet with Wallet provides an easy way to share your (or your DAO's) calendar and
 
 ## Basic Setup
 
-First of all, you'll need `node`installed in your environment, and you'll also need [droppler cli](https://docs.doppler.com/docs) with propper access given by one of our team members.
+First of all, you'll need `node`installed in your environment, and you'll also need [doppler cli](https://docs.doppler.com/docs) with propper access given by one of our team members.
 
 Given that you have the requirements ready, to run the development server:
 

@@ -4,19 +4,21 @@ import { isProduction } from '@/utils/constants'
 
 import { SupportedChain } from './chains'
 
-export enum TokenInterface {
+export enum GateInterface {
   ERC20 = 'ERC20',
   ERC721 = 'ERC721/NFT',
   ERC1155 = 'ERC1155',
+  POAP = 'POAP',
 }
 
 export interface TokenGateElement {
-  tokenName: string
-  tokenAddress: string
-  tokenSymbol: string
-  chain: SupportedChain
-  type: TokenInterface
+  itemName: string
+  itemId: string
+  itemSymbol: string
+  type: GateInterface
   minimumBalance: BigNumber
+  chain?: SupportedChain
+  itemLogo?: string
   decimals?: number
 }
 
@@ -37,11 +39,11 @@ export interface GateConditionObject {
   definition: GateCondition
 }
 
-export const DummyGateElement = {
-  type: TokenInterface.ERC20,
-  tokenName: '',
-  tokenSymbol: '',
-  tokenAddress: '',
+export const DummyGateElement: TokenGateElement = {
+  type: GateInterface.ERC20,
+  itemName: '',
+  itemSymbol: '',
+  itemId: '',
   chain: isProduction
     ? SupportedChain.POLYGON_MATIC
     : SupportedChain.POLYGON_MUMBAI,

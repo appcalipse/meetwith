@@ -1,77 +1,103 @@
-import { BigNumber } from 'ethers'
+// @ts-nocheck
+import { Provider } from '@ethersproject/providers'
+import { BigNumber, ContractInterface, ethers, Signer } from 'ethers'
 
 import { SupportedChain } from '@/types/chains'
-import {
-  ConditionRelation,
-  GateCondition,
-  TokenGateElement,
-  TokenInterface,
-} from '@/types/TokenGating'
 import { isConditionValid } from '@/utils/token.gate.service'
 
+import {
+  CONDITION_MWW_POAP,
+  CONDITION_NFT_AND_DAI_OR_USDT,
+  CONDITION_NFT_AND_USDT,
+  CONDITION_RANDOM_POAP,
+  CONDITION_USDC,
+  DAI_ELEMENT,
+  NFT_ELEMENT,
+  POAP_MWW,
+  USDC_ELEMENT,
+  USDT_ELEMENT,
+} from '../../testing/mocks'
+
 describe('get balance for tokens', () => {
+  beforeAll(() => {
+    global.fetch = jest.fn().mockImplementation((path: string) => {
+      return Promise.resolve({
+        status: 200,
+        json: () =>
+          Promise.resolve([
+            path.indexOf(POAP_MWW.itemId) === -1
+              ? null
+              : {
+                  event: {},
+                  tokenId: 'string',
+                  chain: SupportedChain.POLYGON_MATIC,
+                  created: 'YYYY-MM-DD HH:mm:ss',
+                },
+          ]),
+      })
+    })
+
+    jest
+      .spyOn(ethers, 'Contract' as any)
+      .mockImplementation(
+        (
+          addressOrName: string,
+          contractInterface: ethers.ContractInterface,
+          signerOrProvider?: ethers.Signer | Provider
+        ) => {
+          return {
+            balanceOf: async (walletAddress: string) => {
+              switch (addressOrName) {
+                case DAI_ELEMENT.itemId:
+                  return Promise.resolve(BigNumber.from((2e18).toString()))
+                case USDT_ELEMENT.itemId:
+                  return Promise.resolve(BigNumber.from(0))
+                case USDC_ELEMENT.itemId:
+                  return Promise.resolve(BigNumber.from(0))
+                case NFT_ELEMENT.itemId:
+                  return Promise.resolve(BigNumber.from(1))
+                default:
+                  return Promise.resolve(BigNumber.from(0))
+              }
+            },
+          }
+        }
+      )
+  })
+
+  afterAll(() => {
+    jest.unmock('ethers')
+  })
+
   const WALLET_ADDRESS = '0x4F834fbb8b10F2cCbCBcA08D183aF3b9bdfCb2be'
-
-  const DAI_ELEMENT: TokenGateElement = {
-    tokenName: 'Dai Stablecoin',
-    tokenAddress: '0xcb7f6c752e00da963038f1bae79aafbca8473a36',
-    tokenSymbol: 'DAI',
-    chain: SupportedChain.POLYGON_MUMBAI,
-    type: TokenInterface.ERC20,
-    minimumBalance: BigNumber.from((1e18).toString()),
-  }
-
-  const USDT_ELEMENT: TokenGateElement = {
-    tokenName: 'USDT Test Token',
-    tokenAddress: '0x36fEe18b265FBf21A89AD63ea158F342a7C64abB',
-    tokenSymbol: 'USDT',
-    chain: SupportedChain.POLYGON_MUMBAI,
-    type: TokenInterface.ERC20,
-    minimumBalance: BigNumber.from(1),
-  }
-
-  const NFT_ELEMENT: TokenGateElement = {
-    tokenName: 'Non-Fungible Matic',
-    tokenAddress: '0x72B6Dc1003E154ac71c76D3795A3829CfD5e33b9',
-    tokenSymbol: 'NFM',
-    chain: SupportedChain.POLYGON_MATIC,
-    type: TokenInterface.ERC721,
-    minimumBalance: BigNumber.from(1),
-  }
-
-  const CONDITION_MOCK_DAI_OR_USDT: GateCondition = {
-    relation: ConditionRelation.OR,
-    elements: [DAI_ELEMENT, USDT_ELEMENT],
-    conditions: [],
-  }
-
-  const CONDITION_NFT: GateCondition = {
-    relation: ConditionRelation.AND,
-    elements: [NFT_ELEMENT],
-    conditions: [],
-  }
-
-  const CONDITION_USDT: GateCondition = {
-    relation: ConditionRelation.AND,
-    elements: [USDT_ELEMENT],
-    conditions: [],
-  }
-
-  const CONDITION_NFT_AND_DAI_OR_USDT: GateCondition = {
-    relation: ConditionRelation.AND,
-    conditions: [CONDITION_MOCK_DAI_OR_USDT, CONDITION_NFT],
-    elements: [],
-  }
-
-  const CONDITION_NFT_AND_USDT = {
-    relation: ConditionRelation.AND,
-    elements: [NFT_ELEMENT, USDT_ELEMENT],
-    conditions: [],
-  }
 
   it('should be true given wallet holds both DAI and the NFT', async () => {
     const conditionShouldBeMet = await isConditionValid(
       CONDITION_NFT_AND_DAI_OR_USDT,
+      WALLET_ADDRESS
+    )
+    expect(conditionShouldBeMet).toBeTruthy()
+  })
+
+  it("should be false given wallet doesn't have any USDC even if minBalance condition is Zero", async () => {
+    const conditionShouldNotBeMet = await isConditionValid(
+      CONDITION_USDC,
+      WALLET_ADDRESS
+    )
+    expect(conditionShouldNotBeMet).toBeFalsy()
+  })
+
+  it("should be false given wallet doesn't have POAP", async () => {
+    const conditionShouldNotBeMet = await isConditionValid(
+      CONDITION_RANDOM_POAP,
+      WALLET_ADDRESS
+    )
+    expect(conditionShouldNotBeMet).toBeFalsy()
+  })
+
+  it('should be true given wallet have POAP', async () => {
+    const conditionShouldBeMet = await isConditionValid(
+      CONDITION_MWW_POAP,
       WALLET_ADDRESS
     )
     expect(conditionShouldBeMet).toBeTruthy()

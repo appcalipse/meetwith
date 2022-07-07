@@ -1,7 +1,4 @@
 import * as Sentry from '@sentry/browser'
-import { differenceInMinutes } from 'date-fns'
-import { DateArray, DurationObject } from 'ics'
-import { createEvent } from 'ics'
 import {
   createAccount,
   createCalendarObject,
@@ -11,13 +8,12 @@ import {
   fetchCalendars,
   getBasicAuthHeaders,
 } from 'tsdav'
-import { v4 as uuidv4 } from 'uuid'
 
 import { NewCalendarEventType } from '@/types/CalendarConnections'
-import { MeetingCreationRequest } from '@/types/Meeting'
+import { MeetingCreationRequest, ParticipantInfo } from '@/types/Meeting'
 
+import { generateIcs } from '../calendar_manager'
 import { decryptContent } from '../cryptography'
-import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './common.types'
 
 // ical.js has no ts typing
@@ -38,23 +34,6 @@ export type BatchResponse = {
 export type SubResponse = {
   body: { value: { start: { dateTime: string }; end: { dateTime: string } }[] }
 }
-
-export const convertDate = (date: Date): DateArray => {
-  return [
-    date.getUTCFullYear(),
-    date.getUTCMonth() + 1,
-    date.getUTCDate(),
-    date.getUTCHours(),
-    date.getUTCMinutes(),
-  ] as DateArray
-}
-
-export const getDuration = (
-  start: string | Date,
-  end: string | Date
-): DurationObject => ({
-  minutes: differenceInMinutes(new Date(end), new Date(start)),
-})
 
 export function handleErrorsJson(response: Response) {
   if (!response.ok) {
@@ -113,44 +92,46 @@ export default class CaldavCalendarService implements CalendarService {
    * @returns
    */
   async createEvent(
-    owner: string,
-    details: MeetingCreationRequest
+    calendarOwnerAccountAddress: string,
+    details: MeetingCreationRequest,
+    slot_id: string,
+    meeting_creation_time: Date
   ): Promise<NewCalendarEventType> {
     try {
       const calendars = await this.listCalendars()
-      const uid = uuidv4()
 
-      // We need to create local ICS files
-      const { error, value: iCalString } = createEvent({
-        uid,
-        startInputType: 'utc',
-        start: convertDate(new Date(details.start)),
-        duration: getDuration(details.start, details.end),
-        title: CalendarServiceHelper.getMeetingSummary(owner, details),
-        url: details.meeting_url,
-        description: CalendarServiceHelper.getMeetingTitle(details),
-        location: CalendarServiceHelper.getMeetingLocation(),
-        organizer: {
-          // required by some services
-          name: 'Meet With Wallet',
-          email: 'contact@meetwithwallet.xyz',
+      const participantsInfo: ParticipantInfo[] =
+        details.participants_mapping.map(participant => ({
+          type: participant.type,
+          name: participant.name,
+          account_address: participant.account_address,
+          status: participant.status,
+          slot_id,
+        }))
+
+      const ics = generateIcs(
+        {
+          meeting_url: details.meeting_url,
+          start: new Date(details.start),
+          end: new Date(details.end),
+          id: slot_id,
+          created_at: new Date(meeting_creation_time),
+          meeting_info_file_path: '',
+          participants: participantsInfo,
         },
-        /** according to https://datatracker.ietf.org/doc/html/rfc2446#section-3.2.1, in a published iCalendar component.
-         * "Attendees" MUST NOT be present
-         * `attendees: this.getAttendees(event.attendees),`
-         */
-      })
+        calendarOwnerAccountAddress
+      )
 
-      if (error || !iCalString) throw new Error('Error creating iCalString')
+      if (!ics.value || ics.error) throw new Error('Error creating iCalString')
 
       // We create the event directly on iCal
       const responses = await Promise.all(
         calendars.map(calendar =>
           createCalendarObject({
             calendar,
-            filename: `${uid}.ics`,
+            filename: `${slot_id}.ics`,
             // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-            iCalString,
+            iCalString: Buffer.from(ics.value!).toString('base64'),
             headers: this.headers,
           })
         )
@@ -165,9 +146,9 @@ export default class CaldavCalendarService implements CalendarService {
       }
 
       return {
-        uid,
-        id: uid,
-        type: 'Apple',
+        uid: slot_id,
+        id: slot_id,
+        type: 'Cal Dav',
         password: '',
         url: '',
         additionalInfo: {},

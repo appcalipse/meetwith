@@ -10,7 +10,7 @@
     "typecheck": "tsc --pretty --noEmit",
     "prepare": "husky install",
     "postinstall": "patch-package",
-    "test": "doppler run  --config tests jest",
+    "test": "doppler run --config tests jest",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch"
   },
@@ -115,6 +115,7 @@
     "eslint-plugin-tailwindcss": "^1.17.2",
     "husky": "^7.0.4",
     "ipfs-core-types": "^0.8.3",
+    "isomorphic-fetch": "^3.0.0",
     "jest": "^27.5.1",
     "jest-when": "^3.5.1",
     "lint-staged": "^12.3.1",

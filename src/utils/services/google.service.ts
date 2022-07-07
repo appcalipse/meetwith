@@ -6,14 +6,28 @@ import {
   ConnectedCalendarProvider,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
-import { MeetingCreationRequest } from '@/types/Meeting'
+import { MeetingCreationRequest, ParticipantInfo } from '@/types/Meeting'
 
 import { apiUrl } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
-import { CalendarService, MWWGoogleAuth } from './common.types'
+import { CalendarService } from './common.types'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
+
+export class MWWGoogleAuth extends google.auth.OAuth2 {
+  constructor(client_id: string, client_secret: string, redirect_uri?: string) {
+    super(client_id, client_secret, redirect_uri)
+  }
+
+  isTokenExpiring() {
+    return super.isTokenExpiring()
+  }
+
+  async refreshToken(token: string | null | undefined) {
+    return super.refreshToken(token)
+  }
+}
 
 export default class GoogleCalendarService implements CalendarService {
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
@@ -84,14 +98,31 @@ export default class GoogleCalendarService implements CalendarService {
   }
 
   async createEvent(
-    owner: string,
-    details: MeetingCreationRequest
+    calendarOwnerAccountAddress: string,
+    details: MeetingCreationRequest,
+    slot_id: string,
+    meeting_creation_time: Date
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
+        const participantsInfo: ParticipantInfo[] =
+          details.participants_mapping.map(participant => ({
+            type: participant.type,
+            name: participant.name,
+            account_address: participant.account_address,
+            status: participant.status,
+            slot_id,
+          }))
+
         const payload: calendar_v3.Schema$Event = {
-          summary: CalendarServiceHelper.getMeetingSummary(owner, details),
-          description: CalendarServiceHelper.getMeetingTitle(details),
+          summary: CalendarServiceHelper.getMeetingTitle(
+            calendarOwnerAccountAddress,
+            participantsInfo
+          ),
+          description: CalendarServiceHelper.getMeetingSummary(
+            details.content,
+            details.meeting_url
+          ),
           start: {
             dateTime: new Date(details.start).toISOString(),
             timeZone: 'UTC',
@@ -100,20 +131,19 @@ export default class GoogleCalendarService implements CalendarService {
             dateTime: new Date(details.end).toISOString(),
             timeZone: 'UTC',
           },
+          created: new Date(meeting_creation_time).toISOString(),
           attendees: [],
           reminders: {
             useDefault: false,
             overrides: [{ method: 'email', minutes: 10 }],
           },
-          // https://lukeboyle.com/blog/posts/google-calendar-api-color-id
-          colorId: '6',
           creator: {
             displayName: 'Meet With Wallet',
           },
         }
 
         if (details.meeting_url) {
-          payload['location'] = CalendarServiceHelper.getMeetingLocation()
+          payload['location'] = details.meeting_url
         }
 
         const calendar = google.calendar({
@@ -138,9 +168,9 @@ export default class GoogleCalendarService implements CalendarService {
               return reject(err)
             }
             return resolve({
-              uid: '',
+              uid: slot_id,
               ...event.data,
-              id: event.data.id || '',
+              id: slot_id,
               additionalInfo: {
                 hangoutLink: event.data.hangoutLink || '',
               },
