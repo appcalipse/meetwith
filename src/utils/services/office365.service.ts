@@ -4,7 +4,7 @@ import {
   ConnectedCalendarProvider,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
-import { MeetingCreationRequest } from '@/types/Meeting'
+import { MeetingCreationRequest, ParticipantInfo } from '@/types/Meeting'
 
 import { changeConnectedCalendarSync } from '../database'
 import { ellipsizeAddress } from '../user_manager'
@@ -122,13 +122,15 @@ export default class Office365CalendarService implements CalendarService {
    */
   async createEvent(
     owner: string,
-    details: MeetingCreationRequest
+    details: MeetingCreationRequest,
+    slot_id: string,
+    meeting_creation_time: Date
   ): Promise<NewCalendarEventType> {
     try {
       const accessToken = await this.auth.getToken()
 
-      const calendarId = '' // required? @ramon: yes, lucklily it works cause it creates on the default one
-      const body = JSON.stringify(this.translateEvent(owner, details))
+      const calendarId = '' // TODO: required? @ramon: yes, lucklily it works cause it creates on the default one
+      const body = JSON.stringify(this.translateEvent(owner, details, slot_id))
 
       const response = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendar/${calendarId}events`,
@@ -149,22 +151,31 @@ export default class Office365CalendarService implements CalendarService {
     }
   }
 
-  private translateEvent = (owner: string, details: MeetingCreationRequest) => {
-    const otherParticipants = [
-      details.participants_mapping
-        ?.filter(it => it.account_address !== owner)
-        .map(it =>
-          it.account_address
-            ? ellipsizeAddress(it.account_address!)
-            : it.guest_email
-        ),
-    ]
+  private translateEvent = (
+    calendarOwnerAccountAddress: string,
+    details: MeetingCreationRequest,
+    slot_id: string
+  ) => {
+    const participantsInfo: ParticipantInfo[] =
+      details.participants_mapping.map(participant => ({
+        type: participant.type,
+        name: participant.name,
+        account_address: participant.account_address,
+        status: participant.status,
+        slot_id,
+      }))
 
     return {
-      subject: CalendarServiceHelper.getMeetingSummary(owner, details),
+      subject: CalendarServiceHelper.getMeetingTitle(
+        calendarOwnerAccountAddress,
+        participantsInfo
+      ),
       body: {
         contentType: 'TEXT',
-        content: CalendarServiceHelper.getMeetingTitle(details),
+        content: CalendarServiceHelper.getMeetingSummary(
+          details.content,
+          details.meeting_url
+        ),
       },
       start: {
         dateTime: new Date(details.start).toISOString(),
@@ -175,7 +186,7 @@ export default class Office365CalendarService implements CalendarService {
         timeZone: 'UTC',
       },
       location: {
-        displayName: CalendarServiceHelper.getMeetingLocation(),
+        displayName: details.meeting_url,
       },
       isOnlineMeeting: true,
       onlineMeetingUrl: details.meeting_url,

@@ -116,7 +116,7 @@ export const scheduleMeetingAsGuest = async (
   }
 }
 
-export const isSlotFree = async (
+export const isSlotFreeApiCall = async (
   account_id: string,
   start: Date,
   end: Date,
