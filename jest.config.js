@@ -15,6 +15,7 @@ const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   collectCoverageFrom: ['./src/**'],
+  verbose: false,
   moduleNameMapper: {
     '@/(.*)': 'src/$1',
   },
