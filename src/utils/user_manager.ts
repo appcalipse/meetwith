@@ -174,7 +174,7 @@ const getParticipantDisplay = (
 
   if (
     participant.type === ParticipantType.Scheduler ||
-    (noScheduler === true && participant.type === ParticipantType.Owner)
+    (!!noScheduler && participant.type === ParticipantType.Owner)
   ) {
     display = `${display} (Scheduler)`
   }
