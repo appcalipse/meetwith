@@ -34,7 +34,7 @@ jobs:
 
     - name: Deploy in the Preview env
       # TODO: change to refs/head/develop
-      if: ${{ github.ref == 'refs/pull/8/merge' }}
+      if: ${{ github.ref == 'refs/pull/125/merge' }}
       run: copilot deploy -e dev
       env:
         NEXT_PUBLIC_ENV: preview
