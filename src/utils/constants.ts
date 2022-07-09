@@ -1,4 +1,4 @@
-const baseURL = process.env.HOSTED_AT!.replace(/\/$/, '')
+const baseURL = process.env.NEXT_PUBLIC_HOSTED_AT!.replace(/\/$/, '')
 
 const apiUrl = `${baseURL}/api`
 
