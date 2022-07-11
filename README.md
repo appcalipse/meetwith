@@ -34,25 +34,29 @@ To learn more:
 
 ### Building
 
-```
+```bash
 docker build --build-arg DOPPLER_TOKEN="$(doppler configs tokens create docker --max-age 100m --plain)" -t nextjs-docker .
 ```
 
 ### Running
 
-```
+```bash
 docker run -p 3000:3000 -e DOPPLER_TOKEN="TOKEN" nextjs-docker
 ```
 
-## Deployment
+## Deployment with AWS Copilot
 
-```
-export DOPPLER_TOKEN="token"
-export PORT="port"
-export NODE_ENV="production or development"
+The AWS configs are committed in this repo.
 
-copilot deploy
+If the environments are not setup in AWS, you can run:
+
+```bash
+copilot init
 ```
+
+It should pick up the configs that we already have to set up the environments.
+
+Information about how we do deploy can be found in `./.github/workflows/deploy.yml`.
 
 
 ## Contribute
