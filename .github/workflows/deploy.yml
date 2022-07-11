@@ -41,7 +41,8 @@ jobs:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
 
     - name: Deploy in the Production env
-      if: ${{ github.ref == 'refs/heads/main' }}
+      # TODO: change to refs/head/main
+      if: ${{ github.ref == 'refs/pull/125/merge' }}
       run: copilot deploy -e production
       env:
         NEXT_PUBLIC_ENV: production
