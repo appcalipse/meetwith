@@ -40,15 +40,15 @@ memory: 2048
 #   tracing: awsxray
 
 # Optional fields for more advanced use-cases.
-#
-# variables:                    # Pass environment variables as key value pairs.
-#   LOG_LEVEL: info
-#
-# tags:                         # Pass tags as key value pairs.
-#   project: project-name
 
+
+variables:
+  DOPPLER_TOKEN: ${DOPPLER_TOKEN}
 # You can override any of the values defined above by environment.
 environments:
-  dev:
+  preview:
     variables:
-      DOPPLER_TOKEN: ${DOPPLER_TOKEN}
+      NEXT_PUBLIC_ENV: preview
+  production:
+    variables:
+      NEXT_PUBLIC_ENV: production
