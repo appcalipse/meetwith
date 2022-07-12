@@ -37,7 +37,6 @@ jobs:
       if: ${{ github.ref == 'refs/pull/125/merge' }}
       run: copilot deploy -e preview
       env:
-        NEXT_PUBLIC_ENV: preview
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
 
     - name: Deploy in the Production env
@@ -45,6 +44,5 @@ jobs:
       if: ${{ github.ref == 'refs/pull/125/merge' }}
       run: copilot deploy -e production
       env:
-        NEXT_PUBLIC_ENV: production
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
 
