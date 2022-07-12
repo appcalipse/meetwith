@@ -61,6 +61,11 @@ It should pick up the configs that we already have to set up the environments.
 
 Information about how we do deploy can be found in `./.github/workflows/deploy.yml`.
 
+### Watching logs from your terminal
+
+```bash
+copilot svc logs --follow -e preview # preview/production
+```
 
 ## Contribute
 
