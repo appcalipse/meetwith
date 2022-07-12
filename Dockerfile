@@ -34,8 +34,6 @@ RUN wget -q -t3 'https://packages.doppler.com/public/cli/rsa.8004D9FF50437357.ke
     apk add doppler
 WORKDIR /app
 
-ARG NEXT_PUBLIC_ENV
-ENV NEXT_PUBLIC_ENV ${NEXT_PUBLIC_ENV}
 ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN addgroup --system --gid 1001 nodejs

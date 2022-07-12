@@ -52,6 +52,9 @@ If the environments are not setup in AWS, you can run:
 
 ```bash
 copilot init
+copilot env init # name it preview
+copilot env init # name it production
+copilot deploy -e preview && copilot deploy -e production
 ```
 
 It should pick up the configs that we already have to set up the environments.
