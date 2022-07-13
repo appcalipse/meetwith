@@ -3,16 +3,19 @@
 
 name: Deploy
     
-on: [pull_request]
-# TODO: this is the wrong event, use the one bellow instead
-# on:
-  # push:
-  #   branches:    
-  #     - 'main'
-  #     - 'develop'
+on:
+  workflow_run:
+    workflows: [Test]
+    types: [requested]
+    branches-ignore:
+      - "canary"
+    # branches:   
+    #   - 'main'
+    #   - 'develop'
 
 jobs:
   deploy:
+    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     runs-on: ubuntu-latest
 
@@ -33,15 +36,15 @@ jobs:
       run: echo ${{github.ref}}
 
     - name: Deploy in the Preview env
-      # TODO: change to refs/head/develop
-      if: ${{ github.ref == 'refs/pull/125/merge' }}
+      # TODO: uncomment the if bellow
+      # if: ${{ github.ref == 'refs/head/develop' }}
       run: copilot deploy -e preview --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
 
     - name: Deploy in the Production env
-      # TODO: change to refs/head/main
-      if: ${{ github.ref == 'refs/pull/125/merge' }}
+      # TODO: uncomment the if bellow
+      # if: ${{ github.ref == 'refs/head/main' }}
       run: copilot deploy -e production --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
