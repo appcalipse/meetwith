@@ -1,21 +1,13 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
-
 name: Deploy
     
 on:
-  workflow_run:
-    workflows: [Test]
-    types: [requested]
-    branches-ignore:
-      - "canary"
-    # branches:   
-    #   - 'main'
-    #   - 'develop'
+  push:
+    branches:   
+      - 'main'
+      - 'develop'
 
 jobs:
   deploy:
-    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     runs-on: ubuntu-latest
 
@@ -36,15 +28,13 @@ jobs:
       run: echo ${{github.ref}}
 
     - name: Deploy in the Preview env
-      # TODO: uncomment the if bellow
-      # if: ${{ github.ref == 'refs/head/develop' }}
+      if: ${{ github.ref == 'refs/head/develop' }}
       run: copilot deploy -e preview --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
 
     - name: Deploy in the Production env
-      # TODO: uncomment the if bellow
-      # if: ${{ github.ref == 'refs/head/main' }}
+      if: ${{ github.ref == 'refs/head/main' }}
       run: copilot deploy -e production --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
