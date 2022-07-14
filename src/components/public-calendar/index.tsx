@@ -33,6 +33,7 @@ import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
+import TokenGateValidation from '../token-gate/TokenGateValidation'
 
 interface InternalSchedule {
   scheduleType: SchedulingType
@@ -93,6 +94,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [meetings, setMeetings] = useState([] as DBSlot[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
+  const [isGateValid, setIsGateValid] = useState<boolean | undefined>(undefined)
   const [isScheduling, setIsScheduling] = useState(false)
   const [readyToSchedule, setReadyToSchedule] = useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
@@ -233,6 +235,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     router.push(`/${getAccountDomainUrl(account!)}/${type.url}`, undefined, {
       shallow: true,
     })
+    if (!type.scheduleGate) {
+      setIsGateValid(undefined)
+    }
   }
 
   const validateSlot = (slot: Date): boolean => {
@@ -283,8 +288,16 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   </option>
                 ))}
               </Select>
+              {selectedType.scheduleGate && (
+                <TokenGateValidation
+                  gate={selectedType.scheduleGate}
+                  targetAccount={account}
+                  userAccount={currentAccount!}
+                  setIsGateValid={setIsGateValid}
+                  isGateValid={isGateValid!}
+                />
+              )}
             </Box>
-
             {isSSR ? null : (
               <Box flex="2" p={8}>
                 <MeetSlotPicker
@@ -298,6 +311,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   slotDurationInMinutes={selectedType.duration}
                   checkingSlots={checkingSlots}
                   timeSlotAvailability={validateSlot}
+                  isGateValid={isGateValid}
                 />
               </Box>
             )}
@@ -317,5 +331,4 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     </>
   )
 }
-
 export default PublicCalendar

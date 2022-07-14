@@ -59,7 +59,7 @@ const MeetingTypesConfig: React.FC = () => {
                 type.url
               }`
               return (
-                <>
+                <Box key={type.id}>
                   <MeetingTypeCard
                     onSelect={setSelectedType}
                     title={type.title}
@@ -68,7 +68,7 @@ const MeetingTypesConfig: React.FC = () => {
                     typeId={type.id!}
                   />
                   <Spacer />
-                </>
+                </Box>
               )
             })}
           </Flex>

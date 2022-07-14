@@ -13,7 +13,6 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { BigNumber } from 'ethers'
-import { stringify } from 'querystring'
 import { useState } from 'react'
 
 import {
@@ -33,7 +32,7 @@ interface AddGateObjectDialogProps {
   onClose: () => void
 }
 
-const DEFAULT_CONDITION_OBJECT: GateConditionObject = {
+export const DEFAULT_CONDITION_OBJECT: GateConditionObject = {
   title: '',
   definition: {
     relation: ConditionRelation.AND,
@@ -112,7 +111,7 @@ export const AddGateObjectDialog: React.FC<
     } else {
       const result = await saveGateCondition(props.selectedGate!)
       if (result) {
-        props.onGateSave(props.selectedGate!)
+        props.onGateSave(result)
         close()
       } else {
         toast({
@@ -135,7 +134,7 @@ export const AddGateObjectDialog: React.FC<
   return (
     <Modal
       blockScrollOnMount={false}
-      isOpen={props.selectedGate !== undefined}
+      isOpen={props.selectedGate !== undefined || props.selectedGate === 'new'}
       onClose={close}
     >
       <ModalOverlay />
