@@ -11,7 +11,8 @@ RUN apk add --update python3 make g++\
 
 WORKDIR /app
 COPY package.json yarn.lock ./ 
-RUN yarn install --frozen-lockfile
+COPY ./patches ./patches
+RUN yarn install --frozen-lockfile --unsafe-perm
 
 # Rebuild the source code only when needed
 FROM node:14-alpine AS builder
