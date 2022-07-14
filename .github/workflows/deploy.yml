@@ -34,7 +34,7 @@ jobs:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
 
     - name: Deploy in the Production env
-      # if: ${{ github.ref == 'refs/head/main' }}
+      if: ${{ github.ref == 'refs/head/main' }}
       run: copilot deploy -e production --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
