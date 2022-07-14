@@ -1,6 +1,6 @@
 const baseURL = process.env.NEXT_PUBLIC_HOSTED_AT!.replace(/\/$/, '')
 
-const apiUrl = `${baseURL}/api`
+const apiUrl = `${window ? window.location.origin : baseURL}/api`
 
 const isProduction = process.env.NEXT_PUBLIC_ENV === 'production'
 
