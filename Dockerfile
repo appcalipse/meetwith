@@ -6,6 +6,7 @@ FROM node:14-alpine AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
 RUN apk add git
+RUN apk add --update python make g++
 
 WORKDIR /app
 COPY package.json yarn.lock ./ 
@@ -16,8 +17,7 @@ FROM node:14-alpine AS builder
 # Install Doppler CLI
 RUN wget -q -t3 'https://packages.doppler.com/public/cli/rsa.8004D9FF50437357.key' -O /etc/apk/keys/cli@doppler-8004D9FF50437357.rsa.pub && \
     echo 'https://packages.doppler.com/public/cli/alpine/any-version/main' | tee -a /etc/apk/repositories && \
-    apk add doppler &&\
-    apk add --update python make g++
+    apk add doppler
 
 WORKDIR /app
 ARG DOPPLER_TOKEN
