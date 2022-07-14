@@ -76,6 +76,7 @@ export const toHumanReadable = (gateCondition: GateCondition): string => {
   if (gateCondition.elements.length > 0) {
     for (let i = 0; i < gateCondition.elements.length; i++) {
       const element = gateCondition.elements[i]
+      element.minimumBalance = BigNumber.from(element.minimumBalance)
       if (element.minimumBalance && !element.minimumBalance.isZero()) {
         let amount = element.minimumBalance
         if (element.decimals) {

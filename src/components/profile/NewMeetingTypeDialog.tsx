@@ -5,6 +5,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogOverlay,
+  Box,
   Button,
   FormControl,
   HStack,
@@ -12,12 +13,21 @@ import {
   Select,
   Text,
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { v4 } from 'uuid'
 
+import { GateConditionObject } from '@/types/TokenGating'
+
 import { Account } from '../../types/Account'
-import { saveAccountChanges } from '../../utils/api_helper'
+import {
+  getGateConditionsForAccount,
+  saveAccountChanges,
+} from '../../utils/api_helper'
 import { getSlugFromText } from '../../utils/generic_utils'
+import {
+  AddGateObjectDialog,
+  DEFAULT_CONDITION_OBJECT,
+} from '../token-gate/AddGateObjectDialog'
 
 interface IProps {
   isDialogOpen: boolean
@@ -32,13 +42,45 @@ const NewMeetingTypeDialog: React.FC<IProps> = ({
   onDialogClose,
   currentAccount,
 }) => {
-  const [title, setTitle] = useState<string | undefined>(undefined)
+  const [title, setTitle] = useState<string | undefined>('')
   const [loading, setLoading] = useState<boolean>(false)
   const [duration, setDuration] = useState<number>(30)
   const [minAdvanceTime, setMinAdvanceTime] = useState<any>({
     offset: '1',
     amount: 30,
   })
+  const [accountGates, setAccountGates] = useState<GateConditionObject[]>([])
+  const [selectedGate, setSelectedGate] = useState<
+    GateConditionObject | undefined
+  >(undefined)
+  const [meetingGate, setMeetingGate] = useState<string>('')
+  const selectRef = useRef<HTMLSelectElement>(null)
+
+  const fetchAccountGates = async () => {
+    const accountGates = await getGateConditionsForAccount(
+      currentAccount!.address
+    )
+    setAccountGates(accountGates)
+  }
+
+  const handleSetSelectedGate = (gate: string) => {
+    if (gate === 'noGate') {
+      setSelectedGate(undefined)
+    } else if (gate === 'newGate') {
+      setSelectedGate(DEFAULT_CONDITION_OBJECT)
+    } else {
+      setMeetingGate(gate)
+    }
+  }
+
+  const onGateSave = (gateCondition: GateConditionObject) => {
+    let _configs = [...accountGates]
+    _configs = _configs.filter(config => config.id !== gateCondition.id)
+    _configs.push(gateCondition)
+    setAccountGates(_configs)
+    selectRef.current!.value = gateCondition.id!
+    handleSetSelectedGate(gateCondition.id!)
+  }
 
   const createMeetingType = async () => {
     setLoading(true)
@@ -50,101 +92,134 @@ const NewMeetingTypeDialog: React.FC<IProps> = ({
       url: getSlugFromText(title as string),
       duration: duration,
       minAdvanceTime: minAdvanceMinutes,
+      scheduleGate: meetingGate,
     })
     const updatedAccount = await saveAccountChanges(currentAccount as Account)
     onDialogClose()
   }
 
+  useEffect(() => {
+    fetchAccountGates()
+  }, [])
   return (
-    <AlertDialog
-      size="2xl"
-      isOpen={isDialogOpen}
-      leastDestructiveRef={cancelDialogRef}
-      onClose={onDialogClose}
-      blockScrollOnMount={false}
-    >
-      <AlertDialogOverlay>
-        <AlertDialogContent>
-          <AlertDialogHeader fontSize="lg" fontWeight="bold">
-            New Meeting Type
-          </AlertDialogHeader>
+    <Box>
+      <AlertDialog
+        size="2xl"
+        isOpen={isDialogOpen}
+        leastDestructiveRef={cancelDialogRef}
+        onClose={onDialogClose}
+        blockScrollOnMount={false}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              New Meeting Type
+            </AlertDialogHeader>
 
-          <AlertDialogBody>
-            <FormControl>
-              <Text pt={2}>Title</Text>
-              <Input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                type="text"
-                placeholder="Title"
-              />
-            </FormControl>
-            <FormControl pt={5}>
-              <Text>Meeting Duration</Text>
-              <Select
-                width="160px"
-                defaultValue={duration}
-                onChange={e => setDuration(Number(e.target.value))}
-              >
-                <option value="15">15 min</option>
-                <option value="30">30 min</option>
-                <option value="45">45 min</option>
-                <option value="60">60 min</option>
-              </Select>
-            </FormControl>
-            <FormControl pt={5}>
-              <Text>Minimum Notice Time</Text>
-              <HStack>
+            <AlertDialogBody>
+              <FormControl>
+                <Text pt={2}>Title</Text>
                 <Input
-                  width="140px"
-                  type="number"
-                  value={minAdvanceTime.amount}
-                  onChange={e => {
-                    setMinAdvanceTime({
-                      amount: Number(e.target.value),
-                      offset: minAdvanceTime.type,
-                    })
-                  }}
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  type="text"
+                  placeholder="Title"
                 />
+              </FormControl>
+              <FormControl pt={5}>
+                <Text>Meeting Duration</Text>
                 <Select
                   width="160px"
-                  defaultValue={minAdvanceTime.type}
-                  onChange={e => {
-                    setMinAdvanceTime({
-                      amount: minAdvanceTime.amount,
-                      offset: e.target.value,
-                    })
-                  }}
+                  defaultValue={duration}
+                  onChange={e => setDuration(Number(e.target.value))}
                 >
-                  <option value="1">minutes</option>
-                  <option value="60">hours</option>
-                  <option value="1440">days</option>
+                  <option value="15">15 min</option>
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">60 min</option>
                 </Select>
-              </HStack>
-            </FormControl>
-          </AlertDialogBody>
+              </FormControl>
+              <FormControl pt={5}>
+                <Text>Minimum Notice Time</Text>
+                <HStack>
+                  <Input
+                    width="140px"
+                    type="number"
+                    value={minAdvanceTime.amount}
+                    onChange={e => {
+                      setMinAdvanceTime({
+                        amount: Number(e.target.value),
+                        offset: minAdvanceTime.type,
+                      })
+                    }}
+                  />
+                  <Select
+                    width="160px"
+                    defaultValue={minAdvanceTime.type}
+                    onChange={e => {
+                      setMinAdvanceTime({
+                        amount: minAdvanceTime.amount,
+                        offset: e.target.value,
+                      })
+                    }}
+                  >
+                    <option value="1">minutes</option>
+                    <option value="60">hours</option>
+                    <option value="1440">days</option>
+                  </Select>
+                </HStack>
+              </FormControl>
+              <FormControl pt={5}>
+                <Text>Add Meeting Gate</Text>
+                <Select
+                  width="160px"
+                  ref={selectRef}
+                  onChange={e => handleSetSelectedGate(e.target.value)}
+                >
+                  <option value="noGate">No gate</option>
+                  {accountGates.map(gate => {
+                    return (
+                      <option key={gate.id} value={gate.id}>
+                        {gate.title}
+                      </option>
+                    )
+                  })}
+                  <option value="newGate">ADD NEW</option>
+                </Select>
+              </FormControl>
+            </AlertDialogBody>
 
-          <AlertDialogFooter>
-            <Button
-              color="black"
-              ref={cancelDialogRef}
-              disabled={loading}
-              onClick={onDialogClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              colorScheme="orange"
-              onClick={() => createMeetingType()}
-              ml={3}
-              isLoading={loading}
-            >
-              Create
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialogOverlay>
-    </AlertDialog>
+            <AlertDialogFooter>
+              <Button
+                color="black"
+                ref={cancelDialogRef}
+                disabled={loading}
+                onClick={onDialogClose}
+              >
+                Cancel
+              </Button>
+              <Button
+                colorScheme="orange"
+                onClick={() => createMeetingType()}
+                ml={3}
+                isLoading={loading}
+              >
+                Create
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+
+      <AddGateObjectDialog
+        selectedGate={selectedGate}
+        onChange={gate => setSelectedGate(gate)}
+        onClose={() => {
+          setSelectedGate(undefined)
+        }}
+        onGateSave={onGateSave}
+      />
+    </Box>
   )
 }
 

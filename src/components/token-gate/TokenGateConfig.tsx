@@ -200,6 +200,7 @@ const RemoveGateDialog: React.FC<RemoveGateDialogProps> = ({
       deleted = await deleteGateCondition(gateId!)
       if (deleted) {
         onSuccessRemoval(gateId!)
+        setBusy(false)
         onClose()
         return
       }

@@ -37,6 +37,7 @@ interface MeetSlotPickerProps {
   isSchedulingExternal: boolean
   checkingSlots: boolean
   reset: boolean
+  isGateValid?: boolean
 }
 
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
@@ -49,6 +50,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   isSchedulingExternal,
   checkingSlots,
   reset,
+  isGateValid,
 }) => {
   const [pickedDay, setPickedDay] = useState(null as Date | null)
   const [pickedTime, setPickedTime] = useState(null as Date | null)
@@ -165,6 +167,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             willStartScheduling={willStartScheduling}
             pickedTime={pickedTime!}
             isSchedulingExternal={isSchedulingExternal}
+            isGateValid={isGateValid}
           />
         </Popup>
       )}

@@ -23,6 +23,7 @@ interface ScheduleFormProps {
   pickedTime: Date
   isSchedulingExternal: boolean
   willStartScheduling: (isScheduling: boolean) => void
+  isGateValid?: boolean
   onConfirm: (
     scheduleType: SchedulingType,
     startTime: Date,
@@ -37,6 +38,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   pickedTime,
   isSchedulingExternal,
   willStartScheduling,
+  isGateValid,
   onConfirm,
 }) => {
   const { handleLogin } = useLogin()
@@ -184,7 +186,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       <Button
         isFullWidth
         disabled={
-          (!logged && !isEmailValid) || isScheduling || isSchedulingExternal
+          (!logged && !isEmailValid) ||
+          isScheduling ||
+          isSchedulingExternal ||
+          isGateValid === false
         }
         isLoading={isScheduling || isSchedulingExternal}
         onClick={handleConfirm}
