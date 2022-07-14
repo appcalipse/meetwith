@@ -17,8 +17,7 @@ FROM node:14-alpine AS builder
 RUN wget -q -t3 'https://packages.doppler.com/public/cli/rsa.8004D9FF50437357.key' -O /etc/apk/keys/cli@doppler-8004D9FF50437357.rsa.pub && \
     echo 'https://packages.doppler.com/public/cli/alpine/any-version/main' | tee -a /etc/apk/repositories && \
     apk add doppler &&\
-    apk add --update python3 make g++\
-    && rm -rf /var/cache/apk/*
+    apk add --update python make g++
 
 WORKDIR /app
 ARG DOPPLER_TOKEN
