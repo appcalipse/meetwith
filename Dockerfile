@@ -11,6 +11,7 @@ RUN apk add --update python3 make g++\
 
 WORKDIR /app
 COPY package.json yarn.lock ./ 
+COPY .git .
 RUN yarn install --frozen-lockfile
 
 # Rebuild the source code only when needed
