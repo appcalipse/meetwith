@@ -30,6 +30,43 @@ To learn more:
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API
 - [Smart Contracts](https://cryptozombies.io/) - to learn more about smart contracts
 
+## Docker image
+
+### Building
+
+```bash
+docker build --build-arg DOPPLER_TOKEN="$(doppler configs tokens create docker --max-age 100m --plain)" -t nextjs-docker .
+```
+
+### Running
+
+```bash
+docker run -p 3000:3000 -e DOPPLER_TOKEN="TOKEN" nextjs-docker
+```
+
+## Deployment with AWS Copilot
+
+The AWS configs are committed in this repo.
+
+If the environments are not setup in AWS, you can run:
+
+```bash
+copilot init
+copilot env init # name it preview
+copilot env init # name it production
+copilot deploy -e preview && copilot deploy -e production
+```
+
+It should pick up the configs that we already have to set up the environments.
+
+Information about how we do deploy can be found in `./.github/workflows/deploy.yml`.
+
+### Watching logs from your terminal
+
+```bash
+copilot svc logs --follow -e preview # preview/production
+```
+
 ## Contribute
 
 Contributions are welcomed! Please read the [contribution guidelines](CONTRIBUTING.md) first.
