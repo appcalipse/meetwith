@@ -1,6 +1,4 @@
-// @ts-nocheck
-import { Provider } from '@ethersproject/providers'
-import { BigNumber, ContractInterface, ethers, Signer } from 'ethers'
+import { BigNumber, ethers } from 'ethers'
 
 import { SupportedChain } from '@/types/chains'
 import { isConditionValid } from '@/utils/token.gate.service'
@@ -38,31 +36,25 @@ describe('get balance for tokens', () => {
     })
 
     jest
-      .spyOn(ethers, 'Contract' as any)
-      .mockImplementation(
-        (
-          addressOrName: string,
-          contractInterface: ethers.ContractInterface,
-          signerOrProvider?: ethers.Signer | Provider
-        ) => {
-          return {
-            balanceOf: async (walletAddress: string) => {
-              switch (addressOrName) {
-                case DAI_ELEMENT.itemId:
-                  return Promise.resolve(BigNumber.from((2e18).toString()))
-                case USDT_ELEMENT.itemId:
-                  return Promise.resolve(BigNumber.from(0))
-                case USDC_ELEMENT.itemId:
-                  return Promise.resolve(BigNumber.from(0))
-                case NFT_ELEMENT.itemId:
-                  return Promise.resolve(BigNumber.from(1))
-                default:
-                  return Promise.resolve(BigNumber.from(0))
-              }
-            },
-          }
-        }
-      )
+      .spyOn(ethers, 'Contract')
+      .mockImplementation((addressOrName: string) => {
+        return {
+          balanceOf: async () => {
+            switch (addressOrName) {
+              case DAI_ELEMENT.itemId:
+                return Promise.resolve(BigNumber.from((2e18).toString()))
+              case USDT_ELEMENT.itemId:
+                return Promise.resolve(BigNumber.from(0))
+              case USDC_ELEMENT.itemId:
+                return Promise.resolve(BigNumber.from(0))
+              case NFT_ELEMENT.itemId:
+                return Promise.resolve(BigNumber.from(1))
+              default:
+                return Promise.resolve(BigNumber.from(0))
+            }
+          },
+        } as any
+      })
   })
 
   afterAll(() => {
