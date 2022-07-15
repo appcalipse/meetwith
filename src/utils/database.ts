@@ -533,10 +533,9 @@ const saveMeeting = async (
   }
 
   try {
-    // TODO: ideally notifications should not block the user request
-    // to remove the awaits after moving away from vercel
-    await notifyForNewMeeting(meetingICS)
-    await syncCalendarForMeeting(meeting, data[index].created_at)
+    // Doing ntifications and syncs asyncrounously
+    notifyForNewMeeting(meetingICS)
+    syncCalendarForMeeting(meeting, data[index].created_at)
   } catch (err) {
     Sentry.captureException(err)
   }
