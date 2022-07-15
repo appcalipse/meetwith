@@ -1,13 +1,13 @@
 import { unsealData } from 'iron-session'
 import { NextFetchEvent, NextRequest, NextResponse } from 'next/server'
 
-import { AccountSession } from '../../../types/Session'
+import { AccountSession } from '@/types/Session'
 import {
   SESSION_COOKIE_NAME,
   sessionOptions,
-} from '../../../utils/auth/withSessionApiRoute'
-import { apiUrl } from '../../../utils/constants'
-import { checkSignature } from '../../../utils/cryptography'
+} from '@/utils/auth/withSessionApiRoute'
+import { apiUrl } from '@/utils/constants'
+import { checkSignature } from '@/utils/cryptography'
 
 const notAuthorized = new Response('Auth required', {
   status: 401,
@@ -27,7 +27,7 @@ export async function middleware(req: NextRequest, ev: NextFetchEvent) {
   if (!session?.account) return notAuthorized
 
   try {
-    //TODO remove this shitty from edge functions so no api for nonce have to exist, cause this middleware on edge functions cannot use the database.ts
+    //Middleware don't support some functions, so if I try to use database directly it explodes
     const response = await (
       await fetch(`${apiUrl}/accounts/nonce_hidden/${session.account.address}`)
     ).json()
