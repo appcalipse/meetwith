@@ -1,10 +1,10 @@
 name: Deploy
     
-on: [pull_request]
-  # push:
-  #   branches:   
-  #     - 'main'
-  #     - 'develop'
+on: 
+  push:
+    branches:   
+      - 'main'
+      - 'develop'
 
 jobs:
   deploy:
@@ -28,7 +28,7 @@ jobs:
       run: echo ${{github.ref}}
 
     - name: Deploy in the Preview env
-      # if: ${{ github.ref == 'refs/head/develop' }}
+      if: ${{ github.ref == 'refs/head/develop' }}
       run: copilot deploy -e preview --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}

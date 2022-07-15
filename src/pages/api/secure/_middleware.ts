@@ -17,15 +17,12 @@ export async function middleware(req: NextRequest, ev: NextFetchEvent) {
   const ironSessionCookie = req.cookies[SESSION_COOKIE_NAME]
 
   if (!ironSessionCookie) {
-    console.log('No session cookie')
     return notAuthorized
   }
 
   const session = (await unsealData(ironSessionCookie, sessionOptions)) as {
     account: AccountSession
   }
-
-  console.log(session)
 
   if (!session?.account) return notAuthorized
 
