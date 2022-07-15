@@ -534,15 +534,13 @@ const saveMeeting = async (
   }
 
   // Doing ntifications and syncs asyncrounously
-  const res = fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'POST',
     body: JSON.stringify(meetingICS),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
     },
   })
-
-  console.log(res)
 
   return meetingResponse
 }

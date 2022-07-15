@@ -5,7 +5,6 @@ const notAuthorized = new Response('Auth required', {
 })
 
 export async function middleware(req: NextRequest, ev: NextFetchEvent) {
-  console.log(req)
   if (req.headers.get('X-Server-Secret') === process.env.SERVER_SECRET) {
     return NextResponse.next()
   }
