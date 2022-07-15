@@ -9,8 +9,6 @@ import { MeetingICS } from '../../../../types/Meeting'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
-  console.log('function', req)
-
   if (req.method === 'POST') {
     const meetingICS = JSON.parse(req.body) as MeetingICS
 
