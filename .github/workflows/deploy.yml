@@ -24,17 +24,14 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
 
-    - name: Echo github.ref (debug)
-      run: echo ${{github.ref}}
-
     - name: Deploy in the Preview env
-      if: ${{ github.ref == 'refs/head/develop' }}
+      if: ${{ github.ref == 'refs/heads/develop' }}
       run: copilot deploy -e preview --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
 
     - name: Deploy in the Production env
-      if: ${{ github.ref == 'refs/head/main' }}
+      if: ${{ github.ref == 'refs/heads/main' }}
       run: copilot deploy -e production --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
