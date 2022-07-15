@@ -168,8 +168,6 @@ export const dmAccount = async (
     const user = await client.users.fetch(discord_user_id)
     await user.send(message)
   } catch (error) {
-    console.log(error)
-
     const notifications = await getAccountNotificationSubscriptions(
       accountAddress
     )
