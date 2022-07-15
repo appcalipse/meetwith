@@ -1,5 +1,6 @@
-import { Account } from '../types/Account'
-import { MeetingCreationRequest, ParticipantType } from '../types/Meeting'
+import { Account } from '@/types/Account'
+import { MeetingCreationRequest } from '@/types/Meeting'
+
 import { getAccountFromDB, getConnectedCalendars } from './database'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 

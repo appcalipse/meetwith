@@ -443,11 +443,11 @@ const getAccountCalendarUrl = (
   ellipsize?: boolean
 ): string => {
   if (isProAccount(account)) {
-    return `${appUrl}${
+    return `${appUrl}/${
       account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0].domain
     }`
   }
-  return `${appUrl}${getAccountDomainUrl(account, ellipsize)}`
+  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
 }
 
 const generateDefaultMeetingType = (): MeetingType => {
