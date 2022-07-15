@@ -1,0 +1,41 @@
+name: Test
+    
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x]
+
+    env:
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_TEST }}
+
+    steps:
+    - name: Install Doppler
+      run: curl -Ls --tlsv1.2 --proto "=https" --retry 3 https://cli.doppler.com/install.sh | sudo sh
+
+    - uses: actions/checkout@v3
+
+    - name: Install Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: '14'
+        cache: 'yarn'
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Lint
+      run: yarn lint
+
+    - name: Type check
+      run: yarn typecheck
+
+    - name: Run tests
+      run: yarn test
+
+    - name: Run Build
+      run: yarn build
