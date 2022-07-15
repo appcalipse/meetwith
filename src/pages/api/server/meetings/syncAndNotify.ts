@@ -20,6 +20,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     try {
       await notifyForNewMeeting(meetingICS)
+    } catch (error) {
+      Sentry.captureException(error)
+    }
+
+    try {
       await syncCalendarForMeeting(
         meetingICS.meeting,
         meetingICS.db_slot.created_at!

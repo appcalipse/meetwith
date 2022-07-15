@@ -50,9 +50,7 @@ import {
 import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
-import { notifyForNewMeeting } from './notification_helper'
 import { isProAccount } from './subscription_manager'
-import { syncCalendarForMeeting } from './sync_helper'
 import { isValidEVMAddress } from './validations'
 
 const db: { ready: boolean } & Record<string, any> = { ready: false }
