@@ -23,7 +23,7 @@ interface ScheduleFormProps {
   pickedTime: Date
   isSchedulingExternal: boolean
   willStartScheduling: (isScheduling: boolean) => void
-  isGateValid?: boolean
+  isGateValid: boolean
   onConfirm: (
     scheduleType: SchedulingType,
     startTime: Date,

@@ -37,7 +37,7 @@ interface MeetSlotPickerProps {
   isSchedulingExternal: boolean
   checkingSlots: boolean
   reset: boolean
-  isGateValid?: boolean
+  isGateValid: boolean
 }
 
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({

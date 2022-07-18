@@ -2,7 +2,7 @@ import { Box, Text } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 
 import { Account } from '@/types/Account'
-import { getGateConditionsForAccount } from '@/utils/api_helper'
+import { getGateCondition } from '@/utils/api_helper'
 import { isConditionValid, toHumanReadable } from '@/utils/token.gate.service'
 
 interface TokenGateValidationProps {
@@ -16,10 +16,7 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
   const [gateToValidate, setGateToValidate] = useState<string>('')
 
   const handleGateValidation = async (gateId: string) => {
-    const accountGates = await getGateConditionsForAccount(
-      props.targetAccount.address
-    )
-    const chosenGate = accountGates.find(gate => gate.id === gateId)
+    const chosenGate = await getGateCondition(gateId)
     const displayGate = toHumanReadable(chosenGate!.definition!)
     setGateToValidate(displayGate)
     const isValid = await isConditionValid(
