@@ -32,7 +32,7 @@ interface AddGateObjectDialogProps {
   onClose: () => void
 }
 
-export const DEFAULT_CONDITION_OBJECT: GateConditionObject = {
+const DEFAULT_CONDITION_OBJECT: GateConditionObject = {
   title: '',
   definition: {
     relation: ConditionRelation.AND,

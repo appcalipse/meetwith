@@ -12,6 +12,7 @@ import {
   Input,
   Select,
   Text,
+  useColorModeValue,
 } from '@chakra-ui/react'
 import { useEffect, useRef, useState } from 'react'
 import { v4 } from 'uuid'
@@ -26,7 +27,7 @@ import {
 import { getSlugFromText } from '../../utils/generic_utils'
 import {
   AddGateObjectDialog,
-  DEFAULT_CONDITION_OBJECT,
+  getDefaultConditionClone,
 } from '../token-gate/AddGateObjectDialog'
 
 interface IProps {
@@ -67,7 +68,8 @@ const NewMeetingTypeDialog: React.FC<IProps> = ({
     if (gate === 'noGate') {
       setSelectedGate(undefined)
     } else if (gate === 'newGate') {
-      setSelectedGate(DEFAULT_CONDITION_OBJECT)
+      const defaultCondition = getDefaultConditionClone()
+      setSelectedGate(defaultCondition)
     } else {
       setMeetingGate(gate)
     }
@@ -184,14 +186,14 @@ const NewMeetingTypeDialog: React.FC<IProps> = ({
                       </option>
                     )
                   })}
-                  <option value="newGate">ADD NEW</option>
+                  <option value="newGate">Add new</option>
                 </Select>
               </FormControl>
             </AlertDialogBody>
 
             <AlertDialogFooter>
               <Button
-                color="black"
+                color={useColorModeValue('gray.700', 'gray.300')}
                 ref={cancelDialogRef}
                 disabled={loading}
                 onClick={onDialogClose}

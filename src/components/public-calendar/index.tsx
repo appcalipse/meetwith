@@ -311,7 +311,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   slotDurationInMinutes={selectedType.duration}
                   checkingSlots={checkingSlots}
                   timeSlotAvailability={validateSlot}
-                  isGateValid={isGateValid}
+                  isGateValid={isGateValid!}
                 />
               </Box>
             )}
