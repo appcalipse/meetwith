@@ -52,9 +52,9 @@ import {
   generateDefaultMeetingType,
   isTimeInsideAvailabilities,
 } from './calendar_manager'
+import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
-import { notifyForNewMeeting } from './notification_helper'
 import { isProAccount } from './subscription_manager'
 import { syncCalendarForMeeting } from './sync_helper'
 import { isConditionValid } from './token.gate.service'
@@ -603,14 +603,14 @@ const saveMeeting = async (
     meeting,
   }
 
-  try {
-    // TODO: ideally notifications should not block the user request
-    // to remove the awaits after moving away from vercel
-    await notifyForNewMeeting(meetingICS)
-    await syncCalendarForMeeting(meeting)
-  } catch (err) {
-    Sentry.captureException(err)
-  }
+  // Doing ntifications and syncs asyncrounously
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'POST',
+    body: JSON.stringify(meetingICS),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+    },
+  })
 
   return meetingResponse
 }

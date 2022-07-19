@@ -1,8 +1,5 @@
-// @ts-nocheck
-
 import { BigNumber, ethers } from 'ethers'
 
-import { SupportedChain } from '@/types/chains'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 
 import {
@@ -15,63 +12,57 @@ import {
 describe('get balance for tokens', () => {
   beforeAll(() => {
     jest
-      .spyOn(ethers, 'Contract' as any)
-      .mockImplementation(
-        (
-          addressOrName: string,
-          contractInterface: ethers.ContractInterface,
-          signerOrProvider?: ethers.Signer | Provider
-        ) => {
-          return {
-            name: async () => {
-              switch (addressOrName) {
-                case USDT_ELEMENT.itemId:
-                  return Promise.resolve(USDT_ELEMENT.itemName)
-                case NFT_ELEMENT.itemId:
-                  return Promise.resolve(NFT_ELEMENT.itemName)
-              }
-            },
-            symbol: async () => {
-              switch (addressOrName) {
-                case USDT_ELEMENT.itemId:
-                  return Promise.resolve(USDT_ELEMENT.itemSymbol)
-                case NFT_ELEMENT.itemId:
-                  return Promise.resolve(NFT_ELEMENT.itemSymbol)
-              }
-            },
-            decimals: async () => {
-              switch (addressOrName) {
-                case USDT_ELEMENT.itemId:
-                  return Promise.resolve(BigNumber.from(18))
-                case NFT_ELEMENT.itemId:
-                  return Promise.resolve(0)
-              }
-            },
-            baseURI: async () => {
-              switch (addressOrName) {
-                case USDT_ELEMENT.itemId:
-                  throw new Error('Not a NFT')
-                case NFT_ELEMENT.itemId:
-                  return Promise.resolve('fakeBaseURi')
-              }
-            },
-            balanceOf: async (walletAddress: string) => {
-              switch (addressOrName) {
-                case DAI_ELEMENT.itemId:
-                  return Promise.resolve(BigNumber.from((1e18).toString()))
-                case USDT_ELEMENT.itemId:
-                  return Promise.resolve(BigNumber.from(0))
-                case USDC_ELEMENT.itemId:
-                  return Promise.resolve(BigNumber.from(0))
-                case NFT_ELEMENT.itemId:
-                  return Promise.resolve(BigNumber.from(1))
-                default:
-                  return Promise.resolve(BigNumber.from(0))
-              }
-            },
-          }
-        }
-      )
+      .spyOn(ethers, 'Contract')
+      .mockImplementation((addressOrName: string) => {
+        return {
+          name: async () => {
+            switch (addressOrName) {
+              case USDT_ELEMENT.itemId:
+                return Promise.resolve(USDT_ELEMENT.itemName)
+              case NFT_ELEMENT.itemId:
+                return Promise.resolve(NFT_ELEMENT.itemName)
+            }
+          },
+          symbol: async () => {
+            switch (addressOrName) {
+              case USDT_ELEMENT.itemId:
+                return Promise.resolve(USDT_ELEMENT.itemSymbol)
+              case NFT_ELEMENT.itemId:
+                return Promise.resolve(NFT_ELEMENT.itemSymbol)
+            }
+          },
+          decimals: async () => {
+            switch (addressOrName) {
+              case USDT_ELEMENT.itemId:
+                return Promise.resolve(BigNumber.from(18))
+              case NFT_ELEMENT.itemId:
+                return Promise.resolve(0)
+            }
+          },
+          baseURI: async () => {
+            switch (addressOrName) {
+              case USDT_ELEMENT.itemId:
+                throw new Error('Not a NFT')
+              case NFT_ELEMENT.itemId:
+                return Promise.resolve('fakeBaseURi')
+            }
+          },
+          balanceOf: async () => {
+            switch (addressOrName) {
+              case DAI_ELEMENT.itemId:
+                return Promise.resolve(BigNumber.from((1e18).toString()))
+              case USDT_ELEMENT.itemId:
+                return Promise.resolve(BigNumber.from(0))
+              case USDC_ELEMENT.itemId:
+                return Promise.resolve(BigNumber.from(0))
+              case NFT_ELEMENT.itemId:
+                return Promise.resolve(BigNumber.from(1))
+              default:
+                return Promise.resolve(BigNumber.from(0))
+            }
+          },
+        } as any
+      })
   })
 
   afterAll(() => {

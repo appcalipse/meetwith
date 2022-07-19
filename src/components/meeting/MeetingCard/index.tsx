@@ -139,8 +139,11 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
     decodeData()
   }, [])
 
-  const downloadIcs = (info: MeetingDecrypted) => {
-    const icsFile = generateIcs(info)
+  const downloadIcs = (
+    info: MeetingDecrypted,
+    currentConnectedAccountAddress: string
+  ) => {
+    const icsFile = generateIcs(info, currentConnectedAccountAddress)
 
     const url = window.URL.createObjectURL(
       new Blob([icsFile.value!], { type: 'text/plain' })
@@ -206,7 +209,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
           <Button
             colorScheme="orange"
             variant="outline"
-            onClick={() => downloadIcs(info)}
+            onClick={() => downloadIcs(info, currentAccount!.address)}
           >
             Download .ics
           </Button>
