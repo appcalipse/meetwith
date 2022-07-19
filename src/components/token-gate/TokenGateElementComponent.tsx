@@ -23,7 +23,7 @@ import {
 } from '@chakra-ui/react'
 import { BigNumber } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   getMainnetChains,
@@ -157,6 +157,7 @@ const TokenForm: React.FC<{
   minimumBalance,
 }) => {
   const [loadingToken, setLoadingToken] = useState(false)
+  const [firstLoad, setFirstLoad] = useState(true)
   const [invalidTokenAddress, setInvalidTokenAddress] = useState(false)
   const [haveMinimumAmount, setHaveMinimumAmount] = useState(
     tokenInfo?.minimumBalance ? !tokenInfo!.minimumBalance.isZero() : false
@@ -166,8 +167,20 @@ const TokenForm: React.FC<{
 
   const debouncedTokenAddress = useDebounce(tokenInfo?.itemId, 300)
 
+  const isMountedRef = useRef(true)
+
   useEffect(() => {
-    checkTokenInfo()
+    setFirstLoad(false)
+  }, [])
+
+  useEffect(() => {
+    isMountedRef.current = true
+    if (!firstLoad || (tokenInfo?.itemId && !tokenInfo.itemName)) {
+      checkTokenInfo()
+    }
+    return () => {
+      void (isMountedRef.current = false)
+    }
   }, [debouncedTokenAddress])
 
   const checkTokenInfo = async () => {
@@ -190,6 +203,7 @@ const TokenForm: React.FC<{
         chain: tokenInfo!.chain,
         minimumBalance: tokenInfo!.minimumBalance,
       }
+
       if (info) {
         _tokenInfo = {
           ...info,
@@ -198,7 +212,7 @@ const TokenForm: React.FC<{
       } else if (tokenInfo!.itemId) {
         setInvalidTokenAddress(true)
       }
-      onChange(_tokenInfo, position)
+      !!isMountedRef.current && onChange(_tokenInfo, position)
     }
     setLoadingToken(false)
   }
@@ -209,7 +223,9 @@ const TokenForm: React.FC<{
         <FormLabel>Chain</FormLabel>
         <Select
           value={tokenInfo?.chain}
-          onChange={e => setChain(e.target.value as SupportedChain)}
+          onChange={e =>
+            !loadingToken && setChain(e.target.value as SupportedChain)
+          }
         >
           {chains.map(chain => (
             <option key={chain.chain} value={chain.chain}>
@@ -226,7 +242,9 @@ const TokenForm: React.FC<{
             value={tokenInfo?.itemId}
             type="text"
             placeholder="0x0000000000000000000000000000000000000000"
-            onChange={event => setTokenAddress(event.target.value)}
+            onChange={event =>
+              !loadingToken && setTokenAddress(event.target.value)
+            }
           />
         </InputGroup>
         <FormErrorMessage>
@@ -267,7 +285,7 @@ const TokenForm: React.FC<{
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => setHaveMinimumAmount(true)}
+            onClick={() => !loadingToken && setHaveMinimumAmount(true)}
             disabled={tokenInfo?.itemName === ''}
           >
             Set a minimium amount
@@ -280,7 +298,7 @@ const TokenForm: React.FC<{
           <NumberInput
             value={minimumBalance}
             onChange={(valueAsString, valueAsNumber) =>
-              changeMinimumAmount(valueAsString)
+              !loadingToken && changeMinimumAmount(valueAsString)
             }
             inputMode="decimal"
             pattern="[0-9]*(.[0-9]+)?"
@@ -308,15 +326,23 @@ const POAPForm: React.FC<{
   setTokenAddress: (address: string) => void
 }> = ({ tokenInfo, position, onChange, setTokenAddress }) => {
   const [loadingToken, setLoadingToken] = useState(false)
+  const [firstLoad, setFirstLoad] = useState(true)
   const [invalidTokenAddress, setInvalidTokenAddress] = useState(false)
 
   const debouncedTokenAddress = useDebounce(tokenInfo?.itemId, 300)
 
+  const isMountedRef = useRef(true)
   useEffect(() => {
-    checkTokenInfo()
+    setFirstLoad(false)
+  }, [])
 
+  useEffect(() => {
+    isMountedRef.current = true
+    if (!firstLoad || (tokenInfo?.itemId && !tokenInfo.itemName)) {
+      checkTokenInfo()
+    }
     return () => {
-      console.log('staaaaap')
+      void (isMountedRef.current = false)
     }
   }, [debouncedTokenAddress])
 
@@ -344,7 +370,7 @@ const POAPForm: React.FC<{
         setInvalidTokenAddress(true)
       }
     }
-    onChange(_tokenInfo, position)
+    !!isMountedRef.current && onChange(_tokenInfo, position)
     setLoadingToken(false)
   }
 
@@ -359,7 +385,9 @@ const POAPForm: React.FC<{
             value={tokenInfo?.itemId}
             type="number"
             placeholder="1234"
-            onChange={event => setTokenAddress(event.target.value)}
+            onChange={event =>
+              !loadingToken && setTokenAddress(event.target.value)
+            }
           />
         </InputGroup>
         <FormErrorMessage>Event not found on POAP</FormErrorMessage>
