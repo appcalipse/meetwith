@@ -50,7 +50,11 @@ const ConnectedCalendars: React.FC<{
   if (activeCalendarConnections.length === 0) {
     return (
       <VStack>
-        <Image src="/assets/no_calendars.svg" height="200px" alt="Loading..." />
+        <Image
+          src="/assets/no_calendars.svg"
+          height="200px"
+          alt="No calendars connected"
+        />
         <HStack pt={8}>
           <Text fontSize="lg">You didn&apos;t connect any calendar yet</Text>
         </HStack>

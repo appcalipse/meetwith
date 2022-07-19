@@ -1,32 +1,30 @@
 import {
   Box,
   Button,
-  Checkbox,
-  Flex,
   Heading,
   HStack,
   Icon,
-  Input,
-  Select,
+  Link,
+  SimpleGrid,
   Spacer,
   Text,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { ChangeEvent, useContext, useRef, useState } from 'react'
-import { FaArrowLeft, FaLock } from 'react-icons/fa'
+import NextLink from 'next/link'
+import { useContext, useRef, useState } from 'react'
+import { FaArrowLeft } from 'react-icons/fa'
 
 import { AccountContext } from '../../providers/AccountProvider'
-import { Account, MeetingType } from '../../types/Account'
+import { Account } from '../../types/Account'
 import { logEvent } from '../../utils/analytics'
-import { saveMeetingType } from '../../utils/api_helper'
 import {
   durationToHumanReadable,
   getAccountCalendarUrl,
 } from '../../utils/calendar_manager'
-import { getSlugFromText } from '../../utils/generic_utils'
 import { isProAccount } from '../../utils/subscription_manager'
 import { CopyLinkButton } from './components/CopyLinkButton'
+import MeetingTypeConfig from './components/MeetingTypeConfig'
 import NewMeetingTypeDialog from './NewMeetingTypeDialog'
 
 const MeetingTypesConfig: React.FC = () => {
@@ -42,6 +40,8 @@ const MeetingTypesConfig: React.FC = () => {
     setIsDialogOpen(true)
   }
 
+  const isPro = isProAccount(currentAccount!)
+
   return (
     <Box>
       {selectedType ? (
@@ -53,7 +53,12 @@ const MeetingTypesConfig: React.FC = () => {
       ) : (
         <VStack width="100%" maxW="100%" alignItems={'flex-start'}>
           <Heading fontSize="2xl">Your meeting types</Heading>
-          <Flex flexWrap="wrap">
+          <SimpleGrid
+            width="100%"
+            minChildWidth="280px"
+            spacingX="20px"
+            spacingY="16px"
+          >
             {currentAccount!.preferences!.availableTypes.map((type, index) => {
               const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
                 type.url
@@ -71,20 +76,26 @@ const MeetingTypesConfig: React.FC = () => {
                 </Box>
               )
             })}
-          </Flex>
+          </SimpleGrid>
           <VStack
             borderRadius={8}
-            alignItems="center"
+            alignItems="flex-start"
             pt={4}
             pb={4}
             height={'100%'}
             justifyContent="center"
           >
-            <Button
-              disabled={!isProAccount(currentAccount!)}
-              colorScheme="orange"
-              onClick={createType}
-            >
+            {!isPro && (
+              <Text pb="6">
+                <NextLink href="/dashboard/details" shallow passHref>
+                  <Link colorScheme="orange" fontWeight="bold">
+                    Go PRO
+                  </Link>
+                </NextLink>{' '}
+                to add as many meeting types as you want
+              </Text>
+            )}
+            <Button disabled={!isPro} colorScheme="orange" onClick={createType}>
               + New Meeting Type
             </Button>
             <NewMeetingTypeDialog
@@ -152,7 +163,6 @@ interface TypeConfigProps {
   goBack: () => void
 }
 const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
-  const { login } = useContext(AccountContext)
   const color = useColorModeValue('orange.500', 'orange.400')
 
   const typeConfig = account.preferences!.availableTypes.find(
@@ -162,59 +172,15 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
     // TODO handle this
   }
 
-  const convertMinutes = (minutes: number) => {
-    if (minutes < 60) {
-      return { amount: minutes, type: 'minutes', isEmpty: false }
-    } else if (minutes < 60 * 24) {
-      return { amount: Math.floor(minutes / 60), type: 'hours', isEmpty: false }
-    } else {
-      return {
-        amount: Math.floor(minutes / (60 * 24)),
-        type: 'days',
-        isEmpty: false,
-      }
-    }
-  }
-
-  const [title, setTitle] = useState(typeConfig?.title || '')
-  const [url, setUrl] = useState(typeConfig?.url || '')
-  const [duration, setDuration] = useState(typeConfig!.duration)
-  const [minAdvanceTime, setMinAdvanceTime] = useState(
-    convertMinutes(typeConfig!.minAdvanceTime)
-  )
   const [loading, setLoading] = useState(false)
+
+  const childRef = useRef(null)
 
   const save = async () => {
     setLoading(true)
-
-    const meetingType: MeetingType = {
-      id: typeId,
-      title,
-      url,
-      duration,
-      minAdvanceTime:
-        minAdvanceTime.amount *
-        (minAdvanceTime.type === 'minutes'
-          ? 1
-          : minAdvanceTime.type === 'hours'
-          ? 60
-          : 60 * 24),
-    }
-
-    const account = await saveMeetingType(meetingType)
-    login(account)
-    logEvent('Updated meeting type', meetingType)
-
+    await (childRef!.current as any).refSaveType()
     //TODO handle error
-
     setLoading(false)
-  }
-
-  const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const sluggedUrl = getSlugFromText(event.target.value)
-
-    setUrl(sluggedUrl)
-    setTitle(event.target.value)
   }
 
   return (
@@ -225,69 +191,11 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
           Back
         </Text>
       </HStack>
-      <Text>Meeting type name</Text>
-      <Input
-        placeholder="What is this event about"
-        value={title}
-        onChange={handleTitleChange}
+      <MeetingTypeConfig
+        selectedType={typeConfig}
+        currentAccount={account}
+        ref={childRef}
       />
-
-      <Text pt={4}>Event link</Text>
-      <Text fontSize="sm">
-        {getAccountCalendarUrl(account, true)}/{!url ? '<link>' : url}
-      </Text>
-
-      <Text pt={4}>Meeting duration</Text>
-      <Select
-        width="160px"
-        defaultValue={duration}
-        onChange={e => setDuration(Number(e.target.value))}
-      >
-        <option value="15">15 min</option>
-        <option value="30">30 min</option>
-        <option value="45">45 min</option>
-        <option value="60">60 min</option>
-      </Select>
-
-      <Text pt={4}>
-        Minimum amount of notice time for anyone to schedule a meeting with you
-      </Text>
-      <HStack>
-        <Input
-          width="140px"
-          type="number"
-          value={!minAdvanceTime.isEmpty ? minAdvanceTime.amount : ''}
-          onChange={e => {
-            setMinAdvanceTime({
-              amount: e.target.value != '' ? Number(e.target.value) : 0,
-              type: minAdvanceTime.type,
-              isEmpty: e.target.value === '',
-            })
-          }}
-        />
-        <Select
-          defaultValue={minAdvanceTime.type}
-          onChange={e => {
-            setMinAdvanceTime({
-              amount: minAdvanceTime.amount,
-              type: e.target.value,
-              isEmpty: false,
-            })
-          }}
-        >
-          <option value="minutes">minutes</option>
-          <option value="hours">hours</option>
-          <option value="days">days</option>
-        </Select>
-      </HStack>
-
-      <Checkbox isDisabled pt={4}>
-        <HStack alignItems="center">
-          <Text>Require payment for scheduling</Text>
-          <Icon as={FaLock} />
-          <Text>(coming soon)</Text>
-        </HStack>
-      </Checkbox>
       <Spacer />
       <Button
         isLoading={loading}

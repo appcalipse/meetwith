@@ -23,6 +23,7 @@ import {
   scheduleMeeting,
 } from '../../utils/calendar_manager'
 import {
+  GateConditionNotValidError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
@@ -177,6 +178,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof GateConditionNotValidError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else if (e instanceof MeetingCreationError) {
         toast({
           title: 'Failed to schedule meeting',
@@ -231,13 +241,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     const type = account!.preferences!.availableTypes.find(
       t => t.id === typeId
     )!
+    if (!type.scheduleGate) {
+      setIsGateValid(undefined)
+    }
     setSelectedType(type)
     router.push(`/${getAccountDomainUrl(account!)}/${type.url}`, undefined, {
       shallow: true,
     })
-    if (!type.scheduleGate) {
-      setIsGateValid(undefined)
-    }
   }
 
   const validateSlot = (slot: Date): boolean => {

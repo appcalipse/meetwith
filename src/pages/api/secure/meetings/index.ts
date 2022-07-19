@@ -13,6 +13,7 @@ import {
   saveMeeting,
 } from '../../../../utils/database'
 import {
+  GateConditionNotValidError,
   MeetingCreationError,
   TimeNotAvailableError,
 } from '../../../../utils/errors'
@@ -44,6 +45,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         res.status(409).send(e)
       } else if (e instanceof MeetingCreationError) {
         res.status(412).send(e)
+      } else if (e instanceof GateConditionNotValidError) {
+        res.status(403).send(e)
       } else {
         Sentry.captureException(e)
         res.status(500).send(e)

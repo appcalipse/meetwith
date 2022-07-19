@@ -159,12 +159,12 @@ export const AddGateObjectDialog: React.FC<
             </FormControl>
 
             <TokenGateComponent
-              updateTokenGate={gateObject =>
+              updateTokenGate={gateObject => {
                 updateInfo({
                   ...props.selectedGate!,
                   definition: { ...gateObject },
                 })
-              }
+              }}
               tokenGate={props.selectedGate!.definition}
             />
           </ModalBody>
