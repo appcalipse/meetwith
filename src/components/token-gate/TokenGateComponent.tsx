@@ -11,7 +11,6 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { v4 } from 'uuid'
 
 import {
   ConditionRelation,
