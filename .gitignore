@@ -14,6 +14,9 @@
 
 # production
 /build
+# sitemaps and robots - auto generated
+public/sitemap*
+public/robots.txt
 
 # misc
 .DS_Store
@@ -34,9 +37,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-# local running and testing
-.ipfs*
-orbitdb*
 # Sentry
 .sentryclirc
 
