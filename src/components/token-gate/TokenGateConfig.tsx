@@ -10,6 +10,8 @@ import {
   Heading,
   HStack,
   IconButton,
+  Image,
+  Link,
   Skeleton,
   Spinner,
   Stack,
@@ -18,6 +20,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import NextLink from 'next/link'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaEdit, FaTrash } from 'react-icons/fa'
 
@@ -28,6 +31,7 @@ import {
   getGateConditionsForAccount,
 } from '@/utils/api_helper'
 import { GateInUseError } from '@/utils/errors'
+import { isProAccount } from '@/utils/subscription_manager'
 import { toHumanReadable } from '@/utils/token.gate.service'
 
 import {
@@ -70,6 +74,8 @@ export const TokenGateConfig = () => {
     fetchConfigs()
   }, [])
 
+  const isPro = isProAccount(currentAccount!)
+
   return (
     <Box>
       <Heading fontSize="2xl" mb={4}>
@@ -78,7 +84,7 @@ export const TokenGateConfig = () => {
 
       {loading ? (
         <LoadingComponent />
-      ) : (
+      ) : configs.length > 0 ? (
         configs
           .sort((a, b) =>
             a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
@@ -100,6 +106,18 @@ export const TokenGateConfig = () => {
               }
             />
           ))
+      ) : (
+        <VStack mb={8}>
+          <Image
+            alignSelf="center"
+            src="/assets/no_gates.svg"
+            height="200px"
+            alt="No token gates created"
+          />
+          <HStack pt={8}>
+            <Text fontSize="lg">You didn&apos;t create any gates yet</Text>
+          </HStack>
+        </VStack>
       )}
 
       <AddGateObjectDialog
@@ -117,7 +135,19 @@ export const TokenGateConfig = () => {
         onClose={() => setGateToRemove(undefined)}
       />
 
+      {!isPro && (
+        <Text pb="6">
+          <NextLink href="/dashboard/details" shallow passHref>
+            <Link colorScheme="orange" fontWeight="bold">
+              Go PRO
+            </Link>
+          </NextLink>{' '}
+          to create token gates.
+        </Text>
+      )}
+
       <Button
+        disabled={!isPro}
         colorScheme="orange"
         onClick={() => setSelectedGate(getDefaultConditionClone())}
       >

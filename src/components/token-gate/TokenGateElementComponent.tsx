@@ -22,7 +22,8 @@ import {
   useColorModeValue,
 } from '@chakra-ui/react'
 import { BigNumber } from 'ethers'
-import { useEffect, useState } from 'react'
+import { formatUnits } from 'ethers/lib/utils'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   getMainnetChains,
@@ -47,9 +48,7 @@ export const TokenGateElementComponent = (
   props: TokenGateElementComponentProps
 ) => {
   const [minimumBalance, setMinimumBalance] = useState(
-    props.tokenInfo?.minimumBalance
-      .div(BigNumber.from((10 ** (props.tokenInfo.decimals || 1)).toString()))
-      .toString()
+    formatUnits(props.tokenInfo?.minimumBalance, props.tokenInfo.decimals || 1)
   )
 
   const changeMinimumAmount = (value: string) => {
@@ -57,7 +56,7 @@ export const TokenGateElementComponent = (
       const valueAsFloat = parseFloat(value)
       const info = props.tokenInfo
       info.minimumBalance = BigNumber.from(
-        (valueAsFloat * 10 ** (props.tokenInfo.decimals || 1)).toString()
+        (valueAsFloat * 10 ** (props.tokenInfo.decimals || 0)).toString()
       )
       props.onChange(info, props.position)
     } catch (e) {}
@@ -159,8 +158,7 @@ const TokenForm: React.FC<{
 }) => {
   const [loadingToken, setLoadingToken] = useState(false)
   const [invalidTokenAddress, setInvalidTokenAddress] = useState(false)
-
-  const [haveMinimumAmoun, setHaveMinimumAmount] = useState(
+  const [haveMinimumAmount, setHaveMinimumAmount] = useState(
     tokenInfo?.minimumBalance ? !tokenInfo!.minimumBalance.isZero() : false
   )
 
@@ -175,7 +173,14 @@ const TokenForm: React.FC<{
   const checkTokenInfo = async () => {
     setLoadingToken(true)
     setInvalidTokenAddress(false)
-    if (isValidEVMAddress(tokenInfo!.itemId)) {
+    if (
+      [
+        GateInterface.ERC1155,
+        GateInterface.ERC20,
+        GateInterface.ERC721,
+      ].includes(tokenInfo!.type) &&
+      isValidEVMAddress(tokenInfo!.itemId)
+    ) {
       const info = await getTokenInfo(tokenInfo!.itemId, tokenInfo!.chain!)
       let _tokenInfo: TokenGateElement = {
         type: GateInterface.ERC20,
@@ -257,7 +262,7 @@ const TokenForm: React.FC<{
           }
         </InputGroup>
       </HStack>
-      {!haveMinimumAmoun && (
+      {!haveMinimumAmount && (
         <Flex justifyContent="flex-end" mt={2}>
           <Button
             size="sm"
@@ -269,7 +274,7 @@ const TokenForm: React.FC<{
           </Button>
         </Flex>
       )}
-      {haveMinimumAmoun && (
+      {haveMinimumAmount && (
         <FormControl mt={2}>
           <FormLabel>Minimum amount</FormLabel>
           <NumberInput
@@ -309,6 +314,10 @@ const POAPForm: React.FC<{
 
   useEffect(() => {
     checkTokenInfo()
+
+    return () => {
+      console.log('staaaaap')
+    }
   }, [debouncedTokenAddress])
 
   const checkTokenInfo = async () => {

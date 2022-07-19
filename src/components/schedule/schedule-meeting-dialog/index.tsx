@@ -30,6 +30,7 @@ import { DBSlot, SchedulingType } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import { scheduleMeeting } from '../../../utils/calendar_manager'
 import {
+  GateConditionNotValidError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
@@ -203,6 +204,15 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         toast({
           title: 'Failed to schedule meeting',
           description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GateConditionNotValidError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: e.message,
           status: 'error',
           duration: 5000,
           position: 'top',

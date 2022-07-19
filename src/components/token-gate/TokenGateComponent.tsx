@@ -11,6 +11,7 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
+import { v4 } from 'uuid'
 
 import {
   ConditionRelation,
@@ -27,7 +28,7 @@ interface TokenGateComponentProps {
 }
 
 export const TokenGateComponent = (props: TokenGateComponentProps) => {
-  const onScheduleGateElementChange = (
+  const onGateElementChange = (
     tokenGateElement: TokenGateElement,
     position: number
   ) => {
@@ -36,7 +37,7 @@ export const TokenGateComponent = (props: TokenGateComponentProps) => {
     props.updateTokenGate(gate)
   }
 
-  const removeScheduleElement = (position: number) => {
+  const removeElement = (position: number) => {
     const gate = { ...props.tokenGate }
     gate.elements.splice(position, 1)
     props.updateTokenGate(gate)
@@ -96,8 +97,8 @@ export const TokenGateComponent = (props: TokenGateComponentProps) => {
               tokenInfo={element}
               position={index}
               key={index}
-              onChange={onScheduleGateElementChange}
-              onRemove={removeScheduleElement}
+              onChange={onGateElementChange}
+              onRemove={removeElement}
             />
           )
         })}

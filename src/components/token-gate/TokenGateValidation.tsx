@@ -13,12 +13,12 @@ interface TokenGateValidationProps {
   isGateValid: boolean
 }
 const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
-  const [gateToValidate, setGateToValidate] = useState<string>('')
+  const [gateDescription, setGateDescription] = useState<string>('')
 
   const handleGateValidation = async (gateId: string) => {
     const chosenGate = await getGateCondition(gateId)
     const displayGate = toHumanReadable(chosenGate!.definition!)
-    setGateToValidate(displayGate)
+    setGateDescription(displayGate)
     const isValid = await isConditionValid(
       chosenGate!.definition!,
       props.userAccount.address!
@@ -40,7 +40,7 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
           Your wallet does not have the necessary tokens
         </Text>
       )}
-      <Text>{gateToValidate}</Text>
+      <Text>{gateDescription}</Text>
     </Box>
   )
 }
