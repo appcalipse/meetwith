@@ -19,6 +19,7 @@ import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
   ApiFetchError,
+  GateConditionNotValidError,
   GateInUseError,
   InvalidSessionError,
   MeetingCreationError,
@@ -94,6 +95,8 @@ export const scheduleMeeting = async (
       throw new TimeNotAvailableError()
     } else if (e.status && e.status === 412) {
       throw new MeetingCreationError()
+    } else if (e.status && e.status === 403) {
+      throw new GateConditionNotValidError()
     }
     throw e
   }
@@ -111,6 +114,10 @@ export const scheduleMeetingAsGuest = async (
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
+    } else if (e.status && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e.status && e.status === 403) {
+      throw new GateConditionNotValidError()
     }
     throw e
   }

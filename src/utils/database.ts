@@ -9,7 +9,11 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import { GateConditionObject } from '@/types/TokenGating'
+import {
+  GateConditionObject,
+  GateUsage,
+  GateUsageType,
+} from '@/types/TokenGating'
 
 import {
   Account,
@@ -36,6 +40,7 @@ import {
 import { Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
+  GateConditionNotValidError,
   GateInUseError,
   MeetingCreationError,
   MeetingNotFoundError,
@@ -51,6 +56,8 @@ import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
 import { isProAccount } from './subscription_manager'
+import { syncCalendarForMeeting } from './sync_helper'
+import { isConditionValid } from './token.gate.service'
 import { isValidEVMAddress } from './validations'
 
 const db: { ready: boolean } & Record<string, any> = { ready: false }
@@ -211,10 +218,53 @@ const updateAccountFromInvite = async (
   return account
 }
 
+const workMeetingTypeGates = async (meetingTypes: MeetingType[]) => {
+  const toAdd: GateUsage[] = []
+  const toRemove = []
+
+  for (const meetingType of meetingTypes) {
+    // clean all gate usages for the meeting types
+    toRemove.push(meetingType.id)
+
+    // re add for those who were defined in the request
+    if (meetingType.scheduleGate) {
+      toAdd.push({
+        type: GateUsageType.MeetingSchedule,
+        gate_id: meetingType.scheduleGate,
+        gated_entity_id: meetingType.id,
+      })
+    } else {
+    }
+  }
+
+  if (toRemove.length > 0) {
+    const removal = await db.supabase
+      .from('gate_usage')
+      .delete()
+      .match({ type: GateUsageType.MeetingSchedule })
+      .or(toRemove.map(id => `gated_entity_id.eq.${id}`).join(','))
+
+    if (removal.error) {
+      Sentry.captureException(removal.error)
+      //TODO: handle error
+    }
+  }
+
+  if (toAdd.length > 0) {
+    const additions = await db.supabase.from('gate_usage').insert(toAdd)
+
+    if (additions.error) {
+      Sentry.captureException(additions.error)
+      //TODO: handle error
+    }
+  }
+}
+
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
   const path = await addContentToIPFS(account.preferences!)
   //TODO handle ipfs error
 
+  await workMeetingTypeGates(account.preferences!.availableTypes || [])
   const { data, error } = await db.supabase
     .from('accounts')
     .update({
@@ -416,6 +466,7 @@ const saveMeeting = async (
   const existingAccounts = await getExistingAccountsFromDB(
     meeting.participants_mapping.map(p => p.account_address!)
   )
+
   const ownerParticipant =
     meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
     null
@@ -429,6 +480,32 @@ const saveMeeting = async (
       p => p.type === ParticipantType.Scheduler
     ) || null
 
+  const ownerIsNotScheduler = Boolean(
+    ownerParticipant &&
+      schedulerAccount &&
+      ownerParticipant.account_address !== schedulerAccount.account_address
+  )
+
+  if (ownerIsNotScheduler && schedulerAccount) {
+    const gatesResponse = await db.supabase
+      .from('gate_usage')
+      .select()
+      .eq('gated_entity_id', meeting.meetingTypeId)
+      .eq('type', GateUsageType.MeetingSchedule)
+
+    if (gatesResponse.data && gatesResponse.data.length > 0) {
+      const gate = await getGateCondition(gatesResponse.data[0].gate_id)
+      const valid = await isConditionValid(
+        gate!.definition,
+        schedulerAccount.account_address!
+      )
+
+      if (!valid) {
+        throw new GateConditionNotValidError()
+      }
+    }
+  }
+
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
       if (
@@ -437,17 +514,12 @@ const saveMeeting = async (
           .includes(participant.account_address!) &&
         participant.type === ParticipantType.Owner
       ) {
-        // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
+        // only validate slot if meeting is being scheduled on someone's calendar and not by the person itself (from dashboard for example)
         const participantIsOwner = Boolean(
           ownerParticipant &&
             ownerParticipant.account_address === participant.account_address
         )
-        const ownerIsNotScheduler = Boolean(
-          ownerParticipant &&
-            schedulerAccount &&
-            ownerParticipant.account_address !==
-              schedulerAccount.account_address
-        )
+
         const slotIsTaken = async () =>
           !(await isSlotFree(
             participant.account_address!,
@@ -869,6 +941,18 @@ const deleteGateCondition = async (
   ownerAccount: string,
   idToDelete: string
 ): Promise<boolean> => {
+  const usageResponse = await db.supabase
+    .from('gate_usage')
+    .select('id', { count: 'exact' })
+    .eq('gate_id', idToDelete)
+
+  if (usageResponse.error) {
+    Sentry.captureException(usageResponse.error)
+    return false
+  } else if (usageResponse.count > 0) {
+    throw new GateInUseError()
+  }
+
   const response = await db.supabase
     .from('gate_definition')
     .select()
@@ -879,18 +963,6 @@ const deleteGateCondition = async (
     return false
   } else if (response.data[0].owner !== ownerAccount) {
     throw new UnauthorizedError()
-  }
-
-  const usageResponse = await db.supabase
-    .from('gate_usage')
-    .select()
-    .eq('gate_id', idToDelete)
-
-  if (usageResponse.error) {
-    Sentry.captureException(response.error)
-    return false
-  } else if (usageResponse.data.length > 0) {
-    throw new GateInUseError()
   }
 
   const { _, error } = await db.supabase
@@ -999,4 +1071,5 @@ export {
   updateAccountPreferences,
   upsertAppToken,
   upsertGateCondition,
+  workMeetingTypeGates,
 }

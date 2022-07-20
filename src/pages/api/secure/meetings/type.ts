@@ -1,5 +1,8 @@
 import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
+import { v4 } from 'uuid'
+
+import { isProAccount } from '@/utils/subscription_manager'
 
 import { MeetingType } from '../../../../types/Account'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
@@ -7,6 +10,7 @@ import {
   getAccountFromDB,
   initDB,
   updateAccountPreferences,
+  workMeetingTypeGates,
 } from '../../../../utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -17,31 +21,54 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const account = await getAccountFromDB(account_id)
 
+    const isPro = isProAccount(account)
+
     const meetingType = req.body as MeetingType
 
-    const type = account.preferences!.availableTypes.find(
-      t => t.id === meetingType.id
-    )
+    let updatedInfo
 
-    if (!type) {
-      res.status(403).send("You can't edit this meeting type")
-      return
+    if (!isPro) {
+      delete meetingType.scheduleGate
     }
 
-    const updatedInfo = {
-      ...account,
-      preferences: {
-        ...account.preferences!,
-        availableTypes: account.preferences!.availableTypes.map(t => {
-          if (t.id === meetingType.id) {
-            return meetingType
-          }
-          return t
-        }),
-      },
+    if (meetingType?.id) {
+      // editing and not adding
+      const type = account.preferences!.availableTypes.find(
+        t => t.id === meetingType.id
+      )
+
+      if (!type) {
+        res.status(403).send("You can't edit this meeting type")
+        return
+      }
+      updatedInfo = {
+        ...account,
+        preferences: {
+          ...account.preferences!,
+          availableTypes: account.preferences!.availableTypes.map(t => {
+            if (t.id === meetingType.id) {
+              return meetingType
+            }
+            return t
+          }),
+        },
+      }
+    } else {
+      updatedInfo = {
+        ...account,
+        preferences: {
+          ...account.preferences!,
+          availableTypes: [
+            ...account.preferences!.availableTypes,
+            { ...meetingType, id: v4() },
+          ],
+        },
+      }
     }
 
     const updatedAccount = await updateAccountPreferences(updatedInfo)
+
+    await workMeetingTypeGates(updatedAccount.preferences?.availableTypes || [])
 
     res.status(200).json(updatedAccount)
     return

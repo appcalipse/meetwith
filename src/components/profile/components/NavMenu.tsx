@@ -47,6 +47,11 @@ const LinkItems: Array<LinkItemProps> = [
     mode: EditMode.NOTIFICATIONS,
   },
   {
+    name: 'Token Gates',
+    icon: FaDoorClosed,
+    mode: EditMode.GATES,
+  },
+  {
     name: 'Connected Calendars',
     icon: FaCalendarPlus,
     mode: EditMode.CALENDARS,
@@ -108,7 +113,7 @@ export const NavMenu: React.FC<{
   }
 
   return (
-    <Box borderRadius={{ base: 0, md: 16 }} bgColor={menuBg}>
+    <Box borderRadius={{ base: 0, md: 16 }} bgColor={menuBg} mb={8}>
       {!isMenuOpen ? (
         <VStack
           alignItems="center"
