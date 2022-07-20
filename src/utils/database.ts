@@ -943,13 +943,13 @@ const deleteGateCondition = async (
 ): Promise<boolean> => {
   const usageResponse = await db.supabase
     .from('gate_usage')
-    .select()
+    .select('id', { count: 'exact' })
     .eq('gate_id', idToDelete)
 
   if (usageResponse.error) {
     Sentry.captureException(usageResponse.error)
     return false
-  } else if (usageResponse.data.length > 0) {
+  } else if (usageResponse.count > 0) {
     throw new GateInUseError()
   }
 
