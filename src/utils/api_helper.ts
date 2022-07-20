@@ -10,10 +10,9 @@ import {
 import {
   ConnectedCalendarCore,
   ConnectedCalendarCorePayload,
-  ConnectedCalendarProvider,
   ConnectResponse,
 } from '../types/CalendarConnections'
-import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
+import { DBSlot, DBSlotEnhanced, TimeSlotSource } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
 import {
@@ -304,7 +303,7 @@ export const listConnectedCalendars = async (
 
 export const deleteConnectedCalendar = async (
   email: string,
-  provider: ConnectedCalendarProvider
+  provider: TimeSlotSource
 ): Promise<ConnectedCalendarCore[]> => {
   return (await internalFetch(`/secure/calendar_integrations`, 'DELETE', {
     email,
@@ -314,7 +313,7 @@ export const deleteConnectedCalendar = async (
 
 export const updateConnectedCalendarSync = async (
   email: string,
-  provider: ConnectedCalendarProvider,
+  provider: TimeSlotSource,
   sync: boolean
 ): Promise<ConnectedCalendarCore[]> => {
   return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
@@ -326,7 +325,7 @@ export const updateConnectedCalendarSync = async (
 
 export const updateConnectedCalendarPayload = async (
   email: string,
-  provider: ConnectedCalendarProvider,
+  provider: TimeSlotSource,
   payload: ConnectedCalendarCorePayload['payload']
 ): Promise<ConnectedCalendarCore[]> => {
   return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {

@@ -38,15 +38,24 @@ export interface CreationRequestParticipantMapping {
   guest_email?: string
 }
 
+export enum TimeSlotSource {
+  MWW = 'mww',
+  GOOGLE = 'Google',
+  ICLOUD = 'iCloud',
+  OFFICE = 'Office 365',
+  WEBDAV = 'Webdav',
+}
+
 export interface TimeSlot {
   start: Date
   end: Date
+  source: string
+  account_address: string
 }
 
 export interface DBSlot extends TimeSlot {
   id?: string
   created_at?: Date
-  account_address: string
   meeting_info_file_path: string
 }
 

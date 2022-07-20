@@ -28,7 +28,6 @@ import {
 import {
   ConnectedCalendar,
   ConnectedCalendarCorePayload,
-  ConnectedCalendarProvider,
 } from '../types/CalendarConnections'
 import {
   DBSlot,
@@ -36,6 +35,7 @@ import {
   MeetingCreationRequest,
   MeetingICS,
   ParticipantType,
+  TimeSlotSource,
 } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import {
@@ -569,6 +569,7 @@ const saveMeeting = async (
         end: meeting.end,
         account_address: account.address,
         meeting_info_file_path: path,
+        source: TimeSlotSource.MWW,
       }
 
       slots.push(dbSlot)
@@ -714,7 +715,7 @@ const getConnectedCalendars = async (
 const connectedCalendarExists = async (
   address: string,
   email: string,
-  provider: ConnectedCalendarProvider
+  provider: TimeSlotSource
 ): Promise<boolean> => {
   const { count, error } = await db.supabase
     .from('connected_calendars')
@@ -765,7 +766,7 @@ const addOrUpdateConnectedCalendar = async (
 const changeConnectedCalendarSync = async (
   address: string,
   email: string,
-  provider: ConnectedCalendarProvider,
+  provider: TimeSlotSource,
   sync?: boolean,
   payload?: ConnectedCalendarCorePayload['payload']
 ): Promise<ConnectedCalendar> => {
@@ -786,7 +787,7 @@ const changeConnectedCalendarSync = async (
 const removeConnectedCalendar = async (
   address: string,
   email: string,
-  provider: ConnectedCalendarProvider
+  provider: TimeSlotSource
 ): Promise<ConnectedCalendar> => {
   const { data, error } = await db.supabase
     .from('connected_calendars')

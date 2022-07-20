@@ -1,9 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-import {
-  ConnectedCalendarCorePayload,
-  ConnectedCalendarProvider,
-} from '../../../../../types/CalendarConnections'
+import { TimeSlotSource } from '@/types/Meeting'
+
+import { ConnectedCalendarCorePayload } from '../../../../../types/CalendarConnections'
 import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
 import { apiUrl } from '../../../../../utils/constants'
 import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
@@ -79,7 +78,7 @@ async function handler(
   delete responseBody.expires_in
 
   const payload: ConnectedCalendarCorePayload = {
-    provider: ConnectedCalendarProvider.OFFICE,
+    provider: TimeSlotSource.OFFICE,
     email: responseBody.email!,
     sync: false,
     payload: responseBody,

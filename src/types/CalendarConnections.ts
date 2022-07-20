@@ -1,25 +1,27 @@
-import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
+import {
+  FaApple,
+  FaCalendar,
+  FaCalendarAlt,
+  FaGoogle,
+  FaMicrosoft,
+} from 'react-icons/fa'
+
+import { TimeSlotSource } from './Meeting'
 
 export interface ConnectResponse {
   url: string
 }
 
-export enum ConnectedCalendarProvider {
-  GOOGLE = 'Google',
-  ICLOUD = 'iCloud',
-  OFFICE = 'Office 365',
-  WEBDAV = 'Webdav',
-}
-
 export const ConnectedCalendarIcons = {
-  [ConnectedCalendarProvider.GOOGLE]: FaGoogle,
-  [ConnectedCalendarProvider.ICLOUD]: FaApple,
-  [ConnectedCalendarProvider.OFFICE]: FaMicrosoft,
-  [ConnectedCalendarProvider.WEBDAV]: FaCalendarAlt,
+  [TimeSlotSource.GOOGLE]: FaGoogle,
+  [TimeSlotSource.ICLOUD]: FaApple,
+  [TimeSlotSource.OFFICE]: FaMicrosoft,
+  [TimeSlotSource.WEBDAV]: FaCalendarAlt,
+  [TimeSlotSource.MWW]: FaCalendar,
 }
 
 export interface ConnectedCalendarCore {
-  provider: ConnectedCalendarProvider
+  provider: TimeSlotSource
   email: string
   sync: boolean
 }
