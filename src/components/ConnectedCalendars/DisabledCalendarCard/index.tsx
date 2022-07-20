@@ -10,11 +10,12 @@ import {
 import React from 'react'
 import { FaUnlink } from 'react-icons/fa'
 
-import { ConnectedCalendarProvider } from '../../../types/CalendarConnections'
+import { TimeSlotSource } from '@/types/Meeting'
+
 import DisconnectCalendarDialog from '../DisconnectCalendarDialog'
 
 export interface DisabledCalendarCardProps {
-  name: ConnectedCalendarProvider
+  name: TimeSlotSource
   email: string
   onDelete: () => Promise<void>
 }

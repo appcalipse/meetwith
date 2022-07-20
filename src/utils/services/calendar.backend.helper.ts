@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node'
 
-import { TimeSlot } from '@/types/Meeting'
+import { TimeSlot, TimeSlotSource } from '@/types/Meeting'
 
 import { getConnectedCalendars, getSlotsForAccount } from '../database'
 import { getConnectedCalendarIntegration } from './connected_calendars.factory'
@@ -28,7 +28,8 @@ export const CalendarBackendHelper = {
         ...meetings.map(it => ({
           start: it.start,
           end: it.end,
-          source: 'mww',
+          source: TimeSlotSource.MWW,
+          account_address,
         }))
       )
     }
@@ -57,6 +58,7 @@ export const CalendarBackendHelper = {
                 start: new Date(it.start),
                 end: new Date(it.end),
                 source: calendar.provider,
+                account_address,
               }))
             )
           } catch (e: any) {
@@ -67,6 +69,38 @@ export const CalendarBackendHelper = {
     }
 
     await Promise.all([getMWWEvents(), getIntegratedCalendarEvents()])
+
+    return busySlots
+  },
+
+  getBusySlotsForMultipleAccounts: async (
+    account_addresses: string[],
+    startDate: Date,
+    endDate: Date,
+    limit?: number,
+    offset?: number
+  ): Promise<TimeSlot[]> => {
+    const busySlots: TimeSlot[] = []
+
+    const addSlotsForAccount = async (account: string) => {
+      busySlots.push(
+        ...(await CalendarBackendHelper.getBusySlotsForAccount(
+          account,
+          startDate,
+          endDate,
+          limit,
+          offset
+        ))
+      )
+    }
+
+    const promises: Promise<void>[] = []
+
+    for (const address of account_addresses) {
+      promises.push(addSlotsForAccount(address))
+    }
+
+    Promise.all(promises)
 
     return busySlots
   },

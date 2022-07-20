@@ -1,13 +1,13 @@
 import * as Sentry from '@sentry/browser'
 
+import { NewCalendarEventType } from '@/types/CalendarConnections'
 import {
-  ConnectedCalendarProvider,
-  NewCalendarEventType,
-} from '@/types/CalendarConnections'
-import { MeetingCreationRequest, ParticipantInfo } from '@/types/Meeting'
+  MeetingCreationRequest,
+  ParticipantInfo,
+  TimeSlotSource,
+} from '@/types/Meeting'
 
 import { changeConnectedCalendarSync } from '../database'
-import { ellipsizeAddress } from '../user_manager'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './common.types'
 
@@ -96,7 +96,7 @@ export default class Office365CalendarService implements CalendarService {
           return changeConnectedCalendarSync(
             address,
             email,
-            ConnectedCalendarProvider.OFFICE,
+            TimeSlotSource.OFFICE,
             undefined,
             credential
           ).then(() => {
