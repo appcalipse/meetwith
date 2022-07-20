@@ -56,7 +56,9 @@ const ConnectedCalendars: React.FC<{
           alt="No calendars connected"
         />
         <HStack pt={8}>
-          <Text fontSize="lg">You didn&apos;t connect any calendar yet</Text>
+          <Text fontSize="lg">
+            You haven&lsquo;t connected any calendar yet
+          </Text>
         </HStack>
       </VStack>
     )

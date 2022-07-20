@@ -115,7 +115,7 @@ export const TokenGateConfig = () => {
             alt="No token gates created"
           />
           <HStack pt={8}>
-            <Text fontSize="lg">You didn&apos;t create any gates yet</Text>
+            <Text fontSize="lg">You haven&lsquo;t created any gate yet</Text>
           </HStack>
         </VStack>
       )}
@@ -228,7 +228,7 @@ const RemoveGateDialog: React.FC<RemoveGateDialogProps> = ({
     let deleted = false
     try {
       deleted = await deleteGateCondition(gateId!)
-      if (deleted) {
+      if (!!deleted) {
         onSuccessRemoval(gateId!)
         setBusy(false)
         onClose()
