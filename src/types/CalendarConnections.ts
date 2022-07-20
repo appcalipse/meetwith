@@ -1,4 +1,3 @@
-import { Auth } from 'googleapis'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
 export interface ConnectResponse {
