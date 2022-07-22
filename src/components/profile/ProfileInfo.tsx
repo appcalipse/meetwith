@@ -5,14 +5,11 @@ import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useState } from 'react'
 import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
 
-import accounts from '../../pages/api/secure/accounts'
 import { Account, SocialLinkType } from '../../types/Account'
-import { Plan } from '../../types/Subscription'
 import {
   generateTelegramUrl,
   generateTwitterUrl,
 } from '../../utils/generic_utils'
-import { isProAccount } from '../../utils/subscription_manager'
 import { getAccountDisplayName } from '../../utils/user_manager'
 
 interface ProfileInfoProps {
@@ -47,10 +44,10 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
 
   return (
     <Flex direction="column" alignItems="center">
-      <Box width="80px" height="80px" mb={4}>
+      <Box width="100px" height="100px" mb={4}>
         <Jazzicon address={props.account.address} />
       </Box>
-      <Box>{getAccountDisplayName(props.account)}</Box>
+      <Text fontSize="lg">{getAccountDisplayName(props.account)}</Text>
       <HStack my={6}>
         {telegram && (
           <>

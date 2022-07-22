@@ -69,7 +69,7 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
 
   const bgColor = useColorModeValue('white', 'gray.900')
 
-  const label = defineLabel(meeting.start, meeting.end)
+  const label = defineLabel(meeting.start as Date, meeting.end as Date)
   return (
     <>
       <Box
@@ -94,7 +94,7 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
             )}
             <Box>
               <strong>When</strong>:{' '}
-              {dateToHumanReadable(meeting.start, timezone, false)}
+              {dateToHumanReadable(meeting.start as Date, timezone, false)}
             </Box>
             <HStack>
               <strong>Duration</strong>:{' '}

@@ -12,7 +12,12 @@ import {
   ConnectedCalendarCorePayload,
   ConnectResponse,
 } from '../types/CalendarConnections'
-import { DBSlot, DBSlotEnhanced, TimeSlotSource } from '../types/Meeting'
+import {
+  DBSlot,
+  DBSlotEnhanced,
+  TeamMeetingRequest,
+  TimeSlotSource,
+} from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
 import {
@@ -166,12 +171,34 @@ export const getBusySlots = async (
   end?: Date,
   limit?: number,
   offset?: number
-): Promise<DBSlot[]> => {
+): Promise<Interval[]> => {
   const response = (await internalFetch(
     `/meetings/busy/${accountIdentifier}?limit=${limit || undefined}&offset=${
       offset || 0
     }&start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`
-  )) as DBSlot[]
+  )) as Interval[]
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
+
+export const getBusySlotsForMultipleAccounts = async (
+  addresses: string[],
+  start: Date,
+  end: Date,
+  limit?: number,
+  offset?: number
+): Promise<Interval[]> => {
+  const response = (await internalFetch(`/meetings/busy/team`, 'POST', {
+    addresses,
+    start,
+    end,
+    limit,
+    offset,
+  })) as Interval[]
+
   return response.map(slot => ({
     ...slot,
     start: new Date(slot.start),
@@ -463,4 +490,19 @@ export const getPOAPEvent = async (
     return null
   }
   return event
+}
+
+export const getTeamMeetingRequest = async (
+  id: string
+): Promise<TeamMeetingRequest | null> => {
+  try {
+    return (await internalFetch(`/teamSchedule/${id}`)) as TeamMeetingRequest
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        return null
+      }
+    }
+    throw e
+  }
 }

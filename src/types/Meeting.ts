@@ -1,3 +1,4 @@
+import { Interval } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 
 export enum ParticipationStatus {
@@ -46,9 +47,7 @@ export enum TimeSlotSource {
   WEBDAV = 'Webdav',
 }
 
-export interface TimeSlot {
-  start: Date
-  end: Date
+export interface TimeSlot extends Interval {
   source: string
   account_address: string
 }
@@ -97,4 +96,21 @@ export interface MeetingDecrypted {
   meeting_url: string
   meeting_info_file_path: string
   content?: string
+}
+
+export enum TeamMeetingType {
+  TEAM = 'team',
+  CUSTOM = 'custom',
+}
+
+export interface TeamMeetingRequest {
+  owner: string
+  type: TeamMeetingType
+  id: string
+  duration_in_minutes: number
+  range_start: Date
+  range_end: Date
+  title?: string
+  participants_accounts?: string[]
+  team_id?: string
 }

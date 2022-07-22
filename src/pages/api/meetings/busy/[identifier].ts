@@ -4,7 +4,6 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
-import { TimeSlot } from '../../../../types/Meeting'
 import { initDB } from '../../../../utils/database'
 import { AccountNotFoundError } from '../../../../utils/errors'
 
@@ -30,11 +29,12 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
         : undefined
 
     try {
-      const busySlots: TimeSlot[] =
+      const busySlots: Interval[] =
         await CalendarBackendHelper.getBusySlotsForAccount(
           address,
           startDate,
           endDate,
+          false,
           limit,
           offset
         )
