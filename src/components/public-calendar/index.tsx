@@ -324,6 +324,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         isClosable: true,
       })
       router.push('/404')
+      return
     }
 
     setCheckingSlots(false)
