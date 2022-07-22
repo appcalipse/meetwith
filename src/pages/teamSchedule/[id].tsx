@@ -1,3 +1,4 @@
+import { isPast } from 'date-fns'
 import { NextPage } from 'next'
 
 import PublicCalendar from '@/components/public-calendar'
@@ -30,6 +31,8 @@ TeamMeetingSchedule.getInitialProps = async ctx => {
   const teamMeetingRequest = await getTeamMeetingRequest(id as string)
 
   if (!teamMeetingRequest) {
+    return redirectTo('/404', 302, ctx)
+  } else if (isPast(new Date(teamMeetingRequest.range_end))) {
     return redirectTo('/404', 302, ctx)
   }
 
