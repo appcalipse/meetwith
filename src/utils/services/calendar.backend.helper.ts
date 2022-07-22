@@ -1,4 +1,11 @@
 import * as Sentry from '@sentry/node'
+import {
+  areIntervalsOverlapping,
+  compareAsc,
+  Interval,
+  max,
+  min,
+} from 'date-fns'
 
 import { TimeSlot, TimeSlotSource } from '@/types/Meeting'
 
@@ -10,9 +17,10 @@ export const CalendarBackendHelper = {
     account_address: string,
     startDate: Date,
     endDate: Date,
+    includeSources: boolean,
     limit?: number,
     offset?: number
-  ): Promise<TimeSlot[]> => {
+  ): Promise<Interval[] | TimeSlot[]> => {
     const busySlots: TimeSlot[] = []
 
     const getMWWEvents = async () => {
@@ -26,8 +34,8 @@ export const CalendarBackendHelper = {
 
       busySlots.push(
         ...meetings.map(it => ({
-          start: it.start,
-          end: it.end,
+          start: new Date(it.start),
+          end: new Date(it.end),
           source: TimeSlotSource.MWW,
           account_address,
         }))
@@ -70,7 +78,14 @@ export const CalendarBackendHelper = {
 
     await Promise.all([getMWWEvents(), getIntegratedCalendarEvents()])
 
-    return busySlots
+    if (!includeSources) {
+      return busySlots.map(it => ({
+        start: it.start,
+        end: it.end,
+      }))
+    } else {
+      return busySlots
+    }
   },
 
   getBusySlotsForMultipleAccounts: async (
@@ -79,8 +94,8 @@ export const CalendarBackendHelper = {
     endDate: Date,
     limit?: number,
     offset?: number
-  ): Promise<TimeSlot[]> => {
-    const busySlots: TimeSlot[] = []
+  ): Promise<TimeSlot[] | Interval[]> => {
+    const busySlots: Interval[] = []
 
     const addSlotsForAccount = async (account: string) => {
       busySlots.push(
@@ -88,6 +103,7 @@ export const CalendarBackendHelper = {
           account,
           startDate,
           endDate,
+          false,
           limit,
           offset
         ))
@@ -100,8 +116,43 @@ export const CalendarBackendHelper = {
       promises.push(addSlotsForAccount(address))
     }
 
-    Promise.all(promises)
+    await Promise.all(promises)
 
     return busySlots
+  },
+
+  getMergedBusySlotsForMultipleAccounts: async (
+    account_addresses: string[],
+    startDate: Date,
+    endDate: Date
+  ): Promise<Interval[]> => {
+    const busySlots =
+      await CalendarBackendHelper.getBusySlotsForMultipleAccounts(
+        account_addresses,
+        startDate,
+        endDate
+      )
+
+    return CalendarBackendHelper.mergeSlots(busySlots)
+  },
+
+  mergeSlots: (slots: TimeSlot[] | Interval[]): Interval[] => {
+    slots.sort((a, b) => compareAsc(a.start, b.start))
+
+    const merged: Interval[] = []
+    let i = 0
+
+    merged[i] = { start: slots[i].start, end: slots[i].end }
+    for (const slot of slots) {
+      if (areIntervalsOverlapping(merged[i], slot, { inclusive: true })) {
+        merged[i].start = min([merged[i].start, slot.start])
+        merged[i].end = max([merged[i].end, slot.end])
+      } else {
+        i++
+        merged[i] = { start: slot.start, end: slot.end }
+      }
+    }
+
+    return merged
   },
 }

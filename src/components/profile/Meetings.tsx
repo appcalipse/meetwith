@@ -107,7 +107,10 @@ const Meetings: React.FC = () => {
     if (meeting) {
       meetings.push(meeting)
       setMeetings(
-        meetings.sort((m1, m2) => m1.start.getTime() - m2.start.getTime())
+        meetings.sort(
+          (m1, m2) =>
+            (m1.start as Date).getTime() - (m2.start as Date).getTime()
+        )
       )
       toast({
         title: 'Scheduled',
