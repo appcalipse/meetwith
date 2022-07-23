@@ -32,7 +32,10 @@ TeamMeetingSchedule.getInitialProps = async ctx => {
 
   if (!teamMeetingRequest) {
     return redirectTo('/404', 302, ctx)
-  } else if (isPast(new Date(teamMeetingRequest.range_end))) {
+  } else if (
+    teamMeetingRequest.range_end &&
+    isPast(new Date(teamMeetingRequest.range_end))
+  ) {
     return redirectTo('/404', 302, ctx)
   }
 

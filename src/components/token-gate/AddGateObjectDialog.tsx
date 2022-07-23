@@ -15,8 +15,8 @@ import {
 import { BigNumber } from 'ethers'
 import { useState } from 'react'
 
+import { ConditionRelation } from '@/types/common'
 import {
-  ConditionRelation,
   DummyGateElement,
   GateConditionObject,
   GateInterface,
