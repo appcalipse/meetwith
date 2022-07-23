@@ -11,6 +11,7 @@ import {
   isAfter,
   isBefore,
   isEqual,
+  isFuture,
   startOfMonth,
   subMinutes,
 } from 'date-fns'
@@ -18,6 +19,7 @@ import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
+import { ConditionRelation } from '@/types/common'
 import { saveMeetingsScheduled } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -101,10 +103,11 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const hidrateTeamAccounts = async () => {
     let accountstoFetch: string[] = []
-    if (teamMeetingRequest!.type === TeamMeetingType.TEAM) {
+    if (teamMeetingRequest!.team_structure.type === TeamMeetingType.TEAM) {
       // to be implemented
     } else {
-      accountstoFetch = teamMeetingRequest!.participants_accounts!
+      accountstoFetch =
+        teamMeetingRequest!.team_structure.participants_accounts!
     }
     const accounts: Account[] = []
     await Promise.all(
@@ -194,11 +197,11 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     const target =
       CalendarType.REGULAR === calendarType
         ? account!.address
-        : teamMeetingRequest?.participants_accounts?.includes(
+        : teamMeetingRequest?.team_structure.participants_accounts?.includes(
             teamMeetingRequest!.owner
           )
         ? teamMeetingRequest!.owner
-        : teamMeetingRequest!.participants_accounts![0]
+        : teamMeetingRequest!.team_structure.participants_accounts![0]
 
     const targetName =
       CalendarType.REGULAR === calendarType
@@ -208,7 +211,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     const participants =
       CalendarType.REGULAR === calendarType
         ? []
-        : teamMeetingRequest!.participants_accounts!
+        : teamMeetingRequest!.team_structure.participants_accounts!
 
     try {
       const meeting = await scheduleMeeting(
@@ -301,15 +304,17 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         setBusyslots(busySlots)
       } else {
         let accounts: string[] = []
-        if (teamMeetingRequest!.type === TeamMeetingType.TEAM) {
+        if (teamMeetingRequest!.team_structure.type === TeamMeetingType.TEAM) {
           // to be implemented
         } else {
-          accounts = teamMeetingRequest!.participants_accounts!
+          accounts = teamMeetingRequest!.team_structure.participants_accounts!
         }
+
         const busySlots = await getBusySlotsForMultipleAccounts(
           accounts,
           monthStart,
-          monthEnd
+          monthEnd,
+          teamMeetingRequest!.team_structure.relationship
         )
         setBusyslots(busySlots)
       }
@@ -367,6 +372,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       }
 
       if (
+        teamMeetingRequest!.range_end &&
         !isBefore(
           slot,
           subMinutes(
@@ -387,7 +393,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
       for (const eachAccount of teamAccounts) {
         if (
-          !isSlotAvailable(
+          isSlotAvailable(
             teamMeetingRequest!.duration_in_minutes,
             0,
             slot,
@@ -395,14 +401,42 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
             eachAccount.preferences!.availabilities,
             Intl.DateTimeFormat().resolvedOptions().timeZone,
             eachAccount!.preferences!.timezone
-          )
+          ) ===
+          (teamMeetingRequest?.team_structure.relationship ===
+            ConditionRelation.OR)
         ) {
-          return false
+          return (
+            teamMeetingRequest?.team_structure.relationship ===
+            ConditionRelation.OR
+          )
+          // crazy logic but I think it works.
+          // If it is an AND, if slot is not available for any acocunt, we return false.
+          // But if condition is OR, if any slot IS available we already return true
         }
       }
+
       return true
     }
   }
+
+  const textToDisplayDateRange = () => {
+    if (calendarType === CalendarType.TEAM) {
+      if (teamMeetingRequest?.range_end) {
+        return `Pick a slot between ${format(
+          new Date(teamMeetingRequest!.range_start),
+          'PPPpp'
+        )} and ${format(new Date(teamMeetingRequest!.range_end), 'PPPpp')}`
+      } else if (isFuture(new Date(teamMeetingRequest!.range_start))) {
+        return `Pick a slot after ${format(
+          new Date(teamMeetingRequest!.range_start),
+          'PPPpp'
+        )}`
+      }
+    }
+    return null
+  }
+
+  const dateRangeText = textToDisplayDateRange()
 
   return (
     <>
@@ -423,7 +457,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               {calendarType === CalendarType.REGULAR ? (
                 <ProfileInfo account={account!} />
               ) : (
-                <TeamScheduleCalendarProfile accounts={teamAccounts} />
+                <TeamScheduleCalendarProfile teamAccounts={teamAccounts} />
               )}
               {calendarType === CalendarType.REGULAR && (
                 <Select
@@ -450,14 +484,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   isGateValid={isGateValid!}
                 />
               ) : null}
-              {calendarType === CalendarType.TEAM && (
-                <Text textAlign="center" mt={4}>{`Pick a slot between ${format(
-                  new Date(teamMeetingRequest!.range_start),
-                  'PPPpp'
-                )} and ${format(
-                  new Date(teamMeetingRequest!.range_end),
-                  'PPPpp'
-                )}`}</Text>
+              {dateRangeText && (
+                <Text textAlign="center" mt={4}>
+                  {dateRangeText}
+                </Text>
               )}
             </Box>
             {isSSR ? null : (
@@ -469,7 +499,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                     teamMeetingRequest
                       ? {
                           start: new Date(teamMeetingRequest.range_start),
-                          end: new Date(teamMeetingRequest.range_end),
+                          end: new Date(
+                            teamMeetingRequest.range_end || '2999-01-01'
+                          ),
                         }
                       : undefined
                   }

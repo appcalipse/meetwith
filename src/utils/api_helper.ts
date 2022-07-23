@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/browser'
 
+import { ConditionRelation } from '@/types/common'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
@@ -188,6 +189,7 @@ export const getBusySlotsForMultipleAccounts = async (
   addresses: string[],
   start: Date,
   end: Date,
+  relation: ConditionRelation,
   limit?: number,
   offset?: number
 ): Promise<Interval[]> => {
@@ -195,6 +197,7 @@ export const getBusySlotsForMultipleAccounts = async (
     addresses,
     start,
     end,
+    relation,
     limit,
     offset,
   })) as Interval[]

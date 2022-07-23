@@ -1,6 +1,7 @@
 import { Interval } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 
+import { ConditionRelation } from '@/types/common'
 export enum ParticipationStatus {
   Pending = 'pending',
   Accepted = 'accepted',
@@ -103,14 +104,19 @@ export enum TeamMeetingType {
   CUSTOM = 'custom',
 }
 
+export interface TeamMeetingParticipantsStructure {
+  relationship: ConditionRelation
+  type: TeamMeetingType
+  team_id?: string
+  participants_accounts?: string[]
+}
+
 export interface TeamMeetingRequest {
   owner: string
-  type: TeamMeetingType
   id: string
   duration_in_minutes: number
   range_start: Date
-  range_end: Date
+  range_end?: Date
   title?: string
-  participants_accounts?: string[]
-  team_id?: string
+  team_structure: TeamMeetingParticipantsStructure
 }

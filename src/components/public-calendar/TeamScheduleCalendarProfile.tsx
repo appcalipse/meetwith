@@ -6,32 +6,32 @@ import { getAccountDisplayName } from '@/utils/user_manager'
 import { Account } from '../../types/Account'
 
 interface TeamScheduleCalendarProfileProps {
-  accounts: Account[]
+  teamAccounts: Account[]
   title?: string
   description?: string
 }
 const TeamScheduleCalendarProfile: React.FC<
   TeamScheduleCalendarProfileProps
 > = props => {
-  const accountsToShow = props.accounts.slice(0, 3)
+  const accountsToShow = props.teamAccounts.slice(0, 3)
 
   const displayNames = accountsToShow
     .map(account => getAccountDisplayName(account))
     .join(', ')
 
   const extraText =
-    accountsToShow.length !== props.accounts.length
-      ? `and ${props.accounts.length - accountsToShow.length} more`
+    accountsToShow.length !== props.teamAccounts.length
+      ? `and ${props.teamAccounts.length - accountsToShow.length} more`
       : ''
 
   return (
     <Flex direction="column" alignItems="center">
-      {props.accounts.length === 0 ? (
+      {props.teamAccounts.length === 0 ? (
         <Text>Loading information...</Text>
       ) : (
         <>
           <HStack mb={4}>
-            {props.accounts.map((account, index) => (
+            {props.teamAccounts.map((account, index) => (
               <Box key={index} width="100px" height="100px" mr={-12}>
                 <Jazzicon address={account.address} />
               </Box>

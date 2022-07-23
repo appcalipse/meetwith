@@ -12,8 +12,8 @@ import {
   VStack,
 } from '@chakra-ui/react'
 
+import { ConditionRelation } from '@/types/common'
 import {
-  ConditionRelation,
   DummyGateElement,
   GateCondition,
   TokenGateElement,
