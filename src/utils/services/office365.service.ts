@@ -165,7 +165,7 @@ export default class Office365CalendarService implements CalendarService {
         slot_id,
       }))
 
-    return {
+    const payload = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
         participantsInfo
@@ -194,7 +194,23 @@ export default class Office365CalendarService implements CalendarService {
         conferenceId: `${new Date().getTime()}`,
         joinUrl: details.meeting_url,
       },
+      attendees: [],
     }
+
+    const guest = details.participants_mapping.find(
+      participant => participant.guest_email
+    )
+
+    if (guest) {
+      ;(payload.attendees as any).push({
+        emailAddress: {
+          name: guest.name,
+          address: guest.guest_email,
+        },
+      })
+    }
+
+    return payload
   }
 
   async getAvailability(
