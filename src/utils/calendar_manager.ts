@@ -264,6 +264,22 @@ const generateIcs = (
     // ]
   }
 
+  const guest = meeting.participants.find(
+    participant => participant.guest_email
+  )
+
+  if (guest) {
+    event.attendees = [
+      {
+        name: guest.name,
+        email: guest.guest_email,
+        rsvp: true,
+        partstat: 'ACCEPTED',
+        role: 'REQ-PARTICIPANT',
+      },
+    ]
+  }
+
   return createEvent(event)
 }
 
