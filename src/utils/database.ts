@@ -32,10 +32,10 @@ import {
 import {
   DBSlot,
   DBSlotEnhanced,
+  GroupMeetingRequest,
   MeetingCreationRequest,
   MeetingICS,
   ParticipantType,
-  TeamMeetingRequest,
   TimeSlotSource,
 } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
@@ -1049,14 +1049,14 @@ const upsertAppToken = async (
 
 const selectTeamMeetingRequest = async (
   id: string
-): Promise<TeamMeetingRequest | null> => {
+): Promise<GroupMeetingRequest | null> => {
   const { data, error } = await db.supabase
-    .from('team_meeting_request')
+    .from('group_meeting_request')
     .select()
     .eq('id', id)
 
   if (!error) {
-    return data[0] as TeamMeetingRequest
+    return data[0] as GroupMeetingRequest
   }
 
   return null

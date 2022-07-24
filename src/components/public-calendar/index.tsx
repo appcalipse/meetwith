@@ -26,16 +26,16 @@ import { getAccountDisplayName } from '@/utils/user_manager'
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
 import {
+  GroupMeetingRequest,
+  GroupMeetingType,
   MeetingDecrypted,
   SchedulingType,
-  TeamMeetingRequest,
-  TeamMeetingType,
 } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
 import {
+  fetchBusySlotsForMultipleAccounts,
   getAccount,
   getBusySlots,
-  getBusySlotsForMultipleAccounts,
   getNotificationSubscriptions,
 } from '../../utils/api_helper'
 import {
@@ -55,7 +55,7 @@ import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
 import TokenGateValidation from '../token-gate/TokenGateValidation'
-import TeamScheduleCalendarProfile from './TeamScheduleCalendarProfile'
+import GroupScheduleCalendarProfile from './GroupScheduleCalendarProfile'
 
 interface InternalSchedule {
   scheduleType: SchedulingType
@@ -69,7 +69,7 @@ interface InternalSchedule {
 interface PublicCalendarProps {
   url: string
   account?: Account
-  teamMeetingRequest?: TeamMeetingRequest
+  teamMeetingRequest?: GroupMeetingRequest
   serverSideRender: boolean
 }
 
@@ -96,14 +96,14 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [unloggedSchedule, setUnloggedSchedule] = useState(
     null as InternalSchedule | null
   )
-  const [teamAccounts, setTeamAccounts] = useState<Account[]>([])
+  const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
 
   const calendarType =
     account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
 
   const hidrateTeamAccounts = async () => {
     let accountstoFetch: string[] = []
-    if (teamMeetingRequest!.team_structure.type === TeamMeetingType.TEAM) {
+    if (teamMeetingRequest!.team_structure.type === GroupMeetingType.TEAM) {
       // to be implemented
     } else {
       accountstoFetch =
@@ -304,13 +304,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         setBusyslots(busySlots)
       } else {
         let accounts: string[] = []
-        if (teamMeetingRequest!.team_structure.type === TeamMeetingType.TEAM) {
+        if (teamMeetingRequest!.team_structure.type === GroupMeetingType.TEAM) {
           // to be implemented
         } else {
           accounts = teamMeetingRequest!.team_structure.participants_accounts!
         }
 
-        const busySlots = await getBusySlotsForMultipleAccounts(
+        const busySlots = await fetchBusySlotsForMultipleAccounts(
           accounts,
           monthStart,
           monthEnd,
@@ -391,31 +391,46 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         return false
       }
 
-      for (const eachAccount of teamAccounts) {
-        if (
-          isSlotAvailable(
-            teamMeetingRequest!.duration_in_minutes,
-            0,
-            slot,
-            busySlots,
-            eachAccount.preferences!.availabilities,
-            Intl.DateTimeFormat().resolvedOptions().timeZone,
-            eachAccount!.preferences!.timezone
-          ) ===
-          (teamMeetingRequest?.team_structure.relationship ===
-            ConditionRelation.OR)
-        ) {
-          return (
-            teamMeetingRequest?.team_structure.relationship ===
-            ConditionRelation.OR
-          )
-          // crazy logic but I think it works.
-          // If it is an AND, if slot is not available for any acocunt, we return false.
-          // But if condition is OR, if any slot IS available we already return true
+      if (
+        teamMeetingRequest!.team_structure.relationship ===
+        ConditionRelation.AND
+      ) {
+        for (const eachAccount of groupAccounts) {
+          if (
+            !isSlotAvailable(
+              teamMeetingRequest!.duration_in_minutes,
+              0,
+              slot,
+              busySlots,
+              eachAccount.preferences!.availabilities,
+              Intl.DateTimeFormat().resolvedOptions().timeZone,
+              eachAccount!.preferences!.timezone
+            )
+          ) {
+            return false
+          }
         }
+        return true
+      } else {
+        for (const eachAccount of groupAccounts) {
+          if (
+            isSlotAvailable(
+              teamMeetingRequest!.duration_in_minutes,
+              0,
+              slot,
+              busySlots,
+              eachAccount.preferences!.availabilities,
+              Intl.DateTimeFormat().resolvedOptions().timeZone,
+              eachAccount!.preferences!.timezone
+            )
+          ) {
+            return true
+          }
+        }
+        return false
       }
 
-      return true
+      return false
     }
   }
 
@@ -457,7 +472,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               {calendarType === CalendarType.REGULAR ? (
                 <ProfileInfo account={account!} />
               ) : (
-                <TeamScheduleCalendarProfile teamAccounts={teamAccounts} />
+                <GroupScheduleCalendarProfile teamAccounts={groupAccounts} />
               )}
               {calendarType === CalendarType.REGULAR && (
                 <Select
@@ -542,7 +557,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
 const HeadMeta: React.FC<{
   account?: Account
-  teamMeetingRequest?: TeamMeetingRequest
+  teamMeetingRequest?: GroupMeetingRequest
   url: string
 }> = ({ account, teamMeetingRequest, url }) => {
   const title = account

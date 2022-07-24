@@ -17,8 +17,6 @@ import {
 import React, { useState } from 'react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
 
-import { CalendarServiceHelper } from '@/utils/services/calendar.helper'
-
 import { SchedulingType } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
 import Loading from '../Loading'
@@ -65,6 +63,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   const [pickedTime, setPickedTime] = useState(null as Date | null)
   const [showPickTime, setShowPickTime] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState(new Date())
 
   React.useEffect(() => {
     if (reset) {
@@ -127,6 +126,8 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
           validator={validator}
           monthChanged={onMonthChange}
           pickDay={handlePickDay}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
         />
       )}
 

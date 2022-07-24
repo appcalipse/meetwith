@@ -5,13 +5,13 @@ import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { Account } from '../../types/Account'
 
-interface TeamScheduleCalendarProfileProps {
+interface GroupScheduleCalendarProfileProps {
   teamAccounts: Account[]
   title?: string
   description?: string
 }
-const TeamScheduleCalendarProfile: React.FC<
-  TeamScheduleCalendarProfileProps
+const GroupScheduleCalendarProfile: React.FC<
+  GroupScheduleCalendarProfileProps
 > = props => {
   const accountsToShow = props.teamAccounts.slice(0, 3)
 
@@ -46,4 +46,4 @@ const TeamScheduleCalendarProfile: React.FC<
   )
 }
 
-export default TeamScheduleCalendarProfile
+export default GroupScheduleCalendarProfile
