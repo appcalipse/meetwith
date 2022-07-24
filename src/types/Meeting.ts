@@ -99,24 +99,24 @@ export interface MeetingDecrypted {
   content?: string
 }
 
-export enum TeamMeetingType {
+export enum GroupMeetingType {
   TEAM = 'team',
   CUSTOM = 'custom',
 }
 
-export interface TeamMeetingParticipantsStructure {
+export interface GroupMeetingParticipantsStructure {
   relationship: ConditionRelation
-  type: TeamMeetingType
+  type: GroupMeetingType
   team_id?: string
   participants_accounts?: string[]
 }
 
-export interface TeamMeetingRequest {
+export interface GroupMeetingRequest {
   owner: string
   id: string
   duration_in_minutes: number
   range_start: Date
   range_end?: Date
   title?: string
-  team_structure: TeamMeetingParticipantsStructure
+  team_structure: GroupMeetingParticipantsStructure
 }

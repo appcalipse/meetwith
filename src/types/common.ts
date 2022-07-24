@@ -1,4 +1,4 @@
 export enum ConditionRelation {
-  AND,
-  OR,
+  AND = 'and',
+  OR = 'or',
 }

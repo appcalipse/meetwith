@@ -104,9 +104,24 @@ const account_3_slots = [
   },
 ]
 
-describe('Test mergeSlots function', () => {
-  it('Merge a set of slots', () => {
-    const merged = CalendarBackendHelper.mergeSlots([
+const account_4_address = '0x999'
+const account_4_slots = [
+  {
+    ...FULL_DAY_OUT,
+    source: TimeSlotSource.GOOGLE,
+    account_address: account_4_address,
+  }, //account 3 is out for the whole day on the 5th
+  {
+    start: new Date('2022-05-04 08:00:00.000Z'),
+    end: new Date('2022-05-04 13:00:00.000Z'),
+    source: TimeSlotSource.OFFICE,
+    account_address: account_4_address,
+  },
+]
+
+describe('Test merging slots', () => {
+  it('Merge a set of slots using union', () => {
+    const merged = CalendarBackendHelper.mergeSlotsUnion([
       ...account_1_slots,
       ...account_2_slots,
       ...account_3_slots,
@@ -116,5 +131,40 @@ describe('Test mergeSlots function', () => {
     expect(merged[0].start).toEqual(EARLY_DAY_START.start)
     expect(merged[merged.length - 1].start).toEqual(FULL_DAY_OUT.start)
     expect(merged[merged.length - 1].end).toEqual(FULL_DAY_OUT.end)
+  })
+
+  it('Merge a set of slots using intersection with everyone', () => {
+    const merged = CalendarBackendHelper.mergeSlotsIntersection([
+      ...account_1_slots,
+      ...account_2_slots,
+      ...account_3_slots,
+      ...account_4_slots,
+    ])
+
+    expect(merged.length).toEqual(2)
+    expect(merged[0].start).toEqual(EARLY_DAY_START.start)
+  })
+
+  it('Merge a set of slots using intersection with some combinations', () => {
+    const merged1 = CalendarBackendHelper.mergeSlotsIntersection([
+      ...account_3_slots,
+      ...account_4_slots,
+    ])
+
+    expect(merged1.length).toEqual(3)
+    expect(merged1[0].start).toEqual(new Date('2022-05-04 09:00:00.000Z'))
+    expect(merged1[0].end).toEqual(new Date('2022-05-04 09:30:00.000Z'))
+    expect(merged1[1].start).toEqual(new Date('2022-05-04 12:00:00.000Z'))
+    expect(merged1[1].end).toEqual(new Date('2022-05-04 12:30:00.000Z'))
+    expect(merged1[2].start).toEqual(FULL_DAY_OUT.start)
+    expect(merged1[2].end).toEqual(FULL_DAY_OUT.end)
+
+    const merged2 = CalendarBackendHelper.mergeSlotsIntersection([
+      ...account_1_slots,
+      ...account_4_slots,
+    ])
+
+    expect(merged2.length).toEqual(5)
+    expect(merged2[0].start).toEqual(EARLY_DAY_START.start)
   })
 })

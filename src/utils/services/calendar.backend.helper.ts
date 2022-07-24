@@ -2,11 +2,14 @@ import * as Sentry from '@sentry/node'
 import {
   areIntervalsOverlapping,
   compareAsc,
+  differenceInSeconds,
   Interval,
+  intervalToDuration,
   max,
   min,
 } from 'date-fns'
 
+import { ConditionRelation } from '@/types/common'
 import { TimeSlot, TimeSlotSource } from '@/types/Meeting'
 
 import { getConnectedCalendars, getSlotsForAccount } from '../database'
@@ -17,10 +20,9 @@ export const CalendarBackendHelper = {
     account_address: string,
     startDate: Date,
     endDate: Date,
-    includeSources: boolean,
     limit?: number,
     offset?: number
-  ): Promise<Interval[] | TimeSlot[]> => {
+  ): Promise<TimeSlot[]> => {
     const busySlots: TimeSlot[] = []
 
     const getMWWEvents = async () => {
@@ -78,14 +80,7 @@ export const CalendarBackendHelper = {
 
     await Promise.all([getMWWEvents(), getIntegratedCalendarEvents()])
 
-    if (!includeSources) {
-      return busySlots.map(it => ({
-        start: it.start,
-        end: it.end,
-      }))
-    } else {
-      return busySlots
-    }
+    return busySlots
   },
 
   getBusySlotsForMultipleAccounts: async (
@@ -94,8 +89,8 @@ export const CalendarBackendHelper = {
     endDate: Date,
     limit?: number,
     offset?: number
-  ): Promise<TimeSlot[] | Interval[]> => {
-    const busySlots: Interval[] = []
+  ): Promise<TimeSlot[]> => {
+    const busySlots: TimeSlot[] = []
 
     const addSlotsForAccount = async (account: string) => {
       busySlots.push(
@@ -103,7 +98,6 @@ export const CalendarBackendHelper = {
           account,
           startDate,
           endDate,
-          false,
           limit,
           offset
         ))
@@ -123,6 +117,7 @@ export const CalendarBackendHelper = {
 
   getMergedBusySlotsForMultipleAccounts: async (
     account_addresses: string[],
+    relation: ConditionRelation,
     startDate: Date,
     endDate: Date
   ): Promise<Interval[]> => {
@@ -133,14 +128,22 @@ export const CalendarBackendHelper = {
         endDate
       )
 
-    return CalendarBackendHelper.mergeSlots(busySlots)
+    if (relation === ConditionRelation.AND) {
+      return CalendarBackendHelper.mergeSlotsUnion(busySlots)
+    } else {
+      return CalendarBackendHelper.mergeSlotsIntersection(busySlots)
+    }
   },
 
-  mergeSlots: (slots: TimeSlot[] | Interval[]): Interval[] => {
+  mergeSlotsUnion: (slots: TimeSlot[]): Interval[] => {
     slots.sort((a, b) => compareAsc(a.start, b.start))
 
     const merged: Interval[] = []
     let i = 0
+
+    if (slots.length === 0) {
+      return []
+    }
 
     merged[i] = { start: slots[i].start, end: slots[i].end }
     for (const slot of slots) {
@@ -154,5 +157,68 @@ export const CalendarBackendHelper = {
     }
 
     return merged
+  },
+
+  mergeSlotsIntersection: (slots: TimeSlot[]): Interval[] => {
+    slots.sort((a, b) => compareAsc(a.start, b.start))
+    const slotsByAccount = slots.reduce((memo: any, x) => {
+      if (!memo[x.account_address]) {
+        memo[x.account_address] = []
+      }
+      memo[x.account_address].push(x)
+      return memo
+    }, {})
+
+    const slotsByAccountArray = []
+    for (const [key, value] of Object.entries(slotsByAccount)) {
+      slotsByAccountArray.push(value)
+    }
+
+    if (slotsByAccountArray.length < 2) {
+      return []
+    }
+
+    slotsByAccountArray.sort((a: any, b: any) => a.length - b.length)
+
+    const findOverlappingSlots = (
+      slots1: Interval[],
+      slots2: TimeSlot[]
+    ): Interval[] => {
+      const _overlaps = []
+
+      for (const slot1 of slots1) {
+        for (const slot2 of slots2) {
+          if (areIntervalsOverlapping(slot1, slot2, { inclusive: true })) {
+            const toPush = {
+              start: max([slot1.start, slot2.start]),
+              end: min([slot1.end, slot2.end]),
+            }
+            if (differenceInSeconds(toPush.end, toPush.start) > 0) {
+              _overlaps.push(toPush)
+            }
+          }
+        }
+      }
+      return _overlaps
+    }
+
+    let overlaps = (slotsByAccountArray[0] as TimeSlot[]).map(slot => {
+      return {
+        start: slot.start,
+        end: slot.end,
+      }
+    })
+    for (let i = 1; i < slotsByAccountArray.length; i++) {
+      if (overlaps.length > 0) {
+        overlaps = findOverlappingSlots(
+          overlaps,
+          slotsByAccountArray[i] as TimeSlot[]
+        )
+      } else {
+        return []
+      }
+    }
+
+    return overlaps
   },
 }

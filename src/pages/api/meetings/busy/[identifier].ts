@@ -34,7 +34,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
           address,
           startDate,
           endDate,
-          false,
           limit,
           offset
         )

@@ -4,13 +4,13 @@ import { NextPage } from 'next'
 import PublicCalendar from '@/components/public-calendar'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { Account } from '@/types/Account'
-import { TeamMeetingRequest } from '@/types/Meeting'
+import { GroupMeetingRequest } from '@/types/Meeting'
 import { getTeamMeetingRequest } from '@/utils/api_helper'
 import redirectTo from '@/utils/redirect'
 
 interface ScheduleProps {
   currentUrl: string
-  teamMeetingRequest: TeamMeetingRequest
+  teamMeetingRequest: GroupMeetingRequest
   account: Account
   serverSideRender: boolean
 }

@@ -16,7 +16,7 @@ import {
 import {
   DBSlot,
   DBSlotEnhanced,
-  TeamMeetingRequest,
+  GroupMeetingRequest,
   TimeSlotSource,
 } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
@@ -185,7 +185,7 @@ export const getBusySlots = async (
   }))
 }
 
-export const getBusySlotsForMultipleAccounts = async (
+export const fetchBusySlotsForMultipleAccounts = async (
   addresses: string[],
   start: Date,
   end: Date,
@@ -497,9 +497,9 @@ export const getPOAPEvent = async (
 
 export const getTeamMeetingRequest = async (
   id: string
-): Promise<TeamMeetingRequest | null> => {
+): Promise<GroupMeetingRequest | null> => {
   try {
-    return (await internalFetch(`/teamSchedule/${id}`)) as TeamMeetingRequest
+    return (await internalFetch(`/groupSchedule/${id}`)) as GroupMeetingRequest
   } catch (e) {
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
