@@ -146,6 +146,18 @@ export default class GoogleCalendarService implements CalendarService {
           payload['location'] = details.meeting_url
         }
 
+        const guest = details.participants_mapping.find(
+          participant => participant.guest_email
+        )
+
+        if (guest) {
+          payload.attendees!.push({
+            email: guest.guest_email,
+            displayName: guest.name,
+            responseStatus: 'accepted',
+          })
+        }
+
         const calendar = google.calendar({
           version: 'v3',
           auth: myGoogleAuth,
