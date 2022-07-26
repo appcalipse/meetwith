@@ -1,11 +1,8 @@
 import { BigNumber } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
 
-import {
-  ConditionRelation,
-  GateCondition,
-  GateInterface,
-} from '@/types/TokenGating'
+import { ConditionRelation } from '@/types/common'
+import { GateCondition, GateInterface } from '@/types/TokenGating'
 
 import { getWalletPOAP } from './api_helper'
 import { getTokenBalance } from './token.service'

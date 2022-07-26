@@ -1,5 +1,6 @@
 import {
   addMinutes,
+  compareAsc,
   format,
   getDate,
   getDay,
@@ -7,6 +8,7 @@ import {
   getMinutes,
   getMonth,
   getYear,
+  Interval,
   isAfter,
 } from 'date-fns'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
@@ -21,7 +23,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { Account, DayAvailability, MeetingType } from '../types/Account'
 import {
   CreationRequestParticipantMapping,
-  DBSlot,
   DBSlotEnhanced,
   IPFSMeetingInfo,
   MeetingCreationRequest,
@@ -303,8 +304,8 @@ const decryptMeeting = async (
     participants: meetingInfo.participants,
     content: meetingInfo.content,
     meeting_url: meetingInfo.meeting_url,
-    start: meeting.start,
-    end: meeting.end,
+    start: new Date(meeting.start),
+    end: new Date(meeting.end),
     meeting_info_file_path: meeting.meeting_info_file_path,
   }
 }
@@ -322,7 +323,7 @@ const isSlotAvailable = (
   slotDurationInMinutes: number,
   minAdvanceTime: number,
   slotTime: Date,
-  meetings: DBSlot[],
+  busySlots: Interval[],
   availabilities: DayAvailability[],
   userSchedulingTimezone: string,
   targetTimezone: string
@@ -347,12 +348,16 @@ const isSlotAvailable = (
     return false
   }
 
-  const filtered = meetings.filter(
-    meeting =>
-      (meeting.start >= start && meeting.end <= end) ||
-      (meeting.start <= start && meeting.end >= end) ||
-      (meeting.end > start && meeting.end <= end) ||
-      (meeting.start >= start && meeting.start < end)
+  const filtered = busySlots.filter(
+    slot =>
+      (compareAsc(slot.start, startOnUTC) >= 0 &&
+        compareAsc(slot.end, endOnUTC) <= 0) ||
+      (compareAsc(slot.start, startOnUTC) <= 0 &&
+        compareAsc(slot.end, endOnUTC) >= 0) ||
+      (compareAsc(slot.end, startOnUTC) > 0 &&
+        compareAsc(slot.end, endOnUTC) <= 0) ||
+      (compareAsc(slot.start, startOnUTC) >= 0 &&
+        compareAsc(slot.start, endOnUTC) < 0)
   )
 
   return filtered.length == 0

@@ -2,10 +2,9 @@ import * as Sentry from '@sentry/nextjs'
 import { Auth, google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-import {
-  ConnectedCalendarCorePayload,
-  ConnectedCalendarProvider,
-} from '../../../../../types/CalendarConnections'
+import { TimeSlotSource } from '@/types/Meeting'
+
+import { ConnectedCalendarCorePayload } from '../../../../../types/CalendarConnections'
 import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
 import { apiUrl } from '../../../../../utils/constants'
 import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
@@ -65,7 +64,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     .userinfo.get({ auth: oAuth2Client })
 
   const payload: ConnectedCalendarCorePayload = {
-    provider: ConnectedCalendarProvider.GOOGLE,
+    provider: TimeSlotSource.GOOGLE,
     email: userInfo.data.email!,
     sync: false,
     payload: key,

@@ -1,9 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-import {
-  ConnectedCalendarCorePayload,
-  ConnectedCalendarProvider,
-} from '../../../../types/CalendarConnections'
+import { TimeSlotSource } from '@/types/Meeting'
+
+import { ConnectedCalendarCorePayload } from '../../../../types/CalendarConnections'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { encryptContent } from '../../../../utils/cryptography'
 import { addOrUpdateConnectedCalendar } from '../../../../utils/database'
@@ -23,7 +22,7 @@ async function handler(
     const details: any = req.body as any
 
     const payload: ConnectedCalendarCorePayload = {
-      provider: ConnectedCalendarProvider.WEBDAV,
+      provider: TimeSlotSource.WEBDAV,
       email: details.username!,
       sync: false,
       payload: {

@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/browser'
 
+import { ConditionRelation } from '@/types/common'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
@@ -10,10 +11,14 @@ import {
 import {
   ConnectedCalendarCore,
   ConnectedCalendarCorePayload,
-  ConnectedCalendarProvider,
   ConnectResponse,
 } from '../types/CalendarConnections'
-import { DBSlot, DBSlotEnhanced } from '../types/Meeting'
+import {
+  DBSlot,
+  DBSlotEnhanced,
+  GroupMeetingRequest,
+  TimeSlotSource,
+} from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
 import {
@@ -167,12 +172,36 @@ export const getBusySlots = async (
   end?: Date,
   limit?: number,
   offset?: number
-): Promise<DBSlot[]> => {
+): Promise<Interval[]> => {
   const response = (await internalFetch(
     `/meetings/busy/${accountIdentifier}?limit=${limit || undefined}&offset=${
       offset || 0
     }&start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`
-  )) as DBSlot[]
+  )) as Interval[]
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
+
+export const fetchBusySlotsForMultipleAccounts = async (
+  addresses: string[],
+  start: Date,
+  end: Date,
+  relation: ConditionRelation,
+  limit?: number,
+  offset?: number
+): Promise<Interval[]> => {
+  const response = (await internalFetch(`/meetings/busy/team`, 'POST', {
+    addresses,
+    start,
+    end,
+    relation,
+    limit,
+    offset,
+  })) as Interval[]
+
   return response.map(slot => ({
     ...slot,
     start: new Date(slot.start),
@@ -304,7 +333,7 @@ export const listConnectedCalendars = async (
 
 export const deleteConnectedCalendar = async (
   email: string,
-  provider: ConnectedCalendarProvider
+  provider: TimeSlotSource
 ): Promise<ConnectedCalendarCore[]> => {
   return (await internalFetch(`/secure/calendar_integrations`, 'DELETE', {
     email,
@@ -314,7 +343,7 @@ export const deleteConnectedCalendar = async (
 
 export const updateConnectedCalendarSync = async (
   email: string,
-  provider: ConnectedCalendarProvider,
+  provider: TimeSlotSource,
   sync: boolean
 ): Promise<ConnectedCalendarCore[]> => {
   return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
@@ -326,7 +355,7 @@ export const updateConnectedCalendarSync = async (
 
 export const updateConnectedCalendarPayload = async (
   email: string,
-  provider: ConnectedCalendarProvider,
+  provider: TimeSlotSource,
   payload: ConnectedCalendarCorePayload['payload']
 ): Promise<ConnectedCalendarCore[]> => {
   return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
@@ -464,4 +493,19 @@ export const getPOAPEvent = async (
     return null
   }
   return event
+}
+
+export const getTeamMeetingRequest = async (
+  id: string
+): Promise<GroupMeetingRequest | null> => {
+  try {
+    return (await internalFetch(`/groupSchedule/${id}`)) as GroupMeetingRequest
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        return null
+      }
+    }
+    throw e
+  }
 }

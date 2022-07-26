@@ -1,18 +1,40 @@
 import { useDisclosure } from '@chakra-ui/hooks'
-import { Box, Container, Flex } from '@chakra-ui/layout'
+import { Box, Container, Flex, Text } from '@chakra-ui/layout'
 import { Select } from '@chakra-ui/select'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/browser'
-import { addMinutes, endOfMonth, startOfMonth } from 'date-fns'
+import {
+  addMinutes,
+  endOfMonth,
+  format,
+  Interval,
+  isAfter,
+  isBefore,
+  isEqual,
+  isFuture,
+  startOfMonth,
+  subMinutes,
+} from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
+import { ConditionRelation } from '@/types/common'
+import { saveMeetingsScheduled } from '@/utils/storage'
+import { getAccountDisplayName } from '@/utils/user_manager'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, MeetingType } from '../../types/Account'
-import { DBSlot, MeetingDecrypted, SchedulingType } from '../../types/Meeting'
+import {
+  GroupMeetingRequest,
+  GroupMeetingType,
+  MeetingDecrypted,
+  SchedulingType,
+} from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
 import {
+  fetchBusySlotsForMultipleAccounts,
+  getAccount,
   getBusySlots,
   getNotificationSubscriptions,
 } from '../../utils/api_helper'
@@ -28,13 +50,12 @@ import {
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '../../utils/errors'
-import { saveMeetingsScheduled } from '../../utils/storage'
-import { getAccountDisplayName } from '../../utils/user_manager'
 import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
 import TokenGateValidation from '../token-gate/TokenGateValidation'
+import GroupScheduleCalendarProfile from './GroupScheduleCalendarProfile'
 
 interface InternalSchedule {
   scheduleType: SchedulingType
@@ -47,13 +68,19 @@ interface InternalSchedule {
 
 interface PublicCalendarProps {
   url: string
-  account: Account
+  account?: Account
+  teamMeetingRequest?: GroupMeetingRequest
   serverSideRender: boolean
 }
 
+enum CalendarType {
+  REGULAR,
+  TEAM,
+}
 const PublicCalendar: React.FC<PublicCalendarProps> = ({
   url,
   account,
+  teamMeetingRequest,
   serverSideRender,
 }) => {
   const [isSSR, setIsSSR] = useState(serverSideRender)
@@ -69,14 +96,43 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [unloggedSchedule, setUnloggedSchedule] = useState(
     null as InternalSchedule | null
   )
+  const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
+
+  const calendarType =
+    account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
+
+  const hidrateTeamAccounts = async () => {
+    let accountstoFetch: string[] = []
+    if (teamMeetingRequest!.team_structure.type === GroupMeetingType.TEAM) {
+      // to be implemented
+    } else {
+      accountstoFetch =
+        teamMeetingRequest!.team_structure.participants_accounts!
+    }
+    const accounts: Account[] = []
+    await Promise.all(
+      accountstoFetch.map(async account =>
+        accounts.push(await getAccount(account))
+      )
+    )
+    setTeamAccounts(accounts)
+  }
 
   useEffect(() => {
-    const typeOnRoute = router.query.address ? router.query.address[1] : null
-    const type = account.preferences!.availableTypes.find(
-      t => t.url === typeOnRoute
-    )
-    setSelectedType(type || account.preferences!.availableTypes[0])
-    updateMeetings(account.address)
+    if (calendarType === CalendarType.TEAM) {
+      hidrateTeamAccounts()
+    }
+  }, [calendarType])
+
+  useEffect(() => {
+    if (calendarType === CalendarType.REGULAR) {
+      const typeOnRoute = router.query.address ? router.query.address[1] : null
+      const type = account!.preferences!.availableTypes.find(
+        t => t.url === typeOnRoute
+      )
+      setSelectedType(type || account!.preferences!.availableTypes[0])
+      updateSlots()
+    }
   }, [account, router.query.address])
 
   useEffect(() => {
@@ -93,7 +149,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }, [currentAccount])
 
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [meetings, setMeetings] = useState([] as DBSlot[])
+  const [busySlots, setBusyslots] = useState([] as Interval[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
   const [isGateValid, setIsGateValid] = useState<boolean | undefined>(undefined)
   const [isScheduling, setIsScheduling] = useState(false)
@@ -127,18 +183,42 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       startTime,
       Intl.DateTimeFormat().resolvedOptions().timeZone
     )
-    const end = addMinutes(new Date(start), selectedType.duration)
+    const end = addMinutes(
+      new Date(start),
+      CalendarType.REGULAR === calendarType
+        ? selectedType.duration
+        : teamMeetingRequest!.duration_in_minutes
+    )
 
-    const targetName = getAccountDisplayName(account!)
     if (scheduleType !== SchedulingType.GUEST && !name) {
       name = getAccountDisplayName(currentAccount!)
     }
+
+    const target =
+      CalendarType.REGULAR === calendarType
+        ? account!.address
+        : teamMeetingRequest?.team_structure.participants_accounts?.includes(
+            teamMeetingRequest!.owner
+          )
+        ? teamMeetingRequest!.owner
+        : teamMeetingRequest!.team_structure.participants_accounts![0]
+
+    const targetName =
+      CalendarType.REGULAR === calendarType
+        ? getAccountDisplayName(account!)
+        : ''
+
+    const participants =
+      CalendarType.REGULAR === calendarType
+        ? []
+        : teamMeetingRequest!.team_structure.participants_accounts!
+
     try {
       const meeting = await scheduleMeeting(
         scheduleType,
-        account!.address,
-        [],
-        selectedType.id,
+        target,
+        participants,
+        'no_type',
         start,
         end,
         currentAccount?.address,
@@ -148,13 +228,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         content,
         meetingUrl
       )
-      await updateMeetings(account!.address)
+      await updateSlots()
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
       setLastScheduledMeeting(meeting)
       logEvent('Scheduled a meeting', {
         fromPublicCalendar: true,
-        participantsSize: 2,
+        participantsSize: meeting.participants.length,
       })
       onOpen()
       setIsScheduling(false)
@@ -209,14 +289,35 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     setTimeout(() => setReset(false), 200)
   }
 
-  const updateMeetings = async (identifier: string) => {
+  const updateSlots = async () => {
     setCheckingSlots(true)
     const monthStart = startOfMonth(currentMonth)
     const monthEnd = endOfMonth(currentMonth)
 
     try {
-      const meetings = await getBusySlots(identifier, monthStart, monthEnd)
-      setMeetings(meetings)
+      if (calendarType === CalendarType.REGULAR) {
+        const busySlots = await getBusySlots(
+          account!.address,
+          monthStart,
+          monthEnd
+        )
+        setBusyslots(busySlots)
+      } else {
+        let accounts: string[] = []
+        if (teamMeetingRequest!.team_structure.type === GroupMeetingType.TEAM) {
+          // to be implemented
+        } else {
+          accounts = teamMeetingRequest!.team_structure.participants_accounts!
+        }
+
+        const busySlots = await fetchBusySlotsForMultipleAccounts(
+          accounts,
+          monthStart,
+          monthEnd,
+          teamMeetingRequest!.team_structure.relationship
+        )
+        setBusyslots(busySlots)
+      }
     } catch (e) {
       Sentry.captureException(e)
       toast({
@@ -228,13 +329,14 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         isClosable: true,
       })
       router.push('/404')
+      return
     }
 
     setCheckingSlots(false)
   }
 
   useEffect(() => {
-    updateMeetings(account.address)
+    updateSlots()
   }, [currentMonth])
 
   const changeType = (typeId: string) => {
@@ -251,27 +353,111 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }
 
   const validateSlot = (slot: Date): boolean => {
-    return isSlotAvailable(
-      selectedType.duration,
-      selectedType.minAdvanceTime,
-      slot,
-      meetings,
-      account!.preferences!.availabilities,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-      account!.preferences!.timezone
-    )
+    if (calendarType === CalendarType.REGULAR) {
+      return isSlotAvailable(
+        selectedType.duration,
+        selectedType.minAdvanceTime,
+        slot,
+        busySlots,
+        account!.preferences!.availabilities,
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+        account!.preferences!.timezone
+      )
+    } else {
+      if (
+        !isAfter(slot, new Date(teamMeetingRequest!.range_start)) &&
+        !isEqual(slot, new Date(teamMeetingRequest!.range_start))
+      ) {
+        return false
+      }
+
+      if (
+        teamMeetingRequest!.range_end &&
+        !isBefore(
+          slot,
+          subMinutes(
+            new Date(teamMeetingRequest!.range_end),
+            teamMeetingRequest!.duration_in_minutes
+          )
+        ) &&
+        !isEqual(
+          slot,
+          subMinutes(
+            new Date(teamMeetingRequest!.range_end),
+            teamMeetingRequest!.duration_in_minutes
+          )
+        )
+      ) {
+        return false
+      }
+
+      if (
+        teamMeetingRequest!.team_structure.relationship ===
+        ConditionRelation.AND
+      ) {
+        for (const eachAccount of groupAccounts) {
+          if (
+            !isSlotAvailable(
+              teamMeetingRequest!.duration_in_minutes,
+              0,
+              slot,
+              busySlots,
+              eachAccount.preferences!.availabilities,
+              Intl.DateTimeFormat().resolvedOptions().timeZone,
+              eachAccount!.preferences!.timezone
+            )
+          ) {
+            return false
+          }
+        }
+        return true
+      } else {
+        for (const eachAccount of groupAccounts) {
+          if (
+            isSlotAvailable(
+              teamMeetingRequest!.duration_in_minutes,
+              0,
+              slot,
+              busySlots,
+              eachAccount.preferences!.availabilities,
+              Intl.DateTimeFormat().resolvedOptions().timeZone,
+              eachAccount!.preferences!.timezone
+            )
+          ) {
+            return true
+          }
+        }
+        return false
+      }
+
+      return false
+    }
   }
+
+  const textToDisplayDateRange = () => {
+    if (calendarType === CalendarType.TEAM) {
+      if (teamMeetingRequest?.range_end) {
+        return `Pick a slot between ${format(
+          new Date(teamMeetingRequest!.range_start),
+          'PPPpp'
+        )} and ${format(new Date(teamMeetingRequest!.range_end), 'PPPpp')}`
+      } else if (isFuture(new Date(teamMeetingRequest!.range_start))) {
+        return `Pick a slot after ${format(
+          new Date(teamMeetingRequest!.range_start),
+          'PPPpp'
+        )}`
+      }
+    }
+    return null
+  }
+
+  const dateRangeText = textToDisplayDateRange()
 
   return (
     <>
-      <Head
-        title={`${getAccountDisplayName(
-          account
-        )}'s calendar on Meet with Wallet - Schedule a meeting in #web3 style`}
-        description={
-          account.preferences?.description ||
-          'Schedule a meeting by simply connecting your web3 wallet, or use your email and schedule as a guest.'
-        }
+      <HeadMeta
+        account={account}
+        teamMeetingRequest={teamMeetingRequest}
         url={url}
       />
       <Container maxW="7xl" mt={8} flex={1}>
@@ -283,29 +469,40 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               maxW="600px"
               p={8}
             >
-              <ProfileInfo account={account!} />
-              <Select
-                disabled={readyToSchedule}
-                placeholder="Select option"
-                mt={8}
-                value={selectedType.id}
-                onChange={e => e.target.value && changeType(e.target.value)}
-              >
-                {account!.preferences!.availableTypes.map(type => (
-                  <option key={type.id} value={type.id}>
-                    {type.title ? `${type.title} - ` : ''}
-                    {durationToHumanReadable(type.duration)}
-                  </option>
-                ))}
-              </Select>
-              {selectedType.scheduleGate && (
+              {calendarType === CalendarType.REGULAR ? (
+                <ProfileInfo account={account!} />
+              ) : (
+                <GroupScheduleCalendarProfile teamAccounts={groupAccounts} />
+              )}
+              {calendarType === CalendarType.REGULAR && (
+                <Select
+                  disabled={readyToSchedule}
+                  placeholder="Select option"
+                  mt={8}
+                  value={selectedType.id}
+                  onChange={e => e.target.value && changeType(e.target.value)}
+                >
+                  {account!.preferences!.availableTypes.map(type => (
+                    <option key={type.id} value={type.id}>
+                      {type.title ? `${type.title} - ` : ''}
+                      {durationToHumanReadable(type.duration)}
+                    </option>
+                  ))}
+                </Select>
+              )}
+              {CalendarType.REGULAR && selectedType.scheduleGate ? (
                 <TokenGateValidation
                   gate={selectedType.scheduleGate}
-                  targetAccount={account}
+                  targetAccount={account!}
                   userAccount={currentAccount!}
                   setIsGateValid={setIsGateValid}
                   isGateValid={isGateValid!}
                 />
+              ) : null}
+              {dateRangeText && (
+                <Text textAlign="center" mt={4}>
+                  {dateRangeText}
+                </Text>
               )}
             </Box>
             {isSSR ? null : (
@@ -313,12 +510,26 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 <MeetSlotPicker
                   reset={reset}
                   onMonthChange={(day: Date) => setCurrentMonth(day)}
+                  availabilityInterval={
+                    teamMeetingRequest
+                      ? {
+                          start: new Date(teamMeetingRequest.range_start),
+                          end: new Date(
+                            teamMeetingRequest.range_end || '2999-01-01'
+                          ),
+                        }
+                      : undefined
+                  }
                   onSchedule={confirmSchedule}
                   willStartScheduling={willStartScheduling => {
                     setReadyToSchedule(willStartScheduling)
                   }}
                   isSchedulingExternal={isScheduling}
-                  slotDurationInMinutes={selectedType.duration}
+                  slotDurationInMinutes={
+                    CalendarType.REGULAR === calendarType
+                      ? selectedType.duration
+                      : teamMeetingRequest!.duration_in_minutes
+                  }
                   checkingSlots={checkingSlots}
                   timeSlotAvailability={validateSlot}
                   isGateValid={isGateValid!}
@@ -326,19 +537,40 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               </Box>
             )}
           </Flex>
-          {isSSR ? null : (
-            <MeetingScheduledDialog
-              targetAccount={account!}
-              schedulerAccount={currentAccount!}
-              meeting={lastScheduledMeeting}
-              accountNotificationSubs={notificationsSubs}
-              isOpen={isOpen}
-              onClose={_onClose}
-            />
-          )}
+          {isSSR
+            ? null
+            : lastScheduledMeeting && (
+                <MeetingScheduledDialog
+                  participants={lastScheduledMeeting!.participants}
+                  schedulerAccount={currentAccount!}
+                  meeting={lastScheduledMeeting}
+                  accountNotificationSubs={notificationsSubs}
+                  isOpen={isOpen}
+                  onClose={_onClose}
+                />
+              )}
         </Box>
       </Container>
     </>
   )
+}
+
+const HeadMeta: React.FC<{
+  account?: Account
+  teamMeetingRequest?: GroupMeetingRequest
+  url: string
+}> = ({ account, teamMeetingRequest, url }) => {
+  const title = account
+    ? `${getAccountDisplayName(
+        account
+      )}'s calendar on Meet with Wallet - Schedule a meeting in #web3 style`
+    : teamMeetingRequest?.title ||
+      'Meet with Wallet - Schedule a meeting in #web3 style'
+
+  const description =
+    account?.preferences?.description ||
+    'Schedule a meeting by simply connecting your web3 wallet, or use your email and schedule as a guest.'
+
+  return <Head title={title} description={description} url={url} />
 }
 export default PublicCalendar

@@ -14,12 +14,12 @@ import {
 import { useState } from 'react'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
+import { TimeSlotSource } from '@/types/Meeting'
 import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
 } from '@/utils/api_helper'
 
-import { ConnectedCalendarProvider } from '../../types/CalendarConnections'
 import WebDavDetailsPanel from './WebDavCalendarDetail'
 
 interface ConnectCalendarProps {
@@ -31,26 +31,24 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [loading, setLoading] = useState<
-    ConnectedCalendarProvider | undefined
-  >()
+  const [loading, setLoading] = useState<TimeSlotSource | undefined>()
   const [selectedProvider, setSelectedProvider] = useState<
-    ConnectedCalendarProvider | undefined
+    TimeSlotSource | undefined
   >()
-  const selectOption = (provider: ConnectedCalendarProvider) => async () => {
+  const selectOption = (provider: TimeSlotSource) => async () => {
     setLoading(provider)
 
     switch (provider) {
-      case ConnectedCalendarProvider.GOOGLE:
+      case TimeSlotSource.GOOGLE:
         const { url: googleUrl } = await getGoogleAuthConnectUrl()
         window.location.assign(googleUrl)
         return
-      case ConnectedCalendarProvider.OFFICE:
+      case TimeSlotSource.OFFICE:
         const { url: officeUrl } = await getOffice365ConnectUrl()
         window.location.assign(officeUrl)
         return
-      case ConnectedCalendarProvider.ICLOUD:
-      case ConnectedCalendarProvider.WEBDAV:
+      case TimeSlotSource.ICLOUD:
+      case TimeSlotSource.WEBDAV:
         // no redirect, these providers will handle the logic
         break
       default:
@@ -84,55 +82,55 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                 gridGap={{ base: '16px', md: '0' }}
               >
                 <Button
-                  onClick={selectOption(ConnectedCalendarProvider.GOOGLE)}
+                  onClick={selectOption(TimeSlotSource.GOOGLE)}
                   leftIcon={<FaGoogle />}
                   variant="outline"
-                  isLoading={loading === ConnectedCalendarProvider.GOOGLE}
+                  isLoading={loading === TimeSlotSource.GOOGLE}
                 >
                   Google
                 </Button>
                 <Button
-                  onClick={selectOption(ConnectedCalendarProvider.OFFICE)}
+                  onClick={selectOption(TimeSlotSource.OFFICE)}
                   leftIcon={<FaMicrosoft />}
                   variant="outline"
-                  isLoading={loading === ConnectedCalendarProvider.OFFICE}
+                  isLoading={loading === TimeSlotSource.OFFICE}
                 >
                   Office 365
                 </Button>
                 <Button
-                  onClick={selectOption(ConnectedCalendarProvider.ICLOUD)}
+                  onClick={selectOption(TimeSlotSource.ICLOUD)}
                   leftIcon={<FaApple />}
                   variant={
-                    selectedProvider === ConnectedCalendarProvider.ICLOUD
+                    selectedProvider === TimeSlotSource.ICLOUD
                       ? 'solid'
                       : 'outline'
                   }
-                  isLoading={loading === ConnectedCalendarProvider.ICLOUD}
+                  isLoading={loading === TimeSlotSource.ICLOUD}
                 >
                   iCloud
                 </Button>
                 <Button
-                  onClick={selectOption(ConnectedCalendarProvider.WEBDAV)}
+                  onClick={selectOption(TimeSlotSource.WEBDAV)}
                   leftIcon={<FaCalendarAlt />}
                   variant={
-                    selectedProvider === ConnectedCalendarProvider.WEBDAV
+                    selectedProvider === TimeSlotSource.WEBDAV
                       ? 'solid'
                       : 'outline'
                   }
-                  isLoading={loading === ConnectedCalendarProvider.WEBDAV}
+                  isLoading={loading === TimeSlotSource.WEBDAV}
                 >
                   Webdav
                 </Button>
               </HStack>
               <VStack
-                hidden={selectedProvider !== ConnectedCalendarProvider.ICLOUD}
+                hidden={selectedProvider !== TimeSlotSource.ICLOUD}
                 p="10"
                 pt="0"
               >
                 <WebDavDetailsPanel isApple={true} />
               </VStack>
               <VStack
-                hidden={selectedProvider !== ConnectedCalendarProvider.WEBDAV}
+                hidden={selectedProvider !== TimeSlotSource.WEBDAV}
                 p="10"
                 pt="0"
               >

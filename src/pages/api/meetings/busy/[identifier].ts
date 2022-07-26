@@ -2,86 +2,41 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { TimeSlot } from '../../../../types/Meeting'
-import {
-  getConnectedCalendars,
-  getSlotsForAccount,
-  initDB,
-} from '../../../../utils/database'
+import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
+
+import { initDB } from '../../../../utils/database'
 import { AccountNotFoundError } from '../../../../utils/errors'
-import { getConnectedCalendarIntegration } from '../../../../utils/services/connected_calendars.factory'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     initDB()
     const address = req.query.identifier as string
-    try {
-      const busySlots: TimeSlot[] = []
-      const startDate =
-        req.query.start !== 'undefined'
-          ? new Date(Number(req.query.start as string))
-          : undefined
-      const endDate =
-        req.query.end !== 'undefined'
-          ? new Date(Number(req.query.end as string))
-          : undefined
+    const startDate =
+      req.query.start !== 'undefined'
+        ? new Date(Number(req.query.start as string))
+        : new Date('1970-01-01')
+    const endDate =
+      req.query.end !== 'undefined'
+        ? new Date(Number(req.query.end as string))
+        : new Date('2100-01-01')
+    const limit =
+      req.query.limit !== 'undefined'
+        ? Number(req.query.limit as string)
+        : undefined
+    const offset =
+      req.query.offset !== 'undefined'
+        ? Number(req.query.offset as string)
+        : undefined
 
-      const getMWWEvents = async () => {
-        const meetings = await getSlotsForAccount(
+    try {
+      const busySlots: Interval[] =
+        await CalendarBackendHelper.getBusySlotsForAccount(
           address,
           startDate,
           endDate,
-          req.query.limit !== 'undefined'
-            ? Number(req.query.limit as string)
-            : undefined,
-          req.query.offset !== 'undefined'
-            ? Number(req.query.offset as string)
-            : undefined
+          limit,
+          offset
         )
-
-        busySlots.push(
-          ...meetings.map(it => ({
-            start: it.start,
-            end: it.end,
-            source: 'mww',
-          }))
-        )
-      }
-
-      const getIntegratedCalendarEvents = async () => {
-        const calendars = await getConnectedCalendars(address, {
-          activeOnly: true,
-        })
-
-        await Promise.all(
-          calendars.map(async calendar => {
-            const integration = getConnectedCalendarIntegration(
-              address,
-              calendar.email,
-              calendar.provider,
-              calendar.payload
-            )
-
-            try {
-              const externalSlots = await integration.getAvailability(
-                startDate!.toISOString(),
-                endDate!.toISOString()
-              )
-              busySlots.push(
-                ...externalSlots.map(it => ({
-                  start: new Date(it.start),
-                  end: new Date(it.end),
-                  source: calendar.provider,
-                }))
-              )
-            } catch (e: any) {
-              Sentry.captureException(e)
-            }
-          })
-        )
-      }
-
-      await Promise.all([getMWWEvents(), getIntegratedCalendarEvents()])
 
       res.status(200).json(busySlots)
       return
