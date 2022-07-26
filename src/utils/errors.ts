@@ -70,3 +70,16 @@ export class GateConditionNotValidError extends Error {
     this.name = 'GateConditionNotValidError'
   }
 }
+export class MeetingChangeConflictError extends Error {
+  constructor() {
+    super(`Somebody edited the meeting before you.`)
+    this.name = 'MeetingChangeConflictError'
+  }
+}
+
+export class MeetingChangeForbiddenError extends Error {
+  constructor() {
+    super(`Cannot change a meeting if you are not the owner`)
+    this.name = 'MeetingChangeForbiddenError'
+  }
+}

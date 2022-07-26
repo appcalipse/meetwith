@@ -8,6 +8,7 @@ import {
   Spinner,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import {
@@ -18,7 +19,9 @@ import {
 } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
+import { FaEdit, FaEraser } from 'react-icons/fa'
 
+import { useEditMeetingDialog } from '@/components/schedule/edit-meeting-dialog/edit.hook'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
@@ -26,6 +29,7 @@ import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
 import {
+  cancelMeeting,
   dateToHumanReadable,
   decryptMeeting,
   durationToHumanReadable,
@@ -37,13 +41,14 @@ import IPFSLink from '../../IPFSLink'
 interface MeetingCardProps {
   meeting: DBSlot
   timezone: string
+  onUpdate?: () => void
 }
 
 interface Label {
   color: string
   text: string
 }
-const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
+const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
   const duration = differenceInMinutes(meeting.end, meeting.start)
 
   const defineLabel = (start: Date, end: Date): Label | null => {
@@ -70,6 +75,40 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
   const bgColor = useColorModeValue('white', 'gray.900')
 
   const label = defineLabel(meeting.start as Date, meeting.end as Date)
+  const toast = useToast()
+
+  const [EditModal, openEditModal, closeEditModal] = useEditMeetingDialog()
+  const [isCanceling, setCanceling] = useState(false)
+
+  const { currentAccount } = useContext(AccountContext)
+  const decodeData = async () => {
+    const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
+      meeting.meeting_info_file_path
+    )) as Encrypted
+    if (meetingInfoEncrypted) {
+      const decryptedMeeting = await decryptMeeting(
+        {
+          ...meeting,
+          meeting_info_encrypted: meetingInfoEncrypted,
+        },
+        currentAccount!
+      )
+
+      return decryptedMeeting
+    }
+
+    toast({
+      title: 'Something went wrong',
+      description: 'Unable to decode meeting data.',
+      status: 'error',
+      duration: 5000,
+      position: 'top',
+      isClosable: true,
+    })
+
+    return null
+  }
+
   return (
     <>
       <Box
@@ -105,10 +144,52 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
               ipfsHash={meeting.meeting_info_file_path}
             />
             <DecodedInfo meeting={meeting} />
+            <HStack>
+              <Button
+                onClick={() => {
+                  decodeData().then(decriptedMeeting =>
+                    openEditModal(meeting, decriptedMeeting, timezone)
+                  )
+                }}
+                leftIcon={<FaEdit />}
+                colorScheme="orange"
+              >
+                Edit
+              </Button>
+              <Button
+                onClick={() => {
+                  setCanceling(true)
+                  decodeData().then(decriptedMeeting => {
+                    cancelMeeting(currentAccount!.address, decriptedMeeting!)
+                      .then(() => {
+                        setCanceling(false)
+                        onUpdate && onUpdate()
+                      })
+                      .catch(error => {
+                        setCanceling(false)
+                        toast({
+                          title: 'Something went wrong',
+                          description: error.message,
+                          status: 'error',
+                          duration: 5000,
+                          position: 'top',
+                          isClosable: true,
+                        })
+                      })
+                  })
+                }}
+                leftIcon={<FaEraser />}
+                colorScheme="orange"
+                isLoading={isCanceling}
+              >
+                Cancel
+              </Button>
+            </HStack>
           </VStack>
         </Box>
       </Box>
       <Spacer />
+      <EditModal />
     </>
   )
 }

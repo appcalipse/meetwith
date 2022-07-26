@@ -1,3 +1,4 @@
+import * as crypto from 'crypto'
 import CryptoJS from 'crypto-js'
 import {
   bufferToHex,
@@ -39,5 +40,8 @@ const checkSignature = (signature: string, nonce: number): string => {
 
   return addr
 }
+
+export const simpleHash = (contents: string) =>
+  crypto.createHash('md5').update(contents).digest('hex')
 
 export { checkSignature, decryptContent, encryptContent }

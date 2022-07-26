@@ -59,6 +59,8 @@ export const newMeetingEmail = async (
       created_at: new Date(created_at as Date),
       meeting_info_file_path,
       participants,
+      version: 0,
+      related_slot_ids: [],
     },
     destinationAccountAddress || ''
   )
