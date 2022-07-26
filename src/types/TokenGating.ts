@@ -3,6 +3,7 @@ import { BigNumber } from 'ethers'
 import { isProduction } from '@/utils/constants'
 
 import { SupportedChain } from './chains'
+import { ConditionRelation } from './common'
 
 export enum GateInterface {
   ERC20 = 'ERC20',
@@ -20,11 +21,6 @@ export interface TokenGateElement {
   chain?: SupportedChain
   itemLogo?: string
   decimals?: number
-}
-
-export enum ConditionRelation {
-  AND,
-  OR,
 }
 
 export interface GateCondition {

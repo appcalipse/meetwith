@@ -7,7 +7,13 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { format } from 'date-fns'
+import {
+  format,
+  isFuture,
+  isSameDay,
+  isToday,
+  isWithinInterval,
+} from 'date-fns'
 import React, { useState } from 'react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
 
@@ -18,7 +24,6 @@ import { ScheduleForm } from '../schedule/schedule-form'
 import Calendar from './calendar'
 import { Popup, PopupHeader, PopupWrapper } from './Popup'
 import TimeSlots from './time-slots'
-import { preventPastDays } from './validators'
 
 interface MeetSlotPickerProps {
   onSchedule: (
@@ -33,6 +38,7 @@ interface MeetSlotPickerProps {
   slotDurationInMinutes: number
   onDayChange?: (day: Date) => void
   onMonthChange?: (day: Date) => void
+  availabilityInterval?: Interval
   willStartScheduling: (isScheduling: boolean) => void
   isSchedulingExternal: boolean
   checkingSlots: boolean
@@ -47,6 +53,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   onDayChange,
   onMonthChange,
   willStartScheduling,
+  availabilityInterval,
   isSchedulingExternal,
   checkingSlots,
   reset,
@@ -56,6 +63,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   const [pickedTime, setPickedTime] = useState(null as Date | null)
   const [showPickTime, setShowPickTime] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState(new Date())
 
   React.useEffect(() => {
     if (reset) {
@@ -95,13 +103,31 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 
   const color = useColorModeValue('orange.500', 'orange.400')
 
+  let validator: (date: Date) => boolean
+  if (availabilityInterval) {
+    validator = (date: Date) => {
+      return (
+        (isFuture(date) || isToday(date)) &&
+        (isWithinInterval(date, availabilityInterval) ||
+          isSameDay(date, availabilityInterval.start) ||
+          isSameDay(date, availabilityInterval.end))
+      )
+    }
+  } else {
+    validator = (date: Date) => {
+      return isFuture(date) || isToday(date)
+    }
+  }
+
   return (
     <PopupWrapper>
       {!showPickTime && !showConfirm && (
         <Calendar
-          validator={preventPastDays}
+          validator={validator}
           monthChanged={onMonthChange}
           pickDay={handlePickDay}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
         />
       )}
 

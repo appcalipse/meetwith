@@ -1,7 +1,7 @@
 import { Account } from '@/types/Account'
 import { MeetingCreationRequest } from '@/types/Meeting'
 
-import { getAccountFromDB, getConnectedCalendars } from './database'
+import { getConnectedCalendars } from './database'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 
 export const syncCalendarWithAccount = async (
@@ -10,7 +10,6 @@ export const syncCalendarWithAccount = async (
   slot_id: string,
   meeting_creation_time: Date
 ) => {
-  const account = await getAccountFromDB(targetAccount)
   const calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
     activeOnly: true,

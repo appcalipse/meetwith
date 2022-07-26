@@ -16,12 +16,17 @@ import {
 } from './MonthPicker'
 import { WEEK_DAYS, WeekDay, WeekDays } from './WeekDays'
 
-function Root({ validator, pickDay, monthChanged }) {
-  const [month, setMonth] = useState(new Date())
-  const [fakeMonth, setFakeMonth] = useState(month)
+function Root({
+  validator,
+  pickDay,
+  monthChanged,
+  selectedMonth,
+  setSelectedMonth,
+}) {
+  const [fakeMonth, setFakeMonth] = useState(selectedMonth)
   const [animation, setAnimation] = useState('')
 
-  const [startDay, days] = generateDays(month)
+  const [startDay, days] = generateDays(selectedMonth)
   const [fakeStartDay, fakeDays] = generateDays(fakeMonth)
 
   const isAnimating = !!animation
@@ -32,8 +37,8 @@ function Root({ validator, pickDay, monthChanged }) {
       return
     }
 
-    const next = addMonths(month, 1)
-    setMonth(next)
+    const next = addMonths(selectedMonth, 1)
+    setSelectedMonth(next)
     setAnimation('next')
     monthChanged && monthChanged(next)
   }
@@ -43,8 +48,8 @@ function Root({ validator, pickDay, monthChanged }) {
       return
     }
 
-    const prev = subMonths(month, 1)
-    setMonth(prev)
+    const prev = subMonths(selectedMonth, 1)
+    setSelectedMonth(prev)
     setAnimation('prev')
     monthChanged && monthChanged(prev)
   }
@@ -75,7 +80,7 @@ function Root({ validator, pickDay, monthChanged }) {
 
           <Wrapper>
             <CurrentMonth animation={animation}>
-              {format(month, 'MMMM yyyy')}
+              {format(selectedMonth, 'MMMM yyyy')}
             </CurrentMonth>
 
             <FakeCurrentMonth animation={animation}>

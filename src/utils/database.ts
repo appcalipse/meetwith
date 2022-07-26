@@ -28,14 +28,15 @@ import {
 import {
   ConnectedCalendar,
   ConnectedCalendarCorePayload,
-  ConnectedCalendarProvider,
 } from '../types/CalendarConnections'
 import {
   DBSlot,
   DBSlotEnhanced,
+  GroupMeetingRequest,
   MeetingCreationRequest,
   MeetingICS,
   ParticipantType,
+  TimeSlotSource,
 } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import {
@@ -56,7 +57,6 @@ import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
 import { isProAccount } from './subscription_manager'
-import { syncCalendarForMeeting } from './sync_helper'
 import { isConditionValid } from './token.gate.service'
 import { isValidEVMAddress } from './validations'
 
@@ -563,6 +563,9 @@ const saveMeeting = async (
 
       const path = await addContentToIPFS(participant.privateInfo)
 
+      // Not adding source here given on our database the source is always MWW
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       const dbSlot: DBSlot = {
         id: participant.slot_id,
         start: meeting.start,
@@ -714,7 +717,7 @@ const getConnectedCalendars = async (
 const connectedCalendarExists = async (
   address: string,
   email: string,
-  provider: ConnectedCalendarProvider
+  provider: TimeSlotSource
 ): Promise<boolean> => {
   const { count, error } = await db.supabase
     .from('connected_calendars')
@@ -765,7 +768,7 @@ const addOrUpdateConnectedCalendar = async (
 const changeConnectedCalendarSync = async (
   address: string,
   email: string,
-  provider: ConnectedCalendarProvider,
+  provider: TimeSlotSource,
   sync?: boolean,
   payload?: ConnectedCalendarCorePayload['payload']
 ): Promise<ConnectedCalendar> => {
@@ -786,7 +789,7 @@ const changeConnectedCalendarSync = async (
 const removeConnectedCalendar = async (
   address: string,
   email: string,
-  provider: ConnectedCalendarProvider
+  provider: TimeSlotSource
 ): Promise<ConnectedCalendar> => {
   const { data, error } = await db.supabase
     .from('connected_calendars')
@@ -1044,6 +1047,21 @@ const upsertAppToken = async (
   return
 }
 
+const selectTeamMeetingRequest = async (
+  id: string
+): Promise<GroupMeetingRequest | null> => {
+  const { data, error } = await db.supabase
+    .from('group_meeting_request')
+    .select()
+    .eq('id', id)
+
+  if (!error) {
+    return data[0] as GroupMeetingRequest
+  }
+
+  return null
+}
+
 export {
   addOrUpdateConnectedCalendar,
   changeConnectedCalendarSync,
@@ -1066,6 +1084,7 @@ export {
   removeConnectedCalendar,
   saveEmailToDB,
   saveMeeting,
+  selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
   updateAccountPreferences,
