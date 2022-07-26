@@ -19,6 +19,7 @@ import { AccountContext } from '../../providers/AccountProvider'
 import { DBSlot } from '../../types/Meeting'
 import { getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
+import { EditMeetingDialog } from '../schedule/edit-meeting-dialog'
 import { ScheduleMeetingDialog } from '../schedule/schedule-meeting-dialog'
 
 const Meetings: React.FC = () => {
@@ -80,6 +81,7 @@ const Meetings: React.FC = () => {
             key={meeting.id}
             meeting={meeting}
             timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
+            onUpdate={fetchMeetings}
           />
         ))}
         {!noMoreFetch && !firstFetch && (

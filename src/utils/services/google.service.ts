@@ -5,6 +5,7 @@ import { Auth, calendar_v3, google } from 'googleapis'
 import { NewCalendarEventType } from '@/types/CalendarConnections'
 import {
   MeetingCreationRequest,
+  MeetingUpdateRequest,
   ParticipantInfo,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -116,6 +117,7 @@ export default class GoogleCalendarService implements CalendarService {
           }))
 
         const payload: calendar_v3.Schema$Event = {
+          id: slot_id, // required to edit events later
           summary: CalendarServiceHelper.getMeetingTitle(
             calendarOwnerAccountAddress,
             participantsInfo
@@ -195,6 +197,142 @@ export default class GoogleCalendarService implements CalendarService {
         )
       })
     )
+  }
+
+  async updateEvent(
+    calendarOwnerAccountAddress: string,
+    slot_id: string,
+    details: MeetingUpdateRequest
+  ): Promise<NewCalendarEventType> {
+    return new Promise(async (resolve, reject) => {
+      const auth = await this.auth
+      const myGoogleAuth = await auth.getToken()
+      const participantsInfo: ParticipantInfo[] =
+        details.participants_mapping.map(participant => ({
+          type: participant.type,
+          name: participant.name,
+          account_address: participant.account_address,
+          status: participant.status,
+          slot_id,
+        }))
+
+      const payload: calendar_v3.Schema$Event = {
+        id: slot_id, // required to edit events later
+        summary: CalendarServiceHelper.getMeetingTitle(
+          calendarOwnerAccountAddress,
+          participantsInfo
+        ),
+        description: CalendarServiceHelper.getMeetingSummary(
+          details.content,
+          details.meeting_url
+        ),
+        start: {
+          dateTime: new Date(details.start).toISOString(),
+          timeZone: 'UTC',
+        },
+        end: {
+          dateTime: new Date(details.end).toISOString(),
+          timeZone: 'UTC',
+        },
+        attendees: [],
+        reminders: {
+          useDefault: false,
+          overrides: [{ method: 'email', minutes: 10 }],
+        },
+        creator: {
+          displayName: 'Meet With Wallet',
+        },
+      }
+
+      if (details.meeting_url) {
+        payload['location'] = details.meeting_url
+      }
+
+      const guest = details.participants_mapping.find(
+        participant => participant.guest_email
+      )
+
+      if (guest) {
+        payload.attendees!.push({
+          email: guest.guest_email,
+          displayName: guest.name,
+          responseStatus: 'accepted',
+        })
+      }
+
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+      calendar.events.update(
+        {
+          auth: myGoogleAuth,
+          calendarId: 'primary',
+          eventId: slot_id,
+          sendNotifications: true,
+          sendUpdates: 'all',
+          requestBody: payload,
+        },
+        function (err, event) {
+          if (err) {
+            console.error(
+              'There was an error contacting google calendar service: ',
+              err
+            )
+
+            return reject(err)
+          }
+          return resolve({
+            uid: slot_id,
+            ...event?.data,
+            id: slot_id,
+            additionalInfo: {
+              hangoutLink: event?.data.hangoutLink || '',
+            },
+            type: 'google_calendar',
+            password: '',
+            url: '',
+          })
+        }
+      )
+    })
+  }
+
+  async deleteEvent(slot_id: string): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      const auth = await this.auth
+      const myGoogleAuth = await auth.getToken()
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+
+      calendar.events.delete(
+        {
+          auth: myGoogleAuth,
+          calendarId: 'primary',
+          eventId: slot_id,
+          sendNotifications: true,
+          sendUpdates: 'all',
+        },
+        function (err: any, event: any) {
+          if (err) {
+            /**
+             *  410 is when an event is already deleted on the Google cal before on cal.com
+             *  404 is when the event is on a different calendar
+             */
+            if (err.code === 410) return resolve()
+            console.error(
+              'There was an error contacting google calendar service: ',
+              err
+            )
+            if (err.code === 404) return resolve()
+            return reject(err)
+          }
+          return resolve(event?.data)
+        }
+      )
+    })
   }
 
   async getAvailability(

@@ -17,6 +17,9 @@ import {
   DBSlot,
   DBSlotEnhanced,
   GroupMeetingRequest,
+  MeetingCreationRequest,
+  MeetingDecrypted,
+  MeetingUpdateRequest,
   TimeSlotSource,
 } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
@@ -27,6 +30,7 @@ import {
   GateConditionNotValidError,
   GateInUseError,
   InvalidSessionError,
+  MeetingChangeConflictError,
   MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
@@ -54,6 +58,7 @@ export const internalFetch = async (
     return await response.json()
   }
 
+  console.error('error fetching', `${apiUrl}${path}`, method, body, response)
   throw new ApiFetchError(response.status, response.statusText)
 }
 
@@ -87,7 +92,7 @@ export const saveAccountChanges = async (
 }
 
 export const scheduleMeeting = async (
-  meeting: any
+  meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
   try {
     return (await internalFetch(
@@ -108,7 +113,7 @@ export const scheduleMeeting = async (
 }
 
 export const scheduleMeetingAsGuest = async (
-  meeting: any
+  meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
   try {
     return (await internalFetch(
@@ -123,6 +128,45 @@ export const scheduleMeetingAsGuest = async (
       throw new MeetingCreationError()
     } else if (e.status && e.status === 403) {
       throw new GateConditionNotValidError()
+    }
+    throw e
+  }
+}
+
+export const updateMeeting = async (
+  slotId: string,
+  meeting: MeetingUpdateRequest
+): Promise<DBSlotEnhanced> => {
+  try {
+    return (await internalFetch(
+      `/secure/meetings/${slotId}`,
+      'POST',
+      meeting
+    )) as DBSlotEnhanced
+  } catch (e: any) {
+    if (e.status && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e.status && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e.status && e.status === 417) {
+      throw new MeetingChangeConflictError()
+    }
+    throw e
+  }
+}
+
+export const cancelMeeting = async (meeting: MeetingDecrypted) => {
+  try {
+    return await internalFetch(
+      `/secure/meetings/${meeting.id}`,
+      'DELETE',
+      meeting
+    )
+  } catch (e: any) {
+    if (e.status && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e.status && e.status === 412) {
+      throw new MeetingCreationError()
     }
     throw e
   }

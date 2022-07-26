@@ -1,16 +1,24 @@
 import * as Sentry from '@sentry/browser'
+import { format } from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
 import {
   createAccount,
   createCalendarObject,
   DAVAccount,
   DAVCalendar,
+  deleteCalendarObject,
   fetchCalendarObjects,
   fetchCalendars,
   getBasicAuthHeaders,
+  updateCalendarObject,
 } from 'tsdav'
 
 import { NewCalendarEventType } from '@/types/CalendarConnections'
-import { MeetingCreationRequest, ParticipantInfo } from '@/types/Meeting'
+import {
+  MeetingCreationRequest,
+  MeetingUpdateRequest,
+  ParticipantInfo,
+} from '@/types/Meeting'
 
 import { generateIcs } from '../calendar_manager'
 import { decryptContent } from '../cryptography'
@@ -19,7 +27,7 @@ import { CalendarService } from './common.types'
 // ical.js has no ts typing
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ICAL = require('ical.js')
-
+export const TIMEZONE_FORMAT = 'YYYY-MM-DDTHH:mm:ss[Z]'
 const CALDAV_CALENDAR_TYPE = 'caldav'
 
 export type BufferedBusyTime = {
@@ -118,6 +126,8 @@ export default class CaldavCalendarService implements CalendarService {
           created_at: new Date(meeting_creation_time),
           meeting_info_file_path: '',
           participants: participantsInfo,
+          version: 0,
+          related_slot_ids: [],
         },
         calendarOwnerAccountAddress
       )
@@ -153,6 +163,92 @@ export default class CaldavCalendarService implements CalendarService {
         url: '',
         additionalInfo: {},
       }
+    } catch (reason) {
+      Sentry.captureException(reason)
+      throw reason
+    }
+  }
+
+  async updateEvent(
+    owner: string,
+    slot_id: string,
+    details: MeetingUpdateRequest
+  ): Promise<NewCalendarEventType> {
+    try {
+      const events = await this.getEventsByUID(slot_id)
+
+      const participantsInfo: ParticipantInfo[] =
+        details.participants_mapping.map(participant => ({
+          type: participant.type,
+          name: participant.name,
+          account_address: participant.account_address,
+          status: participant.status,
+          slot_id,
+        }))
+
+      const ics = generateIcs(
+        {
+          meeting_url: details.meeting_url,
+          start: new Date(details.start),
+          end: new Date(details.end),
+          id: slot_id,
+          created_at: new Date(),
+          meeting_info_file_path: '',
+          participants: participantsInfo,
+          version: 0,
+          related_slot_ids: [],
+        },
+        owner
+      )
+
+      if (!ics.value || ics.error) throw new Error('Error creating iCalString')
+
+      const eventsToUpdate = events.filter(event => event.uid === slot_id)
+
+      await Promise.all(
+        eventsToUpdate.map(event => {
+          return updateCalendarObject({
+            calendarObject: {
+              url: event.url,
+              // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
+              data: Buffer.from(ics.value!).toString('base64'),
+              etag: event?.etag,
+            },
+            headers: this.headers,
+          })
+        })
+      )
+
+      return {
+        uid: slot_id,
+        id: slot_id,
+        type: 'Cal Dav',
+        password: '',
+        url: '',
+        additionalInfo: {},
+      }
+    } catch (reason) {
+      Sentry.captureException(reason)
+      throw reason
+    }
+  }
+  async deleteEvent(slot_id: string): Promise<void> {
+    try {
+      const events = await this.getEventsByUID(slot_id)
+
+      const eventsToDelete = events.filter(event => event.uid === slot_id)
+
+      await Promise.all(
+        eventsToDelete.map(event => {
+          return deleteCalendarObject({
+            calendarObject: {
+              url: event.url,
+              etag: event?.etag,
+            },
+            headers: this.headers,
+          })
+        })
+      )
     } catch (reason) {
       Sentry.captureException(reason)
       throw reason
@@ -216,6 +312,101 @@ export default class CaldavCalendarService implements CalendarService {
       Sentry.captureException(reason)
       throw reason
     }
+  }
+
+  private async getEvents(
+    calId: string,
+    dateFrom: string | null,
+    dateTo: string | null,
+    objectUrls?: string[] | null
+  ) {
+    try {
+      const objects = await fetchCalendarObjects({
+        calendar: {
+          url: calId,
+        },
+        objectUrls: objectUrls ? objectUrls : undefined,
+        timeRange:
+          dateFrom && dateTo
+            ? {
+                start: format(new Date(dateFrom), TIMEZONE_FORMAT),
+                end: format(new Date(dateTo), TIMEZONE_FORMAT),
+              }
+            : undefined,
+        headers: this.headers,
+      })
+
+      const events = objects
+        .filter(e => !!e.data)
+        .map(object => {
+          const jcalData = ICAL.parse(object.data)
+
+          const vcalendar = new ICAL.Component(jcalData)
+
+          const vevent = vcalendar.getFirstSubcomponent('vevent')
+          const event = new ICAL.Event(vevent)
+
+          const calendarTimezone =
+            vcalendar
+              .getFirstSubcomponent('vtimezone')
+              ?.getFirstPropertyValue('tzid') || ''
+
+          const startDate = calendarTimezone
+            ? utcToZonedTime(event.startDate.toJSDate(), calendarTimezone)
+            : new Date(event.startDate.toUnixTime() * 1000)
+
+          const endDate = calendarTimezone
+            ? utcToZonedTime(event.endDate.toJSDate(), calendarTimezone)
+            : new Date(event.endDate.toUnixTime() * 1000)
+
+          return {
+            uid: event.uid,
+            etag: object.etag,
+            url: object.url,
+            summary: event.summary,
+            description: event.description,
+            location: event.location,
+            sequence: event.sequence,
+            startDate,
+            endDate,
+            duration: {
+              weeks: event.duration.weeks,
+              days: event.duration.days,
+              hours: event.duration.hours,
+              minutes: event.duration.minutes,
+              seconds: event.duration.seconds,
+              isNegative: event.duration.isNegative,
+            },
+            organizer: event.organizer,
+            attendees: event.attendees.map((a: any) => a.getValues()),
+            recurrenceId: event.recurrenceId,
+            timezone: calendarTimezone,
+          }
+        })
+
+      return events
+    } catch (reason) {
+      console.error(reason)
+      throw reason
+    }
+  }
+
+  private async getEventsByUID(uid: string) {
+    const events = []
+
+    const calendars = await this.listCalendars()
+
+    for (const cal of calendars) {
+      const calEvents = await this.getEvents(cal.url, null, null, [
+        `${cal.url}${uid}.ics`,
+      ])
+
+      for (const ev of calEvents) {
+        events.push(ev)
+      }
+    }
+
+    return events
   }
 
   private async getAccount(): Promise<DAVAccount> {

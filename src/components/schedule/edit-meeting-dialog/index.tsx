@@ -22,15 +22,27 @@ import {
 } from '@chakra-ui/react'
 import { addHours, addMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
+import { Encrypted } from 'eth-crypto'
 import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 
+import Loading from '@/components/Loading'
+import { getSignature } from '@/utils/storage'
+
 import { AccountContext } from '../../../providers/AccountProvider'
-import { DBSlot, SchedulingType, TimeSlotSource } from '../../../types/Meeting'
-import { logEvent } from '../../../utils/analytics'
-import { scheduleMeeting } from '../../../utils/calendar_manager'
 import {
-  GateConditionNotValidError,
+  DBSlot,
+  MeetingDecrypted,
+  SchedulingType,
+} from '../../../types/Meeting'
+import { logEvent } from '../../../utils/analytics'
+import {
+  decryptMeeting,
+  scheduleMeeting,
+  updateMeeting,
+} from '../../../utils/calendar_manager'
+import {
+  MeetingChangeConflictError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
@@ -44,47 +56,58 @@ import { ChipInput } from '../../chip-input'
 import { SingleDatepicker } from '../../input-date-picker'
 import { InputTimePicker } from '../../input-time-picker'
 
-export interface ScheduleModalProps {
+export interface EditMeetingModalProps {
   isOpen: boolean
   onOpen: () => void
   onClose: (meeting?: DBSlot) => void
+  meeting: DBSlot
+  timezone: string
+  decrypted: MeetingDecrypted
 }
 
-export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
+export const EditMeetingDialog: React.FC<EditMeetingModalProps> = ({
   isOpen,
   onOpen,
   onClose,
+  timezone,
+  decrypted,
 }) => {
   const { currentAccount } = useContext(AccountContext)
-  const [useHuddle, setHuddle] = useState(true)
+  const [useHuddle, setHuddle] = useState(
+    decrypted.meeting_url.includes('huddle01.com')
+  )
   const toast = useToast()
 
-  const [participants, setParticipants] = useState([] as string[])
-  const [selectedDate, setDate] = useState(new Date())
+  const [participants, setParticipants] = useState(
+    decrypted.participants.map(it => it.account_address!)
+  )
+  const [selectedDate, setDate] = useState(decrypted.start)
   const [selectedTime, setTime] = useState('')
-  const [content, setContent] = useState('')
+  const [content, setContent] = useState(decrypted.content)
   const [inputError, setInputError] = useState(undefined as object | undefined)
-  const [meetingUrl, setMeetingUrl] = useState('')
+  const [meetingUrl, setMeetingUrl] = useState(decrypted.meeting_url)
   const [duration, setDuration] = useState(30)
   const [isScheduling, setIsScheduling] = useState(false)
 
-  const clearInfo = () => {
-    setParticipants([])
-    setInputError(undefined)
-    setDate(new Date())
-    const minutes = Math.ceil(new Date().getMinutes() / 10) * 10
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setParticipants(decrypted.participants.map(it => it.account_address!))
+    setContent(decrypted.content)
+    setMeetingUrl(decrypted.meeting_url)
+    setDate(decrypted.start)
+
+    const minutes = Math.ceil(decrypted.start.getMinutes() / 10) * 10
     setTime(
       (minutes < 60
-        ? new Date().getHours()
-        : addHours(new Date(), 1).getHours()) +
+        ? decrypted.start.getHours()
+        : addHours(decrypted.start, 1).getHours()) +
         ':' +
         (minutes < 60 ? minutes : '00')
     )
-    setContent('')
-    setMeetingUrl('')
     setDuration(30)
-    setIsScheduling(false)
-  }
+    setLoading(false)
+  }, [decrypted])
 
   const onParticipantsChange = (_participants: string[]) => {
     if (!isProAccount(currentAccount!) && _participants.length > 1) {
@@ -99,15 +122,10 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
       participants.length == 0 && setParticipants([_participants[0]])
       return
     }
-
     setParticipants(_participants)
   }
 
-  useEffect(() => {
-    clearInfo()
-  }, [isOpen])
-
-  const schedule = async () => {
+  const onUpdateMeetingClick = async () => {
     if (!useHuddle && !meetingUrl) {
       toast({
         title: 'Missing information',
@@ -157,38 +175,30 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
     )
     const end = addMinutes(new Date(start), duration)
 
+    decrypted.content = content
+    decrypted.meeting_url = meetingUrl
+
     try {
-      const meeting = await scheduleMeeting(
-        SchedulingType.REGULAR,
+      const meeting = await updateMeeting(
         currentAccount!.address,
-        [
-          ...Array.from(new Set(participants.map(p => p.toLowerCase()))).filter(
-            p => p !== currentAccount!.address.toLowerCase()
-          ),
-        ],
         'no_type',
         start,
         end,
-        currentAccount!.address,
-        '',
-        getAccountDisplayName(currentAccount!),
-        '',
-        content,
-        meetingUrl
+        decrypted,
+        getSignature(currentAccount!.address) || '',
+        participants
       )
-      logEvent('Scheduled a meeting', {
+      logEvent('Updated a meeting', {
         fromDashboard: true,
-        participantsSize: meeting.participants.length,
+        participantsSize: participants.length,
       })
-      clearInfo()
       onClose({
         id: meeting.id,
-        created_at: new Date(meeting.created_at),
+        created_at: new Date(meeting.created_at!),
         account_address: currentAccount!.address,
         meeting_info_file_path: meeting.meeting_info_file_path,
         start: new Date(meeting.start),
         end: new Date(meeting.end),
-        source: TimeSlotSource.MWW,
         version: meeting.version,
       })
       return true
@@ -204,17 +214,8 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         })
       } else if (e instanceof TimeNotAvailableError) {
         toast({
-          title: 'Failed to schedule meeting',
+          title: 'Failed to update meeting',
           description: 'The selected time is not available anymore',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof GateConditionNotValidError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description: e.message,
           status: 'error',
           duration: 5000,
           position: 'top',
@@ -222,9 +223,19 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         })
       } else if (e instanceof MeetingCreationError) {
         toast({
-          title: 'Failed to schedule meeting',
+          title: 'Failed to update meeting',
           description:
             'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingChangeConflictError) {
+        toast({
+          title: 'Failed to update meeting',
+          description:
+            'Someone else has updated this meeting. Please reload and try again.',
           status: 'error',
           duration: 5000,
           position: 'top',
@@ -233,7 +244,6 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
       } else throw e
     }
     setIsScheduling(false)
-    return false
   }
 
   return (
@@ -247,7 +257,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
       <ModalOverlay />
       <ModalContent maxW="45rem">
         <ModalHeader>
-          <Heading size={'md'}>Schedule a new meeting</Heading>
+          <Heading size={'md'}>Edit your meeting details</Heading>
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
@@ -299,6 +309,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
             <Textarea
               id="info"
               type="text"
+              lineHeight={1}
               value={content}
               onChange={e => setContent(e.target.value)}
               placeholder="Any information you want to share prior to the meeting?"
@@ -345,11 +356,11 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         </ModalBody>
         <ModalFooter>
           <Button
-            onClick={schedule}
+            onClick={onUpdateMeetingClick}
             colorScheme={'orange'}
             isLoading={isScheduling}
           >
-            Schedule
+            Save
           </Button>
         </ModalFooter>
       </ModalContent>

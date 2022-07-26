@@ -8,19 +8,17 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     initDB()
 
     if (!req.query.id) {
-      return res.status(404).send('Not found')
+      return res.status(404).end('Id parameter required')
     }
 
     try {
       const meeting = await getMeetingFromDB(req.query.id as string)
-
-      res.status(200).json(meeting)
-      return
+      return res.status(200).json(meeting)
     } catch (err) {
-      res.status(404).send('Not found')
-      return
+      console.error('err', err)
+      return res.status(404).end('Not found')
     }
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).end('Not found')
 })
