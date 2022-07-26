@@ -117,7 +117,8 @@ export default class GoogleCalendarService implements CalendarService {
           }))
 
         const payload: calendar_v3.Schema$Event = {
-          id: slot_id, // required to edit events later
+          // yes, google event ids allows only letters and numbers
+          id: slot_id.replaceAll('-', ''), // required to edit events later
           summary: CalendarServiceHelper.getMeetingTitle(
             calendarOwnerAccountAddress,
             participantsInfo
@@ -217,7 +218,7 @@ export default class GoogleCalendarService implements CalendarService {
         }))
 
       const payload: calendar_v3.Schema$Event = {
-        id: slot_id, // required to edit events later
+        id: slot_id.replaceAll('-', ''), // required to edit events later
         summary: CalendarServiceHelper.getMeetingTitle(
           calendarOwnerAccountAddress,
           participantsInfo
@@ -311,7 +312,7 @@ export default class GoogleCalendarService implements CalendarService {
         {
           auth: myGoogleAuth,
           calendarId: 'primary',
-          eventId: slot_id,
+          eventId: slot_id.replaceAll('-', ''),
           sendNotifications: true,
           sendUpdates: 'all',
         },
