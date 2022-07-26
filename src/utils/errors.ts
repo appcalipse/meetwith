@@ -63,3 +63,10 @@ export class ApiFetchError extends Error {
     this.status = status
   }
 }
+
+export class GateConditionNotValidError extends Error {
+  constructor() {
+    super(`You do not meet the necessary token conditions to do this action.`)
+    this.name = 'GateConditionNotValidError'
+  }
+}
