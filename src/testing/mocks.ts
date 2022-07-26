@@ -1,13 +1,12 @@
 import { BigNumber } from 'ethers'
 
 import { SupportedChain } from '@/types/chains'
+import { ConditionRelation } from '@/types/common'
 import {
-  ConditionRelation,
   GateCondition,
   GateInterface,
   TokenGateElement,
 } from '@/types/TokenGating'
-
 export const DAI_ELEMENT: TokenGateElement = {
   itemName: 'Dai Stablecoin',
   itemId: '0xcb7f6c752e00da963038f1bae79aafbca8473a36',

@@ -26,7 +26,7 @@ import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '../../../providers/AccountProvider'
-import { DBSlot, SchedulingType } from '../../../types/Meeting'
+import { DBSlot, SchedulingType, TimeSlotSource } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import { scheduleMeeting } from '../../../utils/calendar_manager'
 import {
@@ -188,6 +188,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         meeting_info_file_path: meeting.meeting_info_file_path,
         start: new Date(meeting.start),
         end: new Date(meeting.end),
+        source: TimeSlotSource.MWW,
       })
       return true
     } catch (e) {

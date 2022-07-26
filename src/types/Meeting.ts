@@ -1,5 +1,7 @@
+import { Interval } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 
+import { ConditionRelation } from '@/types/common'
 export enum ParticipationStatus {
   Pending = 'pending',
   Accepted = 'accepted',
@@ -38,15 +40,22 @@ export interface CreationRequestParticipantMapping {
   guest_email?: string
 }
 
-export interface TimeSlot {
-  start: Date
-  end: Date
+export enum TimeSlotSource {
+  MWW = 'mww',
+  GOOGLE = 'Google',
+  ICLOUD = 'iCloud',
+  OFFICE = 'Office 365',
+  WEBDAV = 'Webdav',
+}
+
+export interface TimeSlot extends Interval {
+  source: string
+  account_address: string
 }
 
 export interface DBSlot extends TimeSlot {
   id?: string
   created_at?: Date
-  account_address: string
   meeting_info_file_path: string
 }
 
@@ -88,4 +97,26 @@ export interface MeetingDecrypted {
   meeting_url: string
   meeting_info_file_path: string
   content?: string
+}
+
+export enum GroupMeetingType {
+  TEAM = 'team',
+  CUSTOM = 'custom',
+}
+
+export interface GroupMeetingParticipantsStructure {
+  relationship: ConditionRelation
+  type: GroupMeetingType
+  team_id?: string
+  participants_accounts?: string[]
+}
+
+export interface GroupMeetingRequest {
+  owner: string
+  id: string
+  duration_in_minutes: number
+  range_start: Date
+  range_end?: Date
+  title?: string
+  team_structure: GroupMeetingParticipantsStructure
 }

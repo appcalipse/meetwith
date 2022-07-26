@@ -18,19 +18,19 @@ import {
 import router from 'next/router'
 import { FaBell } from 'react-icons/fa'
 
+import { MeetingDecrypted, ParticipantInfo } from '@/types/Meeting'
 import { dateToHumanReadable } from '@/utils/calendar_manager'
+import { getMeetingsScheduled } from '@/utils/storage'
+import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { Account } from '../../types/Account'
-import { MeetingDecrypted } from '../../types/Meeting'
-import { getMeetingsScheduled } from '../../utils/storage'
-import { getAccountDisplayName } from '../../utils/user_manager'
 import MWWButton from '../MWWButton'
 
 interface IProps {
   isOpen: boolean
   onClose: () => void
-  targetAccount: Account
-  schedulerAccount: Account
+  participants: ParticipantInfo[]
+  schedulerAccount?: Account
   accountNotificationSubs: number
   meeting?: MeetingDecrypted
 }
@@ -38,7 +38,7 @@ interface IProps {
 const MeetingScheduledDialog: React.FC<IProps> = ({
   isOpen,
   onClose,
-  targetAccount,
+  participants,
   schedulerAccount,
   accountNotificationSubs,
   meeting,
@@ -48,6 +48,11 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
     'gray.700',
     'gray.500'
   )
+
+  const participantsToDisplay = participants.filter(
+    participant => participant.account_address !== schedulerAccount?.address
+  )
+
   const accountMeetingsScheduled = schedulerAccount
     ? getMeetingsScheduled(schedulerAccount.address)
     : 0
@@ -75,8 +80,9 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 <Text
                   textAlign="center"
                   mt={12}
-                >{`Your meeting with ${getAccountDisplayName(
-                  targetAccount
+                >{`Your meeting with ${getAllParticipantsDisplayName(
+                  participantsToDisplay,
+                  schedulerAccount?.address
                 )} at ${dateToHumanReadable(
                   meeting!.start,
                   Intl.DateTimeFormat().resolvedOptions().timeZone,
