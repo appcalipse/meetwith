@@ -493,7 +493,7 @@ const deleteMeetingFromDB = async (owner: string, slotIds: string[]) => {
 
   // Doing ntifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
-    method: 'PATCH',
+    method: 'DELETE',
     body: JSON.stringify({
       owner,
       slotIds,
@@ -635,7 +635,6 @@ const saveMeeting = async (
         account_address: account.address,
         meeting_info_file_path: path,
         version: 0,
-        source: TimeSlotSource.MWW,
       }
 
       slots.push(dbSlot)
