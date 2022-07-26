@@ -1,4 +1,5 @@
 import { BigNumber } from 'ethers'
+import { formatUnits } from 'ethers/lib/utils'
 
 import {
   ConditionRelation,
@@ -76,16 +77,16 @@ export const toHumanReadable = (gateCondition: GateCondition): string => {
   if (gateCondition.elements.length > 0) {
     for (let i = 0; i < gateCondition.elements.length; i++) {
       const element = gateCondition.elements[i]
+      element.minimumBalance = BigNumber.from(element.minimumBalance)
       if (element.minimumBalance && !element.minimumBalance.isZero()) {
-        let amount = element.minimumBalance
-        if (element.decimals) {
-          amount = amount.div(
-            BigNumber.from((10 ** element.decimals).toString())
-          )
-        }
-        text += `${amount.toNumber()} of `
+        text += `${formatUnits(
+          element.minimumBalance,
+          element.decimals || 0
+        )} of `
       }
-      text += `${element.itemName} (${element.itemSymbol})`
+      text += `${element.itemName}`
+      element.itemSymbol && (text += ` (${element.itemSymbol})`)
+
       if (gateCondition.elements.length !== i + 1) {
         if (gateCondition.relation === ConditionRelation.AND) {
           text += ' and '

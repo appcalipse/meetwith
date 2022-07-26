@@ -13,7 +13,6 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { BigNumber } from 'ethers'
-import { stringify } from 'querystring'
 import { useState } from 'react'
 
 import {
@@ -112,7 +111,7 @@ export const AddGateObjectDialog: React.FC<
     } else {
       const result = await saveGateCondition(props.selectedGate!)
       if (result) {
-        props.onGateSave(props.selectedGate!)
+        props.onGateSave(result)
         close()
       } else {
         toast({
@@ -135,7 +134,7 @@ export const AddGateObjectDialog: React.FC<
   return (
     <Modal
       blockScrollOnMount={false}
-      isOpen={props.selectedGate !== undefined}
+      isOpen={props.selectedGate !== undefined || props.selectedGate === 'new'}
       onClose={close}
     >
       <ModalOverlay />
@@ -160,12 +159,12 @@ export const AddGateObjectDialog: React.FC<
             </FormControl>
 
             <TokenGateComponent
-              updateTokenGate={gateObject =>
+              updateTokenGate={gateObject => {
                 updateInfo({
                   ...props.selectedGate!,
                   definition: { ...gateObject },
                 })
-              }
+              }}
               tokenGate={props.selectedGate!.definition}
             />
           </ModalBody>
