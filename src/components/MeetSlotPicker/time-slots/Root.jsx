@@ -35,7 +35,12 @@ function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
         </VStack>
       ) : (
         <VStack alignItems="center">
-          <Image src="/assets/no_meetings.svg" w="200px" pb={4} />
+          <Image
+            src="/assets/no_meetings.svg"
+            w="200px"
+            pb={4}
+            alt="No slots available"
+          />
           <Text>No slots available for this day</Text>
         </VStack>
       )}
