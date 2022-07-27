@@ -32,12 +32,12 @@ import {
 } from '@/utils/api_helper'
 import { GateInUseError } from '@/utils/errors'
 import { isProAccount } from '@/utils/subscription_manager'
-import { toHumanReadable } from '@/utils/token.gate.service'
 
 import {
   AddGateObjectDialog,
   getDefaultConditionClone,
 } from './AddGateObjectDialog'
+import HumanReadableGate from './HumanReadableGate'
 
 export const TokenGateConfig = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -189,7 +189,7 @@ const GateConditionCard = (props: {
           <Text>
             <b>{props.element.title}</b>
           </Text>
-          <Text>{toHumanReadable(props.element.definition)}</Text>
+          <HumanReadableGate gateCondition={props.element.definition} />
         </VStack>
         <HStack ml={8}>
           <IconButton

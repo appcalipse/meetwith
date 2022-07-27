@@ -490,7 +490,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   ))}
                 </Select>
               )}
-              {CalendarType.REGULAR && selectedType.scheduleGate ? (
+              {CalendarType.REGULAR === calendarType &&
+              selectedType.scheduleGate ? (
                 <TokenGateValidation
                   gate={selectedType.scheduleGate}
                   targetAccount={account!}
