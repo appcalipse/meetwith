@@ -1,3 +1,4 @@
+import { HStack, Image, Text } from '@chakra-ui/react'
 import { BigNumber } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
 
@@ -67,31 +68,4 @@ export const safeConvertConditionFromAPI = (
     condition = safeConvertConditionFromAPI(condition)
   }
   return object
-}
-
-export const toHumanReadable = (gateCondition: GateCondition): string => {
-  let text = 'User must hold '
-  if (gateCondition.elements.length > 0) {
-    for (let i = 0; i < gateCondition.elements.length; i++) {
-      const element = gateCondition.elements[i]
-      element.minimumBalance = BigNumber.from(element.minimumBalance)
-      if (element.minimumBalance && !element.minimumBalance.isZero()) {
-        text += `${formatUnits(
-          element.minimumBalance,
-          element.decimals || 0
-        )} of `
-      }
-      text += `${element.itemName}`
-      element.itemSymbol && (text += ` (${element.itemSymbol})`)
-
-      if (gateCondition.elements.length !== i + 1) {
-        if (gateCondition.relation === ConditionRelation.AND) {
-          text += ' and '
-        } else {
-          text += ' or '
-        }
-      }
-    }
-  }
-  return text
 }
