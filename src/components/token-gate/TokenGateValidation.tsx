@@ -1,9 +1,12 @@
 import { Box, Text } from '@chakra-ui/react'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 import { Account } from '@/types/Account'
+import { GateCondition } from '@/types/TokenGating'
 import { getGateCondition } from '@/utils/api_helper'
-import { isConditionValid, toHumanReadable } from '@/utils/token.gate.service'
+import { isConditionValid } from '@/utils/token.gate.service'
+
+import HumanReadableGate from './HumanReadableGate'
 
 interface TokenGateValidationProps {
   gate: string
@@ -13,14 +16,14 @@ interface TokenGateValidationProps {
   isGateValid: boolean
 }
 const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
-  const [gateDescription, setGateDescription] = useState<string>('')
+  const [chosenGate, setChosenGate] = useState<GateCondition | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
 
   const handleGateValidation = async (gateId: string) => {
     setLoading(true)
     const chosenGate = await getGateCondition(gateId)
-    const displayGate = toHumanReadable(chosenGate!.definition!)
-    setGateDescription(displayGate)
+
+    setChosenGate(chosenGate!.definition)
     if (props.userAccount) {
       const isValid = await isConditionValid(
         chosenGate!.definition!,
@@ -39,7 +42,7 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
 
   return (
     <Box textAlign="center" mt={10}>
-      <Text>{gateDescription}</Text>
+      {!loading && <HumanReadableGate gateCondition={chosenGate!} center />}
       {!loading && props.isGateValid && (
         <Text color="green.500">Your wallet has the necessary tokens</Text>
       )}
