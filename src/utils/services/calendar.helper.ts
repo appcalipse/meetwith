@@ -19,7 +19,7 @@ export const CalendarServiceHelper = {
     return `${
       meetingDescription ? meetingDescription + '\n' : ''
     }Your meeting will happen at ${
-      meeting_url ? meeting_url : 'Meet With Wallet'
+      meeting_url ? meeting_url : 'Meet with Wallet'
     }`
   },
 }

@@ -40,7 +40,7 @@ import {
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
 } from './api_helper'
-import { appUrl } from './constants'
+import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { decryptContent } from './cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors'
 import { getSlugFromText } from './generic_utils'
@@ -181,7 +181,7 @@ const scheduleMeeting = async (
         ),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         name: participant.name || '',
-        guest_email: participant.account_address ? '' : participant.guest_email,
+        guest_email: participant.guest_email,
         status: participant.status,
       }
       participantsMappings.push(participantMapping)
@@ -269,36 +269,39 @@ const generateIcs = (
     organizer: {
       // required by some services
       name: 'Meet with Wallet',
-      email: 'contact@meetwithwallet.xyz',
+      email: NO_REPLY_EMAIL,
     },
-    //        status: 'CONFIRMED',
-    // attendees: [
-    //   { name: 'Adam Gibbons', email: 'adam@example.com', rsvp: true, partstat: 'ACCEPTED', role: 'REQ-PARTICIPANT' },
-    //   { name: 'Brittany Seaton', email: 'brittany@example2.org', dir: 'https://linkedin.com/in/brittanyseaton', role: 'OPT-PARTICIPANT' }
-    // ]
+    status: 'CONFIRMED',
   }
+  event.attendees = []
 
-  const guests = meeting.participants.filter(
-    participant => participant.guest_email
-  )
-
-  if (guests.length > 0) {
-    event.attendees = []
-    for (const guest of guests) {
-      event.attendees.push({
-        name: guest.name,
-        email: guest.guest_email,
-        rsvp: guest.status === ParticipationStatus.Accepted,
-        partstat:
-          guest.status === ParticipationStatus.Accepted
-            ? 'ACCEPTED'
-            : 'NEEDS-ACTION',
-        role: 'REQ-PARTICIPANT',
-      })
-    }
+  for (const participant of meeting.participants) {
+    event.attendees.push({
+      name: participant.name || participant.account_address,
+      email:
+        participant.guest_email ||
+        noNoReplyEmailForAccount(participant.account_address!),
+      dir:
+        participant.account_address &&
+        getCalendarRegularUrl(participant.account_address!),
+      rsvp: participant.status === ParticipationStatus.Accepted,
+      partstat: participantStatusToICSStatus(participant.status),
+      role: 'REQ-PARTICIPANT',
+    })
   }
 
   return createEvent(event)
+}
+
+const participantStatusToICSStatus = (status: ParticipationStatus) => {
+  switch (status) {
+    case ParticipationStatus.Accepted:
+      return 'ACCEPTED'
+    case ParticipationStatus.Rejected:
+      return 'DECLINED'
+    default:
+      return 'NEEDS-ACTION'
+  }
 }
 
 const decryptMeeting = async (
@@ -480,12 +483,11 @@ const getAccountCalendarUrl = (
   account: Account,
   ellipsize?: boolean
 ): string => {
-  if (isProAccount(account)) {
-    return `${appUrl}/${
-      account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0].domain
-    }`
-  }
   return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+}
+
+const getCalendarRegularUrl = (account_address: string) => {
+  return `${appUrl}/address/${account_address}`
 }
 
 const generateDefaultMeetingType = (): MeetingType => {
@@ -514,6 +516,10 @@ const generateAllSlots = () => {
   return allSlots
 }
 
+const noNoReplyEmailForAccount = (account_address: string): string => {
+  return `no_reply_${account_address}@meetwithwallet.xyz`
+}
+
 const allSlots = generateAllSlots()
 
 export {
@@ -529,5 +535,6 @@ export {
   getAccountDomainUrl,
   isSlotAvailable,
   isTimeInsideAvailabilities,
+  noNoReplyEmailForAccount,
   scheduleMeeting,
 }
