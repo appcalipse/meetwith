@@ -197,17 +197,19 @@ export default class Office365CalendarService implements CalendarService {
       attendees: [],
     }
 
-    const guest = details.participants_mapping.find(
+    const guests = details.participants_mapping.filter(
       participant => participant.guest_email
     )
 
-    if (guest) {
-      ;(payload.attendees as any).push({
-        emailAddress: {
-          name: guest.name,
-          address: guest.guest_email,
-        },
-      })
+    if (guests) {
+      for (const guest of guests) {
+        ;(payload.attendees as any).push({
+          emailAddress: {
+            name: guest.name,
+            address: guest.guest_email,
+          },
+        })
+      }
     }
 
     return payload
