@@ -50,6 +50,12 @@ import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress } from './user_manager'
 
+export interface GuestParticipant {
+  name: string
+  email: string
+  scheduler: boolean
+}
+
 const scheduleMeeting = async (
   schedulingType: SchedulingType,
   target_account_address: string,
@@ -58,7 +64,7 @@ const scheduleMeeting = async (
   startTime: Date,
   endTime: Date,
   source_account_address?: string,
-  guest_email?: string,
+  guests?: GuestParticipant[],
   sourceName?: string,
   targetName?: string,
   meetingContent?: string,
@@ -66,7 +72,8 @@ const scheduleMeeting = async (
 ): Promise<MeetingDecrypted> => {
   if (
     source_account_address === target_account_address &&
-    extra_participants.length == 0
+    extra_participants.length == 0 &&
+    guests?.length == 0
   ) {
     throw new MeetingWithYourselfError()
   }
@@ -110,7 +117,7 @@ const scheduleMeeting = async (
             : account.address == target_account_address
             ? targetName
             : '',
-        guest_email: account.address ? '' : guest_email,
+        guest_email: '',
       }
       participants.push(participant)
     }
@@ -133,16 +140,22 @@ const scheduleMeeting = async (
       participants.push(participant)
     }
 
-    if (schedulingType === SchedulingType.GUEST) {
-      const participant: ParticipantInfo = {
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Accepted,
-        guest_email,
-        name: sourceName,
-        slot_id: uuidv4(),
-      }
+    if (guests) {
+      for (const guest of guests) {
+        const participant: ParticipantInfo = {
+          type: !!guest.scheduler
+            ? ParticipantType.Scheduler
+            : ParticipantType.Invitee,
+          status: !!guest.scheduler
+            ? ParticipationStatus.Accepted
+            : ParticipationStatus.Pending,
+          guest_email: guest.email,
+          name: guest.name,
+          slot_id: uuidv4(),
+        }
 
-      participants.push(participant)
+        participants.push(participant)
+      }
     }
 
     const privateInfo: IPFSMeetingInfo = {
@@ -265,20 +278,24 @@ const generateIcs = (
     // ]
   }
 
-  const guest = meeting.participants.find(
+  const guests = meeting.participants.filter(
     participant => participant.guest_email
   )
 
-  if (guest) {
-    event.attendees = [
-      {
+  if (guests.length > 0) {
+    event.attendees = []
+    for (const guest of guests) {
+      event.attendees.push({
         name: guest.name,
         email: guest.guest_email,
-        rsvp: true,
-        partstat: 'ACCEPTED',
+        rsvp: guest.status === ParticipationStatus.Accepted,
+        partstat:
+          guest.status === ParticipationStatus.Accepted
+            ? 'ACCEPTED'
+            : 'NEEDS-ACTION',
         role: 'REQ-PARTICIPANT',
-      },
-    ]
+      })
+    }
   }
 
   return createEvent(event)

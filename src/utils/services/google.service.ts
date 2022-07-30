@@ -6,6 +6,7 @@ import { NewCalendarEventType } from '@/types/CalendarConnections'
 import {
   MeetingCreationRequest,
   ParticipantInfo,
+  ParticipationStatus,
   TimeSlotSource,
 } from '@/types/Meeting'
 
@@ -147,16 +148,21 @@ export default class GoogleCalendarService implements CalendarService {
           payload['location'] = details.meeting_url
         }
 
-        const guest = details.participants_mapping.find(
+        const guests = details.participants_mapping.filter(
           participant => participant.guest_email
         )
 
-        if (guest) {
-          payload.attendees!.push({
-            email: guest.guest_email,
-            displayName: guest.name,
-            responseStatus: 'accepted',
-          })
+        if (guests) {
+          for (const guest of guests) {
+            payload.attendees!.push({
+              email: guest.guest_email,
+              displayName: guest.name,
+              responseStatus:
+                guest.status === ParticipationStatus.Accepted
+                  ? 'accepted'
+                  : 'needsAction',
+            })
+          }
         }
 
         const calendar = google.calendar({

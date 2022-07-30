@@ -25,6 +25,8 @@ import { zonedTimeToUtc } from 'date-fns-tz'
 import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 
+import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
+
 import { AccountContext } from '../../../providers/AccountProvider'
 import { DBSlot, SchedulingType, TimeSlotSource } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
@@ -144,6 +146,34 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
       return
     }
 
+    const evmAddressParticipants = participants.filter(participant =>
+      isValidEVMAddress(participant)
+    )
+
+    const guestEmails = participants.filter(participant =>
+      isValidEmail(participant)
+    )
+
+    const invalidParticipants = participants.filter(
+      participant =>
+        !evmAddressParticipants.includes(participant) &&
+        !guestEmails.includes(participant)
+    )
+
+    if (invalidParticipants.length > 0) {
+      toast({
+        title: 'Invalid invitees',
+        description: `Can\'t invite ${invalidParticipants.join(
+          ', '
+        )}. Please check the addresses/emails`,
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+
     setIsScheduling(true)
 
     const _start = new Date(selectedDate)
@@ -162,15 +192,17 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         SchedulingType.REGULAR,
         currentAccount!.address,
         [
-          ...Array.from(new Set(participants.map(p => p.toLowerCase()))).filter(
-            p => p !== currentAccount!.address.toLowerCase()
-          ),
+          ...Array.from(
+            new Set(evmAddressParticipants.map(p => p.toLowerCase()))
+          ).filter(p => p !== currentAccount!.address.toLowerCase()),
         ],
         'no_type',
         start,
         end,
         currentAccount!.address,
-        '',
+        guestEmails.map(participant => {
+          return { name: '', email: participant, scheduler: false }
+        }),
         getAccountDisplayName(currentAccount!),
         '',
         content,
@@ -254,7 +286,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
             <FormLabel htmlFor="participants">Participants</FormLabel>
             <ChipInput
               currentItems={participants}
-              placeholder="Insert wallet addresses"
+              placeholder="Insert wallet addresses or email (for guests)"
               onChange={onParticipantsChange}
               renderItem={item => {
                 return getAddressDisplayForInput(item)

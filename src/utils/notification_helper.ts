@@ -7,7 +7,6 @@ import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
-  SchedulingType,
 } from '../types/Meeting'
 import { dateToHumanReadable } from './calendar_manager'
 import {
@@ -61,18 +60,15 @@ export const notifyForNewMeeting = async (
   for (let i = 0; i < participantsInfo.length; i++) {
     const participant = participantsInfo[i]
 
-    if (
-      meeting_ics.meeting.type === SchedulingType.GUEST &&
-      participant.guest_email
-    ) {
+    if (participant.guest_email) {
       await newMeetingEmail(
         participant.guest_email!,
+        participant.type,
         participantsInfo,
         participant.timezone,
         new Date(meeting_ics.meeting.start),
         new Date(meeting_ics.meeting.end),
         meeting_ics.db_slot.meeting_info_file_path,
-        true,
         undefined,
         meeting_ics.meeting.meeting_url,
         meeting_ics.db_slot.id,
@@ -98,12 +94,12 @@ export const notifyForNewMeeting = async (
             case NotificationChannel.EMAIL:
               await newMeetingEmail(
                 notification_type.destination,
+                participant.type,
                 participantsInfo,
                 participant.timezone,
                 new Date(meeting_ics.meeting.start),
                 new Date(meeting_ics.meeting.end),
                 meeting_ics.db_slot.meeting_info_file_path,
-                false,
                 participant.account_address,
                 meeting_ics.meeting.meeting_url,
                 participant.slot_id,

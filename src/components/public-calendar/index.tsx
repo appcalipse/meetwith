@@ -41,6 +41,7 @@ import {
 import {
   durationToHumanReadable,
   getAccountDomainUrl,
+  GuestParticipant,
   isSlotAvailable,
   scheduleMeeting,
 } from '../../utils/calendar_manager'
@@ -213,6 +214,11 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         ? []
         : teamMeetingRequest!.team_structure.participants_accounts!
 
+    const guests: GuestParticipant[] = []
+    if (scheduleType === SchedulingType.GUEST) {
+      guests.push({ email: guestEmail!, name: name!, scheduler: true })
+    }
+
     try {
       const meeting = await scheduleMeeting(
         scheduleType,
@@ -222,7 +228,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         start,
         end,
         currentAccount?.address,
-        guestEmail,
+        guests,
         name,
         targetName,
         content,
