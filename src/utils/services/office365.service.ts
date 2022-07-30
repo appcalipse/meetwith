@@ -248,7 +248,7 @@ export default class Office365CalendarService implements CalendarService {
         joinUrl: details.meeting_url,
       },
       attendees: [],
-      transactionId: slot_id, // avoind duplicating the event if we make more than one request with the same transactionId
+      transactionId: slot_id, // avoid duplicating the event if we make more than one request with the same transactionId
       id: includeId ? slot_id : undefined, //required for editing the event in the future
     }
 
@@ -277,7 +277,7 @@ export default class Office365CalendarService implements CalendarService {
 
     const filter = `?startdatetime=${encodeURIComponent(
       dateFromParsed.toISOString()
-    )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}`
+    )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}&$top=100`
 
     try {
       const accessToken = await this.auth.getToken()
@@ -296,7 +296,8 @@ export default class Office365CalendarService implements CalendarService {
       const calendarId = calIdJson.value.find(
         (cal: any) => cal.isDefaultCalendar
       ).id
-      // TODO: consider pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
+      // TODO: consider proper pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
+      // not only the first 100 events
       const eventsResponse = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/calendarView${filter}`,
         {
