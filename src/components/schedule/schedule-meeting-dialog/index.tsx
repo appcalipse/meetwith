@@ -163,7 +163,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
     if (invalidParticipants.length > 0) {
       toast({
         title: 'Invalid invitees',
-        description: `Can\'t invite ${invalidParticipants.join(
+        description: `Can't invite ${invalidParticipants.join(
           ', '
         )}. Please check the addresses/emails`,
         status: 'error',

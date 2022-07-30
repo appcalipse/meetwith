@@ -607,7 +607,7 @@ const saveMeeting = async (
     meeting,
   }
 
-  // Doing ntifications and syncs asyncrounously
+  // Doing notifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'POST',
     body: JSON.stringify(meetingICS),

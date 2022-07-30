@@ -45,11 +45,9 @@ export const newMeetingEmail = async (
     `${path.resolve(
       'src',
       'emails',
-      `${
-        participantType === ParticipantType.Scheduler
-          ? 'new_meeting_scheduler'
-          : 'new_meeting'
-      }`
+      participantType === ParticipantType.Scheduler
+        ? 'new_meeting_scheduler'
+        : 'new_meeting'
     )}`,
     locals
   )
