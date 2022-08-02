@@ -4,7 +4,7 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
-import { ParticipantInfo } from '../types/Meeting'
+import { ParticipantInfo, ParticipantType } from '../types/Meeting'
 import {
   dateToHumanReadable,
   durationToHumanReadable,
@@ -18,12 +18,12 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
 
 export const newMeetingEmail = async (
   toEmail: string,
+  participantType: ParticipantType,
   participants: ParticipantInfo[],
   timezone: string,
   start: Date,
   end: Date,
   meeting_info_file_path: string,
-  forGuest: boolean,
   destinationAccountAddress?: string,
   meetingUrl?: string,
   id?: string | undefined,
@@ -45,7 +45,9 @@ export const newMeetingEmail = async (
     `${path.resolve(
       'src',
       'emails',
-      `${!forGuest ? 'new_meeting' : 'new_meeting_guest'}`
+      participantType === ParticipantType.Scheduler
+        ? 'new_meeting_scheduler'
+        : 'new_meeting'
     )}`,
     locals
   )

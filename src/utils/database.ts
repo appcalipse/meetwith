@@ -451,8 +451,9 @@ const saveMeeting = async (
   meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
   if (
-    new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
-    meeting.participants_mapping.length
+    new Set(
+      meeting.participants_mapping.map(p => p.account_address || p.guest_email)
+    ).size !== meeting.participants_mapping.length
   ) {
     //means there are duplicate participants
     throw new MeetingCreationError()
@@ -606,7 +607,7 @@ const saveMeeting = async (
     meeting,
   }
 
-  // Doing ntifications and syncs asyncrounously
+  // Doing notifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'POST',
     body: JSON.stringify(meetingICS),
