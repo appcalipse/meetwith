@@ -52,14 +52,14 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
   }
 
   const logout = async () => {
+    userContext.currentAccount &&
+      removeSignature(userContext.currentAccount!.address)
     removeCookie(SESSION_COOKIE_NAME, {
       path: '/',
       secure:
         process.env.NEXT_PUBLIC_ENV === 'production' ||
         process.env.NEXT_PUBLIC_ENV === 'development',
     })
-    userContext.currentAccount &&
-      removeSignature(userContext.currentAccount!.address)
     setUserContext(() => ({
       ...userContext,
       currentAccount: null,

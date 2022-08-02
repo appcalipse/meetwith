@@ -315,8 +315,18 @@ const getContentFromEncrypted = async (
   signature: string,
   encrypted: Encrypted
 ): Promise<string> => {
-  const pvtKey = decryptContent(signature, account.encoded_signature)
-  return await decryptWithPrivateKey(pvtKey, encrypted)
+  try {
+    const pvtKey = decryptContent(signature, account.encoded_signature)
+    return await decryptWithPrivateKey(pvtKey, encrypted)
+  } catch (error) {
+    ;(window as any).location = '/logout'
+    await new Promise<void>(resolve =>
+      setTimeout(() => {
+        resolve()
+      }, 5000)
+    ) //wait redirect
+    return ''
+  }
 }
 
 const isSlotAvailable = (
