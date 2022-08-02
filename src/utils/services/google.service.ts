@@ -6,10 +6,12 @@ import { NewCalendarEventType } from '@/types/CalendarConnections'
 import {
   MeetingCreationRequest,
   ParticipantInfo,
+  ParticipationStatus,
   TimeSlotSource,
 } from '@/types/Meeting'
 
-import { apiUrl } from '../constants'
+import { noNoReplyEmailForAccount } from '../calendar_manager'
+import { apiUrl, NO_REPLY_EMAIL } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './common.types'
@@ -139,23 +141,37 @@ export default class GoogleCalendarService implements CalendarService {
             overrides: [{ method: 'email', minutes: 10 }],
           },
           creator: {
-            displayName: 'Meet With Wallet',
+            displayName: 'Meet with Wallet',
+            email: NO_REPLY_EMAIL,
           },
+          guestsCanModify: false,
+          conferenceData: {
+            entryPoints: [
+              {
+                entryPointType: 'video',
+                uri: details.meeting_url,
+              },
+            ],
+          },
+          status: 'confirmed',
         }
 
         if (details.meeting_url) {
           payload['location'] = details.meeting_url
         }
 
-        const guest = details.participants_mapping.find(
-          participant => participant.guest_email
-        )
-
-        if (guest) {
+        for (const participant of details.participants_mapping) {
           payload.attendees!.push({
-            email: guest.guest_email,
-            displayName: guest.name,
-            responseStatus: 'accepted',
+            email:
+              participant.guest_email ||
+              noNoReplyEmailForAccount(participant.account_address!),
+            displayName: participant.name || participant.account_address,
+            responseStatus:
+              participant.status === ParticipationStatus.Accepted
+                ? 'accepted'
+                : participant.status === ParticipationStatus.Rejected
+                ? 'declined'
+                : 'needsAction',
           })
         }
 
