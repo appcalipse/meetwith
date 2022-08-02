@@ -2523,6 +2523,11 @@
     "@hapi/bourne" "2.x.x"
     "@hapi/hoek" "9.x.x"
 
+"@huddle01/huddle01-iframe@^0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@huddle01/huddle01-iframe/-/huddle01-iframe-0.0.4.tgz#265c93fd3e9bfe9833fb225036171e34bae50923"
+  integrity sha512-I75EjW9q3BE7UiQSlCsJ5Cw0ceLFErGH4VBOb7wI5HB5bV3F2mYneIHy69zDSGiv4U8Tyt+Q6gcuqIXhtrwp/A==
+
 "@humanwhocodes/config-array@^0.5.0":
   version "0.5.0"
   resolved "https://registry.yarnpkg.com/@humanwhocodes/config-array/-/config-array-0.5.0.tgz#1407967d4c6eecd7388f83acf1eaf4d0c6e58ef9"
