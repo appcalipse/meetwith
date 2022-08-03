@@ -7,6 +7,8 @@ import {
   TimeSlotSource,
 } from '@/types/Meeting'
 
+import { noNoReplyEmailForAccount } from '../calendar_manager'
+import { NO_REPLY_EMAIL } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './common.types'
@@ -194,18 +196,21 @@ export default class Office365CalendarService implements CalendarService {
         conferenceId: `${new Date().getTime()}`,
         joinUrl: details.meeting_url,
       },
+      organizer: {
+        name: 'Meet with Wallet',
+        email: NO_REPLY_EMAIL,
+      },
       attendees: [],
+      allowNewTimeProposals: false,
     }
 
-    const guest = details.participants_mapping.find(
-      participant => participant.guest_email
-    )
-
-    if (guest) {
+    for (const participant of details.participants_mapping) {
       ;(payload.attendees as any).push({
         emailAddress: {
-          name: guest.name,
-          address: guest.guest_email,
+          name: participant.name || participant.account_address,
+          address:
+            participant.guest_email ||
+            noNoReplyEmailForAccount(participant.account_address!),
         },
       })
     }
