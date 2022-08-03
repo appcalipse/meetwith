@@ -17,7 +17,7 @@ export const CalendarServiceHelper = {
 
   getMeetingSummary: (meetingDescription?: string, meeting_url?: string) => {
     return `${
-      meetingDescription ? meetingDescription + '\n' : ''
+      meetingDescription ? meetingDescription + '\n\n' : ''
     }Your meeting will happen at ${
       meeting_url ? meeting_url : 'Meet with Wallet'
     }`

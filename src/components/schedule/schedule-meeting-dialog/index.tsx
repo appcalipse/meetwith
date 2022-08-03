@@ -80,7 +80,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         ? new Date().getHours()
         : addHours(new Date(), 1).getHours()) +
         ':' +
-        (minutes < 60 ? minutes : '00')
+        (minutes < 60 && minutes != 0 ? minutes : '00')
     )
     setContent('')
     setMeetingUrl('')

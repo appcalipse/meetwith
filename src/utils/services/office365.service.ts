@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/node'
 
 import { NewCalendarEventType } from '@/types/CalendarConnections'
 import {
@@ -132,7 +132,9 @@ export default class Office365CalendarService implements CalendarService {
       const accessToken = await this.auth.getToken()
 
       const calendarId = '' // TODO: required? @ramon: yes, lucklily it works cause it creates on the default one
-      const body = JSON.stringify(this.translateEvent(owner, details, slot_id))
+      const body = JSON.stringify(
+        this.translateEvent(owner, details, slot_id, meeting_creation_time)
+      )
 
       const response = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendar/${calendarId}events`,
@@ -156,7 +158,8 @@ export default class Office365CalendarService implements CalendarService {
   private translateEvent = (
     calendarOwnerAccountAddress: string,
     details: MeetingCreationRequest,
-    slot_id: string
+    slot_id: string,
+    meeting_creation_time: Date
   ) => {
     const participantsInfo: ParticipantInfo[] =
       details.participants_mapping.map(participant => ({
@@ -187,18 +190,15 @@ export default class Office365CalendarService implements CalendarService {
         dateTime: new Date(details.end).toISOString(),
         timeZone: 'UTC',
       },
+      createdDateTime: new Date(meeting_creation_time).toISOString(),
       location: {
         displayName: details.meeting_url,
       },
-      isOnlineMeeting: true,
-      onlineMeetingUrl: details.meeting_url,
-      onlineMeeting: {
-        conferenceId: `${new Date().getTime()}`,
-        joinUrl: details.meeting_url,
-      },
       organizer: {
-        name: 'Meet with Wallet',
-        email: NO_REPLY_EMAIL,
+        emailAddress: {
+          name: 'Meet with Wallet',
+          address: NO_REPLY_EMAIL,
+        },
       },
       attendees: [],
       allowNewTimeProposals: false,
