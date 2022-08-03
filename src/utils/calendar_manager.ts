@@ -17,7 +17,7 @@ import {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
-import { createEvent, EventAttributes, ReturnObject } from 'ics'
+import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '../types/Account'
@@ -276,18 +276,21 @@ const generateIcs = (
   event.attendees = []
 
   for (const participant of meeting.participants) {
-    event.attendees.push({
+    const attendee: Attendee = {
       name: participant.name || participant.account_address,
       email:
         participant.guest_email ||
         noNoReplyEmailForAccount(participant.account_address!),
-      dir:
-        participant.account_address &&
-        getCalendarRegularUrl(participant.account_address!),
       rsvp: participant.status === ParticipationStatus.Accepted,
       partstat: participantStatusToICSStatus(participant.status),
       role: 'REQ-PARTICIPANT',
-    })
+    }
+
+    if (participant.account_address) {
+      attendee.dir = getCalendarRegularUrl(participant.account_address!)
+    }
+
+    event.attendees.push(attendee)
   }
 
   return createEvent(event)
