@@ -19,19 +19,19 @@ import {
 import { Encrypted } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
 
-import { getAllParticipantsDisplayName } from '@/utils/user_manager'
-
-import { AccountContext } from '../../../providers/AccountProvider'
-import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
-import { logEvent } from '../../../utils/analytics'
-import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
+import { AccountContext } from '@/providers/AccountProvider'
+import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
+import { logEvent } from '@/utils/analytics'
+import { fetchContentFromIPFSFromBrowser } from '@/utils/api_helper'
 import {
   dateToHumanReadable,
   decryptMeeting,
   durationToHumanReadable,
   generateIcs,
-} from '../../../utils/calendar_manager'
-import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
+} from '@/utils/calendar_manager'
+import { UTM_PARAMS } from '@/utils/huddle.helper'
+import { getAllParticipantsDisplayName } from '@/utils/user_manager'
+
 import IPFSLink from '../../IPFSLink'
 
 interface MeetingCardProps {
