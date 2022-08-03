@@ -47,7 +47,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const toast = useToast()
 
   const [content, setContent] = useState('')
-  const [name, setName] = useState('')
+  const [name, setName] = useState(currentAccount?.preferences?.name || '')
   const [isScheduling, setIsScheduling] = useState(false)
   const [customMeeting, setCustomMeeting] = useState(false)
   const [scheduleType, setScheduleType] = useState(

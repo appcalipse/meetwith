@@ -8,6 +8,7 @@ import { ethers } from 'ethers'
 import Web3 from 'web3'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
+import { getLensProfile } from './lens_helper'
 
 interface AccountExtraProps {
   name: string
@@ -179,11 +180,12 @@ export const checkValidDomain = async (
     domain.endsWith('.blockchain')
   ) {
     const owner = await checkUnstoppableDomainBelongsTo(domain)
-    if (owner?.toLowerCase() === currentAccountAddress.toLowerCase()) {
-      return true
-    } else {
-      return false
-    }
+    return owner?.toLowerCase() === currentAccountAddress.toLowerCase()
+  } else if (domain.endsWith('.lens')) {
+    const lensProfile = await getLensProfile(domain)
+    return (
+      lensProfile?.ownedBy.toLowerCase() === currentAccountAddress.toLowerCase()
+    )
   }
   return true
 }
