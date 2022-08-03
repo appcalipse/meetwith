@@ -5,6 +5,7 @@ import {
   Button,
   Circle,
   FormControl,
+  FormHelperText,
   FormLabel,
   Heading,
   HStack,
@@ -12,11 +13,15 @@ import {
   ListItem,
   UnorderedList,
   useColorModeValue,
+  useToast,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
+import { Select } from 'chakra-react-select'
 import { format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
+
+import { checkValidDomain } from '@/utils/rpc_helper_front'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { SocialLinkType } from '../../types/Account'
@@ -48,6 +53,11 @@ const AccountDetails: React.FC = () => {
   const [description, setDescription] = useState(
     currentAccount?.preferences?.description || ''
   )
+
+  const [name, setName] = useState(currentAccount?.preferences?.name || '')
+  const [nameOptions, setNameOptions] = useState<
+    { label: string; value: string }[]
+  >([{ label: 'Insert custom name', value: '' }])
   const [twitter, setTwitter] = useState(
     socialLinks.filter(link => link.type === SocialLinkType.TWITTER)[0]?.url ||
       ''
@@ -71,16 +81,46 @@ const AccountDetails: React.FC = () => {
 
   useEffect(() => {
     updateAccountSubs()
+    setTimeout(() => {
+      setNameOptions([
+        ...nameOptions,
+        {
+          label: '9Tails.lens',
+          value: '9tails.lens',
+        },
+        {
+          label: '9tails.eth',
+          value: '9tails.eth',
+        },
+      ])
+    }, 2000)
   }, [])
+
+  const toast = useToast()
 
   const saveDetails = async () => {
     setLoading(true)
+
+    if (!(await checkValidDomain(name, currentAccount!.address))) {
+      setLoading(false)
+      toast({
+        title: 'You are not the owner of this name',
+        description:
+          'To use ENS, Lens, or Unstoppable domain as your name you need to be the owner of it',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
 
     try {
       const updatedAccount = await saveAccountChanges({
         ...currentAccount!,
         preferences: {
           ...currentAccount!.preferences!,
+          name,
           description,
           socialLinks: [
             { type: SocialLinkType.TWITTER, url: twitter },
@@ -119,6 +159,22 @@ const AccountDetails: React.FC = () => {
         ipfsHash={currentAccount!.preferences_path}
         title="Your account information is public and stored on IPFS. Your current IPFS link is"
       />
+
+      <FormControl pt={2}>
+        <FormLabel>Display name (optional)</FormLabel>
+        <Select
+          useBasicStyles
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder={currentAccount?.address}
+          options={nameOptions}
+        ></Select>
+
+        <FormHelperText>
+          How do you want to be displayed to others in meetings? Leave empty to
+          use you wallet address
+        </FormHelperText>
+      </FormControl>
 
       <FormControl pt={2}>
         <FormLabel>Description (optional)</FormLabel>
