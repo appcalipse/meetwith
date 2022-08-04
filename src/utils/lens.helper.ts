@@ -1,12 +1,12 @@
 import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client'
 import { gql } from '@apollo/client'
 
-const httpLink = new HttpLink({ uri: 'https://api.lens.dev/' })
-
-const apolloClient = new ApolloClient({
-  link: httpLink,
-  cache: new InMemoryCache(),
-})
+const initAppolloClient = () => {
+  return new ApolloClient({
+    link: new HttpLink({ uri: 'https://api.lens.dev/' }),
+    cache: new InMemoryCache(),
+  })
+}
 
 const GET_PROFILE = `
   query($request: SingleProfileQueryRequest!) {
@@ -58,9 +58,11 @@ export interface LensProfile {
   }
 }
 
-export const getLensHandlesForAddress = async (address: string) => {
+const getLensHandlesForAddress = async (
+  address: string
+): Promise<LensProfile[] | undefined> => {
   try {
-    const result = await apolloClient.query({
+    const result = await initAppolloClient().query({
       query: gql(GET_PROFILES),
       variables: {
         request: {
@@ -78,11 +80,11 @@ export const getLensHandlesForAddress = async (address: string) => {
   return undefined
 }
 
-export const getLensProfile = async (
+const getLensProfile = async (
   handle: string
 ): Promise<LensProfile | undefined> => {
   try {
-    const response = await apolloClient.query({
+    const response = await initAppolloClient().query({
       query: gql(GET_PROFILE),
       variables: {
         request: { handle },
@@ -97,4 +99,9 @@ export const getLensProfile = async (
   }
 
   return undefined
+}
+
+export default {
+  getLensHandlesForAddress,
+  getLensProfile,
 }
