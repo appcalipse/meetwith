@@ -34,6 +34,18 @@ const GET_PROFILE = `
   }
 `
 
+const GET_PROFILES = `
+query($request: ProfileQueryRequest!) {
+  profiles(request: $request) {
+    items {
+      id
+      handle
+      ownedBy
+    }
+  }
+}
+`
+
 export interface LensProfile {
   handle: string
   name: string
@@ -44,6 +56,26 @@ export interface LensProfile {
       url: string
     }
   }
+}
+
+export const getLensHandlesForAddress = async (address: string) => {
+  try {
+    const result = await apolloClient.query({
+      query: gql(GET_PROFILES),
+      variables: {
+        request: {
+          ownedBy: [address],
+        },
+      },
+    })
+    if (result.data?.profiles) {
+      return result.data.profiles.items as LensProfile[]
+    }
+  } catch (e) {
+    console.error(e)
+  }
+
+  return undefined
 }
 
 export const getLensProfile = async (
