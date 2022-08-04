@@ -18,7 +18,7 @@ import {
   encryptWithPublicKey,
 } from 'eth-crypto'
 import { createEvent, EventAttributes, ReturnObject } from 'ics'
-import { v4 as uuidv4 } from 'uuid'
+import { v4 as uuidv4, v4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '../types/Account'
 import {
@@ -27,6 +27,7 @@ import {
   IPFSMeetingInfo,
   MeetingCreationRequest,
   MeetingDecrypted,
+  MeetingProvider,
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
@@ -34,6 +35,7 @@ import {
 } from '../types/Meeting'
 import { Plan } from '../types/Subscription'
 import {
+  createHuddleRoom,
   getAccount,
   getExistingAccounts,
   isSlotFreeApiCall,
@@ -44,7 +46,6 @@ import { appUrl } from './constants'
 import { decryptContent } from './cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors'
 import { getSlugFromText } from './generic_utils'
-import { generateMeetingUrl } from './huddle.helper'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
@@ -145,11 +146,22 @@ const scheduleMeeting = async (
       participants.push(participant)
     }
 
+    let videoMeeting
+    if (meetingUrl) {
+      videoMeeting = {
+        url: meetingUrl,
+        provider: MeetingProvider.CUSTOM,
+        id: v4(),
+      }
+    } else {
+      videoMeeting = await createHuddleRoom()
+    }
+
     const privateInfo: IPFSMeetingInfo = {
       created_at: new Date(),
       participants: participants,
       content: meetingContent,
-      meeting_url: meetingUrl || (await generateMeetingUrl()),
+      videoMeeting,
       change_history_paths: [],
     }
     const participantsMappings = []
@@ -180,7 +192,7 @@ const scheduleMeeting = async (
       end: endTime,
       participants_mapping: participantsMappings,
       meetingTypeId,
-      meeting_url: privateInfo['meeting_url'],
+      videoMeeting: videoMeeting,
       content: privateInfo['content'],
     }
 
@@ -203,7 +215,7 @@ const scheduleMeeting = async (
         created_at: meeting.start,
         participants: [],
         content: '',
-        meeting_url: '',
+        videoMeeting,
         start: meeting.start,
         end: meeting.end,
         meeting_info_file_path: slot.meeting_info_file_path,
@@ -242,10 +254,10 @@ const generateIcs = (
     ),
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
-      meeting.meeting_url
+      meeting.videoMeeting?.url || meeting.videoMeeting?.url
     ),
-    url: meeting.meeting_url,
-    location: meeting.meeting_url,
+    url: meeting.videoMeeting?.url,
+    location: meeting.videoMeeting?.url,
     created: [
       getYear(meeting.created_at!),
       getMonth(meeting.created_at!) + 1,
@@ -303,7 +315,7 @@ const decryptMeeting = async (
     created_at: meeting.created_at!,
     participants: meetingInfo.participants,
     content: meetingInfo.content,
-    meeting_url: meetingInfo.meeting_url,
+    videoMeeting: meetingInfo.videoMeeting,
     start: new Date(meeting.start),
     end: new Date(meeting.end),
     meeting_info_file_path: meeting.meeting_info_file_path,

@@ -18,6 +18,7 @@ import {
   DBSlotEnhanced,
   GroupMeetingRequest,
   TimeSlotSource,
+  VideoMeeting,
 } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
@@ -26,6 +27,7 @@ import {
   ApiFetchError,
   GateConditionNotValidError,
   GateInUseError,
+  Huddle01ServiceUnavailable,
   InvalidSessionError,
   MeetingCreationError,
   TimeNotAvailableError,
@@ -504,6 +506,43 @@ export const getTeamMeetingRequest = async (
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
         return null
+      }
+    }
+    throw e
+  }
+}
+
+export const createHuddleRoom = async (
+  title?: string
+): Promise<VideoMeeting> => {
+  try {
+    return (await internalFetch('/integrations/huddle/createroom', 'POST', {
+      title,
+    })) as VideoMeeting
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 503) {
+        throw new Huddle01ServiceUnavailable()
+      }
+    }
+    throw e
+  }
+}
+
+export const joinHuddleRoom = async (
+  name: string,
+  roomId: string
+): Promise<string> => {
+  try {
+    const response = await internalFetch('/integrations/huddle/join', 'POST', {
+      name,
+      roomId,
+    })
+    return (response as any).joinUrl as string
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 503) {
+        throw new Huddle01ServiceUnavailable()
       }
     }
     throw e

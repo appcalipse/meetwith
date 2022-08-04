@@ -186,11 +186,11 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             <strong>Meeting link</strong>
           </Text>
           <Link
-            href={`${info.meeting_url}${UTM_PARAMS}`}
+            href={`${info.videoMeeting.url}${UTM_PARAMS}`}
             isExternal
             onClick={() => logEvent('Clicked to start meeting')}
           >
-            {info.meeting_url}
+            {info.videoMeeting.url}
           </Link>
           <VStack alignItems="flex-start">
             <Text>

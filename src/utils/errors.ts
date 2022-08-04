@@ -70,3 +70,10 @@ export class GateConditionNotValidError extends Error {
     this.name = 'GateConditionNotValidError'
   }
 }
+
+export class Huddle01ServiceUnavailable extends Error {
+  constructor() {
+    super(`Huddle01 seems to be offline.`)
+    this.name = 'Huddle01ServiceUnavailable'
+  }
+}

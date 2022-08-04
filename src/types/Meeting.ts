@@ -26,7 +26,7 @@ export interface MeetingCreationRequest {
   start: Date
   end: Date
   content?: string
-  meeting_url: string
+  videoMeeting: VideoMeeting
 }
 
 export interface CreationRequestParticipantMapping {
@@ -83,9 +83,10 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
 export interface IPFSMeetingInfo {
   created_at: Date
   content?: string
-  meeting_url: string
   participants: ParticipantInfo[]
   change_history_paths: string[]
+  videoMeeting: VideoMeeting
+  //meeting_url?: string //deprecated
 }
 
 export interface MeetingDecrypted {
@@ -94,7 +95,7 @@ export interface MeetingDecrypted {
   start: Date
   end: Date
   participants: ParticipantInfo[]
-  meeting_url: string
+  videoMeeting: VideoMeeting
   meeting_info_file_path: string
   content?: string
 }
@@ -119,4 +120,16 @@ export interface GroupMeetingRequest {
   range_end?: Date
   title?: string
   team_structure: GroupMeetingParticipantsStructure
+}
+
+export enum MeetingProvider {
+  HUDDLE01 = 'huddle01',
+  GOOGLE_MEET = 'google_meet',
+  CUSTOM = 'custom',
+}
+export interface VideoMeeting {
+  url: string
+  id: string
+  title?: string
+  provider: MeetingProvider
 }
