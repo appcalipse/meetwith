@@ -20,7 +20,7 @@ import { format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
 
-import { getLensHandlesForAddress } from '@/utils/lens.helper'
+import lensHelper from '@/utils/lens.helper'
 import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
 
 import { AccountContext } from '../../providers/AccountProvider'
@@ -94,7 +94,9 @@ const AccountDetails: React.FC = () => {
   const getHandles = async () => {
     let handles: DisplayName[] = []
     const lensProfiles = async () => {
-      const profiles = await getLensHandlesForAddress(currentAccount!.address)
+      const profiles = await lensHelper.getLensHandlesForAddress(
+        currentAccount!.address
+      )
       if (profiles) {
         handles = handles.concat(
           profiles.map(profile => {
