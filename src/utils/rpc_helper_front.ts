@@ -8,7 +8,7 @@ import { ethers } from 'ethers'
 import Web3 from 'web3'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
-import { getLensProfile } from './lens_helper'
+import { getLensProfile } from './lens.helper'
 
 interface AccountExtraProps {
   name: string
@@ -21,7 +21,7 @@ export const resolveExtraInfo = async (
   return await resolveENS(address)
 }
 
-const resolveENS = async (
+export const resolveENS = async (
   address: string
 ): Promise<AccountExtraProps | undefined> => {
   let provider: JsonRpcProvider
