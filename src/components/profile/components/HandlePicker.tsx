@@ -13,12 +13,18 @@ import React, { useRef, useState } from 'react'
 import { FaCheck, FaChevronDown, FaMinusCircle } from 'react-icons/fa'
 import { useOnClickOutside } from 'usehooks-ts'
 
-type DomainType = 'ens' | 'lens' | 'ud' | 'mww' | 'custom'
+export enum ProfileInfoProvider {
+  ENS = 'ens',
+  LENS = 'lens',
+  UNSTOPPABLE_DOAMINS = 'ud',
+  MWW = 'mww',
+  CUSTOM = 'custom',
+}
 
 export interface DisplayName {
   label: string
   value: string
-  type: DomainType
+  type: ProfileInfoProvider
 }
 
 const HandlePicker: React.FC<{
@@ -45,12 +51,14 @@ const HandlePicker: React.FC<{
       return e.stopPropagation()
     }
 
-    if (option.type === 'custom' && inputRef.current) {
-      // ;(inputRef.current as HTMLInputElement).focus()
+    if (option.type === ProfileInfoProvider.CUSTOM && inputRef.current) {
+      ;(inputRef.current as HTMLInputElement).focus()
     }
 
     return setValue(
-      option.type !== 'custom' ? option : { ...option, label: '' }
+      option.type !== ProfileInfoProvider.CUSTOM
+        ? option
+        : { ...option, label: '' }
     )
   }
 
@@ -62,7 +70,7 @@ const HandlePicker: React.FC<{
       setValue({
         label: text,
         value: '',
-        type: 'custom',
+        type: ProfileInfoProvider.CUSTOM,
       })
     }
   }
@@ -76,7 +84,11 @@ const HandlePicker: React.FC<{
   const noUD = !options.some(option => option.type === 'ud')
 
   const _options = [
-    { label: 'Custom display name', value: '', type: 'custom' as DomainType },
+    {
+      label: 'Custom display name',
+      value: '',
+      type: ProfileInfoProvider.CUSTOM,
+    },
     ...options,
   ]
 
@@ -84,7 +96,7 @@ const HandlePicker: React.FC<{
     _options.push({
       label: 'No name found on ENS',
       value: '',
-      type: 'ens' as DomainType,
+      type: ProfileInfoProvider.ENS,
     })
   }
 
@@ -92,7 +104,7 @@ const HandlePicker: React.FC<{
     _options.push({
       label: 'No name found on Lens Protocol',
       value: '',
-      type: 'lens' as DomainType,
+      type: ProfileInfoProvider.LENS,
     })
   }
 
@@ -100,23 +112,34 @@ const HandlePicker: React.FC<{
     _options.push({
       label: 'No name found on Unstoppable Domains',
       value: '',
-      type: 'ud' as DomainType,
+      type: ProfileInfoProvider.UNSTOPPABLE_DOAMINS,
     })
   }
 
-  _options.filter(option => option.type === 'mww')
-
-  const filtered: DisplayName[] = []
+  let filtered: (DisplayName & { isSelected: boolean })[] = []
   for (const element of _options) {
     const isDuplicate = filtered
       .map(filter => filter.label)
       .includes(element.label)
 
+    const isSelected =
+      (selected?.type === ProfileInfoProvider.CUSTOM &&
+        element.type === ProfileInfoProvider.CUSTOM) ||
+      (selected?.value === element.value && element.value !== '')
+
     if (!isDuplicate) {
-      filtered.push(element)
-    } else if (element.type === 'mww') {
-      filtered.filter(filter => filter.label === element.label)
-      filtered.push(element)
+      filtered.push({ ...element, isSelected })
+    } else if (element.type !== ProfileInfoProvider.MWW) {
+      filtered = filtered.filter(filter => filter.label !== element.label)
+      filtered.push({ ...element, isSelected })
+    }
+  }
+
+  if (filtered.filter(option => option.isSelected).length > 1) {
+    for (const element of filtered) {
+      if (element.isSelected && element.type === ProfileInfoProvider.CUSTOM) {
+        element.isSelected = false
+      }
     }
   }
 
@@ -132,7 +155,7 @@ const HandlePicker: React.FC<{
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Write down your display name, or pick from the list (if available)"
+          placeholder="Write down your display name, or pick one from the list (if available)"
           value={selected?.label || ''}
           flex={1}
           onChange={e => textChange(e.target.value)}
@@ -154,13 +177,10 @@ const HandlePicker: React.FC<{
               minWidth="240px"
               overflow="auto"
             >
-              <VStack overflow="hidden" py={2}>
-                {filtered.map(({ value, label, type }, i) => {
-                  const isSelected =
-                    (selected?.type === 'custom' && type === 'custom') ||
-                    (selected?.value === value && value !== '')
-
-                  const disabled = type !== 'custom' && value === ''
+              <VStack overflow="hidden">
+                {filtered.map(({ value, label, type, isSelected }, i) => {
+                  const disabled =
+                    type !== ProfileInfoProvider.CUSTOM && value === ''
 
                   let extraText = ''
                   if (value !== '') {
@@ -185,6 +205,7 @@ const HandlePicker: React.FC<{
                     <ToggleGroupPrimitive.Item
                       style={{ width: '100%' }}
                       key={i}
+                      asChild
                       value={label}
                       aria-label={label}
                       onClick={e =>
@@ -192,9 +213,9 @@ const HandlePicker: React.FC<{
                       }
                     >
                       <Flex
+                        mt={'0 !important'}
                         flex={1}
-                        py={2}
-                        px={4}
+                        p={4}
                         alignItems="center"
                         justifyContent="start"
                         cursor={disabled ? 'default' : 'pointer'}

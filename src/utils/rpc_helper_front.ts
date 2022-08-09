@@ -156,9 +156,10 @@ export const validateChainToActOn = async (
 }
 
 export const checkValidDomain = async (
-  domain: string,
+  _domain: string,
   currentAccountAddress: string
 ): Promise<boolean> => {
+  const domain = _domain.toLowerCase()
   if (domain.endsWith('.eth')) {
     const owner = await checkENSBelongsTo(domain)
 
