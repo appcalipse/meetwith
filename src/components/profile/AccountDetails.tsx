@@ -39,7 +39,10 @@ import {
 } from '../../utils/api_helper'
 import { isProAccount } from '../../utils/subscription_manager'
 import IPFSLink from '../IPFSLink'
-import HandlePicker, { DisplayName } from './components/HandlePicker'
+import HandlePicker, {
+  DisplayName,
+  ProfileInfoProvider,
+} from './components/HandlePicker'
 import SubscriptionDialog from './SubscriptionDialog'
 
 const AccountDetails: React.FC = () => {
@@ -65,7 +68,7 @@ const AccountDetails: React.FC = () => {
       ? {
           label: currentAccount.preferences.name,
           value: currentAccount.preferences.name,
-          type: 'custom',
+          type: ProfileInfoProvider.CUSTOM,
         }
       : undefined
   )
@@ -103,7 +106,7 @@ const AccountDetails: React.FC = () => {
             return {
               label: profile.handle,
               value: profile.handle,
-              type: 'lens',
+              type: ProfileInfoProvider.LENS,
             }
           })
         )
@@ -120,7 +123,7 @@ const AccountDetails: React.FC = () => {
             return {
               label: domain,
               value: domain,
-              type: 'mww',
+              type: ProfileInfoProvider.MWW,
             }
           })
         )
@@ -138,7 +141,7 @@ const AccountDetails: React.FC = () => {
             return {
               label: profile.name,
               value: profile.name,
-              type: 'ud',
+              type: ProfileInfoProvider.UNSTOPPABLE_DOAMINS,
             }
           })
         )
@@ -151,7 +154,7 @@ const AccountDetails: React.FC = () => {
         handles.push({
           label: ens.name,
           value: ens.name,
-          type: 'ens',
+          type: ProfileInfoProvider.ENS,
         })
       }
     }

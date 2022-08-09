@@ -23,7 +23,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     })
 
     return res.send(
-      await updateAccountSubscriptions(dbSubs.filter(sub => sub.plan_id !== 0))
+      await updateAccountSubscriptions(dbSubs.filter(sub => !!sub.plan_id))
     )
   }
 
