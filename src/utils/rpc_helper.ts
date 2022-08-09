@@ -47,6 +47,38 @@ export const getBlockchainSubscriptionsForAccount = async (
   return subscriptions
 }
 
+export const getDomainInfo = async (
+  domain: string
+): Promise<BlockchainSubscription[]> => {
+  const subscriptions: BlockchainSubscription[] = []
+
+  const chainsToCheck: ChainInfo[] =
+    process.env.NEXT_PUBLIC_ENV === 'production'
+      ? getMainnetChains()
+      : getTestnetChains()
+
+  for (const chain of chainsToCheck) {
+    const provider = getProviderBackend(chain.chain)
+
+    const contract = new ethers.Contract(
+      chain.domainContractAddess,
+      MWWDomain,
+      provider!
+    )
+    try {
+      const subs = (await contract.domains(domain)) as BlockchainSubscription
+      subscriptions.push({
+        ...subs,
+        chain: chain.chain,
+      })
+    } catch (e) {
+      Sentry.captureException(e)
+    }
+  }
+
+  return subscriptions
+}
+
 export const getProviderBackend = (
   chain: SupportedChain
 ): BaseProvider | null => {

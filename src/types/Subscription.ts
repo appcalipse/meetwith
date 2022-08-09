@@ -43,9 +43,3 @@ export interface BlockchainSubscription {
   registeredAt: BigNumber
   chain: SupportedChain
 }
-
-export enum SpecialDomainType {
-  CUSTOM = 'CUSTOM',
-  ENS = 'ENS',
-  UNSTOPPABLE_DOMAINS = 'UNSTOPPABLE_DOMAINS',
-}

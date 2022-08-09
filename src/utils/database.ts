@@ -878,9 +878,10 @@ export const updateAccountSubscriptions = async (
         expiry_time: subscription.expiry_time,
         config_ipfs_hash: subscription.config_ipfs_hash,
         plan_id: subscription.plan_id,
+        owner_account: subscription.owner_account,
       })
       .eq('domain', subscription.domain)
-      .eq('owner_account', subscription.owner_account)
+      .eq('chain', subscription.chain)
 
     if (error && error.length > 0) {
       console.error(error)

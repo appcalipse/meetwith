@@ -8,6 +8,7 @@ import { ethers } from 'ethers'
 import Web3 from 'web3'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
+import lensHelper from './lens.helper'
 
 interface AccountExtraProps {
   name: string
@@ -20,7 +21,7 @@ export const resolveExtraInfo = async (
   return await resolveENS(address)
 }
 
-const resolveENS = async (
+export const resolveENS = async (
   address: string
 ): Promise<AccountExtraProps | undefined> => {
   let provider: JsonRpcProvider
@@ -155,9 +156,10 @@ export const validateChainToActOn = async (
 }
 
 export const checkValidDomain = async (
-  domain: string,
+  _domain: string,
   currentAccountAddress: string
 ): Promise<boolean> => {
+  const domain = _domain.toLowerCase()
   if (domain.endsWith('.eth')) {
     const owner = await checkENSBelongsTo(domain)
 
@@ -179,11 +181,12 @@ export const checkValidDomain = async (
     domain.endsWith('.blockchain')
   ) {
     const owner = await checkUnstoppableDomainBelongsTo(domain)
-    if (owner?.toLowerCase() === currentAccountAddress.toLowerCase()) {
-      return true
-    } else {
-      return false
-    }
+    return owner?.toLowerCase() === currentAccountAddress.toLowerCase()
+  } else if (domain.endsWith('.lens')) {
+    const lensProfile = await lensHelper.getLensProfile(domain)
+    return (
+      lensProfile?.ownedBy.toLowerCase() === currentAccountAddress.toLowerCase()
+    )
   }
   return true
 }
