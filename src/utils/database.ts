@@ -261,6 +261,13 @@ const workMeetingTypeGates = async (meetingTypes: MeetingType[]) => {
 }
 
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
+  const preferences = { ...account.preferences! }
+  preferences.name = preferences.name?.trim()
+  preferences.description = preferences.description?.trim()
+  preferences.socialLinks = preferences.socialLinks?.map(link => ({
+    ...link,
+    url: link.url?.trim(),
+  }))
   const path = await addContentToIPFS(account.preferences!)
   //TODO handle ipfs error
 
@@ -878,9 +885,10 @@ export const updateAccountSubscriptions = async (
         expiry_time: subscription.expiry_time,
         config_ipfs_hash: subscription.config_ipfs_hash,
         plan_id: subscription.plan_id,
+        owner_account: subscription.owner_account,
       })
       .eq('domain', subscription.domain)
-      .eq('owner_account', subscription.owner_account)
+      .eq('chain', subscription.chain)
 
     if (error && error.length > 0) {
       console.error(error)
@@ -921,7 +929,7 @@ const upsertGateCondition = async (
 
   const toUpsert = {
     definition: gateCondition.definition,
-    title: gateCondition.title,
+    title: gateCondition.title.trim(),
     owner: ownerAccount.toLowerCase(),
   }
 

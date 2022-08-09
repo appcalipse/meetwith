@@ -509,3 +509,20 @@ export const getTeamMeetingRequest = async (
     throw e
   }
 }
+
+export const getUnstoppableDomainsForAddress = async (
+  address: string
+): Promise<{ name: string }[]> => {
+  try {
+    return (await internalFetch(
+      `/integrations/unstoppable?address=${address}`
+    )) as { name: string }[]
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        return []
+      }
+    }
+    throw e
+  }
+}

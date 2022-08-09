@@ -7,16 +7,28 @@ import {
 } from '../../../../types/Subscription'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { initDB, updateAccountSubscriptions } from '../../../../utils/database'
-import { getBlockchainSubscriptionsForAccount } from '../../../../utils/rpc_helper'
+import {
+  getBlockchainSubscriptionsForAccount,
+  getDomainInfo,
+} from '../../../../utils/rpc_helper'
 import { convertBlockchainSubscriptionToSubscription } from '../../../../utils/subscription_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     initDB()
 
-    const account_address = req.session.account!.address
-    const subs: BlockchainSubscription[] =
-      await getBlockchainSubscriptionsForAccount(account_address)
+    const { domain, address } = req.query
+    let subs: BlockchainSubscription[] = []
+    if (domain) {
+      subs = [...subs, ...(await getDomainInfo(domain as string))]
+    }
+
+    if (address) {
+      subs = [
+        ...subs,
+        ...(await getBlockchainSubscriptionsForAccount(domain as string)),
+      ]
+    }
 
     const dbSubs: Subscription[] = subs.map(sub => {
       return convertBlockchainSubscriptionToSubscription(sub)

@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { Account } from '../../types/Account'
 import { EditMode } from '../../types/Dashboard'
 import { logEvent } from '../../utils/analytics'
-import { getAccountDisplayName } from '../../utils/user_manager'
+import { ellipsizeAddress } from '../../utils/user_manager'
 import { NavMenu } from './components/NavMenu'
 
 interface NavBarLoggedProfileProps {
@@ -15,7 +15,7 @@ interface NavBarLoggedProfileProps {
   currentSection?: EditMode
 }
 const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
-  const accountName = getAccountDisplayName(props.account, true)
+  const accountName = ellipsizeAddress(props.account.address)
   const [navOpen, setNavOpen] = useState(false)
   const router = useRouter()
   const { section } = router.query
@@ -62,9 +62,9 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
           {accountName}
         </Text>
         <Box width="24px" height="24px">
-          {props.account.avatar ? (
+          {props.account.preferences?.avatar ? (
             <Image
-              src={props.account.avatar}
+              src={props.account.preferences.avatar}
               alt="Account avatar"
               width="24px"
               height="24px"
