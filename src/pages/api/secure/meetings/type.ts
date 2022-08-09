@@ -24,6 +24,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const isPro = isProAccount(account)
 
     const meetingType = req.body as MeetingType
+    meetingType.description = meetingType.description?.trim() || ''
 
     let updatedInfo
 
