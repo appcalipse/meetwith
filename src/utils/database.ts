@@ -261,6 +261,13 @@ const workMeetingTypeGates = async (meetingTypes: MeetingType[]) => {
 }
 
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
+  const preferences = { ...account.preferences! }
+  preferences.name = preferences.name?.trim()
+  preferences.description = preferences.description?.trim()
+  preferences.socialLinks = preferences.socialLinks?.map(link => ({
+    ...link,
+    url: link.url?.trim(),
+  }))
   const path = await addContentToIPFS(account.preferences!)
   //TODO handle ipfs error
 
@@ -922,7 +929,7 @@ const upsertGateCondition = async (
 
   const toUpsert = {
     definition: gateCondition.definition,
-    title: gateCondition.title,
+    title: gateCondition.title.trim(),
     owner: ownerAccount.toLowerCase(),
   }
 
