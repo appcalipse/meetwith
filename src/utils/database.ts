@@ -284,7 +284,12 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     //TODO: handle error
   }
 
-  return { ...data[0], preferences: account.preferences } as Account
+  const _account = { ...data[0], preferences: account.preferences }
+  _account.subscriptions = await getSubscriptionFromDBForAccount(
+    account.address
+  )
+
+  return _account as Account
 }
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
