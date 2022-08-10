@@ -114,6 +114,9 @@ const AccountDetails: React.FC = () => {
     }
 
     const getMWWDomains = async () => {
+      if (!currentAccount?.subscriptions) {
+        return
+      }
       const domains = currentAccount?.subscriptions
         .filter(sub => sub.plan_id === Plan.PRO)
         .map(sub => sub.domain)
