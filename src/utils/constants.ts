@@ -18,6 +18,8 @@ const MWW_DISCORD_SERVER = 'https://discord.gg/an2q4xUkcR'
 
 const discordRedirectUrl = `${baseURL}/dashboard/notifications?discordResult=true`
 
+const NO_REPLY_EMAIL = 'no-reply@meetwithwallet.xyz'
+
 export {
   apiUrl,
   appUrl,
@@ -25,5 +27,6 @@ export {
   discordRedirectUrl,
   isProduction,
   MWW_DISCORD_SERVER,
+  NO_REPLY_EMAIL,
   YEAR_DURATION_IN_SECONDS,
 }

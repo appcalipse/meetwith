@@ -5,6 +5,7 @@ import {
   Button,
   Circle,
   FormControl,
+  FormHelperText,
   FormLabel,
   Heading,
   HStack,
@@ -12,11 +13,15 @@ import {
   ListItem,
   UnorderedList,
   useColorModeValue,
+  useToast,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
 import { format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
+
+import lensHelper from '@/utils/lens.helper'
+import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { SocialLinkType } from '../../types/Account'
@@ -27,9 +32,17 @@ import {
   Subscription,
 } from '../../types/Subscription'
 import { logEvent } from '../../utils/analytics'
-import { saveAccountChanges, syncSubscriptions } from '../../utils/api_helper'
+import {
+  getUnstoppableDomainsForAddress,
+  saveAccountChanges,
+  syncSubscriptions,
+} from '../../utils/api_helper'
 import { isProAccount } from '../../utils/subscription_manager'
 import IPFSLink from '../IPFSLink'
+import HandlePicker, {
+  DisplayName,
+  ProfileInfoProvider,
+} from './components/HandlePicker'
 import SubscriptionDialog from './SubscriptionDialog'
 
 const AccountDetails: React.FC = () => {
@@ -48,6 +61,18 @@ const AccountDetails: React.FC = () => {
   const [description, setDescription] = useState(
     currentAccount?.preferences?.description || ''
   )
+
+  const [nameOptions, setNameOptions] = useState<DisplayName[]>([])
+  const [name, setName] = useState<DisplayName | undefined>(
+    currentAccount?.preferences?.name
+      ? {
+          label: currentAccount.preferences.name,
+          value: currentAccount.preferences.name,
+          type: ProfileInfoProvider.CUSTOM,
+        }
+      : undefined
+  )
+
   const [twitter, setTwitter] = useState(
     socialLinks.filter(link => link.type === SocialLinkType.TWITTER)[0]?.url ||
       ''
@@ -69,18 +94,113 @@ const AccountDetails: React.FC = () => {
     setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
   }
 
+  const getHandles = async () => {
+    let handles: DisplayName[] = []
+    const lensProfiles = async () => {
+      const profiles = await lensHelper.getLensHandlesForAddress(
+        currentAccount!.address
+      )
+      if (profiles) {
+        handles = handles.concat(
+          profiles.map(profile => {
+            return {
+              label: profile.handle,
+              value: profile.handle,
+              type: ProfileInfoProvider.LENS,
+            }
+          })
+        )
+      }
+    }
+
+    const getMWWDomains = async () => {
+      if (!currentAccount?.subscriptions) {
+        return
+      }
+      const domains = currentAccount?.subscriptions
+        .filter(sub => sub.plan_id === Plan.PRO)
+        .map(sub => sub.domain)
+      if (domains) {
+        handles = handles.concat(
+          domains.map(domain => {
+            return {
+              label: domain,
+              value: domain,
+              type: ProfileInfoProvider.MWW,
+            }
+          })
+        )
+      }
+    }
+
+    const getUNHandles = async () => {
+      const domains = await getUnstoppableDomainsForAddress(
+        currentAccount!.address
+      )
+
+      if (domains) {
+        handles = handles.concat(
+          domains.map(profile => {
+            return {
+              label: profile.name,
+              value: profile.name,
+              type: ProfileInfoProvider.UNSTOPPABLE_DOAMINS,
+            }
+          })
+        )
+      }
+    }
+
+    const getENSHandle = async () => {
+      const ens = await resolveENS(currentAccount!.address)
+      if (ens) {
+        handles.push({
+          label: ens.name,
+          value: ens.name,
+          type: ProfileInfoProvider.ENS,
+        })
+      }
+    }
+
+    await Promise.all([
+      getMWWDomains(),
+      lensProfiles(),
+      getENSHandle(),
+      getUNHandles(),
+    ])
+    setNameOptions(handles)
+  }
+
   useEffect(() => {
     updateAccountSubs()
+    getHandles()
   }, [])
+
+  const toast = useToast()
 
   const saveDetails = async () => {
     setLoading(true)
+
+    if (!(await checkValidDomain(name?.label || '', currentAccount!.address))) {
+      setLoading(false)
+      toast({
+        title: 'You are not the owner of this name',
+        description:
+          'To use ENS, Lens, or Unstoppable domain as your name you need to be the owner of it',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
 
     try {
       const updatedAccount = await saveAccountChanges({
         ...currentAccount!,
         preferences: {
           ...currentAccount!.preferences!,
+          name: name?.label,
           description,
           socialLinks: [
             { type: SocialLinkType.TWITTER, url: twitter },
@@ -119,6 +239,19 @@ const AccountDetails: React.FC = () => {
         ipfsHash={currentAccount!.preferences_path}
         title="Your account information is public and stored on IPFS. Your current IPFS link is"
       />
+
+      <FormControl pt={2}>
+        <FormLabel>Display name (optional)</FormLabel>
+        <HandlePicker
+          selected={name}
+          setValue={option => setName(option)}
+          options={nameOptions}
+        />
+        <FormHelperText>
+          How do you want to be displayed to others in meetings? Leave empty to
+          use you wallet address
+        </FormHelperText>
+      </FormControl>
 
       <FormControl pt={2}>
         <FormLabel>Description (optional)</FormLabel>

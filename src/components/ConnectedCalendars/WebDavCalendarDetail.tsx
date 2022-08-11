@@ -30,7 +30,7 @@ interface WebDavDetailsPanelProps {
 
 const APPLE_DISCLAIMER = (
   <Text align={'justify'}>
-    Generate an app specific password to use with <b>Meet With Wallet</b> at{' '}
+    Generate an app specific password to use with <b>Meet with Wallet</b> at{' '}
     <Link
       rel="nofollow"
       target="_blank"

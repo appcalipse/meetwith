@@ -261,6 +261,13 @@ const workMeetingTypeGates = async (meetingTypes: MeetingType[]) => {
 }
 
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
+  const preferences = { ...account.preferences! }
+  preferences.name = preferences.name?.trim()
+  preferences.description = preferences.description?.trim()
+  preferences.socialLinks = preferences.socialLinks?.map(link => ({
+    ...link,
+    url: link.url?.trim(),
+  }))
   const path = await addContentToIPFS(account.preferences!)
   //TODO handle ipfs error
 
@@ -277,7 +284,12 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     //TODO: handle error
   }
 
-  return { ...data[0], preferences: account.preferences } as Account
+  const _account = { ...data[0], preferences: account.preferences }
+  _account.subscriptions = await getSubscriptionFromDBForAccount(
+    account.address
+  )
+
+  return _account as Account
 }
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
@@ -451,8 +463,9 @@ const saveMeeting = async (
   meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
   if (
-    new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
-    meeting.participants_mapping.length
+    new Set(
+      meeting.participants_mapping.map(p => p.account_address || p.guest_email)
+    ).size !== meeting.participants_mapping.length
   ) {
     //means there are duplicate participants
     throw new MeetingCreationError()
@@ -606,7 +619,7 @@ const saveMeeting = async (
     meeting,
   }
 
-  // Doing ntifications and syncs asyncrounously
+  // Doing notifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'POST',
     body: JSON.stringify(meetingICS),
@@ -877,9 +890,10 @@ export const updateAccountSubscriptions = async (
         expiry_time: subscription.expiry_time,
         config_ipfs_hash: subscription.config_ipfs_hash,
         plan_id: subscription.plan_id,
+        owner_account: subscription.owner_account,
       })
       .eq('domain', subscription.domain)
-      .eq('owner_account', subscription.owner_account)
+      .eq('chain', subscription.chain)
 
     if (error && error.length > 0) {
       console.error(error)
@@ -920,7 +934,7 @@ const upsertGateCondition = async (
 
   const toUpsert = {
     definition: gateCondition.definition,
-    title: gateCondition.title,
+    title: gateCondition.title.trim(),
     owner: ownerAccount.toLowerCase(),
   }
 

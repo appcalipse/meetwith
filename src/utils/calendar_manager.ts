@@ -17,8 +17,8 @@ import {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
-import { createEvent, EventAttributes, ReturnObject } from 'ics'
-import { v4 as uuidv4, v4 } from 'uuid'
+import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
+import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '../types/Account'
 import {
@@ -42,7 +42,7 @@ import {
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
 } from './api_helper'
-import { appUrl } from './constants'
+import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { decryptContent } from './cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from './errors'
 import { getSlugFromText } from './generic_utils'
@@ -50,6 +50,12 @@ import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress } from './user_manager'
+
+export interface GuestParticipant {
+  name: string
+  email: string
+  scheduler: boolean
+}
 
 const scheduleMeeting = async (
   schedulingType: SchedulingType,
@@ -59,7 +65,7 @@ const scheduleMeeting = async (
   startTime: Date,
   endTime: Date,
   source_account_address?: string,
-  guest_email?: string,
+  guests?: GuestParticipant[],
   sourceName?: string,
   targetName?: string,
   meetingContent?: string,
@@ -67,7 +73,8 @@ const scheduleMeeting = async (
 ): Promise<MeetingDecrypted> => {
   if (
     source_account_address === target_account_address &&
-    extra_participants.length == 0
+    extra_participants.length == 0 &&
+    guests?.length == 0
   ) {
     throw new MeetingWithYourselfError()
   }
@@ -111,7 +118,7 @@ const scheduleMeeting = async (
             : account.address == target_account_address
             ? targetName
             : '',
-        guest_email: account.address ? '' : guest_email,
+        guest_email: '',
       }
       participants.push(participant)
     }
@@ -134,16 +141,22 @@ const scheduleMeeting = async (
       participants.push(participant)
     }
 
-    if (schedulingType === SchedulingType.GUEST) {
-      const participant: ParticipantInfo = {
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Accepted,
-        guest_email,
-        name: sourceName,
-        slot_id: uuidv4(),
-      }
+    if (guests) {
+      for (const guest of guests) {
+        const participant: ParticipantInfo = {
+          type: !!guest.scheduler
+            ? ParticipantType.Scheduler
+            : ParticipantType.Invitee,
+          status: !!guest.scheduler
+            ? ParticipationStatus.Accepted
+            : ParticipationStatus.Pending,
+          guest_email: guest.email,
+          name: guest.name,
+          slot_id: uuidv4(),
+        }
 
-      participants.push(participant)
+        participants.push(participant)
+      }
     }
 
     let videoMeeting
@@ -180,7 +193,7 @@ const scheduleMeeting = async (
         ),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         name: participant.name || '',
-        guest_email: participant.account_address ? '' : participant.guest_email,
+        guest_email: participant.guest_email,
         status: participant.status,
       }
       participantsMappings.push(participantMapping)
@@ -268,32 +281,42 @@ const generateIcs = (
     organizer: {
       // required by some services
       name: 'Meet with Wallet',
-      email: 'contact@meetwithwallet.xyz',
+      email: NO_REPLY_EMAIL,
     },
-    //        status: 'CONFIRMED',
-    // attendees: [
-    //   { name: 'Adam Gibbons', email: 'adam@example.com', rsvp: true, partstat: 'ACCEPTED', role: 'REQ-PARTICIPANT' },
-    //   { name: 'Brittany Seaton', email: 'brittany@example2.org', dir: 'https://linkedin.com/in/brittanyseaton', role: 'OPT-PARTICIPANT' }
-    // ]
+    status: 'CONFIRMED',
   }
+  event.attendees = []
 
-  const guest = meeting.participants.find(
-    participant => participant.guest_email
-  )
+  for (const participant of meeting.participants) {
+    const attendee: Attendee = {
+      name: participant.name || participant.account_address,
+      email:
+        participant.guest_email ||
+        noNoReplyEmailForAccount(participant.account_address!),
+      rsvp: participant.status === ParticipationStatus.Accepted,
+      partstat: participantStatusToICSStatus(participant.status),
+      role: 'REQ-PARTICIPANT',
+    }
 
-  if (guest) {
-    event.attendees = [
-      {
-        name: guest.name,
-        email: guest.guest_email,
-        rsvp: true,
-        partstat: 'ACCEPTED',
-        role: 'REQ-PARTICIPANT',
-      },
-    ]
+    if (participant.account_address) {
+      attendee.dir = getCalendarRegularUrl(participant.account_address!)
+    }
+
+    event.attendees.push(attendee)
   }
 
   return createEvent(event)
+}
+
+const participantStatusToICSStatus = (status: ParticipationStatus) => {
+  switch (status) {
+    case ParticipationStatus.Accepted:
+      return 'ACCEPTED'
+    case ParticipationStatus.Rejected:
+      return 'DECLINED'
+    default:
+      return 'NEEDS-ACTION'
+  }
 }
 
 const decryptMeeting = async (
@@ -485,12 +508,11 @@ const getAccountCalendarUrl = (
   account: Account,
   ellipsize?: boolean
 ): string => {
-  if (isProAccount(account)) {
-    return `${appUrl}/${
-      account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0].domain
-    }`
-  }
   return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+}
+
+const getCalendarRegularUrl = (account_address: string) => {
+  return `${appUrl}/address/${account_address}`
 }
 
 const generateDefaultMeetingType = (): MeetingType => {
@@ -519,6 +541,10 @@ const generateAllSlots = () => {
   return allSlots
 }
 
+const noNoReplyEmailForAccount = (account_address: string): string => {
+  return `no_reply_${account_address}@meetwithwallet.xyz`
+}
+
 const allSlots = generateAllSlots()
 
 export {
@@ -534,5 +560,6 @@ export {
   getAccountDomainUrl,
   isSlotAvailable,
   isTimeInsideAvailabilities,
+  noNoReplyEmailForAccount,
   scheduleMeeting,
 }

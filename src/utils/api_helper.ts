@@ -263,7 +263,7 @@ export const fetchContentFromIPFSFromBrowser = async (
   hash: string
 ): Promise<object | undefined> => {
   try {
-    return await (await fetch(`https://ipfs.infura.io/ipfs/${hash}`)).json()
+    return await (await fetch(`https://mww.infura-ipfs.io/ipfs/${hash}`)).json()
   } catch (err) {
     Sentry.captureException(err)
     return undefined
@@ -543,6 +543,22 @@ export const joinHuddleRoom = async (
     if (e instanceof ApiFetchError) {
       if (e.status === 503) {
         throw new Huddle01ServiceUnavailable()
+      }
+    }
+    throw e
+  }
+}
+export const getUnstoppableDomainsForAddress = async (
+  address: string
+): Promise<{ name: string }[]> => {
+  try {
+    return (await internalFetch(
+      `/integrations/unstoppable?address=${address}`
+    )) as { name: string }[]
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        return []
       }
     }
     throw e

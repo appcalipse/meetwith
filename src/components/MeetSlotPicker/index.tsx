@@ -35,6 +35,7 @@ interface MeetSlotPickerProps {
     meetingUrl?: string
   ) => Promise<boolean>
   timeSlotAvailability: (slot: Date) => boolean
+  selfAvailabilityCheck: (slot: Date) => boolean
   slotDurationInMinutes: number
   onDayChange?: (day: Date) => void
   onMonthChange?: (day: Date) => void
@@ -44,6 +45,7 @@ interface MeetSlotPickerProps {
   checkingSlots: boolean
   reset: boolean
   isGateValid: boolean
+  showSelfAvailability: boolean
 }
 
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
@@ -58,6 +60,8 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   checkingSlots,
   reset,
   isGateValid,
+  selfAvailabilityCheck,
+  showSelfAvailability,
 }) => {
   const [pickedDay, setPickedDay] = useState(null as Date | null)
   const [pickedTime, setPickedTime] = useState(null as Date | null)
@@ -162,7 +166,9 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               pickedDay={pickedDay}
               slotSizeMinutes={slotDurationInMinutes}
               validator={timeSlotAvailability}
+              selfAvailabilityCheck={selfAvailabilityCheck}
               pickTime={handlePickTime}
+              showSelfAvailability={showSelfAvailability}
             />
           )}
         </Popup>
