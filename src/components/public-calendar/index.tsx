@@ -478,14 +478,25 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }
 
   const selfAvailabilityCheck = (slot: Date): boolean => {
+    let duration
+    let minAdvanceTime
+
+    if (calendarType === CalendarType.REGULAR) {
+      duration = selectedType.duration
+      minAdvanceTime = selectedType.minAdvanceTime
+    } else {
+      duration = teamMeetingRequest!.duration_in_minutes
+      minAdvanceTime = 0
+    }
+
     return isSlotAvailable(
-      selectedType.duration,
-      selectedType.minAdvanceTime,
+      duration,
+      minAdvanceTime,
       slot,
       selfBusySlots,
       currentAccount!.preferences!.availabilities,
       Intl.DateTimeFormat().resolvedOptions().timeZone,
-      account!.preferences!.timezone
+      currentAccount!.preferences!.timezone
     )
   }
 
