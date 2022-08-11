@@ -93,14 +93,30 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const { currentAccount, logged } = useContext(AccountContext)
 
+  const calendarType =
+    account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
+
   const [checkingSlots, setCheckingSlots] = useState(false)
+  const [checkedSelfSlots, setCheckedSelfSlots] = useState(false)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
     null as InternalSchedule | null
   )
   const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [busySlots, setBusyslots] = useState([] as Interval[])
+  const [selfBusySlots, setSelfBusyslots] = useState([] as Interval[])
+  const [selectedType, setSelectedType] = useState({} as MeetingType)
+  const [isGateValid, setIsGateValid] = useState<boolean | undefined>(undefined)
+  const [isScheduling, setIsScheduling] = useState(false)
+  const [readyToSchedule, setReadyToSchedule] = useState(false)
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [reset, setReset] = useState(false)
+  const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
+    undefined as MeetingDecrypted | undefined
+  )
+  const [notificationsSubs, setNotificationSubs] = useState(0)
 
-  const calendarType =
-    account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
+  const toast = useToast()
 
   const hidrateTeamAccounts = async () => {
     let accountstoFetch: string[] = []
@@ -137,6 +153,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }, [account, router.query.address])
 
   useEffect(() => {
+    logged && updateSelfSlots()
     if (logged && unloggedSchedule) {
       confirmSchedule(
         unloggedSchedule.scheduleType,
@@ -148,21 +165,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       )
     }
   }, [currentAccount])
-
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [busySlots, setBusyslots] = useState([] as Interval[])
-  const [selectedType, setSelectedType] = useState({} as MeetingType)
-  const [isGateValid, setIsGateValid] = useState<boolean | undefined>(undefined)
-  const [isScheduling, setIsScheduling] = useState(false)
-  const [readyToSchedule, setReadyToSchedule] = useState(false)
-  const { isOpen, onOpen, onClose } = useDisclosure()
-  const [reset, setReset] = useState(false)
-  const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
-    undefined as MeetingDecrypted | undefined
-  )
-  const [notificationsSubs, setNotificationSubs] = useState(0)
-
-  const toast = useToast()
 
   const fetchNotificationSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()
@@ -295,7 +297,25 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     setTimeout(() => setReset(false), 200)
   }
 
+  const updateSelfSlots = async () => {
+    if (currentAccount) {
+      const monthStart = startOfMonth(currentMonth)
+      const monthEnd = endOfMonth(currentMonth)
+
+      try {
+        const busySlots = await getBusySlots(
+          currentAccount!.address,
+          monthStart,
+          monthEnd
+        )
+        setSelfBusyslots(busySlots)
+        setCheckedSelfSlots(true)
+      } catch (e) {}
+    }
+  }
+
   const updateSlots = async () => {
+    updateSelfSlots()
     setCheckingSlots(true)
     const monthStart = startOfMonth(currentMonth)
     const monthEnd = endOfMonth(currentMonth)
@@ -457,6 +477,18 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     return null
   }
 
+  const selfAvailabilityCheck = (slot: Date): boolean => {
+    return isSlotAvailable(
+      selectedType.duration,
+      selectedType.minAdvanceTime,
+      slot,
+      selfBusySlots,
+      currentAccount!.preferences!.availabilities,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      account!.preferences!.timezone
+    )
+  }
+
   const dateRangeText = textToDisplayDateRange()
 
   return (
@@ -539,6 +571,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   }
                   checkingSlots={checkingSlots}
                   timeSlotAvailability={validateSlot}
+                  selfAvailabilityCheck={selfAvailabilityCheck}
+                  showSelfAvailability={checkedSelfSlots}
                   isGateValid={isGateValid!}
                 />
               </Box>

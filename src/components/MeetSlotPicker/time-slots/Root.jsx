@@ -1,21 +1,59 @@
-import { Flex, Image, Text, useColorModeValue, VStack } from '@chakra-ui/react'
+import {
+  Flex,
+  HStack,
+  Image,
+  Text,
+  useColorModeValue,
+  VStack,
+} from '@chakra-ui/react'
 import { format } from 'date-fns'
 import PropTypes from 'prop-types'
 import React from 'react'
 
 import generateTimeSlots from './generate-time-slots'
 
-function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
+function Root({
+  pickedDay,
+  slotSizeMinutes,
+  validator,
+  pickTime,
+  selfAvailabilityCheck,
+  showSelfAvailability,
+}) {
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes)
   const filtered = timeSlots.filter(slot => {
     return validator ? validator(slot) : true
   })
   const borderColor = useColorModeValue('gray.200', 'gray.600')
+  const circleColor = useColorModeValue('orange.500', 'orange.500')
 
   return (
     <>
+      {showSelfAvailability && (
+        <HStack
+          maxW="220px"
+          mx="auto"
+          width="100%"
+          border="1px solid"
+          borderColor={borderColor}
+          p={2}
+          justifyContent="center"
+          mb={4}
+        >
+          <Text flex={1} fontSize={'sm'} textAlign="center">
+            Times you are available
+          </Text>
+          <Flex
+            borderRadius="50%"
+            w="10px"
+            h="10px"
+            marginEnd={'8px !important'}
+            backgroundColor={circleColor}
+          />
+        </HStack>
+      )}
       {filtered.length > 0 ? (
-        <VStack maxW="200px" mx="auto">
+        <VStack maxW="220px" mx="auto">
           {filtered.map(slot => {
             return (
               <Flex
@@ -26,9 +64,22 @@ function Root({ pickedDay, slotSizeMinutes, validator, pickTime }) {
                 borderColor={borderColor}
                 p={2}
                 justifyContent="center"
+                alignItems="center"
                 _hover={{ cursor: 'pointer', color: 'orange.400' }}
               >
-                {format(slot, 'HH:mm a')}
+                {<Text flex={1}>{format(slot, 'HH:mm a')}</Text>}
+                {showSelfAvailability && selfAvailabilityCheck(slot) ? (
+                  <Flex
+                    borderRadius="50%"
+                    w="10px"
+                    h="10px"
+                    bgColor={circleColor}
+                    ml={-4}
+                    mr={2}
+                  />
+                ) : (
+                  <Flex w="10px" h="10px" ml={-3} />
+                )}
               </Flex>
             )
           })}
@@ -52,7 +103,9 @@ Root.propTypes = {
   pickedDay: PropTypes.instanceOf(Date),
   slotSizeMinutes: PropTypes.number.isRequired,
   validator: PropTypes.func,
+  selfAvailabilityCheck: PropTypes.func,
   pickTime: PropTypes.func.isRequired,
+  showSelfAvailability: PropTypes.bool,
 }
 
 export default Root
