@@ -261,7 +261,7 @@ export const fetchContentFromIPFSFromBrowser = async (
   hash: string
 ): Promise<object | undefined> => {
   try {
-    return await (await fetch(`https://ipfs.infura.io/ipfs/${hash}`)).json()
+    return await (await fetch(`https://mww.infura-ipfs.io/ipfs/${hash}`)).json()
   } catch (err) {
     Sentry.captureException(err)
     return undefined
