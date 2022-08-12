@@ -516,7 +516,7 @@ export const createHuddleRoom = async (
   title?: string
 ): Promise<VideoMeeting> => {
   try {
-    return (await internalFetch('/integrations/huddle/createroom', 'POST', {
+    return (await internalFetch('/integrations/huddle/create', 'POST', {
       title,
     })) as VideoMeeting
   } catch (e) {

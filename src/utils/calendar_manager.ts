@@ -163,8 +163,11 @@ const scheduleMeeting = async (
     if (meetingUrl) {
       videoMeeting = {
         url: meetingUrl,
-        provider: MeetingProvider.CUSTOM,
-        id: v4(),
+        provider:
+          meetingUrl.indexOf('meet.google.com/') !== -1
+            ? MeetingProvider.GOOGLE_MEET
+            : MeetingProvider.CUSTOM,
+        id: uuidv4(),
       }
     } else {
       videoMeeting = await createHuddleRoom()
@@ -205,7 +208,7 @@ const scheduleMeeting = async (
       end: endTime,
       participants_mapping: participantsMappings,
       meetingTypeId,
-      videoMeeting: videoMeeting,
+      videoMeeting,
       content: privateInfo['content'],
     }
 

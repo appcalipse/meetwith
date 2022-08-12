@@ -7,7 +7,7 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
-import { validate } from 'uuid'
+import { v4, validate } from 'uuid'
 
 import {
   GateConditionObject,
@@ -37,6 +37,7 @@ import {
   MeetingICS,
   ParticipantType,
   TimeSlotSource,
+  VideoMeetingDB,
 } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import {
@@ -519,6 +520,8 @@ const saveMeeting = async (
     }
   }
 
+  let haveGuests = false
+
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
       if (
@@ -601,6 +604,8 @@ const saveMeeting = async (
         }
       }
       i++
+    } else if (participant.guest_email) {
+      haveGuests = true
     }
   }
 
@@ -609,6 +614,19 @@ const saveMeeting = async (
   //TODO: handle error
   if (error) {
     Sentry.captureException(error)
+  }
+
+  if (haveGuests) {
+    const videoResponse = await db.supabase.from('video_meeting').insert([
+      {
+        videoMeeting: meeting.videoMeeting,
+      },
+    ])
+
+    //TODO: handle error
+    if (videoResponse.error) {
+      Sentry.captureException(videoResponse.error)
+    }
   }
 
   meetingResponse.id = data[index].id

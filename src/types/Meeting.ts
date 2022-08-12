@@ -127,9 +127,15 @@ export enum MeetingProvider {
   GOOGLE_MEET = 'google_meet',
   CUSTOM = 'custom',
 }
+
 export interface VideoMeeting {
   url: string
   id: string
   title?: string
   provider: MeetingProvider
+}
+
+export interface VideoMeetingDB {
+  id: string
+  videoMeeting?: VideoMeeting
 }
