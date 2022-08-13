@@ -11,8 +11,7 @@ import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
-
-import generateTimeSlots from './generate-time-slots'
+import { generateTimeSlots } from '@/utils/slots.helper'
 
 function Root({
   pickedDay,
@@ -25,7 +24,7 @@ function Root({
   const { currentAccount } = useContext(AccountContext)
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes)
   const filtered = timeSlots.filter(slot => {
-    return validator ? validator(slot) : true
+    return validator ? validator(slot.start) : true
   })
   const borderColor = useColorModeValue('gray.200', 'gray.600')
   const circleColor = useColorModeValue('orange.500', 'orange.500')
@@ -77,8 +76,8 @@ function Root({
           {filtered.map(slot => {
             return (
               <Flex
-                key={slot}
-                onClick={() => pickTime(slot)}
+                key={slot.start}
+                onClick={() => pickTime(slot.start)}
                 width="100%"
                 border="1px solid"
                 borderColor={borderColor}
@@ -87,8 +86,8 @@ function Root({
                 alignItems="center"
                 _hover={{ cursor: 'pointer', color: 'orange.400' }}
               >
-                {<Text flex={1}>{format(slot, 'HH:mm a')}</Text>}
-                {showSelfAvailability && selfAvailabilityCheck(slot) ? (
+                {<Text flex={1}>{format(slot.start, 'HH:mm a')}</Text>}
+                {showSelfAvailability && selfAvailabilityCheck(slot.start) ? (
                   <Flex
                     borderRadius="50%"
                     w="10px"
