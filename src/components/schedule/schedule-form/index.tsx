@@ -1,17 +1,22 @@
 import {
   Box,
   Button,
+  Flex,
   FormControl,
   FormLabel,
   HStack,
+  Icon,
   Input,
   Link,
   Switch,
   Text,
   Textarea,
+  useColorModeValue,
   useToast,
 } from '@chakra-ui/react'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import { useContext, useState } from 'react'
+import { FaInfo } from 'react-icons/fa'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { useLogin } from '../../../session/login'
@@ -90,6 +95,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   const isEmailValid = isValidEmail(guestEmail)
 
+  const bgColor = useColorModeValue('white', 'gray.600')
+  const iconColor = useColorModeValue('gray.600', 'white')
+
   return (
     <Box>
       <FormLabel>Your name (optional)</FormLabel>
@@ -111,26 +119,55 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         onChange={e => setContent(e.target.value)}
       />
 
-      <HStack my={4}>
+      <HStack my={6} alignItems="center">
         <Switch
+          display="flex"
           colorScheme={Color.ORANGE}
-          size="lg"
+          size="md"
           mr={4}
           isDisabled={isScheduling}
           defaultChecked={!customMeeting}
           onChange={e => setCustomMeeting(!e.target.checked)}
         />
         <FormLabel mb="0">
-          <Text color={Color.GRAY}>
+          <Text>
             Use{' '}
-            <Link isExternal href="https://huddle01.com">
+            <Link href="https://huddle01.com/?utm_source=mww" isExternal>
               Huddle01
             </Link>{' '}
-            for your meetings (a link will be generated for you). Huddle01 is a
-            web3-powered video conferencing tailored for DAOs and NFT
-            communities.
+            for your meeting
           </Text>
         </FormLabel>
+        <Tooltip.Provider delayDuration={400}>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              <Flex
+                w="16px"
+                h="16px"
+                borderRadius="50%"
+                bgColor={iconColor}
+                justifyContent="center"
+                alignItems="center"
+                ml={1}
+              >
+                <Icon w={1} color={bgColor} as={FaInfo} />
+              </Flex>
+            </Tooltip.Trigger>
+            <Tooltip.Content>
+              <Text
+                fontSize="sm"
+                p={4}
+                maxW="200px"
+                bgColor={bgColor}
+                shadow="lg"
+              >
+                Huddle01 is a web3-powered video conferencing tailored for DAOs
+                and NFT communities.
+              </Text>
+              <Tooltip.Arrow />
+            </Tooltip.Content>
+          </Tooltip.Root>
+        </Tooltip.Provider>
       </HStack>
 
       {customMeeting && (

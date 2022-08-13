@@ -19,38 +19,38 @@ import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
+import { AccountContext } from '@/providers/AccountProvider'
+import { Account, MeetingType } from '@/types/Account'
 import { ConditionRelation } from '@/types/common'
-import { saveMeetingsScheduled } from '@/utils/storage'
-import { getAccountDisplayName } from '@/utils/user_manager'
-
-import { AccountContext } from '../../providers/AccountProvider'
-import { Account, MeetingType } from '../../types/Account'
 import {
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
   SchedulingType,
-} from '../../types/Meeting'
-import { logEvent } from '../../utils/analytics'
+} from '@/types/Meeting'
+import { logEvent } from '@/utils/analytics'
 import {
   fetchBusySlotsForMultipleAccounts,
   getAccount,
   getBusySlots,
   getNotificationSubscriptions,
-} from '../../utils/api_helper'
+} from '@/utils/api_helper'
 import {
   durationToHumanReadable,
   getAccountDomainUrl,
   GuestParticipant,
-  isSlotAvailable,
   scheduleMeeting,
-} from '../../utils/calendar_manager'
+} from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
-} from '../../utils/errors'
+} from '@/utils/errors'
+import { isSlotAvailable } from '@/utils/slots.helper'
+import { saveMeetingsScheduled } from '@/utils/storage'
+import { getAccountDisplayName } from '@/utils/user_manager'
+
 import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
@@ -206,11 +206,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         ? teamMeetingRequest!.owner
         : teamMeetingRequest!.team_structure.participants_accounts![0]
 
-    const targetName =
-      CalendarType.REGULAR === calendarType
-        ? getAccountDisplayName(account!)
-        : ''
-
     const participants =
       CalendarType.REGULAR === calendarType
         ? []
@@ -232,7 +227,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         currentAccount?.address,
         guests,
         name,
-        targetName,
         content,
         meetingUrl
       )
@@ -455,8 +449,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         }
         return false
       }
-
-      return false
     }
   }
 

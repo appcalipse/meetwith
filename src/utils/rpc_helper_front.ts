@@ -191,6 +191,32 @@ export const checkValidDomain = async (
   return true
 }
 
+export const getAddressFromDomain = async (
+  _domain: string
+): Promise<string | undefined> => {
+  const domain = _domain.toLowerCase()
+  if (domain.endsWith('.eth')) {
+    return (await checkENSBelongsTo(domain))?.toLowerCase()
+  } else if (
+    domain.endsWith('.x') ||
+    domain.endsWith('.wallet') ||
+    domain.endsWith('.crypto') ||
+    domain.endsWith('.coin') ||
+    domain.endsWith('.bitcoin') ||
+    domain.endsWith('.888') ||
+    domain.endsWith('.nft') ||
+    domain.endsWith('.dao') ||
+    domain.endsWith('.zil') ||
+    domain.endsWith('.blockchain')
+  ) {
+    return (await checkUnstoppableDomainBelongsTo(domain))?.toLowerCase()
+  } else if (domain.endsWith('.lens')) {
+    const lensProfile = await lensHelper.getLensProfile(domain)
+    return lensProfile?.ownedBy.toLowerCase()
+  }
+  return undefined
+}
+
 export const getProvider = (chain: SupportedChain): BaseProvider | null => {
   let provider
   const chainInfo = getChainInfo(chain)
