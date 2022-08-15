@@ -1,10 +1,16 @@
 import {
+  Alert,
+  AlertDescription,
+  AlertIcon,
+  Box,
   Button,
+  Flex,
   FormControl,
   FormHelperText,
   FormLabel,
   Heading,
   HStack,
+  Icon,
   Input,
   Link,
   Modal,
@@ -18,30 +24,36 @@ import {
   Switch,
   Text,
   Textarea,
+  useColorModeValue,
   useToast,
+  VStack,
 } from '@chakra-ui/react'
-import { addHours, addMinutes } from 'date-fns'
+import * as Tooltip from '@radix-ui/react-tooltip'
+import { addDays, addHours, addMinutes, format, Interval } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
+import { FaInfo } from 'react-icons/fa'
 
-import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
-
-import { AccountContext } from '../../../providers/AccountProvider'
-import { DBSlot, SchedulingType, TimeSlotSource } from '../../../types/Meeting'
-import { logEvent } from '../../../utils/analytics'
-import { scheduleMeeting } from '../../../utils/calendar_manager'
+import { DBSlot, SchedulingType, TimeSlotSource } from '@/types/Meeting'
+import { logEvent } from '@/utils/analytics'
+import {
+  getExistingAccountsSimple,
+  getSuggestedSlots,
+} from '@/utils/api_helper'
+import { scheduleMeeting } from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
-} from '../../../utils/errors'
-import { isProAccount } from '../../../utils/subscription_manager'
-import {
-  getAccountDisplayName,
-  getAddressDisplayForInput,
-} from '../../../utils/user_manager'
+} from '@/utils/errors'
+import { getAddressFromDomain } from '@/utils/rpc_helper_front'
+import { isProAccount } from '@/utils/subscription_manager'
+import { getAddressDisplayForInput } from '@/utils/user_manager'
+import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
+
+import { AccountContext } from '../../../providers/AccountProvider'
 import { ChipInput } from '../../chip-input'
 import { SingleDatepicker } from '../../input-date-picker'
 import { InputTimePicker } from '../../input-time-picker'
@@ -62,6 +74,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
   const toast = useToast()
 
   const [participants, setParticipants] = useState([] as string[])
+  const [notAccounts, setNotAccounts] = useState([] as string[])
   const [selectedDate, setDate] = useState(new Date())
   const [selectedTime, setTime] = useState('')
   const [content, setContent] = useState('')
@@ -69,6 +82,10 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
   const [meetingUrl, setMeetingUrl] = useState('')
   const [duration, setDuration] = useState(30)
   const [isScheduling, setIsScheduling] = useState(false)
+  const [searchingTimes, setSearchingTimes] = useState(false)
+  const [groupTimes, setGroupTimes] = useState<Interval[] | undefined>(
+    undefined
+  )
 
   const clearInfo = () => {
     setParticipants([])
@@ -86,6 +103,9 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
     setMeetingUrl('')
     setDuration(30)
     setIsScheduling(false)
+    setNotAccounts([])
+    setSearchingTimes(false)
+    setGroupTimes(undefined)
   }
 
   const onParticipantsChange = (_participants: string[]) => {
@@ -105,9 +125,43 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
     setParticipants(_participants)
   }
 
+  const parseAccounts = async (
+    participants: string[]
+  ): Promise<{ valid: string[]; invalid: string[] }> => {
+    const valid = []
+    const invalid = []
+    for (const participant of participants) {
+      if (isValidEVMAddress(participant) || isValidEmail(participant)) {
+        valid.push(participant)
+      } else {
+        const address = await getAddressFromDomain(participant)
+        if (address) {
+          valid.push(address)
+        } else {
+          invalid.push(participant)
+        }
+      }
+    }
+    return { valid, invalid }
+  }
+
   useEffect(() => {
     clearInfo()
   }, [isOpen])
+
+  const buildSelectedStart = () => {
+    const _start = new Date(selectedDate)
+    _start.setHours(Number(selectedTime.split(':')[0]))
+    _start.setMinutes(Number(selectedTime.split(':')[1]))
+    _start.setSeconds(0)
+
+    return _start
+  }
+
+  const selectTime = (timeSlot: Interval) => {
+    setTime(format(timeSlot.start, 'HH:mm'))
+    setDate(timeSlot.start as Date)
+  }
 
   const schedule = async () => {
     if (!useHuddle && !meetingUrl) {
@@ -146,26 +200,22 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
       return
     }
 
-    const evmAddressParticipants = participants.filter(participant =>
+    const _participants = await parseAccounts(participants)
+
+    const evmAddressParticipants = _participants.valid.filter(participant =>
       isValidEVMAddress(participant)
     )
 
-    const guestEmails = participants.filter(participant =>
+    const guestEmails = _participants.valid.filter(participant =>
       isValidEmail(participant)
     )
 
-    const invalidParticipants = participants.filter(
-      participant =>
-        !evmAddressParticipants.includes(participant) &&
-        !guestEmails.includes(participant)
-    )
-
-    if (invalidParticipants.length > 0) {
+    if (_participants.invalid.length > 0) {
       toast({
         title: 'Invalid invitees',
-        description: `Can't invite ${invalidParticipants.join(
+        description: `Can't invite ${_participants.invalid.join(
           ', '
-        )}. Please check the addresses/emails`,
+        )}. Please check the addresses/profiles/emails`,
         status: 'error',
         duration: 5000,
         position: 'top',
@@ -176,10 +226,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
 
     setIsScheduling(true)
 
-    const _start = new Date(selectedDate)
-    _start.setHours(Number(selectedTime.split(':')[0]))
-    _start.setMinutes(Number(selectedTime.split(':')[1]))
-    _start.setSeconds(0)
+    const _start = buildSelectedStart()
 
     const start = zonedTimeToUtc(
       _start,
@@ -203,8 +250,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         guestEmails.map(participant => {
           return { name: '', email: participant, scheduler: false }
         }),
-        getAccountDisplayName(currentAccount!),
-        '',
+        undefined,
         content,
         meetingUrl
       )
@@ -267,6 +313,58 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
     return false
   }
 
+  const suggestTimes = async () => {
+    setNotAccounts([])
+    setSearchingTimes(true)
+
+    const _participants = await parseAccounts(participants)
+
+    if (_participants.invalid.length > 0) {
+      toast({
+        title: 'Invalid invitees',
+        description: `Can't invite ${_participants.invalid.join(
+          ', '
+        )}. Please check the addresses/profiles/emails`,
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+
+    const checkAccount = async () => {
+      const existingAccounts = (
+        await getExistingAccountsSimple(_participants.valid)
+      ).map(account => account.address)
+      setNotAccounts(
+        _participants.valid.filter(
+          participant => !existingAccounts.includes(participant)
+        )
+      )
+    }
+
+    const checkSuggestions = async () => {
+      const startDate = new Date()
+      startDate.setMinutes(0)
+      startDate.setSeconds(0)
+      startDate.setMilliseconds(0)
+      const suggestions = await getSuggestedSlots(
+        [currentAccount!.address, ..._participants.valid],
+        startDate,
+        addDays(startDate, 14),
+        duration
+      )
+      setGroupTimes(suggestions.slice(0, 20))
+    }
+
+    await Promise.all([checkAccount(), checkSuggestions()])
+    setSearchingTimes(false)
+  }
+
+  const bgColor = useColorModeValue('white', 'gray.600')
+  const iconColor = useColorModeValue('gray.600', 'white')
+
   return (
     <Modal
       onClose={onClose}
@@ -286,7 +384,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
             <FormLabel htmlFor="participants">Participants</FormLabel>
             <ChipInput
               currentItems={participants}
-              placeholder="Insert wallet addresses or email (for guests)"
+              placeholder="Insert wallet addresses, ENS, Lens, Unstoppable Domain or email (for guests)"
               onChange={onParticipantsChange}
               renderItem={item => {
                 return getAddressDisplayForInput(item)
@@ -298,19 +396,9 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
                 : 'Separate participants by comma. You will be added automatically, no need to insert yourself'}
             </FormHelperText>
           </FormControl>
-          <FormControl sx={{ marginTop: '24px' }}>
-            <FormLabel htmlFor="date">When</FormLabel>
-            <HStack>
-              <SingleDatepicker
-                date={selectedDate}
-                onDateChange={setDate}
-                blockPast={true}
-              />
-              <InputTimePicker
-                value={selectedTime}
-                onChange={setTime}
-                currentDate={selectedDate}
-              />
+          <Flex wrap="wrap" mt={4} direction={{ base: 'column', sm: 'row' }}>
+            <FormControl flex={1}>
+              <FormLabel htmlFor="date">Duration</FormLabel>
               <Select
                 id="duration"
                 placeholder="Duration"
@@ -323,9 +411,87 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
                 <option value={60}>60 min</option>
                 <option value={90}>90 min</option>
               </Select>
-            </HStack>
-          </FormControl>
-          <FormControl sx={{ marginTop: '24px' }}>
+            </FormControl>
+            <FormControl
+              flex={2}
+              ml={{ base: 0, sm: 2 }}
+              mt={{ base: 4, sm: 0 }}
+            >
+              <FormLabel htmlFor="date">When</FormLabel>
+              <VStack>
+                <HStack>
+                  <SingleDatepicker
+                    date={selectedDate}
+                    onDateChange={setDate}
+                    blockPast={true}
+                  />
+                  <InputTimePicker
+                    value={selectedTime}
+                    onChange={setTime}
+                    currentDate={selectedDate}
+                  />
+                </HStack>
+                <Button
+                  onClick={suggestTimes}
+                  isLoading={searchingTimes}
+                  disabled={participants.length === 0}
+                  size="xs"
+                  w="100%"
+                  colorScheme="orange"
+                  variant="outline"
+                >
+                  Find the time that works best for participants
+                </Button>
+              </VStack>
+            </FormControl>
+          </Flex>
+          {groupTimes && groupTimes.length === 0 && (
+            <Alert status="info" mt={4}>
+              <AlertIcon />
+              <AlertDescription>
+                There are no slots available available over the next 2 weeks.
+              </AlertDescription>
+            </Alert>
+          )}
+          {groupTimes && groupTimes.length > 0 && (
+            <FormControl>
+              <FormLabel htmlFor="date">Available slots</FormLabel>
+
+              <Box overflowX="auto" whiteSpace="nowrap" my={3}>
+                {groupTimes.map((timeSlot, index) => {
+                  const isSelected =
+                    (timeSlot.start as Date).getTime() ===
+                    buildSelectedStart().getTime()
+                  return (
+                    <Button
+                      mr={2}
+                      key={index}
+                      variant={isSelected ? 'solid' : 'outline'}
+                      onClick={() => selectTime(timeSlot)}
+                      colorScheme={isSelected ? 'orange' : 'gray'}
+                    >
+                      {format(timeSlot.start, 'PPp')}
+                    </Button>
+                  )
+                })}
+              </Box>
+              {notAccounts.length > 0 && (
+                <Alert status="info">
+                  <AlertIcon />
+                  <AlertDescription>
+                    {notAccounts.length === 1
+                      ? `${notAccounts[0]} don't have an account and was `
+                      : `${notAccounts.join(
+                          ', '
+                        )} don't have accounts  and were `}
+                    not considered for the availability check. They can still be
+                    invited and sign in to attend to the meeting.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </FormControl>
+          )}
+          <FormControl mt={4}>
             <FormLabel htmlFor="info">Information (optional)</FormLabel>
             <Textarea
               id="info"
@@ -335,33 +501,67 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
               placeholder="Any information you want to share prior to the meeting?"
             />
           </FormControl>
-          <FormControl sx={{ marginTop: '24px' }}>
+          <FormControl mt={{ base: 0, md: 8 }}>
             <FormLabel>Meeting link</FormLabel>
             <FormControl display="flex" alignItems="center">
-              <Switch
-                id="email-alerts"
-                colorScheme={'orange'}
-                defaultChecked={useHuddle}
-                isChecked={useHuddle}
-                onChange={() => setHuddle(value => !value)}
-              />
-              <FormLabel
-                htmlFor="email-alerts"
-                mb="0"
-                sx={{ paddingLeft: '16px', fontWeight: 'normal' }}
-              >
-                <Text>
-                  Use{' '}
-                  <Link href="https://huddle01.com/" target={'_blank'}>
-                    Huddle01
-                  </Link>{' '}
-                  for your meetings (a link will be generated for you).
-                </Text>
-                <Text>
-                  Huddle01 is a web3-powered video conferencing tailored for
-                  DAOs and NFT communities.
-                </Text>
-              </FormLabel>
+              <HStack alignItems="center">
+                <Switch
+                  display="flex"
+                  id="video-conference"
+                  colorScheme={'orange'}
+                  defaultChecked={useHuddle}
+                  isChecked={useHuddle}
+                  onChange={() => setHuddle(value => !value)}
+                />
+                <FormLabel
+                  htmlFor="video-conference"
+                  mb="0"
+                  alignItems="end"
+                  sx={{ paddingLeft: '16px', fontWeight: 'normal' }}
+                >
+                  <Text>
+                    Use{' '}
+                    <Link
+                      isExternal
+                      href="https://huddle01.com/?utm_source=mww"
+                    >
+                      Huddle01
+                    </Link>{' '}
+                    for your meeting
+                  </Text>
+                </FormLabel>
+
+                <Tooltip.Provider delayDuration={400}>
+                  <Tooltip.Root>
+                    <Tooltip.Trigger>
+                      <Flex
+                        w="16px"
+                        h="16px"
+                        borderRadius="50%"
+                        bgColor={iconColor}
+                        justifyContent="center"
+                        alignItems="center"
+                        ml={1}
+                      >
+                        <Icon w={1} color={bgColor} as={FaInfo} />
+                      </Flex>
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>
+                      <Text
+                        fontSize="sm"
+                        p={4}
+                        maxW="200px"
+                        bgColor={bgColor}
+                        shadow="lg"
+                      >
+                        Huddle01 is a web3-powered video conferencing tailored
+                        for DAOs and NFT communities.
+                      </Text>
+                      <Tooltip.Arrow />
+                    </Tooltip.Content>
+                  </Tooltip.Root>
+                </Tooltip.Provider>
+              </HStack>
             </FormControl>
             <Input
               mt="24px"

@@ -1,4 +1,10 @@
-import { Box, HStack, Input, InputProps } from '@chakra-ui/react'
+import {
+  Box,
+  HStack,
+  Input,
+  InputProps,
+  useColorModeValue,
+} from '@chakra-ui/react'
 import {
   ChangeEventHandler,
   ClipboardEventHandler,
@@ -30,6 +36,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   placeholder = 'Type do add items',
 }) => {
   const [current, setCurrent] = useState('')
+  const [focused, setFocused] = useState(false)
 
   const addItem = (items: string[], pasting?: boolean) => {
     // do nothing with an empty entry
@@ -93,15 +100,21 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   }
 
   const onLostFocus: FocusEventHandler<HTMLInputElement> = () => {
+    setFocused(false)
     if (current) {
       addItem([current])
     }
   }
 
+  const borderColor = useColorModeValue('gray.300', 'whiteAlpha.300')
+  const hoverColor = useColorModeValue('#3182ce', '#63b3ed')
+
   return (
     <HStack
       borderWidth={'1px'}
-      borderColor={'gray.200'}
+      transition="border 300ms ease-out"
+      borderColor={focused ? hoverColor : borderColor}
+      boxShadow={focused ? `0 0 0 1px ${hoverColor}` : 'none'}
       borderRadius={'md'}
       paddingLeft={'8px'}
       minHeight={'40px'}
@@ -122,6 +135,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
           onPaste={onPaste}
           variant={'unstyled'}
           value={current}
+          onFocus={() => setFocused(true)}
           onChange={onTextChange}
           onBlur={onLostFocus}
           placeholder={currentItems.length ? '' : placeholder}

@@ -68,13 +68,27 @@ export const getAccount = async (identifier: string): Promise<Account> => {
   }
 }
 
-export const getExistingAccounts = async (
+export const getExistingAccountsSimple = async (
   addresses: string[]
 ): Promise<SimpleAccountInfo[]> => {
   try {
-    return (await internalFetch(`/accounts/simple`, 'POST', {
+    return (await internalFetch(`/accounts/existing`, 'POST', {
       addresses,
+      fullInformation: false,
     })) as SimpleAccountInfo[]
+  } catch (e: any) {
+    throw e
+  }
+}
+
+export const getExistingAccounts = async (
+  addresses: string[]
+): Promise<Account[]> => {
+  try {
+    return (await internalFetch(`/accounts/existing`, 'POST', {
+      addresses,
+      fullInformation: true,
+    })) as Account[]
   } catch (e: any) {
     throw e
   }
@@ -504,6 +518,34 @@ export const getTeamMeetingRequest = async (
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
         return null
+      }
+    }
+    throw e
+  }
+}
+
+export const getSuggestedSlots = async (
+  addresses: string[],
+  startDate: Date,
+  endDate: Date,
+  duration: number
+): Promise<Interval[]> => {
+  try {
+    return (
+      (await internalFetch(`/meetings/busy/suggest`, 'POST', {
+        addresses,
+        startDate,
+        endDate,
+        duration,
+      })) as any[]
+    ).map(slot => ({
+      start: new Date(slot.start),
+      end: new Date(slot.end),
+    })) as Interval[]
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        return []
       }
     }
     throw e

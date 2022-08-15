@@ -1,4 +1,4 @@
-import { Box, Flex, HStack, Text } from '@chakra-ui/layout'
+import { Box, Flex, Text } from '@chakra-ui/layout'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 
 import { getAccountDisplayName } from '@/utils/user_manager'
@@ -21,7 +21,7 @@ const GroupScheduleCalendarProfile: React.FC<
 
   const extraText =
     accountsToShow.length !== props.teamAccounts.length
-      ? `and ${props.teamAccounts.length - accountsToShow.length} more`
+      ? ` and ${props.teamAccounts.length - accountsToShow.length} more`
       : ''
 
   return (

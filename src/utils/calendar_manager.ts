@@ -1,17 +1,12 @@
 import {
-  addMinutes,
-  compareAsc,
   format,
   getDate,
-  getDay,
   getHours,
   getMinutes,
   getMonth,
   getYear,
-  Interval,
-  isAfter,
 } from 'date-fns'
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
+import { utcToZonedTime } from 'date-fns-tz'
 import {
   decryptWithPrivateKey,
   Encrypted,
@@ -48,7 +43,7 @@ import { generateMeetingUrl } from './meeting_call_helper'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
-import { ellipsizeAddress } from './user_manager'
+import { ellipsizeAddress, getAccountDisplayName } from './user_manager'
 
 export interface GuestParticipant {
   name: string
@@ -66,7 +61,6 @@ const scheduleMeeting = async (
   source_account_address?: string,
   guests?: GuestParticipant[],
   sourceName?: string,
-  targetName?: string,
   meetingContent?: string,
   meetingUrl?: string
 ): Promise<MeetingDecrypted> => {
@@ -89,7 +83,7 @@ const scheduleMeeting = async (
       )
     ).isFree
   ) {
-    const allAccounts = await getExistingAccounts([
+    const allAccounts: Account[] = await getExistingAccounts([
       source_account_address ? source_account_address : '',
       target_account_address,
       ...extra_participants,
@@ -112,11 +106,9 @@ const scheduleMeeting = async (
             : ParticipationStatus.Pending,
         slot_id: uuidv4(),
         name:
-          account.address == source_account_address
-            ? sourceName
-            : account.address == target_account_address
-            ? targetName
-            : '',
+          account.address === source_account_address
+            ? sourceName || getAccountDisplayName(account)
+            : getAccountDisplayName(account),
         guest_email: '',
       }
       participants.push(participant)
@@ -352,96 +344,6 @@ const getContentFromEncrypted = async (
   }
 }
 
-const isSlotAvailable = (
-  slotDurationInMinutes: number,
-  minAdvanceTime: number,
-  slotTime: Date,
-  busySlots: Interval[],
-  availabilities: DayAvailability[],
-  userSchedulingTimezone: string,
-  targetTimezone: string
-): boolean => {
-  const start = slotTime
-
-  if (isAfter(addMinutes(new Date(), minAdvanceTime), start)) {
-    return false
-  }
-
-  const end = addMinutes(start, slotDurationInMinutes)
-
-  const startOnUTC = zonedTimeToUtc(start, userSchedulingTimezone)
-  const startForTarget = utcToZonedTime(startOnUTC, targetTimezone)
-
-  const endOnUTC = zonedTimeToUtc(end, userSchedulingTimezone)
-  const endForTarget = utcToZonedTime(endOnUTC, targetTimezone)
-
-  if (
-    !isTimeInsideAvailabilities(startForTarget, endForTarget, availabilities)
-  ) {
-    return false
-  }
-
-  const filtered = busySlots.filter(
-    slot =>
-      (compareAsc(slot.start, startOnUTC) >= 0 &&
-        compareAsc(slot.end, endOnUTC) <= 0) ||
-      (compareAsc(slot.start, startOnUTC) <= 0 &&
-        compareAsc(slot.end, endOnUTC) >= 0) ||
-      (compareAsc(slot.end, startOnUTC) > 0 &&
-        compareAsc(slot.end, endOnUTC) <= 0) ||
-      (compareAsc(slot.start, startOnUTC) >= 0 &&
-        compareAsc(slot.start, endOnUTC) < 0)
-  )
-
-  return filtered.length == 0
-}
-
-const isTimeInsideAvailabilities = (
-  startOnTargetTimezone: Date,
-  endOnTargetTimezone: Date,
-  targetAvailabilities: DayAvailability[]
-): boolean => {
-  const startTime = format(startOnTargetTimezone, 'HH:mm')
-  let endTime = format(endOnTargetTimezone, 'HH:mm')
-  if (endTime === '00:00') {
-    endTime = '24:00'
-  }
-
-  const compareTimes = (t1: string, t2: string) => {
-    const [h1, m1] = t1.split(':')
-    const [h2, m2] = t2.split(':')
-
-    if (h1 !== h2) {
-      return h1 > h2 ? 1 : -1
-    }
-
-    if (m1 !== m2) {
-      return m1 > m2 ? 1 : -1
-    }
-
-    return 0
-  }
-
-  //After midnight
-  if (compareTimes(startTime, endTime) > 0) {
-    endTime = `${getHours(endOnTargetTimezone) + 24}:00`
-  }
-
-  for (const availability of targetAvailabilities) {
-    if (availability.weekday === getDay(startOnTargetTimezone)) {
-      for (const range of availability.ranges) {
-        if (compareTimes(startTime, range.start) >= 0) {
-          if (compareTimes(endTime, range.end) <= 0) {
-            return true
-          }
-        }
-      }
-    }
-  }
-
-  return false
-}
-
 const generateDefaultAvailabilities = (): DayAvailability[] => {
   const availabilities = []
   for (let i = 0; i <= 6; i++) {
@@ -546,8 +448,6 @@ export {
   generateIcs,
   getAccountCalendarUrl,
   getAccountDomainUrl,
-  isSlotAvailable,
-  isTimeInsideAvailabilities,
   noNoReplyEmailForAccount,
   scheduleMeeting,
 }
