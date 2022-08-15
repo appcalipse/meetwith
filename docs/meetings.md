@@ -22,7 +22,7 @@ export interface DBSlot extends TimeSlot {
 }
 ```
 
-You can see both types of information here, the public one and the sensitive one that is stored encrypted into the `meeting_info_file_path` property (via [IPFS](https://ipfs.io/?source=meetwithwallet)).
+You can see both types of information here, the public one and the sensitive one that is stored encrypted into the `meeting_info_file_path` property (via [IPFS](https://ipfs.io/?utm_source=meetwithwallet)).
 
 ## Encryption
 

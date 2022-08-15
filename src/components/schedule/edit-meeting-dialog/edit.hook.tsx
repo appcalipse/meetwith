@@ -50,5 +50,5 @@ export const useEditMeetingDialog = () => {
     )
   }
 
-  return [EditModal as any, openEditModal, closeEditModal]
+  return [EditModal, openEditModal, closeEditModal]
 }

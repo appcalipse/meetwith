@@ -1222,8 +1222,6 @@ const updateMeeting = async (
       const path = await addContentToIPFS(participant.privateInfo)
 
       // Not adding source here given on our database the source is always MWW
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       const dbSlot: DBSlot = {
         id: participant.slot_id,
         start: new Date(meeting.start),
