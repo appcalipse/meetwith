@@ -8,9 +8,10 @@ import {
 } from '@chakra-ui/react'
 import { format } from 'date-fns'
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useContext } from 'react'
 
-import generateTimeSlots from './generate-time-slots'
+import { AccountContext } from '@/providers/AccountProvider'
+import { generateTimeSlots } from '@/utils/slots.helper'
 
 function Root({
   pickedDay,
@@ -20,15 +21,33 @@ function Root({
   selfAvailabilityCheck,
   showSelfAvailability,
 }) {
+  const { currentAccount } = useContext(AccountContext)
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes)
   const filtered = timeSlots.filter(slot => {
-    return validator ? validator(slot) : true
+    return validator ? validator(slot.start) : true
   })
   const borderColor = useColorModeValue('gray.200', 'gray.600')
   const circleColor = useColorModeValue('orange.500', 'orange.500')
 
   return (
     <>
+      {!currentAccount && (
+        <HStack
+          maxW="220px"
+          mx="auto"
+          width="100%"
+          border="1px solid"
+          borderColor={borderColor}
+          bgColor={circleColor}
+          p={2}
+          justifyContent="center"
+          mb={4}
+        >
+          <Text flex={1} fontSize={'sm'} textAlign="center" color="white">
+            Sign in to see your availability
+          </Text>
+        </HStack>
+      )}
       {showSelfAvailability && (
         <HStack
           maxW="220px"
@@ -57,8 +76,8 @@ function Root({
           {filtered.map(slot => {
             return (
               <Flex
-                key={slot}
-                onClick={() => pickTime(slot)}
+                key={slot.start}
+                onClick={() => pickTime(slot.start)}
                 width="100%"
                 border="1px solid"
                 borderColor={borderColor}
@@ -67,8 +86,8 @@ function Root({
                 alignItems="center"
                 _hover={{ cursor: 'pointer', color: 'orange.400' }}
               >
-                {<Text flex={1}>{format(slot, 'HH:mm a')}</Text>}
-                {showSelfAvailability && selfAvailabilityCheck(slot) ? (
+                {<Text flex={1}>{format(slot.start, 'HH:mm a')}</Text>}
+                {showSelfAvailability && selfAvailabilityCheck(slot.start) ? (
                   <Flex
                     borderRadius="50%"
                     w="10px"

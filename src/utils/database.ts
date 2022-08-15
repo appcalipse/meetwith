@@ -51,11 +51,11 @@ import {
 import {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
-  isTimeInsideAvailabilities,
 } from './calendar_manager'
 import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
 import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
+import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { isValidEVMAddress } from './validations'
@@ -310,11 +310,12 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 }
 
 const getExistingAccountsFromDB = async (
-  addresses: string[]
-): Promise<SimpleAccountInfo[]> => {
+  addresses: string[],
+  fullInformation?: boolean
+): Promise<SimpleAccountInfo[] | Account[]> => {
   const { data, error } = await db.supabase
     .from('accounts')
-    .select('address, internal_pub_key')
+    .select('address, internal_pub_key, preferences_path')
     .in(
       'address',
       addresses.map(address => address.toLowerCase())
@@ -323,6 +324,14 @@ const getExistingAccountsFromDB = async (
   if (error) {
     Sentry.captureException(error)
     throw new Error("Couldn't get accounts")
+  }
+
+  if (fullInformation) {
+    for (const account of data) {
+      account.preferences = (await fetchContentFromIPFS(
+        account.preferences_path
+      )) as AccountPreferences
+    }
   }
 
   return data
