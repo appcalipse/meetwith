@@ -20,23 +20,7 @@ import {
 import { createEvent, EventAttributes, ReturnObject } from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
-import {
-  cancelMeeting as apiCancelMeeting,
-  getAccount,
-  getExistingAccounts,
-  getMeeting,
-  isSlotFreeApiCall,
-  scheduleMeeting as apiScheduleMeeting,
-  scheduleMeetingAsGuest,
-  updateMeeting as apiUpdateMeeting,
-} from '@/utils/api_helper'
-
-import {
-  Account,
-  DayAvailability,
-  MeetingType,
-  SimpleAccountInfo,
-} from '../types/Account'
+import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import {
   CreationRequestParticipantMapping,
   DBSlotEnhanced,
@@ -48,8 +32,19 @@ import {
   ParticipantType,
   ParticipationStatus,
   SchedulingType,
-} from '../types/Meeting'
-import { Plan } from '../types/Subscription'
+} from '@/types/Meeting'
+import { Plan } from '@/types/Subscription'
+import {
+  cancelMeeting as apiCancelMeeting,
+  getAccount,
+  getExistingAccounts,
+  getMeeting,
+  isSlotFreeApiCall,
+  scheduleMeeting as apiScheduleMeeting,
+  scheduleMeetingAsGuest,
+  updateMeeting as apiUpdateMeeting,
+} from '@/utils/api_helper'
+
 import { diff, intersec } from './collections'
 import { appUrl } from './constants'
 import { decryptContent, simpleHash } from './cryptography'
@@ -266,11 +261,6 @@ const updateMeeting = async (
   }
 
   const ownerAccount = await getAccount(owner)
-  // const updatedMeeting = await decryptMeeting(
-  //   encodedSlot,
-  //   ownerAccount,
-  //   signature
-  // )
 
   const existingDBSlot = await getMeeting(decryptedMeeting.id)
   const existingMeeting = await decryptMeeting(

@@ -22,39 +22,25 @@ import {
 } from '@chakra-ui/react'
 import { addHours, addMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import { Encrypted } from 'eth-crypto'
 import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 
-import Loading from '@/components/Loading'
-import { getSignature } from '@/utils/storage'
-
-import { AccountContext } from '../../../providers/AccountProvider'
-import {
-  DBSlot,
-  MeetingDecrypted,
-  SchedulingType,
-} from '../../../types/Meeting'
-import { logEvent } from '../../../utils/analytics'
-import {
-  decryptMeeting,
-  scheduleMeeting,
-  updateMeeting,
-} from '../../../utils/calendar_manager'
+import { ChipInput } from '@/components/chip-input'
+import { SingleDatepicker } from '@/components/input-date-picker'
+import { InputTimePicker } from '@/components/input-time-picker'
+import { AccountContext } from '@/providers/AccountProvider'
+import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
+import { logEvent } from '@/utils/analytics'
+import { updateMeeting } from '@/utils/calendar_manager'
 import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
-} from '../../../utils/errors'
-import { isProAccount } from '../../../utils/subscription_manager'
-import {
-  getAccountDisplayName,
-  getAddressDisplayForInput,
-} from '../../../utils/user_manager'
-import { ChipInput } from '../../chip-input'
-import { SingleDatepicker } from '../../input-date-picker'
-import { InputTimePicker } from '../../input-time-picker'
+} from '@/utils/errors'
+import { getSignature } from '@/utils/storage'
+import { isProAccount } from '@/utils/subscription_manager'
+import { getAddressDisplayForInput } from '@/utils/user_manager'
 
 export interface EditMeetingModalProps {
   isOpen: boolean
