@@ -1,4 +1,4 @@
-import { Box, Flex, HStack, Image, Text } from '@chakra-ui/react'
+import { Flex, HStack, Image, Text } from '@chakra-ui/react'
 import { BigNumber } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
 
@@ -56,7 +56,7 @@ const HumanReadableGate: React.FC<HumanReadableGateProps> = props => {
       flexWrap="wrap"
       justifyContent={props.center ? 'center' : 'flex-start'}
     >
-      <Text mr={2}>User must hold</Text>
+      <Text mr={1}>User must hold</Text>
       {nodes.map((node, i) => (
         <Flex style={{ marginInlineStart: 0 }} alignItems="center" key={i}>
           <Text>{node.text}</Text>

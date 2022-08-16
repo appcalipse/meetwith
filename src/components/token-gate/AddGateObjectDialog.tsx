@@ -65,12 +65,14 @@ export const AddGateObjectDialog: React.FC<
           GateInterface.ERC20,
           GateInterface.ERC721,
           GateInterface.ERC1155,
+          GateInterface.NATIVE,
         ].includes(element.type)
       ) {
         if (
           !element.itemSymbol ||
           !element.chain ||
-          (element.type === GateInterface.ERC20 &&
+          ((element.type === GateInterface.ERC20 ||
+            element.type === GateInterface.NATIVE) &&
             (element.decimals === undefined || element.decimals === null))
         ) {
           return false
