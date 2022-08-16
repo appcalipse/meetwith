@@ -37,13 +37,18 @@ import {
 } from './api_helper'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { decryptContent } from './cryptography'
-import { MeetingWithYourselfError, TimeNotAvailableError } from './errors'
+import {
+  InvalidURL,
+  MeetingWithYourselfError,
+  TimeNotAvailableError,
+} from './errors'
 import { getSlugFromText } from './generic_utils'
 import { generateMeetingUrl } from './meeting_call_helper'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress, getAccountDisplayName } from './user_manager'
+import { isValidEmail, isValidUrl } from './validations'
 
 export interface GuestParticipant {
   name: string
@@ -70,6 +75,18 @@ const scheduleMeeting = async (
     guests?.length == 0
   ) {
     throw new MeetingWithYourselfError()
+  }
+
+  if (meetingUrl) {
+    if (isValidEmail(meetingUrl)) {
+      throw new InvalidURL()
+    }
+    if (!isValidUrl(meetingUrl)) {
+      meetingUrl = `https://${meetingUrl}`
+      if (!isValidUrl(meetingUrl)) {
+        throw new InvalidURL()
+      }
+    }
   }
 
   if (
