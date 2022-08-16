@@ -70,3 +70,10 @@ export class GateConditionNotValidError extends Error {
     this.name = 'GateConditionNotValidError'
   }
 }
+
+export class InvalidURL extends Error {
+  constructor() {
+    super(``)
+    this.name = 'InvalidURL'
+  }
+}
