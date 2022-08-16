@@ -65,6 +65,11 @@ export const newMeetingEmail = async (
     destinationAccountAddress || ''
   )
 
+  if (icsFile.error) {
+    Sentry.captureException(icsFile.error)
+    return false
+  }
+
   const msg: sgMail.MailDataRequired = {
     to: toEmail,
     from: FROM,

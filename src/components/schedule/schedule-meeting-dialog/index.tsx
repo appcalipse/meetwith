@@ -44,6 +44,7 @@ import {
 import { scheduleMeeting } from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
+  InvalidURL,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
@@ -302,6 +303,15 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
           title: 'Failed to schedule meeting',
           description:
             'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof InvalidURL) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'Please provide a valid url/link for your meeting.',
           status: 'error',
           duration: 5000,
           position: 'top',
