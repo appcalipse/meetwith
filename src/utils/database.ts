@@ -37,7 +37,6 @@ import {
   MeetingICS,
   ParticipantType,
   TimeSlotSource,
-  VideoMeetingDB,
 } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
 import {
@@ -615,9 +614,9 @@ const saveMeeting = async (
   if (error) {
     Sentry.captureException(error)
   }
-
+  let videoResponse
   if (haveGuests) {
-    const videoResponse = await db.supabase.from('video_meeting').insert([
+    videoResponse = await db.supabase.from('video_meeting').insert([
       {
         videoMeeting: meeting.videoMeeting,
       },
@@ -632,15 +631,16 @@ const saveMeeting = async (
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
-  const meetingICS: MeetingICS = {
+  const syncRequest: MeetingICS & { guestMeetingId: string } = {
     db_slot: meetingResponse,
     meeting,
+    guestMeetingId: videoResponse ? videoResponse.data.id : null,
   }
 
   // Doing notifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'POST',
-    body: JSON.stringify(meetingICS),
+    body: JSON.stringify(syncRequest),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
     },

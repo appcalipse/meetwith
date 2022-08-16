@@ -5,7 +5,7 @@ import {
   NotificationChannel,
 } from '../types/AccountNotifications'
 import { MeetingICS, ParticipantInfo, ParticipantType } from '../types/Meeting'
-import { dateToHumanReadable } from './calendar_manager'
+import { dateToHumanReadable, generateMeetingUrl } from './calendar_manager'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
@@ -23,7 +23,8 @@ export interface ParticipantInfoForNotification extends ParticipantInfo {
 }
 
 export const notifyForNewMeeting = async (
-  meeting_ics: MeetingICS
+  meeting_ics: MeetingICS,
+  guestMeetingId?: string
 ): Promise<void> => {
   const participantsInfo: ParticipantInfoForNotification[] = await Promise.all(
     meeting_ics.meeting.participants_mapping.map(async map => {
@@ -68,7 +69,7 @@ export const notifyForNewMeeting = async (
           new Date(meeting_ics.meeting.end),
           meeting_ics.db_slot.meeting_info_file_path,
           undefined,
-          meeting_ics.meeting.meeting_url,
+          generateMeetingUrl(guestMeetingId!, true),
           meeting_ics.db_slot.id,
           meeting_ics.db_slot.created_at
         )
@@ -98,7 +99,7 @@ export const notifyForNewMeeting = async (
                   new Date(meeting_ics.meeting.end),
                   meeting_ics.db_slot.meeting_info_file_path,
                   participant.account_address,
-                  meeting_ics.meeting.meeting_url,
+                  generateMeetingUrl(meeting_ics.db_slot.id!, false),
                   participant.slot_id,
                   meeting_ics.db_slot.created_at
                 )

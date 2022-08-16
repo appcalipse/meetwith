@@ -28,6 +28,7 @@ import {
   decryptMeeting,
   durationToHumanReadable,
   generateIcs,
+  generateMeetingUrl,
 } from '@/utils/calendar_manager'
 import { UTM_PARAMS } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -116,6 +117,7 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
 const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
   const [loading, setLoading] = useState(true)
   const [info, setInfo] = useState(undefined as MeetingDecrypted | undefined)
+  const [meetingLink, setMeetingLink] = useState('')
   const { currentAccount } = useContext(AccountContext)
 
   useEffect(() => {
@@ -133,6 +135,11 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
         )
 
         setInfo(decryptedMeeting)
+        setMeetingLink(
+          (decryptedMeeting as any)?.meeting_url
+            ? (decryptedMeeting as any)?.meeting_url //for old meetings
+            : generateMeetingUrl(meeting.id!, false)
+        )
       }
       setLoading(false)
     }
@@ -186,11 +193,11 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             <strong>Meeting link</strong>
           </Text>
           <Link
-            href={`${info.videoMeeting.url}${UTM_PARAMS}`}
+            href={meetingLink}
             isExternal
             onClick={() => logEvent('Clicked to start meeting')}
           >
-            {info.videoMeeting.url}
+            {meetingLink}
           </Link>
           <VStack alignItems="flex-start">
             <Text>

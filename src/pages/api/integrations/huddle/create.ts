@@ -25,10 +25,12 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
         })
       ).json()
 
-      if (huddleMeeting.data) {
+      console.log(huddleMeeting)
+
+      if (huddleMeeting) {
         return res.json({
-          url: huddleMeeting.data.roomUrl,
-          id: huddleMeeting.data.id,
+          url: huddleMeeting.roomUrl,
+          id: huddleMeeting.roomId,
           title: title || 'Meet with Wallet Meeting',
           provider: MeetingProvider.HUDDLE01,
         })

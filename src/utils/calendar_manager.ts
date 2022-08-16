@@ -338,7 +338,8 @@ const decryptMeeting = async (
   return {
     id: meeting.id!,
     ...meeting,
-    created_at: meeting.created_at!,
+    ...meetingInfo,
+    created_at: new Date(meeting.created_at!),
     participants: meetingInfo.participants,
     content: meetingInfo.content,
     videoMeeting: meetingInfo.videoMeeting,
@@ -546,6 +547,14 @@ const generateAllSlots = () => {
 
 const noNoReplyEmailForAccount = (account_address: string): string => {
   return `no_reply_${account_address}@meetwithwallet.xyz`
+}
+
+export const generateMeetingUrl = (id: string, isGuest: boolean): string => {
+  if (isGuest) {
+    return `${appUrl}/meeting/guest/${id}`
+  } else {
+    return `${appUrl}/meeting/${id}`
+  }
 }
 
 const allSlots = generateAllSlots()

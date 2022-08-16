@@ -9,26 +9,27 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     const { name, roomId } = req.body
 
     try {
-      const joinData = await (
-        await fetch(`${HUDDLE_API_URL}/joinroom`, {
-          method: 'POST',
-          headers: {
-            Accept: '*/*',
-            'Content-Type': 'application/json',
-            'x-api-key': process.env.HUDDLE_API_KEY!,
-          },
-          body: JSON.stringify({
-            type: 'guest',
-            name,
-            roomId,
-          }),
-        })
-      ).json()
+      const response = await fetch(`${HUDDLE_API_URL}/joinroom`, {
+        method: 'POST',
+        headers: {
+          Accept: '*/*',
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.HUDDLE_API_KEY!,
+        },
+        body: JSON.stringify({
+          type: 'guest',
+          name,
+          roomId,
+        }),
+      })
+
+      const joinData = await response.json()
 
       if (joinData) {
-        return res.json({ joinUrl: joinData.joinUrl })
+        return res.json({ joiningLink: joinData.joiningLink })
       }
     } catch (e) {
+      console.log(e)
       Sentry.captureException(e)
       return res.status(503).send('Huddle01 Unavailable')
     }

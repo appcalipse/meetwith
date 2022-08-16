@@ -3,21 +3,17 @@ import * as Sentry from '@sentry/nextjs'
 import { NextPage } from 'next'
 import React from 'react'
 
-import MeetingPage from '@/components/meeting/MettingPage'
+import MeetingPage from '@/components/meeting/MeetingPage'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
-import { DBSlotEnhanced } from '@/types/Meeting'
-import { getAccount } from '@/utils/api_helper'
-import { getMeetingFromDB } from '@/utils/database'
-import { MeetingNotFoundError } from '@/utils/errors'
 import redirectTo from '@/utils/redirect'
 
 interface MeetingProps {
-  meeting: DBSlotEnhanced
+  slotId: string
   serverSideRender: boolean
 }
 
-const MeetPage: NextPage<MeetingProps> = ({ meeting, ...rest }) => {
-  return <MeetingPage />
+const MeetPage: NextPage<MeetingProps> = ({ slotId, ...rest }) => {
+  return <MeetingPage slotId={slotId} />
 }
 
 const EnchancedMeetingPage = forceAuthenticationCheck(MeetPage)
@@ -30,23 +26,7 @@ EnchancedMeetingPage.getInitialProps = async ctx => {
     return redirectTo('/404', 302, ctx)
   }
 
-  return {}
-
-  //   try {
-  //     const meeting = await getMeetingFromDB(slot_id[0])
-
-  //     if (!meeting) {
-  //       return redirectTo('/404', 302, ctx)
-  //     }
-
-  //     return { meeting, serverSideRender: serverSide }
-  //   } catch (e) {
-  //     if (!(e instanceof MeetingNotFoundError)) {
-  //       Sentry.captureException(e)
-  //     }
-
-  //     return redirectTo('/404', 302, ctx)
-  //   }
+  return { slotId: slot as string, serverSideRender: serverSide }
 }
 
 export default EnchancedMeetingPage

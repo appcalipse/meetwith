@@ -538,7 +538,7 @@ export const joinHuddleRoom = async (
       name,
       roomId,
     })
-    return (response as any).joinUrl as string
+    return (response as any).joiningLink as string
   } catch (e) {
     if (e instanceof ApiFetchError) {
       if (e.status === 503) {
