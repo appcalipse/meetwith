@@ -4,7 +4,7 @@ import { ConditionRelation } from '@/types/common'
 import { GateCondition, GateInterface } from '@/types/TokenGating'
 
 import { getWalletPOAP } from './api_helper'
-import { getTokenBalance } from './token.service'
+import { getNativeBalance, getTokenBalance } from './token.service'
 
 export const isConditionValid = async (
   gateCondition: GateCondition,
@@ -32,6 +32,8 @@ export const isConditionValid = async (
           Number(parseInt(element.itemId))
         )
         balance = BigNumber.from(poap ? 1 : 0)
+      } else if (element.type === GateInterface.NATIVE) {
+        balance = await getNativeBalance(targetAddress, element.chain!)
       }
 
       isValid.push(balance.gt(0) && element.minimumBalance.lte(balance))

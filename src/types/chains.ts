@@ -39,6 +39,11 @@ export interface AcceptedTokenInfo {
   contractAddress: string
 }
 
+export const getNativeDecimals = (chain: SupportedChain): number => {
+  // all supported tokens for now have 18 decimals
+  return 18
+}
+
 export const supportedChains: ChainInfo[] = [
   {
     chain: SupportedChain.RINKEBY,
