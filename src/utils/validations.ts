@@ -11,3 +11,10 @@ export const isValidEVMAddress = (address: string): boolean => {
   const match = address.match(/^0x[a-fA-F0-9]{40}$/i)
   return !!match
 }
+
+export const isValidUrl = (url: string): boolean => {
+  const match = url.match(
+    /^(https?:\/\/)([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/
+  )
+  return !!match
+}

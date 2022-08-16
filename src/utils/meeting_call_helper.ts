@@ -1,8 +1,15 @@
 import * as Sentry from '@sentry/browser'
 import { v4 as uuidv4 } from 'uuid'
 
-export const UTM_PARAMS =
-  '&utm_source=partner&utm_medium=calendar&utm_campaign=mww'
+export const addUTMParams = (originalUrl: string) => {
+  let startChar = ''
+  if (originalUrl.indexOf('?') !== -1) {
+    startChar = '&'
+  } else {
+    startChar = '?'
+  }
+  return `${originalUrl}${startChar}utm_source=partner&utm_medium=calendar&utm_campaign=mww`
+}
 
 const generateMeetingUrl = async (): Promise<string> => {
   try {
