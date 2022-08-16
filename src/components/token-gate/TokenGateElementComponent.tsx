@@ -30,7 +30,11 @@ import {
   getTestnetChains,
   SupportedChain,
 } from '@/types/chains'
-import { GateInterface, TokenGateElement } from '@/types/TokenGating'
+import {
+  GateInterface,
+  getNativeTokenInfo,
+  TokenGateElement,
+} from '@/types/TokenGating'
 import { getPOAPEvent } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
 import { useDebounce } from '@/utils/generic_utils'
@@ -66,6 +70,13 @@ export const TokenGateElementComponent = (
   const setType = (type: GateInterface) => {
     const info = props.tokenInfo
     info.type = type
+    if (type === GateInterface.NATIVE) {
+      const native = getNativeTokenInfo(info.chain!)
+      info.itemName = native.itemName
+      info.itemSymbol = native.itemSymbol
+      info.decimals = native.decimals
+      info.itemId = native.itemId
+    }
     props.onChange(info, props.position)
   }
 
@@ -78,6 +89,13 @@ export const TokenGateElementComponent = (
   const setChain = (chain: SupportedChain) => {
     const info = props.tokenInfo
     info.chain = chain
+    if (info.type === GateInterface.NATIVE) {
+      const native = getNativeTokenInfo(info.chain!)
+      info.itemName = native.itemName
+      info.itemSymbol = native.itemSymbol
+      info.decimals = native.decimals
+      info.itemId = native.itemId
+    }
     props.onChange(info, props.position)
   }
 
@@ -104,6 +122,9 @@ export const TokenGateElementComponent = (
             value={props.tokenInfo.type}
             onChange={e => setType(e.target.value as GateInterface)}
           >
+            <option value={GateInterface.NATIVE}>
+              Chain&apos;s native token
+            </option>
             <option value={GateInterface.ERC20}>ERC20</option>
             <option value={GateInterface.ERC721}>NFT/ERC721</option>
             <option value={GateInterface.POAP}>POAP</option>
@@ -114,6 +135,7 @@ export const TokenGateElementComponent = (
           GateInterface.ERC20,
           GateInterface.ERC721,
           GateInterface.ERC1155,
+          GateInterface.NATIVE,
         ].includes(props.tokenInfo!.type) && (
           <TokenForm
             tokenInfo={props.tokenInfo}
@@ -235,22 +257,24 @@ const TokenForm: React.FC<{
         </Select>
       </FormControl>
 
-      <FormControl isInvalid={invalidTokenAddress} mt={2}>
-        <FormLabel>Token address</FormLabel>
-        <InputGroup>
-          <Input
-            value={tokenInfo?.itemId}
-            type="text"
-            placeholder="0x0000000000000000000000000000000000000000"
-            onChange={event =>
-              !loadingToken && setTokenAddress(event.target.value)
-            }
-          />
-        </InputGroup>
-        <FormErrorMessage>
-          Address is invalid and token information couldn&apos;t be fetched
-        </FormErrorMessage>
-      </FormControl>
+      {tokenInfo?.type !== GateInterface.NATIVE && (
+        <FormControl isInvalid={invalidTokenAddress} mt={2}>
+          <FormLabel>Token address</FormLabel>
+          <InputGroup>
+            <Input
+              value={tokenInfo?.itemId}
+              type="text"
+              placeholder="0x0000000000000000000000000000000000000000"
+              onChange={event =>
+                !loadingToken && setTokenAddress(event.target.value)
+              }
+            />
+          </InputGroup>
+          <FormErrorMessage>
+            Address is invalid and token information couldn&apos;t be fetched
+          </FormErrorMessage>
+        </FormControl>
+      )}
 
       <HStack mt={2}>
         <InputGroup>
@@ -408,7 +432,11 @@ const POAPForm: React.FC<{
               )}
             </Box>
           ) : (
-            <Image w={'40px'} src={tokenInfo?.itemLogo} />
+            <Image
+              w={'40px'}
+              src={tokenInfo?.itemLogo}
+              alt={tokenInfo?.itemName}
+            />
           )}
         </Box>
         <InputGroup>
