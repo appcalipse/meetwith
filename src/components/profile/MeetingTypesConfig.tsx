@@ -1,19 +1,31 @@
 import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
   Box,
   Button,
+  Flex,
   Heading,
   HStack,
   Icon,
+  IconButton,
   Link,
   SimpleGrid,
   Spacer,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import NextLink from 'next/link'
 import { useContext, useRef, useState } from 'react'
-import { FaArrowLeft } from 'react-icons/fa'
+import { FaArrowLeft, FaTrash } from 'react-icons/fa'
+
+import { removeMeetingType } from '@/utils/api_helper'
+import { ApiFetchError } from '@/utils/errors'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account } from '../../types/Account'
@@ -28,9 +40,12 @@ import MeetingTypeConfig from './components/MeetingTypeConfig'
 import NewMeetingTypeDialog from './NewMeetingTypeDialog'
 
 const MeetingTypesConfig: React.FC = () => {
-  const { currentAccount } = useContext(AccountContext)
+  const { currentAccount, login } = useContext(AccountContext)
 
   const [selectedType, setSelectedType] = useState<string>('')
+  const [typeToRemove, setTypeToRemove] = useState<string | undefined>(
+    undefined
+  )
 
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
   const cancelDialogRef = useRef<any>()
@@ -38,6 +53,18 @@ const MeetingTypesConfig: React.FC = () => {
   const createType = async () => {
     logEvent('Clicked to create new meeting type')
     setIsDialogOpen(true)
+  }
+
+  const removeType = async (typeId: string) => {
+    setTypeToRemove(typeId)
+  }
+
+  const typeRemoved = async (account: Account) => {
+    login(account)
+  }
+
+  const onCloseRemoveDialog = () => {
+    setTypeToRemove(undefined)
   }
 
   const isPro = isProAccount(currentAccount!)
@@ -59,23 +86,31 @@ const MeetingTypesConfig: React.FC = () => {
             spacingX="20px"
             spacingY="16px"
           >
-            {currentAccount!.preferences!.availableTypes.map((type, index) => {
-              const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
-                type.url
-              }`
-              return (
-                <Box key={type.id}>
-                  <MeetingTypeCard
-                    onSelect={setSelectedType}
-                    title={type.title}
-                    duration={type.duration}
-                    url={url}
-                    typeId={type.id!}
-                  />
-                  <Spacer />
-                </Box>
-              )
-            })}
+            {currentAccount!
+              .preferences!.availableTypes.filter(type => !type.deleted)
+              .map((type, index) => {
+                const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
+                  type.url
+                }`
+                return (
+                  <Box key={type.id}>
+                    <MeetingTypeCard
+                      onSelect={setSelectedType}
+                      title={type.title}
+                      duration={type.duration}
+                      url={url}
+                      typeId={type.id!}
+                      removeType={removeType}
+                      showRemoval={
+                        currentAccount!.preferences!.availableTypes.filter(
+                          type => !type.deleted
+                        ).length > 1
+                      }
+                    />
+                    <Spacer />
+                  </Box>
+                )
+              })}
           </SimpleGrid>
           <VStack
             borderRadius={8}
@@ -104,6 +139,11 @@ const MeetingTypesConfig: React.FC = () => {
               cancelDialogRef={cancelDialogRef}
               onDialogClose={() => setIsDialogOpen(false)}
             />
+            <RemoveTypeDialog
+              onClose={onCloseRemoveDialog}
+              onSuccessRemoval={typeRemoved}
+              typeId={typeToRemove}
+            />
           </VStack>
         </VStack>
       )}
@@ -117,6 +157,8 @@ interface CardProps {
   url: string
   duration: number
   onSelect: (typeId: string) => void
+  removeType: (typeId: string) => void
+  showRemoval: boolean
 }
 
 const MeetingTypeCard: React.FC<CardProps> = ({
@@ -125,11 +167,15 @@ const MeetingTypeCard: React.FC<CardProps> = ({
   url,
   duration,
   onSelect,
+  removeType,
+  showRemoval,
 }) => {
   const openType = () => {
     logEvent('Clicked to edit meeting type')
     onSelect(typeId)
   }
+
+  const iconColor = useColorModeValue('gray.500', 'gray.200')
 
   return (
     <Box alignSelf="stretch" mb={4}>
@@ -143,9 +189,22 @@ const MeetingTypeCard: React.FC<CardProps> = ({
         height={'100%'}
         bgColor={useColorModeValue('white', 'gray.600')}
       >
-        <Text fontWeight="medium">{title}</Text>
-        <Text>Duration: {durationToHumanReadable(duration)}</Text>
-
+        <Flex width="100%">
+          <VStack alignItems="flex-start" flex={1}>
+            <Text fontWeight="medium">{title}</Text>
+            <Text>Duration: {durationToHumanReadable(duration)}</Text>
+          </VStack>
+          {showRemoval && (
+            <Box>
+              <IconButton
+                color={iconColor}
+                aria-label="remove"
+                icon={<FaTrash size={18} />}
+                onClick={() => removeType(typeId)}
+              />
+            </Box>
+          )}
+        </Flex>
         <HStack width="100%" pt={4}>
           <CopyLinkButton url={url} />
           <Button flex={1} colorScheme="orange" onClick={openType}>
@@ -206,6 +265,99 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
         Save information
       </Button>
     </VStack>
+  )
+}
+
+interface RemoveTypeDialogProps {
+  onClose: () => void
+  typeId?: string
+  onSuccessRemoval: (updatedAccountPreferences: Account) => void
+}
+
+const RemoveTypeDialog: React.FC<RemoveTypeDialogProps> = ({
+  onClose,
+  typeId,
+  onSuccessRemoval,
+}) => {
+  const cancelRef = useRef(null)
+  const [busy, setBusy] = useState(false)
+  const toast = useToast()
+
+  const onDelete = async () => {
+    setBusy(true)
+
+    try {
+      const account = await removeMeetingType(typeId!)
+
+      onSuccessRemoval(account)
+      setBusy(false)
+      onClose()
+      return
+    } catch (err) {
+      if (err instanceof ApiFetchError) {
+        toast({
+          title: 'Cannot remove type',
+          description: err.message,
+          status: 'error',
+          position: 'top',
+          duration: 5000,
+          isClosable: true,
+        })
+        setBusy(false)
+        onClose()
+        return
+      }
+    }
+    toast({
+      title: 'Ops',
+      description: 'Something went wrong removing your meeting type',
+      status: 'error',
+      position: 'top',
+      duration: 5000,
+      isClosable: true,
+    })
+    setBusy(false)
+  }
+
+  return (
+    <AlertDialog
+      isOpen={typeId !== undefined}
+      leastDestructiveRef={cancelRef}
+      onClose={onClose}
+      blockScrollOnMount={false}
+      size="xl"
+      isCentered
+    >
+      <AlertDialogOverlay>
+        <AlertDialogContent>
+          <AlertDialogHeader fontSize="lg" fontWeight="bold">
+            Remove meeting type
+          </AlertDialogHeader>
+
+          <AlertDialogBody>
+            Are you sure you want to remove this type?
+          </AlertDialogBody>
+
+          <AlertDialogFooter>
+            <Button
+              color={useColorModeValue('gray.700', 'gray.300')}
+              ref={cancelRef}
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              colorScheme="red"
+              onClick={onDelete}
+              ml={3}
+              isLoading={busy}
+            >
+              Remove
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialogOverlay>
+    </AlertDialog>
   )
 }
 

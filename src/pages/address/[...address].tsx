@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/nextjs'
+import * as Sentry from '@sentry/node'
 import { NextPage } from 'next'
 
 import PublicCalendar from '@/components/public-calendar'
