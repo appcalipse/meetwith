@@ -2,7 +2,7 @@ import { useDisclosure } from '@chakra-ui/hooks'
 import { Box, Container, Flex, Text } from '@chakra-ui/layout'
 import { Select } from '@chakra-ui/select'
 import { useToast } from '@chakra-ui/toast'
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 import {
   addMinutes,
   endOfMonth,

@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 
 import { ConditionRelation } from '@/types/common'
 import { GateConditionObject } from '@/types/TokenGating'

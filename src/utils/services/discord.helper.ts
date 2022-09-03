@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/node'
+import * as Sentry from '@sentry/nextjs'
 import { Client, Intents } from 'discord.js'
 
 import { AuthToken } from '@/types/Account'

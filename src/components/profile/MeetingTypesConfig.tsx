@@ -101,11 +101,9 @@ const MeetingTypesConfig: React.FC = () => {
                       url={url}
                       typeId={type.id!}
                       removeType={removeType}
-                      showRemoval={
-                        currentAccount!.preferences!.availableTypes.filter(
-                          type => !type.deleted
-                        ).length > 1
-                      }
+                      showRemoval={currentAccount!.preferences!.availableTypes.some(
+                        type => !type.deleted
+                      )}
                     />
                     <Spacer />
                   </Box>

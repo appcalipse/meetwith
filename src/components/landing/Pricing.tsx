@@ -12,7 +12,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 import router from 'next/router'
 import { ReactNode, useContext, useState } from 'react'
 import { FaAngry, FaCheckCircle } from 'react-icons/fa'
