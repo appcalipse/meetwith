@@ -3,12 +3,7 @@ import * as Sentry from '@sentry/nextjs'
 import { ConditionRelation } from '@/types/common'
 import { GateConditionObject } from '@/types/TokenGating'
 
-import {
-  Account,
-  AccountPreferences,
-  MeetingType,
-  SimpleAccountInfo,
-} from '../types/Account'
+import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
 import {
   AccountNotifications,
   DiscordNotificationType,
@@ -59,7 +54,7 @@ export const internalFetch = async (
     return await response.json()
   }
 
-  throw new ApiFetchError(response.status, response.statusText)
+  throw new ApiFetchError(response.status, await response.text())
 }
 
 export const getAccount = async (identifier: string): Promise<Account> => {
