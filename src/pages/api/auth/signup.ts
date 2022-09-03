@@ -45,6 +45,8 @@ const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
       ...account,
       signature: req.body.signature,
     }
+    delete req.session.account.preferences
+
     await req.session.save()
 
     res.status(200).json(account)

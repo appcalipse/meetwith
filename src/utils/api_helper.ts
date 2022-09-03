@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 
 import { ConditionRelation } from '@/types/common'
 import { GateConditionObject } from '@/types/TokenGating'
@@ -54,7 +54,7 @@ export const internalFetch = async (
     return await response.json()
   }
 
-  throw new ApiFetchError(response.status, response.statusText)
+  throw new ApiFetchError(response.status, await response.text())
 }
 
 export const getAccount = async (identifier: string): Promise<Account> => {
@@ -159,6 +159,12 @@ export const isSlotFreeApiCall = async (
 
 export const saveMeetingType = async (type: MeetingType): Promise<Account> => {
   return (await internalFetch(`/secure/meetings/type`, 'POST', type)) as Account
+}
+
+export const removeMeetingType = async (typeId: string): Promise<Account> => {
+  return (await internalFetch(`/secure/meetings/type`, 'DELETE', {
+    typeId,
+  })) as Account
 }
 
 export const getMeetings = async (
@@ -567,4 +573,8 @@ export const getUnstoppableDomainsForAddress = async (
     }
     throw e
   }
+}
+
+export const getIPFSContent = async (cid: string): Promise<any> => {
+  return await internalFetch(`/ipfs/${cid}`)
 }
