@@ -3,7 +3,9 @@ import { getIronSession } from 'iron-session'
 import { NextPageContext } from 'next'
 import { AppContext } from 'next/app'
 
-import { Account } from '../types/Account'
+import { getIPFSContent } from '@/utils/api_helper'
+
+import { Account, AccountPreferences } from '../types/Account'
 import {
   SESSION_COOKIE_NAME,
   sessionOptions,
@@ -34,6 +36,12 @@ export const validateAuthentication = async (
 
       // this should be server side only
       delete (account as any).signature
+
+      if (!account.preferences) {
+        account.preferences = (await getIPFSContent(
+          account.preferences_path
+        )) as AccountPreferences
+      }
       return account
     }
 

@@ -1,5 +1,5 @@
 import { withSentry } from '@sentry/nextjs'
-import * as Sentry from '@sentry/node'
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'

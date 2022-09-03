@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/node'
+import * as Sentry from '@sentry/nextjs'
 import { createClient } from '@supabase/supabase-js'
 import { addMinutes, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'

@@ -2,7 +2,7 @@ import { useDisclosure } from '@chakra-ui/hooks'
 import { Box, Container, Flex, Text } from '@chakra-ui/layout'
 import { Select } from '@chakra-ui/select'
 import { useToast } from '@chakra-ui/toast'
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 import {
   addMinutes,
   endOfMonth,
@@ -145,9 +145,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account!.preferences!.availableTypes.find(
-        t => t.url === typeOnRoute
-      )
+      const type = account!
+        .preferences!.availableTypes.filter(type => !type.deleted)
+        .find(t => t.url === typeOnRoute)
       setSelectedType(type || account!.preferences!.availableTypes[0])
       updateSlots()
     }
@@ -370,9 +370,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }, [currentMonth])
 
   const changeType = (typeId: string) => {
-    const type = account!.preferences!.availableTypes.find(
-      t => t.id === typeId
-    )!
+    const type = account!
+      .preferences!.availableTypes.filter(type => !type.deleted)
+      .find(t => t.id === typeId)!
     if (!type.scheduleGate) {
       setIsGateValid(undefined)
     }
@@ -533,13 +533,18 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   value={selectedType.id}
                   onChange={e => e.target.value && changeType(e.target.value)}
                 >
-                  {account!.preferences!.availableTypes.map(type => (
-                    <option key={type.id} value={type.id}>
-                      {type.title ? `${type.title} - ` : ''}
-                      {durationToHumanReadable(type.duration)}
-                    </option>
-                  ))}
+                  {account!
+                    .preferences!.availableTypes.filter(type => !type.deleted)
+                    .map(type => (
+                      <option key={type.id} value={type.id}>
+                        {type.title ? `${type.title} - ` : ''}
+                        {durationToHumanReadable(type.duration)}
+                      </option>
+                    ))}
                 </Select>
+              )}
+              {selectedType.description && (
+                <Text p={2}>{selectedType.description}</Text>
               )}
               {CalendarType.REGULAR === calendarType &&
               selectedType.scheduleGate ? (

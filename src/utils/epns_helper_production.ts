@@ -3,7 +3,7 @@ import epnsHelper, {
   InfuraSettings,
   NetWorkSettings,
 } from '@epnsproject/backend-sdk'
-import * as Sentry from '@sentry/node'
+import * as Sentry from '@sentry/nextjs'
 
 import { CommABI, CoreABI } from './abis/epns'
 
