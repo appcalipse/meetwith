@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 import { v4 as uuidv4 } from 'uuid'
 
 export const addUTMParams = (originalUrl: string) => {

@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/node'
+import * as Sentry from '@sentry/nextjs'
 import { Auth, google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 

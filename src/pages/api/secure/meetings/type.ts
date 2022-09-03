@@ -90,7 +90,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     if (account.preferences!.availableTypes.length == 1) {
-      res.status(403).send("You can't remove your only meeting type")
+      res.status(403).send('You should keep at least one meeting type')
       return
     }
 
