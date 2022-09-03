@@ -1,12 +1,14 @@
 import {
   Checkbox,
   FormControl,
+  FormLabel,
   HStack,
   Icon,
   Input,
   Link,
   Select,
   Text,
+  Textarea,
   VStack,
 } from '@chakra-ui/react'
 import NextLink from 'next/link'
@@ -54,6 +56,9 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
   const { login } = useContext(AccountContext)
 
   const [title, setTitle] = useState<string>(props.selectedType?.title || '')
+  const [description, setDescription] = useState<string>(
+    props.selectedType?.description || ''
+  )
   const [duration, setDuration] = useState<number>(
     props.selectedType?.duration || 30
   )
@@ -127,6 +132,7 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
     const meetingType: MeetingType = {
       id: props.selectedType?.id || '',
       title,
+      description,
       url: getSlugFromText(title as string),
       duration,
       minAdvanceTime:
@@ -162,6 +168,15 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
         {getAccountCalendarUrl(props.currentAccount!, true)}/
         {!title ? '<link>' : getSlugFromText(title as string)}
       </Text>
+
+      <FormControl pt={2}>
+        <FormLabel>Description (optional)</FormLabel>
+        <Textarea
+          value={description}
+          placeholder="Add an optional description to this meeting type. It will appear on your public calendar"
+          onChange={e => setDescription(e.target.value)}
+        />
+      </FormControl>
 
       <FormControl pt={5}>
         <Text>Meeting Duration</Text>

@@ -1,5 +1,5 @@
 import { BaseProvider } from '@ethersproject/providers'
-import * as Sentry from '@sentry/node'
+import * as Sentry from '@sentry/nextjs'
 import { ethers } from 'ethers'
 
 import { MWWDomain } from '../abis/mww'

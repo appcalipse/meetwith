@@ -1,9 +1,14 @@
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 
 import { ConditionRelation } from '@/types/common'
 import { GateConditionObject } from '@/types/TokenGating'
 
-import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
+import {
+  Account,
+  AccountPreferences,
+  MeetingType,
+  SimpleAccountInfo,
+} from '../types/Account'
 import {
   AccountNotifications,
   DiscordNotificationType,
@@ -159,6 +164,12 @@ export const isSlotFreeApiCall = async (
 
 export const saveMeetingType = async (type: MeetingType): Promise<Account> => {
   return (await internalFetch(`/secure/meetings/type`, 'POST', type)) as Account
+}
+
+export const removeMeetingType = async (typeId: string): Promise<Account> => {
+  return (await internalFetch(`/secure/meetings/type`, 'DELETE', {
+    typeId,
+  })) as Account
 }
 
 export const getMeetings = async (
@@ -567,4 +578,8 @@ export const getUnstoppableDomainsForAddress = async (
     }
     throw e
   }
+}
+
+export const getIPFSContent = async (cid: string): Promise<any> => {
+  return await internalFetch(`/ipfs/${cid}`)
 }

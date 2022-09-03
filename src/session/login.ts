@@ -1,5 +1,5 @@
 import { useToast } from '@chakra-ui/react'
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 import router from 'next/router'
 import { useContext } from 'react'
 
