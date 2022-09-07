@@ -4,13 +4,13 @@ import React from 'react'
 
 import redirectTo from '@/utils/redirect'
 
-import PublicCalendar from '../components/public-calendar'
-import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
-import { Account } from '../types/Account'
-import { getAccount } from '../utils/api_helper'
-import { AccountNotFoundError } from '../utils/errors'
-import { isProAccount } from '../utils/subscription_manager'
-import { isValidEVMAddress } from '../utils/validations'
+import PublicCalendar from '../../components/public-calendar'
+import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
+import { Account } from '../../types/Account'
+import { getAccount } from '../../utils/api_helper'
+import { AccountNotFoundError } from '../../utils/errors'
+import { isProAccount } from '../../utils/subscription_manager'
+import { isValidEVMAddress } from '../../utils/validations'
 
 interface ScheduleProps {
   currentUrl: string
@@ -25,22 +25,24 @@ const Schedule: NextPage<ScheduleProps> = ({ currentUrl, ...rest }) => {
 const EnhancedSchedule = forceAuthenticationCheck(Schedule)
 
 EnhancedSchedule.getInitialProps = async ctx => {
-  const address = ctx.query.address
+  const address = ctx.query.identifier as string
+
   const serverSide = Boolean(ctx.res)
 
-  if (!address || !address[0]) {
+  if (!address) {
     return redirectTo('/404', 302, ctx)
   }
 
-  if (isValidEVMAddress(address[0])) {
-    const newLocation = `/address/${address[0]}`
+  if (isValidEVMAddress(address)) {
+    const newLocation = `/address/${address}`
     return redirectTo(newLocation, 302, ctx)
   }
 
   try {
-    const account = await getAccount(address[0])
+    const account = await getAccount(address)
 
     if (account.is_invited || !isProAccount(account)) {
+      console.log('3')
       return redirectTo('/404', 302, ctx)
     }
 
@@ -49,6 +51,7 @@ EnhancedSchedule.getInitialProps = async ctx => {
 
     return { currentUrl, account, serverSideRender: serverSide }
   } catch (e) {
+    console.error(e)
     if (!(e instanceof AccountNotFoundError)) {
       Sentry.captureException(e)
     }

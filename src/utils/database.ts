@@ -9,6 +9,7 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
+import { Organization, Team } from '@/types/Organization'
 import {
   GateConditionObject,
   GateUsage,
@@ -45,6 +46,7 @@ import {
   GateInUseError,
   MeetingCreationError,
   MeetingNotFoundError,
+  OrganizationNotFoundError,
   TimeNotAvailableError,
   UnauthorizedError,
 } from '../utils/errors'
@@ -1085,6 +1087,49 @@ const selectTeamMeetingRequest = async (
   return null
 }
 
+const upsertTeam = async (team: Team): Promise<Team | null> => {
+  const { data, error } = await db.supabase
+    .from('teams')
+    .upsert([team], { onConflict: 'id' })
+
+  if (!error) {
+    return data[0] as Team
+  }
+
+  return null
+}
+
+const getTeam = async (teamId: string): Promise<Team | null> => {
+  const { data, error } = await db.supabase
+    .from('teams')
+    .select()
+    .eq('id', teamId)
+
+  if (!error) {
+    return data[0] as Team
+  }
+
+  return null
+}
+
+const getOrganization = async (
+  organizationSlug: string
+): Promise<Organization> => {
+  const { data, error } = await db.supabase.rpc('fetch_organization', {
+    slug: organizationSlug,
+  })
+
+  if (data) {
+    const org = data as Organization
+
+    return org
+  } else {
+    Sentry.captureException(error)
+  }
+
+  throw new OrganizationNotFoundError(organizationSlug)
+}
+
 export {
   addOrUpdateConnectedCalendar,
   changeConnectedCalendarSync,
@@ -1099,8 +1144,10 @@ export {
   getGateCondition,
   getGateConditionsForAccount,
   getMeetingFromDB,
+  getOrganization,
   getSlotsForAccount,
   getSlotsForDashboard,
+  getTeam,
   initAccountDBForWallet,
   initDB,
   isSlotFree,
@@ -1113,5 +1160,6 @@ export {
   updateAccountPreferences,
   upsertAppToken,
   upsertGateCondition,
+  upsertTeam,
   workMeetingTypeGates,
 }

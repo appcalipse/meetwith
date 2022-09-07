@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 
 import { ConditionRelation } from '@/types/common'
+import { Team } from '@/types/Organization'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
@@ -569,6 +570,19 @@ export const getUnstoppableDomainsForAddress = async (
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
         return []
+      }
+    }
+    throw e
+  }
+}
+
+export const fetchTeamInfo = async (teamId: string): Promise<Team | null> => {
+  try {
+    return (await internalFetch(`/teams/${teamId}`)) as Team
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        return null
       }
     }
     throw e

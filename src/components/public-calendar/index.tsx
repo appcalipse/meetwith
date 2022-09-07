@@ -28,9 +28,11 @@ import {
   MeetingDecrypted,
   SchedulingType,
 } from '@/types/Meeting'
+import { Organization, Team } from '@/types/Organization'
 import { logEvent } from '@/utils/analytics'
 import {
   fetchBusySlotsForMultipleAccounts,
+  fetchTeamInfo,
   getAccount,
   getBusySlots,
   getNotificationSubscriptions,
@@ -71,6 +73,7 @@ interface InternalSchedule {
 interface PublicCalendarProps {
   url: string
   account?: Account
+  orgnaization?: Organization
   teamMeetingRequest?: GroupMeetingRequest
   serverSideRender: boolean
 }
@@ -103,6 +106,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     null as InternalSchedule | null
   )
   const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
+  const [team, setTeam] = useState<Team | undefined>(undefined)
+  const [loadingGroupsInfo, setLoadingGroupInfo] = useState<boolean>(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [busySlots, setBusyslots] = useState([] as Interval[])
   const [selfBusySlots, setSelfBusyslots] = useState([] as Interval[])
@@ -122,7 +127,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const hidrateTeamAccounts = async () => {
     let accountstoFetch: string[] = []
     if (teamMeetingRequest!.team_structure.type === GroupMeetingType.TEAM) {
-      // to be implemented
+      const team = await fetchTeamInfo(
+        teamMeetingRequest!.team_structure.team_id!
+      )
+      if (!team) {
+        router.push('/404')
+        return
+      }
+      setTeam(team)
+      accountstoFetch = team!.accounts_addresses
     } else {
       accountstoFetch =
         teamMeetingRequest!.team_structure.participants_accounts!
@@ -134,6 +147,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       )
     )
     setTeamAccounts(accounts)
+    setLoadingGroupInfo(false)
   }
 
   useEffect(() => {
@@ -335,7 +349,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       } else {
         let accounts: string[] = []
         if (teamMeetingRequest!.team_structure.type === GroupMeetingType.TEAM) {
-          // to be implemented
+          accounts = team!.accounts_addresses
         } else {
           accounts = teamMeetingRequest!.team_structure.participants_accounts!
         }
@@ -523,7 +537,11 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               {calendarType === CalendarType.REGULAR ? (
                 <ProfileInfo account={account!} />
               ) : (
-                <GroupScheduleCalendarProfile teamAccounts={groupAccounts} />
+                <GroupScheduleCalendarProfile
+                  loading={loadingGroupsInfo}
+                  team={team}
+                  teamAccounts={groupAccounts}
+                />
               )}
               {calendarType === CalendarType.REGULAR && (
                 <Select

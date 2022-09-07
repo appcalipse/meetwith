@@ -12,6 +12,13 @@ export class AccountNotFoundError extends Error {
   }
 }
 
+export class OrganizationNotFoundError extends Error {
+  constructor(identifier: string) {
+    super(`Organization with slug ${identifier} not found.`)
+    this.name = 'OrganizationNotFoundError'
+  }
+}
+
 export class InvalidSessionError extends Error {
   constructor() {
     super('Session was invalidated.')
