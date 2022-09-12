@@ -353,7 +353,7 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
     )
 
     return account
-  } else {
+  } else if (error) {
     Sentry.captureException(error)
   }
 
