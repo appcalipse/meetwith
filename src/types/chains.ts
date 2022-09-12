@@ -23,6 +23,8 @@ export enum SupportedChain {
   HARMONY_TESTNET = 'HARMONY_TESTNET',
   METIS_ANDROMEDA = 'METIS_ANDROMEDA',
   METIS_STARTDUST = 'METIS_STARTDUST',
+  ZKSYNC_TEST = 'ZKSYNC_TEST',
+  ZKSYNC = 'ZKSYNC',
 }
 
 export enum AcceptedToken {
@@ -232,6 +234,24 @@ export const supportedChains: ChainInfo[] = [
       {
         token: AcceptedToken.USDC,
         contractAddress: '0xea32a96608495e54156ae48931a7c20f0dcc1a21',
+      },
+    ],
+  },
+  {
+    chain: SupportedChain.ZKSYNC_TEST,
+    id: 280,
+    name: 'ZKSync',
+    fullName: 'ZKSync Alpha Testnet',
+    rpcUrl: 'https://zksync2-testnet.zksync.dev',
+    testnet: true,
+    nativeTokenSymbol: 'ETH',
+    domainContractAddess: '0x0c76828A43556cAA48Fa687e540E6a76155d6850',
+    registarContractAddress: '0x948dfEBc4b30C3ddcE10336150F0346c50798E30',
+    blockExplorerUrl: 'https://scan-v2.zksync.dev',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.DAI,
+        contractAddress: '0x704bAA2Cdc44915A8ed79fAeb4f0801FdA77D21e',
       },
     ],
   },
