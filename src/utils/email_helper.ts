@@ -41,13 +41,16 @@ export const newMeetingEmail = async (
       url: meetingUrl,
     },
   }
+
+  const isScheduler =
+    participantType === ParticipantType.Scheduler ||
+    (participantType === ParticipantType.Owner &&
+      !participants.some(p => p.type === ParticipantType.Scheduler))
   const rendered = await email.renderAll(
     `${path.resolve(
       'src',
       'emails',
-      participantType === ParticipantType.Scheduler
-        ? 'new_meeting_scheduler'
-        : 'new_meeting'
+      isScheduler ? 'new_meeting_scheduler' : 'new_meeting'
     )}`,
     locals
   )
