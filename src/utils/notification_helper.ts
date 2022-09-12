@@ -42,18 +42,6 @@ export const notifyForNewMeeting = async (
     })
   )
 
-  const ownerParticipant =
-    participantsInfo.find(p => p.type === ParticipantType.Owner) || null
-
-  const schedulerParticipant =
-    participantsInfo.find(p => p.type === ParticipantType.Scheduler) || null
-
-  const ownerIsNotScheduler = Boolean(
-    ownerParticipant &&
-      ownerParticipant?.account_address !==
-        schedulerParticipant?.account_address
-  )
-
   try {
     for (let i = 0; i < participantsInfo.length; i++) {
       const participant = participantsInfo[i]
@@ -73,8 +61,6 @@ export const notifyForNewMeeting = async (
           meeting_ics.db_slot.created_at
         )
       } else if (
-        ((participant.type === ParticipantType.Owner && ownerIsNotScheduler) ||
-          participant.type === ParticipantType.Invitee) &&
         participant.account_address &&
         participant.notifications &&
         participant.notifications?.notification_types.length > 0
