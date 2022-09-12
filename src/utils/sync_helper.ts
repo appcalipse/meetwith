@@ -38,14 +38,16 @@ export const syncCalendarForMeeting = async (
   // schedule for other users, if they are also pro
   const tasks: Promise<any>[] = []
   for (const participant of event.participants_mapping) {
-    tasks.push(
-      syncCalendarWithAccount(
-        participant.account_address!,
-        event,
-        participant.slot_id,
-        meeting_creation_time
+    if (participant.account_address) {
+      tasks.push(
+        syncCalendarWithAccount(
+          participant.account_address!,
+          event,
+          participant.slot_id,
+          meeting_creation_time
+        )
       )
-    )
+    }
   }
 
   await Promise.all(tasks)
