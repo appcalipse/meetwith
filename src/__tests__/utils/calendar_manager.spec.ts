@@ -1,6 +1,6 @@
 import faker from '@faker-js/faker'
 
-import { SimpleAccountInfo } from '@/types/Account'
+import { Account, SimpleAccountInfo } from '@/types/Account'
 import { SchedulingType, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/Meeting'
 import * as helper from '@/utils/api_helper'
@@ -10,6 +10,20 @@ import { MeetingWithYourselfError, TimeNotAvailableError } from '@/utils/errors'
 jest.mock('@/utils/api_helper')
 
 class NoErrorThrownError extends Error {}
+
+const mockAccount = (internal_pub_key: string, address: string): Account => {
+  return {
+    id: faker.datatype.uuid(),
+    created: faker.date.past(),
+    address: address || faker.finance.bitcoinAddress(),
+    internal_pub_key: internal_pub_key || faker.finance.bitcoinAddress(),
+    encoded_signature: faker.datatype.string(),
+    nonce: faker.datatype.number(),
+    is_invited: faker.datatype.boolean(),
+    subscriptions: [],
+    preferences_path: faker.datatype.string(),
+  }
+}
 
 const getError = async <TError>(call: () => unknown): Promise<TError> => {
   try {
@@ -101,17 +115,15 @@ describe('calendar manager', () => {
     const meetingUrl = faker.internet.url()
     const meetingInfoPath = faker.system.filePath()
 
-    const existingAccounts: SimpleAccountInfo[] = [
-      {
-        internal_pub_key:
-          'd96dd87a62d050242b799888740739bdbaacdd18e57f059803ed41e27b1898448d95a7fac66d17c06309719f6a2729cbdda2646d391385817b6a6ce8dd834fef',
-        address: targetAccount,
-      },
-      {
-        internal_pub_key:
-          '34fd741e60fabc8107dc9a42894d988760f0a275c00b427a716d0b66d0ec4b19faca7a7eef33e007b1b21f8d0ff5595ad12d5b5a102f7d5da5d54c1113367bf3',
-        address: participants[0],
-      },
+    const existingAccounts: Account[] = [
+      mockAccount(
+        'd96dd87a62d050242b799888740739bdbaacdd18e57f059803ed41e27b1898448d95a7fac66d17c06309719f6a2729cbdda2646d391385817b6a6ce8dd834fef',
+        targetAccount
+      ),
+      mockAccount(
+        '34fd741e60fabc8107dc9a42894d988760f0a275c00b427a716d0b66d0ec4b19faca7a7eef33e007b1b21f8d0ff5595ad12d5b5a102f7d5da5d54c1113367bf3',
+        participants[0]
+      ),
     ]
 
     jest.spyOn(helper, 'isSlotFreeApiCall').mockResolvedValue({ isFree: true })
@@ -182,6 +194,7 @@ describe('calendar manager', () => {
     // given
     const schedulingType = SchedulingType.GUEST
     const guestEmail = faker.internet.email()
+    const guestName = faker.internet.userName()
     const targetAccount = faker.datatype.uuid()
     const participants = [faker.datatype.uuid()]
     const meetingTypeId = faker.datatype.uuid()
@@ -191,17 +204,15 @@ describe('calendar manager', () => {
     const meetingUrl = faker.internet.url()
     const meetingInfoPath = faker.system.filePath()
 
-    const existingAccounts: SimpleAccountInfo[] = [
-      {
-        internal_pub_key:
-          'd96dd87a62d050242b799888740739bdbaacdd18e57f059803ed41e27b1898448d95a7fac66d17c06309719f6a2729cbdda2646d391385817b6a6ce8dd834fef',
-        address: targetAccount,
-      },
-      {
-        internal_pub_key:
-          '34fd741e60fabc8107dc9a42894d988760f0a275c00b427a716d0b66d0ec4b19faca7a7eef33e007b1b21f8d0ff5595ad12d5b5a102f7d5da5d54c1113367bf3',
-        address: participants[0],
-      },
+    const existingAccounts: Account[] = [
+      mockAccount(
+        'd96dd87a62d050242b799888740739bdbaacdd18e57f059803ed41e27b1898448d95a7fac66d17c06309719f6a2729cbdda2646d391385817b6a6ce8dd834fef',
+        targetAccount
+      ),
+      mockAccount(
+        '34fd741e60fabc8107dc9a42894d988760f0a275c00b427a716d0b66d0ec4b19faca7a7eef33e007b1b21f8d0ff5595ad12d5b5a102f7d5da5d54c1113367bf3',
+        participants[0]
+      ),
     ]
 
     jest.spyOn(helper, 'isSlotFreeApiCall').mockResolvedValue({ isFree: true })
@@ -235,7 +246,7 @@ describe('calendar manager', () => {
       startTime,
       endTime,
       undefined,
-      guestEmail,
+      [{ email: guestEmail, name: guestName, scheduler: false }],
       undefined,
       undefined,
       meetingContent,
@@ -254,12 +265,12 @@ describe('calendar manager', () => {
       meeting_info_file_path: meetingInfoPath,
       participants_mapping: [
         {
-          account_address: targetAccount,
-          type: ParticipantType.Owner,
+          account_address: existingAccounts[0].address,
+          type: 'owner',
         },
         {
-          account_address: participants[0],
-          type: ParticipantType.Invitee,
+          account_address: existingAccounts[1].address,
+          type: 'invitee',
         },
         {
           guest_email: guestEmail,
