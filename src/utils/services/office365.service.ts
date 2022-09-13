@@ -164,7 +164,7 @@ export default class Office365CalendarService implements CalendarService {
       const accessToken = await this.auth.getToken()
 
       const body = JSON.stringify(
-        this.translateEvent(owner, details, slot_id, false)
+        this.translateEvent(owner, details, slot_id, new Date(), false)
       )
 
       const response = await fetch(
