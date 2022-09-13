@@ -1,5 +1,3 @@
-import { google } from 'googleapis'
-
 import { NewCalendarEventType } from '@/types/CalendarConnections'
 import { MeetingCreationRequest, MeetingUpdateRequest } from '@/types/Meeting'
 

@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 
 import { ConditionRelation } from '@/types/common'
 import { GateConditionObject } from '@/types/TokenGating'
@@ -58,8 +58,7 @@ export const internalFetch = async (
     return await response.json()
   }
 
-  console.error('error fetching', `${apiUrl}${path}`, method, body, response)
-  throw new ApiFetchError(response.status, response.statusText)
+  throw new ApiFetchError(response.status, await response.text())
 }
 
 export const getAccount = async (identifier: string): Promise<Account> => {
@@ -73,13 +72,27 @@ export const getAccount = async (identifier: string): Promise<Account> => {
   }
 }
 
-export const getExistingAccounts = async (
+export const getExistingAccountsSimple = async (
   addresses: string[]
 ): Promise<SimpleAccountInfo[]> => {
   try {
-    return (await internalFetch(`/accounts/simple`, 'POST', {
+    return (await internalFetch(`/accounts/existing`, 'POST', {
       addresses,
+      fullInformation: false,
     })) as SimpleAccountInfo[]
+  } catch (e: any) {
+    throw e
+  }
+}
+
+export const getExistingAccounts = async (
+  addresses: string[]
+): Promise<Account[]> => {
+  try {
+    return (await internalFetch(`/accounts/existing`, 'POST', {
+      addresses,
+      fullInformation: true,
+    })) as Account[]
   } catch (e: any) {
     throw e
   }
@@ -189,6 +202,12 @@ export const isSlotFreeApiCall = async (
 
 export const saveMeetingType = async (type: MeetingType): Promise<Account> => {
   return (await internalFetch(`/secure/meetings/type`, 'POST', type)) as Account
+}
+
+export const removeMeetingType = async (typeId: string): Promise<Account> => {
+  return (await internalFetch(`/secure/meetings/type`, 'DELETE', {
+    typeId,
+  })) as Account
 }
 
 export const getMeetings = async (
@@ -305,7 +324,7 @@ export const fetchContentFromIPFSFromBrowser = async (
   hash: string
 ): Promise<object | undefined> => {
   try {
-    return await (await fetch(`https://ipfs.infura.io/ipfs/${hash}`)).json()
+    return await (await fetch(`https://mww.infura-ipfs.io/ipfs/${hash}`)).json()
   } catch (err) {
     Sentry.captureException(err)
     return undefined
@@ -552,4 +571,53 @@ export const getTeamMeetingRequest = async (
     }
     throw e
   }
+}
+
+export const getSuggestedSlots = async (
+  addresses: string[],
+  startDate: Date,
+  endDate: Date,
+  duration: number
+): Promise<Interval[]> => {
+  try {
+    return (
+      (await internalFetch(`/meetings/busy/suggest`, 'POST', {
+        addresses,
+        startDate,
+        endDate,
+        duration,
+      })) as any[]
+    ).map(slot => ({
+      start: new Date(slot.start),
+      end: new Date(slot.end),
+    })) as Interval[]
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        return []
+      }
+    }
+    throw e
+  }
+}
+
+export const getUnstoppableDomainsForAddress = async (
+  address: string
+): Promise<{ name: string }[]> => {
+  try {
+    return (await internalFetch(
+      `/integrations/unstoppable?address=${address}`
+    )) as { name: string }[]
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        return []
+      }
+    }
+    throw e
+  }
+}
+
+export const getIPFSContent = async (cid: string): Promise<any> => {
+  return await internalFetch(`/ipfs/${cid}`)
 }

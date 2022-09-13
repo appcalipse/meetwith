@@ -1,11 +1,10 @@
 import { BigNumber } from 'ethers'
-import { formatUnits } from 'ethers/lib/utils'
 
 import { ConditionRelation } from '@/types/common'
 import { GateCondition, GateInterface } from '@/types/TokenGating'
 
 import { getWalletPOAP } from './api_helper'
-import { getTokenBalance } from './token.service'
+import { getNativeBalance, getTokenBalance } from './token.service'
 
 export const isConditionValid = async (
   gateCondition: GateCondition,
@@ -33,6 +32,8 @@ export const isConditionValid = async (
           Number(parseInt(element.itemId))
         )
         balance = BigNumber.from(poap ? 1 : 0)
+      } else if (element.type === GateInterface.NATIVE) {
+        balance = await getNativeBalance(targetAddress, element.chain!)
       }
 
       isValid.push(balance.gt(0) && element.minimumBalance.lte(balance))
@@ -67,31 +68,4 @@ export const safeConvertConditionFromAPI = (
     condition = safeConvertConditionFromAPI(condition)
   }
   return object
-}
-
-export const toHumanReadable = (gateCondition: GateCondition): string => {
-  let text = 'User must hold '
-  if (gateCondition.elements.length > 0) {
-    for (let i = 0; i < gateCondition.elements.length; i++) {
-      const element = gateCondition.elements[i]
-      element.minimumBalance = BigNumber.from(element.minimumBalance)
-      if (element.minimumBalance && !element.minimumBalance.isZero()) {
-        text += `${formatUnits(
-          element.minimumBalance,
-          element.decimals || 0
-        )} of `
-      }
-      text += `${element.itemName}`
-      element.itemSymbol && (text += ` (${element.itemSymbol})`)
-
-      if (gateCondition.elements.length !== i + 1) {
-        if (gateCondition.relation === ConditionRelation.AND) {
-          text += ' and '
-        } else {
-          text += ' or '
-        }
-      }
-    }
-  }
-  return text
 }

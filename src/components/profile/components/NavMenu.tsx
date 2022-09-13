@@ -80,7 +80,7 @@ export const NavMenu: React.FC<{
       toast({
         title: 'Error connecting calendar',
         description:
-          'Please make sure to give access to Meet With Wallet within your calendar provider page.',
+          'Please make sure to give access to Meet with Wallet within your calendar provider page.',
         status: 'error',
         duration: 5000,
         position: 'top',

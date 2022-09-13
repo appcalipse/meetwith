@@ -1,5 +1,5 @@
 import { BaseProvider } from '@ethersproject/providers'
-import * as Sentry from '@sentry/node'
+import * as Sentry from '@sentry/nextjs'
 import { ethers } from 'ethers'
 
 import { MWWDomain } from '../abis/mww'
@@ -39,6 +39,38 @@ export const getBlockchainSubscriptionsForAccount = async (
           chain: chain.chain,
         })
       }
+    } catch (e) {
+      Sentry.captureException(e)
+    }
+  }
+
+  return subscriptions
+}
+
+export const getDomainInfo = async (
+  domain: string
+): Promise<BlockchainSubscription[]> => {
+  const subscriptions: BlockchainSubscription[] = []
+
+  const chainsToCheck: ChainInfo[] =
+    process.env.NEXT_PUBLIC_ENV === 'production'
+      ? getMainnetChains()
+      : getTestnetChains()
+
+  for (const chain of chainsToCheck) {
+    const provider = getProviderBackend(chain.chain)
+
+    const contract = new ethers.Contract(
+      chain.domainContractAddess,
+      MWWDomain,
+      provider!
+    )
+    try {
+      const subs = (await contract.domains(domain)) as BlockchainSubscription
+      subscriptions.push({
+        ...subs,
+        chain: chain.chain,
+      })
     } catch (e) {
       Sentry.captureException(e)
     }

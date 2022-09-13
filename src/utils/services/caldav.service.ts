@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import {

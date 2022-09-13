@@ -58,7 +58,7 @@ export class ApiFetchError extends Error {
   status: number
 
   constructor(status: number, message: string) {
-    super(`${status} : ${message}`)
+    super(`${message}`)
     this.name = 'ApiFetchError'
     this.status = status
   }
@@ -81,5 +81,12 @@ export class MeetingChangeForbiddenError extends Error {
   constructor() {
     super(`Cannot change a meeting if you are not the owner`)
     this.name = 'MeetingChangeForbiddenError'
+  }
+}
+
+export class InvalidURL extends Error {
+  constructor() {
+    super(``)
+    this.name = 'InvalidURL'
   }
 }

@@ -83,14 +83,16 @@ export const ExternalCalendarSync = {
   ) => {
     const tasks: Promise<any>[] = []
     for (const participant of event.participants_mapping) {
-      tasks.push(
-        syncCreatedEventWithCalendar(
-          participant.account_address!,
-          event,
-          participant.slot_id,
-          meeting_creation_time
+      if (participant.account_address) {
+        tasks.push(
+          syncCreatedEventWithCalendar(
+            participant.account_address!,
+            event,
+            participant.slot_id,
+            meeting_creation_time
+          )
         )
-      )
+      }
     }
 
     await Promise.all(tasks)

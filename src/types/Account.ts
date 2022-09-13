@@ -17,8 +17,6 @@ export interface Account {
   preferences?: AccountPreferences
   preferences_path: string
   nonce: number
-  name?: string
-  avatar?: string
   is_invited: boolean
   subscriptions: Subscription[]
 }
@@ -36,6 +34,7 @@ export interface MeetingType {
   description?: string
   minAdvanceTime: number
   scheduleGate?: string
+  deleted?: boolean
 }
 
 export interface DayAvailability {
@@ -54,6 +53,8 @@ export interface AccountPreferences {
   description: string
   availabilities: DayAvailability[]
   socialLinks: SocialLink[]
+  name?: string
+  avatar?: string
 }
 
 export enum SocialLinkType {

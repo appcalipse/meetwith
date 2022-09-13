@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '../../../utils/auth/withSessionApiRoute'
@@ -24,10 +25,12 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
         ...account,
         signature,
       }
+      delete req.session.account.preferences
       await req.session.save()
 
       res.status(200).json(account)
     } catch (e) {
+      Sentry.captureException(e)
       res.status(404).send('Not found')
     }
   }

@@ -70,7 +70,7 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
         isOpen={isEditing}
         onOpen={setIsEditing.on}
         onClose={setIsEditing.off}
-        closeOnBlur={false}
+        closeOnBlur={true}
         isLazy
         lazyBehavior="keepMounted"
       >
@@ -97,6 +97,7 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
             <VStack sx={{ maxHeight: '300px', overflowY: 'scroll' }}>
               {times.map((it, idx) => (
                 <Button
+                  width="100%"
                   variant="link"
                   disabled={isBefore(it, new Date())}
                   key={it.toString()}

@@ -22,6 +22,7 @@ import { useContext, useEffect, useState } from 'react'
 import { FaEdit, FaEraser } from 'react-icons/fa'
 
 import { useEditMeetingDialog } from '@/components/schedule/edit-meeting-dialog/edit.hook'
+import { addUTMParams } from '@/utils/meeting_call_helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
@@ -35,7 +36,6 @@ import {
   durationToHumanReadable,
   generateIcs,
 } from '../../../utils/calendar_manager'
-import { UTM_PARAMS } from '../../../utils/meeting_call_helper'
 import IPFSLink from '../../IPFSLink'
 
 interface MeetingCardProps {
@@ -267,7 +267,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
             <strong>Meeting link</strong>
           </Text>
           <Link
-            href={`${info.meeting_url}${UTM_PARAMS}`}
+            href={addUTMParams(info.meeting_url)}
             isExternal
             onClick={() => logEvent('Clicked to start meeting')}
           >

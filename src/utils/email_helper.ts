@@ -1,10 +1,10 @@
 import sgMail from '@sendgrid/mail'
-import * as Sentry from '@sentry/node'
+import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
-import { ParticipantInfo } from '../types/Meeting'
+import { ParticipantInfo, ParticipantType } from '../types/Meeting'
 import {
   dateToHumanReadable,
   durationToHumanReadable,
@@ -18,12 +18,12 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
 
 export const newMeetingEmail = async (
   toEmail: string,
+  participantType: ParticipantType,
   participants: ParticipantInfo[],
   timezone: string,
   start: Date,
   end: Date,
   meeting_info_file_path: string,
-  forGuest: boolean,
   destinationAccountAddress?: string,
   meetingUrl?: string,
   id?: string | undefined,
@@ -41,11 +41,16 @@ export const newMeetingEmail = async (
       url: meetingUrl,
     },
   }
+
+  const isScheduler =
+    participantType === ParticipantType.Scheduler ||
+    (participantType === ParticipantType.Owner &&
+      !participants.some(p => p.type === ParticipantType.Scheduler))
   const rendered = await email.renderAll(
     `${path.resolve(
       'src',
       'emails',
-      `${!forGuest ? 'new_meeting' : 'new_meeting_guest'}`
+      isScheduler ? 'new_meeting_scheduler' : 'new_meeting'
     )}`,
     locals
   )
@@ -64,6 +69,11 @@ export const newMeetingEmail = async (
     },
     destinationAccountAddress || ''
   )
+
+  if (icsFile.error) {
+    Sentry.captureException(icsFile.error)
+    return false
+  }
 
   const msg: sgMail.MailDataRequired = {
     to: toEmail,

@@ -24,6 +24,18 @@ export const getTokenBalance = async (
   return balance
 }
 
+export const getNativeBalance = async (
+  walletAddress: string,
+  chain: SupportedChain
+): Promise<BigNumber> => {
+  const provider = getProvider(chain)
+  if (!provider) return BigNumber.from(0)
+
+  const balance = await provider.getBalance(walletAddress)
+
+  return balance
+}
+
 export const getTokenInfo = async (
   tokenAddress: string,
   chain: SupportedChain
