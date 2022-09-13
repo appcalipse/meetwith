@@ -242,6 +242,10 @@ const generateIcs = (
   meeting: MeetingDecrypted,
   ownerAddress: string
 ): ReturnObject => {
+  let url = meeting.meeting_url.trim()
+  if (!isValidUrl(url)) {
+    url = 'https://meetwithwallet.xyz'
+  }
   const event: EventAttributes = {
     uid: meeting.id,
     start: [
@@ -266,7 +270,7 @@ const generateIcs = (
       meeting.content,
       meeting.meeting_url
     ),
-    url: meeting.meeting_url,
+    url,
     location: meeting.meeting_url,
     created: [
       getYear(meeting.created_at!),
