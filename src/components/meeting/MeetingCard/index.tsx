@@ -1,4 +1,10 @@
 import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
   Badge,
   Box,
   Button,
@@ -8,6 +14,7 @@ import {
   Spinner,
   Text,
   useColorModeValue,
+  useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -19,6 +26,7 @@ import {
 } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
+import React from 'react'
 import { FaEdit, FaEraser } from 'react-icons/fa'
 
 import { useEditMeetingDialog } from '@/components/schedule/edit-meeting-dialog/edit.hook'
@@ -79,6 +87,9 @@ const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
 
   const [EditModal, openEditModal, closeEditModal] = useEditMeetingDialog()
   const [isCanceling, setCanceling] = useState(false)
+
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const cancelRef = React.useRef<HTMLButtonElement>(null)
 
   const { currentAccount } = useContext(AccountContext)
   const decodeData = async () => {
@@ -157,6 +168,40 @@ const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
                 Edit
               </Button>
               <Button
+                onClick={onOpen}
+                leftIcon={<FaEraser />}
+                colorScheme="orange"
+                isLoading={isCanceling}
+              >
+                Cancel
+              </Button>
+            </HStack>
+          </VStack>
+        </Box>
+      </Box>
+      <Spacer />
+      <EditModal />
+      <AlertDialog
+        isOpen={isOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Cancel Meeting
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Are you sure? You can&apos;t undo this action afterwards.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                colorScheme="red"
                 onClick={() => {
                   setCanceling(true)
                   decodeData().then(decriptedMeeting => {
@@ -164,6 +209,7 @@ const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
                       .then(() => {
                         setCanceling(false)
                         onUpdate && onUpdate()
+                        onClose()
                       })
                       .catch(error => {
                         setCanceling(false)
@@ -178,18 +224,15 @@ const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
                       })
                   })
                 }}
-                leftIcon={<FaEraser />}
-                colorScheme="orange"
+                ml={3}
                 isLoading={isCanceling}
               >
-                Cancel
+                Delete
               </Button>
-            </HStack>
-          </VStack>
-        </Box>
-      </Box>
-      <Spacer />
-      <EditModal />
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </>
   )
 }
