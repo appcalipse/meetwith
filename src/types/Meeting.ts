@@ -100,7 +100,7 @@ export interface IPFSMeetingInfo {
   meeting_url: string
   participants: ParticipantInfo[]
   change_history_paths: string[]
-  related_slot_ids: string[]
+  related_slot_ids: DBSlot['id'][]
 }
 
 export interface MeetingDecrypted {
