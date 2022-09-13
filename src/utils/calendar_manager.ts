@@ -413,11 +413,6 @@ const cancelMeeting = async (
     throw new MeetingChangeConflictError()
   }
 
-  // const existingMeetingAccounts = await loadMeetingAccounts(
-  //   owner,
-  //   existingMeeting
-  // )
-
   // Fetch the updated data one last time
   await apiCancelMeeting(decryptedMeeting)
 
