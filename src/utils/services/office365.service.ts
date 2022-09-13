@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 
 import { NewCalendarEventType } from '@/types/CalendarConnections'
 import {
@@ -8,6 +8,8 @@ import {
   TimeSlotSource,
 } from '@/types/Meeting'
 
+import { noNoReplyEmailForAccount } from '../calendar_manager'
+import { NO_REPLY_EMAIL } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './common.types'
@@ -130,7 +132,9 @@ export default class Office365CalendarService implements CalendarService {
     try {
       const accessToken = await this.auth.getToken()
 
-      const body = JSON.stringify(this.translateEvent(owner, details, slot_id))
+      const body = JSON.stringify(
+        this.translateEvent(owner, details, slot_id, meeting_creation_time)
+      )
 
       const response = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendar/events`,
@@ -207,6 +211,7 @@ export default class Office365CalendarService implements CalendarService {
     calendarOwnerAccountAddress: string,
     details: MeetingCreationRequest,
     slot_id: string,
+    meeting_creation_time: Date,
     includeId = true
   ) => {
     const participantsInfo: ParticipantInfo[] =
@@ -238,29 +243,29 @@ export default class Office365CalendarService implements CalendarService {
         dateTime: new Date(details.end).toISOString(),
         timeZone: 'UTC',
       },
+      createdDateTime: new Date(meeting_creation_time).toISOString(),
       location: {
         displayName: details.meeting_url,
       },
-      isOnlineMeeting: true,
-      onlineMeetingUrl: details.meeting_url,
-      onlineMeeting: {
-        conferenceId: `${new Date().getTime()}`,
-        joinUrl: details.meeting_url,
+      organizer: {
+        emailAddress: {
+          name: 'Meet with Wallet',
+          address: NO_REPLY_EMAIL,
+        },
       },
       attendees: [],
+      allowNewTimeProposals: false,
       transactionId: slot_id, // avoid duplicating the event if we make more than one request with the same transactionId
       id: includeId ? slot_id : undefined, //required for editing the event in the future
     }
 
-    const guest = details.participants_mapping.find(
-      participant => participant.guest_email
-    )
-
-    if (guest) {
+    for (const participant of details.participants_mapping) {
       ;(payload.attendees as any).push({
         emailAddress: {
-          name: guest.name,
-          address: guest.guest_email,
+          name: participant.name || participant.account_address,
+          address:
+            participant.guest_email ||
+            noNoReplyEmailForAccount(participant.account_address!),
         },
       })
     }

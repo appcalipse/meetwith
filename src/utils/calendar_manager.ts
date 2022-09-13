@@ -1,23 +1,18 @@
 import {
-  addMinutes,
-  compareAsc,
   format,
   getDate,
-  getDay,
   getHours,
   getMinutes,
   getMonth,
   getYear,
-  Interval,
-  isAfter,
 } from 'date-fns'
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
+import { utcToZonedTime } from 'date-fns-tz'
 import {
   decryptWithPrivateKey,
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
-import { createEvent, EventAttributes, ReturnObject } from 'ics'
+import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
@@ -46,9 +41,10 @@ import {
 } from '@/utils/api_helper'
 
 import { diff, intersec } from './collections'
-import { appUrl } from './constants'
+import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { decryptContent, simpleHash } from './cryptography'
 import {
+  InvalidURL,
   MeetingChangeConflictError,
   MeetingChangeForbiddenError,
   MeetingWithYourselfError,
@@ -59,7 +55,14 @@ import { generateMeetingUrl } from './meeting_call_helper'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
-import { ellipsizeAddress } from './user_manager'
+import { ellipsizeAddress, getAccountDisplayName } from './user_manager'
+import { isValidEmail, isValidUrl } from './validations'
+
+export interface GuestParticipant {
+  name: string
+  email: string
+  scheduler: boolean
+}
 
 const mapRelatedSlots = async (meeting: MeetingDecrypted) => {
   const accountSlot: { [account: string]: string } = {}
@@ -94,7 +97,7 @@ const buildMeetingData = async (
   startTime: Date,
   endTime: Date,
   source_account_address?: string,
-  guest_email?: string,
+  guests?: GuestParticipant[],
   sourceName?: string,
   targetName?: string,
   meetingContent?: string,
@@ -106,7 +109,27 @@ const buildMeetingData = async (
     }
   }
 ) => {
-  const allAccounts = await getExistingAccounts([
+  if (
+    source_account_address === target_account_address &&
+    extra_participants.length == 0 &&
+    guests?.length == 0
+  ) {
+    throw new MeetingWithYourselfError()
+  }
+
+  if (meetingUrl) {
+    if (isValidEmail(meetingUrl)) {
+      throw new InvalidURL()
+    }
+    if (!isValidUrl(meetingUrl)) {
+      meetingUrl = `https://${meetingUrl}`
+      if (!isValidUrl(meetingUrl)) {
+        throw new InvalidURL()
+      }
+    }
+  }
+
+  const allAccounts: Account[] = await getExistingAccounts([
     source_account_address ? source_account_address : '',
     target_account_address,
     ...extra_participants,
@@ -128,12 +151,10 @@ const buildMeetingData = async (
           : ParticipationStatus.Pending,
       slot_id: uuidv4(),
       name:
-        account.address == source_account_address
-          ? sourceName
-          : account.address == target_account_address
-          ? targetName
-          : '',
-      guest_email: account.address ? '' : guest_email,
+        account.address === source_account_address
+          ? sourceName || getAccountDisplayName(account)
+          : getAccountDisplayName(account),
+      guest_email: '',
     }
     participants.push(participant)
   }
@@ -156,17 +177,24 @@ const buildMeetingData = async (
     participants.push(participant)
   }
 
-  if (schedulingType === SchedulingType.GUEST) {
-    const participant: ParticipantInfo = {
-      type: ParticipantType.Scheduler,
-      status: ParticipationStatus.Accepted,
-      guest_email,
-      name: sourceName,
-      slot_id: uuidv4(),
-    }
+  if (guests) {
+    for (const guest of guests) {
+      const participant: ParticipantInfo = {
+        type: !!guest.scheduler
+          ? ParticipantType.Scheduler
+          : ParticipantType.Invitee,
+        status: !!guest.scheduler
+          ? ParticipationStatus.Accepted
+          : ParticipationStatus.Pending,
+        guest_email: guest.email,
+        name: guest.name,
+        slot_id: uuidv4(),
+      }
 
-    participants.push(participant)
+      participants.push(participant)
+    }
   }
+
   const privateInfo: IPFSMeetingInfo = {
     created_at: new Date(),
     participants: participants,
@@ -210,7 +238,7 @@ const buildMeetingData = async (
       privateInfoHash: simpleHash(privateInfoComplete),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       name: sourceName || '',
-      guest_email: participant.account_address ? '' : participant.guest_email,
+      guest_email: participant.guest_email,
       status: ParticipationStatus.Pending,
       mappingType: !!participantsMapping?.toKeep[
         participant.account_address || ''
@@ -517,32 +545,42 @@ const generateIcs = (
     organizer: {
       // required by some services
       name: 'Meet with Wallet',
-      email: 'contact@meetwithwallet.xyz',
+      email: NO_REPLY_EMAIL,
     },
-    //        status: 'CONFIRMED',
-    // attendees: [
-    //   { name: 'Adam Gibbons', email: 'adam@example.com', rsvp: true, partstat: 'ACCEPTED', role: 'REQ-PARTICIPANT' },
-    //   { name: 'Brittany Seaton', email: 'brittany@example2.org', dir: 'https://linkedin.com/in/brittanyseaton', role: 'OPT-PARTICIPANT' }
-    // ]
+    status: 'CONFIRMED',
   }
+  event.attendees = []
 
-  const guest = meeting.participants.find(
-    participant => participant.guest_email
-  )
+  for (const participant of meeting.participants) {
+    const attendee: Attendee = {
+      name: participant.name || participant.account_address,
+      email:
+        participant.guest_email ||
+        noNoReplyEmailForAccount(participant.account_address!),
+      rsvp: participant.status === ParticipationStatus.Accepted,
+      partstat: participantStatusToICSStatus(participant.status),
+      role: 'REQ-PARTICIPANT',
+    }
 
-  if (guest) {
-    event.attendees = [
-      {
-        name: guest.name,
-        email: guest.guest_email,
-        rsvp: true,
-        partstat: 'ACCEPTED',
-        role: 'REQ-PARTICIPANT',
-      },
-    ]
+    if (participant.account_address) {
+      attendee.dir = getCalendarRegularUrl(participant.account_address!)
+    }
+
+    event.attendees.push(attendee)
   }
 
   return createEvent(event)
+}
+
+const participantStatusToICSStatus = (status: ParticipationStatus) => {
+  switch (status) {
+    case ParticipationStatus.Accepted:
+      return 'ACCEPTED'
+    case ParticipationStatus.Rejected:
+      return 'DECLINED'
+    default:
+      return 'NEEDS-ACTION'
+  }
 }
 
 const decryptMeeting = async (
@@ -578,98 +616,18 @@ const getContentFromEncrypted = async (
   signature: string,
   encrypted: Encrypted
 ): Promise<string> => {
-  const pvtKey = decryptContent(signature, account.encoded_signature)
-  return await decryptWithPrivateKey(pvtKey, encrypted)
-}
-
-const isSlotAvailable = (
-  slotDurationInMinutes: number,
-  minAdvanceTime: number,
-  slotTime: Date,
-  busySlots: Interval[],
-  availabilities: DayAvailability[],
-  userSchedulingTimezone: string,
-  targetTimezone: string
-): boolean => {
-  const start = slotTime
-
-  if (isAfter(addMinutes(new Date(), minAdvanceTime), start)) {
-    return false
+  try {
+    const pvtKey = decryptContent(signature, account.encoded_signature)
+    return await decryptWithPrivateKey(pvtKey, encrypted)
+  } catch (error) {
+    ;(window as any).location = '/logout'
+    await new Promise<void>(resolve =>
+      setTimeout(() => {
+        resolve()
+      }, 5000)
+    ) //wait redirect
+    return ''
   }
-
-  const end = addMinutes(start, slotDurationInMinutes)
-
-  const startOnUTC = zonedTimeToUtc(start, userSchedulingTimezone)
-  const startForTarget = utcToZonedTime(startOnUTC, targetTimezone)
-
-  const endOnUTC = zonedTimeToUtc(end, userSchedulingTimezone)
-  const endForTarget = utcToZonedTime(endOnUTC, targetTimezone)
-
-  if (
-    !isTimeInsideAvailabilities(startForTarget, endForTarget, availabilities)
-  ) {
-    return false
-  }
-
-  const filtered = busySlots.filter(
-    slot =>
-      (compareAsc(slot.start, startOnUTC) >= 0 &&
-        compareAsc(slot.end, endOnUTC) <= 0) ||
-      (compareAsc(slot.start, startOnUTC) <= 0 &&
-        compareAsc(slot.end, endOnUTC) >= 0) ||
-      (compareAsc(slot.end, startOnUTC) > 0 &&
-        compareAsc(slot.end, endOnUTC) <= 0) ||
-      (compareAsc(slot.start, startOnUTC) >= 0 &&
-        compareAsc(slot.start, endOnUTC) < 0)
-  )
-
-  return filtered.length == 0
-}
-
-const isTimeInsideAvailabilities = (
-  startOnTargetTimezone: Date,
-  endOnTargetTimezone: Date,
-  targetAvailabilities: DayAvailability[]
-): boolean => {
-  const startTime = format(startOnTargetTimezone, 'HH:mm')
-  let endTime = format(endOnTargetTimezone, 'HH:mm')
-  if (endTime === '00:00') {
-    endTime = '24:00'
-  }
-
-  const compareTimes = (t1: string, t2: string) => {
-    const [h1, m1] = t1.split(':')
-    const [h2, m2] = t2.split(':')
-
-    if (h1 !== h2) {
-      return h1 > h2 ? 1 : -1
-    }
-
-    if (m1 !== m2) {
-      return m1 > m2 ? 1 : -1
-    }
-
-    return 0
-  }
-
-  //After midnight
-  if (compareTimes(startTime, endTime) > 0) {
-    endTime = `${getHours(endOnTargetTimezone) + 24}:00`
-  }
-
-  for (const availability of targetAvailabilities) {
-    if (availability.weekday === getDay(startOnTargetTimezone)) {
-      for (const range of availability.ranges) {
-        if (compareTimes(startTime, range.start) >= 0) {
-          if (compareTimes(endTime, range.end) <= 0) {
-            return true
-          }
-        }
-      }
-    }
-  }
-
-  return false
 }
 
 const generateDefaultAvailabilities = (): DayAvailability[] => {
@@ -726,12 +684,11 @@ const getAccountCalendarUrl = (
   account: Account,
   ellipsize?: boolean
 ): string => {
-  if (isProAccount(account)) {
-    return `${appUrl}/${
-      account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0].domain
-    }`
-  }
   return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+}
+
+const getCalendarRegularUrl = (account_address: string) => {
+  return `${appUrl}/address/${account_address}`
 }
 
 const generateDefaultMeetingType = (): MeetingType => {
@@ -760,6 +717,10 @@ const generateAllSlots = () => {
   return allSlots
 }
 
+const noNoReplyEmailForAccount = (account_address: string): string => {
+  return `no_reply_${account_address}@meetwithwallet.xyz`
+}
+
 const allSlots = generateAllSlots()
 
 export {
@@ -774,8 +735,7 @@ export {
   generateIcs,
   getAccountCalendarUrl,
   getAccountDomainUrl,
-  isSlotAvailable,
-  isTimeInsideAvailabilities,
+  noNoReplyEmailForAccount,
   scheduleMeeting,
   updateMeeting,
 }

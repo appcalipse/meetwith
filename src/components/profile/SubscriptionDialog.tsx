@@ -187,7 +187,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
       toast({
         title: 'You are not the owner of this domain',
         description:
-          'To use ENS or Unstoppable domain as your booking link you need to be the owner of it',
+          'To use ENS, Lens, or Unstoppable domain as your booking link you need to be the owner of it',
         status: 'error',
         duration: 5000,
         position: 'top',

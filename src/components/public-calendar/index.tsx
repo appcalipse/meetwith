@@ -2,7 +2,7 @@ import { useDisclosure } from '@chakra-ui/hooks'
 import { Box, Container, Flex, Text } from '@chakra-ui/layout'
 import { Select } from '@chakra-ui/select'
 import { useToast } from '@chakra-ui/toast'
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/nextjs'
 import {
   addMinutes,
   endOfMonth,
@@ -19,37 +19,39 @@ import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
+import { AccountContext } from '@/providers/AccountProvider'
+import { Account, MeetingType } from '@/types/Account'
 import { ConditionRelation } from '@/types/common'
-import { saveMeetingsScheduled } from '@/utils/storage'
-import { getAccountDisplayName } from '@/utils/user_manager'
-
-import { AccountContext } from '../../providers/AccountProvider'
-import { Account, MeetingType } from '../../types/Account'
 import {
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
   SchedulingType,
-} from '../../types/Meeting'
-import { logEvent } from '../../utils/analytics'
+} from '@/types/Meeting'
+import { logEvent } from '@/utils/analytics'
 import {
   fetchBusySlotsForMultipleAccounts,
   getAccount,
   getBusySlots,
   getNotificationSubscriptions,
-} from '../../utils/api_helper'
+} from '@/utils/api_helper'
 import {
   durationToHumanReadable,
   getAccountDomainUrl,
-  isSlotAvailable,
+  GuestParticipant,
   scheduleMeeting,
-} from '../../utils/calendar_manager'
+} from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
+  InvalidURL,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
-} from '../../utils/errors'
+} from '@/utils/errors'
+import { isSlotAvailable } from '@/utils/slots.helper'
+import { saveMeetingsScheduled } from '@/utils/storage'
+import { getAccountDisplayName } from '@/utils/user_manager'
+
 import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
@@ -92,14 +94,30 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const { currentAccount, logged } = useContext(AccountContext)
 
+  const calendarType =
+    account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
+
   const [checkingSlots, setCheckingSlots] = useState(false)
+  const [checkedSelfSlots, setCheckedSelfSlots] = useState(false)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
     null as InternalSchedule | null
   )
   const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [busySlots, setBusyslots] = useState([] as Interval[])
+  const [selfBusySlots, setSelfBusyslots] = useState([] as Interval[])
+  const [selectedType, setSelectedType] = useState({} as MeetingType)
+  const [isGateValid, setIsGateValid] = useState<boolean | undefined>(undefined)
+  const [isScheduling, setIsScheduling] = useState(false)
+  const [readyToSchedule, setReadyToSchedule] = useState(false)
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [reset, setReset] = useState(false)
+  const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
+    undefined as MeetingDecrypted | undefined
+  )
+  const [notificationsSubs, setNotificationSubs] = useState(0)
 
-  const calendarType =
-    account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
+  const toast = useToast()
 
   const hidrateTeamAccounts = async () => {
     let accountstoFetch: string[] = []
@@ -127,15 +145,16 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account!.preferences!.availableTypes.find(
-        t => t.url === typeOnRoute
-      )
+      const type = account!
+        .preferences!.availableTypes.filter(type => !type.deleted)
+        .find(t => t.url === typeOnRoute)
       setSelectedType(type || account!.preferences!.availableTypes[0])
       updateSlots()
     }
   }, [account, router.query.address])
 
   useEffect(() => {
+    logged && updateSelfSlots()
     if (logged && unloggedSchedule) {
       confirmSchedule(
         unloggedSchedule.scheduleType,
@@ -147,21 +166,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       )
     }
   }, [currentAccount])
-
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [busySlots, setBusyslots] = useState([] as Interval[])
-  const [selectedType, setSelectedType] = useState({} as MeetingType)
-  const [isGateValid, setIsGateValid] = useState<boolean | undefined>(undefined)
-  const [isScheduling, setIsScheduling] = useState(false)
-  const [readyToSchedule, setReadyToSchedule] = useState(false)
-  const { isOpen, onOpen, onClose } = useDisclosure()
-  const [reset, setReset] = useState(false)
-  const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
-    undefined as MeetingDecrypted | undefined
-  )
-  const [notificationsSubs, setNotificationSubs] = useState(0)
-
-  const toast = useToast()
 
   const fetchNotificationSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()
@@ -203,15 +207,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         ? teamMeetingRequest!.owner
         : teamMeetingRequest!.team_structure.participants_accounts![0]
 
-    const targetName =
-      CalendarType.REGULAR === calendarType
-        ? getAccountDisplayName(account!)
-        : ''
-
     const participants =
       CalendarType.REGULAR === calendarType
         ? []
         : teamMeetingRequest!.team_structure.participants_accounts!
+
+    const guests: GuestParticipant[] = []
+    if (scheduleType === SchedulingType.GUEST) {
+      guests.push({ email: guestEmail!, name: name!, scheduler: true })
+    }
 
     try {
       const meeting = await scheduleMeeting(
@@ -222,9 +226,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         start,
         end,
         currentAccount?.address,
-        guestEmail,
+        guests,
         name,
-        targetName,
         content,
         meetingUrl
       )
@@ -277,6 +280,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof InvalidURL) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'Please provide a valid url/link for your meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else throw e
     }
     setIsScheduling(false)
@@ -289,7 +301,25 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     setTimeout(() => setReset(false), 200)
   }
 
+  const updateSelfSlots = async () => {
+    if (currentAccount) {
+      const monthStart = startOfMonth(currentMonth)
+      const monthEnd = endOfMonth(currentMonth)
+
+      try {
+        const busySlots = await getBusySlots(
+          currentAccount!.address,
+          monthStart,
+          monthEnd
+        )
+        setSelfBusyslots(busySlots)
+        setCheckedSelfSlots(true)
+      } catch (e) {}
+    }
+  }
+
   const updateSlots = async () => {
+    updateSelfSlots()
     setCheckingSlots(true)
     const monthStart = startOfMonth(currentMonth)
     const monthEnd = endOfMonth(currentMonth)
@@ -340,9 +370,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }, [currentMonth])
 
   const changeType = (typeId: string) => {
-    const type = account!.preferences!.availableTypes.find(
-      t => t.id === typeId
-    )!
+    const type = account!
+      .preferences!.availableTypes.filter(type => !type.deleted)
+      .find(t => t.id === typeId)!
     if (!type.scheduleGate) {
       setIsGateValid(undefined)
     }
@@ -429,8 +459,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         }
         return false
       }
-
-      return false
     }
   }
 
@@ -449,6 +477,29 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       }
     }
     return null
+  }
+
+  const selfAvailabilityCheck = (slot: Date): boolean => {
+    let duration
+    let minAdvanceTime
+
+    if (calendarType === CalendarType.REGULAR) {
+      duration = selectedType.duration
+      minAdvanceTime = selectedType.minAdvanceTime
+    } else {
+      duration = teamMeetingRequest!.duration_in_minutes
+      minAdvanceTime = 0
+    }
+
+    return isSlotAvailable(
+      duration,
+      minAdvanceTime,
+      slot,
+      selfBusySlots,
+      currentAccount!.preferences!.availabilities,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      currentAccount!.preferences!.timezone
+    )
   }
 
   const dateRangeText = textToDisplayDateRange()
@@ -482,15 +533,21 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   value={selectedType.id}
                   onChange={e => e.target.value && changeType(e.target.value)}
                 >
-                  {account!.preferences!.availableTypes.map(type => (
-                    <option key={type.id} value={type.id}>
-                      {type.title ? `${type.title} - ` : ''}
-                      {durationToHumanReadable(type.duration)}
-                    </option>
-                  ))}
+                  {account!
+                    .preferences!.availableTypes.filter(type => !type.deleted)
+                    .map(type => (
+                      <option key={type.id} value={type.id}>
+                        {type.title ? `${type.title} - ` : ''}
+                        {durationToHumanReadable(type.duration)}
+                      </option>
+                    ))}
                 </Select>
               )}
-              {CalendarType.REGULAR && selectedType.scheduleGate ? (
+              {selectedType.description && (
+                <Text p={2}>{selectedType.description}</Text>
+              )}
+              {CalendarType.REGULAR === calendarType &&
+              selectedType.scheduleGate ? (
                 <TokenGateValidation
                   gate={selectedType.scheduleGate}
                   targetAccount={account!}
@@ -532,6 +589,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   }
                   checkingSlots={checkingSlots}
                   timeSlotAvailability={validateSlot}
+                  selfAvailabilityCheck={selfAvailabilityCheck}
+                  showSelfAvailability={checkedSelfSlots}
                   isGateValid={isGateValid!}
                 />
               </Box>

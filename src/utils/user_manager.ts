@@ -129,18 +129,8 @@ const loginOrSignup = async (
   return { ...account, ...extraInfo }
 }
 
-const getAccountDisplayName = (
-  account: Account,
-  useENSorUD?: boolean
-): string => {
-  if (useENSorUD) {
-    return account.name || ellipsizeAddress(account.address)
-  }
-
-  return (
-    getActiveProSubscription(account)?.domain ||
-    ellipsizeAddress(account.address)
-  )
+const getAccountDisplayName = (account: Account): string => {
+  return account.preferences?.name || ellipsizeAddress(account.address)
 }
 
 const getAddressDisplayForInput = (input: string) => {

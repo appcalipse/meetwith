@@ -24,6 +24,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const isPro = isProAccount(account)
 
     const meetingType = req.body as MeetingType
+    meetingType.description = meetingType.description?.trim() || ''
 
     let updatedInfo
 
@@ -69,6 +70,46 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const updatedAccount = await updateAccountPreferences(updatedInfo)
 
     await workMeetingTypeGates(updatedAccount.preferences?.availableTypes || [])
+
+    res.status(200).json(updatedAccount)
+    return
+  } else if (req.method === 'DELETE') {
+    initDB()
+
+    const account_id = req.session.account!.address
+
+    const account = await getAccountFromDB(account_id)
+
+    const { typeId } = req.body
+
+    const type = account.preferences!.availableTypes.find(t => t.id === typeId)
+
+    if (!type) {
+      res.status(403).send("You can't remove this meeting type")
+      return
+    }
+
+    if (account.preferences!.availableTypes.length == 1) {
+      res.status(403).send('You should keep at least one meeting type')
+      return
+    }
+
+    type.deleted = true
+
+    const updatedInfo = {
+      ...account,
+      preferences: {
+        ...account.preferences!,
+        availableTypes: account.preferences!.availableTypes.map(t => {
+          if (t.id === typeId) {
+            return type
+          }
+          return t
+        }),
+      },
+    }
+
+    const updatedAccount = await updateAccountPreferences(updatedInfo)
 
     res.status(200).json(updatedAccount)
     return

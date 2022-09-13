@@ -1,4 +1,4 @@
-import { Box, Flex, HStack, Text } from '@chakra-ui/layout'
+import { Box, Flex, Text } from '@chakra-ui/layout'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 
 import { getAccountDisplayName } from '@/utils/user_manager'
@@ -21,7 +21,7 @@ const GroupScheduleCalendarProfile: React.FC<
 
   const extraText =
     accountsToShow.length !== props.teamAccounts.length
-      ? `and ${props.teamAccounts.length - accountsToShow.length} more`
+      ? ` and ${props.teamAccounts.length - accountsToShow.length} more`
       : ''
 
   return (
@@ -30,13 +30,19 @@ const GroupScheduleCalendarProfile: React.FC<
         <Text>Loading information...</Text>
       ) : (
         <>
-          <HStack mb={4}>
+          <Box mb={4} pl={12}>
             {props.teamAccounts.map((account, index) => (
-              <Box key={index} width="100px" height="100px" mr={-12}>
+              <Box
+                key={index}
+                width="100px"
+                height="100px"
+                ml={-12}
+                display="inline-block"
+              >
                 <Jazzicon address={account.address} />
               </Box>
             ))}
-          </HStack>
+          </Box>
           <Box w="100%" textAlign="center">
             <Text fontSize="lg">{`Meet with ${displayNames}${extraText}`}</Text>
           </Box>

@@ -262,14 +262,21 @@ export const confirmSubscription = async (
 export const convertBlockchainSubscriptionToSubscription = (
   sub: BlockchainSubscription
 ): Subscription => {
+  let expiryTime = sub.expiryTime.toNumber()
+
+  if (expiryTime.toString().length === 13) {
+    //bad domain adding with expiry in milliseconds and not seconds
+    expiryTime = expiryTime / 1000
+  }
+
   const subscriptionInfo: Subscription = {
     plan_id: sub.planId.toNumber(),
     chain: sub.chain,
     owner_account: sub.owner.toLowerCase(),
     expiry_time:
-      new Date(sub.expiryTime.toNumber() * 1000).getFullYear() < 2200
-        ? new Date(sub.expiryTime.toNumber() * 1000)
-        : new Date(2200, 1, 1),
+      new Date(expiryTime * 1000).getFullYear() < 2200
+        ? new Date(expiryTime * 1000)
+        : new Date(2200, 1, 1), // bad initial domain injections
     domain: sub.domain,
     config_ipfs_hash: sub.configIpfsHash,
     registered_at: new Date(sub.registeredAt.toNumber() * 1000),
