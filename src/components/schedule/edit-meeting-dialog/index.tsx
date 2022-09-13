@@ -40,6 +40,7 @@ import {
 } from '@/utils/errors'
 import { getSignature } from '@/utils/storage'
 import { isProAccount } from '@/utils/subscription_manager'
+import { ParseTime } from '@/utils/time.helper'
 import { getAddressDisplayForInput } from '@/utils/user_manager'
 
 export interface EditMeetingModalProps {
@@ -82,15 +83,7 @@ export const EditMeetingDialog: React.FC<EditMeetingModalProps> = ({
     setContent(decrypted.content)
     setMeetingUrl(decrypted.meeting_url)
     setDate(decrypted.start)
-
-    const minutes = Math.ceil(decrypted.start.getMinutes() / 10) * 10
-    setTime(
-      (minutes < 60
-        ? decrypted.start.getHours()
-        : addHours(decrypted.start, 1).getHours()) +
-        ':' +
-        (minutes < 60 ? minutes : '00')
-    )
+    setTime(ParseTime(decrypted.start))
     setDuration(30)
     setLoading(false)
   }, [decrypted])
