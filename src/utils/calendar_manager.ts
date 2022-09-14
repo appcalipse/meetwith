@@ -45,8 +45,8 @@ import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { decryptContent, simpleHash } from './cryptography'
 import {
   InvalidURL,
+  MeetingCancelForbiddenError,
   MeetingChangeConflictError,
-  MeetingChangeForbiddenError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from './errors'
@@ -297,13 +297,7 @@ const updateMeeting = async (
     signature
   )
 
-  // for now, only the owner of the meeting can update it
-  const meetingOwner = existingMeeting.participants.find(
-    user => user.type === ParticipantType.Owner
-  )
-  if (meetingOwner?.account_address !== owner) {
-    throw new MeetingChangeForbiddenError()
-  }
+  //TODO: anyone can update a meeting, but we might need to change the participants statuses
 
   // make sure that we are trying to update the latest version of the meeting,
   // otherwise it means that somebody changes before this one
@@ -399,12 +393,12 @@ const cancelMeeting = async (
     signature
   )
 
-  // for now, only the owner of the meeting can update it
+  // for now, only the owner of the meeting can cancel it
   const meetingOwner = existingMeeting.participants.find(
     user => user.type === ParticipantType.Owner
   )
   if (meetingOwner?.account_address !== owner) {
-    throw new MeetingChangeForbiddenError()
+    throw new MeetingCancelForbiddenError()
   }
 
   // make sure that we are trying to update the latest version of the meeting,

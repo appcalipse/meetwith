@@ -57,7 +57,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const meetingResult: DBSlotEnhanced = await updateMeeting(meeting)
       res.status(200).json(meetingResult)
     } catch (e) {
-      console.error(e)
       if (e instanceof TimeNotAvailableError) {
         res.status(409).send(e)
       } else if (e instanceof MeetingCreationError) {

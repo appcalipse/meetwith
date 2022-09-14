@@ -155,7 +155,7 @@ const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
               ipfsHash={meeting.meeting_info_file_path}
             />
             <DecodedInfo meeting={meeting} />
-            <HStack>
+            {/* <HStack>
               <Button
                 onClick={() => {
                   decodeData().then(decriptedMeeting =>
@@ -175,7 +175,7 @@ const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
               >
                 Cancel
               </Button>
-            </HStack>
+            </HStack> */}
           </VStack>
         </Box>
       </Box>

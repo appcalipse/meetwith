@@ -678,7 +678,6 @@ const saveMeeting = async (
 
   //TODO: handle error
   if (error) {
-    console.error(error)
     Sentry.captureException(error)
   }
 
@@ -1215,8 +1214,8 @@ const updateMeeting = async (
         if (
           participantIsOwner &&
           ownerIsNotScheduler &&
-          (!isTimeAvailable() || (await slotIsTaken())) &&
-          !isEditingToSameTime
+          !isEditingToSameTime &&
+          (!isTimeAvailable() || (await slotIsTaken()))
         ) {
           throw new TimeNotAvailableError()
         }
