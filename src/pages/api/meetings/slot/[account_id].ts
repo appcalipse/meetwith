@@ -1,4 +1,5 @@
 import { withSentry } from '@sentry/nextjs'
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { initDB, isSlotFree } from '../../../../utils/database'
@@ -22,8 +23,8 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       if (error instanceof AccountNotFoundError) {
         res.status(404).json({ error: error.message })
       }
-      console.error(error)
-      return
+      Sentry.captureException(error)
+      return res.status(500).send('Server error')
     }
   }
   res.status(404).send('Not found')
