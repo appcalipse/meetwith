@@ -80,6 +80,7 @@ const Meetings: React.FC = () => {
             key={meeting.id}
             meeting={meeting}
             timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
+            onUpdate={fetchMeetings}
           />
         ))}
         {!noMoreFetch && !firstFetch && (

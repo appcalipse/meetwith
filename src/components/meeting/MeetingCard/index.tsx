@@ -1,4 +1,10 @@
 import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
   Badge,
   Box,
   Button,
@@ -8,6 +14,8 @@ import {
   Spinner,
   Text,
   useColorModeValue,
+  useDisclosure,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import {
@@ -18,7 +26,10 @@ import {
 } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
+import React from 'react'
+import { FaEdit, FaEraser } from 'react-icons/fa'
 
+import { useEditMeetingDialog } from '@/components/schedule/edit-meeting-dialog/edit.hook'
 import { addUTMParams } from '@/utils/meeting_call_helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
@@ -27,6 +38,7 @@ import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
 import {
+  cancelMeeting,
   dateToHumanReadable,
   decryptMeeting,
   durationToHumanReadable,
@@ -37,13 +49,14 @@ import IPFSLink from '../../IPFSLink'
 interface MeetingCardProps {
   meeting: DBSlot
   timezone: string
+  onUpdate?: () => void
 }
 
 interface Label {
   color: string
   text: string
 }
-const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
+const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
   const duration = differenceInMinutes(meeting.end, meeting.start)
 
   const defineLabel = (start: Date, end: Date): Label | null => {
@@ -70,6 +83,43 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
   const bgColor = useColorModeValue('white', 'gray.900')
 
   const label = defineLabel(meeting.start as Date, meeting.end as Date)
+  const toast = useToast()
+
+  const [EditModal, openEditModal, closeEditModal] = useEditMeetingDialog()
+  const [isCanceling, setCanceling] = useState(false)
+
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const cancelRef = React.useRef<HTMLButtonElement>(null)
+
+  const { currentAccount } = useContext(AccountContext)
+  const decodeData = async () => {
+    const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
+      meeting.meeting_info_file_path
+    )) as Encrypted
+    if (meetingInfoEncrypted) {
+      const decryptedMeeting = await decryptMeeting(
+        {
+          ...meeting,
+          meeting_info_encrypted: meetingInfoEncrypted,
+        },
+        currentAccount!
+      )
+
+      return decryptedMeeting
+    }
+
+    toast({
+      title: 'Something went wrong',
+      description: 'Unable to decode meeting data.',
+      status: 'error',
+      duration: 5000,
+      position: 'top',
+      isClosable: true,
+    })
+
+    return null
+  }
+
   return (
     <>
       <Box
@@ -105,10 +155,84 @@ const MeetingCard = ({ meeting, timezone }: MeetingCardProps) => {
               ipfsHash={meeting.meeting_info_file_path}
             />
             <DecodedInfo meeting={meeting} />
+            {/* <HStack>
+              <Button
+                onClick={() => {
+                  decodeData().then(decriptedMeeting =>
+                    openEditModal(meeting, decriptedMeeting, timezone)
+                  )
+                }}
+                leftIcon={<FaEdit />}
+                colorScheme="orange"
+              >
+                Edit
+              </Button>
+              <Button
+                onClick={onOpen}
+                leftIcon={<FaEraser />}
+                colorScheme="orange"
+                isLoading={isCanceling}
+              >
+                Cancel
+              </Button>
+            </HStack> */}
           </VStack>
         </Box>
       </Box>
       <Spacer />
+      <EditModal />
+      <AlertDialog
+        isOpen={isOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Cancel Meeting
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Are you sure? You can&apos;t undo this action afterwards.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                colorScheme="red"
+                onClick={() => {
+                  setCanceling(true)
+                  decodeData().then(decriptedMeeting => {
+                    cancelMeeting(currentAccount!.address, decriptedMeeting!)
+                      .then(() => {
+                        setCanceling(false)
+                        onUpdate && onUpdate()
+                        onClose()
+                      })
+                      .catch(error => {
+                        setCanceling(false)
+                        toast({
+                          title: 'Something went wrong',
+                          description: error.message,
+                          status: 'error',
+                          duration: 5000,
+                          position: 'top',
+                          isClosable: true,
+                        })
+                      })
+                  })
+                }}
+                ml={3}
+                isLoading={isCanceling}
+              >
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </>
   )
 }

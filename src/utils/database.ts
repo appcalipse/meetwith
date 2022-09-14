@@ -35,6 +35,8 @@ import {
   GroupMeetingRequest,
   MeetingCreationRequest,
   MeetingICS,
+  MeetingUpdateRequest,
+  ParticipantMappingType,
   ParticipantType,
   TimeSlotSource,
 } from '../types/Meeting'
@@ -43,6 +45,7 @@ import {
   AccountNotFoundError,
   GateConditionNotValidError,
   GateInUseError,
+  MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
   TimeNotAvailableError,
@@ -468,6 +471,65 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
   return meeting
 }
 
+const getMeetingsFromDB = async (
+  slotIds: string[]
+): Promise<DBSlotEnhanced[]> => {
+  const { data, error } = await db.supabase
+    .from('slots')
+    .select()
+    .in('id', slotIds)
+
+  if (error) {
+    Sentry.captureException(error)
+    // todo handle error
+  }
+
+  if (data.length == 0) {
+    return []
+  }
+
+  const meetings = []
+  for (const dbMeeting of data) {
+    const meeting: DBSlotEnhanced = {
+      ...dbMeeting,
+      meeting_info_encrypted: (await fetchContentFromIPFS(
+        dbMeeting.meeting_info_file_path
+      )) as Encrypted,
+    }
+    meetings.push(meeting)
+  }
+
+  return meetings
+}
+
+const deleteMeetingFromDB = async (owner: string, slotIds: string[]) => {
+  if (!slotIds?.length) {
+    throw new Error('No slot ids provided')
+  }
+
+  const { data, error } = await db.supabase
+    .from('slots')
+    .delete()
+    .in('id', slotIds)
+
+  // Doing ntifications and syncs asyncrounously
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'DELETE',
+    body: JSON.stringify({
+      owner,
+      slotIds,
+    }),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+    },
+  })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(error)
+  }
+}
+
 const saveMeeting = async (
   meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
@@ -586,14 +648,13 @@ const saveMeeting = async (
       const path = await addContentToIPFS(participant.privateInfo)
 
       // Not adding source here given on our database the source is always MWW
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       const dbSlot: DBSlot = {
         id: participant.slot_id,
         start: meeting.start,
         end: meeting.end,
         account_address: account.address,
         meeting_info_file_path: path,
+        version: 0,
       }
 
       slots.push(dbSlot)
@@ -1070,6 +1131,180 @@ const upsertAppToken = async (
   return
 }
 
+const updateMeeting = async (
+  meeting: MeetingUpdateRequest
+): Promise<DBSlotEnhanced> => {
+  if (
+    new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
+    meeting.participants_mapping.length
+  ) {
+    //means there are duplicate participants
+    throw new MeetingCreationError()
+  }
+
+  const slots = []
+  let meetingResponse = {} as DBSlotEnhanced
+  let index = 0
+  let i = 0
+
+  const existingAccounts = await getExistingAccountsFromDB(
+    meeting.participants_mapping.map(p => p.account_address!)
+  )
+  const ownerParticipant =
+    meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
+    null
+
+  const ownerAccount = ownerParticipant
+    ? await getAccountFromDB(ownerParticipant.account_address!)
+    : null
+
+  const schedulerAccount =
+    meeting.participants_mapping.find(
+      p => p.type === ParticipantType.Scheduler
+    ) || null
+
+  for (const participant of meeting.participants_mapping) {
+    const isEditing = participant.mappingType === ParticipantMappingType.KEEP
+
+    if (participant.account_address) {
+      if (
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!) &&
+        participant.type === ParticipantType.Owner
+      ) {
+        // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
+        const participantIsOwner = Boolean(
+          ownerParticipant &&
+            ownerParticipant.account_address === participant.account_address
+        )
+        const ownerIsNotScheduler = Boolean(
+          ownerParticipant &&
+            schedulerAccount &&
+            ownerParticipant.account_address !==
+              schedulerAccount.account_address
+        )
+
+        let isEditingToSameTime = false
+        if (isEditing) {
+          const existingSlot = await getMeetingFromDB(participant.slot_id!)
+          const sameStart =
+            new Date(existingSlot.start).getTime() ===
+            new Date(meeting.start).getTime()
+          const sameEnd =
+            new Date(existingSlot.end).getTime() ===
+            new Date(meeting.end).getTime()
+          isEditingToSameTime = sameStart && sameEnd
+        }
+
+        const slotIsTaken = async () =>
+          !(await isSlotFree(
+            participant.account_address!,
+            new Date(meeting.start),
+            new Date(meeting.end),
+            meeting.meetingTypeId
+          ))
+
+        const isTimeAvailable = () =>
+          isTimeInsideAvailabilities(
+            utcToZonedTime(meeting.start, ownerAccount!.preferences!.timezone!),
+            utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
+            ownerAccount!.preferences!.availabilities
+          )
+        if (
+          participantIsOwner &&
+          ownerIsNotScheduler &&
+          !isEditingToSameTime &&
+          (!isTimeAvailable() || (await slotIsTaken()))
+        ) {
+          throw new TimeNotAvailableError()
+        }
+      }
+
+      let account: Account
+
+      if (
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!)
+      ) {
+        account = await getAccountFromDB(participant.account_address!)
+      } else {
+        account = await initAccountDBForWallet(
+          participant.account_address!,
+          '',
+          'UTC',
+          0,
+          true
+        )
+      }
+
+      const path = await addContentToIPFS(participant.privateInfo)
+
+      // Not adding source here given on our database the source is always MWW
+      const dbSlot: DBSlot = {
+        id: participant.slot_id,
+        start: new Date(meeting.start),
+        end: new Date(meeting.end),
+        account_address: account.address,
+        meeting_info_file_path: path,
+        version: meeting.version,
+      }
+
+      slots.push(dbSlot)
+
+      if (
+        participant.account_address === schedulerAccount?.account_address ||
+        (!schedulerAccount &&
+          participant.account_address === ownerAccount?.address)
+      ) {
+        index = i
+        meetingResponse = {
+          ...dbSlot,
+          meeting_info_encrypted: participant.privateInfo,
+        }
+      }
+      i++
+    }
+  }
+
+  // one last check to make sure that the version did not change
+  const everySlotId = meeting.participants_mapping.map(it => it.slot_id)
+  const everySlot = await getMeetingsFromDB(everySlotId)
+  if (everySlot.find(it => it.version + 1 !== meeting.version)) {
+    throw new MeetingChangeConflictError()
+  }
+
+  // there is no support from suppabase to really use optimistic locking,
+  // right now we do the best we can assuming that no update will happen in the EXACT same time
+  // to the point that our checks will not be able to stop conflicts
+  const { data, error } = await db.supabase.from('slots').upsert(slots)
+
+  //TODO: handle error
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  meetingResponse.id = data[index].id
+  meetingResponse.created_at = data[index].created_at
+
+  const meetingICS: MeetingICS = {
+    db_slot: meetingResponse,
+    meeting,
+  }
+
+  // Doing ntifications and syncs asyncrounously
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'PATCH',
+    body: JSON.stringify(meetingICS),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+    },
+  })
+
+  return meetingResponse
+}
+
 const selectTeamMeetingRequest = async (
   id: string
 ): Promise<GroupMeetingRequest | null> => {
@@ -1090,6 +1325,7 @@ export {
   changeConnectedCalendarSync,
   connectedCalendarExists,
   deleteGateCondition,
+  deleteMeetingFromDB,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
@@ -1111,6 +1347,7 @@ export {
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
   updateAccountPreferences,
+  updateMeeting,
   upsertAppToken,
   upsertGateCondition,
   workMeetingTypeGates,

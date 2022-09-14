@@ -19,6 +19,11 @@ export enum SchedulingType {
   GUEST,
 }
 
+export interface MeetingUpdateRequest extends MeetingCreationRequest {
+  slotsToRemove: string[]
+  version: number
+}
+
 export interface MeetingCreationRequest {
   type: SchedulingType
   participants_mapping: CreationRequestParticipantMapping[]
@@ -29,15 +34,23 @@ export interface MeetingCreationRequest {
   meeting_url: string
 }
 
+export enum ParticipantMappingType {
+  ADD = 'add',
+  REMOVE = 'remove',
+  KEEP = 'keep',
+}
+
 export interface CreationRequestParticipantMapping {
   account_address?: string
   slot_id: string
   type: ParticipantType
   privateInfo: Encrypted
+  privateInfoHash: string
   timeZone: string
   name: string
   status: ParticipationStatus
   guest_email?: string
+  mappingType?: ParticipantMappingType
 }
 
 export enum TimeSlotSource {
@@ -49,7 +62,7 @@ export enum TimeSlotSource {
 }
 
 export interface TimeSlot extends Interval {
-  source: string
+  source?: string
   account_address: string
 }
 
@@ -57,6 +70,7 @@ export interface DBSlot extends TimeSlot {
   id?: string
   created_at?: Date
   meeting_info_file_path: string
+  version: number
 }
 
 export interface DBSlotEnhanced extends DBSlot {
@@ -86,6 +100,7 @@ export interface IPFSMeetingInfo {
   meeting_url: string
   participants: ParticipantInfo[]
   change_history_paths: string[]
+  related_slot_ids: string[]
 }
 
 export interface MeetingDecrypted {
@@ -97,6 +112,8 @@ export interface MeetingDecrypted {
   meeting_url: string
   meeting_info_file_path: string
   content?: string
+  related_slot_ids: string[]
+  version: DBSlot['version']
 }
 
 export enum GroupMeetingType {
