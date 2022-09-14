@@ -70,6 +70,19 @@ export class GateConditionNotValidError extends Error {
     this.name = 'GateConditionNotValidError'
   }
 }
+export class MeetingChangeConflictError extends Error {
+  constructor() {
+    super(`Somebody edited the meeting before you.`)
+    this.name = 'MeetingChangeConflictError'
+  }
+}
+
+export class MeetingCancelForbiddenError extends Error {
+  constructor() {
+    super(`Cannot cancel a meeting if you are not the owner`)
+    this.name = 'MeetingCancelForbiddenError'
+  }
+}
 
 export class InvalidURL extends Error {
   constructor() {

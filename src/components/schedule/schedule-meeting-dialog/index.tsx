@@ -51,6 +51,7 @@ import {
 } from '@/utils/errors'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
 import { isProAccount } from '@/utils/subscription_manager'
+import { ParseTime } from '@/utils/time.helper'
 import { getAddressDisplayForInput } from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
@@ -92,14 +93,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
     setParticipants([])
     setInputError(undefined)
     setDate(new Date())
-    const minutes = Math.ceil(new Date().getMinutes() / 10) * 10
-    setTime(
-      (minutes < 60
-        ? new Date().getHours()
-        : addHours(new Date(), 1).getHours()) +
-        ':' +
-        (minutes < 60 && minutes != 0 ? minutes : '00')
-    )
+    setTime(ParseTime(new Date()))
     setContent('')
     setMeetingUrl('')
     setDuration(30)
@@ -268,6 +262,7 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         start: new Date(meeting.start),
         end: new Date(meeting.end),
         source: TimeSlotSource.MWW,
+        version: meeting.version,
       })
       return true
     } catch (e) {
