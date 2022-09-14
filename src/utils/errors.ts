@@ -77,10 +77,10 @@ export class MeetingChangeConflictError extends Error {
   }
 }
 
-export class MeetingChangeForbiddenError extends Error {
+export class MeetingCancelForbiddenError extends Error {
   constructor() {
-    super(`Cannot change a meeting if you are not the owner`)
-    this.name = 'MeetingChangeForbiddenError'
+    super(`Cannot cancel a meeting if you are not the owner`)
+    this.name = 'MeetingCancelForbiddenError'
   }
 }
 

@@ -282,7 +282,7 @@ export default class Office365CalendarService implements CalendarService {
 
     const filter = `?startdatetime=${encodeURIComponent(
       dateFromParsed.toISOString()
-    )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}&$top=100`
+    )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}&$top=500`
 
     try {
       const accessToken = await this.auth.getToken()
@@ -302,7 +302,7 @@ export default class Office365CalendarService implements CalendarService {
         (cal: any) => cal.isDefaultCalendar
       ).id
       // TODO: consider proper pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
-      // not only the first 100 events
+      // not only the first 500 events
       const eventsResponse = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/calendarView${filter}`,
         {
