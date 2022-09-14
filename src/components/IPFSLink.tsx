@@ -25,7 +25,7 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
 
       <HStack mt={0}>
         <Link
-          href={`https://ipfs.io/ipfs/${ipfsHash}?utm_source=meetwithwallet`}
+          href={`https://mww.infura-ipfs.io/ipfs/${ipfsHash}`}
           isExternal
           target="_blank"
           rel="noopener noreferrer"
