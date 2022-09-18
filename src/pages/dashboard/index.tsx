@@ -1,17 +1,22 @@
-import { Container } from '@chakra-ui/layout'
+import { NextPage } from 'next'
 import React from 'react'
 
-import DashboardContent from '../../components/profile/DashboardContent'
+import { EditMode } from '@/types/Dashboard'
+import redirectTo from '@/utils/redirect'
+
 import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
 import { withLoginRedirect } from '../../session/requireAuthentication'
-import { EditMode } from '../../types/Dashboard'
 
-const Dashboard: React.FC = () => {
-  return (
-    <Container data-testid="dashboard-container" maxW="6xl" my={8} flex={1}>
-      <DashboardContent currentSection={EditMode.MEETINGS} />
-    </Container>
-  )
+const Dashboard: NextPage = () => {
+  return <></>
 }
 
-export default withLoginRedirect(forceAuthenticationCheck(Dashboard))
+const EnhancedDashboard: NextPage = withLoginRedirect(
+  forceAuthenticationCheck(Dashboard)
+)
+
+EnhancedDashboard.getInitialProps = async ctx => {
+  return redirectTo(`/dashboard/${EditMode.MEETINGS}`, 302, ctx)
+}
+
+export default EnhancedDashboard

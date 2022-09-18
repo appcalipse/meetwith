@@ -300,7 +300,14 @@ export const subscribeToWaitlist = async (
 }
 
 export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
-  return (await internalFetch(`/meetings/meeting/${slot_id}`)) as DBSlotEnhanced
+  const response = (await internalFetch(
+    `/meetings/meeting/${slot_id}`
+  )) as DBSlotEnhanced
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
+  }
 }
 
 export const getNotificationSubscriptions =

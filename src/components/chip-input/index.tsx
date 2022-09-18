@@ -13,15 +13,22 @@ import {
   useState,
 } from 'react'
 
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/Meeting'
+import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
+
 import { BadgeChip } from './chip'
 
 const DEFAULT_STOP_KEYS = ['Tab', 'Space', 'Enter', 'Escape', 'Comma']
 
 interface ChipInputProps {
-  onChange: (data: string[]) => void
+  onChange: (data: ParticipantInfo[]) => void
   isReadOnly?: boolean
-  currentItems: string[]
-  renderItem?: (item: string) => string
+  currentItems: ParticipantInfo[]
+  renderItem: (item: ParticipantInfo) => string
   placeholder?: string
   // chakra props that we want to propagate
   size?: InputProps['size']
@@ -31,7 +38,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   onChange,
   isReadOnly = false,
   currentItems = [],
-  renderItem = item => item,
+  renderItem,
   size = 'md',
   placeholder = 'Type do add items',
 }) => {
@@ -45,7 +52,34 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       return
     }
 
-    const newState = [...currentItems, ...items.map(item => item.trim())]
+    const newState: ParticipantInfo[] = [
+      ...currentItems,
+      ...items.map(item => {
+        const _item = item.trim()
+        if (isValidEVMAddress(_item)) {
+          return {
+            account_address: _item,
+            status: ParticipationStatus.Pending,
+            type: ParticipantType.Invitee,
+            slot_id: '',
+          }
+        } else if (isValidEmail(_item)) {
+          return {
+            guest_email: _item,
+            status: ParticipationStatus.Pending,
+            type: ParticipantType.Invitee,
+            slot_id: '',
+          }
+        } else {
+          return {
+            name: _item,
+            status: ParticipationStatus.Pending,
+            type: ParticipantType.Invitee,
+            slot_id: '',
+          }
+        }
+      }),
+    ]
     setCurrent('')
     if (onChange) {
       onChange(newState)
