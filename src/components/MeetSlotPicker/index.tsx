@@ -190,7 +190,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 
             <HStack>
               <FaClock />
-              <Text>{format(pickedTime!, 'HH:mm')}</Text>
+              <Text>{format(pickedTime!, 'p')}</Text>
             </HStack>
           </PopupHeader>
 
