@@ -23,11 +23,13 @@ const getContentFromEncrypted = async (
     return await decryptWithPrivateKey(pvtKey, encrypted)
   } catch (error) {
     ;(window as any).location = '/logout'
+    // wait for browser to redirect user... without this the app explodes cause it
+    // tries to do things and do not wait for the window.location to take effect
     await new Promise<void>(resolve =>
       setTimeout(() => {
         resolve()
       }, 5000)
-    ) //wait for browser to redirect user... without this the app explodes cause it tries to do things and do not wait for the wondow.location to take effect
+    )
     return ''
   }
 }
