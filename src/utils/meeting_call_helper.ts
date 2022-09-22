@@ -13,7 +13,7 @@ export const addUTMParams = (originalUrl: string) => {
 
 const generateMeetingUrl = async (): Promise<string> => {
   try {
-    const meetingResponse = await await fetch(
+    const meetingResponse = await fetch(
       'https://wpss2zlpb9.execute-api.us-east-1.amazonaws.com/new-meeting'
     )
 
