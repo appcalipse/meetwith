@@ -35,6 +35,7 @@ export interface MeetingType {
   minAdvanceTime: number
   scheduleGate?: string
   deleted?: boolean
+  private?: boolean
 }
 
 export interface DayAvailability {
