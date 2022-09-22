@@ -7,6 +7,7 @@ import {
   Input,
   Link,
   Select,
+  Switch,
   Text,
   Textarea,
   VStack,
@@ -68,6 +69,7 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
   >(undefined)
   const [meetingGate, setMeetingGate] = useState<string>('')
   const [loadingGates, setLoadingGates] = useState<boolean>(true)
+  const [isPrivate, setPrivate] = useState<boolean>(props.selectedType?.private)
   const selectRef = useRef<HTMLSelectElement>(null)
 
   useImperativeHandle(ref, () => ({
@@ -143,6 +145,7 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
           ? 60
           : 60 * 24),
       scheduleGate: meetingGate,
+      private: isPrivate,
     }
 
     const account = await saveMeetingType(meetingType)
@@ -258,6 +261,21 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
             </Text>
           </VStack>
         )}
+      </FormControl>
+
+      <FormControl>
+        <HStack py={4}>
+          <Switch
+            colorScheme="orange"
+            size="md"
+            isChecked={isPrivate}
+            onChange={e => setPrivate(e.target.checked)}
+          />
+          <Text>
+            Private (only people with the direct link can schedule this meeting
+            type)
+          </Text>
+        </HStack>
       </FormControl>
 
       <FormControl>
