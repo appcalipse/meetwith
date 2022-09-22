@@ -7,17 +7,14 @@ import {
   getYear,
 } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
-import {
-  decryptWithPrivateKey,
-  Encrypted,
-  encryptWithPublicKey,
-} from 'eth-crypto'
+import { Encrypted, encryptWithPublicKey } from 'eth-crypto'
 import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import {
   CreationRequestParticipantMapping,
+  DBSlot,
   DBSlotEnhanced,
   IPFSMeetingInfo,
   MeetingCreationRequest,
@@ -31,6 +28,7 @@ import {
 import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
+  fetchContentFromIPFSFromBrowser,
   getAccount,
   getExistingAccounts,
   getMeeting,
@@ -42,11 +40,12 @@ import {
 
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
-import { decryptContent, simpleHash } from './cryptography'
+import { getContentFromEncrypted, simpleHash } from './cryptography'
 import {
   InvalidURL,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
+  MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from './errors'
@@ -58,10 +57,79 @@ import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress, getAccountDisplayName } from './user_manager'
 import { isValidEmail, isValidUrl } from './validations'
 
-export interface GuestParticipant {
-  name: string
-  email: string
-  scheduler: boolean
+export const sanitizeParticipants = (
+  participants: ParticipantInfo[]
+): ParticipantInfo[] => {
+  const sanitized: ParticipantInfo[] = []
+
+  for (const participant of participants) {
+    let added = false
+    if (
+      sanitized.some(
+        p =>
+          (p.account_address &&
+            p.account_address === participant.account_address) ||
+          (p.guest_email && p.guest_email === participant.guest_email)
+      )
+    ) {
+      added = true
+    }
+    if (participant.account_address) {
+      const elementsByAddress = participants.filter(
+        p => p.account_address === participant.account_address
+      )
+      if (elementsByAddress.length > 1) {
+        const toPickIfScheduler = elementsByAddress.filter(
+          p =>
+            p.account_address === p.account_address &&
+            p.type === ParticipantType.Scheduler
+        )
+
+        if (!added && toPickIfScheduler[0]) {
+          sanitized.push(toPickIfScheduler[0])
+          added = true
+        }
+
+        const toPick = elementsByAddress.filter(
+          p => p.account_address === participant.account_address && p.name
+        )
+
+        if (!added && toPick[0] && toPick[0].name) {
+          sanitized.push(toPick[0])
+          added = true
+        }
+      }
+    }
+
+    if (participant.guest_email) {
+      const elementsByEmail = participants.filter(
+        p => p.guest_email === participant.guest_email
+      )
+
+      if (elementsByEmail.length > 1) {
+        const toPickIfScheduler = elementsByEmail.filter(
+          p =>
+            p.guest_email === participant.guest_email &&
+            p.type === ParticipantType.Scheduler
+        )
+        if (!added && toPickIfScheduler[0]) {
+          sanitized.push(toPickIfScheduler[0])
+          added = true
+        }
+
+        const toPick = elementsByEmail.filter(
+          p => p.guest_email === participant.guest_email && p.name
+        )
+        if (!added && toPick[0] && toPick[0].name) {
+          sanitized.push(toPick[0])
+          added = true
+        }
+      }
+    }
+    !added && sanitized.push(participant)
+  }
+
+  return sanitized
 }
 
 const mapRelatedSlots = async (meeting: MeetingDecrypted) => {
@@ -73,10 +141,10 @@ const mapRelatedSlots = async (meeting: MeetingDecrypted) => {
   return accountSlot
 }
 
-const loadMeetingAccounts = async (
-  owner: string,
+const loadMeetingAccountAddresses = async (
+  currentAccountAddress: string,
   meeting: MeetingDecrypted
-) => {
+): Promise<string[]> => {
   // also make sure that the version of every related db slot is also in sync
   // and that there is a change already going on
   // TODO: change to one fetch all in batch
@@ -86,37 +154,22 @@ const loadMeetingAccounts = async (
     otherSlots.push(otherSlot)
   }
 
-  return [owner, ...otherSlots.map(it => it.account_address)]
+  return [currentAccountAddress, ...otherSlots.map(it => it.account_address)]
 }
 
 const buildMeetingData = async (
   schedulingType: SchedulingType,
-  target_account_address: string,
-  extra_participants: string[],
   meetingTypeId: string,
   startTime: Date,
   endTime: Date,
-  source_account_address?: string,
-  guests?: GuestParticipant[],
-  sourceName?: string,
-  targetName?: string,
+  participants: ParticipantInfo[],
+  participantsToKeep: {
+    [accountOrEmail: string]: string
+  },
+  currentAccount?: Account | null,
   meetingContent?: string,
-  meetingUrl?: string,
-  participantsMapping?: {
-    toAdd: string[]
-    toKeep: {
-      [account: string]: string
-    }
-  }
+  meetingUrl?: string
 ) => {
-  if (
-    source_account_address === target_account_address &&
-    extra_participants.length == 0 &&
-    guests?.length == 0
-  ) {
-    throw new MeetingWithYourselfError()
-  }
-
   if (meetingUrl) {
     if (isValidEmail(meetingUrl)) {
       throw new InvalidURL()
@@ -129,75 +182,58 @@ const buildMeetingData = async (
     }
   }
 
-  const allAccounts: Account[] = await getExistingAccounts([
-    source_account_address ? source_account_address : '',
-    target_account_address,
-    ...extra_participants,
-  ])
-  const participants: ParticipantInfo[] = []
+  currentAccount &&
+    participants.push({
+      account_address: currentAccount.address,
+      type: ParticipantType.Scheduler,
+      status: ParticipationStatus.Accepted,
+      slot_id: '',
+    })
 
-  for (const account of allAccounts) {
-    const participant: ParticipantInfo = {
-      type:
-        account.address === target_account_address
-          ? ParticipantType.Owner
-          : account.address === source_account_address
-          ? ParticipantType.Scheduler
-          : ParticipantType.Invitee,
-      account_address: account.address,
-      status:
-        account.address == source_account_address
-          ? ParticipationStatus.Accepted
-          : ParticipationStatus.Pending,
-      slot_id: uuidv4(),
-      name:
-        account.address === source_account_address
-          ? sourceName || getAccountDisplayName(account)
-          : getAccountDisplayName(account),
-      guest_email: '',
-    }
-    participants.push(participant)
-  }
-
-  const invitedAccounts = extra_participants.filter(
-    participant =>
-      !allAccounts
-        .map(account => account.address.toLowerCase())
-        .includes(participant.toLowerCase())
+  const allAccounts: Account[] = await getExistingAccounts(
+    participants.filter(p => p.account_address).map(p => p.account_address!)
   )
 
-  for (const account of invitedAccounts) {
-    const participant: ParticipantInfo = {
-      type: ParticipantType.Invitee,
-      account_address: account,
-      status: ParticipationStatus.Pending,
-      slot_id: uuidv4(),
-    }
+  for (const account of allAccounts) {
+    const participant = participants.filter(
+      p => p.account_address?.toLowerCase() === account.address
+    )
 
-    participants.push(participant)
+    for (const p of participant) {
+      p.name = getAccountDisplayName(account)
+      p.status =
+        account.address === currentAccount?.address
+          ? ParticipationStatus.Accepted
+          : ParticipationStatus.Pending
+      p.type =
+        account.address === currentAccount?.address
+          ? ParticipantType.Scheduler
+          : p.type || ParticipantType.Invitee
+      p.slot_id = uuidv4()
+    }
   }
 
-  if (guests) {
-    for (const guest of guests) {
-      const participant: ParticipantInfo = {
-        type: !!guest.scheduler
-          ? ParticipantType.Scheduler
-          : ParticipantType.Invitee,
-        status: !!guest.scheduler
-          ? ParticipationStatus.Accepted
-          : ParticipationStatus.Pending,
-        guest_email: guest.email,
-        name: guest.name,
-        slot_id: uuidv4(),
-      }
+  const sanitizedParticipants = sanitizeParticipants(participants)
 
-      participants.push(participant)
-    }
+  if (
+    sanitizedParticipants.length === 1 &&
+    sanitizedParticipants[0].account_address === currentAccount?.address
+  ) {
+    throw new MeetingWithYourselfError()
+  } else if (sanitizedParticipants.length === 1) {
+    throw new MeetingCreationError()
+  }
+
+  if (
+    sanitizedParticipants.filter(p => p.type === ParticipantType.Scheduler)
+      .length !== 1
+  ) {
+    throw new MeetingCreationError()
   }
 
   const privateInfo: IPFSMeetingInfo = {
     created_at: new Date(),
-    participants: participants,
+    participants: sanitizedParticipants,
     content: meetingContent,
     meeting_url: meetingUrl || (await generateMeetingUrl()),
     change_history_paths: [],
@@ -205,15 +241,15 @@ const buildMeetingData = async (
   }
 
   // first pass to make sure that we are keeping the existing slot id
-  for (const participant of participants) {
-    const existingSlotId =
-      participantsMapping?.toKeep[participant.account_address || '']
+  for (const participant of sanitizedParticipants) {
+    const existingSlotId = participantsToKeep[participant.account_address || '']
     participant.slot_id = existingSlotId || participant.slot_id
   }
 
-  const allSlotIds = participants.map(it => it.slot_id)
+  const allSlotIds = sanitizedParticipants.map(it => it.slot_id)
   const participantsMappings = []
-  for (const participant of participants) {
+
+  for (const participant of sanitizedParticipants) {
     // we use participant key if it is an actual participant, otherwise, it is a
     // guest and have not a PK yet, so we encode data using our pk.
     const encodingKey =
@@ -237,11 +273,11 @@ const buildMeetingData = async (
       // future if the user is th
       privateInfoHash: simpleHash(privateInfoComplete),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      name: sourceName || '',
+      name: participant.name || '',
       guest_email: participant.guest_email,
       status: ParticipationStatus.Pending,
-      mappingType: !!participantsMapping?.toKeep[
-        participant.account_address || ''
+      mappingType: !!participantsToKeep[
+        participant.account_address || participant.guest_email || ''
       ]
         ? ParticipantMappingType.KEEP
         : ParticipantMappingType.ADD,
@@ -275,25 +311,26 @@ const buildMeetingData = async (
  * @returns
  */
 const updateMeeting = async (
-  owner: string,
+  currentAccountAddress: string,
   meetingTypeId: string,
   startTime: Date,
   endTime: Date,
   decryptedMeeting: MeetingDecrypted,
   signature: string,
-  participants: string[]
-) => {
+  participants: ParticipantInfo[],
+  content?: string
+): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
   }
 
-  const ownerAccount = await getAccount(owner)
+  const currentAccount = await getAccount(currentAccountAddress)
 
   const existingDBSlot = await getMeeting(decryptedMeeting.id)
   const existingMeeting = await decryptMeeting(
     existingDBSlot,
-    ownerAccount,
+    currentAccount,
     signature
   )
 
@@ -305,56 +342,58 @@ const updateMeeting = async (
     throw new MeetingChangeConflictError()
   }
 
-  const existingMeetingAccounts = await loadMeetingAccounts(
-    owner,
+  const existingMeetingAccounts = await loadMeetingAccountAddresses(
+    currentAccount.address,
     existingMeeting
   )
 
   // those are the users that we need to remove the slots
-  const toRemove = diff(existingMeetingAccounts, participants)
-
-  // those are the users that we need to create new slots
-  const toAdd = diff(participants, existingMeetingAccounts)
+  const toRemove = diff(
+    existingMeetingAccounts,
+    participants.filter(p => p.account_address).map(p => p.account_address!)
+  )
 
   // those are the users that we need to replace the slot contents
-  const toKeep = intersec(existingMeetingAccounts, participants)
-  const accountSlotMap = await mapRelatedSlots(existingMeeting)
-  accountSlotMap[owner] = existingMeeting.id
+  const toKeep = intersec(
+    existingMeetingAccounts,
+    participants.filter(p => p.account_address).map(p => p.account_address!)
+  )
 
-  const targetAccount = decryptedMeeting.participants.find(
-    it => it.type == ParticipantType.Owner
-  )
-  const sourceAccount = decryptedMeeting.participants.find(
-    it => it.type == ParticipantType.Scheduler
-  )
-  const otherAccounts = decryptedMeeting.participants.filter(
-    it => it.type == ParticipantType.Invitee
-  )
+  const accountSlotMap = await mapRelatedSlots(existingMeeting)
+  accountSlotMap[currentAccount.address] = existingMeeting.id
+
+  const oldGuests = decryptedMeeting.participants
+    .filter(p => p.guest_email)
+    .map(p => p.guest_email!)
+
+  const guests = participants
+    .filter(p => p.guest_email)
+    .map(p => p.guest_email!)
+
+  // those are the guests that must receive an update email
+  const guestsToKeep = intersec(oldGuests, guests)
+
+  // those are the guests that must receive a cancel email
+  const guestsToRemove = diff(oldGuests, guests)
 
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
-    targetAccount!.account_address!,
-    otherAccounts.map(it => it.account_address!),
     meetingTypeId,
     startTime,
     endTime,
-    sourceAccount?.account_address,
-    undefined,
-    undefined,
-    undefined,
-    decryptedMeeting.content,
-    decryptedMeeting.meeting_url,
-    {
-      toAdd,
-      toKeep: toKeep.reduce<any>((acc, it) => {
-        acc[it] = accountSlotMap[it]
-        return acc
-      }, {}),
-    }
+    participants,
+    [...toKeep, ...guestsToKeep].reduce<any>((acc, it) => {
+      acc[it] = accountSlotMap[it]
+      return acc
+    }, {}),
+    currentAccount,
+    content,
+    decryptedMeeting.meeting_url
   )
   const payload = {
     ...meetingData,
     slotsToRemove: toRemove.map(it => accountSlotMap[it]),
+    guestsToRemove,
     version: decryptedMeeting.version + 1,
   }
 
@@ -363,7 +402,7 @@ const updateMeeting = async (
     decryptedMeeting.id,
     payload
   )
-  return await decryptMeeting(slot, ownerAccount)
+  return await decryptMeeting(slot, currentAccount)
 }
 
 /**
@@ -374,7 +413,7 @@ const updateMeeting = async (
  * @returns
  */
 const cancelMeeting = async (
-  owner: string,
+  currentAccountAddress: string,
   decryptedMeeting: MeetingDecrypted
 ) => {
   // Sanity check
@@ -382,9 +421,9 @@ const cancelMeeting = async (
     throw new MeetingChangeConflictError()
   }
 
-  const signature = getSignature(owner)!
+  const signature = getSignature(currentAccountAddress)!
 
-  const ownerAccount = await getAccount(owner)
+  const ownerAccount = await getAccount(currentAccountAddress)
 
   const existingDBSlot = await getMeeting(decryptedMeeting.id)
   const existingMeeting = await decryptMeeting(
@@ -393,11 +432,17 @@ const cancelMeeting = async (
     signature
   )
 
-  // for now, only the owner of the meeting can cancel it
+  // Only the owner or scheduler of the meeting can cancel it
   const meetingOwner = existingMeeting.participants.find(
     user => user.type === ParticipantType.Owner
   )
-  if (meetingOwner?.account_address !== owner) {
+  const meetingScheduler = existingMeeting.participants.find(
+    user => user.type === ParticipantType.Scheduler
+  )
+  if (
+    meetingOwner?.account_address !== currentAccountAddress &&
+    meetingScheduler?.account_address !== currentAccountAddress
+  ) {
     throw new MeetingCancelForbiddenError()
   }
 
@@ -415,51 +460,41 @@ const cancelMeeting = async (
 
 const scheduleMeeting = async (
   schedulingType: SchedulingType,
-  target_account_address: string,
-  extra_participants: string[],
   meetingTypeId: string,
   startTime: Date,
   endTime: Date,
-  source_account_address?: string,
-  guests?: GuestParticipant[],
-  sourceName?: string,
-  targetName?: string,
+  participants: ParticipantInfo[],
+  currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl?: string
 ): Promise<MeetingDecrypted> => {
-  if (
-    source_account_address === target_account_address &&
-    extra_participants.length == 0
-  ) {
-    throw new MeetingWithYourselfError()
-  }
+  const meeting = await buildMeetingData(
+    schedulingType,
+    meetingTypeId,
+    startTime,
+    endTime,
+    participants,
+    {},
+    currentAccount,
+    meetingContent,
+    meetingUrl
+  )
+
+  const owner = meeting.participants_mapping.filter(
+    p => p.type === ParticipantType.Owner
+  )[0]
 
   if (
-    source_account_address === target_account_address ||
+    !owner || // scheduling from dashbaord
     (
       await isSlotFreeApiCall(
-        target_account_address,
+        owner.account_address!,
         startTime,
         endTime,
         meetingTypeId
       )
     ).isFree
   ) {
-    const meeting = await buildMeetingData(
-      schedulingType,
-      target_account_address,
-      extra_participants,
-      meetingTypeId,
-      startTime,
-      endTime,
-      source_account_address,
-      guests,
-      sourceName,
-      targetName,
-      meetingContent,
-      meetingUrl
-    )
-
     try {
       let slot: DBSlotEnhanced
       if (schedulingType === SchedulingType.GUEST) {
@@ -468,18 +503,17 @@ const scheduleMeeting = async (
         slot = await apiScheduleMeeting(meeting)
       }
 
-      if (source_account_address) {
-        const schedulerAccount = await getAccount(source_account_address!)
-        return await decryptMeeting(slot, schedulerAccount)
+      if (currentAccount) {
+        return await decryptMeeting(slot, currentAccount)
       }
 
       return {
         id: slot.id!,
         ...meeting,
         created_at: meeting.start,
-        participants: [],
-        content: '',
-        meeting_url: '',
+        participants: meeting.participants_mapping,
+        content: meeting.content,
+        meeting_url: meeting.meeting_url,
         start: meeting.start,
         end: meeting.end,
         meeting_info_file_path: slot.meeting_info_file_path,
@@ -588,7 +622,6 @@ const decryptMeeting = async (
       meeting.meeting_info_encrypted
     )
   ) as IPFSMeetingInfo
-
   return {
     id: meeting.id!,
     ...meeting,
@@ -601,25 +634,6 @@ const decryptMeeting = async (
     end: new Date(meeting.end),
     meeting_info_file_path: meeting.meeting_info_file_path,
     version: meeting.version,
-  }
-}
-
-const getContentFromEncrypted = async (
-  account: Account,
-  signature: string,
-  encrypted: Encrypted
-): Promise<string> => {
-  try {
-    const pvtKey = decryptContent(signature, account.encoded_signature)
-    return await decryptWithPrivateKey(pvtKey, encrypted)
-  } catch (error) {
-    ;(window as any).location = '/logout'
-    await new Promise<void>(resolve =>
-      setTimeout(() => {
-        resolve()
-      }, 5000)
-    ) //wait redirect
-    return ''
   }
 }
 
@@ -714,12 +728,34 @@ const noNoReplyEmailForAccount = (account_address: string): string => {
   return `no_reply_${account_address}@meetwithwallet.xyz`
 }
 
+const decodeMeeting = async (
+  meeting: DBSlot,
+  currentAccount: Account
+): Promise<MeetingDecrypted | null> => {
+  const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
+    meeting.meeting_info_file_path
+  )) as Encrypted
+  if (meetingInfoEncrypted) {
+    const decryptedMeeting = await decryptMeeting(
+      {
+        ...meeting,
+        meeting_info_encrypted: meetingInfoEncrypted,
+      },
+      currentAccount
+    )
+
+    return decryptedMeeting
+  }
+  return null
+}
+
 const allSlots = generateAllSlots()
 
 export {
   allSlots,
   cancelMeeting,
   dateToHumanReadable,
+  decodeMeeting,
   decryptMeeting,
   defaultTimeRange,
   durationToHumanReadable,

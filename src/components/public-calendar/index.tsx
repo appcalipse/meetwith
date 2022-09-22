@@ -26,6 +26,9 @@ import {
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
   SchedulingType,
 } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
@@ -38,7 +41,6 @@ import {
 import {
   durationToHumanReadable,
   getAccountDomainUrl,
-  GuestParticipant,
   scheduleMeeting,
 } from '@/utils/calendar_manager'
 import {
@@ -209,36 +211,76 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       name = getAccountDisplayName(currentAccount!)
     }
 
-    const target =
-      CalendarType.REGULAR === calendarType
-        ? account!.address
-        : teamMeetingRequest?.team_structure.participants_accounts?.includes(
-            teamMeetingRequest!.owner
-          )
-        ? teamMeetingRequest!.owner
-        : teamMeetingRequest!.team_structure.participants_accounts![0]
+    const participants: ParticipantInfo[] = []
 
-    const participants =
-      CalendarType.REGULAR === calendarType
-        ? []
-        : teamMeetingRequest!.team_structure.participants_accounts!
+    if (CalendarType.REGULAR === calendarType) {
+      participants.push({
+        account_address: account!.address,
+        name: '',
+        type: ParticipantType.Owner,
+        status: ParticipationStatus.Accepted,
+        slot_id: '',
+      })
+    } else {
+      let alreadyAdded = ''
+      if (
+        teamMeetingRequest?.team_structure.participants_accounts?.includes(
+          teamMeetingRequest!.owner
+        )
+      ) {
+        participants.push({
+          account_address: teamMeetingRequest!.owner,
+          name: '',
+          type: ParticipantType.Owner,
+          status: ParticipationStatus.Pending,
+          slot_id: '',
+        })
+        alreadyAdded = teamMeetingRequest!.owner
+      } else {
+        participants.push({
+          account_address:
+            teamMeetingRequest!.team_structure.participants_accounts![0],
+          name: '',
+          type: ParticipantType.Owner,
+          status: ParticipationStatus.Pending,
+          slot_id: '',
+        })
+        alreadyAdded =
+          teamMeetingRequest!.team_structure.participants_accounts![0]
+      }
 
-    const guests: GuestParticipant[] = []
+      for (const address of teamMeetingRequest!.team_structure
+        .participants_accounts!) {
+        if (address !== alreadyAdded) {
+          participants.push({
+            account_address: address,
+            name: '',
+            type: ParticipantType.Invitee,
+            status: ParticipationStatus.Pending,
+            slot_id: '',
+          })
+        }
+      }
+    }
+
     if (scheduleType === SchedulingType.GUEST) {
-      guests.push({ email: guestEmail!, name: name!, scheduler: true })
+      participants.push({
+        guest_email: guestEmail!,
+        name,
+        type: ParticipantType.Scheduler,
+        status: ParticipationStatus.Accepted,
+        slot_id: '',
+      })
     }
 
     try {
       const meeting = await scheduleMeeting(
         scheduleType,
-        target,
-        participants,
         'no_type',
         start,
         end,
-        currentAccount?.address,
-        guests,
-        name,
+        participants,
+        currentAccount,
         content,
         meetingUrl
       )

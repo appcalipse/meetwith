@@ -86,7 +86,7 @@ function Root({
                 alignItems="center"
                 _hover={{ cursor: 'pointer', color: 'orange.400' }}
               >
-                {<Text flex={1}>{format(slot.start, 'HH:mm a')}</Text>}
+                {<Text flex={1}>{format(slot.start, 'p')}</Text>}
                 {showSelfAvailability && selfAvailabilityCheck(slot.start) ? (
                   <Flex
                     borderRadius="50%"

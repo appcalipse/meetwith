@@ -1132,11 +1132,12 @@ const upsertAppToken = async (
 }
 
 const updateMeeting = async (
-  meeting: MeetingUpdateRequest
+  meetingUpdateRequest: MeetingUpdateRequest
 ): Promise<DBSlotEnhanced> => {
   if (
-    new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
-    meeting.participants_mapping.length
+    new Set(
+      meetingUpdateRequest.participants_mapping.map(p => p.account_address)
+    ).size !== meetingUpdateRequest.participants_mapping.length
   ) {
     //means there are duplicate participants
     throw new MeetingCreationError()
@@ -1148,22 +1149,23 @@ const updateMeeting = async (
   let i = 0
 
   const existingAccounts = await getExistingAccountsFromDB(
-    meeting.participants_mapping.map(p => p.account_address!)
+    meetingUpdateRequest.participants_mapping.map(p => p.account_address!)
   )
   const ownerParticipant =
-    meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
-    null
+    meetingUpdateRequest.participants_mapping.find(
+      p => p.type === ParticipantType.Owner
+    ) || null
 
   const ownerAccount = ownerParticipant
     ? await getAccountFromDB(ownerParticipant.account_address!)
     : null
 
   const schedulerAccount =
-    meeting.participants_mapping.find(
+    meetingUpdateRequest.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
 
-  for (const participant of meeting.participants_mapping) {
+  for (const participant of meetingUpdateRequest.participants_mapping) {
     const isEditing = participant.mappingType === ParticipantMappingType.KEEP
 
     if (participant.account_address) {
@@ -1190,25 +1192,31 @@ const updateMeeting = async (
           const existingSlot = await getMeetingFromDB(participant.slot_id!)
           const sameStart =
             new Date(existingSlot.start).getTime() ===
-            new Date(meeting.start).getTime()
+            new Date(meetingUpdateRequest.start).getTime()
           const sameEnd =
             new Date(existingSlot.end).getTime() ===
-            new Date(meeting.end).getTime()
+            new Date(meetingUpdateRequest.end).getTime()
           isEditingToSameTime = sameStart && sameEnd
         }
 
         const slotIsTaken = async () =>
           !(await isSlotFree(
             participant.account_address!,
-            new Date(meeting.start),
-            new Date(meeting.end),
-            meeting.meetingTypeId
+            new Date(meetingUpdateRequest.start),
+            new Date(meetingUpdateRequest.end),
+            meetingUpdateRequest.meetingTypeId
           ))
 
         const isTimeAvailable = () =>
           isTimeInsideAvailabilities(
-            utcToZonedTime(meeting.start, ownerAccount!.preferences!.timezone!),
-            utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
+            utcToZonedTime(
+              meetingUpdateRequest.start,
+              ownerAccount!.preferences!.timezone!
+            ),
+            utcToZonedTime(
+              meetingUpdateRequest.end,
+              ownerAccount!.preferences!.timezone!
+            ),
             ownerAccount!.preferences!.availabilities
           )
         if (
@@ -1244,11 +1252,11 @@ const updateMeeting = async (
       // Not adding source here given on our database the source is always MWW
       const dbSlot: DBSlot = {
         id: participant.slot_id,
-        start: new Date(meeting.start),
-        end: new Date(meeting.end),
+        start: new Date(meetingUpdateRequest.start),
+        end: new Date(meetingUpdateRequest.end),
         account_address: account.address,
         meeting_info_file_path: path,
-        version: meeting.version,
+        version: meetingUpdateRequest.version,
       }
 
       slots.push(dbSlot)
@@ -1265,13 +1273,20 @@ const updateMeeting = async (
         }
       }
       i++
+    } else {
+      // TODO: update guests
     }
   }
 
+  // do something
+  //meeting.guestsToRemove
+
   // one last check to make sure that the version did not change
-  const everySlotId = meeting.participants_mapping.map(it => it.slot_id)
+  const everySlotId = meetingUpdateRequest.participants_mapping.map(
+    it => it.slot_id
+  )
   const everySlot = await getMeetingsFromDB(everySlotId)
-  if (everySlot.find(it => it.version + 1 !== meeting.version)) {
+  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version)) {
     throw new MeetingChangeConflictError()
   }
 
@@ -1290,7 +1305,7 @@ const updateMeeting = async (
 
   const meetingICS: MeetingICS = {
     db_slot: meetingResponse,
-    meeting,
+    meeting: meetingUpdateRequest,
   }
 
   // Doing ntifications and syncs asyncrounously

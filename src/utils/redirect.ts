@@ -12,7 +12,7 @@ const redirectTo = (path: string, httpCode: number, ctx: NextPageContext) => {
   } else {
     Router.replace(path)
   }
-  return
+  return {}
 }
 
 export default redirectTo
