@@ -69,7 +69,9 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
   >(undefined)
   const [meetingGate, setMeetingGate] = useState<string>('')
   const [loadingGates, setLoadingGates] = useState<boolean>(true)
-  const [isPrivate, setPrivate] = useState<boolean>(props.selectedType?.private)
+  const [isPrivate, setPrivate] = useState<boolean>(
+    props.selectedType?.private || false
+  )
   const selectRef = useRef<HTMLSelectElement>(null)
 
   useImperativeHandle(ref, () => ({
