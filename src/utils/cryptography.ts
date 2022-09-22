@@ -27,7 +27,7 @@ const getContentFromEncrypted = async (
       setTimeout(() => {
         resolve()
       }, 5000)
-    ) //wait redirect
+    ) //wait for browser to redirect user... without this the app explodes cause it tries to do things and do not wait for the wondow.location to take effect
     return ''
   }
 }
