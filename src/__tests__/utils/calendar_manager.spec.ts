@@ -1,4 +1,5 @@
 import faker from '@faker-js/faker'
+import { randomUUID } from 'crypto'
 
 import { Account } from '@/types/Account'
 import {
@@ -13,6 +14,7 @@ import * as helper from '@/utils/api_helper'
 import { sanitizeParticipants, scheduleMeeting } from '@/utils/calendar_manager'
 import * as crypto from '@/utils/cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from '@/utils/errors'
+import { ellipsizeAddress } from '@/utils/user_manager'
 
 jest.mock('@/utils/api_helper')
 jest.mock('@/utils/cryptography')
@@ -30,6 +32,14 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
     is_invited: faker.datatype.boolean(),
     subscriptions: [],
     preferences_path: faker.datatype.string(),
+    preferences: {
+      name: faker.name.firstName(),
+      timezone: faker.address.timeZone(),
+      availableTypes: [],
+      description: faker.datatype.string(),
+      availabilities: [],
+      socialLinks: [],
+    },
   }
 }
 
@@ -173,21 +183,22 @@ describe('calendar manager', () => {
     const participants: ParticipantInfo[] = [
       {
         account_address: schedulerAccount,
-        slot_id: '',
+        slot_id: randomUUID(),
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Accepted,
       },
       {
+        name: existingAccounts[0].preferences?.name,
         account_address: targetAccount,
-        slot_id: '',
+        slot_id: randomUUID(),
         type: ParticipantType.Owner,
-        status: ParticipationStatus.Accepted,
+        status: ParticipationStatus.Pending,
       },
     ]
 
     const mockedIPFSContent: IPFSMeetingInfo = {
       created_at: new Date(),
-      participants,
+      participants: JSON.parse(JSON.stringify(participants)),
       meeting_url: '',
       change_history_paths: [],
       related_slot_ids: [],
@@ -225,7 +236,7 @@ describe('calendar manager', () => {
       meetingTypeId,
       startTime,
       endTime,
-      participants,
+      JSON.parse(JSON.stringify(participants)),
       existingAccounts[1],
       meetingContent,
       meetingUrl
@@ -246,10 +257,15 @@ describe('calendar manager', () => {
         {
           account_address: schedulerAccount,
           type: ParticipantType.Scheduler,
+          slot_id: participants[0].slot_id,
+          status: ParticipationStatus.Accepted,
         },
         {
+          name: participants[1].name,
           account_address: targetAccount,
           type: ParticipantType.Owner,
+          slot_id: participants[1].slot_id,
+          status: ParticipationStatus.Pending,
         },
       ],
       related_slot_ids: [],

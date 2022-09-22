@@ -61,6 +61,7 @@ export const sanitizeParticipants = (
   participants: ParticipantInfo[]
 ): ParticipantInfo[] => {
   const sanitized: ParticipantInfo[] = []
+
   for (const participant of participants) {
     let added = false
     if (
@@ -186,7 +187,7 @@ const buildMeetingData = async (
       account_address: currentAccount.address,
       type: ParticipantType.Scheduler,
       status: ParticipationStatus.Accepted,
-      slot_id: uuidv4(),
+      slot_id: '',
     })
 
   const allAccounts: Account[] = await getExistingAccounts(
@@ -510,9 +511,9 @@ const scheduleMeeting = async (
         id: slot.id!,
         ...meeting,
         created_at: meeting.start,
-        participants,
-        content: '',
-        meeting_url: '',
+        participants: meeting.participants_mapping,
+        content: meeting.content,
+        meeting_url: meeting.meeting_url,
         start: meeting.start,
         end: meeting.end,
         meeting_info_file_path: slot.meeting_info_file_path,
