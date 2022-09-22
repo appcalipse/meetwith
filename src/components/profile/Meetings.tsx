@@ -7,19 +7,21 @@ import {
   Spacer,
   Spinner,
   Text,
-  useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
 import { addHours } from 'date-fns'
+import { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
+import { decodeMeeting } from '@/utils/calendar_manager'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import { DBSlot } from '../../types/Meeting'
-import { getMeetingsForDashboard } from '../../utils/api_helper'
+import { getMeeting, getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
-import { ScheduleMeetingDialog } from '../schedule/schedule-meeting-dialog'
+import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 
 const Meetings: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -29,6 +31,8 @@ const Meetings: React.FC = () => {
   const [firstFetch, setFirstFetch] = useState(true)
 
   const endToFetch = addHours(new Date(), -1)
+
+  const { slotId } = useRouter().query
 
   const fetchMeetings = async () => {
     const PAGE_SIZE = 5
@@ -81,6 +85,9 @@ const Meetings: React.FC = () => {
             meeting={meeting}
             timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
             onUpdate={fetchMeetings}
+            onClickToOpen={(meeting, decryptedMeeting, timezone) =>
+              openMeetingDialog(meeting, decryptedMeeting, timezone, afterClose)
+            }
           />
         ))}
         {!noMoreFetch && !firstFetch && (
@@ -100,11 +107,16 @@ const Meetings: React.FC = () => {
     )
   }
 
-  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [MeetingDialog, openMeetingDialog] = useMeetingDialog()
 
-  const toast = useToast()
+  useEffect(() => {
+    slotId && fillMeeting()
+  }, [slotId])
 
   const afterClose = (meeting?: DBSlot) => {
+    // not using router API to avoid re-rendinreing component
+    history.pushState(null, '', window.location.pathname)
+
     if (meeting) {
       meetings.push(meeting)
       setMeetings(
@@ -122,8 +134,20 @@ const Meetings: React.FC = () => {
         isClosable: true,
       })
     }
-    onClose()
   }
+
+  const fillMeeting = async () => {
+    const meeting = await getMeeting(slotId as string)
+    const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
+    openMeetingDialog(
+      meeting,
+      decodedMeeting,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      afterClose
+    )
+  }
+
+  const toast = useToast()
 
   return (
     <Flex direction={'column'}>
@@ -135,7 +159,7 @@ const Meetings: React.FC = () => {
           </Text>
         </Heading>
         <Button
-          onClick={onOpen}
+          onClick={openMeetingDialog}
           colorScheme="orange"
           display={{ base: 'none', md: 'flex' }}
           mt={{ base: 4, md: 0 }}
@@ -146,7 +170,7 @@ const Meetings: React.FC = () => {
         </Button>
       </HStack>
       <Button
-        onClick={onOpen}
+        onClick={openMeetingDialog}
         colorScheme="orange"
         display={{ base: 'flex', md: 'none' }}
         mb={8}
@@ -155,11 +179,7 @@ const Meetings: React.FC = () => {
         New meeting
       </Button>
       {content}
-      <ScheduleMeetingDialog
-        isOpen={isOpen}
-        onClose={afterClose}
-        onOpen={onOpen}
-      />
+      <MeetingDialog />
     </Flex>
   )
 }

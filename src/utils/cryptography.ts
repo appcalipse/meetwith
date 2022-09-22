@@ -1,5 +1,6 @@
 import * as crypto from 'crypto'
 import CryptoJS from 'crypto-js'
+import { decryptWithPrivateKey, Encrypted } from 'eth-crypto'
 import {
   bufferToHex,
   ecrecover,
@@ -8,7 +9,30 @@ import {
   pubToAddress,
 } from 'ethereumjs-util'
 
+import { Account } from '@/types/Account'
+
 import { DEFAULT_MESSAGE } from './constants'
+
+const getContentFromEncrypted = async (
+  account: Account,
+  signature: string,
+  encrypted: Encrypted
+): Promise<string> => {
+  try {
+    const pvtKey = decryptContent(signature, account.encoded_signature)
+    return await decryptWithPrivateKey(pvtKey, encrypted)
+  } catch (error) {
+    ;(window as any).location = '/logout'
+    // wait for browser to redirect user... without this the app explodes cause it
+    // tries to do things and do not wait for the window.location to take effect
+    await new Promise<void>(resolve =>
+      setTimeout(() => {
+        resolve()
+      }, 5000)
+    )
+    return ''
+  }
+}
 
 const encryptContent = (signature: string, data: string): string => {
   const ciphertext = CryptoJS.AES.encrypt(data, signature).toString()
@@ -44,4 +68,9 @@ const checkSignature = (signature: string, nonce: number): string => {
 export const simpleHash = (contents: string) =>
   crypto.createHash('md5').update(contents).digest('hex')
 
-export { checkSignature, decryptContent, encryptContent }
+export {
+  checkSignature,
+  decryptContent,
+  encryptContent,
+  getContentFromEncrypted,
+}

@@ -15,7 +15,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     initDB()
     try {
       let meetings
-      if (req.query.upcoming) {
+      if (req.query.upcoming === 'true') {
         meetings = await getSlotsForDashboard(
           req.query.identifier as string,
           new Date(Number(req.query.end as string)),
