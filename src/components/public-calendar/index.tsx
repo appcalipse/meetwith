@@ -107,6 +107,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [busySlots, setBusyslots] = useState([] as Interval[])
   const [selfBusySlots, setSelfBusyslots] = useState([] as Interval[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
+  const [isPrivateType, setPrivateType] = useState(false)
   const [isGateValid, setIsGateValid] = useState<boolean | undefined>(undefined)
   const [isScheduling, setIsScheduling] = useState(false)
   const [readyToSchedule, setReadyToSchedule] = useState(false)
@@ -135,6 +136,16 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     )
     setTeamAccounts(accounts)
   }
+
+  useEffect(() => {
+    if (calendarType === CalendarType.REGULAR) {
+      const typeOnRoute = router.query.address ? router.query.address[1] : null
+      const type = account!
+        .preferences!.availableTypes.filter(type => !type.deleted)
+        .find(t => t.url === typeOnRoute)
+      setPrivateType(!!type?.private)
+    }
+  }, [])
 
   useEffect(() => {
     if (calendarType === CalendarType.TEAM) {
@@ -534,7 +545,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   onChange={e => e.target.value && changeType(e.target.value)}
                 >
                   {account!
-                    .preferences!.availableTypes.filter(type => !type.deleted)
+                    .preferences!.availableTypes.filter(
+                      type => !type.deleted && (!type.private || isPrivateType)
+                    )
                     .map(type => (
                       <option key={type.id} value={type.id}>
                         {type.title ? `${type.title} - ` : ''}
