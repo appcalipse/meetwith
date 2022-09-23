@@ -55,11 +55,16 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
     'gray.500'
   )
 
-  const participantsToDisplay = participants.filter(
-    participant =>
-      participant.account_address !== schedulerAccount?.address ||
-      (scheduleType === SchedulingType.GUEST && !participant.guest_email)
-  )
+  let participantsToDisplay = []
+  if (scheduleType === SchedulingType.GUEST) {
+    participantsToDisplay = participants.filter(
+      participant => !participant.guest_email
+    )
+  } else {
+    participantsToDisplay = participants.filter(
+      participant => participant.account_address !== schedulerAccount?.address
+    )
+  }
 
   const accountMeetingsScheduled = schedulerAccount
     ? getMeetingsScheduled(schedulerAccount.address)
