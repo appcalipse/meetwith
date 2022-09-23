@@ -657,6 +657,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 <MeetingScheduledDialog
                   participants={lastScheduledMeeting!.participants}
                   schedulerAccount={currentAccount!}
+                  scheduleType={scheduleType}
                   meeting={lastScheduledMeeting}
                   accountNotificationSubs={notificationsSubs}
                   isOpen={isOpen}

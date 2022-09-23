@@ -68,7 +68,8 @@ export const sanitizeParticipants = (
       sanitized.some(
         p =>
           (p.account_address &&
-            p.account_address === participant.account_address) ||
+            p.account_address?.toLowerCase() ===
+              participant.account_address?.toLowerCase()) ||
           (p.guest_email && p.guest_email === participant.guest_email)
       )
     ) {
@@ -76,12 +77,15 @@ export const sanitizeParticipants = (
     }
     if (participant.account_address) {
       const elementsByAddress = participants.filter(
-        p => p.account_address === participant.account_address
+        p =>
+          p.account_address?.toLowerCase() ===
+          participant.account_address?.toLowerCase()
       )
       if (elementsByAddress.length > 1) {
         const toPickIfScheduler = elementsByAddress.filter(
           p =>
-            p.account_address === p.account_address &&
+            p.account_address?.toLowerCase() ===
+              participant.account_address?.toLowerCase() &&
             p.type === ParticipantType.Scheduler
         )
 
@@ -91,7 +95,9 @@ export const sanitizeParticipants = (
         }
 
         const toPick = elementsByAddress.filter(
-          p => p.account_address === participant.account_address && p.name
+          p =>
+            p.account_address?.toLowerCase() ===
+              participant.account_address?.toLowerCase() && p.name
         )
 
         if (!added && toPick[0] && toPick[0].name) {
@@ -196,17 +202,17 @@ const buildMeetingData = async (
 
   for (const account of allAccounts) {
     const participant = participants.filter(
-      p => p.account_address?.toLowerCase() === account.address
+      p => p.account_address?.toLowerCase() === account.address.toLowerCase()
     )
 
     for (const p of participant) {
       p.name = getAccountDisplayName(account)
       p.status =
-        account.address === currentAccount?.address
+        account.address.toLowerCase() === currentAccount?.address.toLowerCase()
           ? ParticipationStatus.Accepted
           : ParticipationStatus.Pending
       p.type =
-        account.address === currentAccount?.address
+        account.address.toLowerCase() === currentAccount?.address.toLowerCase()
           ? ParticipantType.Scheduler
           : p.type || ParticipantType.Invitee
       p.slot_id = uuidv4()
@@ -217,7 +223,8 @@ const buildMeetingData = async (
 
   if (
     sanitizedParticipants.length === 1 &&
-    sanitizedParticipants[0].account_address === currentAccount?.address
+    sanitizedParticipants[0].account_address?.toLowerCase() ===
+      currentAccount?.address.toLowerCase()
   ) {
     throw new MeetingWithYourselfError()
   } else if (sanitizedParticipants.length === 1) {
@@ -254,7 +261,9 @@ const buildMeetingData = async (
     // guest and have not a PK yet, so we encode data using our pk.
     const encodingKey =
       allAccounts.filter(
-        account => account.address == participant.account_address
+        account =>
+          account.address.toLowerCase() ===
+          participant.account_address?.toLowerCase()
       )[0]?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
 
     const privateInfoComplete = JSON.stringify({
@@ -344,7 +353,7 @@ const updateMeeting = async (
 
   const existingMeetingAccounts = await loadMeetingAccountAddresses(
     currentAccount.address,
-    existingMeeting
+    existingMeeting!
   )
 
   // those are the users that we need to remove the slots
@@ -359,8 +368,8 @@ const updateMeeting = async (
     participants.filter(p => p.account_address).map(p => p.account_address!)
   )
 
-  const accountSlotMap = await mapRelatedSlots(existingMeeting)
-  accountSlotMap[currentAccount.address] = existingMeeting.id
+  const accountSlotMap = await mapRelatedSlots(existingMeeting!)
+  accountSlotMap[currentAccount.address] = existingMeeting!.id
 
   const oldGuests = decryptedMeeting.participants
     .filter(p => p.guest_email)
@@ -402,7 +411,7 @@ const updateMeeting = async (
     decryptedMeeting.id,
     payload
   )
-  return await decryptMeeting(slot, currentAccount)
+  return (await decryptMeeting(slot, currentAccount))!
 }
 
 /**
@@ -433,10 +442,10 @@ const cancelMeeting = async (
   )
 
   // Only the owner or scheduler of the meeting can cancel it
-  const meetingOwner = existingMeeting.participants.find(
+  const meetingOwner = existingMeeting!.participants.find(
     user => user.type === ParticipantType.Owner
   )
-  const meetingScheduler = existingMeeting.participants.find(
+  const meetingScheduler = existingMeeting!.participants.find(
     user => user.type === ParticipantType.Scheduler
   )
   if (
@@ -504,7 +513,7 @@ const scheduleMeeting = async (
       }
 
       if (currentAccount) {
-        return await decryptMeeting(slot, currentAccount)
+        return (await decryptMeeting(slot, currentAccount))!
       }
 
       return {
@@ -614,14 +623,16 @@ const decryptMeeting = async (
   meeting: DBSlotEnhanced,
   account: Account,
   signature?: string
-): Promise<MeetingDecrypted> => {
-  const meetingInfo = JSON.parse(
-    await getContentFromEncrypted(
-      account!,
-      signature || getSignature(account!.address)!,
-      meeting.meeting_info_encrypted
-    )
-  ) as IPFSMeetingInfo
+): Promise<MeetingDecrypted | null> => {
+  const content = await getContentFromEncrypted(
+    account!,
+    signature || getSignature(account!.address)!,
+    meeting.meeting_info_encrypted
+  )
+
+  if (!content) return null
+
+  const meetingInfo = JSON.parse(content) as IPFSMeetingInfo
   return {
     id: meeting.id!,
     ...meeting,

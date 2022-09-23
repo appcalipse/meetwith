@@ -150,7 +150,10 @@ const getParticipantDisplay = (
 ): string => {
   let display: string
 
-  if (participant.account_address === currentAccountAddress) {
+  if (
+    participant.account_address?.toLowerCase() ===
+    currentAccountAddress?.toLowerCase()
+  ) {
     display = 'You'
   } else if (participant.guest_email) {
     if (participant.name) {
