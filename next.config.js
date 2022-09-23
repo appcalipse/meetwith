@@ -15,6 +15,15 @@ const withMDX = require('@next/mdx')({
   },
 })
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const withTM = require('next-transpile-modules')([
+  '@fullcalendar/react',
+  '@fullcalendar/common',
+  '@fullcalendar/daygrid',
+  '@fullcalendar/timegrid',
+  '@fullcalendar/list',
+])
+
 const moduleExports = {
   reactStrictMode: true,
   eslint: { dirs: ['src'] },
@@ -39,5 +48,5 @@ const SentryWebpackPluginOptions = {
 // Make sure adding Sentry options is the last code to run before exporting, to
 // ensure that your source maps include changes from all other Webpack plugins
 module.exports = withMDX(
-  withSentryConfig(moduleExports, SentryWebpackPluginOptions)
+  withTM(withSentryConfig(moduleExports, SentryWebpackPluginOptions))
 )

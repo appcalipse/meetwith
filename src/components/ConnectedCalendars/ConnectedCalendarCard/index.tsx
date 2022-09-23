@@ -68,7 +68,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
             <Heading fontSize="xl" color={textColor}>
               {props.name}
             </Heading>
-            <Text size="xs" color={textColor} isTruncated>
+            <Text color={textColor} isTruncated>
               {props.email}
             </Text>
           </VStack>

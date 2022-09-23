@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   Flex,
   Heading,
@@ -20,6 +21,7 @@ import { DBSlot } from '../../types/Meeting'
 import { getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
 import { ScheduleMeetingDialog } from '../schedule/schedule-meeting-dialog'
+import CalendarView from './components/CalendarView'
 
 const Meetings: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -75,26 +77,9 @@ const Meetings: React.FC = () => {
   } else {
     content = (
       <VStack mb={8}>
-        {meetings.map(meeting => (
-          <MeetingCard
-            key={meeting.id}
-            meeting={meeting}
-            timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
-            onUpdate={fetchMeetings}
-          />
-        ))}
-        {!noMoreFetch && !firstFetch && (
-          <Button
-            isLoading={loading}
-            colorScheme="orange"
-            variant="outline"
-            alignSelf="center"
-            my={4}
-            onClick={fetchMeetings}
-          >
-            Load more
-          </Button>
-        )}
+        <Box w="100%">
+          <CalendarView meetings={meetings} currentAccount={currentAccount!} />
+        </Box>
         <Spacer />
       </VStack>
     )

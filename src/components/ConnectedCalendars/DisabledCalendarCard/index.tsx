@@ -35,7 +35,7 @@ const DisabledCalendarCard: React.FC<DisabledCalendarCardProps> = props => {
     >
       <HStack justifyContent="space-between" m="4">
         <VStack alignItems="flex-start" justifyContent="space-around">
-          <Text size="xs" color={textColor} isTruncated>
+          <Text color={textColor} isTruncated>
             {props.name} - {props.email}
           </Text>
         </VStack>
