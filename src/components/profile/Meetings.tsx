@@ -159,7 +159,14 @@ const Meetings: React.FC = () => {
           </Text>
         </Heading>
         <Button
-          onClick={openMeetingDialog}
+          onClick={() =>
+            openMeetingDialog(
+              null,
+              null,
+              Intl.DateTimeFormat().resolvedOptions().timeZone,
+              afterClose
+            )
+          }
           colorScheme="orange"
           display={{ base: 'none', md: 'flex' }}
           mt={{ base: 4, md: 0 }}
@@ -170,7 +177,14 @@ const Meetings: React.FC = () => {
         </Button>
       </HStack>
       <Button
-        onClick={openMeetingDialog}
+        onClick={() =>
+          openMeetingDialog(
+            null,
+            null,
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
+            afterClose
+          )
+        }
         colorScheme="orange"
         display={{ base: 'flex', md: 'none' }}
         mb={8}
