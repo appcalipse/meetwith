@@ -34,7 +34,7 @@ export const sendEPNSNotificationStaging = async (
   destination_addresses: string[],
   title: string,
   message: string
-) => {
+): Promise<boolean> => {
   const sdk = new epnsHelper(
     networkToMonitor,
     process.env.BACKEND_NOTIFIER_WALLET_PVT_KEY!,
@@ -61,4 +61,5 @@ export const sendEPNSNotificationStaging = async (
       Sentry.captureException(error)
     }
   }
+  return true
 }

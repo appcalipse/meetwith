@@ -601,7 +601,8 @@ const saveMeeting = async (
         // only validate slot if meeting is being scheduled on someone's calendar and not by the person itself (from dashboard for example)
         const participantIsOwner = Boolean(
           ownerParticipant &&
-            ownerParticipant.account_address === participant.account_address
+            ownerParticipant.account_address?.toLowerCase() ===
+              participant.account_address.toLowerCase()
         )
 
         const slotIsTaken = async () =>
@@ -660,9 +661,10 @@ const saveMeeting = async (
       slots.push(dbSlot)
 
       if (
-        participant.account_address === schedulerAccount?.account_address ||
+        participant.account_address.toLowerCase() ===
+          schedulerAccount?.account_address?.toLowerCase() ||
         (!schedulerAccount &&
-          participant.account_address === ownerAccount?.address)
+          participant.account_address?.toLowerCase() === ownerAccount?.address)
       ) {
         index = i
         meetingResponse = {
@@ -1178,7 +1180,8 @@ const updateMeeting = async (
         // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
         const participantIsOwner = Boolean(
           ownerParticipant &&
-            ownerParticipant.account_address === participant.account_address
+            ownerParticipant.account_address?.toLowerCase() ===
+              participant.account_address.toLowerCase()
         )
         const ownerIsNotScheduler = Boolean(
           ownerParticipant &&
@@ -1262,9 +1265,11 @@ const updateMeeting = async (
       slots.push(dbSlot)
 
       if (
-        participant.account_address === schedulerAccount?.account_address ||
+        participant.account_address.toLowerCase() ===
+          schedulerAccount?.account_address?.toLowerCase() ||
         (!schedulerAccount &&
-          participant.account_address === ownerAccount?.address)
+          participant.account_address.toLowerCase() ===
+            ownerAccount?.address.toLowerCase())
       ) {
         index = i
         meetingResponse = {

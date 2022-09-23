@@ -4,7 +4,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '../types/AccountNotifications'
-import { MeetingICS, ParticipantInfo, ParticipantType } from '../types/Meeting'
+import { MeetingICS, ParticipantInfo } from '../types/Meeting'
 import { dateToHumanReadable } from './calendar_manager'
 import {
   getAccountFromDB,
@@ -42,23 +42,27 @@ export const notifyForNewMeeting = async (
     })
   )
 
+  const promises: Promise<boolean>[] = []
+
   try {
     for (let i = 0; i < participantsInfo.length; i++) {
       const participant = participantsInfo[i]
 
       if (participant.guest_email) {
-        await newMeetingEmail(
-          participant.guest_email!,
-          participant.type,
-          participantsInfo,
-          participant.timezone,
-          new Date(meeting_ics.meeting.start),
-          new Date(meeting_ics.meeting.end),
-          meeting_ics.db_slot.meeting_info_file_path,
-          undefined,
-          meeting_ics.meeting.meeting_url,
-          meeting_ics.db_slot.id,
-          meeting_ics.db_slot.created_at
+        promises.push(
+          newMeetingEmail(
+            participant.guest_email!,
+            participant.type,
+            participantsInfo,
+            participant.timezone,
+            new Date(meeting_ics.meeting.start),
+            new Date(meeting_ics.meeting.end),
+            meeting_ics.db_slot.meeting_info_file_path,
+            undefined,
+            meeting_ics.meeting.meeting_url,
+            meeting_ics.db_slot.id,
+            meeting_ics.db_slot.created_at
+          )
         )
       } else if (
         participant.account_address &&
@@ -75,18 +79,20 @@ export const notifyForNewMeeting = async (
           if (!notification_type.disabled) {
             switch (notification_type.channel) {
               case NotificationChannel.EMAIL:
-                await newMeetingEmail(
-                  notification_type.destination,
-                  participant.type,
-                  participantsInfo,
-                  participant.timezone,
-                  new Date(meeting_ics.meeting.start),
-                  new Date(meeting_ics.meeting.end),
-                  meeting_ics.db_slot.meeting_info_file_path,
-                  participant.account_address,
-                  meeting_ics.meeting.meeting_url,
-                  participant.slot_id,
-                  meeting_ics.db_slot.created_at
+                promises.push(
+                  newMeetingEmail(
+                    notification_type.destination,
+                    participant.type,
+                    participantsInfo,
+                    participant.timezone,
+                    new Date(meeting_ics.meeting.start),
+                    new Date(meeting_ics.meeting.end),
+                    meeting_ics.db_slot.meeting_info_file_path,
+                    participant.account_address,
+                    meeting_ics.meeting.meeting_url,
+                    participant.slot_id,
+                    meeting_ics.db_slot.created_at
+                  )
                 )
                 break
               case NotificationChannel.DISCORD:
@@ -94,17 +100,19 @@ export const notifyForNewMeeting = async (
                   participant.account_address
                 )
                 if (isProAccount(accountForDiscord)) {
-                  await dmAccount(
-                    participant.account_address,
-                    notification_type.destination,
-                    `New meeting scheduled. ${dateToHumanReadable(
-                      meeting_ics.meeting.start,
-                      participant.timezone,
-                      true
-                    )} - ${getAllParticipantsDisplayName(
-                      participantsInfo,
-                      participant.account_address
-                    )}`
+                  promises.push(
+                    dmAccount(
+                      participant.account_address,
+                      notification_type.destination,
+                      `New meeting scheduled. ${dateToHumanReadable(
+                        meeting_ics.meeting.start,
+                        participant.timezone,
+                        true
+                      )} - ${getAllParticipantsDisplayName(
+                        participantsInfo,
+                        participant.account_address
+                      )}`
+                    )
                   )
                 }
                 break
@@ -127,15 +135,19 @@ export const notifyForNewMeeting = async (
                   }
 
                   process.env.NEXT_PUBLIC_ENV === 'production'
-                    ? await sendEPNSNotification(
-                        parameters.destination_addresses,
-                        parameters.title,
-                        parameters.message
+                    ? promises.push(
+                        sendEPNSNotification(
+                          parameters.destination_addresses,
+                          parameters.title,
+                          parameters.message
+                        )
                       )
-                    : await sendEPNSNotificationStaging(
-                        parameters.destination_addresses,
-                        parameters.title,
-                        parameters.message
+                    : promises.push(
+                        sendEPNSNotificationStaging(
+                          parameters.destination_addresses,
+                          parameters.title,
+                          parameters.message
+                        )
                       )
                 }
                 break
@@ -148,5 +160,12 @@ export const notifyForNewMeeting = async (
   } catch (error) {
     Sentry.captureException(error)
   }
+  const timeout = setTimeout(() => {
+    console.error('timedout on notifications')
+  }, 7000)
+
+  const notifications = Promise.all(promises)
+
+  await Promise.race([notifications, timeout])
   return
 }

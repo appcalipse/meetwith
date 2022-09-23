@@ -283,7 +283,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     } else if (
       participants.length === 0 ||
       (participants.length === 1 &&
-        (participants[0]?.account_address === currentAccount!.address ||
+        (participants[0]?.account_address?.toLowerCase() ===
+          currentAccount!.address.toLowerCase() ||
           participants[0]?.name === currentAccount!.preferences?.name))
     ) {
       toast({
