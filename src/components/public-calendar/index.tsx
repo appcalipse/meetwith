@@ -99,6 +99,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const calendarType =
     account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
 
+  const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
   const [checkingSlots, setCheckingSlots] = useState(false)
   const [checkedSelfSlots, setCheckedSelfSlots] = useState(false)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
@@ -262,6 +263,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         }
       }
     }
+
+    setSchedulingType(scheduleType)
 
     if (scheduleType === SchedulingType.GUEST) {
       participants.push({
@@ -657,7 +660,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 <MeetingScheduledDialog
                   participants={lastScheduledMeeting!.participants}
                   schedulerAccount={currentAccount!}
-                  scheduleType={scheduleType}
+                  scheduleType={schedulingType}
                   meeting={lastScheduledMeeting}
                   accountNotificationSubs={notificationsSubs}
                   isOpen={isOpen}
