@@ -66,7 +66,7 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
                   .catch(error => {
                     setCancelling(false)
                     toast({
-                      title: 'Something went wrong cancelling yout meeting',
+                      title: 'Something went wrong cancelling your meeting',
                       description: error.message,
                       status: 'error',
                       duration: 5000,
