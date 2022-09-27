@@ -30,10 +30,14 @@ import { format } from 'date-fns'
 interface CalendarViewProps {
   meetings: DBSlot[]
   currentAccount: Account
+  currentDate: Date
+  setCurrentDate: (date: Date) => void
 }
 const CalendarView: React.FC<CalendarViewProps> = ({
   meetings,
   currentAccount,
+  currentDate,
+  setCurrentDate,
 }) => {
   const calendarRef = useRef<FullCalendar>(null!)
 
@@ -46,7 +50,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   })
   const [events, setEvents] = useState(mappedMeetings)
   const [currentView, setCurrentView] = useState<any>('timeGridWeek')
-  const [currentDate, setCurrentDate] = useState(new Date())
 
   const decodeData = async (meeting: DBSlot) => {
     const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(

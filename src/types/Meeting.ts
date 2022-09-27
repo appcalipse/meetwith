@@ -114,6 +114,7 @@ export interface MeetingDecrypted {
   content?: string
   related_slot_ids: string[]
   version: DBSlot['version']
+  title?: string
 }
 
 export enum GroupMeetingType {

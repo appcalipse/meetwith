@@ -12,41 +12,96 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { addHours } from 'date-fns'
+import { addHours, endOfMonth, startOfMonth } from 'date-fns'
+import { Encrypted } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
+import { Account } from '@/types/Account'
+import { decryptMeeting } from '@/utils/calendar_manager'
+import { CalendarServiceHelper } from '@/utils/services/calendar.helper'
+
 import { AccountContext } from '../../providers/AccountProvider'
-import { DBSlot } from '../../types/Meeting'
-import { getMeetingsForDashboard } from '../../utils/api_helper'
+import { DBSlot, MeetingDecrypted } from '../../types/Meeting'
+import {
+  fetchContentFromIPFSFromBrowser,
+  getMeetings,
+  getMeetingsForDashboard,
+} from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
 import { ScheduleMeetingDialog } from '../schedule/schedule-meeting-dialog'
 import CalendarView from './components/CalendarView'
 
+interface DashboardMeetings {
+  original: DBSlot
+  decoded?: MeetingDecrypted
+}
+
 const Meetings: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
-  const [meetings, setMeetings] = useState<DBSlot[]>([])
+  const [meetings, setMeetings] = useState<Map<string, DashboardMeetings>>(
+    new Map()
+  )
+  const [currentDate, setCurrentDate] = useState(new Date())
+
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
 
-  const endToFetch = addHours(new Date(), -1)
+  const startToFetch = startOfMonth(currentDate)
+  const endToFetch = endOfMonth(currentDate)
 
   const fetchMeetings = async () => {
-    const PAGE_SIZE = 5
-    setLoading(true)
-    const newMeetings = (await getMeetingsForDashboard(
+    const map = meetings
+    const originalMeetings = (await getMeetings(
       currentAccount!.address,
-      endToFetch,
-      PAGE_SIZE,
-      meetings.length
+      startToFetch,
+      endToFetch
     )) as DBSlot[]
-    if (newMeetings.length < PAGE_SIZE) {
-      setNoMoreFetch(true)
+
+    for (const meeting of originalMeetings) {
+      if (!map.has(meeting.id!)) {
+        map.set(meeting.id!, { original: meeting })
+      }
     }
-    setMeetings(meetings.concat(newMeetings))
+
+    setLoading(true)
+    setMeetings(map)
     setLoading(false)
     setFirstFetch(false)
+    decodeMeetings()
+  }
+
+  const decodeMeetings = async () => {
+    const map = meetings
+    for (const entry of map.values()) {
+      const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
+        entry.original.meeting_info_file_path
+      )) as Encrypted
+      if (meetingInfoEncrypted) {
+        const decryptedMeeting = await decryptMeeting(
+          {
+            ...entry.original,
+            meeting_info_encrypted: meetingInfoEncrypted,
+          },
+          currentAccount!
+        )
+
+        if (decryptedMeeting) {
+          map.set(entry.original.id!, {
+            original: entry.original,
+            decoded: {
+              ...decryptedMeeting,
+              title: CalendarServiceHelper.getMeetingTitle(
+                currentAccount!.address,
+                decryptedMeeting!.participants
+              ),
+            },
+          })
+        }
+      }
+    }
+    setMeetings(map)
   }
 
   useEffect(() => {
@@ -65,7 +120,7 @@ const Meetings: React.FC = () => {
         </HStack>
       </VStack>
     )
-  } else if (meetings.length === 0) {
+  } else if (meetings.size === 0) {
     content = (
       <VStack alignItems="center" mb={8}>
         <Image src="/assets/no_meetings.svg" height="200px" alt="Loading..." />
@@ -91,7 +146,7 @@ const Meetings: React.FC = () => {
 
   const afterClose = (meeting?: DBSlot) => {
     if (meeting) {
-      meetings.push(meeting)
+      meetings.set(meeting.id, { original: meeting })
       setMeetings(
         meetings.sort(
           (m1, m2) =>
