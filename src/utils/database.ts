@@ -33,6 +33,7 @@ import {
   DBSlot,
   DBSlotEnhanced,
   GroupMeetingRequest,
+  Meeting,
   MeetingCreationRequest,
   MeetingICS,
   MeetingUpdateRequest,
@@ -598,6 +599,21 @@ const saveMeeting = async (
     }
   }
 
+  // we create here the root meeting data, with enough data
+  const createdRootMeeting = await saveRootMeetingToDB({
+    id: meeting.meeting_id,
+    start: meeting.start,
+    end: meeting.end,
+    meeting_url: meeting.meeting_url,
+    owner: ownerAccount?.address || '',
+  })
+
+  if (!createdRootMeeting) {
+    throw new Error(
+      'Could not create your meeting right now, get in touch with us if the problem persists'
+    )
+  }
+
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
       if (
@@ -757,6 +773,24 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
     {
       email,
       plan,
+    },
+  ])
+
+  if (!error) {
+    return true
+  }
+  Sentry.captureException(error)
+
+  return false
+}
+
+const saveRootMeetingToDB = async (
+  payload: Omit<Meeting, 'created_at'>
+): Promise<boolean> => {
+  const { _, error } = await db.supabase.from('meetings').upsert([
+    {
+      ...payload,
+      created_at: new Date(),
     },
   ])
 
@@ -1321,6 +1355,21 @@ const updateMeeting = async (
     meeting: meetingUpdateRequest,
   }
 
+  // now that everything happened without error, it is safe to update the root meeting data
+  const createdRootMeeting = await saveRootMeetingToDB({
+    id: meetingUpdateRequest.meeting_id,
+    start: meetingUpdateRequest.start,
+    end: meetingUpdateRequest.end,
+    meeting_url: meetingUpdateRequest.meeting_url,
+    owner: ownerAccount?.address || '',
+  })
+
+  if (!createdRootMeeting) {
+    throw new Error(
+      'Could not update your meeting right now, get in touch with us if the problem persists'
+    )
+  }
+
   // Doing ntifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'PATCH',
@@ -1371,6 +1420,7 @@ export {
   removeConnectedCalendar,
   saveEmailToDB,
   saveMeeting,
+  saveRootMeetingToDB,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
