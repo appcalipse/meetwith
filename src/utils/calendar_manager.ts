@@ -28,6 +28,7 @@ import {
 import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
+  createHuddleRoom,
   fetchContentFromIPFSFromBrowser,
   getAccount,
   getExistingAccounts,
@@ -247,7 +248,7 @@ const buildMeetingData = async (
     created_at: new Date(),
     participants: sanitizedParticipants,
     content: meetingContent,
-    meeting_url: meetingUrl || (await generateMeetingUrl()),
+    meeting_url: meetingUrl || (await createHuddleRoom()).url,
     change_history_paths: [],
     related_slot_ids: [],
   }
