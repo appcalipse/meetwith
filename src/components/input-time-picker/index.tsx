@@ -102,12 +102,12 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
                   disabled={isBefore(it, new Date())}
                   key={it.toString()}
                   onClick={() => {
-                    onChange(format(it, 'HH:mm'))
+                    onChange(format(it, 'p'))
                     setIsEditing.off()
                   }}
                   _hover={{ color: 'orange.500' }}
                 >
-                  <Text>{format(it, 'HH:mm')}</Text>
+                  <Text>{format(it, 'p')}</Text>
                 </Button>
               ))}
             </VStack>

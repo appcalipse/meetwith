@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/nextjs'
 import { NewCalendarEventType } from '@/types/CalendarConnections'
 import {
   MeetingCreationRequest,
+  MeetingUpdateRequest,
   ParticipantInfo,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -131,13 +132,12 @@ export default class Office365CalendarService implements CalendarService {
     try {
       const accessToken = await this.auth.getToken()
 
-      const calendarId = '' // TODO: required? @ramon: yes, lucklily it works cause it creates on the default one
       const body = JSON.stringify(
         this.translateEvent(owner, details, slot_id, meeting_creation_time)
       )
 
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendar/${calendarId}events`,
+        `https://graph.microsoft.com/v1.0/me/calendar/events`,
         {
           method: 'POST',
           headers: {
@@ -155,11 +155,64 @@ export default class Office365CalendarService implements CalendarService {
     }
   }
 
+  async updateEvent(
+    owner: string,
+    slot_id: string,
+    details: MeetingUpdateRequest
+  ): Promise<NewCalendarEventType> {
+    try {
+      const accessToken = await this.auth.getToken()
+
+      const body = JSON.stringify(
+        this.translateEvent(owner, details, slot_id, new Date(), false)
+      )
+
+      const response = await fetch(
+        `https://graph.microsoft.com/v1.0/me/calendar/events`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        }
+      )
+
+      return handleErrorsJson(response)
+    } catch (error) {
+      Sentry.captureException(error)
+      throw error
+    }
+  }
+
+  async deleteEvent(slot_id: string): Promise<void> {
+    try {
+      const accessToken = await this.auth.getToken()
+      const response = await fetch(
+        `https://graph.microsoft.com/v1.0/me/calendar/events`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+
+      return handleErrorsJson(response)
+    } catch (error) {
+      Sentry.captureException(error)
+      throw error
+    }
+  }
+
   private translateEvent = (
     calendarOwnerAccountAddress: string,
     details: MeetingCreationRequest,
     slot_id: string,
-    meeting_creation_time: Date
+    meeting_creation_time: Date,
+    includeId = true
   ) => {
     const participantsInfo: ParticipantInfo[] =
       details.participants_mapping.map(participant => ({
@@ -202,6 +255,8 @@ export default class Office365CalendarService implements CalendarService {
       },
       attendees: [],
       allowNewTimeProposals: false,
+      transactionId: slot_id, // avoid duplicating the event if we make more than one request with the same transactionId
+      id: includeId ? slot_id : undefined, //required for editing the event in the future
     }
 
     for (const participant of details.participants_mapping) {
@@ -227,7 +282,7 @@ export default class Office365CalendarService implements CalendarService {
 
     const filter = `?startdatetime=${encodeURIComponent(
       dateFromParsed.toISOString()
-    )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}`
+    )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}&$top=500`
 
     try {
       const accessToken = await this.auth.getToken()
@@ -246,6 +301,8 @@ export default class Office365CalendarService implements CalendarService {
       const calendarId = calIdJson.value.find(
         (cal: any) => cal.isDefaultCalendar
       ).id
+      // TODO: consider proper pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
+      // not only the first 500 events
       const eventsResponse = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/calendarView${filter}`,
         {
