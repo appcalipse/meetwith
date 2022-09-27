@@ -35,9 +35,9 @@ export const useMeetingDialog = () => {
     onOpen()
   }
 
-  const closeMeetingDialog = () => {
+  const closeMeetingDialog = (meeting?: DBSlot) => {
     onClose()
-    data.afterClose && data.afterClose()
+    data.afterClose && data.afterClose(meeting)
     setData({
       meeting: undefined,
       decryptedMeeting: undefined,
