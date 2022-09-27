@@ -179,9 +179,10 @@ const getAllParticipantsDisplayName = (
   currentAccountAddress?: string
 ): string => {
   let displayNames = []
-  const noScheduler = !participants.some(
-    participant => participant.type === ParticipantType.Scheduler
-  )
+  const noScheduler =
+    !participants.some(
+      participant => participant.type === ParticipantType.Scheduler
+    ) && participants.length > 1 //avoid case when guest is scheduling
   for (const participant of participants) {
     displayNames.push(
       getParticipantDisplay(participant, noScheduler, currentAccountAddress)
