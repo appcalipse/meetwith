@@ -33,6 +33,7 @@ export interface MeetingCreationRequest {
   end: Date
   content?: string
   meeting_url: string
+  meeting_id: Meeting['id']
 }
 
 export enum ParticipantMappingType {
@@ -44,6 +45,7 @@ export enum ParticipantMappingType {
 export interface CreationRequestParticipantMapping {
   account_address?: string
   slot_id: string
+  meeting_id: Meeting['id']
   type: ParticipantType
   privateInfo: Encrypted
   privateInfoHash: string
@@ -93,6 +95,16 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
   slot_id: string
   name?: string
   guest_email?: string
+  meeting_id: Meeting['id']
+}
+
+export interface Meeting {
+  id: string
+  owner: string
+  start: Date
+  end: Date
+  meeting_url: string
+  created_at: Date
 }
 
 export interface IPFSMeetingInfo {
@@ -102,10 +114,12 @@ export interface IPFSMeetingInfo {
   participants: ParticipantInfo[]
   change_history_paths: string[]
   related_slot_ids: string[]
+  meeting_id: Meeting['id']
 }
 
 export interface MeetingDecrypted {
   id: string
+  meeting_id: Meeting['id']
   created_at: Date
   start: Date
   end: Date
