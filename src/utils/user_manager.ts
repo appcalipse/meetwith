@@ -10,7 +10,6 @@ import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, saveSignature } from './storage'
-import { getActiveProSubscription } from './subscription_manager'
 import { isValidEVMAddress } from './validations'
 
 const providerOptions = {

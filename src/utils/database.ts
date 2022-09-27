@@ -92,7 +92,10 @@ const initAccountDBForWallet = async (
 
   try {
     //make sure account doesn't exist
-    await getAccountFromDB(address)
+    const account = await getAccountFromDB(address)
+    if (!account.is_invited) {
+      return account
+    }
     return await updateAccountFromInvite(address, signature, timezone, nonce)
   } catch (error) {}
 
@@ -103,7 +106,9 @@ const initAccountDBForWallet = async (
   const { data, error } = await db.supabase.from('accounts').insert([
     {
       address: address.toLowerCase(),
-      internal_pub_key: newIdentity.publicKey,
+      internal_pub_key: is_invited
+        ? process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
+        : newIdentity.publicKey,
       encoded_signature: encryptedPvtKey,
       preferences_path: '',
       nonce,
@@ -154,10 +159,10 @@ const updateAccountFromInvite = async (
   timezone: string,
   nonce: number
 ): Promise<Account> => {
-  const exitingAccount = await getAccountFromDB(account_address)
-  if (!exitingAccount.is_invited) {
+  const existingAccount = await getAccountFromDB(account_address)
+  if (!existingAccount.is_invited) {
     // do not screw up accounts that already have been set up
-    return exitingAccount
+    return existingAccount
   }
 
   //fetch this before changing internal pub key
@@ -182,7 +187,7 @@ const updateAccountFromInvite = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error("Account couldn't be created")
+    throw new Error("Account couldn't be updated")
   }
 
   const account = await getAccountFromDB(account_address)
@@ -191,30 +196,33 @@ const updateAccountFromInvite = async (
   await updateAccountPreferences(account)
 
   for (const slot of currentMeetings) {
-    const encrypted = (await fetchContentFromIPFS(
-      slot.meeting_info_file_path
-    )) as Encrypted
+    try {
+      const encrypted = (await fetchContentFromIPFS(
+        slot.meeting_info_file_path
+      )) as Encrypted
 
-    const privateInfo = await decryptWithPrivateKey(
-      process.env.NEXT_SERVER_PVT_KEY!,
-      encrypted
-    )
-    const newPvtInfo = await encryptWithPublicKey(
-      newIdentity.publicKey,
-      privateInfo
-    )
-    const newEncryptedPath = await addContentToIPFS(newPvtInfo)
+      const privateInfo = await decryptWithPrivateKey(
+        process.env.NEXT_SERVER_PVT_KEY!,
+        encrypted
+      )
+      const newPvtInfo = await encryptWithPublicKey(
+        newIdentity.publicKey,
+        privateInfo
+      )
+      const newEncryptedPath = await addContentToIPFS(newPvtInfo)
 
-    const { _, error } = await db.supabase
-      .from('slots')
-      .update({
-        account_address: newIdentity.address,
-        meeting_info_file_path: newEncryptedPath,
-      })
-      .match({ id: slot.id })
+      const { _, error } = await db.supabase
+        .from('slots')
+        .update({
+          meeting_info_file_path: newEncryptedPath,
+        })
+        .match({ id: slot.id })
 
-    if (error) {
-      Sentry.captureException(error)
+      if (error) {
+        Sentry.captureException(error)
+      }
+    } catch (err) {
+      //if any fail, dont fail them all
     }
   }
 
