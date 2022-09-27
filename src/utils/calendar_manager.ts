@@ -221,6 +221,11 @@ const buildMeetingData = async (
 
   const sanitizedParticipants = sanitizeParticipants(participants)
 
+  //Ensure all slot_ids are filled given we are messing with this all around
+  for (const participant of participants) {
+    participant.slot_id = participant.slot_id || uuidv4()
+  }
+
   if (
     sanitizedParticipants.length === 1 &&
     sanitizedParticipants[0].account_address?.toLowerCase() ===
