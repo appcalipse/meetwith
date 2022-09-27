@@ -17,6 +17,9 @@ import {
   DBSlot,
   DBSlotEnhanced,
   GroupMeetingRequest,
+  MeetingCreationRequest,
+  MeetingDecrypted,
+  MeetingUpdateRequest,
   TimeSlotSource,
 } from '../types/Meeting'
 import { Subscription } from '../types/Subscription'
@@ -27,6 +30,7 @@ import {
   GateConditionNotValidError,
   GateInUseError,
   InvalidSessionError,
+  MeetingChangeConflictError,
   MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
@@ -101,7 +105,7 @@ export const saveAccountChanges = async (
 }
 
 export const scheduleMeeting = async (
-  meeting: any
+  meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
   try {
     return (await internalFetch(
@@ -122,7 +126,7 @@ export const scheduleMeeting = async (
 }
 
 export const scheduleMeetingAsGuest = async (
-  meeting: any
+  meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
   try {
     return (await internalFetch(
@@ -137,6 +141,45 @@ export const scheduleMeetingAsGuest = async (
       throw new MeetingCreationError()
     } else if (e.status && e.status === 403) {
       throw new GateConditionNotValidError()
+    }
+    throw e
+  }
+}
+
+export const updateMeeting = async (
+  slotId: string,
+  meeting: MeetingUpdateRequest
+): Promise<DBSlotEnhanced> => {
+  try {
+    return (await internalFetch(
+      `/secure/meetings/${slotId}`,
+      'POST',
+      meeting
+    )) as DBSlotEnhanced
+  } catch (e: any) {
+    if (e.status && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e.status && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e.status && e.status === 417) {
+      throw new MeetingChangeConflictError()
+    }
+    throw e
+  }
+}
+
+export const cancelMeeting = async (meeting: MeetingDecrypted) => {
+  try {
+    return await internalFetch(
+      `/secure/meetings/${meeting.id}`,
+      'DELETE',
+      meeting
+    )
+  } catch (e: any) {
+    if (e.status && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e.status && e.status === 412) {
+      throw new MeetingCreationError()
     }
     throw e
   }
@@ -257,7 +300,14 @@ export const subscribeToWaitlist = async (
 }
 
 export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
-  return (await internalFetch(`/meetings/meeting/${slot_id}`)) as DBSlotEnhanced
+  const response = (await internalFetch(
+    `/meetings/meeting/${slot_id}`
+  )) as DBSlotEnhanced
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
+  }
 }
 
 export const getNotificationSubscriptions =

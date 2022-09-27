@@ -10,7 +10,6 @@ import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
 import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, saveSignature } from './storage'
-import { getActiveProSubscription } from './subscription_manager'
 import { isValidEVMAddress } from './validations'
 
 const providerOptions = {
@@ -150,7 +149,10 @@ const getParticipantDisplay = (
 ): string => {
   let display: string
 
-  if (participant.account_address === currentAccountAddress) {
+  if (
+    participant.account_address?.toLowerCase() ===
+    currentAccountAddress?.toLowerCase()
+  ) {
     display = 'You'
   } else if (participant.guest_email) {
     if (participant.name) {
@@ -177,9 +179,10 @@ const getAllParticipantsDisplayName = (
   currentAccountAddress?: string
 ): string => {
   let displayNames = []
-  const noScheduler = !participants.some(
-    participant => participant.type === ParticipantType.Scheduler
-  )
+  const noScheduler =
+    !participants.some(
+      participant => participant.type === ParticipantType.Scheduler
+    ) && participants.length > 1 //avoid case when guest is scheduling
   for (const participant of participants) {
     displayNames.push(
       getParticipantDisplay(participant, noScheduler, currentAccountAddress)

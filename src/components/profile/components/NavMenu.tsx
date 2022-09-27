@@ -107,7 +107,7 @@ export const NavMenu: React.FC<{
     if (mode === EditMode.SIGNOUT) {
       await router.push(`/logout`)
     } else {
-      router.push(`/dashboard/${mode}`, undefined, { shallow: true })
+      router.push(`/dashboard/${mode}`)
       isMenuOpen && closeMenu!()
     }
   }

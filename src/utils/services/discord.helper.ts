@@ -160,7 +160,7 @@ export const dmAccount = async (
   accountAddress: string,
   discord_user_id: string,
   message: string
-) => {
+): Promise<boolean> => {
   if (!ready) {
     await doLogin()
   }
@@ -186,5 +186,7 @@ export const dmAccount = async (
     }
 
     Sentry.captureException(error)
+    return false
   }
+  return true
 }

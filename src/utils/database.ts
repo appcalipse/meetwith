@@ -35,6 +35,8 @@ import {
   GroupMeetingRequest,
   MeetingCreationRequest,
   MeetingICS,
+  MeetingUpdateRequest,
+  ParticipantMappingType,
   ParticipantType,
   TimeSlotSource,
 } from '../types/Meeting'
@@ -43,6 +45,7 @@ import {
   AccountNotFoundError,
   GateConditionNotValidError,
   GateInUseError,
+  MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
   TimeNotAvailableError,
@@ -89,7 +92,10 @@ const initAccountDBForWallet = async (
 
   try {
     //make sure account doesn't exist
-    await getAccountFromDB(address)
+    const account = await getAccountFromDB(address)
+    if (!account.is_invited) {
+      return account
+    }
     return await updateAccountFromInvite(address, signature, timezone, nonce)
   } catch (error) {}
 
@@ -100,7 +106,9 @@ const initAccountDBForWallet = async (
   const { data, error } = await db.supabase.from('accounts').insert([
     {
       address: address.toLowerCase(),
-      internal_pub_key: newIdentity.publicKey,
+      internal_pub_key: is_invited
+        ? process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
+        : newIdentity.publicKey,
       encoded_signature: encryptedPvtKey,
       preferences_path: '',
       nonce,
@@ -151,10 +159,10 @@ const updateAccountFromInvite = async (
   timezone: string,
   nonce: number
 ): Promise<Account> => {
-  const exitingAccount = await getAccountFromDB(account_address)
-  if (!exitingAccount.is_invited) {
+  const existingAccount = await getAccountFromDB(account_address)
+  if (!existingAccount.is_invited) {
     // do not screw up accounts that already have been set up
-    return exitingAccount
+    return existingAccount
   }
 
   //fetch this before changing internal pub key
@@ -179,7 +187,7 @@ const updateAccountFromInvite = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error("Account couldn't be created")
+    throw new Error("Account couldn't be updated")
   }
 
   const account = await getAccountFromDB(account_address)
@@ -188,30 +196,33 @@ const updateAccountFromInvite = async (
   await updateAccountPreferences(account)
 
   for (const slot of currentMeetings) {
-    const encrypted = (await fetchContentFromIPFS(
-      slot.meeting_info_file_path
-    )) as Encrypted
+    try {
+      const encrypted = (await fetchContentFromIPFS(
+        slot.meeting_info_file_path
+      )) as Encrypted
 
-    const privateInfo = await decryptWithPrivateKey(
-      process.env.NEXT_SERVER_PVT_KEY!,
-      encrypted
-    )
-    const newPvtInfo = await encryptWithPublicKey(
-      newIdentity.publicKey,
-      privateInfo
-    )
-    const newEncryptedPath = await addContentToIPFS(newPvtInfo)
+      const privateInfo = await decryptWithPrivateKey(
+        process.env.NEXT_SERVER_PVT_KEY!,
+        encrypted
+      )
+      const newPvtInfo = await encryptWithPublicKey(
+        newIdentity.publicKey,
+        privateInfo
+      )
+      const newEncryptedPath = await addContentToIPFS(newPvtInfo)
 
-    const { _, error } = await db.supabase
-      .from('slots')
-      .update({
-        account_address: newIdentity.address,
-        meeting_info_file_path: newEncryptedPath,
-      })
-      .match({ id: slot.id })
+      const { _, error } = await db.supabase
+        .from('slots')
+        .update({
+          meeting_info_file_path: newEncryptedPath,
+        })
+        .match({ id: slot.id })
 
-    if (error) {
-      Sentry.captureException(error)
+      if (error) {
+        Sentry.captureException(error)
+      }
+    } catch (err) {
+      //if any fail, dont fail them all
     }
   }
 
@@ -468,6 +479,65 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
   return meeting
 }
 
+const getMeetingsFromDB = async (
+  slotIds: string[]
+): Promise<DBSlotEnhanced[]> => {
+  const { data, error } = await db.supabase
+    .from('slots')
+    .select()
+    .in('id', slotIds)
+
+  if (error) {
+    Sentry.captureException(error)
+    // todo handle error
+  }
+
+  if (data.length == 0) {
+    return []
+  }
+
+  const meetings = []
+  for (const dbMeeting of data) {
+    const meeting: DBSlotEnhanced = {
+      ...dbMeeting,
+      meeting_info_encrypted: (await fetchContentFromIPFS(
+        dbMeeting.meeting_info_file_path
+      )) as Encrypted,
+    }
+    meetings.push(meeting)
+  }
+
+  return meetings
+}
+
+const deleteMeetingFromDB = async (owner: string, slotIds: string[]) => {
+  if (!slotIds?.length) {
+    throw new Error('No slot ids provided')
+  }
+
+  const { data, error } = await db.supabase
+    .from('slots')
+    .delete()
+    .in('id', slotIds)
+
+  // Doing ntifications and syncs asyncrounously
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'DELETE',
+    body: JSON.stringify({
+      owner,
+      slotIds,
+    }),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+    },
+  })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(error)
+  }
+}
+
 const saveMeeting = async (
   meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
@@ -539,7 +609,8 @@ const saveMeeting = async (
         // only validate slot if meeting is being scheduled on someone's calendar and not by the person itself (from dashboard for example)
         const participantIsOwner = Boolean(
           ownerParticipant &&
-            ownerParticipant.account_address === participant.account_address
+            ownerParticipant.account_address?.toLowerCase() ===
+              participant.account_address.toLowerCase()
         )
 
         const slotIsTaken = async () =>
@@ -586,22 +657,22 @@ const saveMeeting = async (
       const path = await addContentToIPFS(participant.privateInfo)
 
       // Not adding source here given on our database the source is always MWW
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       const dbSlot: DBSlot = {
         id: participant.slot_id,
         start: meeting.start,
         end: meeting.end,
         account_address: account.address,
         meeting_info_file_path: path,
+        version: 0,
       }
 
       slots.push(dbSlot)
 
       if (
-        participant.account_address === schedulerAccount?.account_address ||
+        participant.account_address.toLowerCase() ===
+          schedulerAccount?.account_address?.toLowerCase() ||
         (!schedulerAccount &&
-          participant.account_address === ownerAccount?.address)
+          participant.account_address?.toLowerCase() === ownerAccount?.address)
       ) {
         index = i
         meetingResponse = {
@@ -1070,6 +1141,198 @@ const upsertAppToken = async (
   return
 }
 
+const updateMeeting = async (
+  meetingUpdateRequest: MeetingUpdateRequest
+): Promise<DBSlotEnhanced> => {
+  if (
+    new Set(
+      meetingUpdateRequest.participants_mapping.map(p => p.account_address)
+    ).size !== meetingUpdateRequest.participants_mapping.length
+  ) {
+    //means there are duplicate participants
+    throw new MeetingCreationError()
+  }
+
+  const slots = []
+  let meetingResponse = {} as DBSlotEnhanced
+  let index = 0
+  let i = 0
+
+  const existingAccounts = await getExistingAccountsFromDB(
+    meetingUpdateRequest.participants_mapping.map(p => p.account_address!)
+  )
+  const ownerParticipant =
+    meetingUpdateRequest.participants_mapping.find(
+      p => p.type === ParticipantType.Owner
+    ) || null
+
+  const ownerAccount = ownerParticipant
+    ? await getAccountFromDB(ownerParticipant.account_address!)
+    : null
+
+  const schedulerAccount =
+    meetingUpdateRequest.participants_mapping.find(
+      p => p.type === ParticipantType.Scheduler
+    ) || null
+
+  for (const participant of meetingUpdateRequest.participants_mapping) {
+    const isEditing = participant.mappingType === ParticipantMappingType.KEEP
+
+    if (participant.account_address) {
+      if (
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!) &&
+        participant.type === ParticipantType.Owner
+      ) {
+        // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
+        const participantIsOwner = Boolean(
+          ownerParticipant &&
+            ownerParticipant.account_address?.toLowerCase() ===
+              participant.account_address.toLowerCase()
+        )
+        const ownerIsNotScheduler = Boolean(
+          ownerParticipant &&
+            schedulerAccount &&
+            ownerParticipant.account_address !==
+              schedulerAccount.account_address
+        )
+
+        let isEditingToSameTime = false
+        if (isEditing) {
+          const existingSlot = await getMeetingFromDB(participant.slot_id!)
+          const sameStart =
+            new Date(existingSlot.start).getTime() ===
+            new Date(meetingUpdateRequest.start).getTime()
+          const sameEnd =
+            new Date(existingSlot.end).getTime() ===
+            new Date(meetingUpdateRequest.end).getTime()
+          isEditingToSameTime = sameStart && sameEnd
+        }
+
+        const slotIsTaken = async () =>
+          !(await isSlotFree(
+            participant.account_address!,
+            new Date(meetingUpdateRequest.start),
+            new Date(meetingUpdateRequest.end),
+            meetingUpdateRequest.meetingTypeId
+          ))
+
+        const isTimeAvailable = () =>
+          isTimeInsideAvailabilities(
+            utcToZonedTime(
+              meetingUpdateRequest.start,
+              ownerAccount!.preferences!.timezone!
+            ),
+            utcToZonedTime(
+              meetingUpdateRequest.end,
+              ownerAccount!.preferences!.timezone!
+            ),
+            ownerAccount!.preferences!.availabilities
+          )
+        if (
+          participantIsOwner &&
+          ownerIsNotScheduler &&
+          !isEditingToSameTime &&
+          (!isTimeAvailable() || (await slotIsTaken()))
+        ) {
+          throw new TimeNotAvailableError()
+        }
+      }
+
+      let account: Account
+
+      if (
+        existingAccounts
+          .map(account => account.address)
+          .includes(participant.account_address!)
+      ) {
+        account = await getAccountFromDB(participant.account_address!)
+      } else {
+        account = await initAccountDBForWallet(
+          participant.account_address!,
+          '',
+          'UTC',
+          0,
+          true
+        )
+      }
+
+      const path = await addContentToIPFS(participant.privateInfo)
+
+      // Not adding source here given on our database the source is always MWW
+      const dbSlot: DBSlot = {
+        id: participant.slot_id,
+        start: new Date(meetingUpdateRequest.start),
+        end: new Date(meetingUpdateRequest.end),
+        account_address: account.address,
+        meeting_info_file_path: path,
+        version: meetingUpdateRequest.version,
+      }
+
+      slots.push(dbSlot)
+
+      if (
+        participant.account_address.toLowerCase() ===
+          schedulerAccount?.account_address?.toLowerCase() ||
+        (!schedulerAccount &&
+          participant.account_address.toLowerCase() ===
+            ownerAccount?.address.toLowerCase())
+      ) {
+        index = i
+        meetingResponse = {
+          ...dbSlot,
+          meeting_info_encrypted: participant.privateInfo,
+        }
+      }
+      i++
+    } else {
+      // TODO: update guests
+    }
+  }
+
+  // do something
+  //meeting.guestsToRemove
+
+  // one last check to make sure that the version did not change
+  const everySlotId = meetingUpdateRequest.participants_mapping.map(
+    it => it.slot_id
+  )
+  const everySlot = await getMeetingsFromDB(everySlotId)
+  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version)) {
+    throw new MeetingChangeConflictError()
+  }
+
+  // there is no support from suppabase to really use optimistic locking,
+  // right now we do the best we can assuming that no update will happen in the EXACT same time
+  // to the point that our checks will not be able to stop conflicts
+  const { data, error } = await db.supabase.from('slots').upsert(slots)
+
+  //TODO: handle error
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  meetingResponse.id = data[index].id
+  meetingResponse.created_at = data[index].created_at
+
+  const meetingICS: MeetingICS = {
+    db_slot: meetingResponse,
+    meeting: meetingUpdateRequest,
+  }
+
+  // Doing ntifications and syncs asyncrounously
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'PATCH',
+    body: JSON.stringify(meetingICS),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+    },
+  })
+
+  return meetingResponse
+}
+
 const selectTeamMeetingRequest = async (
   id: string
 ): Promise<GroupMeetingRequest | null> => {
@@ -1090,6 +1353,7 @@ export {
   changeConnectedCalendarSync,
   connectedCalendarExists,
   deleteGateCondition,
+  deleteMeetingFromDB,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
@@ -1111,6 +1375,7 @@ export {
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
   updateAccountPreferences,
+  updateMeeting,
   upsertAppToken,
   upsertGateCondition,
   workMeetingTypeGates,
