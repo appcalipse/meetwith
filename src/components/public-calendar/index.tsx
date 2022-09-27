@@ -221,6 +221,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         type: ParticipantType.Owner,
         status: ParticipationStatus.Accepted,
         slot_id: '',
+        meeting_id: '',
       })
     } else {
       let alreadyAdded = ''
@@ -235,6 +236,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           type: ParticipantType.Owner,
           status: ParticipationStatus.Pending,
           slot_id: '',
+          meeting_id: '',
         })
         alreadyAdded = teamMeetingRequest!.owner
       } else {
@@ -245,6 +247,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           type: ParticipantType.Owner,
           status: ParticipationStatus.Pending,
           slot_id: '',
+          meeting_id: '',
         })
         alreadyAdded =
           teamMeetingRequest!.team_structure.participants_accounts![0]
@@ -259,6 +262,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
             type: ParticipantType.Invitee,
             status: ParticipationStatus.Pending,
             slot_id: '',
+            meeting_id: '',
           })
         }
       }
@@ -273,6 +277,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Accepted,
         slot_id: '',
+        meeting_id: '',
       })
     }
 

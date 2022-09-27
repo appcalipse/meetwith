@@ -115,6 +115,7 @@ export default class CaldavCalendarService implements CalendarService {
           account_address: participant.account_address,
           status: participant.status,
           slot_id,
+          meeting_id: '',
         }))
 
       const ics = generateIcs(
@@ -122,7 +123,8 @@ export default class CaldavCalendarService implements CalendarService {
           meeting_url: details.meeting_url,
           start: new Date(details.start),
           end: new Date(details.end),
-          id: slot_id,
+          id: slot_id, // keep using slot id as meeting id for now
+          meeting_id: '',
           created_at: new Date(meeting_creation_time),
           meeting_info_file_path: '',
           participants: participantsInfo,
@@ -184,6 +186,7 @@ export default class CaldavCalendarService implements CalendarService {
           account_address: participant.account_address,
           status: participant.status,
           slot_id,
+          meeting_id: '',
         }))
 
       const ics = generateIcs(
@@ -197,6 +200,7 @@ export default class CaldavCalendarService implements CalendarService {
           participants: participantsInfo,
           version: 0,
           related_slot_ids: [],
+          meeting_id: '',
         },
         owner
       )
