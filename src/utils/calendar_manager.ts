@@ -51,7 +51,6 @@ import {
   TimeNotAvailableError,
 } from './errors'
 import { getSlugFromText } from './generic_utils'
-import { generateMeetingUrl } from './meeting_call_helper'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
