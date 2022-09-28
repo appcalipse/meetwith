@@ -107,6 +107,8 @@ function Root({
           </DaysOfWeek>
 
           <MonthDays>
+            {/*padding week days to sunday is the first one*/}
+            <MonthDay key={0} />
             {days.map(day => {
               const _isSameMonth = isSameMonth(day, startDay)
               if (!_isSameMonth) {
