@@ -30,7 +30,7 @@ import {
   durationToHumanReadable,
   generateIcs,
 } from '@/utils/calendar_manager'
-import { addUTMParams } from '@/utils/meeting_call_helper'
+import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
