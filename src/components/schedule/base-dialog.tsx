@@ -25,85 +25,133 @@ import {
   Text,
   Textarea,
   useColorModeValue,
+  useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { addDays, addHours, addMinutes, format, Interval } from 'date-fns'
+import {
+  addDays,
+  addMinutes,
+  differenceInMinutes,
+  format,
+  Interval,
+  parse,
+} from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import NextLink from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
-import { DBSlot, SchedulingType, TimeSlotSource } from '@/types/Meeting'
+import { ChipInput } from '@/components/chip-input'
+import { SingleDatepicker } from '@/components/input-date-picker'
+import { InputTimePicker } from '@/components/input-time-picker'
+import { AccountContext } from '@/providers/AccountProvider'
+import { SimpleAccountInfo } from '@/types/Account'
+import {
+  DBSlot,
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+  SchedulingType,
+  TimeSlotSource,
+} from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import {
   getExistingAccountsSimple,
   getSuggestedSlots,
 } from '@/utils/api_helper'
-import { scheduleMeeting } from '@/utils/calendar_manager'
+import { scheduleMeeting, updateMeeting } from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
+  Huddle01ServiceUnavailable,
   InvalidURL,
+  MeetingChangeConflictError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '@/utils/errors'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
+import { getSignature } from '@/utils/storage'
 import { isProAccount } from '@/utils/subscription_manager'
 import { ParseTime } from '@/utils/time.helper'
-import { getAddressDisplayForInput } from '@/utils/user_manager'
+import {
+  ellipsizeAddress,
+  getAddressDisplayForInput,
+} from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
-import { AccountContext } from '../../../providers/AccountProvider'
-import { ChipInput } from '../../chip-input'
-import { SingleDatepicker } from '../../input-date-picker'
-import { InputTimePicker } from '../../input-time-picker'
+import { CancelMeetingDialog } from './cancel-dialog'
+import { MeetingDialogState } from './meeting.dialog.hook'
 
-export interface ScheduleModalProps {
-  isOpen: boolean
-  onOpen: () => void
-  onClose: (meeting?: DBSlot) => void
+export interface BaseMeetingDialogProps extends MeetingDialogState {
+  isDialogOpen: boolean
+  onDialogOpen: () => void
+  onDialogClose: (meeting?: DBSlot) => void
 }
 
-export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
-  isOpen,
-  onOpen,
-  onClose,
+export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
+  isDialogOpen,
+  onDialogClose,
+  timezone,
+  meeting,
+  decryptedMeeting,
 }) => {
   const { currentAccount } = useContext(AccountContext)
-  const [useHuddle, setHuddle] = useState(true)
+
+  const [useHuddle, setHuddle] = useState(
+    decryptedMeeting
+      ? decryptedMeeting.meeting_url.includes('huddle01.com')
+      : true
+  )
+
   const toast = useToast()
 
-  const [participants, setParticipants] = useState([] as string[])
-  const [notAccounts, setNotAccounts] = useState([] as string[])
-  const [selectedDate, setDate] = useState(new Date())
-  const [selectedTime, setTime] = useState('')
-  const [content, setContent] = useState('')
+  const { isOpen, onClose } = useDisclosure()
+
+  const [participants, setParticipants] = useState(
+    decryptedMeeting?.participants || []
+  )
+
+  const [selectedDate, setDate] = useState(
+    decryptedMeeting?.start || new Date()
+  )
+
+  const [notAccounts, setNotAccounts] = useState([] as ParticipantInfo[])
+  const [selectedTime, setTime] = useState(
+    decryptedMeeting
+      ? ParseTime(decryptedMeeting?.start, false)
+      : ParseTime(new Date(), true)
+  )
+  const [content, setContent] = useState(decryptedMeeting?.content || '')
   const [inputError, setInputError] = useState(undefined as object | undefined)
-  const [meetingUrl, setMeetingUrl] = useState('')
-  const [duration, setDuration] = useState(30)
+  const [meetingUrl, setMeetingUrl] = useState(
+    decryptedMeeting?.meeting_url || ''
+  )
+  const [duration, setDuration] = useState(
+    meeting && meeting.id ? differenceInMinutes(meeting.end, meeting.start) : 30
+  )
+
   const [isScheduling, setIsScheduling] = useState(false)
   const [searchingTimes, setSearchingTimes] = useState(false)
   const [groupTimes, setGroupTimes] = useState<Interval[] | undefined>(
     undefined
   )
 
-  const clearInfo = () => {
-    setParticipants([])
-    setInputError(undefined)
-    setDate(new Date())
-    setTime(ParseTime(new Date()))
-    setContent('')
-    setMeetingUrl('')
-    setDuration(30)
-    setIsScheduling(false)
-    setNotAccounts([])
-    setSearchingTimes(false)
-    setGroupTimes(undefined)
+  const meetingId = decryptedMeeting?.id
+
+  if (meetingId) {
+    if (window.location.search.indexOf(meetingId) === -1) {
+      // not using router API to avoid re-rendinreing components
+      const searchParams = new URLSearchParams(window.location.search)
+      searchParams.set('slotId', meetingId)
+      const newRelativePathQuery =
+        window.location.pathname + '?' + searchParams.toString()
+      history.pushState(null, '', newRelativePathQuery)
+    }
   }
 
-  const onParticipantsChange = (_participants: string[]) => {
+  const onParticipantsChange = (_participants: ParticipantInfo[]) => {
     if (!isProAccount(currentAccount!) && _participants.length > 1) {
       setInputError(
         <Text>
@@ -116,49 +164,113 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
       participants.length == 0 && setParticipants([_participants[0]])
       return
     }
-
     setParticipants(_participants)
   }
 
   const parseAccounts = async (
-    participants: string[]
-  ): Promise<{ valid: string[]; invalid: string[] }> => {
-    const valid = []
-    const invalid = []
+    participants: ParticipantInfo[]
+  ): Promise<{ valid: ParticipantInfo[]; invalid: string[] }> => {
+    const valid: ParticipantInfo[] = []
+    const invalid: string[] = []
     for (const participant of participants) {
-      if (isValidEVMAddress(participant) || isValidEmail(participant)) {
+      if (
+        isValidEVMAddress(participant.account_address || '') ||
+        isValidEmail(participant.guest_email || '')
+      ) {
         valid.push(participant)
       } else {
-        const address = await getAddressFromDomain(participant)
+        const address = await getAddressFromDomain(participant.name || '')
         if (address) {
-          valid.push(address)
+          valid.push({
+            account_address: address,
+            type: ParticipantType.Invitee,
+            slot_id: '',
+            status: ParticipationStatus.Pending,
+          })
         } else {
-          invalid.push(participant)
+          invalid.push(participant.name!)
         }
       }
     }
     return { valid, invalid }
   }
 
-  useEffect(() => {
-    clearInfo()
-  }, [isOpen])
-
   const buildSelectedStart = () => {
     const _start = new Date(selectedDate)
-    _start.setHours(Number(selectedTime.split(':')[0]))
-    _start.setMinutes(Number(selectedTime.split(':')[1]))
+
+    const dateForMinutes = parse(selectedTime, 'p', new Date())
+    _start.setHours(dateForMinutes.getHours())
+    _start.setMinutes(dateForMinutes.getMinutes())
     _start.setSeconds(0)
 
     return _start
   }
 
   const selectTime = (timeSlot: Interval) => {
-    setTime(format(timeSlot.start, 'HH:mm'))
+    setTime(format(timeSlot.start, 'p'))
     setDate(timeSlot.start as Date)
   }
 
-  const schedule = async () => {
+  const suggestTimes = async () => {
+    setNotAccounts([])
+    setSearchingTimes(true)
+
+    const _participants = await parseAccounts(participants)
+
+    if (_participants.invalid.length > 0) {
+      toast({
+        title: 'Invalid invitees',
+        description: `Can't invite ${_participants.invalid.join(
+          ', '
+        )}. Please check the addresses/profiles/emails`,
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+
+    const checkAccount = async () => {
+      const existingAccounts = (
+        await getExistingAccountsSimple(
+          _participants.valid
+            .filter(p => !!p.account_address)
+            .map(p => p.account_address!)
+        )
+      ).map(account => account.address)
+      setNotAccounts(
+        _participants.valid.filter(
+          participant =>
+            !existingAccounts.includes(participant.account_address || '')
+        )
+      )
+    }
+
+    const checkSuggestions = async () => {
+      const startDate = new Date()
+      startDate.setMinutes(0)
+      startDate.setSeconds(0)
+      startDate.setMilliseconds(0)
+      const suggestions = await getSuggestedSlots(
+        [
+          currentAccount!.address,
+          ..._participants.valid
+            .filter(p => p.account_address)
+            .map(p => p.account_address!),
+        ],
+        startDate,
+        addDays(startDate, 14),
+        duration
+      )
+      setGroupTimes(suggestions.slice(0, 20))
+    }
+
+    await Promise.all([checkAccount(), checkSuggestions()])
+    setSearchingTimes(false)
+  }
+
+  const scheduleOrUpdate = async () => {
     if (!useHuddle && !meetingUrl) {
       toast({
         title: 'Missing information',
@@ -171,7 +283,10 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
       return
     } else if (
       participants.length === 0 ||
-      (participants.length === 1 && participants[0] === currentAccount!.address)
+      (participants.length === 1 &&
+        (participants[0]?.account_address?.toLowerCase() ===
+          currentAccount!.address.toLowerCase() ||
+          participants[0]?.name === currentAccount!.preferences?.name))
     ) {
       toast({
         title: 'Missing participants',
@@ -195,15 +310,9 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
       return
     }
 
+    setIsScheduling(true)
+
     const _participants = await parseAccounts(participants)
-
-    const evmAddressParticipants = _participants.valid.filter(participant =>
-      isValidEVMAddress(participant)
-    )
-
-    const guestEmails = _participants.valid.filter(participant =>
-      isValidEmail(participant)
-    )
 
     if (_participants.invalid.length > 0) {
       toast({
@@ -216,53 +325,60 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
         position: 'top',
         isClosable: true,
       })
+      setIsScheduling(false)
+
       return
     }
 
-    setIsScheduling(true)
-
     const _start = buildSelectedStart()
 
-    const start = zonedTimeToUtc(
-      _start,
-      Intl.DateTimeFormat().resolvedOptions().timeZone
-    )
+    const start = zonedTimeToUtc(_start, timezone)
     const end = addMinutes(new Date(start), duration)
 
     try {
-      const meeting = await scheduleMeeting(
-        SchedulingType.REGULAR,
-        currentAccount!.address,
-        [
-          ...Array.from(
-            new Set(evmAddressParticipants.map(p => p.toLowerCase()))
-          ).filter(p => p !== currentAccount!.address.toLowerCase()),
-        ],
-        'no_type',
-        start,
-        end,
-        currentAccount!.address,
-        guestEmails.map(participant => {
-          return { name: '', email: participant, scheduler: false }
-        }),
-        undefined,
-        content,
-        meetingUrl
-      )
-      logEvent('Scheduled a meeting', {
-        fromDashboard: true,
-        participantsSize: meeting.participants.length,
-      })
-      clearInfo()
-      onClose({
-        id: meeting.id,
-        created_at: new Date(meeting.created_at),
+      let meetingResult
+      if (!meeting?.id) {
+        //is creating
+        meetingResult = await scheduleMeeting(
+          SchedulingType.REGULAR,
+          'no_type',
+          start,
+          end,
+          _participants.valid,
+          currentAccount,
+          content,
+          meetingUrl
+        )
+        logEvent('Scheduled a meeting', {
+          fromDashboard: true,
+          participantsSize: _participants.valid.length,
+        })
+      } else {
+        meetingResult = await updateMeeting(
+          currentAccount!.address,
+          'no_type',
+          start,
+          end,
+          decryptedMeeting!,
+          getSignature(currentAccount!.address) || '',
+          _participants.valid,
+          content
+        )
+        logEvent('Updated a meeting', {
+          fromDashboard: true,
+          participantsSize: _participants.valid.length,
+        })
+      }
+
+      onDialogClose({
+        id: meetingResult.id,
+        created_at: new Date(meetingResult.created_at),
         account_address: currentAccount!.address,
-        meeting_info_file_path: meeting.meeting_info_file_path,
-        start: new Date(meeting.start),
-        end: new Date(meeting.end),
+        meeting_info_file_path: meetingResult.meeting_info_file_path,
+        start: new Date(meetingResult.start),
+        end: new Date(meetingResult.end),
         source: TimeSlotSource.MWW,
-        version: meeting.version,
+        version: meetingResult.version,
       })
       return true
     } catch (e) {
@@ -303,10 +419,30 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof MeetingChangeConflictError) {
+        toast({
+          title: 'Failed to update meeting',
+          description:
+            'Someone else has updated this meeting. Please reload and try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else if (e instanceof InvalidURL) {
         toast({
           title: 'Failed to schedule meeting',
           description: 'Please provide a valid url/link for your meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof Huddle01ServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
           status: 'error',
           duration: 5000,
           position: 'top',
@@ -318,62 +454,15 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
     return false
   }
 
-  const suggestTimes = async () => {
-    setNotAccounts([])
-    setSearchingTimes(true)
-
-    const _participants = await parseAccounts(participants)
-
-    if (_participants.invalid.length > 0) {
-      toast({
-        title: 'Invalid invitees',
-        description: `Can't invite ${_participants.invalid.join(
-          ', '
-        )}. Please check the addresses/profiles/emails`,
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-      return
-    }
-
-    const checkAccount = async () => {
-      const existingAccounts = (
-        await getExistingAccountsSimple(_participants.valid)
-      ).map(account => account.address)
-      setNotAccounts(
-        _participants.valid.filter(
-          participant => !existingAccounts.includes(participant)
-        )
-      )
-    }
-
-    const checkSuggestions = async () => {
-      const startDate = new Date()
-      startDate.setMinutes(0)
-      startDate.setSeconds(0)
-      startDate.setMilliseconds(0)
-      const suggestions = await getSuggestedSlots(
-        [currentAccount!.address, ..._participants.valid],
-        startDate,
-        addDays(startDate, 14),
-        duration
-      )
-      setGroupTimes(suggestions.slice(0, 20))
-    }
-
-    await Promise.all([checkAccount(), checkSuggestions()])
-    setSearchingTimes(false)
-  }
+  const cancelMeeting = () => {}
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
 
   return (
     <Modal
-      onClose={onClose}
-      isOpen={isOpen}
+      onClose={onDialogClose}
+      isOpen={isDialogOpen}
       blockScrollOnMount={false}
       size="xl"
       isCentered
@@ -391,8 +480,16 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
               currentItems={participants}
               placeholder="Insert wallet addresses, ENS, Lens, Unstoppable Domain or email (for guests)"
               onChange={onParticipantsChange}
-              renderItem={item => {
-                return getAddressDisplayForInput(item)
+              renderItem={p => {
+                if (p.account_address) {
+                  return p.name || ellipsizeAddress(p.account_address!)
+                } else if (p.name && p.guest_email) {
+                  return `${p.name} - ${p.guest_email}`
+                } else if (p.name) {
+                  return `${p.name}`
+                } else {
+                  return p.guest_email!
+                }
               }}
             />
             <FormHelperText>
@@ -580,15 +677,27 @@ export const ScheduleMeetingDialog: React.FC<ScheduleModalProps> = ({
           </FormControl>
         </ModalBody>
         <ModalFooter>
+          {meeting?.id && (
+            <Button onClick={cancelMeeting} variant="outline">
+              Cancel meeting
+            </Button>
+          )}
           <Button
-            onClick={schedule}
+            onClick={scheduleOrUpdate}
             colorScheme={'orange'}
             isLoading={isScheduling}
           >
-            Schedule
+            {meeting?.id ? 'Update' : 'Schedule'}
           </Button>
         </ModalFooter>
       </ModalContent>
+      <CancelMeetingDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        decriptedMeeting={decryptedMeeting}
+        currentAccount={currentAccount}
+        afterCancel={onDialogClose}
+      />
     </Modal>
   )
 }

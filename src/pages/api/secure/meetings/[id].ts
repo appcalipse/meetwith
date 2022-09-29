@@ -46,7 +46,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (
       meeting.participants_mapping.filter(
-        participant => participant.account_address === account.address
+        participant =>
+          participant.account_address?.toLowerCase() ===
+          account.address.toLowerCase()
       ).length === 0
     ) {
       res.status(403).send('You cant schedule a meeting for someone else')

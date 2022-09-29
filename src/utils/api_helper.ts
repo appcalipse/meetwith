@@ -29,6 +29,7 @@ import {
   ApiFetchError,
   GateConditionNotValidError,
   GateInUseError,
+  Huddle01ServiceUnavailable,
   InvalidSessionError,
   MeetingChangeConflictError,
   MeetingCreationError,
@@ -300,7 +301,14 @@ export const subscribeToWaitlist = async (
 }
 
 export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
-  return (await internalFetch(`/meetings/meeting/${slot_id}`)) as DBSlotEnhanced
+  const response = (await internalFetch(
+    `/meetings/meeting/${slot_id}`
+  )) as DBSlotEnhanced
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
+  }
 }
 
 export const getNotificationSubscriptions =
@@ -620,4 +628,21 @@ export const getUnstoppableDomainsForAddress = async (
 
 export const getIPFSContent = async (cid: string): Promise<any> => {
   return await internalFetch(`/ipfs/${cid}`)
+}
+
+export const createHuddleRoom = async (
+  title?: string
+): Promise<{ url: string }> => {
+  try {
+    return (await internalFetch('/integrations/huddle/create', 'POST', {
+      title,
+    })) as { url: string }
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 503) {
+        throw new Huddle01ServiceUnavailable()
+      }
+    }
+    throw e
+  }
 }

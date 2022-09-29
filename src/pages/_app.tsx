@@ -6,10 +6,13 @@ import '@fullcalendar/list/main.css'
 
 import { ChakraProvider } from '@chakra-ui/react'
 import cookie from 'cookie'
+import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
 import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
+
+import { getLocaleForDateFNS } from '@/utils/time.helper'
 
 import { CookieConsent } from '../components/CookieConsent'
 import { Head } from '../components/Head'
@@ -37,6 +40,9 @@ function MyApp({
 }: MyAppProps) {
   React.useEffect(() => {
     const initApp = async () => {
+      setDefaultOptions({
+        locale: getLocaleForDateFNS(),
+      })
       await initAnalytics()
       pageView(router.asPath)
     }

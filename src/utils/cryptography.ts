@@ -1,5 +1,6 @@
 import * as crypto from 'crypto'
 import CryptoJS from 'crypto-js'
+import { decryptWithPrivateKey, Encrypted } from 'eth-crypto'
 import {
   bufferToHex,
   ecrecover,
@@ -8,7 +9,23 @@ import {
   pubToAddress,
 } from 'ethereumjs-util'
 
+import { Account } from '@/types/Account'
+
 import { DEFAULT_MESSAGE } from './constants'
+
+const getContentFromEncrypted = async (
+  account: Account,
+  signature: string,
+  encrypted: Encrypted
+): Promise<string> => {
+  try {
+    const pvtKey = decryptContent(signature, account.encoded_signature)
+    return await decryptWithPrivateKey(pvtKey, encrypted)
+  } catch (error) {
+    console.error(error)
+    return ''
+  }
+}
 
 const encryptContent = (signature: string, data: string): string => {
   const ciphertext = CryptoJS.AES.encrypt(data, signature).toString()
@@ -44,4 +61,9 @@ const checkSignature = (signature: string, nonce: number): string => {
 export const simpleHash = (contents: string) =>
   crypto.createHash('md5').update(contents).digest('hex')
 
-export { checkSignature, decryptContent, encryptContent }
+export {
+  checkSignature,
+  decryptContent,
+  encryptContent,
+  getContentFromEncrypted,
+}

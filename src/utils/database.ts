@@ -92,7 +92,10 @@ const initAccountDBForWallet = async (
 
   try {
     //make sure account doesn't exist
-    await getAccountFromDB(address)
+    const account = await getAccountFromDB(address)
+    if (!account.is_invited) {
+      return account
+    }
     return await updateAccountFromInvite(address, signature, timezone, nonce)
   } catch (error) {}
 
@@ -103,7 +106,9 @@ const initAccountDBForWallet = async (
   const { data, error } = await db.supabase.from('accounts').insert([
     {
       address: address.toLowerCase(),
-      internal_pub_key: newIdentity.publicKey,
+      internal_pub_key: is_invited
+        ? process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
+        : newIdentity.publicKey,
       encoded_signature: encryptedPvtKey,
       preferences_path: '',
       nonce,
@@ -154,10 +159,10 @@ const updateAccountFromInvite = async (
   timezone: string,
   nonce: number
 ): Promise<Account> => {
-  const exitingAccount = await getAccountFromDB(account_address)
-  if (!exitingAccount.is_invited) {
+  const existingAccount = await getAccountFromDB(account_address)
+  if (!existingAccount.is_invited) {
     // do not screw up accounts that already have been set up
-    return exitingAccount
+    return existingAccount
   }
 
   //fetch this before changing internal pub key
@@ -182,7 +187,7 @@ const updateAccountFromInvite = async (
 
   if (error) {
     Sentry.captureException(error)
-    throw new Error("Account couldn't be created")
+    throw new Error("Account couldn't be updated")
   }
 
   const account = await getAccountFromDB(account_address)
@@ -191,30 +196,33 @@ const updateAccountFromInvite = async (
   await updateAccountPreferences(account)
 
   for (const slot of currentMeetings) {
-    const encrypted = (await fetchContentFromIPFS(
-      slot.meeting_info_file_path
-    )) as Encrypted
+    try {
+      const encrypted = (await fetchContentFromIPFS(
+        slot.meeting_info_file_path
+      )) as Encrypted
 
-    const privateInfo = await decryptWithPrivateKey(
-      process.env.NEXT_SERVER_PVT_KEY!,
-      encrypted
-    )
-    const newPvtInfo = await encryptWithPublicKey(
-      newIdentity.publicKey,
-      privateInfo
-    )
-    const newEncryptedPath = await addContentToIPFS(newPvtInfo)
+      const privateInfo = await decryptWithPrivateKey(
+        process.env.NEXT_SERVER_PVT_KEY!,
+        encrypted
+      )
+      const newPvtInfo = await encryptWithPublicKey(
+        newIdentity.publicKey,
+        privateInfo
+      )
+      const newEncryptedPath = await addContentToIPFS(newPvtInfo)
 
-    const { _, error } = await db.supabase
-      .from('slots')
-      .update({
-        account_address: newIdentity.address,
-        meeting_info_file_path: newEncryptedPath,
-      })
-      .match({ id: slot.id })
+      const { _, error } = await db.supabase
+        .from('slots')
+        .update({
+          meeting_info_file_path: newEncryptedPath,
+        })
+        .match({ id: slot.id })
 
-    if (error) {
-      Sentry.captureException(error)
+      if (error) {
+        Sentry.captureException(error)
+      }
+    } catch (err) {
+      //if any fail, dont fail them all
     }
   }
 
@@ -601,7 +609,8 @@ const saveMeeting = async (
         // only validate slot if meeting is being scheduled on someone's calendar and not by the person itself (from dashboard for example)
         const participantIsOwner = Boolean(
           ownerParticipant &&
-            ownerParticipant.account_address === participant.account_address
+            ownerParticipant.account_address?.toLowerCase() ===
+              participant.account_address.toLowerCase()
         )
 
         const slotIsTaken = async () =>
@@ -660,9 +669,10 @@ const saveMeeting = async (
       slots.push(dbSlot)
 
       if (
-        participant.account_address === schedulerAccount?.account_address ||
+        participant.account_address.toLowerCase() ===
+          schedulerAccount?.account_address?.toLowerCase() ||
         (!schedulerAccount &&
-          participant.account_address === ownerAccount?.address)
+          participant.account_address?.toLowerCase() === ownerAccount?.address)
       ) {
         index = i
         meetingResponse = {
@@ -1132,11 +1142,12 @@ const upsertAppToken = async (
 }
 
 const updateMeeting = async (
-  meeting: MeetingUpdateRequest
+  meetingUpdateRequest: MeetingUpdateRequest
 ): Promise<DBSlotEnhanced> => {
   if (
-    new Set(meeting.participants_mapping.map(p => p.account_address)).size !==
-    meeting.participants_mapping.length
+    new Set(
+      meetingUpdateRequest.participants_mapping.map(p => p.account_address)
+    ).size !== meetingUpdateRequest.participants_mapping.length
   ) {
     //means there are duplicate participants
     throw new MeetingCreationError()
@@ -1148,22 +1159,23 @@ const updateMeeting = async (
   let i = 0
 
   const existingAccounts = await getExistingAccountsFromDB(
-    meeting.participants_mapping.map(p => p.account_address!)
+    meetingUpdateRequest.participants_mapping.map(p => p.account_address!)
   )
   const ownerParticipant =
-    meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
-    null
+    meetingUpdateRequest.participants_mapping.find(
+      p => p.type === ParticipantType.Owner
+    ) || null
 
   const ownerAccount = ownerParticipant
     ? await getAccountFromDB(ownerParticipant.account_address!)
     : null
 
   const schedulerAccount =
-    meeting.participants_mapping.find(
+    meetingUpdateRequest.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
 
-  for (const participant of meeting.participants_mapping) {
+  for (const participant of meetingUpdateRequest.participants_mapping) {
     const isEditing = participant.mappingType === ParticipantMappingType.KEEP
 
     if (participant.account_address) {
@@ -1176,7 +1188,8 @@ const updateMeeting = async (
         // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
         const participantIsOwner = Boolean(
           ownerParticipant &&
-            ownerParticipant.account_address === participant.account_address
+            ownerParticipant.account_address?.toLowerCase() ===
+              participant.account_address.toLowerCase()
         )
         const ownerIsNotScheduler = Boolean(
           ownerParticipant &&
@@ -1190,25 +1203,31 @@ const updateMeeting = async (
           const existingSlot = await getMeetingFromDB(participant.slot_id!)
           const sameStart =
             new Date(existingSlot.start).getTime() ===
-            new Date(meeting.start).getTime()
+            new Date(meetingUpdateRequest.start).getTime()
           const sameEnd =
             new Date(existingSlot.end).getTime() ===
-            new Date(meeting.end).getTime()
+            new Date(meetingUpdateRequest.end).getTime()
           isEditingToSameTime = sameStart && sameEnd
         }
 
         const slotIsTaken = async () =>
           !(await isSlotFree(
             participant.account_address!,
-            new Date(meeting.start),
-            new Date(meeting.end),
-            meeting.meetingTypeId
+            new Date(meetingUpdateRequest.start),
+            new Date(meetingUpdateRequest.end),
+            meetingUpdateRequest.meetingTypeId
           ))
 
         const isTimeAvailable = () =>
           isTimeInsideAvailabilities(
-            utcToZonedTime(meeting.start, ownerAccount!.preferences!.timezone!),
-            utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
+            utcToZonedTime(
+              meetingUpdateRequest.start,
+              ownerAccount!.preferences!.timezone!
+            ),
+            utcToZonedTime(
+              meetingUpdateRequest.end,
+              ownerAccount!.preferences!.timezone!
+            ),
             ownerAccount!.preferences!.availabilities
           )
         if (
@@ -1244,19 +1263,21 @@ const updateMeeting = async (
       // Not adding source here given on our database the source is always MWW
       const dbSlot: DBSlot = {
         id: participant.slot_id,
-        start: new Date(meeting.start),
-        end: new Date(meeting.end),
+        start: new Date(meetingUpdateRequest.start),
+        end: new Date(meetingUpdateRequest.end),
         account_address: account.address,
         meeting_info_file_path: path,
-        version: meeting.version,
+        version: meetingUpdateRequest.version,
       }
 
       slots.push(dbSlot)
 
       if (
-        participant.account_address === schedulerAccount?.account_address ||
+        participant.account_address.toLowerCase() ===
+          schedulerAccount?.account_address?.toLowerCase() ||
         (!schedulerAccount &&
-          participant.account_address === ownerAccount?.address)
+          participant.account_address.toLowerCase() ===
+            ownerAccount?.address.toLowerCase())
       ) {
         index = i
         meetingResponse = {
@@ -1265,13 +1286,20 @@ const updateMeeting = async (
         }
       }
       i++
+    } else {
+      // TODO: update guests
     }
   }
 
+  // do something
+  //meeting.guestsToRemove
+
   // one last check to make sure that the version did not change
-  const everySlotId = meeting.participants_mapping.map(it => it.slot_id)
+  const everySlotId = meetingUpdateRequest.participants_mapping.map(
+    it => it.slot_id
+  )
   const everySlot = await getMeetingsFromDB(everySlotId)
-  if (everySlot.find(it => it.version + 1 !== meeting.version)) {
+  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version)) {
     throw new MeetingChangeConflictError()
   }
 
@@ -1290,7 +1318,7 @@ const updateMeeting = async (
 
   const meetingICS: MeetingICS = {
     db_slot: meetingResponse,
-    meeting,
+    meeting: meetingUpdateRequest,
   }
 
   // Doing ntifications and syncs asyncrounously

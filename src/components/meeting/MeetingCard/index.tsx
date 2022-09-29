@@ -1,16 +1,11 @@
 import {
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogOverlay,
   Badge,
   Box,
   Button,
+  Flex,
   HStack,
+  IconButton,
   Link,
-  Spacer,
   Spinner,
   Text,
   useColorModeValue,
@@ -24,39 +19,49 @@ import {
   isAfter,
   isWithinInterval,
 } from 'date-fns'
-import { Encrypted } from 'eth-crypto'
 import { useContext, useEffect, useState } from 'react'
 import React from 'react'
-import { FaEdit, FaEraser } from 'react-icons/fa'
+import { FaEdit, FaTrash } from 'react-icons/fa'
 
-import { useEditMeetingDialog } from '@/components/schedule/edit-meeting-dialog/edit.hook'
-import { addUTMParams } from '@/utils/meeting_call_helper'
+import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
+import {
+  dateToHumanReadable,
+  decodeMeeting,
+  durationToHumanReadable,
+  generateIcs,
+} from '@/utils/calendar_manager'
+import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
-import { fetchContentFromIPFSFromBrowser } from '../../../utils/api_helper'
-import {
-  cancelMeeting,
-  dateToHumanReadable,
-  decryptMeeting,
-  durationToHumanReadable,
-  generateIcs,
-} from '../../../utils/calendar_manager'
 import IPFSLink from '../../IPFSLink'
 
 interface MeetingCardProps {
   meeting: DBSlot
   timezone: string
   onUpdate?: () => void
+  onClickToOpen: (
+    meeting: DBSlot,
+    decryptedMeeting: MeetingDecrypted,
+    timezone: string
+  ) => void
 }
 
 interface Label {
   color: string
   text: string
 }
-const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
+
+const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-09-12')
+
+const MeetingCard = ({
+  meeting,
+  timezone,
+  onUpdate,
+  onClickToOpen,
+}: MeetingCardProps) => {
   const duration = differenceInMinutes(meeting.end, meeting.start)
 
   const defineLabel = (start: Date, end: Date): Label | null => {
@@ -85,40 +90,42 @@ const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
   const label = defineLabel(meeting.start as Date, meeting.end as Date)
   const toast = useToast()
 
-  const [EditModal, openEditModal, closeEditModal] = useEditMeetingDialog()
-  const [isCanceling, setCanceling] = useState(false)
-
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const cancelRef = React.useRef<HTMLButtonElement>(null)
+
+  const [decryptedMeeting, setDecryptedMeeting] = useState(
+    undefined as MeetingDecrypted | undefined
+  )
+  const [loading, setLoading] = useState(true)
 
   const { currentAccount } = useContext(AccountContext)
   const decodeData = async () => {
-    const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
-      meeting.meeting_info_file_path
-    )) as Encrypted
-    if (meetingInfoEncrypted) {
-      const decryptedMeeting = await decryptMeeting(
-        {
-          ...meeting,
-          meeting_info_encrypted: meetingInfoEncrypted,
-        },
-        currentAccount!
-      )
+    const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
 
-      return decryptedMeeting
+    if (decodedMeeting) {
+      setDecryptedMeeting(decodedMeeting)
+    } else {
+      toast({
+        title: 'Something went wrong',
+        description: 'Unable to decode meeting data.',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
     }
-
-    toast({
-      title: 'Something went wrong',
-      description: 'Unable to decode meeting data.',
-      status: 'error',
-      duration: 5000,
-      position: 'top',
-      isClosable: true,
-    })
-
-    return null
+    setLoading(false)
   }
+
+  useEffect(() => {
+    decodeData()
+  }, [])
+
+  const iconColor = useColorModeValue('gray.500', 'gray.200')
+
+  const showEdit =
+    isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
+    isAfter(meeting.start, new Date()) &&
+    false //hide for now
 
   return (
     <>
@@ -127,25 +134,52 @@ const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
         width="100%"
         borderRadius="lg"
         overflow="hidden"
+        position="relative"
         bgColor={bgColor}
       >
+        {label && (
+          <Badge
+            borderRadius={0}
+            borderBottomRightRadius={4}
+            px={2}
+            py={1}
+            colorScheme={label.color}
+            alignSelf="flex-end"
+            position="absolute"
+            left={0}
+            top={0}
+          >
+            {label.text}
+          </Badge>
+        )}
         <Box p="6">
           <VStack alignItems="start" position="relative">
-            {label && (
-              <Badge
-                borderRadius="full"
-                px="2"
-                colorScheme={label.color}
-                alignSelf="flex-end"
-                position="absolute"
-              >
-                {label.text}
-              </Badge>
-            )}
-            <Box>
-              <strong>When</strong>:{' '}
-              {dateToHumanReadable(meeting.start as Date, timezone, false)}
-            </Box>
+            <Flex flexDir="row-reverse" alignItems="center" w="100%">
+              {showEdit && (
+                <HStack>
+                  <IconButton
+                    color={iconColor}
+                    aria-label="remove"
+                    icon={<FaEdit size={16} />}
+                    onClick={() => {
+                      decryptedMeeting &&
+                        onClickToOpen(meeting, decryptedMeeting, timezone)
+                    }}
+                  />
+                  <IconButton
+                    color={iconColor}
+                    aria-label="remove"
+                    icon={<FaTrash size={16} />}
+                    onClick={onOpen}
+                  />
+                </HStack>
+              )}
+              <Box flex={1} pt={2}>
+                <strong>When</strong>:{' '}
+                {dateToHumanReadable(meeting.start as Date, timezone, false)}
+              </Box>
+            </Flex>
+
             <HStack>
               <strong>Duration</strong>:{' '}
               <Text>{durationToHumanReadable(duration)}</Text>
@@ -154,114 +188,29 @@ const MeetingCard = ({ meeting, timezone, onUpdate }: MeetingCardProps) => {
               title="Meeting private data"
               ipfsHash={meeting.meeting_info_file_path}
             />
-            <DecodedInfo meeting={meeting} />
-            {/* <HStack>
-              <Button
-                onClick={() => {
-                  decodeData().then(decriptedMeeting =>
-                    openEditModal(meeting, decriptedMeeting, timezone)
-                  )
-                }}
-                leftIcon={<FaEdit />}
-                colorScheme="orange"
-              >
-                Edit
-              </Button>
-              <Button
-                onClick={onOpen}
-                leftIcon={<FaEraser />}
-                colorScheme="orange"
-                isLoading={isCanceling}
-              >
-                Cancel
-              </Button>
-            </HStack> */}
+            <DecodedInfo
+              loading={loading}
+              decryptedMeeting={decryptedMeeting}
+            />
           </VStack>
         </Box>
       </Box>
-      <Spacer />
-      <EditModal />
-      <AlertDialog
+      <CancelMeetingDialog
         isOpen={isOpen}
-        leastDestructiveRef={cancelRef}
         onClose={onClose}
-      >
-        <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Cancel Meeting
-            </AlertDialogHeader>
-
-            <AlertDialogBody>
-              Are you sure? You can&apos;t undo this action afterwards.
-            </AlertDialogBody>
-
-            <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                colorScheme="red"
-                onClick={() => {
-                  setCanceling(true)
-                  decodeData().then(decriptedMeeting => {
-                    cancelMeeting(currentAccount!.address, decriptedMeeting!)
-                      .then(() => {
-                        setCanceling(false)
-                        onUpdate && onUpdate()
-                        onClose()
-                      })
-                      .catch(error => {
-                        setCanceling(false)
-                        toast({
-                          title: 'Something went wrong',
-                          description: error.message,
-                          status: 'error',
-                          duration: 5000,
-                          position: 'top',
-                          isClosable: true,
-                        })
-                      })
-                  })
-                }}
-                ml={3}
-                isLoading={isCanceling}
-              >
-                Delete
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
+        decriptedMeeting={decryptedMeeting}
+        currentAccount={currentAccount}
+        afterCancel={onUpdate}
+      />
     </>
   )
 }
 
-const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
-  const [loading, setLoading] = useState(true)
-  const [info, setInfo] = useState(undefined as MeetingDecrypted | undefined)
+const DecodedInfo: React.FC<{
+  loading: boolean
+  decryptedMeeting?: MeetingDecrypted
+}> = ({ decryptedMeeting, loading }) => {
   const { currentAccount } = useContext(AccountContext)
-
-  useEffect(() => {
-    const decodeData = async () => {
-      const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
-        meeting.meeting_info_file_path
-      )) as Encrypted
-      if (meetingInfoEncrypted) {
-        const decryptedMeeting = await decryptMeeting(
-          {
-            ...meeting,
-            meeting_info_encrypted: meetingInfoEncrypted,
-          },
-          currentAccount!
-        )
-
-        setInfo(decryptedMeeting)
-      }
-      setLoading(false)
-    }
-    decodeData()
-  }, [])
 
   const downloadIcs = (
     info: MeetingDecrypted,
@@ -274,7 +223,7 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
     )
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', `meeting_${meeting.id}.ics`)
+    link.setAttribute('download', `meeting_${decryptedMeeting!.id}.ics`)
 
     document.body.appendChild(link)
     link.click()
@@ -304,36 +253,38 @@ const DecodedInfo: React.FC<{ meeting: DBSlot }> = ({ meeting }) => {
           <Text>Decoding meeting info...</Text>{' '}
           <Spinner size="sm" colorScheme="gray" />
         </HStack>
-      ) : info ? (
+      ) : decryptedMeeting ? (
         <VStack alignItems="flex-start">
           <Text>
             <strong>Meeting link</strong>
           </Text>
           <Link
-            href={addUTMParams(info.meeting_url)}
+            href={addUTMParams(decryptedMeeting.meeting_url || '')}
             isExternal
             onClick={() => logEvent('Clicked to start meeting')}
           >
-            {info.meeting_url}
+            {decryptedMeeting.meeting_url}
           </Link>
           <VStack alignItems="flex-start">
             <Text>
               <strong>Participants</strong>
             </Text>
-            <Text>{getNamesDisplay(info)}</Text>
+            <Text>{getNamesDisplay(decryptedMeeting)}</Text>
           </VStack>
-          {info.content && (
+          {decryptedMeeting.content && (
             <Box>
               <Text>
                 <strong>Notes</strong>
               </Text>
-              <Text mb={2}>{info.content}</Text>
+              <Text mb={2}>{decryptedMeeting.content}</Text>
             </Box>
           )}
           <Button
             colorScheme="orange"
             variant="outline"
-            onClick={() => downloadIcs(info, currentAccount!.address)}
+            onClick={() =>
+              downloadIcs(decryptedMeeting, currentAccount!.address)
+            }
           >
             Download .ics
           </Button>

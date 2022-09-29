@@ -21,6 +21,7 @@ export enum SchedulingType {
 
 export interface MeetingUpdateRequest extends MeetingCreationRequest {
   slotsToRemove: string[]
+  guestsToRemove: string[]
   version: number
 }
 

@@ -8,7 +8,6 @@ import {
   Spacer,
   Spinner,
   Text,
-  useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -36,6 +35,18 @@ interface DashboardMeetings {
   original: DBSlot
   decoded?: MeetingDecrypted
 }
+import { addHours } from 'date-fns'
+import { useRouter } from 'next/router'
+import { useContext, useEffect, useState } from 'react'
+import { FaPlus } from 'react-icons/fa'
+
+import { decodeMeeting } from '@/utils/calendar_manager'
+
+import { AccountContext } from '../../providers/AccountProvider'
+import { DBSlot } from '../../types/Meeting'
+import { getMeeting, getMeetingsForDashboard } from '../../utils/api_helper'
+import MeetingCard from '../meeting/MeetingCard'
+import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 
 const Meetings: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -50,6 +61,8 @@ const Meetings: React.FC = () => {
 
   const startToFetch = startOfMonth(currentDate)
   const endToFetch = endOfMonth(currentDate)
+
+  const { slotId } = useRouter().query
 
   const fetchMeetings = async () => {
     const map = meetings
@@ -132,19 +145,44 @@ const Meetings: React.FC = () => {
   } else {
     content = (
       <VStack mb={8}>
-        <Box w="100%">
-          <CalendarView meetings={meetings} currentAccount={currentAccount!} />
-        </Box>
+        {meetings.map(meeting => (
+          <MeetingCard
+            key={meeting.id}
+            meeting={meeting}
+            timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
+            onUpdate={fetchMeetings}
+            onClickToOpen={(meeting, decryptedMeeting, timezone) =>
+              openMeetingDialog(meeting, decryptedMeeting, timezone, afterClose)
+            }
+          />
+        ))}
+        {!noMoreFetch && !firstFetch && (
+          <Button
+            isLoading={loading}
+            colorScheme="orange"
+            variant="outline"
+            alignSelf="center"
+            my={4}
+            onClick={fetchMeetings}
+          >
+            Load more
+          </Button>
+        )}
         <Spacer />
       </VStack>
     )
   }
 
-  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [MeetingDialog, openMeetingDialog] = useMeetingDialog()
 
-  const toast = useToast()
+  useEffect(() => {
+    slotId && fillMeeting()
+  }, [slotId])
 
   const afterClose = (meeting?: DBSlot) => {
+    // not using router API to avoid re-rendinreing component
+    history.pushState(null, '', window.location.pathname)
+
     if (meeting) {
       meetings.set(meeting.id, { original: meeting })
       setMeetings(
@@ -162,8 +200,20 @@ const Meetings: React.FC = () => {
         isClosable: true,
       })
     }
-    onClose()
   }
+
+  const fillMeeting = async () => {
+    const meeting = await getMeeting(slotId as string)
+    const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
+    openMeetingDialog(
+      meeting,
+      decodedMeeting,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      afterClose
+    )
+  }
+
+  const toast = useToast()
 
   return (
     <Flex direction={'column'}>
@@ -175,7 +225,14 @@ const Meetings: React.FC = () => {
           </Text>
         </Heading>
         <Button
-          onClick={onOpen}
+          onClick={() =>
+            openMeetingDialog(
+              null,
+              null,
+              Intl.DateTimeFormat().resolvedOptions().timeZone,
+              afterClose
+            )
+          }
           colorScheme="orange"
           display={{ base: 'none', md: 'flex' }}
           mt={{ base: 4, md: 0 }}
@@ -186,7 +243,14 @@ const Meetings: React.FC = () => {
         </Button>
       </HStack>
       <Button
-        onClick={onOpen}
+        onClick={() =>
+          openMeetingDialog(
+            null,
+            null,
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
+            afterClose
+          )
+        }
         colorScheme="orange"
         display={{ base: 'flex', md: 'none' }}
         mb={8}
@@ -195,11 +259,7 @@ const Meetings: React.FC = () => {
         New meeting
       </Button>
       {content}
-      <ScheduleMeetingDialog
-        isOpen={isOpen}
-        onClose={afterClose}
-        onOpen={onOpen}
-      />
+      <MeetingDialog />
     </Flex>
   )
 }

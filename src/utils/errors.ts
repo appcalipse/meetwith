@@ -90,3 +90,10 @@ export class InvalidURL extends Error {
     this.name = 'InvalidURL'
   }
 }
+
+export class Huddle01ServiceUnavailable extends Error {
+  constructor() {
+    super(`Huddle API is broken`)
+    this.name = 'Huddle01ServiceUnavailable'
+  }
+}

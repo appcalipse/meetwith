@@ -18,7 +18,11 @@ import {
 import router from 'next/router'
 import { FaBell } from 'react-icons/fa'
 
-import { MeetingDecrypted, ParticipantInfo } from '@/types/Meeting'
+import {
+  MeetingDecrypted,
+  ParticipantInfo,
+  SchedulingType,
+} from '@/types/Meeting'
 import { dateToHumanReadable } from '@/utils/calendar_manager'
 import { getMeetingsScheduled } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -33,6 +37,7 @@ interface IProps {
   schedulerAccount?: Account
   accountNotificationSubs: number
   meeting?: MeetingDecrypted
+  scheduleType: SchedulingType
 }
 
 const MeetingScheduledDialog: React.FC<IProps> = ({
@@ -42,6 +47,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   schedulerAccount,
   accountNotificationSubs,
   meeting,
+  scheduleType,
 }) => {
   const notificationsAlertBackground = useColorModeValue('gray.100', 'gray.600')
   const notificationsAlertIconBackground = useColorModeValue(
@@ -49,9 +55,16 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
     'gray.500'
   )
 
-  const participantsToDisplay = participants.filter(
-    participant => participant.account_address !== schedulerAccount?.address
-  )
+  let participantsToDisplay = []
+  if (scheduleType === SchedulingType.GUEST) {
+    participantsToDisplay = participants.filter(
+      participant => !participant.guest_email
+    )
+  } else {
+    participantsToDisplay = participants.filter(
+      participant => participant.account_address !== schedulerAccount?.address
+    )
+  }
 
   const accountMeetingsScheduled = schedulerAccount
     ? getMeetingsScheduled(schedulerAccount.address)
