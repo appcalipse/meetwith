@@ -14,6 +14,7 @@ import {
   ConnectResponse,
 } from '../types/CalendarConnections'
 import {
+  ConferenceMeeting,
   DBSlot,
   DBSlotEnhanced,
   GroupMeetingRequest,
@@ -627,4 +628,17 @@ export const getUnstoppableDomainsForAddress = async (
 
 export const getIPFSContent = async (cid: string): Promise<any> => {
   return await internalFetch(`/ipfs/${cid}`)
+}
+
+export const getConferenceMeeting = async (
+  meetingId: string
+): Promise<ConferenceMeeting> => {
+  const response = (await internalFetch(
+    `/meetings/conference/${meetingId}`
+  )) as ConferenceMeeting
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
+  }
 }

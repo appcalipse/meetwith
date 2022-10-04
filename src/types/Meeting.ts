@@ -33,7 +33,7 @@ export interface MeetingCreationRequest {
   end: Date
   content?: string
   meeting_url: string
-  meeting_id: Meeting['id']
+  meeting_id: ConferenceMeeting['id']
 }
 
 export enum ParticipantMappingType {
@@ -45,7 +45,7 @@ export enum ParticipantMappingType {
 export interface CreationRequestParticipantMapping {
   account_address?: string
   slot_id: string
-  meeting_id: Meeting['id']
+  meeting_id: ConferenceMeeting['id']
   type: ParticipantType
   privateInfo: Encrypted
   privateInfoHash: string
@@ -95,15 +95,55 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
   slot_id: string
   name?: string
   guest_email?: string
-  meeting_id: Meeting['id']
+  meeting_id: ConferenceMeeting['id']
 }
 
-export interface Meeting {
+/**
+ * Meetings providers list
+ */
+export enum MeetingProvider {
+  /**
+   * This meeting will be handled by huddle01
+   */
+  HUDDLE = 'huddle01',
+
+  /**
+   * This meeting will be handled by Google
+   */
+  GOOGLE_MEET = 'google-meet',
+
+  /**
+   * User will provide the meeting link
+   */
+  CUSTOM = 'custom',
+}
+
+/**
+ * Options for access meetings
+ */
+export enum MeetingAccessType {
+  /**
+   * Open for everyone with the correct link
+   */
+  OPEN_MEETING = 'open',
+
+  /**
+   * We will allow access only for participants that have paid the meeting,
+   * meaning that the user will be required to authenticate within MWW
+   */
+  PAID_MEETING = 'paid-meeting',
+}
+
+export interface ConferenceMeeting {
   id: string
-  owner: string
   start: Date
   end: Date
+  title?: string
+  access_type: MeetingAccessType
+
+  provider: MeetingProvider
   meeting_url: string
+
   created_at: Date
 }
 
@@ -114,12 +154,12 @@ export interface IPFSMeetingInfo {
   participants: ParticipantInfo[]
   change_history_paths: string[]
   related_slot_ids: string[]
-  meeting_id: Meeting['id']
+  meeting_id: ConferenceMeeting['id']
 }
 
 export interface MeetingDecrypted {
   id: string
-  meeting_id: Meeting['id']
+  meeting_id: ConferenceMeeting['id']
   created_at: Date
   start: Date
   end: Date
