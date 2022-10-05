@@ -59,12 +59,11 @@ const Meetings: React.FC = () => {
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
 
-  const startToFetch = startOfMonth(currentDate)
-  const endToFetch = endOfMonth(currentDate)
-
   const { slotId } = useRouter().query
 
   const fetchMeetings = async () => {
+    const startToFetch = startOfMonth(currentDate)
+    const endToFetch = endOfMonth(currentDate)
     const map = meetings
     const originalMeetings = (await getMeetings(
       currentAccount!.address,
@@ -88,29 +87,31 @@ const Meetings: React.FC = () => {
   const decodeMeetings = async () => {
     const map = meetings
     for (const entry of map.values()) {
-      const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
-        entry.original.meeting_info_file_path
-      )) as Encrypted
-      if (meetingInfoEncrypted) {
-        const decryptedMeeting = await decryptMeeting(
-          {
-            ...entry.original,
-            meeting_info_encrypted: meetingInfoEncrypted,
-          },
-          currentAccount!
-        )
-
-        if (decryptedMeeting) {
-          map.set(entry.original.id!, {
-            original: entry.original,
-            decoded: {
-              ...decryptedMeeting,
-              title: CalendarServiceHelper.getMeetingTitle(
-                currentAccount!.address,
-                decryptedMeeting!.participants
-              ),
+      if (!entry.decodedMeeting) {
+        const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
+          entry.original.meeting_info_file_path
+        )) as Encrypted
+        if (meetingInfoEncrypted) {
+          const decryptedMeeting = await decryptMeeting(
+            {
+              ...entry.original,
+              meeting_info_encrypted: meetingInfoEncrypted,
             },
-          })
+            currentAccount!
+          )
+
+          if (decryptedMeeting) {
+            map.set(entry.original.id!, {
+              original: entry.original,
+              decoded: {
+                ...decryptedMeeting,
+                title: CalendarServiceHelper.getMeetingTitle(
+                  currentAccount!.address,
+                  decryptedMeeting!.participants
+                ),
+              },
+            })
+          }
         }
       }
     }

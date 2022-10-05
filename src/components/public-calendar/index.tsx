@@ -45,6 +45,7 @@ import {
 } from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
+  Huddle01ServiceUnavailable,
   InvalidURL,
   MeetingCreationError,
   MeetingWithYourselfError,
@@ -340,6 +341,16 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         toast({
           title: 'Failed to schedule meeting',
           description: 'Please provide a valid url/link for your meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof Huddle01ServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
           status: 'error',
           duration: 5000,
           position: 'top',
