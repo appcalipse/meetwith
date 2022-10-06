@@ -81,13 +81,14 @@ import {
 } from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
+import { MeetingChangeType } from '../profile/Meetings'
 import { CancelMeetingDialog } from './cancel-dialog'
 import { MeetingDialogState } from './meeting.dialog.hook'
 
 export interface BaseMeetingDialogProps extends MeetingDialogState {
   isDialogOpen: boolean
   onDialogOpen: () => void
-  onDialogClose: (meeting?: DBSlot) => void
+  onDialogClose: (changeType: MeetingChangeType, meeting?: DBSlot) => void
 }
 
 export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
@@ -107,10 +108,12 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
 
   const toast = useToast()
 
-  const { isOpen, onClose } = useDisclosure()
+  const { isOpen, onOpen, onClose } = useDisclosure()
 
   const [participants, setParticipants] = useState(
-    decryptedMeeting?.participants || []
+    decryptedMeeting?.participants.filter(
+      p => p.account_address !== currentAccount?.address
+    ) || []
   )
 
   const [selectedDate, setDate] = useState(
@@ -312,7 +315,15 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
 
     setIsScheduling(true)
 
-    const _participants = await parseAccounts(participants)
+    const currentParticipant =
+      decryptedMeeting?.participants.filter(
+        p => p.account_address === currentAccount?.address
+      ) || []
+
+    const _participants = await parseAccounts([
+      ...participants,
+      ...currentParticipant,
+    ])
 
     if (_participants.invalid.length > 0) {
       toast({
@@ -370,16 +381,19 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         })
       }
 
-      onDialogClose({
-        id: meetingResult.id,
-        created_at: new Date(meetingResult.created_at),
-        account_address: currentAccount!.address,
-        meeting_info_file_path: meetingResult.meeting_info_file_path,
-        start: new Date(meetingResult.start),
-        end: new Date(meetingResult.end),
-        source: TimeSlotSource.MWW,
-        version: meetingResult.version,
-      })
+      onDialogClose(
+        !meeting?.id ? MeetingChangeType.CREATE : MeetingChangeType.UPDATE,
+        {
+          id: meetingResult.id,
+          created_at: new Date(meetingResult.created_at),
+          account_address: currentAccount!.address,
+          meeting_info_file_path: meetingResult.meeting_info_file_path,
+          start: new Date(meetingResult.start),
+          end: new Date(meetingResult.end),
+          source: TimeSlotSource.MWW,
+          version: meetingResult.version,
+        }
+      )
       return true
     } catch (e) {
       if (e instanceof MeetingWithYourselfError) {
@@ -454,7 +468,9 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     return false
   }
 
-  const cancelMeeting = () => {}
+  const cancelMeeting = () => {
+    onOpen()
+  }
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
@@ -678,7 +694,12 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         </ModalBody>
         <ModalFooter>
           {meeting?.id && (
-            <Button onClick={cancelMeeting} variant="outline">
+            <Button
+              colorScheme={'red'}
+              onClick={cancelMeeting}
+              variant="outline"
+              mr={4}
+            >
               Cancel meeting
             </Button>
           )}
@@ -696,7 +717,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         onClose={onClose}
         decriptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
-        afterCancel={onDialogClose}
+        afterCancel={() => onDialogClose(MeetingChangeType.DELETE)}
       />
     </Modal>
   )

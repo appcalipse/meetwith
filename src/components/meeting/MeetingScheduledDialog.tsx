@@ -62,7 +62,9 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
     )
   } else {
     participantsToDisplay = participants.filter(
-      participant => participant.account_address !== schedulerAccount?.address
+      participant =>
+        participant.account_address?.toLowerCase() !==
+        schedulerAccount?.address.toLowerCase()
     )
   }
 

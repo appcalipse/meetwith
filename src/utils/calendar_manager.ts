@@ -138,11 +138,17 @@ export const sanitizeParticipants = (
   return sanitized
 }
 
-const mapRelatedSlots = async (meeting: MeetingDecrypted) => {
+const mapRelatedSlots = async (
+  meeting: MeetingDecrypted,
+  currentAccountAddress: string
+) => {
   const accountSlot: { [account: string]: string } = {}
+  accountSlot[currentAccountAddress] = meeting.id
   for (const slotId of meeting.related_slot_ids) {
-    const slot = await getMeeting(slotId)
-    accountSlot[slot.account_address] = slotId
+    if (slotId !== meeting.id) {
+      const slot = await getMeeting(slotId)
+      accountSlot[slot.account_address] = slotId
+    }
   }
   return accountSlot
 }
@@ -160,7 +166,10 @@ const loadMeetingAccountAddresses = async (
     otherSlots.push(otherSlot)
   }
 
-  return [currentAccountAddress, ...otherSlots.map(it => it.account_address)]
+  return [
+    currentAccountAddress.toLowerCase(),
+    ...otherSlots.map(it => it.account_address.toLowerCase()),
+  ]
 }
 
 const buildMeetingData = async (
@@ -188,14 +197,6 @@ const buildMeetingData = async (
     }
   }
 
-  currentAccount &&
-    participants.push({
-      account_address: currentAccount.address,
-      type: ParticipantType.Scheduler,
-      status: ParticipationStatus.Accepted,
-      slot_id: '',
-    })
-
   const allAccounts: Account[] = await getExistingAccounts(
     participants.filter(p => p.account_address).map(p => p.account_address!)
   )
@@ -207,14 +208,8 @@ const buildMeetingData = async (
 
     for (const p of participant) {
       p.name = getAccountDisplayName(account)
-      p.status =
-        account.address.toLowerCase() === currentAccount?.address.toLowerCase()
-          ? ParticipationStatus.Accepted
-          : ParticipationStatus.Pending
-      p.type =
-        account.address.toLowerCase() === currentAccount?.address.toLowerCase()
-          ? ParticipantType.Scheduler
-          : p.type || ParticipantType.Invitee
+      p.status = p.status || ParticipationStatus.Pending
+      p.type = p.type || ParticipantType.Invitee
       p.slot_id = uuidv4()
     }
   }
@@ -222,7 +217,7 @@ const buildMeetingData = async (
   const sanitizedParticipants = sanitizeParticipants(participants)
 
   //Ensure all slot_ids are filled given we are messing with this all around
-  for (const participant of participants) {
+  for (const participant of sanitizedParticipants) {
     participant.slot_id = participant.slot_id || uuidv4()
   }
 
@@ -364,17 +359,23 @@ const updateMeeting = async (
   // those are the users that we need to remove the slots
   const toRemove = diff(
     existingMeetingAccounts,
-    participants.filter(p => p.account_address).map(p => p.account_address!)
+    participants
+      .filter(p => p.account_address)
+      .map(p => p.account_address!.toLowerCase())
   )
 
   // those are the users that we need to replace the slot contents
-  const toKeep = intersec(
-    existingMeetingAccounts,
-    participants.filter(p => p.account_address).map(p => p.account_address!)
-  )
+  const toKeep = intersec(existingMeetingAccounts, [
+    currentAccountAddress.toLowerCase(),
+    ...participants
+      .filter(p => p.account_address)
+      .map(p => p.account_address!.toLowerCase()),
+  ])
 
-  const accountSlotMap = await mapRelatedSlots(existingMeeting!)
-  accountSlotMap[currentAccount.address] = existingMeeting!.id
+  const accountSlotMap = await mapRelatedSlots(
+    existingMeeting!,
+    currentAccountAddress
+  )
 
   const oldGuests = decryptedMeeting.participants
     .filter(p => p.guest_email)

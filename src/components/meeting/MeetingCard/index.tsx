@@ -30,6 +30,7 @@ import {
   durationToHumanReadable,
   generateIcs,
 } from '@/utils/calendar_manager'
+import { isProduction } from '@/utils/constants'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
@@ -54,7 +55,7 @@ interface Label {
   text: string
 }
 
-const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-09-12')
+const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-10-01')
 
 const MeetingCard = ({
   meeting,
@@ -124,8 +125,7 @@ const MeetingCard = ({
 
   const showEdit =
     isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
-    isAfter(meeting.start, new Date()) &&
-    false //hide for now
+    isAfter(meeting.start, new Date())
 
   return (
     <>
@@ -288,6 +288,11 @@ const DecodedInfo: React.FC<{
           >
             Download .ics
           </Button>
+          {!isProduction && (
+            <Button onClick={() => console.debug(decryptedMeeting)}>
+              Log info (for debugging)
+            </Button>
+          )}
         </VStack>
       ) : (
         <HStack>
