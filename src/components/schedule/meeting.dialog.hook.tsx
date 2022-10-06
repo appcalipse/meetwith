@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 
 import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
 
+import { MeetingChangeType } from '../profile/Meetings'
 import { BaseMeetingDialog } from './base-dialog'
 
 export interface MeetingDialogState {
@@ -35,9 +36,12 @@ export const useMeetingDialog = () => {
     onOpen()
   }
 
-  const closeMeetingDialog = (meeting?: DBSlot) => {
+  const closeMeetingDialog = (
+    changeType: MeetingChangeType,
+    meeting?: DBSlot
+  ) => {
     onClose()
-    data.afterClose && data.afterClose(meeting)
+    data.afterClose && data.afterClose(changeType, meeting)
     setData({
       meeting: undefined,
       decryptedMeeting: undefined,

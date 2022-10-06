@@ -23,6 +23,11 @@ import { getMeeting, getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 
+export enum MeetingChangeType {
+  CREATE,
+  UPDATE,
+  DELETE,
+}
 const Meetings: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
   const [meetings, setMeetings] = useState<DBSlot[]>([])
@@ -113,7 +118,7 @@ const Meetings: React.FC = () => {
     slotId && fillMeeting()
   }, [slotId])
 
-  const afterClose = (meeting?: DBSlot) => {
+  const afterClose = (changeType: MeetingChangeType, meeting?: DBSlot) => {
     // not using router API to avoid re-rendinreing component
     history.pushState(null, '', window.location.pathname)
 
@@ -125,9 +130,25 @@ const Meetings: React.FC = () => {
             (m1.start as Date).getTime() - (m2.start as Date).getTime()
         )
       )
+
+      let title, description
+      switch (changeType) {
+        case MeetingChangeType.CREATE:
+          title = 'Scheduled'
+          description = 'Meeting scheduled successfully.'
+          break
+        case MeetingChangeType.UPDATE:
+          title = 'Updated'
+          description = 'Meeting updated successfully.'
+          break
+        case MeetingChangeType.DELETE:
+          title = 'Cancelled'
+          description = 'Meeting cancelled successfully.'
+          break
+      }
       toast({
-        title: 'Scheduled',
-        description: 'Meeting scheduled successfully.',
+        title,
+        description,
         status: 'success',
         duration: 5000,
         position: 'top',

@@ -1306,7 +1306,10 @@ const updateMeeting = async (
   // there is no support from suppabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts
-  const { data, error } = await db.supabase.from('slots').upsert(slots)
+
+  const { data, error } = await db.supabase
+    .from('slots')
+    .upsert(slots, { onConflict: 'id' })
 
   //TODO: handle error
   if (error) {
