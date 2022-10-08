@@ -13,7 +13,6 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import {
-  CreationRequestParticipantMapping,
   DBSlot,
   DBSlotEnhanced,
   IPFSMeetingInfo,
@@ -23,6 +22,7 @@ import {
   ParticipantMappingType,
   ParticipantType,
   ParticipationStatus,
+  RequestParticipantMapping,
   SchedulingType,
 } from '@/types/Meeting'
 import { Plan } from '@/types/Subscription'
@@ -272,7 +272,7 @@ const buildMeetingData = async (
       related_slot_ids: allSlotIds.filter(id => id !== participant.slot_id),
     } as IPFSMeetingInfo)
 
-    const participantMapping: CreationRequestParticipantMapping = {
+    const participantMapping: RequestParticipantMapping = {
       account_address: participant.account_address || '',
       // this is the actual slot id for this participant, we choose it before creation
       slot_id: participant.slot_id,

@@ -18,16 +18,11 @@ import { FaPlus } from 'react-icons/fa'
 import { decodeMeeting } from '@/utils/calendar_manager'
 
 import { AccountContext } from '../../providers/AccountProvider'
-import { DBSlot } from '../../types/Meeting'
+import { DBSlot, MeetingChangeType } from '../../types/Meeting'
 import { getMeeting, getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 
-export enum MeetingChangeType {
-  CREATE,
-  UPDATE,
-  DELETE,
-}
 const Meetings: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
   const [meetings, setMeetings] = useState<DBSlot[]>([])

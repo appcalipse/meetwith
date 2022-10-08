@@ -3,7 +3,11 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { getMeetingFromDB } from '@/utils/database'
-import { notifyForNewMeeting } from '@/utils/notification_helper'
+import {
+  notifyForMeetingCancellation,
+  notifyForMeetingUpdate,
+  notifyForNewMeeting,
+} from '@/utils/notification_helper'
 import { ExternalCalendarSync } from '@/utils/sync_helper'
 
 import {
@@ -50,7 +54,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
 
     try {
-      //     await notifyMeetingUpdate(meetingICS)
+      await notifyForMeetingUpdate(meetingICS)
     } catch (error) {
       Sentry.captureException(error)
     }
@@ -79,8 +83,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       guestsToRemove: ParticipantInfo[]
     }
 
+    const toRemove: string[] = []
     for (const slotId of payload.slotIds) {
       const owner = (await getMeetingFromDB(slotId)).account_address
+      toRemove.push(owner)
       try {
         await ExternalCalendarSync.delete(owner, [slotId])
       } catch (error) {
@@ -89,7 +95,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      //  await notifyMeetingCancelling(meetingICS, payload.guestsToRemove)
+      await notifyForMeetingCancellation(
+        meetingICS,
+        payload.guestsToRemove,
+        toRemove
+      )
     } catch (error) {
       Sentry.captureException(error)
     }

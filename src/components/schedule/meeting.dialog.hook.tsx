@@ -1,9 +1,8 @@
 import { useDisclosure } from '@chakra-ui/react'
 import React, { useState } from 'react'
 
-import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
+import { DBSlot, MeetingChangeType, MeetingDecrypted } from '@/types/Meeting'
 
-import { MeetingChangeType } from '../profile/Meetings'
 import { BaseMeetingDialog } from './base-dialog'
 
 export interface MeetingDialogState {

@@ -27,7 +27,7 @@ export interface MeetingUpdateRequest extends MeetingCreationRequest {
 
 export interface MeetingCreationRequest {
   type: SchedulingType
-  participants_mapping: CreationRequestParticipantMapping[]
+  participants_mapping: RequestParticipantMapping[]
   meetingTypeId: string
   start: Date
   end: Date
@@ -41,7 +41,7 @@ export enum ParticipantMappingType {
   KEEP = 'keep',
 }
 
-export interface CreationRequestParticipantMapping {
+export interface RequestParticipantMapping {
   account_address?: string
   slot_id: string
   type: ParticipantType
@@ -50,6 +50,7 @@ export interface CreationRequestParticipantMapping {
   timeZone: string
   name: string
   status: ParticipationStatus
+  meeting_id: string
   guest_email?: string
   mappingType?: ParticipantMappingType
 }
@@ -90,7 +91,7 @@ export interface ParticipantBaseInfo {
 
 export interface ParticipantInfo extends ParticipantBaseInfo {
   status: ParticipationStatus
-  slot_id: string
+  meeting_id: string
   name?: string
   guest_email?: string
 }
@@ -137,4 +138,10 @@ export interface GroupMeetingRequest {
   range_end?: Date
   title?: string
   team_structure: GroupMeetingParticipantsStructure
+}
+
+export enum MeetingChangeType {
+  CREATE,
+  UPDATE,
+  DELETE,
 }

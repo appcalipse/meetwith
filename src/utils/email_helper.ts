@@ -23,7 +23,6 @@ export const newMeetingEmail = async (
   timezone: string,
   start: Date,
   end: Date,
-  meeting_info_file_path: string,
   destinationAccountAddress?: string,
   meetingUrl?: string,
   id?: string | undefined,
@@ -62,7 +61,7 @@ export const newMeetingEmail = async (
       end: new Date(end),
       id: id as string,
       created_at: new Date(created_at as Date),
-      meeting_info_file_path,
+      meeting_info_file_path: '',
       participants,
       version: 0,
       related_slot_ids: [],
@@ -89,6 +88,77 @@ export const newMeetingEmail = async (
         disposition: 'attachment',
       },
     ],
+  }
+
+  try {
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+
+  return true
+}
+
+export const cancelledMeetingEmail = async (
+  toEmail: string,
+  timezone: string,
+  start: Date,
+  end: Date,
+  title?: string,
+  destinationAccountAddress?: string,
+  id?: string | undefined,
+  created_at?: Date
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    meeting: {
+      title,
+      start: dateToHumanReadable(start, timezone, true),
+      duration: durationToHumanReadable(differenceInMinutes(end, start)),
+    },
+  }
+
+  // TODO: add after having the meeting id so ics's are consistent
+  // const icsFile = generateIcs(
+  //   {
+  //     meeting_url: '',
+  //     start: new Date(start),
+  //     end: new Date(end),
+  //     id: id as string,
+  //     created_at: new Date(created_at as Date),
+  //     meeting_info_file_path: '',
+  //     [],
+  //     version: 0,
+  //     related_slot_ids: [],
+  //   },
+  //   destinationAccountAddress || ''
+  // )
+
+  // if (icsFile.error) {
+  //   Sentry.captureException(icsFile.error)
+  //   return false
+  // }
+
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'meeting_cancelled')}`,
+    locals
+  )
+
+  const msg: sgMail.MailDataRequired = {
+    to: toEmail,
+    from: FROM,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    // attachments: [
+    //   {
+    //     content: Buffer.from(icsFile.value!).toString('base64'),
+    //     filename: `meeting_${id}.ics`,
+    //     type: 'text/plain',
+    //     disposition: 'attachment',
+    //   },
+    // ],
   }
 
   try {
