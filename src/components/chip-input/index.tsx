@@ -62,6 +62,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
             status: ParticipationStatus.Pending,
             type: ParticipantType.Invitee,
             slot_id: '',
+            meeting_id: '',
           }
         } else if (isValidEmail(_item)) {
           return {
@@ -69,6 +70,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
             status: ParticipationStatus.Pending,
             type: ParticipantType.Invitee,
             slot_id: '',
+            meeting_id: '',
           }
         } else {
           return {
@@ -76,6 +78,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
             status: ParticipationStatus.Pending,
             type: ParticipantType.Invitee,
             slot_id: '',
+            meeting_id: '',
           }
         }
       }),
