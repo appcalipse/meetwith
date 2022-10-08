@@ -221,6 +221,7 @@ export default class Office365CalendarService implements CalendarService {
         account_address: participant.account_address,
         status: participant.status,
         slot_id,
+        meeting_id: '',
       }))
 
     const payload = {

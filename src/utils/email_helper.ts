@@ -60,6 +60,7 @@ export const newMeetingEmail = async (
       start: new Date(start),
       end: new Date(end),
       id: id as string,
+      meeting_id: '', // todo: provide the real meeting id here when implement the embedded url
       created_at: new Date(created_at as Date),
       meeting_info_file_path: '',
       participants,
