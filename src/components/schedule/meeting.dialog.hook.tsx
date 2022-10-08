@@ -10,7 +10,7 @@ export interface MeetingDialogState {
   meeting?: DBSlot
   timezone: string
   decryptedMeeting?: MeetingDecrypted
-  afterClose?: (meeting?: DBSlot) => void
+  afterClose?: (changeType: MeetingChangeType, meeting?: DBSlot) => void
 }
 
 export const useMeetingDialog = () => {
