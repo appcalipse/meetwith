@@ -89,7 +89,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      await notifyMeetingCancelling(meetingICS, payload.guestsToRemove)
+      //  await notifyMeetingCancelling(meetingICS, payload.guestsToRemove)
     } catch (error) {
       Sentry.captureException(error)
     }
