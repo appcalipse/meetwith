@@ -37,7 +37,7 @@ const Loading: React.FC<{ label?: string }> = ({ label }) => {
       </Box>
 
       <Text fontSize="sm" pt="7rem">
-        {label ? label : 'Loading...'}
+        {label !== undefined ? label : 'Loading...'}
       </Text>
     </Box>
   )

@@ -185,6 +185,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
             account_address: address,
             type: ParticipantType.Invitee,
             slot_id: '',
+            meeting_id: '',
             status: ParticipationStatus.Pending,
           })
         } else {
