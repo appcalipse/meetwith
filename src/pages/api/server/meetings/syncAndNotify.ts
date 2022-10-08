@@ -50,7 +50,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
 
     try {
-      await notifyForNewMeeting(meetingICS)
+      //     await notifyMeetingUpdate(meetingICS)
     } catch (error) {
       Sentry.captureException(error)
     }
@@ -66,6 +66,14 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(200).send(true)
     return
   } else if (req.method === 'DELETE') {
+    const meetingICS = JSON.parse(req.body) as MeetingICS
+
+    meetingICS.db_slot.start = new Date(meetingICS.db_slot.start)
+    meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
+    meetingICS.db_slot.created_at = new Date(meetingICS.db_slot.created_at!)
+    meetingICS.db_slot.start = new Date(meetingICS.db_slot.start)
+    meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
+
     const payload = JSON.parse(req.body) as {
       slotIds: string[]
       guestsToRemove: ParticipantInfo[]
@@ -78,6 +86,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       } catch (error) {
         Sentry.captureException(error)
       }
+    }
+
+    try {
+      await notifyMeetingCancelling(meetingICS, payload.guestsToRemove)
+    } catch (error) {
+      Sentry.captureException(error)
     }
 
     res.status(200).send(true)

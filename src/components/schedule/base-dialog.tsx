@@ -477,7 +477,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
 
   return (
     <Modal
-      onClose={onDialogClose}
+      onClose={() => onDialogClose(MeetingChangeType.CREATE)}
       isOpen={isDialogOpen}
       blockScrollOnMount={false}
       size="xl"
