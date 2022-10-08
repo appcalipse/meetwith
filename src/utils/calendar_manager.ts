@@ -28,6 +28,7 @@ import {
 import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
+  createHuddleRoom,
   fetchContentFromIPFSFromBrowser,
   getAccount,
   getExistingAccounts,
@@ -50,7 +51,6 @@ import {
   TimeNotAvailableError,
 } from './errors'
 import { getSlugFromText } from './generic_utils'
-import { generateMeetingUrl } from './meeting_call_helper'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
@@ -251,7 +251,7 @@ const buildMeetingData = async (
     created_at: new Date(),
     participants: sanitizedParticipants,
     content: meetingContent,
-    meeting_url: meetingUrl || (await generateMeetingUrl()),
+    meeting_url: meetingUrl || (await createHuddleRoom()).url,
     change_history_paths: [],
     related_slot_ids: [],
     meeting_id: meetingId,
