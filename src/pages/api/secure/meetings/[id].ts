@@ -6,6 +6,7 @@ import {
   DBSlotEnhanced,
   MeetingDecrypted,
   MeetingUpdateRequest,
+  ParticipantInfo,
 } from '@/types/Meeting'
 import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
 import {
@@ -88,8 +89,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     // load the original slot information that is already stored in the database
     const slotsToRemove = [slotId, ...(decrypted.related_slot_ids || [])]
 
+    const guestsToRemove = decrypted.participants.filter(p => p.guest_email)
+
     try {
-      await deleteMeetingFromDB(req.session.account!.address, slotsToRemove)
+      await deleteMeetingFromDB(slotsToRemove, guestsToRemove)
       res.status(200).json({ removed: slotsToRemove })
     } catch (e) {
       console.error(e)
