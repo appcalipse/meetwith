@@ -183,7 +183,8 @@ const buildMeetingData = async (
   },
   currentAccount?: Account | null,
   meetingContent?: string,
-  meetingUrl?: string
+  meetingUrl?: string,
+  meetingId = ''
 ) => {
   if (meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -196,6 +197,17 @@ const buildMeetingData = async (
       }
     }
   }
+
+  currentAccount &&
+    participants.push({
+      account_address: currentAccount.address,
+      type: ParticipantType.Scheduler,
+      status: ParticipationStatus.Accepted,
+      slot_id: '',
+      // every db slot should point to the central meeting
+      // but the meeting is not directly connected to the db slot (because of the encryption)
+      meeting_id: meetingId,
+    })
 
   const allAccounts: Account[] = await getExistingAccounts(
     participants.filter(p => p.account_address).map(p => p.account_address!)
@@ -245,6 +257,7 @@ const buildMeetingData = async (
     meeting_url: meetingUrl || (await createHuddleRoom()).url,
     change_history_paths: [],
     related_slot_ids: [],
+    meeting_id: meetingId,
   }
 
   // first pass to make sure that we are keeping the existing slot id
@@ -277,6 +290,7 @@ const buildMeetingData = async (
       // this is the actual slot id for this participant, we choose it before creation
       slot_id: participant.slot_id,
       type: participant.type,
+      meeting_id: meetingId,
       privateInfo: await encryptWithPublicKey(encodingKey, privateInfoComplete),
       // store a hash of the original data in order to be able to determine in the
       // future if the user is th
@@ -299,6 +313,7 @@ const buildMeetingData = async (
     type: schedulingType,
     start: startTime,
     end: endTime,
+    meeting_id: meetingId,
     participants_mapping: participantsMappings,
     meetingTypeId,
     meeting_url: privateInfo['meeting_url'],
@@ -399,6 +414,7 @@ const updateMeeting = async (
     guestsToRemoveEmails.includes(p.guest_email!)
   )
 
+  const rootMeetingId = existingMeeting?.meeting_id
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     meetingTypeId,
@@ -411,7 +427,8 @@ const updateMeeting = async (
     }, {}),
     currentAccount,
     content,
-    decryptedMeeting.meeting_url
+    decryptedMeeting.meeting_url,
+    rootMeetingId
   )
   const payload = {
     ...meetingData,
@@ -491,6 +508,7 @@ const scheduleMeeting = async (
   meetingContent?: string,
   meetingUrl?: string
 ): Promise<MeetingDecrypted> => {
+  const newMeetingId = uuidv4()
   const meeting = await buildMeetingData(
     schedulingType,
     meetingTypeId,
@@ -500,7 +518,8 @@ const scheduleMeeting = async (
     {},
     currentAccount,
     meetingContent,
-    meetingUrl
+    meetingUrl,
+    newMeetingId
   )
 
   const owner = meeting.participants_mapping.filter(
@@ -536,6 +555,7 @@ const scheduleMeeting = async (
         created_at: meeting.start,
         participants: meeting.participants_mapping,
         content: meeting.content,
+        meeting_id: newMeetingId,
         meeting_url: meeting.meeting_url,
         start: meeting.start,
         end: meeting.end,
@@ -650,6 +670,7 @@ const decryptMeeting = async (
   return {
     id: meeting.id!,
     ...meeting,
+    meeting_id: meetingInfo.meeting_id,
     created_at: meeting.created_at!,
     participants: meetingInfo.participants,
     content: meetingInfo.content,

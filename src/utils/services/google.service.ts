@@ -116,6 +116,7 @@ export default class GoogleCalendarService implements CalendarService {
             account_address: participant.account_address,
             status: participant.status,
             slot_id,
+            meeting_id: '',
           }))
 
         const payload: calendar_v3.Schema$Event = {
@@ -231,6 +232,7 @@ export default class GoogleCalendarService implements CalendarService {
           account_address: participant.account_address,
           status: participant.status,
           slot_id,
+          meeting_id: '',
         }))
 
       const payload: calendar_v3.Schema$Event = {

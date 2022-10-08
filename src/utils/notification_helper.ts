@@ -110,6 +110,7 @@ const setupParticipants = async (
         timezone: map.timeZone,
         type: map.type,
         guest_email: map.guest_email,
+        meeting_id: map.meeting_id,
         notifications: map.account_address
           ? await getAccountNotificationSubscriptions(map.account_address)
           : undefined,

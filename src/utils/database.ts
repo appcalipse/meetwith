@@ -30,11 +30,14 @@ import {
   ConnectedCalendarCorePayload,
 } from '../types/CalendarConnections'
 import {
+  ConferenceMeeting,
   DBSlot,
   DBSlotEnhanced,
   GroupMeetingRequest,
+  MeetingAccessType,
   MeetingCreationRequest,
   MeetingICS,
+  MeetingProvider,
   MeetingUpdateRequest,
   ParticipantInfo,
   ParticipantMappingType,
@@ -480,6 +483,26 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
   return meeting
 }
 
+const getConferenceMeetingFromDB = async (
+  meetingId: string
+): Promise<ConferenceMeeting> => {
+  const { data, error } = await db.supabase
+    .from('meetings')
+    .select()
+    .eq('id', meetingId)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  if (data.length == 0) {
+    throw new MeetingNotFoundError(meetingId)
+  }
+
+  const dbMeeting = data[0] as ConferenceMeeting
+  return dbMeeting
+}
+
 const getMeetingsFromDB = async (
   slotIds: string[]
 ): Promise<DBSlotEnhanced[]> => {
@@ -600,6 +623,28 @@ const saveMeeting = async (
         throw new GateConditionNotValidError()
       }
     }
+  }
+
+  // TODO: for now
+  let meetingProvider = MeetingProvider.CUSTOM
+  if (meeting.meeting_url.includes('huddle')) {
+    meetingProvider = MeetingProvider.HUDDLE
+  }
+
+  // we create here the root meeting data, with enough data
+  const createdRootMeeting = await saveConferenceMeetingToDB({
+    id: meeting.meeting_id,
+    start: meeting.start,
+    end: meeting.end,
+    meeting_url: meeting.meeting_url,
+    access_type: MeetingAccessType.OPEN_MEETING,
+    provider: meetingProvider,
+  })
+
+  if (!createdRootMeeting) {
+    throw new Error(
+      'Could not create your meeting right now, get in touch with us if the problem persists'
+    )
   }
 
   for (const participant of meeting.participants_mapping) {
@@ -761,6 +806,24 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
     {
       email,
       plan,
+    },
+  ])
+
+  if (!error) {
+    return true
+  }
+  Sentry.captureException(error)
+
+  return false
+}
+
+const saveConferenceMeetingToDB = async (
+  payload: Omit<ConferenceMeeting, 'created_at'>
+): Promise<boolean> => {
+  const { _, error } = await db.supabase.from('meetings').upsert([
+    {
+      ...payload,
+      created_at: new Date(),
     },
   ])
 
@@ -1326,6 +1389,28 @@ const updateMeeting = async (
     meeting: meetingUpdateRequest,
   }
 
+  // TODO: for now
+  let meetingProvider = MeetingProvider.CUSTOM
+  if (meetingUpdateRequest.meeting_url.includes('huddle')) {
+    meetingProvider = MeetingProvider.HUDDLE
+  }
+
+  // now that everything happened without error, it is safe to update the root meeting data
+  const createdRootMeeting = await saveConferenceMeetingToDB({
+    id: meetingUpdateRequest.meeting_id,
+    start: meetingUpdateRequest.start,
+    end: meetingUpdateRequest.end,
+    meeting_url: meetingUpdateRequest.meeting_url,
+    access_type: MeetingAccessType.OPEN_MEETING,
+    provider: meetingProvider,
+  })
+
+  if (!createdRootMeeting) {
+    throw new Error(
+      'Could not update your meeting right now, get in touch with us if the problem persists'
+    )
+  }
+
   // Doing ntifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'PATCH',
@@ -1373,6 +1458,7 @@ export {
   getAccountNonce,
   getAccountNotificationSubscriptions,
   getAppToken,
+  getConferenceMeetingFromDB,
   getConnectedCalendars,
   getExistingAccountsFromDB,
   getGateCondition,
@@ -1384,6 +1470,7 @@ export {
   initDB,
   isSlotFree,
   removeConnectedCalendar,
+  saveConferenceMeetingToDB,
   saveEmailToDB,
   saveMeeting,
   selectTeamMeetingRequest,
