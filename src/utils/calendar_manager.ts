@@ -377,19 +377,27 @@ const updateMeeting = async (
     currentAccountAddress
   )
 
-  const oldGuests = decryptedMeeting.participants
-    .filter(p => p.guest_email)
-    .map(p => p.guest_email!)
+  const oldGuests = decryptedMeeting.participants.filter(p => p.guest_email)
 
   const guests = participants
     .filter(p => p.guest_email)
     .map(p => p.guest_email!)
 
   // those are the guests that must receive an update email
-  const guestsToKeep = intersec(oldGuests, guests)
+  const guestsToKeep = intersec(
+    oldGuests.map(p => p.guest_email!),
+    guests
+  )
 
   // those are the guests that must receive a cancel email
-  const guestsToRemove = diff(oldGuests, guests)
+  const guestsToRemoveEmails = diff(
+    oldGuests.map(p => p.guest_email!),
+    guests
+  )
+
+  const guestsToRemove = oldGuests.filter(p =>
+    guestsToRemoveEmails.includes(p.guest_email!)
+  )
 
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,

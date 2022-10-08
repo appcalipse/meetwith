@@ -36,6 +36,7 @@ import {
   MeetingCreationRequest,
   MeetingICS,
   MeetingUpdateRequest,
+  ParticipantInfo,
   ParticipantMappingType,
   ParticipantType,
   TimeSlotSource,
@@ -510,7 +511,10 @@ const getMeetingsFromDB = async (
   return meetings
 }
 
-const deleteMeetingFromDB = async (owner: string, slotIds: string[]) => {
+const deleteMeetingFromDB = async (
+  slotIds: string[],
+  guestsToRemove: ParticipantInfo[]
+) => {
   if (!slotIds?.length) {
     throw new Error('No slot ids provided')
   }
@@ -520,22 +524,22 @@ const deleteMeetingFromDB = async (owner: string, slotIds: string[]) => {
     .delete()
     .in('id', slotIds)
 
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error(error)
+  }
+
   // Doing ntifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'DELETE',
     body: JSON.stringify({
-      owner,
       slotIds,
+      guestsToRemove,
     }),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
     },
   })
-
-  if (error) {
-    Sentry.captureException(error)
-    throw new Error(error)
-  }
 }
 
 const saveMeeting = async (
@@ -1286,8 +1290,6 @@ const updateMeeting = async (
         }
       }
       i++
-    } else {
-      // TODO: update guests
     }
   }
 
@@ -1332,6 +1334,16 @@ const updateMeeting = async (
       'X-Server-Secret': process.env.SERVER_SECRET!,
     },
   })
+
+  if (
+    meetingUpdateRequest.slotsToRemove.length > 0 ||
+    meetingUpdateRequest.guestsToRemove.length > 0
+  ) {
+    deleteMeetingFromDB(
+      meetingUpdateRequest.slotsToRemove,
+      meetingUpdateRequest.guestsToRemove
+    )
+  }
 
   return meetingResponse
 }

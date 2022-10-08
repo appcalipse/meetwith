@@ -22,6 +22,8 @@ export interface ParticipantInfoForNotification extends ParticipantInfo {
   notifications?: AccountNotifications
 }
 
+export const notifyForMeetingUpdate = async (meeting_ics: MeetingICS) => {}
+
 export const notifyForNewMeeting = async (
   meeting_ics: MeetingICS
 ): Promise<void> => {

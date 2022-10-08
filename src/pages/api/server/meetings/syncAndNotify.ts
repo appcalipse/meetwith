@@ -2,10 +2,15 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { getMeetingFromDB } from '@/utils/database'
 import { notifyForNewMeeting } from '@/utils/notification_helper'
 import { ExternalCalendarSync } from '@/utils/sync_helper'
 
-import { MeetingICS, MeetingUpdateRequest } from '../../../../types/Meeting'
+import {
+  MeetingICS,
+  MeetingUpdateRequest,
+  ParticipantInfo,
+} from '../../../../types/Meeting'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -44,7 +49,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     meetingICS.db_slot.start = new Date(meetingICS.db_slot.start)
     meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
 
-    // TODO: implement different emails and notifications when a meeting is updated, depending on the update
+    try {
+      await notifyForNewMeeting(meetingICS)
+    } catch (error) {
+      Sentry.captureException(error)
+    }
+
     try {
       await ExternalCalendarSync.update(
         meetingICS.meeting as MeetingUpdateRequest
@@ -58,13 +68,16 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   } else if (req.method === 'DELETE') {
     const payload = JSON.parse(req.body) as {
       slotIds: string[]
-      owner: string
+      guestsToRemove: ParticipantInfo[]
     }
 
-    try {
-      await ExternalCalendarSync.delete(payload.owner, payload.slotIds)
-    } catch (error) {
-      Sentry.captureException(error)
+    for (const slotId of payload.slotIds) {
+      const owner = (await getMeetingFromDB(slotId)).account_address
+      try {
+        await ExternalCalendarSync.delete(owner, [slotId])
+      } catch (error) {
+        Sentry.captureException(error)
+      }
     }
 
     res.status(200).send(true)
