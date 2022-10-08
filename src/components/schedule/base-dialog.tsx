@@ -50,6 +50,7 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { SimpleAccountInfo } from '@/types/Account'
 import {
   DBSlot,
+  MeetingChangeType,
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
@@ -81,7 +82,6 @@ import {
 } from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
-import { MeetingChangeType } from '../profile/Meetings'
 import { CancelMeetingDialog } from './cancel-dialog'
 import { MeetingDialogState } from './meeting.dialog.hook'
 
