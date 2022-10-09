@@ -1,5 +1,5 @@
 import { NewCalendarEventType } from '@/types/CalendarConnections'
-import { MeetingCreationRequest, MeetingUpdateRequest } from '@/types/Meeting'
+import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
@@ -15,8 +15,8 @@ export interface CalendarService {
    */
   createEvent(
     owner: string,
-    details: MeetingCreationRequest,
-    slot_id: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_id: string,
     meeting_creation_time: Date
   ): Promise<NewCalendarEventType>
 
@@ -37,8 +37,8 @@ export interface CalendarService {
    */
   updateEvent(
     calendarOwnerAccountAddress: string,
-    slot_id: string,
-    details: MeetingUpdateRequest
+    meeting_id: string,
+    meetingDetails: MeetingCreationSyncRequest
   ): Promise<NewCalendarEventType>
 
   /**

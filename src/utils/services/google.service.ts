@@ -3,19 +3,15 @@ import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2clien
 import { Auth, calendar_v3, google } from 'googleapis'
 
 import { NewCalendarEventType } from '@/types/CalendarConnections'
-import {
-  MeetingCreationRequest,
-  MeetingUpdateRequest,
-  ParticipantInfo,
-  ParticipationStatus,
-  TimeSlotSource,
-} from '@/types/Meeting'
+import { TimeSlotSource } from '@/types/Meeting'
+import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
+import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { apiUrl, NO_REPLY_EMAIL } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
-import { CalendarService } from './common.types'
+import { CalendarService } from './calendar.service.types'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
@@ -103,39 +99,39 @@ export default class GoogleCalendarService implements CalendarService {
 
   async createEvent(
     calendarOwnerAccountAddress: string,
-    details: MeetingCreationRequest,
-    slot_id: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_id: string,
     meeting_creation_time: Date
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
         const participantsInfo: ParticipantInfo[] =
-          details.participants_mapping.map(participant => ({
+          meetingDetails.participants.map(participant => ({
             type: participant.type,
             name: participant.name,
             account_address: participant.account_address,
             status: participant.status,
-            slot_id,
-            meeting_id: '',
+            slot_id: '',
+            meeting_id,
           }))
 
         const payload: calendar_v3.Schema$Event = {
           // yes, google event ids allows only letters and numbers
-          id: slot_id.replaceAll('-', ''), // required to edit events later
+          id: meeting_id.replaceAll('-', ''), // required to edit events later
           summary: CalendarServiceHelper.getMeetingTitle(
             calendarOwnerAccountAddress,
             participantsInfo
           ),
           description: CalendarServiceHelper.getMeetingSummary(
-            details.content,
-            details.meeting_url
+            meetingDetails.content,
+            meetingDetails.meeting_url
           ),
           start: {
-            dateTime: new Date(details.start).toISOString(),
+            dateTime: new Date(meetingDetails.start).toISOString(),
             timeZone: 'UTC',
           },
           end: {
-            dateTime: new Date(details.end).toISOString(),
+            dateTime: new Date(meetingDetails.end).toISOString(),
             timeZone: 'UTC',
           },
           created: new Date(meeting_creation_time).toISOString(),
@@ -153,18 +149,18 @@ export default class GoogleCalendarService implements CalendarService {
             entryPoints: [
               {
                 entryPointType: 'video',
-                uri: details.meeting_url,
+                uri: meetingDetails.meeting_url,
               },
             ],
           },
           status: 'confirmed',
         }
 
-        if (details.meeting_url) {
-          payload['location'] = details.meeting_url
+        if (meetingDetails.meeting_url) {
+          payload['location'] = meetingDetails.meeting_url
         }
 
-        for (const participant of details.participants_mapping) {
+        for (const participant of meetingDetails.participants) {
           payload.attendees!.push({
             email:
               participant.guest_email ||
@@ -201,9 +197,9 @@ export default class GoogleCalendarService implements CalendarService {
               return reject(err)
             }
             return resolve({
-              uid: slot_id,
+              uid: meeting_id,
               ...event.data,
-              id: slot_id,
+              id: meeting_id,
               additionalInfo: {
                 hangoutLink: event.data.hangoutLink || '',
               },
@@ -219,38 +215,38 @@ export default class GoogleCalendarService implements CalendarService {
 
   async updateEvent(
     calendarOwnerAccountAddress: string,
-    slot_id: string,
-    details: MeetingUpdateRequest
+    meeting_id: string,
+    meetingDetails: MeetingCreationSyncRequest
   ): Promise<NewCalendarEventType> {
     return new Promise(async (resolve, reject) => {
       const auth = await this.auth
       const myGoogleAuth = await auth.getToken()
       const participantsInfo: ParticipantInfo[] =
-        details.participants_mapping.map(participant => ({
+        meetingDetails.participants.map(participant => ({
           type: participant.type,
           name: participant.name,
           account_address: participant.account_address,
           status: participant.status,
-          slot_id,
-          meeting_id: '',
+          slot_id: '',
+          meeting_id,
         }))
 
       const payload: calendar_v3.Schema$Event = {
-        id: slot_id.replaceAll('-', ''), // required to edit events later
+        id: meeting_id.replaceAll('-', ''), // required to edit events later
         summary: CalendarServiceHelper.getMeetingTitle(
           calendarOwnerAccountAddress,
           participantsInfo
         ),
         description: CalendarServiceHelper.getMeetingSummary(
-          details.content,
-          details.meeting_url
+          meetingDetails.content,
+          meetingDetails.meeting_url
         ),
         start: {
-          dateTime: new Date(details.start).toISOString(),
+          dateTime: new Date(meetingDetails.start).toISOString(),
           timeZone: 'UTC',
         },
         end: {
-          dateTime: new Date(details.end).toISOString(),
+          dateTime: new Date(meetingDetails.end).toISOString(),
           timeZone: 'UTC',
         },
         attendees: [],
@@ -263,11 +259,11 @@ export default class GoogleCalendarService implements CalendarService {
         },
       }
 
-      if (details.meeting_url) {
-        payload['location'] = details.meeting_url
+      if (meetingDetails.meeting_url) {
+        payload['location'] = meetingDetails.meeting_url
       }
 
-      const guest = details.participants_mapping.find(
+      const guest = meetingDetails.participants.find(
         participant => participant.guest_email
       )
 
@@ -287,7 +283,7 @@ export default class GoogleCalendarService implements CalendarService {
         {
           auth: myGoogleAuth,
           calendarId: 'primary',
-          eventId: slot_id,
+          eventId: meeting_id,
           sendNotifications: true,
           sendUpdates: 'all',
           requestBody: payload,
@@ -302,9 +298,9 @@ export default class GoogleCalendarService implements CalendarService {
             return reject(err)
           }
           return resolve({
-            uid: slot_id,
+            uid: meeting_id,
             ...event?.data,
-            id: slot_id,
+            id: meeting_id,
             additionalInfo: {
               hangoutLink: event?.data.hangoutLink || '',
             },
@@ -317,7 +313,7 @@ export default class GoogleCalendarService implements CalendarService {
     })
   }
 
-  async deleteEvent(slot_id: string): Promise<void> {
+  async deleteEvent(meeting_id: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
       const auth = await this.auth
       const myGoogleAuth = await auth.getToken()
@@ -330,7 +326,7 @@ export default class GoogleCalendarService implements CalendarService {
         {
           auth: myGoogleAuth,
           calendarId: 'primary',
-          eventId: slot_id.replaceAll('-', ''),
+          eventId: meeting_id.replaceAll('-', ''),
           sendNotifications: true,
           sendUpdates: 'all',
         },
@@ -340,6 +336,7 @@ export default class GoogleCalendarService implements CalendarService {
              *  410 is when an event is already deleted on the Google cal before on cal.com
              *  404 is when the event is on a different calendar
              */
+            console.log(err)
             if (err.code === 410) return resolve()
             console.error(
               'There was an error contacting google calendar service: ',

@@ -18,11 +18,8 @@ import {
 import router from 'next/router'
 import { FaBell } from 'react-icons/fa'
 
-import {
-  MeetingDecrypted,
-  ParticipantInfo,
-  SchedulingType,
-} from '@/types/Meeting'
+import { MeetingDecrypted, SchedulingType } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { dateToHumanReadable } from '@/utils/calendar_manager'
 import { getMeetingsScheduled } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'

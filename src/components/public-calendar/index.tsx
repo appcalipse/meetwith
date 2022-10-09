@@ -26,11 +26,13 @@ import {
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
+  SchedulingType,
+} from '@/types/Meeting'
+import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
-  SchedulingType,
-} from '@/types/Meeting'
+} from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
   fetchBusySlotsForMultipleAccounts,

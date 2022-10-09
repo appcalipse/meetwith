@@ -14,15 +14,12 @@ import {
 } from 'tsdav'
 
 import { NewCalendarEventType } from '@/types/CalendarConnections'
-import {
-  MeetingCreationRequest,
-  MeetingUpdateRequest,
-  ParticipantInfo,
-} from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { generateIcs } from '../calendar_manager'
 import { decryptContent } from '../cryptography'
-import { CalendarService } from './common.types'
+import { CalendarService } from './calendar.service.types'
 
 // ical.js has no ts typing
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -101,30 +98,30 @@ export default class CaldavCalendarService implements CalendarService {
    */
   async createEvent(
     calendarOwnerAccountAddress: string,
-    details: MeetingCreationRequest,
-    slot_id: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_id: string,
     meeting_creation_time: Date
   ): Promise<NewCalendarEventType> {
     try {
       const calendars = await this.listCalendars()
 
       const participantsInfo: ParticipantInfo[] =
-        details.participants_mapping.map(participant => ({
+        meetingDetails.participants.map(participant => ({
           type: participant.type,
           name: participant.name,
           account_address: participant.account_address,
           status: participant.status,
-          slot_id,
-          meeting_id: '',
+          slot_id: '',
+          meeting_id,
         }))
 
       const ics = generateIcs(
         {
-          meeting_url: details.meeting_url,
-          start: new Date(details.start),
-          end: new Date(details.end),
-          id: slot_id, // keep using slot id as meeting id for now
-          meeting_id: '',
+          meeting_url: meetingDetails.meeting_url,
+          start: new Date(meetingDetails.start),
+          end: new Date(meetingDetails.end),
+          id: meeting_id,
+          meeting_id,
           created_at: new Date(meeting_creation_time),
           meeting_info_file_path: '',
           participants: participantsInfo,
@@ -141,7 +138,7 @@ export default class CaldavCalendarService implements CalendarService {
         calendars.map(calendar =>
           createCalendarObject({
             calendar,
-            filename: `${slot_id}.ics`,
+            filename: `${meeting_id}.ics`,
             // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
             iCalString: Buffer.from(ics.value!).toString('base64'),
             headers: this.headers,
@@ -158,8 +155,8 @@ export default class CaldavCalendarService implements CalendarService {
       }
 
       return {
-        uid: slot_id,
-        id: slot_id,
+        uid: meeting_id,
+        id: meeting_id,
         type: 'Cal Dav',
         password: '',
         url: '',
@@ -174,13 +171,13 @@ export default class CaldavCalendarService implements CalendarService {
   async updateEvent(
     owner: string,
     slot_id: string,
-    details: MeetingUpdateRequest
+    meetingDetails: MeetingCreationSyncRequest
   ): Promise<NewCalendarEventType> {
     try {
       const events = await this.getEventsByUID(slot_id)
 
       const participantsInfo: ParticipantInfo[] =
-        details.participants_mapping.map(participant => ({
+        meetingDetails.participants.map(participant => ({
           type: participant.type,
           name: participant.name,
           account_address: participant.account_address,
@@ -191,9 +188,9 @@ export default class CaldavCalendarService implements CalendarService {
 
       const ics = generateIcs(
         {
-          meeting_url: details.meeting_url,
-          start: new Date(details.start),
-          end: new Date(details.end),
+          meeting_url: meetingDetails.meeting_url,
+          start: new Date(meetingDetails.start),
+          end: new Date(meetingDetails.end),
           id: slot_id,
           created_at: new Date(),
           meeting_info_file_path: '',

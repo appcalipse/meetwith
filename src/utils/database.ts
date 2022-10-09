@@ -35,15 +35,22 @@ import {
   DBSlotEnhanced,
   GroupMeetingRequest,
   MeetingAccessType,
-  MeetingCreationRequest,
   MeetingICS,
   MeetingProvider,
-  MeetingUpdateRequest,
-  ParticipantInfo,
   ParticipantMappingType,
-  ParticipantType,
   TimeSlotSource,
 } from '../types/Meeting'
+import {
+  ParticipantBaseInfo,
+  ParticipantInfo,
+  ParticipantType,
+} from '../types/ParticipantInfo'
+import {
+  MeetingCancelSyncRequest,
+  MeetingCreationRequest,
+  MeetingCreationSyncRequest,
+  MeetingUpdateRequest,
+} from '../types/Requests'
 import { Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
@@ -535,12 +542,19 @@ const getMeetingsFromDB = async (
 }
 
 const deleteMeetingFromDB = async (
+  participantActing: ParticipantBaseInfo,
   slotIds: string[],
-  guestsToRemove: ParticipantInfo[]
+  guestsToRemove: ParticipantInfo[],
+  meeting_id: string,
+  timezone: string
 ) => {
   if (!slotIds?.length) {
     throw new Error('No slot ids provided')
   }
+
+  const oldSlots: DBSlot[] = (
+    await db.supabase.from('slots').select().in('id', slotIds)
+  ).data
 
   const { data, error } = await db.supabase
     .from('slots')
@@ -552,13 +566,20 @@ const deleteMeetingFromDB = async (
     throw new Error(error)
   }
 
+  const body: MeetingCancelSyncRequest = {
+    participantActing,
+    addressesToRemove: oldSlots.map(s => s.account_address),
+    guestsToRemove,
+    meeting_id,
+    start: new Date(oldSlots[0].start),
+    end: new Date(oldSlots[0].end),
+    created_at: new Date(oldSlots[0].created_at!),
+    timezone,
+  }
   // Doing ntifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'DELETE',
-    body: JSON.stringify({
-      slotIds,
-      guestsToRemove,
-    }),
+    body: JSON.stringify(body),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
     },
@@ -566,6 +587,7 @@ const deleteMeetingFromDB = async (
 }
 
 const saveMeeting = async (
+  participantActing: ParticipantBaseInfo,
   meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
   if (
@@ -646,7 +668,7 @@ const saveMeeting = async (
       'Could not create your meeting right now, get in touch with us if the problem persists'
     )
   }
-
+  const timezone = meeting.participants_mapping[0].timeZone
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
       if (
@@ -743,15 +765,22 @@ const saveMeeting = async (
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
-  const meetingICS: MeetingICS = {
-    db_slot: meetingResponse,
-    meeting,
+  const body: MeetingCreationSyncRequest = {
+    participantActing,
+    meeting_id: meeting.meeting_id,
+    start: meeting.start,
+    end: meeting.end,
+    created_at: meetingResponse.created_at!,
+    timezone,
+    meeting_url: meeting.meeting_url,
+    participants: meeting.participants_mapping,
+    title: meeting.title,
+    content: meeting.content,
   }
-
   // Doing notifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'POST',
-    body: JSON.stringify(meetingICS),
+    body: JSON.stringify(body),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
     },
@@ -1209,6 +1238,7 @@ const upsertAppToken = async (
 }
 
 const updateMeeting = async (
+  participantActing: ParticipantBaseInfo,
   meetingUpdateRequest: MeetingUpdateRequest
 ): Promise<DBSlotEnhanced> => {
   if (
@@ -1242,6 +1272,7 @@ const updateMeeting = async (
       p => p.type === ParticipantType.Scheduler
     ) || null
 
+  const timezone = meetingUpdateRequest.participants_mapping[0].timeZone
   for (const participant of meetingUpdateRequest.participants_mapping) {
     const isEditing = participant.mappingType === ParticipantMappingType.KEEP
 
@@ -1360,9 +1391,9 @@ const updateMeeting = async (
   //meeting.guestsToRemove
 
   // one last check to make sure that the version did not change
-  const everySlotId = meetingUpdateRequest.participants_mapping.map(
-    it => it.slot_id
-  )
+  const everySlotId = meetingUpdateRequest.participants_mapping
+    .filter(it => it.slot_id)
+    .map(it => it.slot_id) as string[]
   const everySlot = await getMeetingsFromDB(everySlotId)
   if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version)) {
     throw new MeetingChangeConflictError()
@@ -1425,8 +1456,11 @@ const updateMeeting = async (
     meetingUpdateRequest.guestsToRemove.length > 0
   ) {
     deleteMeetingFromDB(
+      participantActing,
       meetingUpdateRequest.slotsToRemove,
-      meetingUpdateRequest.guestsToRemove
+      meetingUpdateRequest.guestsToRemove,
+      meetingUpdateRequest.meeting_id,
+      timezone
     )
   }
 
