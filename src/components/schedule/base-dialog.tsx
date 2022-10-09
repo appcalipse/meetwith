@@ -51,12 +51,14 @@ import { SimpleAccountInfo } from '@/types/Account'
 import {
   DBSlot,
   MeetingChangeType,
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
   getExistingAccountsSimple,

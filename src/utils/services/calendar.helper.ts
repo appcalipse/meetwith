@@ -1,4 +1,4 @@
-import { ParticipantInfo } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 
 import { getAllParticipantsDisplayName } from '../user_manager'
 

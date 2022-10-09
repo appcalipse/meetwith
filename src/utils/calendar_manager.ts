@@ -16,15 +16,19 @@ import {
   DBSlot,
   DBSlotEnhanced,
   IPFSMeetingInfo,
-  MeetingCreationRequest,
   MeetingDecrypted,
-  ParticipantInfo,
   ParticipantMappingType,
-  ParticipantType,
-  ParticipationStatus,
-  RequestParticipantMapping,
   SchedulingType,
 } from '@/types/Meeting'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
+import {
+  MeetingCreationRequest,
+  RequestParticipantMapping,
+} from '@/types/Requests'
 import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
@@ -493,7 +497,10 @@ const cancelMeeting = async (
   }
 
   // Fetch the updated data one last time
-  await apiCancelMeeting(decryptedMeeting)
+  await apiCancelMeeting(
+    decryptedMeeting,
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
 
   return
 }

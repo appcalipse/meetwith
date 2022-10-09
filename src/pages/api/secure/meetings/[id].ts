@@ -2,12 +2,9 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import {
-  DBSlotEnhanced,
-  MeetingDecrypted,
-  MeetingUpdateRequest,
-  ParticipantInfo,
-} from '@/types/Meeting'
+import { DBSlotEnhanced, MeetingDecrypted } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { MeetingCancelRequest, MeetingUpdateRequest } from '@/types/Requests'
 import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
 import {
   deleteMeetingFromDB,
@@ -22,6 +19,7 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
 } from '@/utils/errors'
+import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -57,7 +55,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      const meetingResult: DBSlotEnhanced = await updateMeeting(meeting)
+      const meetingResult: DBSlotEnhanced = await updateMeeting(
+        getParticipantBaseInfoFromAccount(account),
+        meeting
+      )
       res.status(200).json(meetingResult)
     } catch (e) {
       if (e instanceof TimeNotAvailableError) {
@@ -82,20 +83,31 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(400).send('Required parameter not provided')
     }
 
-    const decrypted = req.body as MeetingDecrypted
+    const request = req.body as MeetingCancelRequest
 
     // TODO: validate decrypted hash to make sure the user is not changing unwanted data
 
     // load the original slot information that is already stored in the database
-    const slotsToRemove = [slotId, ...(decrypted.related_slot_ids || [])]
+    const slotsToRemove = [slotId, ...(request.meeting.related_slot_ids || [])]
 
-    const guestsToRemove = decrypted.participants.filter(p => p.guest_email)
+    const guestsToRemove = request.meeting.participants.filter(
+      p => p.guest_email
+    )
+
+    const participantActing = getParticipantBaseInfoFromAccount(
+      await getAccountFromDB(req.session.account!.address)
+    )
 
     try {
-      await deleteMeetingFromDB(slotsToRemove, guestsToRemove)
+      await deleteMeetingFromDB(
+        participantActing,
+        slotsToRemove,
+        guestsToRemove,
+        request.meeting.meeting_id,
+        request.currentTimezone
+      )
       res.status(200).json({ removed: slotsToRemove })
     } catch (e) {
-      console.error(e)
       if (e instanceof TimeNotAvailableError) {
         res.status(409).send(e)
       } else if (e instanceof MeetingChangeConflictError) {

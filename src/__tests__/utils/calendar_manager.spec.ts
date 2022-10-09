@@ -4,12 +4,12 @@ import { randomUUID } from 'crypto'
 import { Account } from '@/types/Account'
 import {
   IPFSMeetingInfo,
-  ParticipantInfo,
-  ParticipationStatus,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
-import { ParticipantType } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { ParticipantType } from '@/types/ParticipantInfo'
+import { ParticipationStatus } from '@/types/ParticipantInfo'
 import * as helper from '@/utils/api_helper'
 import { sanitizeParticipants, scheduleMeeting } from '@/utils/calendar_manager'
 import * as crypto from '@/utils/cryptography'

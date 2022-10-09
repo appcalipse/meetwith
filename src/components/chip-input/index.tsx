@@ -17,7 +17,7 @@ import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
-} from '@/types/Meeting'
+} from '@/types/ParticipantInfo'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import { BadgeChip } from './chip'

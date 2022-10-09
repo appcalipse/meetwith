@@ -4,20 +4,20 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '../types/AccountNotifications'
+import { MeetingChangeType, MeetingICS } from '../types/Meeting'
 import {
-  MeetingChangeType,
-  MeetingICS,
+  ParticipantBaseInfo,
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
-  RequestParticipantMapping,
-} from '../types/Meeting'
+} from '../types/ParticipantInfo'
+import { RequestParticipantMapping } from '../types/Requests'
 import { dateToHumanReadable } from './calendar_manager'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
 } from './database'
-import { newMeetingEmail } from './email_helper'
+import { cancelledMeetingEmail, newMeetingEmail } from './email_helper'
 import { sendEPNSNotification } from './epns_helper_production'
 import { sendEPNSNotificationStaging } from './epns_helper_staging'
 import { dmAccount } from './services/discord.helper'
@@ -26,12 +26,14 @@ import { getAllParticipantsDisplayName } from './user_manager'
 
 export interface ParticipantInfoForNotification extends ParticipantInfo {
   timezone: string
+  meeting_id: string
   notifications?: AccountNotifications
 }
 
 export const notifyForMeetingCancellation = async (
+  participantActing: ParticipantBaseInfo,
   guestsToRemove: ParticipantInfo[],
-  toRemove: string[],
+  accountsToRemove: string[],
   meeting_id: string,
   start: Date,
   end: Date,
@@ -48,7 +50,7 @@ export const notifyForMeetingCancellation = async (
     })
   }
 
-  for (const address of toRemove) {
+  for (const address of accountsToRemove) {
     const account = await getAccountFromDB(address)
     participantsInfo.push({
       account_address: address,
@@ -56,13 +58,14 @@ export const notifyForMeetingCancellation = async (
       notifications: await getAccountNotificationSubscriptions(address),
       timezone: account.preferences!.timezone,
       type: ParticipantType.Invitee,
-      status: ParticipationStatus.Rejected,
       meeting_id,
+      status: ParticipationStatus.Rejected,
     })
   }
 
   await runPromises(
     await workNotifications(
+      participantActing,
       participantsInfo,
       MeetingChangeType.DELETE,
       start,
@@ -75,23 +78,30 @@ export const notifyForMeetingCancellation = async (
   return
 }
 
-export const notifyForMeetingUpdate = async (meeting_ics: MeetingICS) => {}
+export const notifyForMeetingUpdate = async (
+  participantActing: ParticipantBaseInfo,
+  meeting_ics: MeetingICS
+) => {}
 
 export const notifyForNewMeeting = async (
-  meeting_ics: MeetingICS
+  participantActing: ParticipantBaseInfo,
+  participants: RequestParticipantMapping[],
+  start: Date,
+  end: Date,
+  created_at: Date,
+  meeting_url: string
 ): Promise<void> => {
-  const participantsInfo = await setupParticipants(
-    meeting_ics.meeting.participants_mapping
-  )
+  const participantsInfo = await setupParticipants(participants)
 
   await runPromises(
     await workNotifications(
+      participantActing,
       participantsInfo,
       MeetingChangeType.CREATE,
-      meeting_ics.meeting.start,
-      meeting_ics.meeting.end,
-      meeting_ics.db_slot.created_at!,
-      meeting_ics.meeting.meeting_url
+      start,
+      end,
+      created_at,
+      meeting_url
     )
   )
 
@@ -115,7 +125,6 @@ const setupParticipants = async (
           ? await getAccountNotificationSubscriptions(map.account_address)
           : undefined,
         status: map.status,
-        meeting_id: map.meeting_id,
       }
     })
   )
@@ -123,6 +132,7 @@ const setupParticipants = async (
 }
 
 const workNotifications = async (
+  participantActing: ParticipantBaseInfo,
   participantsInfo: ParticipantInfoForNotification[],
   changeType: MeetingChangeType,
   start: Date,
@@ -139,11 +149,13 @@ const workNotifications = async (
         promises.push(
           getEmailNotification(
             changeType,
+            participantActing,
             participant,
             participantsInfo,
             start,
             end,
             created_at,
+            participant.timezone,
             meeting_url
           )
         )
@@ -165,11 +177,13 @@ const workNotifications = async (
                 promises.push(
                   getEmailNotification(
                     changeType,
+                    participantActing,
                     participant,
                     participantsInfo,
                     start,
                     end,
                     created_at,
+                    participant.timezone,
                     meeting_url
                   )
                 )
@@ -244,32 +258,51 @@ const workNotifications = async (
 
 const getEmailNotification = async (
   changeType: MeetingChangeType,
+  participantActing: ParticipantBaseInfo,
   participant: ParticipantInfoForNotification,
   participants: ParticipantInfoForNotification[],
   start: Date,
   end: Date,
   created_at: Date,
+  timezone: string,
   meeting_url?: string
 ): Promise<boolean> => {
+  const toEmail =
+    participant.guest_email ||
+    participant.notifications!.notification_types.filter(
+      t => t.channel === NotificationChannel.EMAIL
+    )[0]!.destination
+
   switch (changeType) {
     case MeetingChangeType.CREATE:
       return newMeetingEmail(
-        participant.notifications!.notification_types.filter(
-          t => t.channel === NotificationChannel.EMAIL
-        )[0]!.destination,
+        toEmail,
         participant.type,
         participants,
+        participant.timezone || timezone,
+        new Date(start),
+        new Date(end),
+        participant.meeting_id,
+        participant.account_address,
+        meeting_url,
+        created_at
+      )
+    case MeetingChangeType.DELETE:
+      const displayName = getParticipantActingDisplayName(
+        participantActing,
+        participant
+      )
+      return cancelledMeetingEmail(
+        displayName,
+        toEmail,
         participant.timezone,
         new Date(start),
         new Date(end),
-        participant.account_address,
-        meeting_url,
         participant.meeting_id,
+        '',
+        '',
         created_at
       )
-      break
-    case MeetingChangeType.DELETE:
-      //return cancelledMeetingEmail(notification_type.destination)
       break
     case MeetingChangeType.UPDATE:
       //return updatedMeetingEmail()
@@ -279,9 +312,28 @@ const getEmailNotification = async (
   return Promise.resolve(false)
 }
 
+const getParticipantActingDisplayName = (
+  participantActing: ParticipantBaseInfo,
+  currentParticipant: ParticipantInfoForNotification
+): string => {
+  if (participantActing.guest_email) {
+    if (participantActing.guest_email === currentParticipant.guest_email) {
+      return 'You'
+    } else {
+      return participantActing.name || participantActing.guest_email
+    }
+  } else if (
+    participantActing.account_address === currentParticipant.account_address
+  ) {
+    return 'You'
+  } else {
+    return participantActing.name || participantActing.account_address!
+  }
+}
+
 const runPromises = async (promises: Promise<boolean>[]) => {
   const timeout = setTimeout(() => {
-    console.error('timedout on notifications')
+    console.error('timed out on notifications')
   }, 7000)
 
   await Promise.race([Promise.all(promises), timeout])

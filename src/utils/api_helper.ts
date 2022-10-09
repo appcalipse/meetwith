@@ -18,11 +18,14 @@ import {
   DBSlot,
   DBSlotEnhanced,
   GroupMeetingRequest,
-  MeetingCreationRequest,
   MeetingDecrypted,
-  MeetingUpdateRequest,
   TimeSlotSource,
 } from '../types/Meeting'
+import {
+  MeetingCancelRequest,
+  MeetingCreationRequest,
+  MeetingUpdateRequest,
+} from '../types/Requests'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
 import {
@@ -170,13 +173,16 @@ export const updateMeeting = async (
   }
 }
 
-export const cancelMeeting = async (meeting: MeetingDecrypted) => {
+export const cancelMeeting = async (
+  meeting: MeetingDecrypted,
+  currentTimezone: string
+) => {
+  const body: MeetingCancelRequest = {
+    meeting,
+    currentTimezone,
+  }
   try {
-    return await internalFetch(
-      `/secure/meetings/${meeting.id}`,
-      'DELETE',
-      meeting
-    )
+    return await internalFetch(`/secure/meetings/${meeting.id}`, 'DELETE', body)
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()

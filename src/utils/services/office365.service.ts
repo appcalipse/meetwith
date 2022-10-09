@@ -1,18 +1,15 @@
 import * as Sentry from '@sentry/nextjs'
 
 import { NewCalendarEventType } from '@/types/CalendarConnections'
-import {
-  MeetingCreationRequest,
-  MeetingUpdateRequest,
-  ParticipantInfo,
-  TimeSlotSource,
-} from '@/types/Meeting'
+import { TimeSlotSource } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { NO_REPLY_EMAIL } from '../constants'
 import { changeConnectedCalendarSync } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
-import { CalendarService } from './common.types'
+import { CalendarService } from './calendar.service.types'
 
 export type BufferedBusyTime = {
   start: string
@@ -120,20 +117,25 @@ export default class Office365CalendarService implements CalendarService {
    * Creates an event into the owner 365 calendar
    *
    * @param owner
-   * @param details
+   * @param meetingDetails
    * @returns
    */
   async createEvent(
     owner: string,
-    details: MeetingCreationRequest,
-    slot_id: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_id: string,
     meeting_creation_time: Date
   ): Promise<NewCalendarEventType> {
     try {
       const accessToken = await this.auth.getToken()
 
       const body = JSON.stringify(
-        this.translateEvent(owner, details, slot_id, meeting_creation_time)
+        this.translateEvent(
+          owner,
+          meetingDetails,
+          meeting_id,
+          meeting_creation_time
+        )
       )
 
       const response = await fetch(
@@ -157,14 +159,14 @@ export default class Office365CalendarService implements CalendarService {
 
   async updateEvent(
     owner: string,
-    slot_id: string,
-    details: MeetingUpdateRequest
+    meeting_id: string,
+    meetingDetails: MeetingCreationSyncRequest
   ): Promise<NewCalendarEventType> {
     try {
       const accessToken = await this.auth.getToken()
 
       const body = JSON.stringify(
-        this.translateEvent(owner, details, slot_id, new Date(), false)
+        this.translateEvent(owner, meetingDetails, meeting_id, new Date())
       )
 
       const response = await fetch(
@@ -186,11 +188,11 @@ export default class Office365CalendarService implements CalendarService {
     }
   }
 
-  async deleteEvent(slot_id: string): Promise<void> {
+  async deleteEvent(meeting_id: string): Promise<void> {
     try {
       const accessToken = await this.auth.getToken()
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendar/events`,
+        `https://graph.microsoft.com/v1.0/me/calendar/events/${meeting_id}`,
         {
           method: 'DELETE',
           headers: {
@@ -209,20 +211,20 @@ export default class Office365CalendarService implements CalendarService {
 
   private translateEvent = (
     calendarOwnerAccountAddress: string,
-    details: MeetingCreationRequest,
-    slot_id: string,
-    meeting_creation_time: Date,
-    includeId = true
+    details: MeetingCreationSyncRequest,
+    meeting_id: string,
+    meeting_creation_time: Date
   ) => {
-    const participantsInfo: ParticipantInfo[] =
-      details.participants_mapping.map(participant => ({
+    const participantsInfo: ParticipantInfo[] = details.participants.map(
+      participant => ({
         type: participant.type,
         name: participant.name,
         account_address: participant.account_address,
         status: participant.status,
-        slot_id,
-        meeting_id: '',
-      }))
+        slot_id: '',
+        meeting_id,
+      })
+    )
 
     const payload = {
       subject: CalendarServiceHelper.getMeetingTitle(
@@ -256,11 +258,11 @@ export default class Office365CalendarService implements CalendarService {
       },
       attendees: [],
       allowNewTimeProposals: false,
-      transactionId: slot_id, // avoid duplicating the event if we make more than one request with the same transactionId
-      id: includeId ? slot_id : undefined, //required for editing the event in the future
+      transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
+      id: meeting_id,
     }
 
-    for (const participant of details.participants_mapping) {
+    for (const participant of details.participants) {
       ;(payload.attendees as any).push({
         emailAddress: {
           name: participant.name || participant.account_address,

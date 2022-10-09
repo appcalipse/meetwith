@@ -2,59 +2,19 @@ import { Interval } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 
 import { ConditionRelation } from '@/types/common'
-export enum ParticipationStatus {
-  Pending = 'pending',
-  Accepted = 'accepted',
-  Rejected = 'rejected',
-}
 
-export enum ParticipantType {
-  Scheduler = 'scheduler',
-  Owner = 'owner',
-  Invitee = 'invitee',
-}
+import { ParticipantInfo } from './ParticipantInfo'
+import { MeetingCreationRequest } from './Requests'
 
 export enum SchedulingType {
   REGULAR,
   GUEST,
 }
 
-export interface MeetingUpdateRequest extends MeetingCreationRequest {
-  slotsToRemove: string[]
-  guestsToRemove: ParticipantInfo[]
-  version: number
-}
-
-export interface MeetingCreationRequest {
-  type: SchedulingType
-  participants_mapping: RequestParticipantMapping[]
-  meetingTypeId: string
-  start: Date
-  end: Date
-  content?: string
-  meeting_url: string
-  meeting_id: ConferenceMeeting['id']
-}
-
 export enum ParticipantMappingType {
   ADD = 'add',
   REMOVE = 'remove',
   KEEP = 'keep',
-}
-
-export interface RequestParticipantMapping {
-  account_address?: string
-  slot_id: string
-  meeting_id: ConferenceMeeting['id']
-  type: ParticipantType
-  privateInfo: Encrypted
-  privateInfoHash: string
-  timeZone: string
-  name: string
-  status: ParticipationStatus
-  meeting_id: string
-  guest_email?: string
-  mappingType?: ParticipantMappingType
 }
 
 export enum TimeSlotSource {
@@ -84,19 +44,6 @@ export interface DBSlotEnhanced extends DBSlot {
 export interface MeetingICS {
   db_slot: DBSlot
   meeting: MeetingCreationRequest
-}
-
-export interface ParticipantBaseInfo {
-  account_address?: string
-  type: ParticipantType
-}
-
-export interface ParticipantInfo extends ParticipantBaseInfo {
-  status: ParticipationStatus
-  meeting_id: string
-  name?: string
-  guest_email?: string
-  meeting_id: ConferenceMeeting['id']
 }
 
 /**
@@ -141,15 +88,14 @@ export interface ConferenceMeeting {
   end: Date
   title?: string
   access_type: MeetingAccessType
-
   provider: MeetingProvider
   meeting_url: string
-
   created_at: Date
 }
 
 export interface IPFSMeetingInfo {
   created_at: Date
+  title?: string
   content?: string
   meeting_url: string
   participants: ParticipantInfo[]
@@ -167,6 +113,7 @@ export interface MeetingDecrypted {
   participants: ParticipantInfo[]
   meeting_url: string
   meeting_info_file_path: string
+  title?: string
   content?: string
   related_slot_ids: string[]
   version: DBSlot['version']

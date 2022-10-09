@@ -4,7 +4,7 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
-import { ParticipantInfo, ParticipantType } from '../types/Meeting'
+import { ParticipantInfo, ParticipantType } from '../types/ParticipantInfo'
 import {
   dateToHumanReadable,
   durationToHumanReadable,
@@ -23,9 +23,9 @@ export const newMeetingEmail = async (
   timezone: string,
   start: Date,
   end: Date,
+  meeting_id: string,
   destinationAccountAddress?: string,
   meetingUrl?: string,
-  id?: string | undefined,
   created_at?: Date
 ): Promise<boolean> => {
   const email = new Email()
@@ -59,7 +59,7 @@ export const newMeetingEmail = async (
       meeting_url: meetingUrl as string,
       start: new Date(start),
       end: new Date(end),
-      id: id as string,
+      id: meeting_id as string,
       meeting_id: '', // todo: provide the real meeting id here when implement the embedded url
       created_at: new Date(created_at as Date),
       meeting_info_file_path: '',
@@ -84,7 +84,7 @@ export const newMeetingEmail = async (
     attachments: [
       {
         content: Buffer.from(icsFile.value!).toString('base64'),
-        filename: `meeting_${id}.ics`,
+        filename: `meeting_${meeting_id}.ics`,
         type: 'text/plain',
         disposition: 'attachment',
       },
@@ -102,17 +102,19 @@ export const newMeetingEmail = async (
 }
 
 export const cancelledMeetingEmail = async (
+  currentActorDisplayName: string,
   toEmail: string,
   timezone: string,
   start: Date,
   end: Date,
+  meeting_id: string | undefined,
   title?: string,
   destinationAccountAddress?: string,
-  id?: string | undefined,
   created_at?: Date
 ): Promise<boolean> => {
   const email = new Email()
   const locals = {
+    currentActorDisplayName,
     meeting: {
       title,
       start: dateToHumanReadable(start, timezone, true),
