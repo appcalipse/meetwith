@@ -191,6 +191,7 @@ export default class Office365CalendarService implements CalendarService {
   async deleteEvent(meeting_id: string): Promise<void> {
     try {
       const accessToken = await this.auth.getToken()
+
       const response = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendar/events/${meeting_id}`,
         {
@@ -259,7 +260,6 @@ export default class Office365CalendarService implements CalendarService {
       attendees: [],
       allowNewTimeProposals: false,
       transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
-      id: meeting_id,
     }
 
     for (const participant of details.participants) {

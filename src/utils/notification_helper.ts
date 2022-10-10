@@ -193,20 +193,7 @@ const workNotifications = async (
                   participant.account_address
                 )
                 if (isProAccount(accountForDiscord)) {
-                  promises.push(
-                    dmAccount(
-                      participant.account_address,
-                      notification_type.destination,
-                      `New meeting scheduled. ${dateToHumanReadable(
-                        start,
-                        participant.timezone,
-                        true
-                      )} - ${getAllParticipantsDisplayName(
-                        participantsInfo,
-                        participant.account_address
-                      )}`
-                    )
-                  )
+                  promises.push()
                 }
                 break
               case NotificationChannel.EPNS:
@@ -308,6 +295,53 @@ const getEmailNotification = async (
       //return updatedMeetingEmail()
       break
     default:
+  }
+  return Promise.resolve(false)
+}
+
+const getDiscordNotification = async (
+  changeType: MeetingChangeType,
+  participantActing: ParticipantBaseInfo,
+  participant: ParticipantInfoForNotification,
+  start: Date,
+  participantsInfo?: ParticipantInfo[]
+): Promise<boolean> => {
+  const accountForDiscord = await getAccountFromDB(participant.account_address!)
+  if (isProAccount(accountForDiscord)) {
+    switch (changeType) {
+      case MeetingChangeType.CREATE:
+        return dmAccount(
+          participant.account_address!,
+          participant.notifications!.notification_types.filter(
+            n => n.channel === NotificationChannel.DISCORD
+          )[0].destination,
+          `New meeting scheduled. ${dateToHumanReadable(
+            start,
+            participant.timezone,
+            true
+          )} - ${getAllParticipantsDisplayName(
+            participantsInfo!,
+            participant.account_address
+          )}`
+        )
+      case MeetingChangeType.DELETE:
+        return dmAccount(
+          participant.account_address!,
+          participant.notifications!.notification_types.filter(
+            n => n.channel === NotificationChannel.DISCORD
+          )[0].destination,
+          `The meeting at ${dateToHumanReadable(
+            start,
+            participant.timezone,
+            true
+          )} has been cancelled by ${participantActing.name}`
+        )
+        break
+      case MeetingChangeType.UPDATE:
+        //return updatedMeetingEmail()
+        break
+      default:
+    }
   }
   return Promise.resolve(false)
 }
