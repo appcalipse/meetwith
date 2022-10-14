@@ -62,17 +62,8 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
   const toast = useToast()
 
   const checkWebDav = async () => {
-    const valid = await validateWebdav(url!, username!, password!)
-    if (valid) {
-      toast({
-        title: 'Access Validated',
-        description: 'We just checked your credentials, and everything is ok.',
-        status: 'success',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-    } else {
+    const calendars = await validateWebdav(url!, username!, password!)
+    if (!calendars) {
       toast({
         title: 'Something went wrong',
         description: 'Invalid credentials provided.',
@@ -82,13 +73,14 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
         isClosable: true,
       })
     }
-    return valid
+    return calendars
   }
 
   const onSaveOrUpdate = async () => {
     try {
       setLoading(true)
-      if (!(await checkWebDav())) {
+      const calendars = await checkWebDav()
+      if (!calendars) {
         return
       }
 
@@ -97,6 +89,15 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           url: APPLE_WEBDAV_URL,
           username,
           password,
+          calendars: calendars.map((calendar: any, index: number) => {
+            return {
+              calendarId: calendar.ctag,
+              sync: false,
+              enabled: index === 0,
+              name: calendar.displayName || calendar.ctag,
+              color: calendar.calendarColor,
+            }
+          }),
         })
         window.location.href = '/dashboard/calendars?calendarResult=success'
       } else {
@@ -104,6 +105,15 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           url,
           username,
           password,
+          calendars: calendars.map((calendar: any, index: number) => {
+            return {
+              calendarId: calendar.ctag,
+              sync: false,
+              enabled: index === 0,
+              name: calendar.displayName || calendar.ctag,
+              color: calendar.calendarColor || calendar.calendarColor._cdata,
+            }
+          }),
         })
         window.location.href = '/dashboard/calendars?calendarResult=success'
       }
@@ -127,12 +137,12 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
         />
       </FormControl>
       <FormControl pt={2}>
-        <FormLabel>Username</FormLabel>
+        <FormLabel>{isApple ? 'Email' : 'Username'}</FormLabel>
         <Input
           value={username}
           type="text"
           onChange={event => setUsername(event.target.value)}
-          placeholder="Calendar Username"
+          placeholder={isApple ? 'Apple ID email' : 'Calendar Username'}
         />
       </FormControl>
       <FormControl pt={2}>

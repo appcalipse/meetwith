@@ -24,12 +24,24 @@ const syncCreatedEventWithCalendar = async (
       calendar.payload
     )
 
-    await integration.createEvent(
-      targetAccount,
-      meetingDetails,
-      meeting_id,
-      meetingDetails.created_at
-    )
+    const promises = []
+    for (const innerCalendar of calendar.calendars!) {
+      if (innerCalendar.enabled && innerCalendar.sync) {
+        promises.push(
+          new Promise<void>(async resolve => {
+            await integration.createEvent(
+              targetAccount,
+              meetingDetails,
+              meeting_id,
+              meetingDetails.created_at,
+              innerCalendar.calendarId
+            )
+            resolve()
+          })
+        )
+      }
+    }
+    await Promise.all(promises)
   }
 }
 
@@ -50,8 +62,23 @@ const syncUpdatedEventWithCalendar = async (
       calendar.provider,
       calendar.payload
     )
-
-    await integration.updateEvent(targetAccount, meeting_id, meetingDetails)
+    const promises = []
+    for (const innerCalendar of calendar.calendars!) {
+      if (innerCalendar.enabled && innerCalendar.sync) {
+        promises.push(
+          new Promise<void>(async resolve => {
+            await integration.updateEvent(
+              targetAccount,
+              meeting_id,
+              meetingDetails,
+              innerCalendar.calendarId
+            )
+            resolve()
+          })
+        )
+      }
+    }
+    await Promise.all(promises)
   }
 }
 
@@ -65,19 +92,34 @@ const syncDeletedEventWithCalendar = async (
   })
 
   for (const calendar of calendars) {
-    console.log(targetAccount, calendar)
     const integration = getConnectedCalendarIntegration(
       targetAccount,
       calendar.email,
       calendar.provider,
       calendar.payload
     )
-    try {
-      await integration.deleteEvent(meeting_id)
-    } catch (error) {
-      console.log(error)
-      Sentry.captureException(error)
+
+    const promises = []
+
+    for (const innerCalendar of calendar.calendars!) {
+      if (innerCalendar.enabled && innerCalendar.sync) {
+        promises.push(
+          new Promise<void>(async resolve => {
+            try {
+              await integration.deleteEvent(
+                meeting_id,
+                innerCalendar.calendarId
+              )
+              resolve()
+            } catch (error) {
+              console.log(error)
+              Sentry.captureException(error)
+            }
+          })
+        )
+      }
     }
+    await Promise.all(promises)
   }
 }
 

@@ -193,6 +193,7 @@ const workNotifications = async (
                   participant.account_address
                 )
                 if (isProAccount(accountForDiscord)) {
+                  //TODO
                   promises.push()
                 }
                 break

@@ -13,7 +13,10 @@ import {
   updateCalendarObject,
 } from 'tsdav'
 
-import { NewCalendarEventType } from '@/types/CalendarConnections'
+import {
+  CalendarSyncInfo,
+  NewCalendarEventType,
+} from '@/types/CalendarConnections'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -89,6 +92,20 @@ export default class CaldavCalendarService implements CalendarService {
     })
   }
 
+  async refreshConnection(): Promise<CalendarSyncInfo[]> {
+    const calendars = await this.listCalendars()
+
+    return calendars.map((calendar: any, index: number) => {
+      return {
+        calendarId: calendar.ctag,
+        sync: false,
+        enabled: index === 0,
+        name: calendar.displayName || calendar.ctag,
+        color: calendar.calendarColor || calendar.calendarColor._cdata,
+      }
+    })
+  }
+
   /**
    * Creates an event into the owner icalendar
    *
@@ -100,10 +117,14 @@ export default class CaldavCalendarService implements CalendarService {
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_id: string,
-    meeting_creation_time: Date
+    meeting_creation_time: Date,
+    calendarId?: string
   ): Promise<NewCalendarEventType> {
     try {
       const calendars = await this.listCalendars()
+      const calendarToSync = calendarId
+        ? calendars.find(c => c.ctag === calendarId)
+        : calendars[0]
 
       const participantsInfo: ParticipantInfo[] =
         meetingDetails.participants.map(participant => ({
@@ -134,22 +155,19 @@ export default class CaldavCalendarService implements CalendarService {
       if (!ics.value || ics.error) throw new Error('Error creating iCalString')
 
       // We create the event directly on iCal
-      const responses = await Promise.all(
-        calendars.map(calendar =>
-          createCalendarObject({
-            calendar,
-            filename: `${meeting_id}.ics`,
-            // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-            iCalString: Buffer.from(ics.value!).toString('base64'),
-            headers: this.headers,
-          })
-        )
-      )
 
-      if (responses.some(r => !r.ok)) {
+      const response = await createCalendarObject({
+        calendar: calendarToSync!,
+        filename: `${meeting_id}.ics`,
+        // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
+        iCalString: ics.value!.toString(),
+        headers: this.headers,
+      })
+
+      if (!response.ok) {
         throw new Error(
           `Error creating event: ${(
-            await Promise.all(responses.map(r => JSON.stringify(r.statusText)))
+            await Promise.all(JSON.stringify(response.statusText))
           ).join(', ')}`
         )
       }
@@ -163,6 +181,7 @@ export default class CaldavCalendarService implements CalendarService {
         additionalInfo: {},
       }
     } catch (reason) {
+      console.log(reason)
       Sentry.captureException(reason)
       throw reason
     }
@@ -171,7 +190,8 @@ export default class CaldavCalendarService implements CalendarService {
   async updateEvent(
     owner: string,
     slot_id: string,
-    meetingDetails: MeetingCreationSyncRequest
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId?: string
   ): Promise<NewCalendarEventType> {
     try {
       const events = await this.getEventsByUID(slot_id)
@@ -233,11 +253,11 @@ export default class CaldavCalendarService implements CalendarService {
       throw reason
     }
   }
-  async deleteEvent(slot_id: string): Promise<void> {
+  async deleteEvent(meeting_id: string, calendarId?: string): Promise<void> {
     try {
-      const events = await this.getEventsByUID(slot_id)
+      const events = await this.getEventsByUID(meeting_id)
 
-      const eventsToDelete = events.filter(event => event.uid === slot_id)
+      const eventsToDelete = events.filter(event => event.uid === meeting_id)
 
       await Promise.all(
         eventsToDelete.map(event => {
@@ -257,6 +277,7 @@ export default class CaldavCalendarService implements CalendarService {
   }
 
   async getAvailability(
+    calendarIds: string[],
     dateFrom: string,
     dateTo: string
   ): Promise<EventBusyDate[]> {
@@ -264,17 +285,19 @@ export default class CaldavCalendarService implements CalendarService {
 
     const calendarObjectsFromEveryCalendar = (
       await Promise.all(
-        calendars.map(calendar =>
-          fetchCalendarObjects({
-            calendar,
-            headers: this.headers,
-            expand: true,
-            timeRange: {
-              start: new Date(dateFrom).toISOString(),
-              end: new Date(dateTo).toISOString(),
-            },
-          })
-        )
+        calendars
+          .filter(cal => calendarIds.includes(cal.ctag!))
+          .map(calendar =>
+            fetchCalendarObjects({
+              calendar,
+              headers: this.headers,
+              expand: true,
+              timeRange: {
+                start: new Date(dateFrom).toISOString(),
+                end: new Date(dateTo).toISOString(),
+              },
+            })
+          )
       )
     ).flat()
 
@@ -291,7 +314,6 @@ export default class CaldavCalendarService implements CalendarService {
           end: event.endDate.toJSDate().toISOString(),
         }
       })
-
     return Promise.resolve(events)
   }
 

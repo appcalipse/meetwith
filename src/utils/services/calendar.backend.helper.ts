@@ -4,7 +4,6 @@ import {
   compareAsc,
   differenceInSeconds,
   Interval,
-  intervalToDuration,
   max,
   min,
 } from 'date-fns'
@@ -59,10 +58,13 @@ export const CalendarBackendHelper = {
           )
 
           try {
+            console.log('Fetching events for calendar', calendar.provider)
             const externalSlots = await integration.getAvailability(
+              calendar.calendars!.filter(c => c.enabled).map(c => c.calendarId),
               startDate!.toISOString(),
               endDate!.toISOString()
             )
+            console.log('Finished for', calendar.provider)
             busySlots.push(
               ...externalSlots.map(it => ({
                 start: new Date(it.start),
@@ -72,6 +74,7 @@ export const CalendarBackendHelper = {
               }))
             )
           } catch (e: any) {
+            console.log(e)
             Sentry.captureException(e)
           }
         })
