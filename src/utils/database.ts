@@ -26,8 +26,8 @@ import {
   NotificationChannel,
 } from '../types/AccountNotifications'
 import {
+  CalendarSyncInfo,
   ConnectedCalendar,
-  ConnectedCalendarCorePayload,
 } from '../types/CalendarConnections'
 import {
   ConferenceMeeting,
@@ -897,7 +897,13 @@ const getConnectedCalendars = async (
     !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
 
   if (syncOnly) {
-    return connectedCalendars.filter(({ sync }) => sync)
+    const calendars: ConnectedCalendar[] = JSON.parse(
+      JSON.stringify(connectedCalendars)
+    )
+    for (const cal of calendars) {
+      cal.calendars = cal.calendars.filter(c => c.sync)
+    }
+    return calendars
   }
 
   return connectedCalendars
@@ -907,10 +913,10 @@ const connectedCalendarExists = async (
   address: string,
   email: string,
   provider: TimeSlotSource
-): Promise<boolean> => {
-  const { count, error } = await db.supabase
+): Promise<ConnectedCalendar | undefined> => {
+  const { data, error } = await db.supabase
     .from('connected_calendars')
-    .select('*', { count: 'exact' })
+    .select('*')
     .eq('account_address', address.toLowerCase())
     .eq('email', email.toLowerCase())
     .eq('provider', provider)
@@ -919,60 +925,76 @@ const connectedCalendarExists = async (
     Sentry.captureException(error)
   }
 
-  return count > 0
+  return data[0]
+}
+
+export const updateCalendarPayload = async (
+  address: string,
+  email: string,
+  provider: TimeSlotSource,
+  payload: any
+): Promise<void> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .update({ payload, updated: new Date() })
+    .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
 }
 
 const addOrUpdateConnectedCalendar = async (
   address: string,
-  payload: ConnectedCalendarCorePayload
+  email: string,
+  provider: TimeSlotSource,
+  calendars: CalendarSyncInfo[],
+  _payload?: any
 ): Promise<ConnectedCalendar> => {
   const existingConnection = await connectedCalendarExists(
     address,
-    payload.email,
-    payload.provider
+    email,
+    provider
   )
+
   let queryPromise
+  const payload = _payload ? _payload : {}
   if (existingConnection) {
     queryPromise = db.supabase
       .from('connected_calendars')
-      .update({ ...payload, updated: new Date() })
+      .update({
+        payload,
+        calendars,
+        updated: new Date(),
+      })
       .eq('account_address', address.toLowerCase())
-      .eq('email', payload.email.toLowerCase())
-      .eq('provider', payload.provider)
+      .eq('email', email.toLowerCase())
+      .eq('provider', provider)
   } else {
-    queryPromise = db.supabase
-      .from('connected_calendars')
-      .insert({ ...payload, created: new Date(), account_address: address })
+    if (calendars.filter(c => c.sync).length === 0) {
+      calendars[0].sync = true
+      // ensure at least one is synced when adding it
+    }
+    queryPromise = db.supabase.from('connected_calendars').insert({
+      email,
+      payload,
+      calendars,
+      created: new Date(),
+      account_address: address,
+      provider,
+    })
   }
 
   const { data, error } = await queryPromise
 
   if (error) {
+    console.log(error)
     Sentry.captureException(error)
   }
 
-  return data as ConnectedCalendar
-}
-
-const changeConnectedCalendarSync = async (
-  address: string,
-  email: string,
-  provider: TimeSlotSource,
-  sync?: boolean,
-  payload?: ConnectedCalendarCorePayload['payload']
-): Promise<ConnectedCalendar> => {
-  const { data, error } = await db.supabase
-    .from('connected_calendars')
-    .update({ sync, payload, updated: new Date() })
-    .eq('account_address', address.toLowerCase())
-    .eq('email', email.toLowerCase())
-    .eq('provider', provider)
-
-  if (error) {
-    Sentry.captureException(error)
-  }
-
-  return data as ConnectedCalendar
+  return data[0] as ConnectedCalendar
 }
 
 const removeConnectedCalendar = async (
@@ -1484,7 +1506,6 @@ const selectTeamMeetingRequest = async (
 
 export {
   addOrUpdateConnectedCalendar,
-  changeConnectedCalendarSync,
   connectedCalendarExists,
   deleteGateCondition,
   deleteMeetingFromDB,

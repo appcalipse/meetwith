@@ -2,14 +2,17 @@ import * as Sentry from '@sentry/nextjs'
 import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
 import { Auth, calendar_v3, google } from 'googleapis'
 
-import { NewCalendarEventType } from '@/types/CalendarConnections'
+import {
+  CalendarSyncInfo,
+  NewCalendarEventType,
+} from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { apiUrl, NO_REPLY_EMAIL } from '../constants'
-import { changeConnectedCalendarSync } from '../database'
+import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
 
@@ -75,11 +78,10 @@ export default class GoogleCalendarService implements CalendarService {
           googleCredentials.access_token = token.access_token
           googleCredentials.expiry_date = token.expiry_date
 
-          return changeConnectedCalendarSync(
+          return updateCalendarPayload(
             address,
             email,
             TimeSlotSource.GOOGLE,
-            undefined,
             googleCredentials
           ).then(() => {
             myGoogleAuth.setCredentials(googleCredentials)
@@ -97,11 +99,50 @@ export default class GoogleCalendarService implements CalendarService {
     }
   }
 
+  async refreshConnection(): Promise<CalendarSyncInfo[]> {
+    const myGoogleAuth = await this.auth.getToken()
+    const calendar = google.calendar({
+      version: 'v3',
+      auth: myGoogleAuth,
+    })
+
+    try {
+      const calendarList = (await calendar.calendarList.list()).data
+
+      const calendars: CalendarSyncInfo[] = calendarList.items!.map(c => {
+        return {
+          calendarId: c.etag!,
+          name: c.summary!,
+          color: c.backgroundColor || undefined,
+          sync: false,
+          enabled: Boolean(c.primary),
+        }
+      })
+      return calendars
+    } catch (err) {
+      const info = google.oauth2({
+        version: 'v2',
+        auth: myGoogleAuth,
+      })
+      const user = (await info.userinfo.get()).data
+      return [
+        {
+          calendarId: user.email!,
+          name: user.email!,
+          color: undefined,
+          sync: false,
+          enabled: true,
+        },
+      ]
+    }
+  }
+
   async createEvent(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_id: string,
-    meeting_creation_time: Date
+    meeting_creation_time: Date,
+    calendarId?: string
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
@@ -216,7 +257,8 @@ export default class GoogleCalendarService implements CalendarService {
   async updateEvent(
     calendarOwnerAccountAddress: string,
     meeting_id: string,
-    meetingDetails: MeetingCreationSyncRequest
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId?: string
   ): Promise<NewCalendarEventType> {
     return new Promise(async (resolve, reject) => {
       const auth = await this.auth
@@ -313,7 +355,7 @@ export default class GoogleCalendarService implements CalendarService {
     })
   }
 
-  async deleteEvent(meeting_id: string): Promise<void> {
+  async deleteEvent(meeting_id: string, calendarId?: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
       const auth = await this.auth
       const myGoogleAuth = await auth.getToken()
@@ -352,6 +394,7 @@ export default class GoogleCalendarService implements CalendarService {
   }
 
   async getAvailability(
+    calendarIds: string[],
     dateFrom: string,
     dateTo: string
   ): Promise<EventBusyDate[]> {
@@ -362,44 +405,38 @@ export default class GoogleCalendarService implements CalendarService {
           auth: myGoogleAuth,
         })
 
-        Promise.resolve(['primary'])
-          .then(calsIds => {
-            calendar.freebusy.query(
-              {
-                requestBody: {
-                  timeMin: dateFrom,
-                  timeMax: dateTo,
-                  items: calsIds.map(id => ({ id: id })),
-                },
-              },
-              (err, apires) => {
-                if (err) {
-                  reject(err)
+        calendar.freebusy.query(
+          {
+            requestBody: {
+              timeMin: dateFrom,
+              timeMax: dateTo,
+              items: calendarIds.map(id => {
+                return {
+                  id,
                 }
-                let result: any = []
+              }),
+            },
+          },
+          (err, apires) => {
+            if (err) {
+              reject(err)
+            }
+            let result: any = []
 
-                if (apires?.data.calendars) {
-                  result = Object.values(apires.data.calendars).reduce(
-                    (c, i) => {
-                      i.busy?.forEach(busyTime => {
-                        c.push({
-                          start: busyTime.start || '',
-                          end: busyTime.end || '',
-                        })
-                      })
-                      return c
-                    },
-                    [] as typeof result
-                  )
-                }
-                resolve(result)
-              }
-            )
-          })
-          .catch(err => {
-            Sentry.captureException(err)
-            reject(err)
-          })
+            if (apires?.data.calendars) {
+              result = Object.values(apires.data.calendars).reduce((c, i) => {
+                i.busy?.forEach(busyTime => {
+                  c.push({
+                    start: busyTime.start || '',
+                    end: busyTime.end || '',
+                  })
+                })
+                return c
+              }, [] as typeof result)
+            }
+            resolve(result)
+          }
+        )
       })
     )
   }

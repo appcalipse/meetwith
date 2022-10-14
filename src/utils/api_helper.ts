@@ -9,8 +9,9 @@ import {
   DiscordNotificationType,
 } from '../types/AccountNotifications'
 import {
+  CalendarSyncInfo,
+  ConnectedCalendar,
   ConnectedCalendarCore,
-  ConnectedCalendarCorePayload,
   ConnectResponse,
 } from '../types/CalendarConnections'
 import {
@@ -419,28 +420,16 @@ export const deleteConnectedCalendar = async (
   })) as ConnectedCalendarCore[]
 }
 
-export const updateConnectedCalendarSync = async (
+export const updateConnectedCalendar = async (
   email: string,
   provider: TimeSlotSource,
-  sync: boolean
-): Promise<ConnectedCalendarCore[]> => {
+  calendars: CalendarSyncInfo[]
+): Promise<ConnectedCalendar> => {
   return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
     email,
     provider,
-    sync,
-  })) as ConnectedCalendarCore[]
-}
-
-export const updateConnectedCalendarPayload = async (
-  email: string,
-  provider: TimeSlotSource,
-  payload: ConnectedCalendarCorePayload['payload']
-): Promise<ConnectedCalendarCore[]> => {
-  return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
-    email,
-    provider,
-    payload,
-  })) as ConnectedCalendarCore[]
+    calendars,
+  })) as ConnectedCalendar
 }
 
 export const syncSubscriptions = async (): Promise<Subscription[]> => {
@@ -473,7 +462,13 @@ export const validateWebdav = async (
       password,
     }),
   })
-    .then(res => res.status >= 200 && res.status < 300)
+    .then(async res => {
+      if (res.status >= 200 && res.status < 300) {
+        return await res.json()
+      } else {
+        return false
+      }
+    })
     .catch(() => false)
 }
 
