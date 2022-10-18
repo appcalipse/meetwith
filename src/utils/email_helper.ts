@@ -173,3 +173,88 @@ export const cancelledMeetingEmail = async (
 
   return true
 }
+
+export const updateMeetingEmail = async (
+  toEmail: string,
+  participantType: ParticipantType,
+  participants: ParticipantInfo[],
+  timezone: string,
+  start: Date,
+  end: Date,
+  meeting_id: string,
+  destinationAccountAddress?: string,
+  meetingUrl?: string,
+  created_at?: Date
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    participantsDisplay: getAllParticipantsDisplayName(
+      participants,
+      destinationAccountAddress
+    ),
+    meeting: {
+      start: dateToHumanReadable(start, timezone, true),
+      duration: durationToHumanReadable(differenceInMinutes(end, start)),
+      url: meetingUrl,
+    },
+  }
+
+  const isScheduler =
+    participantType === ParticipantType.Scheduler ||
+    (participantType === ParticipantType.Owner &&
+      !participants.some(p => p.type === ParticipantType.Scheduler))
+  const rendered = await email.renderAll(
+    `${path.resolve(
+      'src',
+      'emails',
+      isScheduler ? 'new_meeting_scheduler' : 'new_meeting'
+    )}`,
+    locals
+  )
+
+  const icsFile = generateIcs(
+    {
+      meeting_url: meetingUrl as string,
+      start: new Date(start),
+      end: new Date(end),
+      id: meeting_id as string,
+      meeting_id: '', // todo: provide the real meeting id here when implement the embedded url
+      created_at: new Date(created_at as Date),
+      meeting_info_file_path: '',
+      participants,
+      version: 0,
+      related_slot_ids: [],
+    },
+    destinationAccountAddress || ''
+  )
+
+  if (icsFile.error) {
+    Sentry.captureException(icsFile.error)
+    return false
+  }
+
+  const msg: sgMail.MailDataRequired = {
+    to: toEmail,
+    from: FROM,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    attachments: [
+      {
+        content: Buffer.from(icsFile.value!).toString('base64'),
+        filename: `meeting_${meeting_id}.ics`,
+        type: 'text/plain',
+        disposition: 'attachment',
+      },
+    ],
+  }
+
+  try {
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+
+  return true
+}

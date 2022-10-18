@@ -41,11 +41,6 @@ export interface DBSlotEnhanced extends DBSlot {
   meeting_info_encrypted: Encrypted
 }
 
-export interface MeetingICS {
-  db_slot: DBSlot
-  meeting: MeetingCreationRequest
-}
-
 /**
  * Meetings providers list
  */

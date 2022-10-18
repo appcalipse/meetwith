@@ -4,7 +4,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '../types/AccountNotifications'
-import { MeetingChangeType, MeetingICS } from '../types/Meeting'
+import { MeetingChangeType } from '../types/Meeting'
 import {
   ParticipantBaseInfo,
   ParticipantInfo,
@@ -17,7 +17,11 @@ import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
 } from './database'
-import { cancelledMeetingEmail, newMeetingEmail } from './email_helper'
+import {
+  cancelledMeetingEmail,
+  newMeetingEmail,
+  updateMeetingEmail,
+} from './email_helper'
 import { sendEPNSNotification } from './epns_helper_production'
 import { sendEPNSNotificationStaging } from './epns_helper_staging'
 import { dmAccount } from './services/discord.helper'
@@ -78,12 +82,8 @@ export const notifyForMeetingCancellation = async (
   return
 }
 
-export const notifyForMeetingUpdate = async (
-  participantActing: ParticipantBaseInfo,
-  meeting_ics: MeetingICS
-) => {}
-
-export const notifyForNewMeeting = async (
+export const notifyForOrUpdateNewMeeting = async (
+  meetingChangeType: MeetingChangeType,
   participantActing: ParticipantBaseInfo,
   participants: RequestParticipantMapping[],
   start: Date,
@@ -97,7 +97,7 @@ export const notifyForNewMeeting = async (
     await workNotifications(
       participantActing,
       participantsInfo,
-      MeetingChangeType.CREATE,
+      meetingChangeType,
       start,
       end,
       created_at,
@@ -293,7 +293,18 @@ const getEmailNotification = async (
       )
       break
     case MeetingChangeType.UPDATE:
-      //return updatedMeetingEmail()
+      return updateMeetingEmail(
+        toEmail,
+        participant.type,
+        participants,
+        participant.timezone || timezone,
+        new Date(start),
+        new Date(end),
+        participant.meeting_id,
+        participant.account_address,
+        meeting_url,
+        created_at
+      )
       break
     default:
   }

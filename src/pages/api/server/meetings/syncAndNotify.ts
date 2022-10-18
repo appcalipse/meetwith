@@ -2,18 +2,15 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { MeetingICS } from '@/types/Meeting'
+import { MeetingChangeType } from '@/types/Meeting'
 import {
   MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
-  MeetingUpdateRequest,
 } from '@/types/Requests'
 import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
-import { getAccountFromDB } from '@/utils/database'
 import {
   notifyForMeetingCancellation,
-  notifyForMeetingUpdate,
-  notifyForNewMeeting,
+  notifyForOrUpdateNewMeeting,
 } from '@/utils/notification_helper'
 import { ExternalCalendarSync } from '@/utils/sync_helper'
 
@@ -26,7 +23,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     request.created_at = new Date(request.created_at)
 
     try {
-      await notifyForNewMeeting(
+      await notifyForOrUpdateNewMeeting(
+        MeetingChangeType.CREATE,
         request.participantActing,
         request.participants,
         request.start,
@@ -47,19 +45,25 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(200).send(true)
     return
   } else if (req.method === 'PATCH') {
-    const meetingICS = JSON.parse(req.body) as MeetingICS
+    const request = JSON.parse(req.body) as MeetingCreationSyncRequest
 
-    meetingICS.db_slot.start = new Date(meetingICS.db_slot.start)
-    meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
-    meetingICS.db_slot.created_at = new Date(meetingICS.db_slot.created_at!)
-    meetingICS.db_slot.start = new Date(meetingICS.db_slot.start)
-    meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
+    request.start = new Date(request.start)
+    request.end = new Date(request.end)
+    request.created_at = new Date(request.created_at)
 
-    // try {
-    //   await notifyForMeetingUpdate(userActing, meetingICS)
-    // } catch (error) {
-    //   Sentry.captureException(error)
-    // }
+    try {
+      await notifyForOrUpdateNewMeeting(
+        MeetingChangeType.UPDATE,
+        request.participantActing,
+        request.participants,
+        request.start,
+        request.end,
+        request.created_at,
+        request.meeting_url
+      )
+    } catch (error) {
+      Sentry.captureException(error)
+    }
 
     // try {
     //   await ExternalCalendarSync.update(
@@ -87,7 +91,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       try {
         await ExternalCalendarSync.delete(address, [meeting_id])
       } catch (error) {
-        console.log(error)
         Sentry.captureException(error)
       }
     }
@@ -104,7 +107,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         timezone
       )
     } catch (error) {
-      console.log(error)
       Sentry.captureException(error)
     }
 

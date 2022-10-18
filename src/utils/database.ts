@@ -35,7 +35,6 @@ import {
   DBSlotEnhanced,
   GroupMeetingRequest,
   MeetingAccessType,
-  MeetingICS,
   MeetingProvider,
   ParticipantMappingType,
   TimeSlotSource,
@@ -960,7 +959,7 @@ const addOrUpdateConnectedCalendar = async (
   )
 
   let queryPromise
-  const payload = _payload ? _payload : {}
+  const payload = _payload ? _payload : existingConnection?.payload
   if (existingConnection) {
     queryPromise = db.supabase
       .from('connected_calendars')
@@ -973,9 +972,9 @@ const addOrUpdateConnectedCalendar = async (
       .eq('email', email.toLowerCase())
       .eq('provider', provider)
   } else {
-    if (calendars.filter(c => c.sync).length === 0) {
-      calendars[0].sync = true
-      // ensure at least one is synced when adding it
+    if (calendars.filter(c => c.enabled).length === 0) {
+      calendars[0].enabled = true
+      // ensure at least one is enabled when adding it
     }
     queryPromise = db.supabase.from('connected_calendars').insert({
       email,
@@ -990,7 +989,6 @@ const addOrUpdateConnectedCalendar = async (
   const { data, error } = await queryPromise
 
   if (error) {
-    console.log(error)
     Sentry.captureException(error)
   }
 
@@ -1350,10 +1348,12 @@ const updateMeeting = async (
             ),
             ownerAccount!.preferences!.availabilities
           )
+
         if (
           participantIsOwner &&
           ownerIsNotScheduler &&
           !isEditingToSameTime &&
+          participantActing.account_address !== participant.account_address &&
           (!isTimeAvailable() || (await slotIsTaken()))
         ) {
           throw new TimeNotAvailableError()
@@ -1437,11 +1437,6 @@ const updateMeeting = async (
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
-  const meetingICS: MeetingICS = {
-    db_slot: meetingResponse,
-    meeting: meetingUpdateRequest,
-  }
-
   // TODO: for now
   let meetingProvider = MeetingProvider.CUSTOM
   if (meetingUpdateRequest.meeting_url.includes('huddle')) {
@@ -1464,10 +1459,23 @@ const updateMeeting = async (
     )
   }
 
+  const body: MeetingCreationSyncRequest = {
+    participantActing,
+    meeting_id: meetingUpdateRequest.meeting_id,
+    start: meetingUpdateRequest.start,
+    end: meetingUpdateRequest.end,
+    created_at: meetingResponse.created_at!,
+    timezone,
+    meeting_url: meetingUpdateRequest.meeting_url,
+    participants: meetingUpdateRequest.participants_mapping,
+    title: meetingUpdateRequest.title,
+    content: meetingUpdateRequest.content,
+  }
+
   // Doing ntifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'PATCH',
-    body: JSON.stringify(meetingICS),
+    body: JSON.stringify(body),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
     },
@@ -1477,7 +1485,7 @@ const updateMeeting = async (
     meetingUpdateRequest.slotsToRemove.length > 0 ||
     meetingUpdateRequest.guestsToRemove.length > 0
   ) {
-    deleteMeetingFromDB(
+    await deleteMeetingFromDB(
       participantActing,
       meetingUpdateRequest.slotsToRemove,
       meetingUpdateRequest.guestsToRemove,

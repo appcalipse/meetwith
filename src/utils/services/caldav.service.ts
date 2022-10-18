@@ -97,7 +97,7 @@ export default class CaldavCalendarService implements CalendarService {
 
     return calendars.map((calendar: any, index: number) => {
       return {
-        calendarId: calendar.ctag,
+        calendarId: calendar.url,
         sync: false,
         enabled: index === 0,
         name: calendar.displayName || calendar.ctag,
@@ -116,14 +116,14 @@ export default class CaldavCalendarService implements CalendarService {
   async createEvent(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
-    meeting_id: string,
     meeting_creation_time: Date,
     calendarId?: string
   ): Promise<NewCalendarEventType> {
     try {
       const calendars = await this.listCalendars()
+
       const calendarToSync = calendarId
-        ? calendars.find(c => c.ctag === calendarId)
+        ? calendars.find(c => c.url === calendarId)
         : calendars[0]
 
       const participantsInfo: ParticipantInfo[] =
@@ -133,7 +133,7 @@ export default class CaldavCalendarService implements CalendarService {
           account_address: participant.account_address,
           status: participant.status,
           slot_id: '',
-          meeting_id,
+          meeting_id: meetingDetails.meeting_id,
         }))
 
       const ics = generateIcs(
@@ -141,8 +141,8 @@ export default class CaldavCalendarService implements CalendarService {
           meeting_url: meetingDetails.meeting_url,
           start: new Date(meetingDetails.start),
           end: new Date(meetingDetails.end),
-          id: meeting_id,
-          meeting_id,
+          id: meetingDetails.meeting_id,
+          meeting_id: meetingDetails.meeting_id,
           created_at: new Date(meeting_creation_time),
           meeting_info_file_path: '',
           participants: participantsInfo,
@@ -156,13 +156,17 @@ export default class CaldavCalendarService implements CalendarService {
 
       // We create the event directly on iCal
 
+      console.log('Creating event on calendar', calendarToSync)
+
       const response = await createCalendarObject({
         calendar: calendarToSync!,
-        filename: `${meeting_id}.ics`,
+        filename: `${meetingDetails.meeting_id}.ics`,
         // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
         iCalString: ics.value!.toString(),
         headers: this.headers,
       })
+
+      console.log(response)
 
       if (!response.ok) {
         throw new Error(
@@ -173,15 +177,14 @@ export default class CaldavCalendarService implements CalendarService {
       }
 
       return {
-        uid: meeting_id,
-        id: meeting_id,
+        uid: meetingDetails.meeting_id,
+        id: meetingDetails.meeting_id,
         type: 'Cal Dav',
         password: '',
         url: '',
         additionalInfo: {},
       }
     } catch (reason) {
-      console.log(reason)
       Sentry.captureException(reason)
       throw reason
     }
@@ -286,7 +289,7 @@ export default class CaldavCalendarService implements CalendarService {
     const calendarObjectsFromEveryCalendar = (
       await Promise.all(
         calendars
-          .filter(cal => calendarIds.includes(cal.ctag!))
+          .filter(cal => calendarIds.includes(cal.url!))
           .map(calendar =>
             fetchCalendarObjects({
               calendar,

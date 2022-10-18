@@ -68,7 +68,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     calendars = (await calendar.calendarList.list()).data.items!.map(c => {
       return {
-        calendarId: c.etag!,
+        calendarId: c.id!,
         name: c.summary!,
         color: c.backgroundColor || undefined,
         sync: false,

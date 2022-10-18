@@ -91,7 +91,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           password,
           calendars: calendars.map((calendar: any, index: number) => {
             return {
-              calendarId: calendar.ctag,
+              calendarId: calendar.url,
               sync: false,
               enabled: index === 0,
               name: calendar.displayName || calendar.ctag,
@@ -107,7 +107,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           password,
           calendars: calendars.map((calendar: any, index: number) => {
             return {
-              calendarId: calendar.ctag,
+              calendarId: calendar.url,
               sync: false,
               enabled: index === 0,
               name: calendar.displayName || calendar.ctag,

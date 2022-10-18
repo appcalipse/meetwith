@@ -8,8 +8,7 @@ import { getConnectedCalendarIntegration } from './services/connected_calendars.
 
 const syncCreatedEventWithCalendar = async (
   targetAccount: Account['address'],
-  meetingDetails: MeetingCreationSyncRequest,
-  meeting_id: string
+  meetingDetails: MeetingCreationSyncRequest
 ) => {
   const calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
@@ -18,7 +17,7 @@ const syncCreatedEventWithCalendar = async (
 
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
-      targetAccount,
+      calendar.account_address,
       calendar.email,
       calendar.provider,
       calendar.payload
@@ -29,13 +28,16 @@ const syncCreatedEventWithCalendar = async (
       if (innerCalendar.enabled && innerCalendar.sync) {
         promises.push(
           new Promise<void>(async resolve => {
-            await integration.createEvent(
-              targetAccount,
-              meetingDetails,
-              meeting_id,
-              meetingDetails.created_at,
-              innerCalendar.calendarId
-            )
+            try {
+              await integration.createEvent(
+                targetAccount,
+                meetingDetails,
+                meetingDetails.created_at,
+                innerCalendar.calendarId
+              )
+            } catch (error) {
+              Sentry.captureException(error)
+            }
             resolve()
           })
         )
@@ -57,7 +59,7 @@ const syncUpdatedEventWithCalendar = async (
 
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
-      targetAccount,
+      calendar.account_address,
       calendar.email,
       calendar.provider,
       calendar.payload
@@ -93,7 +95,7 @@ const syncDeletedEventWithCalendar = async (
 
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
-      targetAccount,
+      calendar.account_address,
       calendar.email,
       calendar.provider,
       calendar.payload
@@ -112,7 +114,6 @@ const syncDeletedEventWithCalendar = async (
               )
               resolve()
             } catch (error) {
-              console.log(error)
               Sentry.captureException(error)
             }
           })
@@ -132,8 +133,7 @@ export const ExternalCalendarSync = {
         tasks.push(
           syncCreatedEventWithCalendar(
             participant.account_address!,
-            meetingDetails,
-            participant.meeting_id!
+            meetingDetails
           )
         )
       }

@@ -150,7 +150,6 @@ export default class Office365CalendarService implements CalendarService {
   async createEvent(
     owner: string,
     meetingDetails: MeetingCreationSyncRequest,
-    meeting_id: string,
     meeting_creation_time: Date,
     calendarId: string
   ): Promise<NewCalendarEventType> {
@@ -161,13 +160,13 @@ export default class Office365CalendarService implements CalendarService {
         this.translateEvent(
           owner,
           meetingDetails,
-          meeting_id,
+          meetingDetails.meeting_id,
           meeting_creation_time
         )
       )
 
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendar/${calendarId}/events`,
+        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events`,
         {
           method: 'POST',
           headers: {
@@ -199,7 +198,7 @@ export default class Office365CalendarService implements CalendarService {
       )
 
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendar/${calendarId}/events`,
+        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events`,
         {
           method: 'PATCH',
           headers: {
@@ -222,7 +221,7 @@ export default class Office365CalendarService implements CalendarService {
       const accessToken = await this.auth.getToken()
 
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendar/${calendarId}/events/${meeting_id}`,
+        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${meeting_id}`,
         {
           method: 'DELETE',
           headers: {
@@ -323,7 +322,6 @@ export default class Office365CalendarService implements CalendarService {
       promises.push(
         new Promise(async (resolve, reject) => {
           try {
-            console.log('office running')
             const accessToken = await this.auth.getToken()
 
             // TODO: consider proper pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
@@ -339,8 +337,6 @@ export default class Office365CalendarService implements CalendarService {
               }
             )
             const eventsJson = await handleErrorsJson(eventsResponse)
-
-            console.log('office has results')
 
             resolve(
               eventsJson.value.map((evt: any) => {
@@ -360,6 +356,6 @@ export default class Office365CalendarService implements CalendarService {
 
     const result = await Promise.all(promises)
 
-    return result.reduce((acc, curr) => acc.concat(curr), [])
+    return result.flat()
   }
 }

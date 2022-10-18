@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
+import { id } from 'date-fns/locale'
 import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
 import { Auth, calendar_v3, google } from 'googleapis'
 
@@ -111,7 +112,7 @@ export default class GoogleCalendarService implements CalendarService {
 
       const calendars: CalendarSyncInfo[] = calendarList.items!.map(c => {
         return {
-          calendarId: c.etag!,
+          calendarId: c.id!,
           name: c.summary!,
           color: c.backgroundColor || undefined,
           sync: false,
@@ -140,12 +141,12 @@ export default class GoogleCalendarService implements CalendarService {
   async createEvent(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
-    meeting_id: string,
     meeting_creation_time: Date,
-    calendarId?: string
+    _calendarId?: string
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth.getToken().then(myGoogleAuth => {
+        const calendarId = parseCalendarId(_calendarId)
         const participantsInfo: ParticipantInfo[] =
           meetingDetails.participants.map(participant => ({
             type: participant.type,
@@ -153,12 +154,12 @@ export default class GoogleCalendarService implements CalendarService {
             account_address: participant.account_address,
             status: participant.status,
             slot_id: '',
-            meeting_id,
+            meeting_id: meetingDetails.meeting_id,
           }))
 
         const payload: calendar_v3.Schema$Event = {
           // yes, google event ids allows only letters and numbers
-          id: meeting_id.replaceAll('-', ''), // required to edit events later
+          id: meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
           summary: CalendarServiceHelper.getMeetingTitle(
             calendarOwnerAccountAddress,
             participantsInfo
@@ -224,7 +225,7 @@ export default class GoogleCalendarService implements CalendarService {
         calendar.events.insert(
           {
             auth: myGoogleAuth,
-            calendarId: 'primary',
+            calendarId,
             requestBody: payload,
             conferenceDataVersion: 1,
           },
@@ -238,9 +239,9 @@ export default class GoogleCalendarService implements CalendarService {
               return reject(err)
             }
             return resolve({
-              uid: meeting_id,
+              uid: meetingDetails.meeting_id,
               ...event.data,
-              id: meeting_id,
+              id: meetingDetails.meeting_id,
               additionalInfo: {
                 hangoutLink: event.data.hangoutLink || '',
               },
@@ -258,11 +259,13 @@ export default class GoogleCalendarService implements CalendarService {
     calendarOwnerAccountAddress: string,
     meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
-    calendarId?: string
+    _calendarId?: string
   ): Promise<NewCalendarEventType> {
     return new Promise(async (resolve, reject) => {
       const auth = await this.auth
       const myGoogleAuth = await auth.getToken()
+      const calendarId = parseCalendarId(_calendarId)
+
       const participantsInfo: ParticipantInfo[] =
         meetingDetails.participants.map(participant => ({
           type: participant.type,
@@ -324,7 +327,7 @@ export default class GoogleCalendarService implements CalendarService {
       calendar.events.update(
         {
           auth: myGoogleAuth,
-          calendarId: 'primary',
+          calendarId,
           eventId: meeting_id,
           sendNotifications: true,
           sendUpdates: 'all',
@@ -355,7 +358,7 @@ export default class GoogleCalendarService implements CalendarService {
     })
   }
 
-  async deleteEvent(meeting_id: string, calendarId?: string): Promise<void> {
+  async deleteEvent(meeting_id: string, _calendarId: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
       const auth = await this.auth
       const myGoogleAuth = await auth.getToken()
@@ -364,10 +367,12 @@ export default class GoogleCalendarService implements CalendarService {
         auth: myGoogleAuth,
       })
 
+      const calendarId = parseCalendarId(_calendarId)
+
       calendar.events.delete(
         {
           auth: myGoogleAuth,
-          calendarId: 'primary',
+          calendarId,
           eventId: meeting_id.replaceAll('-', ''),
           sendNotifications: true,
           sendUpdates: 'all',
@@ -378,7 +383,6 @@ export default class GoogleCalendarService implements CalendarService {
              *  410 is when an event is already deleted on the Google cal before on cal.com
              *  404 is when the event is on a different calendar
              */
-            console.log(err)
             if (err.code === 410) return resolve()
             console.error(
               'There was an error contacting google calendar service: ',
@@ -439,5 +443,16 @@ export default class GoogleCalendarService implements CalendarService {
         )
       })
     )
+  }
+}
+
+const parseCalendarId = (calId?: string) => {
+  if (!calId) {
+    return undefined
+  }
+  if (calId.indexOf('@') === -1) {
+    return calId
+  } else {
+    return 'primary'
   }
 }
