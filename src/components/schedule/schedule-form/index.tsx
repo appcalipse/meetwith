@@ -73,6 +73,17 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       })
       return
     }
+    if (!name) {
+      toast({
+        title: 'Missing information',
+        description: 'Please fill in your name (or any identifier)',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
     setIsScheduling(true)
     const success = await onConfirm(
       scheduleType!,
@@ -100,11 +111,11 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   return (
     <Box>
-      <FormLabel>Your name (optional)</FormLabel>
+      <FormLabel>Your name</FormLabel>
       <Input
         type="text"
         disabled={isScheduling}
-        placeholder="Your name or an identifier (if you want to provide)"
+        placeholder="Your name or an identifier"
         value={name}
         onChange={e => setName(e.target.value)}
         mb={4}
