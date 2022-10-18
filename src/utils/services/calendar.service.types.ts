@@ -24,7 +24,6 @@ export interface CalendarService {
   createEvent(
     owner: string,
     meetingDetails: MeetingCreationSyncRequest,
-    meeting_id: string,
     meeting_creation_time: Date,
     calendarId: string
   ): Promise<NewCalendarEventType>

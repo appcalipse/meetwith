@@ -353,6 +353,13 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       let meetingResult
       if (!meeting?.id) {
         //is creating
+        _participants.valid.push({
+          account_address: currentAccount!.address,
+          type: ParticipantType.Scheduler,
+          status: ParticipationStatus.Accepted,
+          slot_id: '',
+          meeting_id: '',
+        })
         meetingResult = await scheduleMeeting(
           SchedulingType.REGULAR,
           'no_type',

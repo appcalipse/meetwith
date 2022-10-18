@@ -88,12 +88,12 @@ async function handler(
     req.session.account.address,
     responseBody.email,
     TimeSlotSource.OFFICE,
-    calendars.values.map((c: any, index: number) => {
+    calendars.value.map((c: any, index: number) => {
       return {
         calendarId: c.id,
         name: c.name,
-        sync: index === 0,
-        enabled: true,
+        sync: false,
+        enabled: c.isDefaultCalendar,
         color: c.hexColor,
       }
     }),

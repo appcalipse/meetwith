@@ -150,8 +150,12 @@ const mapRelatedSlots = async (
   accountSlot[currentAccountAddress] = meeting.id
   for (const slotId of meeting.related_slot_ids) {
     if (slotId !== meeting.id) {
-      const slot = await getMeeting(slotId)
-      accountSlot[slot.account_address] = slotId
+      try {
+        const slot = await getMeeting(slotId)
+        accountSlot[slot.account_address] = slotId
+      } catch (e) {
+        // some slots might not be found if they belong to guests and were wrongly stored
+      }
     }
   }
   return accountSlot
@@ -166,8 +170,12 @@ const loadMeetingAccountAddresses = async (
   // TODO: change to one fetch all in batch
   const otherSlots = []
   for (const slotId of meeting.related_slot_ids) {
-    const otherSlot = await getMeeting(slotId)
-    otherSlots.push(otherSlot)
+    try {
+      const otherSlot = await getMeeting(slotId)
+      otherSlots.push(otherSlot)
+    } catch (e) {
+      // some slots might not be found if they belong to guests and were wrongly stored
+    }
   }
 
   return [
@@ -201,17 +209,6 @@ const buildMeetingData = async (
       }
     }
   }
-
-  currentAccount &&
-    participants.push({
-      account_address: currentAccount.address,
-      type: ParticipantType.Scheduler,
-      status: ParticipationStatus.Accepted,
-      slot_id: '',
-      // every db slot should point to the central meeting
-      // but the meeting is not directly connected to the db slot (because of the encryption)
-      meeting_id: meetingId,
-    })
 
   const allAccounts: Account[] = await getExistingAccounts(
     participants.filter(p => p.account_address).map(p => p.account_address!)
@@ -270,7 +267,9 @@ const buildMeetingData = async (
     participant.slot_id = existingSlotId || participant.slot_id
   }
 
-  const allSlotIds = sanitizedParticipants.map(it => it.slot_id)
+  const allSlotIds = sanitizedParticipants
+    .filter(p => p.account_address)
+    .map(it => it.slot_id)
   const participantsMappings = []
 
   for (const participant of sanitizedParticipants) {
@@ -302,7 +301,10 @@ const buildMeetingData = async (
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       name: participant.name || '',
       guest_email: participant.guest_email,
-      status: ParticipationStatus.Pending,
+      status:
+        participant.type === ParticipantType.Scheduler
+          ? ParticipationStatus.Accepted
+          : ParticipationStatus.Pending,
       mappingType: !!participantsToKeep[
         participant.account_address || participant.guest_email || ''
       ]
@@ -631,16 +633,16 @@ const generateIcs = (
   for (const participant of meeting.participants) {
     const attendee: Attendee = {
       name: participant.name || participant.account_address,
-      email:
-        participant.guest_email ||
-        noNoReplyEmailForAccount(participant.account_address!),
-      rsvp: participant.status === ParticipationStatus.Accepted,
-      partstat: participantStatusToICSStatus(participant.status),
-      role: 'REQ-PARTICIPANT',
+      // email:
+      //   participant.guest_email ||
+      //   noNoReplyEmailForAccount(participant.account_address!),
+      // rsvp: participant.status === ParticipationStatus.Accepted,
+      // partstat: participantStatusToICSStatus(participant.status),
+      // role: 'REQ-PARTICIPANT',
     }
 
     if (participant.account_address) {
-      attendee.dir = getCalendarRegularUrl(participant.account_address!)
+      // attendee.dir = getCalendarRegularUrl(participant.account_address!)
     }
 
     event.attendees.push(attendee)

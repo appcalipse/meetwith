@@ -13,7 +13,7 @@ const scopes = [
   'https://www.googleapis.com/auth/calendar.events.freebusy',
   'https://www.googleapis.com/auth/calendar.freebusy',
   'https://www.googleapis.com/auth/calendar.events.owned',
-  //'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/calendar.readonly',
 ]
 
 export default async function handler(
