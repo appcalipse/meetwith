@@ -5046,6 +5046,26 @@
     "@typescript-eslint/types" "5.4.0"
     eslint-visitor-keys "^3.0.0"
 
+"@uauth/common@2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@uauth/common/-/common-2.3.0.tgz#de0018503614e993af9f6373983bc53828bf9b80"
+  integrity sha512-RuRYd8UgVN1eotoZjj2YhgHHP7PlEGxPEKSqUbmtJYumb6DLrlR0HNRF+wM8LQz/x4SBBo+hdm0ueC5bAHcXBg==
+
+"@uauth/js@^2.4.0":
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/@uauth/js/-/js-2.4.0.tgz#f69d3221f560b0984955432f6de5e6eb089f36a6"
+  integrity sha512-KYWnEa2+Waa216TNhKmd1M78A8VnEjL6TbfaFHUKtixzKHYMYPIGj3zrD2Am3KHKIyq3bP11++ozoos6551Qrw==
+  dependencies:
+    "@uauth/common" "2.3.0"
+    "@unstoppabledomains/resolution" "^8.0"
+    global "^4.4.0"
+    jose "^4.5.0"
+
+"@uauth/web3modal@^2.4.0":
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/@uauth/web3modal/-/web3modal-2.4.0.tgz#355fbdedb49058cf8c460b461d25ff43844a6444"
+  integrity sha512-+R3n7Xx9eK54nfagtYUylaAYACjeg7uqgwD4FeMRdhhcP7lhBEn/LyueWVgwA8oC1itg/Oer/HG9t1DuuxTWLw==
+
 "@ukstv/jazzicon-react@^1.0.0":
   version "1.0.0"
   resolved "https://registry.npmjs.org/@ukstv/jazzicon-react/-/jazzicon-react-1.0.0.tgz"
@@ -5065,6 +5085,17 @@
     elliptic "^6.5.4"
     js-sha256 "^0.9.0"
     js-sha3 "^0.8.0"
+
+"@unstoppabledomains/resolution@^8.0":
+  version "8.3.3"
+  resolved "https://registry.yarnpkg.com/@unstoppabledomains/resolution/-/resolution-8.3.3.tgz#599c5e2f068a36e24bd19c0f9e2f753036264a3b"
+  integrity sha512-jQ9757Lvx/xqU7Lg7JT4L9WQZuElHkMiJmtph0e6TSwfguIlkv1i5UgzURgVXDvVizVKpDejGS60kuvICkz9ZQ==
+  dependencies:
+    "@ethersproject/abi" "^5.0.1"
+    bn.js "^4.4.0"
+    cross-fetch "^3.1.4"
+    crypto-js "^4.1.1"
+    elliptic "^6.5.4"
 
 "@vascosantos/moving-average@^1.1.0":
   version "1.1.0"
@@ -10159,7 +10190,7 @@ global-prefix@^1.0.1:
     is-windows "^1.0.1"
     which "^1.2.14"
 
-global@~4.4.0:
+global@^4.4.0, global@~4.4.0:
   version "4.4.0"
   resolved "https://registry.npmjs.org/global/-/global-4.4.0.tgz"
   integrity sha512-wv/LAoHdRE3BeTGz53FAamhGlPLhlssK45usmGFThIi4XqnBmjKQ16u+RNbP7WvigRZDxUsM0J3gcQ5yicaL0w==
@@ -13016,6 +13047,11 @@ joi@^17.2.1:
     "@sideway/address" "^4.1.0"
     "@sideway/formula" "^3.0.0"
     "@sideway/pinpoint" "^2.0.0"
+
+jose@^4.5.0:
+  version "4.10.0"
+  resolved "https://registry.yarnpkg.com/jose/-/jose-4.10.0.tgz#2e0b7bcc80dd0775f8a4588e55beb9460c37d60a"
+  integrity sha512-KEhB/eLGLomWGPTb+/RNbYsTjIyx03JmbqAyIyiXBuNSa7CmNrJd5ysFhblayzs/e/vbOPMUaLnjHUMhGp4yLw==
 
 joycon@^2.2.5:
   version "2.2.5"
