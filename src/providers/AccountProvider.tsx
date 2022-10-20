@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useCookies } from 'react-cookie'
 
+import { logoutWallet } from '@/utils/user_manager'
+
 import { Account } from '../types/Account'
 import { SESSION_COOKIE_NAME } from '../utils/auth/withSessionApiRoute'
 import { removeSignature } from '../utils/storage'
@@ -52,6 +54,7 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
   }
 
   const logout = async () => {
+    logoutWallet()
     userContext.currentAccount &&
       removeSignature(userContext.currentAccount!.address)
     removeCookie(SESSION_COOKIE_NAME, {
