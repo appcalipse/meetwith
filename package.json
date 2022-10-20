@@ -37,6 +37,8 @@
     "@sendgrid/mail": "^7.6.2",
     "@sentry/nextjs": "^6.16.1",
     "@supabase/supabase-js": "^1.28.1",
+    "@uauth/js": "^2.4.0",
+    "@uauth/web3modal": "^2.4.0",
     "@ukstv/jazzicon-react": "^1.0.0",
     "@unstoppabledomains/resolution": "^7.1.2",
     "@walletconnect/web3-provider": "^1.7.0",
