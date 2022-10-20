@@ -157,7 +157,7 @@ export default class CaldavCalendarService implements CalendarService {
       // We create the event directly on iCal
 
       console.log('Creating event on calendar', calendarToSync)
-
+      console.log(ics.value!.toString())
       const response = await createCalendarObject({
         calendar: calendarToSync!,
         filename: `${meetingDetails.meeting_id}.ics`,
@@ -166,9 +166,8 @@ export default class CaldavCalendarService implements CalendarService {
         headers: this.headers,
       })
 
-      console.log(response)
-
       if (!response.ok) {
+        console.log(await response.text())
         throw new Error(
           `Error creating event: ${(
             await Promise.all(JSON.stringify(response.statusText))
@@ -194,7 +193,7 @@ export default class CaldavCalendarService implements CalendarService {
     owner: string,
     slot_id: string,
     meetingDetails: MeetingCreationSyncRequest,
-    calendarId?: string
+    calendarId: string
   ): Promise<NewCalendarEventType> {
     try {
       const events = await this.getEventsByUID(slot_id)
@@ -235,7 +234,7 @@ export default class CaldavCalendarService implements CalendarService {
             calendarObject: {
               url: event.url,
               // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-              data: Buffer.from(ics.value!).toString('base64'),
+              data: ics.value!.toString(),
               etag: event?.etag,
             },
             headers: this.headers,
@@ -256,7 +255,7 @@ export default class CaldavCalendarService implements CalendarService {
       throw reason
     }
   }
-  async deleteEvent(meeting_id: string, calendarId?: string): Promise<void> {
+  async deleteEvent(meeting_id: string, calendarId: string): Promise<void> {
     try {
       const events = await this.getEventsByUID(meeting_id)
 

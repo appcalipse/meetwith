@@ -628,21 +628,22 @@ const generateIcs = (
     },
     status: 'CONFIRMED',
   }
+
   event.attendees = []
 
   for (const participant of meeting.participants) {
     const attendee: Attendee = {
       name: participant.name || participant.account_address,
-      // email:
-      //   participant.guest_email ||
-      //   noNoReplyEmailForAccount(participant.account_address!),
-      // rsvp: participant.status === ParticipationStatus.Accepted,
-      // partstat: participantStatusToICSStatus(participant.status),
-      // role: 'REQ-PARTICIPANT',
+      email:
+        participant.guest_email ||
+        noNoReplyEmailForAccount(participant.account_address!),
+      rsvp: participant.status === ParticipationStatus.Accepted,
+      partstat: participantStatusToICSStatus(participant.status),
+      role: 'REQ-PARTICIPANT',
     }
 
     if (participant.account_address) {
-      // attendee.dir = getCalendarRegularUrl(participant.account_address!)
+      attendee.dir = getCalendarRegularUrl(participant.account_address!)
     }
 
     event.attendees.push(attendee)

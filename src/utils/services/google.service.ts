@@ -259,7 +259,7 @@ export default class GoogleCalendarService implements CalendarService {
     calendarOwnerAccountAddress: string,
     meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
-    _calendarId?: string
+    _calendarId: string
   ): Promise<NewCalendarEventType> {
     return new Promise(async (resolve, reject) => {
       const auth = await this.auth
@@ -328,7 +328,7 @@ export default class GoogleCalendarService implements CalendarService {
         {
           auth: myGoogleAuth,
           calendarId,
-          eventId: meeting_id,
+          eventId: meeting_id.replaceAll('-', ''),
           sendNotifications: true,
           sendUpdates: 'all',
           requestBody: payload,
