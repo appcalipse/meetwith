@@ -188,7 +188,7 @@ export default class Office365CalendarService implements CalendarService {
     owner: string,
     meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
-    calendarId?: string
+    calendarId: string
   ): Promise<NewCalendarEventType> {
     try {
       const accessToken = await this.auth.getToken()
@@ -216,7 +216,7 @@ export default class Office365CalendarService implements CalendarService {
     }
   }
 
-  async deleteEvent(meeting_id: string, calendarId?: string): Promise<void> {
+  async deleteEvent(meeting_id: string, calendarId: string): Promise<void> {
     try {
       const accessToken = await this.auth.getToken()
 
