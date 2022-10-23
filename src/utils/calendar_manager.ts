@@ -16,6 +16,7 @@ import {
   DBSlot,
   DBSlotEnhanced,
   IPFSMeetingInfo,
+  MeetingChangeType,
   MeetingDecrypted,
   ParticipantMappingType,
   SchedulingType,
@@ -582,7 +583,8 @@ const scheduleMeeting = async (
 
 const generateIcs = (
   meeting: MeetingDecrypted,
-  ownerAddress: string
+  ownerAddress: string,
+  meetingStatus: MeetingChangeType
 ): ReturnObject => {
   let url = meeting.meeting_url.trim()
   if (!isValidUrl(url)) {
@@ -626,7 +628,8 @@ const generateIcs = (
       name: 'Meet with Wallet',
       email: NO_REPLY_EMAIL,
     },
-    status: 'CONFIRMED',
+    status:
+      meetingStatus === MeetingChangeType.DELETE ? 'CANCELLED' : 'CONFIRMED',
   }
 
   event.attendees = []

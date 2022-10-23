@@ -4,6 +4,8 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
+import { MeetingChangeType } from '@/types/Meeting'
+
 import { ParticipantInfo, ParticipantType } from '../types/ParticipantInfo'
 import {
   dateToHumanReadable,
@@ -67,7 +69,8 @@ export const newMeetingEmail = async (
       version: 0,
       related_slot_ids: [],
     },
-    destinationAccountAddress || ''
+    destinationAccountAddress || '',
+    MeetingChangeType.CREATE
   )
 
   if (icsFile.error) {
@@ -107,7 +110,7 @@ export const cancelledMeetingEmail = async (
   timezone: string,
   start: Date,
   end: Date,
-  meeting_id: string | undefined,
+  meeting_id: string,
   title?: string,
   destinationAccountAddress?: string,
   created_at?: Date
@@ -123,25 +126,27 @@ export const cancelledMeetingEmail = async (
   }
 
   // TODO: add after having the meeting id so ics's are consistent
-  // const icsFile = generateIcs(
-  //   {
-  //     meeting_url: '',
-  //     start: new Date(start),
-  //     end: new Date(end),
-  //     id: id as string,
-  //     created_at: new Date(created_at as Date),
-  //     meeting_info_file_path: '',
-  //     [],
-  //     version: 0,
-  //     related_slot_ids: [],
-  //   },
-  //   destinationAccountAddress || ''
-  // )
+  const icsFile = generateIcs(
+    {
+      meeting_id,
+      meeting_url: '',
+      start: new Date(start),
+      end: new Date(end),
+      id: meeting_id,
+      created_at: new Date(created_at as Date),
+      meeting_info_file_path: '',
+      participants: [],
+      version: 0,
+      related_slot_ids: [],
+    },
+    destinationAccountAddress || '',
+    MeetingChangeType.DELETE
+  )
 
-  // if (icsFile.error) {
-  //   Sentry.captureException(icsFile.error)
-  //   return false
-  // }
+  if (icsFile.error) {
+    Sentry.captureException(icsFile.error)
+    return false
+  }
 
   const rendered = await email.renderAll(
     `${path.resolve('src', 'emails', 'meeting_cancelled')}`,
@@ -154,14 +159,14 @@ export const cancelledMeetingEmail = async (
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
-    // attachments: [
-    //   {
-    //     content: Buffer.from(icsFile.value!).toString('base64'),
-    //     filename: `meeting_${id}.ics`,
-    //     type: 'text/plain',
-    //     disposition: 'attachment',
-    //   },
-    // ],
+    attachments: [
+      {
+        content: Buffer.from(icsFile.value!).toString('base64'),
+        filename: `meeting_${meeting_id}.ics`,
+        type: 'text/plain',
+        disposition: 'attachment',
+      },
+    ],
   }
 
   try {
@@ -225,7 +230,8 @@ export const updateMeetingEmail = async (
       version: 0,
       related_slot_ids: [],
     },
-    destinationAccountAddress || ''
+    destinationAccountAddress || '',
+    MeetingChangeType.UPDATE
   )
 
   if (icsFile.error) {

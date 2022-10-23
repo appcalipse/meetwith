@@ -95,8 +95,11 @@ export default function SimpleThreeColumns() {
                   Huddle
                 </Link>{' '}
                 and,{' '}
-                <Link href="https://epns.io/?source=meetwithwallet" isExternal>
-                  EPNS
+                <Link
+                  href="https://app.push.org/?source=meetwithwallet"
+                  isExternal
+                >
+                  Push protocol
                 </Link>
                 . Much more to come.
               </>

@@ -17,6 +17,7 @@ import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
+import { MeetingChangeType } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -149,7 +150,8 @@ export default class CaldavCalendarService implements CalendarService {
           version: 0,
           related_slot_ids: [],
         },
-        calendarOwnerAccountAddress
+        calendarOwnerAccountAddress,
+        MeetingChangeType.CREATE
       )
 
       if (!ics.value || ics.error) throw new Error('Error creating iCalString')
@@ -196,6 +198,12 @@ export default class CaldavCalendarService implements CalendarService {
     calendarId: string
   ): Promise<NewCalendarEventType> {
     try {
+      const calendars = await this.listCalendars()
+
+      const calendarToSync = calendarId
+        ? calendars.find(c => c.url === calendarId)
+        : calendars[0]
+
       const events = await this.getEventsByUID(slot_id)
 
       const participantsInfo: ParticipantInfo[] =
@@ -221,7 +229,8 @@ export default class CaldavCalendarService implements CalendarService {
           related_slot_ids: [],
           meeting_id: '',
         },
-        owner
+        owner,
+        MeetingChangeType.UPDATE
       )
 
       if (!ics.value || ics.error) throw new Error('Error creating iCalString')

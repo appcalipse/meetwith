@@ -197,11 +197,11 @@ const NotificationsConfig: React.FC = () => {
             Make sure you subscribe to{' '}
             <Link
               isExternal
-              href="https://app.epns.io/?channel=0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b"
+              href="https://app.push.org/#/channels?channel=0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b"
             >
               Meet with Wallet channel
             </Link>{' '}
-            on EPNS.
+            on Push protocol.
           </Text>
 
           <Spacer />

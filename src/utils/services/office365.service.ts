@@ -10,7 +10,11 @@ import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { NO_REPLY_EMAIL } from '../constants'
-import { updateCalendarPayload } from '../database'
+import {
+  getOfficeEventMappingId,
+  insertOfficeEventMapping,
+  updateCalendarPayload,
+} from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
 
@@ -32,10 +36,16 @@ interface TokenResponse {
   expires_in: number
 }
 
-export function handleErrorsJson(response: Response) {
+export function handleErrorsResponse(
+  response: Response,
+  skipResponseProcess?: boolean
+) {
   if (!response.ok) {
     response.json().then(console.error)
     throw Error(response.statusText)
+  }
+  if (skipResponseProcess) {
+    return
   }
   return response.json()
 }
@@ -90,7 +100,7 @@ export default class Office365CalendarService implements CalendarService {
           }),
         }
       )
-        .then(handleErrorsJson)
+        .then(handleErrorsResponse)
         .then((responseBody: TokenResponse) => {
           credential.access_token = responseBody.access_token
           credential.expiry_date = Math.round(
@@ -154,6 +164,7 @@ export default class Office365CalendarService implements CalendarService {
     calendarId: string
   ): Promise<NewCalendarEventType> {
     try {
+      console.log('here')
       const accessToken = await this.auth.getToken()
 
       const body = JSON.stringify(
@@ -177,7 +188,10 @@ export default class Office365CalendarService implements CalendarService {
         }
       )
 
-      return handleErrorsJson(response)
+      const event = await handleErrorsResponse(response)
+      await insertOfficeEventMapping(event.id, meetingDetails.meeting_id)
+
+      return event
     } catch (error) {
       Sentry.captureException(error)
       throw error
@@ -192,10 +206,11 @@ export default class Office365CalendarService implements CalendarService {
   ): Promise<NewCalendarEventType> {
     try {
       const accessToken = await this.auth.getToken()
-
-      const body = JSON.stringify(
-        this.translateEvent(owner, meetingDetails, meeting_id, new Date())
-      )
+      const officeId = await getOfficeEventMappingId(meeting_id)
+      const body = JSON.stringify({
+        ...this.translateEvent(owner, meetingDetails, meeting_id, new Date()),
+        id: officeId,
+      })
 
       const response = await fetch(
         `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events`,
@@ -209,7 +224,10 @@ export default class Office365CalendarService implements CalendarService {
         }
       )
 
-      return handleErrorsJson(response)
+      const event = await handleErrorsResponse(response)
+      console.log(response)
+
+      return handleErrorsResponse(response)
     } catch (error) {
       Sentry.captureException(error)
       throw error
@@ -220,8 +238,15 @@ export default class Office365CalendarService implements CalendarService {
     try {
       const accessToken = await this.auth.getToken()
 
+      const officeId = await getOfficeEventMappingId(meeting_id)
+      console.log('officeId', officeId)
+      if (!officeId) {
+        Sentry.captureException("Can't find office event mapping")
+        return
+      }
+
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${meeting_id}`,
+        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${officeId}`,
         {
           method: 'DELETE',
           headers: {
@@ -231,7 +256,7 @@ export default class Office365CalendarService implements CalendarService {
         }
       )
 
-      return handleErrorsJson(response)
+      return handleErrorsResponse(response, true)
     } catch (error) {
       Sentry.captureException(error)
       throw error
@@ -336,7 +361,7 @@ export default class Office365CalendarService implements CalendarService {
                 },
               }
             )
-            const eventsJson = await handleErrorsJson(eventsResponse)
+            const eventsJson = await handleErrorsResponse(eventsResponse)
 
             resolve(
               eventsJson.value.map((evt: any) => {

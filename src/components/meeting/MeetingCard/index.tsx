@@ -35,7 +35,11 @@ import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
-import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
+import {
+  DBSlot,
+  MeetingChangeType,
+  MeetingDecrypted,
+} from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import IPFSLink from '../../IPFSLink'
 
@@ -216,7 +220,11 @@ const DecodedInfo: React.FC<{
     info: MeetingDecrypted,
     currentConnectedAccountAddress: string
   ) => {
-    const icsFile = generateIcs(info, currentConnectedAccountAddress)
+    const icsFile = generateIcs(
+      info,
+      currentConnectedAccountAddress,
+      MeetingChangeType.CREATE
+    )
 
     const url = window.URL.createObjectURL(
       new Blob([icsFile.value!], { type: 'text/plain' })

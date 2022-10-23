@@ -14,7 +14,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     const { data, error } = await db.supabase
       .from('connected_calendars')
       .select()
-      .in('id', [130])
+      .in('id', [135])
 
     if (data) {
       const calendars = data as ConnectedCalendar[]
@@ -29,7 +29,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
         const promises = []
 
-        const meeting_id = 'meeting-id-to-test7'
+        const meeting_id = '2a64bdb0-4ee1-42e6-ae1a-dec716cae2a8'
 
         if (false) {
           for (const innerCalendar of calendar.calendars!) {

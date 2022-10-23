@@ -1512,6 +1512,37 @@ const selectTeamMeetingRequest = async (
   return null
 }
 
+const insertOfficeEventMapping = async (
+  office_id: string,
+  mww_id: string
+): Promise<void> => {
+  const { data, error } = await db.supabase
+    .from('office_event_mapping')
+    .insert({ office_id, mww_id })
+
+  console.log(data)
+  if (error) {
+    console.log(error)
+    Sentry.captureException(error)
+  }
+}
+
+const getOfficeEventMappingId = async (
+  mww_id: string
+): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('office_event_mapping')
+    .select()
+    .eq('mww_id', mww_id)
+
+  if (error) {
+    Sentry.captureException(error)
+    return null
+  }
+
+  return data[0].office_id
+}
+
 export {
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
@@ -1527,10 +1558,12 @@ export {
   getGateCondition,
   getGateConditionsForAccount,
   getMeetingFromDB,
+  getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
   initAccountDBForWallet,
   initDB,
+  insertOfficeEventMapping,
   isSlotFree,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
