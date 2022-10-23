@@ -11,8 +11,7 @@ import {
   getAccountNotificationSubscriptions,
 } from './database'
 import { newMeetingEmail } from './email_helper'
-import { sendEPNSNotification } from './epns_helper_production'
-import { sendEPNSNotificationStaging } from './epns_helper_staging'
+import { sendPushNotification } from './push_protocol_helper'
 import { dmAccount } from './services/discord.helper'
 import { isProAccount } from './subscription_manager'
 import { getAllParticipantsDisplayName } from './user_manager'
@@ -34,6 +33,7 @@ export const notifyForNewMeeting = async (
         timezone: map.timeZone,
         type: map.type,
         guest_email: map.guest_email,
+        meeting_id: map.meeting_id,
         notifications: map.account_address
           ? await getAccountNotificationSubscriptions(map.account_address)
           : undefined,
@@ -122,7 +122,7 @@ export const notifyForNewMeeting = async (
                 )
                 if (isProAccount(accountForEmail)) {
                   const parameters = {
-                    destination_addresses: [notification_type.destination],
+                    destination_address: notification_type.destination,
                     title: 'New meeting scheduled',
                     message: `${dateToHumanReadable(
                       meeting_ics.meeting.start,
@@ -134,21 +134,11 @@ export const notifyForNewMeeting = async (
                     )}`,
                   }
 
-                  process.env.NEXT_PUBLIC_ENV === 'production'
-                    ? promises.push(
-                        sendEPNSNotification(
-                          parameters.destination_addresses,
-                          parameters.title,
-                          parameters.message
-                        )
-                      )
-                    : promises.push(
-                        sendEPNSNotificationStaging(
-                          parameters.destination_addresses,
-                          parameters.title,
-                          parameters.message
-                        )
-                      )
+                  sendPushNotification(
+                    parameters.destination_address,
+                    parameters.title,
+                    parameters.message
+                  )
                 }
                 break
               default:

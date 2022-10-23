@@ -29,7 +29,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
         return res.json({ joiningLink: joinData.joiningLink })
       }
     } catch (e) {
-      console.log(e)
       Sentry.captureException(e)
       return res.status(503).send('Huddle01 Unavailable')
     }

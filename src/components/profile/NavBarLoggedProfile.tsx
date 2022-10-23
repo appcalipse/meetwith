@@ -4,10 +4,11 @@ import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 
+import { ellipsizeAddress } from '@/utils/user_manager'
+
 import { Account } from '../../types/Account'
 import { EditMode } from '../../types/Dashboard'
 import { logEvent } from '../../utils/analytics'
-import { ellipsizeAddress } from '../../utils/user_manager'
 import { NavMenu } from './components/NavMenu'
 
 interface NavBarLoggedProfileProps {
