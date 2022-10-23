@@ -19,7 +19,7 @@ export enum SupportedChain {
   POLYGON_MATIC = 'POLYGON_MATIC',
   POLYGON_MUMBAI = 'POLYGON_MUMBAI',
   HARMONY = 'HARMONY',
-  RINKEBY = 'RINKEBY',
+  GOERLI = 'GOERLI',
   HARMONY_TESTNET = 'HARMONY_TESTNET',
   METIS_ANDROMEDA = 'METIS_ANDROMEDA',
   METIS_STARTDUST = 'METIS_STARTDUST',
@@ -46,16 +46,16 @@ export const getNativeDecimals = (chain: SupportedChain): number => {
 
 export const supportedChains: ChainInfo[] = [
   {
-    chain: SupportedChain.RINKEBY,
-    id: 4,
-    name: 'Rinkeby',
-    fullName: 'Ethereum Rinkeby',
-    rpcUrl: 'https://rinkeby.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+    chain: SupportedChain.GOERLI,
+    id: 5,
+    name: 'Goerli',
+    fullName: 'Ethereum Goerli',
+    rpcUrl: 'https://goerlu.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
     testnet: true,
     nativeTokenSymbol: 'ETH',
     domainContractAddess: '0xc1a78c9ce8fc447030edff6728822cfd6ffc1948',
     registarContractAddress: '0x0B63ea2262CD64fE3A032Fc220b5352Ff98c7EA3',
-    blockExplorerUrl: 'https://rinkeby.etherscan.com',
+    blockExplorerUrl: 'https://goerli.etherscan.com',
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,

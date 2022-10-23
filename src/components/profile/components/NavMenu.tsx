@@ -22,11 +22,12 @@ import {
   FaSignOutAlt,
 } from 'react-icons/fa'
 
+import { getAccountCalendarUrl } from '@/utils/calendar_manager'
+import { getAccountDisplayName } from '@/utils/user_manager'
+
 import { AccountContext } from '../../../providers/AccountProvider'
 import { EditMode } from '../../../types/Dashboard'
 import { logEvent } from '../../../utils/analytics'
-import { getAccountCalendarUrl } from '../../../utils/calendar_manager'
-import { getAccountDisplayName } from '../../../utils/user_manager'
 import { CopyLinkButton } from './CopyLinkButton'
 import { NavItem } from './NavItem'
 

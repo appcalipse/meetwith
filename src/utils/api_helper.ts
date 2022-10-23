@@ -14,6 +14,7 @@ import {
   ConnectResponse,
 } from '../types/CalendarConnections'
 import {
+  ConferenceMeeting,
   DBSlot,
   DBSlotEnhanced,
   GroupMeetingRequest,
@@ -644,5 +645,18 @@ export const createHuddleRoom = async (
       }
     }
     throw e
+  }
+}
+
+export const getConferenceMeeting = async (
+  meetingId: string
+): Promise<ConferenceMeeting> => {
+  const response = (await internalFetch(
+    `/meetings/conference/${meetingId}`
+  )) as ConferenceMeeting
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
   }
 }

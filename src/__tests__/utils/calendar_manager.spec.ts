@@ -70,12 +70,14 @@ describe('calendar manager', () => {
         slot_id: '',
         type: ParticipantType.Owner,
         status: ParticipationStatus.Accepted,
+        meeting_id: '',
       },
       {
         account_address: targetAccount,
         slot_id: '',
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Pending,
+        meeting_id: '',
       },
     ]
 
@@ -119,12 +121,14 @@ describe('calendar manager', () => {
       {
         account_address: sourceAccount,
         slot_id: '',
+        meeting_id: '',
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Accepted,
       },
       {
         account_address: targetAccount,
         slot_id: '',
+        meeting_id: '',
         type: ParticipantType.Owner,
         status: ParticipationStatus.Accepted,
       },
@@ -184,6 +188,7 @@ describe('calendar manager', () => {
       {
         account_address: schedulerAccount,
         slot_id: randomUUID(),
+        meeting_id: randomUUID(),
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Accepted,
       },
@@ -191,6 +196,7 @@ describe('calendar manager', () => {
         name: existingAccounts[0].preferences?.name,
         account_address: targetAccount,
         slot_id: randomUUID(),
+        meeting_id: randomUUID(),
         type: ParticipantType.Owner,
         status: ParticipationStatus.Pending,
       },
@@ -200,6 +206,7 @@ describe('calendar manager', () => {
       created_at: new Date(),
       participants: JSON.parse(JSON.stringify(participants)),
       meeting_url: '',
+      meeting_id: randomUUID(),
       change_history_paths: [],
       related_slot_ids: [],
     }
@@ -299,12 +306,14 @@ describe('calendar manager', () => {
         guest_email: guestEmail,
         name: guestName,
         slot_id: '',
+        meeting_id: randomUUID(),
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Accepted,
       },
       {
         account_address: targetAccount,
         slot_id: '',
+        meeting_id: randomUUID(),
         type: ParticipantType.Owner,
         status: ParticipationStatus.Accepted,
       },
@@ -379,6 +388,7 @@ describe('calendar manager sanitizing participants', () => {
         type: ParticipantType.Owner,
         status: ParticipationStatus.Accepted,
         slot_id: 'random',
+        meeting_id: randomUUID(),
       },
       {
         account_address: '0x1',
@@ -386,12 +396,14 @@ describe('calendar manager sanitizing participants', () => {
         status: ParticipationStatus.Pending,
         slot_id: 'random2',
         name: 'look, my name',
+        meeting_id: randomUUID(),
       },
       {
         type: ParticipantType.Invitee,
         status: ParticipationStatus.Pending,
         guest_email: 'myemail@lookatme.com',
         slot_id: 'whocares',
+        meeting_id: randomUUID(),
       },
       {
         type: ParticipantType.Invitee,
@@ -399,6 +411,7 @@ describe('calendar manager sanitizing participants', () => {
         guest_email: 'myemail@lookatme.com',
         slot_id: 'whocares',
         name: 'I have a name',
+        meeting_id: randomUUID(),
       },
     ]
 
@@ -413,6 +426,7 @@ describe('calendar manager sanitizing participants', () => {
         type: ParticipantType.Owner,
         status: ParticipationStatus.Accepted,
         slot_id: 'random',
+        meeting_id: randomUUID(),
       },
       {
         account_address: '0x1',
@@ -420,6 +434,7 @@ describe('calendar manager sanitizing participants', () => {
         status: ParticipationStatus.Pending,
         slot_id: 'random2',
         name: NAME_TO_CHECK,
+        meeting_id: randomUUID(),
       },
       {
         type: ParticipantType.Invitee,
@@ -427,12 +442,14 @@ describe('calendar manager sanitizing participants', () => {
         guest_email: EMAIL_TO_CHECK,
         name: 'I have a name',
         slot_id: 'whocares',
+        meeting_id: randomUUID(),
       },
       {
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Pending,
         guest_email: EMAIL_TO_CHECK,
         slot_id: 'whocaresagain',
+        meeting_id: randomUUID(),
       },
     ]
 
