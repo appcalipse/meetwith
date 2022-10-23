@@ -34,6 +34,7 @@
     "@mikro-orm/core": "^4.5.9",
     "@mikro-orm/postgresql": "^4.5.9",
     "@next/mdx": "^12.1.0",
+    "@pushprotocol/restapi": "^0.1.1",
     "@sendgrid/mail": "^7.6.2",
     "@sentry/nextjs": "^6.16.1",
     "@supabase/supabase-js": "^1.28.1",

@@ -14,9 +14,17 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { BaseProvider } from '@ethersproject/providers'
+import * as PushAPI from '@pushprotocol/restapi'
+import { ethers } from 'ethers'
 import NextLink from 'next/link'
 import { useContext, useState } from 'react'
 import { useEffect } from 'react'
+
+import { SupportedChain } from '@/types/chains'
+import { getCAIPAddress, PUSH_CHANNEL } from '@/utils/push_protocol_helper'
+import { validateChainToActOn } from '@/utils/rpc_helper_front'
+import { connectedProvider, web3 } from '@/utils/user_manager'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import {
@@ -41,6 +49,9 @@ const NotificationsConfig: React.FC = () => {
   const [email, setEmail] = useState('')
   const [emailNotifications, setEmailNotifications] = useState(false)
   const [epnsNotifications, setEPNSNotifications] = useState(false)
+  const [pushOptedIn, setPushOptedIn] = useState<{ opted: boolean } | null>(
+    null
+  )
   const [discordNotificationConfig, setDiscordNotificationConfig] = useState(
     undefined as DiscordNotificationType | undefined
   )
@@ -51,6 +62,7 @@ const NotificationsConfig: React.FC = () => {
 
   const fetchSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()
+    checkPushSubscription()
     for (let i = 0; i < subs.notification_types.length; i++) {
       switch (subs.notification_types[i].channel) {
         case NotificationChannel.EMAIL:
@@ -72,6 +84,68 @@ const NotificationsConfig: React.FC = () => {
   }
 
   const toast = useToast()
+
+  const onPushChange = (selected: boolean) => {
+    setEPNSNotifications(selected)
+    if (selected) {
+      subscribeToPushChannel()
+    }
+  }
+
+  const checkPushSubscription = async () => {
+    const subscriptions = await PushAPI.user.getSubscriptions({
+      user: getCAIPAddress(currentAccount!.address.toLowerCase()),
+      env: process.env.NEXT_PUBLIC_ENV === 'production' ? 'prod' : 'staging',
+    })
+    const subscribed = subscriptions.some(
+      (s: any) => s.channel.toLowerCase() === PUSH_CHANNEL.toLowerCase()
+    )
+    if (subscribed) {
+      setPushOptedIn({ opted: true })
+    } else {
+      setPushOptedIn({ opted: false })
+    }
+  }
+  const subscribeToPushChannel = async () => {
+    if (pushOptedIn?.opted === true) {
+      return
+    }
+    const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
+    try {
+      await validateChainToActOn(
+        process.env.NEXT_PUBLIC_ENV === 'production'
+          ? SupportedChain.ETHEREUM
+          : SupportedChain.GOERLI,
+        provider
+      )
+    } catch (e) {
+      toast({
+        title: 'Error',
+        description:
+          "Please change your wallet's network to Ethereum to subscribe to Push protocol notifications.",
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
+      return
+    }
+    const _signer = provider.getSigner()
+
+    await PushAPI.channels.subscribe({
+      signer: _signer as any,
+      channelAddress: getCAIPAddress(PUSH_CHANNEL), // channel address in CAIP
+      userAddress: getCAIPAddress(currentAccount!.address.toLowerCase()), // user address in CAIP
+      onSuccess: () => {
+        setEPNSNotifications(true)
+        setPushOptedIn({ opted: true })
+      },
+      onError: () => {
+        setPushOptedIn({ opted: false })
+      },
+      env: process.env.NEXT_PUBLIC_ENV === 'production' ? 'prod' : 'staging',
+    })
+  }
 
   const onDiscordNotificationChange = (
     discordNotification?: DiscordNotificationType
@@ -172,16 +246,19 @@ const NotificationsConfig: React.FC = () => {
 
           <Spacer />
 
-          <HStack py={4}>
+          <HStack py={2}>
             <Switch
               colorScheme="orange"
               size="md"
-              isChecked={epnsNotifications}
-              onChange={e => setEPNSNotifications(e.target.checked)}
-              isDisabled={!isPro}
+              isChecked={pushOptedIn?.opted && epnsNotifications}
+              onChange={e => onPushChange(e.target.checked)}
+              isDisabled={!isPro || !pushOptedIn}
             />
             <Text>
-              EPNS{' '}
+              Push notifications by{' '}
+              <NextLink href="/dashboard/details" shallow passHref>
+                <Link>Push protocol</Link>
+              </NextLink>
               {!isPro && (
                 <>
                   (
@@ -193,16 +270,12 @@ const NotificationsConfig: React.FC = () => {
               )}
             </Text>
           </HStack>
-          <Text>
-            Make sure you subscribe to{' '}
-            <Link
-              isExternal
-              href="https://app.epns.io/?channel=0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b"
-            >
-              Meet with Wallet channel
-            </Link>{' '}
-            on EPNS.
-          </Text>
+          {epnsNotifications && pushOptedIn && !pushOptedIn.opted && (
+            <Text fontSize="sm">
+              You need to subscribe to the meet with wallet channel on Push
+              protocol.
+            </Text>
+          )}
 
           <Spacer />
           <Spacer />
