@@ -192,44 +192,43 @@ const workNotifications = async (
                 const accountForDiscord = await getAccountFromDB(
                   participant.account_address
                 )
-                if (isProAccount(accountForDiscord)) {
-                  //TODO
-                  promises.push()
+                // Dont DM if you are the person is the one scheduling the meeting
+                if (
+                  isProAccount(accountForDiscord) &&
+                  participantActing.account_address?.toLowerCase() !==
+                    participant.account_address.toLowerCase()
+                ) {
+                  promises.push(
+                    getDiscordNotification(
+                      changeType,
+                      participantActing,
+                      participant,
+                      start,
+                      participantsInfo
+                    )
+                  )
                 }
                 break
               case NotificationChannel.EPNS:
-                const accountForEmail = await getAccountFromDB(
+                const accountForEPNS = await getAccountFromDB(
                   participant.account_address
                 )
-                if (isProAccount(accountForEmail)) {
-                  const parameters = {
-                    destination_addresses: [notification_type.destination],
-                    title: 'New meeting scheduled',
-                    message: `${dateToHumanReadable(
+                // Dont DM if you are the person is the one scheduling the meeting
+                if (
+                  isProAccount(accountForEPNS) &&
+                  participantActing.account_address?.toLowerCase() !==
+                    participant.account_address.toLowerCase()
+                ) {
+                  promises.push(
+                    getEPNSNotification(
+                      changeType,
+                      notification_type.destination,
                       start,
-                      participant.timezone,
-                      true
-                    )} - ${getAllParticipantsDisplayName(
-                      participantsInfo,
-                      participant.account_address
-                    )}`,
-                  }
-
-                  process.env.NEXT_PUBLIC_ENV === 'production'
-                    ? promises.push(
-                        sendEPNSNotification(
-                          parameters.destination_addresses,
-                          parameters.title,
-                          parameters.message
-                        )
-                      )
-                    : promises.push(
-                        sendEPNSNotificationStaging(
-                          parameters.destination_addresses,
-                          parameters.title,
-                          parameters.message
-                        )
-                      )
+                      participantActing,
+                      participant,
+                      participantsInfo
+                    )
+                  )
                 }
                 break
               default:
@@ -337,16 +336,20 @@ const getDiscordNotification = async (
           )}`
         )
       case MeetingChangeType.DELETE:
+        const displayName = getParticipantActingDisplayName(
+          participantActing,
+          participant
+        )
         return dmAccount(
           participant.account_address!,
           participant.notifications!.notification_types.filter(
             n => n.channel === NotificationChannel.DISCORD
           )[0].destination,
-          `The meeting at ${dateToHumanReadable(
+          `Cancelled! The meeting at ${dateToHumanReadable(
             start,
             participant.timezone,
             true
-          )} has been cancelled by ${participantActing.name}`
+          )} has been cancelled by ${displayName}`
         )
         break
       case MeetingChangeType.UPDATE:
@@ -356,6 +359,62 @@ const getDiscordNotification = async (
     }
   }
   return Promise.resolve(false)
+}
+
+const getEPNSNotification = async (
+  changeType: MeetingChangeType,
+  destination: string,
+  meetingStart: Date,
+  participantActing: ParticipantBaseInfo,
+  participant: ParticipantInfoForNotification,
+  participantsInfo?: ParticipantInfo[]
+): Promise<boolean> => {
+  const parameters = {
+    destination_addresses: [destination],
+    title: '',
+    message: '',
+  }
+  switch (changeType) {
+    case MeetingChangeType.CREATE:
+      parameters.title = 'New meeting scheduled'
+      parameters.message = `${dateToHumanReadable(
+        meetingStart,
+        participant.timezone,
+        true
+      )} - ${getAllParticipantsDisplayName(
+        participantsInfo!,
+        participant.account_address
+      )}`
+      break
+    case MeetingChangeType.DELETE:
+      parameters.title = 'A meeting was cancelled'
+      parameters.message = `The meeting at ${dateToHumanReadable(
+        meetingStart,
+        participant.timezone,
+        true
+      )} was cancelled by - ${getParticipantActingDisplayName(
+        participantActing,
+        participant
+      )}`
+      break
+    case MeetingChangeType.UPDATE:
+      break
+    default:
+  }
+
+  if (process.env.NEXT_PUBLIC_ENV === 'production') {
+    return sendEPNSNotification(
+      parameters.destination_addresses,
+      parameters.title,
+      parameters.message
+    )
+  } else {
+    return sendEPNSNotificationStaging(
+      parameters.destination_addresses,
+      parameters.title,
+      parameters.message
+    )
+  }
 }
 
 const getParticipantActingDisplayName = (

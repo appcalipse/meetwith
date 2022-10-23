@@ -58,6 +58,7 @@ export const sendEPNSNotificationStaging = async (
         { offChain: true }
       )
     } catch (error) {
+      console.log(error)
       Sentry.captureException(error)
     }
   }
