@@ -17,10 +17,11 @@ import router from 'next/router'
 import { ReactNode, useContext, useState } from 'react'
 import { FaAngry, FaCheckCircle } from 'react-icons/fa'
 
-import { AccountContext } from '../../providers/AccountProvider'
-import { Plan } from '../../types/Subscription'
-import { logEvent } from '../../utils/analytics'
-import { loginWithWallet } from '../../utils/user_manager'
+import { AccountContext } from '@/providers/AccountProvider'
+import { Plan } from '@/types/Subscription'
+import { logEvent } from '@/utils/analytics'
+import { loginWithWallet } from '@/utils/user_manager'
+
 import AlertMeDialog from './AlertMeDialog'
 
 function PriceWrapper({ children }: { children: ReactNode }) {

@@ -1,3 +1,5 @@
+import UAuthSPA from '@uauth/js'
+import * as UAuthWeb3Modal from '@uauth/web3modal'
 import WalletConnectProvider from '@walletconnect/web3-provider'
 import Web3 from 'web3'
 import Web3Modal from 'web3modal'
@@ -16,6 +18,13 @@ import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, saveSignature } from './storage'
 import { isValidEVMAddress } from './validations'
 
+// These options are used to construct the UAuthSPA instance.
+const uauthOptions: UAuthWeb3Modal.IUAuthOptions = {
+  clientID: process.env.NEXT_PUBLIC_UD_CLIENT_ID!,
+  redirectUri: typeof window === 'undefined' ? '' : window.location.origin,
+  scope: 'openid wallet',
+}
+
 const providerOptions = {
   walletconnect: {
     package: WalletConnectProvider, // required
@@ -26,6 +35,12 @@ const providerOptions = {
         {}
       ),
     },
+  },
+  'custom-uauth': {
+    display: UAuthWeb3Modal.display,
+    connector: UAuthWeb3Modal.connector,
+    package: UAuthSPA,
+    options: uauthOptions,
   },
 }
 
@@ -57,6 +72,19 @@ const loginWithWallet = async (
   } finally {
     setLoginIn(false)
   }
+}
+
+const logoutWallet = async (): Promise<void> => {
+  const web3Modal = new Web3Modal({
+    cacheProvider: true, // optional
+    providerOptions, // required
+  })
+
+  if (web3Modal.cachedProvider === 'custom-uauth') {
+    const uauth = new UAuthSPA(uauthOptions)
+    await uauth.logout()
+  }
+  web3Modal.clearCachedProvider()
 }
 
 const signDefaultMessage = async (
@@ -220,6 +248,7 @@ export {
   getParticipantDisplay,
   loginOrSignup,
   loginWithWallet,
+  logoutWallet,
   signDefaultMessage,
   web3,
 }
