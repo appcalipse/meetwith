@@ -60,7 +60,7 @@ export interface GateUsage {
 export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
   switch (chain) {
     case SupportedChain.ETHEREUM:
-    case SupportedChain.RINKEBY:
+    case SupportedChain.GOERLI:
       return {
         type: GateInterface.NATIVE,
         itemName: 'Ether',
