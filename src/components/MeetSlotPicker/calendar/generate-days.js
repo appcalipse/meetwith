@@ -10,8 +10,12 @@ function generateDays(month) {
   const start = startOfMonth(month)
   const end = endOfMonth(month)
 
-  const firstDay = startOfWeek(start)
-  const lastDay = endOfWeek(end)
+  const firstDay = startOfWeek(start, {
+    weekStartsOn: 0,
+  })
+  const lastDay = endOfWeek(end, {
+    weekStartsOn: 0,
+  })
 
   const days = []
   let day = firstDay

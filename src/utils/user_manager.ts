@@ -15,9 +15,9 @@ import { getSignature, saveSignature } from './storage'
 import { isValidEVMAddress } from './validations'
 
 // These options are used to construct the UAuthSPA instance.
-export const uauthOptions: UAuthWeb3Modal.IUAuthOptions = {
+const uauthOptions: UAuthWeb3Modal.IUAuthOptions = {
   clientID: process.env.NEXT_PUBLIC_UD_CLIENT_ID!,
-  redirectUri: window.location.origin,
+  redirectUri: typeof window === 'undefined' ? '' : window.location.origin,
   scope: 'openid wallet',
 }
 
