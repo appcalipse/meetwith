@@ -256,13 +256,14 @@ const NotificationsConfig: React.FC = () => {
             />
             <Text>
               Push notifications by{' '}
-              <NextLink href="/dashboard/details" shallow passHref>
-                <Link>Push protocol</Link>
+              <NextLink href="https://push.org" shallow passHref>
+                <Link isExternal>Push protocol</Link>
               </NextLink>
               {!isPro && (
                 <>
+                  {' '}
                   (
-                  <NextLink href="/dashboard/details" shallow passHref>
+                  <NextLink href="/dashboard/details" passHref>
                     <Link>Go Pro</Link>
                   </NextLink>{' '}
                   to enable it)
