@@ -20,14 +20,15 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
   }, [ipfsHash])
 
   return (
-    <VStack my={4} alignItems="start" justifyContent="center">
+    <VStack my={4} alignItems="start" justifyContent="center" maxWidth="100%">
       {title && <Text fontSize="sm">{title}</Text>}
 
-      <HStack mt={0}>
+      <HStack mt={0} maxWidth="100%">
         <Link
           href={`https://mww.infura-ipfs.io/ipfs/${ipfsHash}`}
           isExternal
           target="_blank"
+          overflow="hidden"
           rel="noopener noreferrer"
           display="flex"
           alignItems="center"
@@ -45,6 +46,8 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
               flex={1}
               textOverflow="ellipsis"
               textAlign="start"
+              whiteSpace="nowrap"
+              overflow="hidden"
             >
               {ipfsHash}
             </Text>
