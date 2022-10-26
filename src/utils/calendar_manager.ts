@@ -175,6 +175,7 @@ const buildMeetingData = async (
   currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl?: string,
+  schedulerName?: string,
   meetingId = ''
 ) => {
   if (meetingUrl) {
@@ -191,6 +192,7 @@ const buildMeetingData = async (
 
   currentAccount &&
     participants.push({
+      name: schedulerName,
       account_address: currentAccount.address,
       type: ParticipantType.Scheduler,
       status: ParticipationStatus.Accepted,
@@ -210,7 +212,7 @@ const buildMeetingData = async (
     )
 
     for (const p of participant) {
-      p.name = getAccountDisplayName(account)
+      p.name = p.name || getAccountDisplayName(account)
       p.status =
         account.address.toLowerCase() === currentAccount?.address.toLowerCase()
           ? ParticipationStatus.Accepted
@@ -411,6 +413,7 @@ const updateMeeting = async (
     currentAccount,
     content,
     decryptedMeeting.meeting_url,
+    '',
     rootMeetingId
   )
   const payload = {
@@ -488,6 +491,7 @@ const scheduleMeeting = async (
   endTime: Date,
   participants: ParticipantInfo[],
   currentAccount?: Account | null,
+  schedulerName?: string,
   meetingContent?: string,
   meetingUrl?: string
 ): Promise<MeetingDecrypted> => {
@@ -502,6 +506,7 @@ const scheduleMeeting = async (
     currentAccount,
     meetingContent,
     meetingUrl,
+    schedulerName,
     newMeetingId
   )
 
