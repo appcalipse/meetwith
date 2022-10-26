@@ -347,6 +347,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           end,
           _participants.valid,
           currentAccount,
+          '',
           content,
           meetingUrl
         )
