@@ -1395,7 +1395,7 @@ const updateMeeting = async (
       if (
         participant.account_address.toLowerCase() ===
           schedulerAccount?.account_address?.toLowerCase() ||
-        (!schedulerAccount &&
+        (!schedulerAccount?.account_address &&
           participant.account_address.toLowerCase() ===
             ownerAccount?.address.toLowerCase())
       ) {
@@ -1408,9 +1408,6 @@ const updateMeeting = async (
       i++
     }
   }
-
-  // do something
-  //meeting.guestsToRemove
 
   // one last check to make sure that the version did not change
   const everySlotId = meetingUpdateRequest.participants_mapping

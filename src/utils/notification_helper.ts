@@ -22,8 +22,7 @@ import {
   newMeetingEmail,
   updateMeetingEmail,
 } from './email_helper'
-import { sendEPNSNotification } from './epns_helper_production'
-import { sendEPNSNotificationStaging } from './epns_helper_staging'
+import { sendPushNotification } from './push_protocol_helper'
 import { dmAccount } from './services/discord.helper'
 import { isProAccount } from './subscription_manager'
 import { getAllParticipantsDisplayName } from './user_manager'
@@ -353,7 +352,17 @@ const getDiscordNotification = async (
         )
         break
       case MeetingChangeType.UPDATE:
-        //return updatedMeetingEmail()
+        // return dmAccount(
+        //   participant.account_address!,
+        //   participant.notifications!.notification_types.filter(
+        //     n => n.channel === NotificationChannel.DISCORD
+        //   )[0].destination,
+        //   `The meeting at ${dateToHumanReadable(
+        //     start,
+        //     participant.timezone,
+        //     true
+        //   )} has been cancelled by ${displayName}`
+        // )
         break
       default:
     }
@@ -370,7 +379,7 @@ const getEPNSNotification = async (
   participantsInfo?: ParticipantInfo[]
 ): Promise<boolean> => {
   const parameters = {
-    destination_addresses: [destination],
+    destination_address: destination,
     title: '',
     message: '',
   }
@@ -392,7 +401,7 @@ const getEPNSNotification = async (
         meetingStart,
         participant.timezone,
         true
-      )} was cancelled by - ${getParticipantActingDisplayName(
+      )} was cancelled by ${getParticipantActingDisplayName(
         participantActing,
         participant
       )}`
@@ -402,19 +411,11 @@ const getEPNSNotification = async (
     default:
   }
 
-  if (process.env.NEXT_PUBLIC_ENV === 'production') {
-    return sendEPNSNotification(
-      parameters.destination_addresses,
-      parameters.title,
-      parameters.message
-    )
-  } else {
-    return sendEPNSNotificationStaging(
-      parameters.destination_addresses,
-      parameters.title,
-      parameters.message
-    )
-  }
+  return sendPushNotification(
+    parameters.destination_address,
+    parameters.title,
+    parameters.message
+  )
 }
 
 const getParticipantActingDisplayName = (

@@ -65,13 +65,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       Sentry.captureException(error)
     }
 
-    // try {
-    //   await ExternalCalendarSync.update(
-    //     meetingICS.meeting as MeetingCreationSyncRequest
-    //   )
-    // } catch (error) {
-    //   Sentry.captureException(error)
-    // }
+    try {
+      await ExternalCalendarSync.update(request)
+    } catch (error) {
+      Sentry.captureException(error)
+    }
 
     res.status(200).send(true)
     return
