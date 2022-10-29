@@ -2,8 +2,7 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { DBSlotEnhanced, MeetingDecrypted } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { DBSlotEnhanced } from '@/types/Meeting'
 import { MeetingCancelRequest, MeetingUpdateRequest } from '@/types/Requests'
 import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
 import {

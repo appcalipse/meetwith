@@ -584,7 +584,8 @@ const scheduleMeeting = async (
 const generateIcs = (
   meeting: MeetingDecrypted,
   ownerAddress: string,
-  meetingStatus: MeetingChangeType
+  meetingStatus: MeetingChangeType,
+  removeAttendess?: boolean
 ): ReturnObject => {
   let url = meeting.meeting_url.trim()
   if (!isValidUrl(url)) {
@@ -634,22 +635,24 @@ const generateIcs = (
 
   event.attendees = []
 
-  for (const participant of meeting.participants) {
-    const attendee: Attendee = {
-      name: participant.name || participant.account_address,
-      email:
-        participant.guest_email ||
-        noNoReplyEmailForAccount(participant.account_address!),
-      rsvp: participant.status === ParticipationStatus.Accepted,
-      partstat: participantStatusToICSStatus(participant.status),
-      role: 'REQ-PARTICIPANT',
-    }
+  if (!removeAttendess) {
+    for (const participant of meeting.participants) {
+      const attendee: Attendee = {
+        name: participant.name || participant.account_address,
+        email:
+          participant.guest_email ||
+          noNoReplyEmailForAccount(participant.account_address!),
+        rsvp: participant.status === ParticipationStatus.Accepted,
+        partstat: participantStatusToICSStatus(participant.status),
+        role: 'REQ-PARTICIPANT',
+      }
 
-    if (participant.account_address) {
-      attendee.dir = getCalendarRegularUrl(participant.account_address!)
-    }
+      if (participant.account_address) {
+        attendee.dir = getCalendarRegularUrl(participant.account_address!)
+      }
 
-    event.attendees.push(attendee)
+      event.attendees.push(attendee)
+    }
   }
 
   return createEvent(event)

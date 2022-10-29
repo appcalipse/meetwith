@@ -212,8 +212,12 @@ export default class Office365CalendarService implements CalendarService {
         id: officeId,
       })
 
+      if (!officeId) {
+        Sentry.captureException("Can't find office event mapping")
+        throw new Error("Can't find office event mapping")
+      }
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events`,
+        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${officeId}`,
         {
           method: 'PATCH',
           headers: {
@@ -224,11 +228,9 @@ export default class Office365CalendarService implements CalendarService {
         }
       )
 
-      const event = await handleErrorsResponse(response)
-      console.log(response)
-
       return handleErrorsResponse(response)
     } catch (error) {
+      console.log('óffice', error)
       Sentry.captureException(error)
       throw error
     }
@@ -239,7 +241,7 @@ export default class Office365CalendarService implements CalendarService {
       const accessToken = await this.auth.getToken()
 
       const officeId = await getOfficeEventMappingId(meeting_id)
-      console.log('officeId', officeId)
+
       if (!officeId) {
         Sentry.captureException("Can't find office event mapping")
         return
