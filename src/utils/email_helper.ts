@@ -38,7 +38,7 @@ export const newMeetingEmail = async (
 ): Promise<boolean> => {
   const email = new Email()
 
-  let guestUrl = undefined
+  const guestUrl = undefined
   if (
     !destinationAccountAddress &&
     (participants.length === 2 ||
@@ -46,8 +46,9 @@ export const newMeetingEmail = async (
         p => p.type === ParticipantType.Scheduler && p.guest_email
       ).length === 1)
   ) {
-    //Allow guest to request change if it is only 2 people in the meeting or it is the scheduler
-    guestUrl = `${appUrl}/${ownerDomain}?slot=${slot_id}`
+    // Allow guest to request change if it is only 2 people in the meeting or it is the scheduler
+    // TODO: need to rethink given update and cancelling requires decrypted info
+    // guestUrl = `${appUrl}/${ownerDomain}?slot=${slot_id}`
   }
 
   const locals = {
