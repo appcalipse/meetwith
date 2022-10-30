@@ -33,6 +33,7 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
     } else {
       props.setIsGateValid(false)
     }
+
     setLoading(false)
   }
 

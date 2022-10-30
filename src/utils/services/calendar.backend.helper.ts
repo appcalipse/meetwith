@@ -4,7 +4,6 @@ import {
   compareAsc,
   differenceInSeconds,
   Interval,
-  intervalToDuration,
   max,
   min,
 } from 'date-fns'
@@ -52,7 +51,7 @@ export const CalendarBackendHelper = {
       await Promise.all(
         calendars.map(async calendar => {
           const integration = getConnectedCalendarIntegration(
-            account_address,
+            calendar.account_address,
             calendar.email,
             calendar.provider,
             calendar.payload
@@ -60,6 +59,7 @@ export const CalendarBackendHelper = {
 
           try {
             const externalSlots = await integration.getAvailability(
+              calendar.calendars!.filter(c => c.enabled).map(c => c.calendarId),
               startDate!.toISOString(),
               endDate!.toISOString()
             )

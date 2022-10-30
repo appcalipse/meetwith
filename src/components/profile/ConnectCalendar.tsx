@@ -69,10 +69,10 @@ const ConnectedCalendars: React.FC<{
       {activeCalendarConnections.map((connection, idx) => (
         <ConnectedCalendarCard
           key={`connected-${connection.provider}-${idx}`}
-          name={connection.provider}
+          provider={connection.provider}
           email={connection.email}
           icon={ConnectedCalendarIcons[connection.provider]}
-          sync={connection.sync}
+          calendars={connection.calendars!}
           onDelete={async () => {
             await deleteConnectedCalendar(connection.email, connection.provider)
             await onDelete()
@@ -115,7 +115,12 @@ const ConnectCalendar = () => {
     setLoading(true)
     return listConnectedCalendars()
       .then(data => {
-        setCalendarConnections(data)
+        // for old version without the calendars property
+        const calendars = data.map((calendar: ConnectedCalendarCore) => ({
+          ...calendar,
+          calendars: calendar.calendars,
+        }))
+        setCalendarConnections(calendars)
         setLoading(false)
       })
       .catch(error => {

@@ -30,11 +30,16 @@ import {
   durationToHumanReadable,
   generateIcs,
 } from '@/utils/calendar_manager'
+import { appUrl, isProduction } from '@/utils/constants'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
-import { DBSlot, MeetingDecrypted } from '../../../types/Meeting'
+import {
+  DBSlot,
+  MeetingChangeType,
+  MeetingDecrypted,
+} from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 import IPFSLink from '../../IPFSLink'
 
@@ -54,7 +59,7 @@ interface Label {
   text: string
 }
 
-const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-09-12')
+const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-11-01')
 
 const MeetingCard = ({
   meeting,
@@ -118,14 +123,13 @@ const MeetingCard = ({
 
   useEffect(() => {
     decodeData()
-  }, [])
+  }, [meeting])
 
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
   const showEdit =
     isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
-    isAfter(meeting.start, new Date()) &&
-    false //hide for now
+    isAfter(meeting.start, new Date())
 
   return (
     <>
@@ -181,7 +185,7 @@ const MeetingCard = ({
             </Flex>
 
             <HStack>
-              <strong>Duration</strong>:{' '}
+              <strong>Duration:</strong>:{' '}
               <Text>{durationToHumanReadable(duration)}</Text>
             </HStack>
             <IPFSLink
@@ -216,7 +220,12 @@ const DecodedInfo: React.FC<{
     info: MeetingDecrypted,
     currentConnectedAccountAddress: string
   ) => {
-    const icsFile = generateIcs(info, currentConnectedAccountAddress)
+    const icsFile = generateIcs(
+      info,
+      currentConnectedAccountAddress,
+      MeetingChangeType.CREATE,
+      `${appUrl}/dashboard/meetings?slotId=${info.id}`
+    )
 
     const url = window.URL.createObjectURL(
       new Blob([icsFile.value!], { type: 'text/plain' })
@@ -293,6 +302,11 @@ const DecodedInfo: React.FC<{
           >
             Download .ics
           </Button>
+          {!isProduction && (
+            <Button onClick={() => console.debug(decryptedMeeting)}>
+              Log info (for debugging)
+            </Button>
+          )}
         </VStack>
       ) : (
         <HStack>

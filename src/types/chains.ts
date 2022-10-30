@@ -50,11 +50,11 @@ export const supportedChains: ChainInfo[] = [
     id: 5,
     name: 'Goerli',
     fullName: 'Ethereum Goerli',
-    rpcUrl: 'https://goerlu.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+    rpcUrl: 'https://goerli.infura.io/v3/5866998bf8ac4efdb45916f8e8c027d4',
     testnet: true,
     nativeTokenSymbol: 'ETH',
-    domainContractAddess: '0xc1a78c9ce8fc447030edff6728822cfd6ffc1948',
-    registarContractAddress: '0x0B63ea2262CD64fE3A032Fc220b5352Ff98c7EA3',
+    domainContractAddess: '0xB95817e0F4D293E00F58eAcc4872273E9A9F764f',
+    registarContractAddress: '0xcc7f7D0Dd776a5ea17683eF6253DF8aCD3CBFA63',
     blockExplorerUrl: 'https://goerli.etherscan.com',
     acceptableTokens: [
       {
@@ -63,7 +63,7 @@ export const supportedChains: ChainInfo[] = [
       },
       {
         token: AcceptedToken.DAI,
-        contractAddress: '0xCEaB09d857B7fB420C01BFFba2976F9D5eB38f0F',
+        contractAddress: '0x2B1a67268BD808781bf5Eb761f1c43987dfa8E33',
       },
     ],
   },

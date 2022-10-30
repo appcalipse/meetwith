@@ -6,7 +6,11 @@ import Web3Modal from 'web3modal'
 
 import { Account } from '../types/Account'
 import { supportedChains } from '../types/chains'
-import { ParticipantInfo, ParticipantType } from '../types/Meeting'
+import {
+  ParticipantBaseInfo,
+  ParticipantInfo,
+  ParticipantType,
+} from '../types/ParticipantInfo'
 import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
@@ -200,6 +204,15 @@ const getParticipantDisplay = (
   }
 
   return display
+}
+
+export const getParticipantBaseInfoFromAccount = (
+  account: Account
+): ParticipantBaseInfo => {
+  return {
+    account_address: account.address,
+    name: getAccountDisplayName(account),
+  }
 }
 
 const getAllParticipantsDisplayName = (
