@@ -14,7 +14,6 @@ import * as helper from '@/utils/api_helper'
 import { sanitizeParticipants, scheduleMeeting } from '@/utils/calendar_manager'
 import * as crypto from '@/utils/cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from '@/utils/errors'
-import { ellipsizeAddress } from '@/utils/user_manager'
 
 jest.mock('@/utils/api_helper')
 jest.mock('@/utils/cryptography')
@@ -120,15 +119,15 @@ describe('calendar manager', () => {
     const participants: ParticipantInfo[] = [
       {
         account_address: sourceAccount,
-        slot_id: '',
-        meeting_id: '',
+        slot_id: 'wathevs1',
+        meeting_id: 'this_one',
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Accepted,
       },
       {
         account_address: targetAccount,
-        slot_id: '',
-        meeting_id: '',
+        slot_id: 'wathevs2',
+        meeting_id: 'this_one',
         type: ParticipantType.Owner,
         status: ParticipationStatus.Accepted,
       },
@@ -245,7 +244,6 @@ describe('calendar manager', () => {
       endTime,
       JSON.parse(JSON.stringify(participants)),
       existingAccounts[1],
-      '',
       meetingContent,
       meetingUrl
     )
@@ -350,7 +348,6 @@ describe('calendar manager', () => {
       endTime,
       participants,
       null,
-      '',
       meetingContent,
       meetingUrl
     )
