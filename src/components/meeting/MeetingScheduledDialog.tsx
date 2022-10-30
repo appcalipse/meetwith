@@ -18,11 +18,8 @@ import {
 import router from 'next/router'
 import { FaBell } from 'react-icons/fa'
 
-import {
-  MeetingDecrypted,
-  ParticipantInfo,
-  SchedulingType,
-} from '@/types/Meeting'
+import { MeetingDecrypted, SchedulingType } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { dateToHumanReadable } from '@/utils/calendar_manager'
 import { getMeetingsScheduled } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -62,7 +59,9 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
     )
   } else {
     participantsToDisplay = participants.filter(
-      participant => participant.account_address !== schedulerAccount?.address
+      participant =>
+        participant.account_address?.toLowerCase() !==
+        schedulerAccount?.address.toLowerCase()
     )
   }
 

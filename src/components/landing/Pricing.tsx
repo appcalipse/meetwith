@@ -214,7 +214,7 @@ export default function Pricing() {
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />
-                Email, Push and EPNS Notifications (optional)
+                Email, Push and Discord Notifications (optional)
               </ListItem>
               <ListItem>
                 <ListIcon as={FaCheckCircle} color="green.500" />

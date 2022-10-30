@@ -9,8 +9,9 @@ import {
   DiscordNotificationType,
 } from '../types/AccountNotifications'
 import {
+  CalendarSyncInfo,
+  ConnectedCalendar,
   ConnectedCalendarCore,
-  ConnectedCalendarCorePayload,
   ConnectResponse,
 } from '../types/CalendarConnections'
 import {
@@ -18,11 +19,14 @@ import {
   DBSlot,
   DBSlotEnhanced,
   GroupMeetingRequest,
-  MeetingCreationRequest,
   MeetingDecrypted,
-  MeetingUpdateRequest,
   TimeSlotSource,
 } from '../types/Meeting'
+import {
+  MeetingCancelRequest,
+  MeetingCreationRequest,
+  MeetingUpdateRequest,
+} from '../types/Requests'
 import { Subscription } from '../types/Subscription'
 import { apiUrl } from './constants'
 import {
@@ -170,13 +174,16 @@ export const updateMeeting = async (
   }
 }
 
-export const cancelMeeting = async (meeting: MeetingDecrypted) => {
+export const cancelMeeting = async (
+  meeting: MeetingDecrypted,
+  currentTimezone: string
+) => {
+  const body: MeetingCancelRequest = {
+    meeting,
+    currentTimezone,
+  }
   try {
-    return await internalFetch(
-      `/secure/meetings/${meeting.id}`,
-      'DELETE',
-      meeting
-    )
+    return await internalFetch(`/secure/meetings/${meeting.id}`, 'DELETE', body)
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
@@ -413,28 +420,16 @@ export const deleteConnectedCalendar = async (
   })) as ConnectedCalendarCore[]
 }
 
-export const updateConnectedCalendarSync = async (
+export const updateConnectedCalendar = async (
   email: string,
   provider: TimeSlotSource,
-  sync: boolean
-): Promise<ConnectedCalendarCore[]> => {
+  calendars: CalendarSyncInfo[]
+): Promise<ConnectedCalendar> => {
   return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
     email,
     provider,
-    sync,
-  })) as ConnectedCalendarCore[]
-}
-
-export const updateConnectedCalendarPayload = async (
-  email: string,
-  provider: TimeSlotSource,
-  payload: ConnectedCalendarCorePayload['payload']
-): Promise<ConnectedCalendarCore[]> => {
-  return (await internalFetch(`/secure/calendar_integrations`, 'PUT', {
-    email,
-    provider,
-    payload,
-  })) as ConnectedCalendarCore[]
+    calendars,
+  })) as ConnectedCalendar
 }
 
 export const syncSubscriptions = async (): Promise<Subscription[]> => {
@@ -467,7 +462,13 @@ export const validateWebdav = async (
       password,
     }),
   })
-    .then(res => res.status >= 200 && res.status < 300)
+    .then(async res => {
+      if (res.status >= 200 && res.status < 300) {
+        return await res.json()
+      } else {
+        return false
+      }
+    })
     .catch(() => false)
 }
 

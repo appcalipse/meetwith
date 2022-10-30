@@ -1,7 +1,7 @@
 import { useDisclosure } from '@chakra-ui/react'
 import React, { useState } from 'react'
 
-import { DBSlot, MeetingDecrypted } from '@/types/Meeting'
+import { DBSlot, MeetingChangeType, MeetingDecrypted } from '@/types/Meeting'
 
 import { BaseMeetingDialog } from './base-dialog'
 
@@ -9,7 +9,7 @@ export interface MeetingDialogState {
   meeting?: DBSlot
   timezone: string
   decryptedMeeting?: MeetingDecrypted
-  afterClose?: (meeting?: DBSlot) => void
+  afterClose?: (changeType: MeetingChangeType, meeting?: DBSlot) => void
 }
 
 export const useMeetingDialog = () => {
@@ -35,9 +35,12 @@ export const useMeetingDialog = () => {
     onOpen()
   }
 
-  const closeMeetingDialog = (meeting?: DBSlot) => {
+  const closeMeetingDialog = (
+    changeType: MeetingChangeType,
+    meeting?: DBSlot
+  ) => {
     onClose()
-    data.afterClose && data.afterClose(meeting)
+    data.afterClose && data.afterClose(changeType, meeting)
     setData({
       meeting: undefined,
       decryptedMeeting: undefined,
