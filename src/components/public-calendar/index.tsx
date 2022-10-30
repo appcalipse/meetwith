@@ -281,6 +281,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         slot_id: '',
         meeting_id: '',
       })
+    } else {
+      participants.push({
+        account_address: currentAccount?.address,
+        name: '',
+        type: ParticipantType.Scheduler,
+        status: ParticipationStatus.Accepted,
+        slot_id: '',
+        meeting_id: '',
+      })
     }
 
     try {

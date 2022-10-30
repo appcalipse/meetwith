@@ -30,7 +30,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         request.start,
         request.end,
         request.created_at,
-        request.meeting_url
+        request.meeting_url,
+        request.title,
+        request.content
       )
     } catch (error) {
       Sentry.captureException(error)
@@ -59,7 +61,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         request.start,
         request.end,
         request.created_at,
-        request.meeting_url
+        request.meeting_url,
+        request.title,
+        request.content,
+        request.changes
       )
     } catch (error) {
       Sentry.captureException(error)

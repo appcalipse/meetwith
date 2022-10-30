@@ -30,7 +30,7 @@ import {
   durationToHumanReadable,
   generateIcs,
 } from '@/utils/calendar_manager'
-import { isProduction } from '@/utils/constants'
+import { appUrl, isProduction } from '@/utils/constants'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
@@ -123,7 +123,7 @@ const MeetingCard = ({
 
   useEffect(() => {
     decodeData()
-  }, [])
+  }, [meeting])
 
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
@@ -185,7 +185,7 @@ const MeetingCard = ({
             </Flex>
 
             <HStack>
-              <strong>Duration</strong>:{' '}
+              <strong>Duration:</strong>:{' '}
               <Text>{durationToHumanReadable(duration)}</Text>
             </HStack>
             <IPFSLink
@@ -223,7 +223,8 @@ const DecodedInfo: React.FC<{
     const icsFile = generateIcs(
       info,
       currentConnectedAccountAddress,
-      MeetingChangeType.CREATE
+      MeetingChangeType.CREATE,
+      `${appUrl}/dashboard/meetings?slotId=${info.id}`
     )
 
     const url = window.URL.createObjectURL(

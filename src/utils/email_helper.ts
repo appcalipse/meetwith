@@ -5,6 +5,7 @@ import Email from 'email-templates'
 import path from 'path'
 
 import { MeetingChangeType } from '@/types/Meeting'
+import { MeetingChange } from '@/types/Requests'
 
 import { ParticipantInfo, ParticipantType } from '../types/ParticipantInfo'
 import {
@@ -12,6 +13,7 @@ import {
   durationToHumanReadable,
   generateIcs,
 } from './calendar_manager'
+import { appUrl } from './constants'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
@@ -26,11 +28,28 @@ export const newMeetingEmail = async (
   start: Date,
   end: Date,
   meeting_id: string,
+  slot_id: string,
+  ownerDomain?: string,
   destinationAccountAddress?: string,
   meetingUrl?: string,
+  title?: string,
+  description?: string,
   created_at?: Date
 ): Promise<boolean> => {
   const email = new Email()
+
+  let guestUrl = undefined
+  if (
+    !destinationAccountAddress &&
+    (participants.length === 2 ||
+      participants.filter(
+        p => p.type === ParticipantType.Scheduler && p.guest_email
+      ).length === 1)
+  ) {
+    //Allow guest to request change if it is only 2 people in the meeting or it is the scheduler
+    guestUrl = `${appUrl}/${ownerDomain}?slot=${slot_id}`
+  }
+
   const locals = {
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
@@ -40,7 +59,12 @@ export const newMeetingEmail = async (
       start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
       url: meetingUrl,
+      title,
+      description,
     },
+    changeUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      : guestUrl,
   }
 
   const isScheduler =
@@ -62,7 +86,7 @@ export const newMeetingEmail = async (
       start: new Date(start),
       end: new Date(end),
       id: meeting_id as string,
-      meeting_id: '', // todo: provide the real meeting id here when implement the embedded url
+      meeting_id,
       created_at: new Date(created_at as Date),
       meeting_info_file_path: '',
       participants,
@@ -70,7 +94,10 @@ export const newMeetingEmail = async (
       related_slot_ids: [],
     },
     destinationAccountAddress || '',
-    MeetingChangeType.CREATE
+    MeetingChangeType.CREATE,
+    destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      : guestUrl
   )
 
   if (icsFile.error) {
@@ -181,39 +208,80 @@ export const cancelledMeetingEmail = async (
 
 export const updateMeetingEmail = async (
   toEmail: string,
-  participantType: ParticipantType,
+  currentActorDisplayName: string,
   participants: ParticipantInfo[],
   timezone: string,
   start: Date,
   end: Date,
   meeting_id: string,
+  slot_id: string,
+  ownerDomain?: string,
   destinationAccountAddress?: string,
   meetingUrl?: string,
-  created_at?: Date
+  title?: string,
+  description?: string,
+  created_at?: Date,
+  changes?: MeetingChange
 ): Promise<boolean> => {
+  if (!changes?.dateChange) {
+    return true
+  }
   const email = new Email()
+  const newDuration = differenceInMinutes(end, start)
+  const oldDuration = changes?.dateChange
+    ? differenceInMinutes(
+        new Date(changes?.dateChange?.oldEnd),
+        new Date(changes?.dateChange?.oldStart)
+      )
+    : null
+
+  let guestUrl = undefined
+  if (
+    !destinationAccountAddress &&
+    (participants.length === 2 ||
+      participants.filter(
+        p => p.type === ParticipantType.Scheduler && p.guest_email
+      ).length === 1)
+  ) {
+    //Allow guest to request change if it is only 2 people in the meeting or it is the scheduler
+    guestUrl = `${appUrl}/${ownerDomain}?slot=${slot_id}`
+  }
+
   const locals = {
+    currentActorDisplayName,
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
       destinationAccountAddress
     ),
     meeting: {
       start: dateToHumanReadable(start, timezone, true),
-      duration: durationToHumanReadable(differenceInMinutes(end, start)),
+      duration: durationToHumanReadable(newDuration),
       url: meetingUrl,
+      title,
+      description,
+    },
+    changeUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      : guestUrl,
+    changes: {
+      oldStart:
+        changes?.dateChange?.oldStart &&
+        new Date(changes.dateChange?.oldStart).getTime() !== start.getTime()
+          ? dateToHumanReadable(
+              new Date(changes!.dateChange!.oldStart),
+              timezone,
+              false
+            )
+          : null,
+      oldDuration:
+        oldDuration && oldDuration !== newDuration
+          ? durationToHumanReadable(oldDuration)
+          : null,
     },
   }
 
-  const isScheduler =
-    participantType === ParticipantType.Scheduler ||
-    (participantType === ParticipantType.Owner &&
-      !participants.some(p => p.type === ParticipantType.Scheduler))
   const rendered = await email.renderAll(
-    `${path.resolve(
-      'src',
-      'emails',
-      isScheduler ? 'new_meeting_scheduler' : 'new_meeting'
-    )}`,
+    `${path.resolve('src', 'emails', 'meeting_updated')}`,
     locals
   )
 
@@ -222,8 +290,8 @@ export const updateMeetingEmail = async (
       meeting_url: meetingUrl as string,
       start: new Date(start),
       end: new Date(end),
-      id: meeting_id as string,
-      meeting_id: '', // todo: provide the real meeting id here when implement the embedded url
+      id: meeting_id,
+      meeting_id,
       created_at: new Date(created_at as Date),
       meeting_info_file_path: '',
       participants,
@@ -231,7 +299,10 @@ export const updateMeetingEmail = async (
       related_slot_ids: [],
     },
     destinationAccountAddress || '',
-    MeetingChangeType.UPDATE
+    MeetingChangeType.UPDATE,
+    destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      : guestUrl
   )
 
   if (icsFile.error) {

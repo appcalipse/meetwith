@@ -1293,6 +1293,8 @@ const updateMeeting = async (
     ) || null
 
   const timezone = meetingUpdateRequest.participants_mapping[0].timeZone
+  let changingTime = null
+
   for (const participant of meetingUpdateRequest.participants_mapping) {
     const isEditing = participant.mappingType === ParticipantMappingType.KEEP
 
@@ -1300,8 +1302,7 @@ const updateMeeting = async (
       if (
         existingAccounts
           .map(account => account.address)
-          .includes(participant.account_address!) &&
-        participant.type === ParticipantType.Owner
+          .includes(participant.account_address!)
       ) {
         // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
         const participantIsOwner = Boolean(
@@ -1317,6 +1318,7 @@ const updateMeeting = async (
         )
 
         let isEditingToSameTime = false
+
         if (isEditing) {
           const existingSlot = await getMeetingFromDB(participant.slot_id!)
           const sameStart =
@@ -1326,6 +1328,12 @@ const updateMeeting = async (
             new Date(existingSlot.end).getTime() ===
             new Date(meetingUpdateRequest.end).getTime()
           isEditingToSameTime = sameStart && sameEnd
+          changingTime = !isEditingToSameTime
+            ? {
+                oldStart: new Date(existingSlot.start),
+                oldEnd: new Date(existingSlot.end),
+              }
+            : null
         }
 
         const slotIsTaken = async () =>
@@ -1467,6 +1475,7 @@ const updateMeeting = async (
     participants: meetingUpdateRequest.participants_mapping,
     title: meetingUpdateRequest.title,
     content: meetingUpdateRequest.content,
+    changes: changingTime ? { dateChange: changingTime } : undefined,
   }
 
   // Doing ntifications and syncs asyncrounously
@@ -1517,9 +1526,7 @@ const insertOfficeEventMapping = async (
     .from('office_event_mapping')
     .insert({ office_id, mww_id })
 
-  console.log(data)
   if (error) {
-    console.log(error)
     Sentry.captureException(error)
   }
 }

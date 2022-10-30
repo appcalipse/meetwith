@@ -118,9 +118,10 @@ const Meetings: React.FC = () => {
     history.pushState(null, '', window.location.pathname)
 
     if (meeting) {
-      meetings.push(meeting)
+      const newMeetings = meetings.filter(m => m.id !== meeting.id)
+      changeType !== MeetingChangeType.DELETE && newMeetings.push(meeting)
       setMeetings(
-        meetings.sort(
+        newMeetings.sort(
           (m1, m2) =>
             (m1.start as Date).getTime() - (m2.start as Date).getTime()
         )
@@ -137,8 +138,8 @@ const Meetings: React.FC = () => {
           description = 'Meeting updated successfully.'
           break
         case MeetingChangeType.DELETE:
-          title = 'Cancelled'
-          description = 'Meeting cancelled successfully.'
+          title = 'Canceled'
+          description = 'Meeting canceled successfully.'
           break
       }
       toast({

@@ -12,7 +12,7 @@ import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
-import { apiUrl, NO_REPLY_EMAIL } from '../constants'
+import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
@@ -157,6 +157,10 @@ export default class GoogleCalendarService implements CalendarService {
             meeting_id: meetingDetails.meeting_id,
           }))
 
+        const slot_id = meetingDetails.participants.filter(
+          p => p.account_address === calendarOwnerAccountAddress
+        )[0].slot_id
+
         const payload: calendar_v3.Schema$Event = {
           // yes, google event ids allows only letters and numbers
           id: meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
@@ -166,7 +170,8 @@ export default class GoogleCalendarService implements CalendarService {
           ),
           description: CalendarServiceHelper.getMeetingSummary(
             meetingDetails.content,
-            meetingDetails.meeting_url
+            meetingDetails.meeting_url,
+            `${appUrl}/dashboard/meetings?slotId=${slot_id}`
           ),
           start: {
             dateTime: new Date(meetingDetails.start).toISOString(),
@@ -276,6 +281,10 @@ export default class GoogleCalendarService implements CalendarService {
           meeting_id,
         }))
 
+      const slot_id = meetingDetails.participants.filter(
+        p => p.account_address === calendarOwnerAccountAddress
+      )[0].slot_id
+
       const payload: calendar_v3.Schema$Event = {
         id: meeting_id.replaceAll('-', ''), // required to edit events later
         summary: CalendarServiceHelper.getMeetingTitle(
@@ -284,7 +293,8 @@ export default class GoogleCalendarService implements CalendarService {
         ),
         description: CalendarServiceHelper.getMeetingSummary(
           meetingDetails.content,
-          meetingDetails.meeting_url
+          meetingDetails.meeting_url,
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`
         ),
         start: {
           dateTime: new Date(meetingDetails.start).toISOString(),
