@@ -197,6 +197,7 @@ const buildMeetingData = async (
   currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl?: string,
+  schedulerName?: string,
   meetingId = ''
 ) => {
   if (meetingUrl) {
@@ -434,6 +435,7 @@ const updateMeeting = async (
     currentAccount,
     content,
     decryptedMeeting.meeting_url,
+    '',
     rootMeetingId
   )
   const payload = {
@@ -514,6 +516,7 @@ const scheduleMeeting = async (
   endTime: Date,
   participants: ParticipantInfo[],
   currentAccount?: Account | null,
+  schedulerName?: string,
   meetingContent?: string,
   meetingUrl?: string
 ): Promise<MeetingDecrypted> => {
@@ -528,6 +531,7 @@ const scheduleMeeting = async (
     currentAccount,
     meetingContent,
     meetingUrl,
+    schedulerName,
     newMeetingId
   )
 

@@ -156,7 +156,7 @@ const MeetingCard = ({
             {label.text}
           </Badge>
         )}
-        <Box p="6">
+        <Box p="6" maxWidth="100%">
           <VStack alignItems="start" position="relative">
             <Flex flexDir="row-reverse" alignItems="center" w="100%">
               {showEdit && (
@@ -271,6 +271,11 @@ const DecodedInfo: React.FC<{
             href={addUTMParams(decryptedMeeting.meeting_url || '')}
             isExternal
             onClick={() => logEvent('Clicked to start meeting')}
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            maxWidth="100%"
+            flex={1}
           >
             {decryptedMeeting.meeting_url}
           </Link>

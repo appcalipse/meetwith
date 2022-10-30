@@ -167,7 +167,7 @@ const Meetings: React.FC = () => {
   const toast = useToast()
 
   return (
-    <Flex direction={'column'}>
+    <Flex direction={'column'} maxWidth="100%">
       <HStack justifyContent="center" alignItems="flex-start" mb={4}>
         <Heading flex={1} fontSize="2xl">
           My Meetings

@@ -245,6 +245,7 @@ describe('calendar manager', () => {
       endTime,
       JSON.parse(JSON.stringify(participants)),
       existingAccounts[1],
+      '',
       meetingContent,
       meetingUrl
     )
@@ -349,6 +350,7 @@ describe('calendar manager', () => {
       endTime,
       participants,
       null,
+      '',
       meetingContent,
       meetingUrl
     )
