@@ -59,7 +59,7 @@ interface Label {
   text: string
 }
 
-const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-10-01')
+const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-11-01')
 
 const MeetingCard = ({
   meeting,
