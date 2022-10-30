@@ -330,7 +330,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         end,
         participants,
         currentAccount,
-        name,
         content,
         meetingUrl
       )
