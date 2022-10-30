@@ -22,6 +22,7 @@ import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { generateIcs } from '../calendar_manager'
+import { appUrl } from '../constants'
 import { decryptContent } from '../cryptography'
 import { CalendarService } from './calendar.service.types'
 
@@ -133,9 +134,13 @@ export default class CaldavCalendarService implements CalendarService {
           name: participant.name,
           account_address: participant.account_address,
           status: participant.status,
-          slot_id: '',
+          slot_id: participant.slot_id,
           meeting_id: meetingDetails.meeting_id,
         }))
+
+      const slot_id = meetingDetails.participants.filter(
+        p => p.account_address === calendarOwnerAccountAddress
+      )[0].slot_id
 
       try {
         const ics = generateIcs(
@@ -152,7 +157,8 @@ export default class CaldavCalendarService implements CalendarService {
             related_slot_ids: [],
           },
           calendarOwnerAccountAddress,
-          MeetingChangeType.CREATE
+          MeetingChangeType.CREATE,
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`
         )
 
         if (!ics.value || ics.error)
@@ -192,6 +198,7 @@ export default class CaldavCalendarService implements CalendarService {
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
           true
         )
 
@@ -225,14 +232,13 @@ export default class CaldavCalendarService implements CalendarService {
         additionalInfo: {},
       }
     } catch (reason) {
-      console.log(reason)
       Sentry.captureException(reason)
       throw reason
     }
   }
 
   async updateEvent(
-    owner: string,
+    calendarOwnerAccountAddress: string,
     meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
     calendarId: string
@@ -250,6 +256,10 @@ export default class CaldavCalendarService implements CalendarService {
           meeting_id,
         }))
 
+      const slot_id = meetingDetails.participants.filter(
+        p => p.account_address === calendarOwnerAccountAddress
+      )[0].slot_id
+
       const ics = generateIcs(
         {
           meeting_url: meetingDetails.meeting_url,
@@ -261,10 +271,11 @@ export default class CaldavCalendarService implements CalendarService {
           participants: participantsInfo,
           version: 0,
           related_slot_ids: [],
-          meeting_id: '',
+          meeting_id,
         },
-        owner,
-        MeetingChangeType.UPDATE
+        calendarOwnerAccountAddress,
+        MeetingChangeType.UPDATE,
+        `${appUrl}/dashboard/meetings?slotId=${slot_id}`
       )
 
       if (!ics.value || ics.error) throw new Error('Error creating iCalString')
@@ -293,10 +304,11 @@ export default class CaldavCalendarService implements CalendarService {
             participants: participantsInfo,
             version: 0,
             related_slot_ids: [],
-            meeting_id: '',
+            meeting_id,
           },
-          owner,
+          calendarOwnerAccountAddress,
           MeetingChangeType.UPDATE,
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
           true
         )
 
@@ -323,7 +335,6 @@ export default class CaldavCalendarService implements CalendarService {
         additionalInfo: {},
       }
     } catch (reason) {
-      console.log('caldavl', reason)
       Sentry.captureException(reason)
       throw reason
     }

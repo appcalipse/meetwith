@@ -229,7 +229,6 @@ const buildMeetingData = async (
   }
 
   const sanitizedParticipants = sanitizeParticipants(participants)
-
   //Ensure all slot_ids are filled given we are messing with this all around
   for (const participant of sanitizedParticipants) {
     participant.slot_id = participant.slot_id || uuidv4()
@@ -429,7 +428,7 @@ const updateMeeting = async (
     endTime,
     participants,
     [...toKeep, ...guestsToKeep].reduce<any>((acc, it) => {
-      acc[it] = accountSlotMap[it]
+      acc[it] = accountSlotMap[it] || it
       return acc
     }, {}),
     currentAccount,
@@ -585,6 +584,7 @@ const generateIcs = (
   meeting: MeetingDecrypted,
   ownerAddress: string,
   meetingStatus: MeetingChangeType,
+  changeUrl?: string,
   removeAttendess?: boolean
 ): ReturnObject => {
   let url = meeting.meeting_url.trim()
@@ -613,7 +613,8 @@ const generateIcs = (
     ),
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
-      meeting.meeting_url
+      meeting.meeting_url,
+      changeUrl
     ),
     url,
     location: meeting.meeting_url,

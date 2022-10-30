@@ -59,9 +59,13 @@ export interface MeetingSyncRequest {
   timezone: string
 }
 
+export interface MeetingChange {
+  dateChange?: { oldStart: Date; oldEnd: Date }
+}
 export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meeting_url: string
   participants: RequestParticipantMapping[]
+  changes?: MeetingChange
   title?: string
   content?: string
 }

@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
+import { constants } from 'buffer'
 
 import {
   CalendarSyncInfo,
@@ -9,7 +10,7 @@ import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
-import { NO_REPLY_EMAIL } from '../constants'
+import { appUrl, NO_REPLY_EMAIL } from '../constants'
 import {
   getOfficeEventMappingId,
   insertOfficeEventMapping,
@@ -164,7 +165,6 @@ export default class Office365CalendarService implements CalendarService {
     calendarId: string
   ): Promise<NewCalendarEventType> {
     try {
-      console.log('here')
       const accessToken = await this.auth.getToken()
 
       const body = JSON.stringify(
@@ -230,7 +230,6 @@ export default class Office365CalendarService implements CalendarService {
 
       return handleErrorsResponse(response)
     } catch (error) {
-      console.log('óffice', error)
       Sentry.captureException(error)
       throw error
     }
@@ -282,6 +281,10 @@ export default class Office365CalendarService implements CalendarService {
       })
     )
 
+    const slot_id = details.participants.filter(
+      p => p.account_address === calendarOwnerAccountAddress
+    )[0].slot_id
+
     const payload = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
@@ -291,7 +294,8 @@ export default class Office365CalendarService implements CalendarService {
         contentType: 'TEXT',
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
-          details.meeting_url
+          details.meeting_url,
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`
         ),
       },
       start: {
