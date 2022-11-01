@@ -2,33 +2,44 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { notifyForNewMeeting } from '@/utils/notification_helper'
+import { MeetingChangeType } from '@/types/Meeting'
+import {
+  MeetingCancelSyncRequest,
+  MeetingCreationSyncRequest,
+} from '@/types/Requests'
+import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
+import {
+  notifyForMeetingCancellation,
+  notifyForOrUpdateNewMeeting,
+} from '@/utils/notification_helper'
 import { ExternalCalendarSync } from '@/utils/sync_helper'
-
-import { MeetingICS, MeetingUpdateRequest } from '../../../../types/Meeting'
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    const meetingICS = JSON.parse(req.body) as MeetingICS
+    const request = JSON.parse(req.body) as MeetingCreationSyncRequest
 
-    meetingICS.db_slot.start = new Date(meetingICS.db_slot.start)
-    meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
-    meetingICS.db_slot.created_at = new Date(meetingICS.db_slot.created_at!)
-    meetingICS.db_slot.start = new Date(meetingICS.db_slot.start)
-    meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
+    request.start = new Date(request.start)
+    request.end = new Date(request.end)
+    request.created_at = new Date(request.created_at)
 
     try {
-      await notifyForNewMeeting(meetingICS)
+      await notifyForOrUpdateNewMeeting(
+        MeetingChangeType.CREATE,
+        request.participantActing,
+        request.participants,
+        request.start,
+        request.end,
+        request.created_at,
+        request.meeting_url,
+        request.title,
+        request.content
+      )
     } catch (error) {
       Sentry.captureException(error)
     }
 
     try {
-      await ExternalCalendarSync.create(
-        meetingICS.meeting,
-        meetingICS.db_slot.created_at!
-      )
+      await ExternalCalendarSync.create(request)
     } catch (error) {
       Sentry.captureException(error)
     }
@@ -36,19 +47,31 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(200).send(true)
     return
   } else if (req.method === 'PATCH') {
-    const meetingICS = JSON.parse(req.body) as MeetingICS
+    const request = JSON.parse(req.body) as MeetingCreationSyncRequest
 
-    meetingICS.db_slot.start = new Date(meetingICS.db_slot.start)
-    meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
-    meetingICS.db_slot.created_at = new Date(meetingICS.db_slot.created_at!)
-    meetingICS.db_slot.start = new Date(meetingICS.db_slot.start)
-    meetingICS.db_slot.end = new Date(meetingICS.db_slot.end)
+    request.start = new Date(request.start)
+    request.end = new Date(request.end)
+    request.created_at = new Date(request.created_at)
 
-    // TODO: implement different emails and notifications when a meeting is updated, depending on the update
     try {
-      await ExternalCalendarSync.update(
-        meetingICS.meeting as MeetingUpdateRequest
+      await notifyForOrUpdateNewMeeting(
+        MeetingChangeType.UPDATE,
+        request.participantActing,
+        request.participants,
+        request.start,
+        request.end,
+        request.created_at,
+        request.meeting_url,
+        request.title,
+        request.content,
+        request.changes
       )
+    } catch (error) {
+      Sentry.captureException(error)
+    }
+
+    try {
+      await ExternalCalendarSync.update(request)
     } catch (error) {
       Sentry.captureException(error)
     }
@@ -56,13 +79,36 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(200).send(true)
     return
   } else if (req.method === 'DELETE') {
-    const payload = JSON.parse(req.body) as {
-      slotIds: string[]
-      owner: string
+    const {
+      participantActing,
+      addressesToRemove,
+      guestsToRemove,
+      meeting_id,
+      start,
+      end,
+      created_at,
+      timezone,
+    } = JSON.parse(req.body) as MeetingCancelSyncRequest
+
+    for (const address of addressesToRemove) {
+      try {
+        await ExternalCalendarSync.delete(address, [meeting_id])
+      } catch (error) {
+        Sentry.captureException(error)
+      }
     }
 
     try {
-      await ExternalCalendarSync.delete(payload.owner, payload.slotIds)
+      await notifyForMeetingCancellation(
+        participantActing,
+        guestsToRemove,
+        addressesToRemove,
+        meeting_id,
+        new Date(start),
+        new Date(end),
+        new Date(created_at),
+        timezone
+      )
     } catch (error) {
       Sentry.captureException(error)
     }

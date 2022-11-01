@@ -18,7 +18,7 @@ import { FaPlus } from 'react-icons/fa'
 import { decodeMeeting } from '@/utils/calendar_manager'
 
 import { AccountContext } from '../../providers/AccountProvider'
-import { DBSlot } from '../../types/Meeting'
+import { DBSlot, MeetingChangeType } from '../../types/Meeting'
 import { getMeeting, getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
@@ -84,7 +84,9 @@ const Meetings: React.FC = () => {
             key={meeting.id}
             meeting={meeting}
             timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
-            onUpdate={fetchMeetings}
+            onCancel={removed =>
+              afterClose(MeetingChangeType.DELETE, undefined, removed)
+            }
             onClickToOpen={(meeting, decryptedMeeting, timezone) =>
               openMeetingDialog(meeting, decryptedMeeting, timezone, afterClose)
             }
@@ -113,21 +115,49 @@ const Meetings: React.FC = () => {
     slotId && fillMeeting()
   }, [slotId])
 
-  const afterClose = (meeting?: DBSlot) => {
+  const afterClose = (
+    changeType: MeetingChangeType,
+    meeting?: DBSlot,
+    removedSlots?: string[]
+  ) => {
     // not using router API to avoid re-rendinreing component
     history.pushState(null, '', window.location.pathname)
 
-    if (meeting) {
-      meetings.push(meeting)
+    if (meeting || removedSlots) {
+      let newMeetings: DBSlot[] = []
+
+      if (meeting) {
+        newMeetings = meetings.filter(m => m.id !== meeting.id)
+        newMeetings.push(meeting!)
+      }
+      if (removedSlots) {
+        newMeetings = meetings.filter(m => removedSlots?.indexOf(m.id!) === -1)
+      }
       setMeetings(
-        meetings.sort(
+        newMeetings.sort(
           (m1, m2) =>
             (m1.start as Date).getTime() - (m2.start as Date).getTime()
         )
       )
+
+      let title, description
+      switch (changeType) {
+        case MeetingChangeType.CREATE:
+          title = 'Scheduled'
+          description = 'Meeting scheduled successfully.'
+          break
+        case MeetingChangeType.UPDATE:
+          title = 'Updated'
+          description = 'Meeting updated successfully.'
+          break
+        case MeetingChangeType.DELETE:
+          title = 'Canceled'
+          description = 'Meeting canceled successfully.'
+          break
+      }
       toast({
-        title: 'Scheduled',
-        description: 'Meeting scheduled successfully.',
+        title,
+        description,
         status: 'success',
         duration: 5000,
         position: 'top',

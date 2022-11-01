@@ -2,10 +2,10 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import {
-  DBSlotEnhanced,
-  MeetingCreationRequest,
-} from '../../../../types/Meeting'
+import { ParticipantType } from '@/types/ParticipantInfo'
+
+import { DBSlotEnhanced } from '../../../../types/Meeting'
+import { MeetingCreationRequest } from '../../../../types/Requests'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { initDB, saveMeeting } from '../../../../utils/database'
 import {
@@ -20,9 +20,20 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (!req.session.account?.address) {
       const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
-
+      const guest = meeting.participants_mapping.filter(
+        p => p.guest_email && p.type === ParticipantType.Scheduler
+      )[0]
+      if (!guest) {
+        res.status(500).send('No guest scheduler found')
+      }
       try {
-        const meetingResult: DBSlotEnhanced = await saveMeeting(meeting)
+        const meetingResult: DBSlotEnhanced = await saveMeeting(
+          {
+            name: guest.name,
+            guest_email: guest.guest_email,
+          },
+          meeting
+        )
 
         res.status(200).json(meetingResult)
       } catch (e) {

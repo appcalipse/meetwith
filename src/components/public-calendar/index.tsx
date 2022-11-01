@@ -1,5 +1,6 @@
 import { useDisclosure } from '@chakra-ui/hooks'
 import { Box, Container, Flex, Text } from '@chakra-ui/layout'
+import { Button, Spinner } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
@@ -12,6 +13,7 @@ import {
   isBefore,
   isEqual,
   isFuture,
+  isPast,
   startOfMonth,
   subMinutes,
 } from 'date-fns'
@@ -23,22 +25,27 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { Account, MeetingType } from '@/types/Account'
 import { ConditionRelation } from '@/types/common'
 import {
+  DBSlot,
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
+  SchedulingType,
+} from '@/types/Meeting'
+import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
-  SchedulingType,
-} from '@/types/Meeting'
+} from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
   fetchBusySlotsForMultipleAccounts,
   getAccount,
   getBusySlots,
+  getMeeting,
   getNotificationSubscriptions,
 } from '@/utils/api_helper'
 import {
+  dateToHumanReadable,
   durationToHumanReadable,
   getAccountDomainUrl,
   scheduleMeeting,
@@ -58,6 +65,7 @@ import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
+import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import TokenGateValidation from '../token-gate/TokenGateValidation'
 import GroupScheduleCalendarProfile from './GroupScheduleCalendarProfile'
 
@@ -120,6 +128,12 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     undefined as MeetingDecrypted | undefined
   )
   const [notificationsSubs, setNotificationSubs] = useState(0)
+  const [rescheduleSlotId, setRescheduleSlotId] = useState<string | undefined>(
+    undefined
+  )
+  const [rescheduleSlot, setRescheduleSlot] = useState<DBSlot | undefined>(
+    undefined
+  )
 
   const toast = useToast()
 
@@ -164,8 +178,26 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         .find(t => t.url === typeOnRoute)
       setSelectedType(type || account!.preferences!.availableTypes[0])
       updateSlots()
+      setRescheduleSlotId(router.query.slot as string | undefined)
     }
   }, [account, router.query.address])
+
+  useEffect(() => {
+    getSlotInfo()
+  }, [rescheduleSlotId])
+
+  const getSlotInfo = async () => {
+    if (rescheduleSlotId) {
+      const slot = await getMeeting(rescheduleSlotId!)
+      if (slot) {
+        if (slot.account_address !== account!.address) {
+          await router.push('/404')
+        } else {
+          setRescheduleSlot(slot)
+        }
+      }
+    }
+  }
 
   useEffect(() => {
     logged && updateSelfSlots()
@@ -279,6 +311,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         slot_id: '',
         meeting_id: '',
       })
+    } else {
+      participants.push({
+        account_address: currentAccount?.address,
+        name: '',
+        type: ParticipantType.Scheduler,
+        status: ParticipationStatus.Accepted,
+        slot_id: '',
+        meeting_id: '',
+      })
     }
 
     try {
@@ -289,7 +330,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         end,
         participants,
         currentAccount,
-        name,
         content,
         meetingUrl
       )
@@ -527,12 +567,12 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const textToDisplayDateRange = () => {
     if (calendarType === CalendarType.TEAM) {
       if (teamMeetingRequest?.range_end) {
-        return `Pick a slot between ${format(
+        return `Pick a time between ${format(
           new Date(teamMeetingRequest!.range_start),
           'PPPpp'
         )} and ${format(new Date(teamMeetingRequest!.range_end), 'PPPpp')}`
       } else if (isFuture(new Date(teamMeetingRequest!.range_start))) {
-        return `Pick a slot after ${format(
+        return `Pick a time after ${format(
           new Date(teamMeetingRequest!.range_start),
           'PPPpp'
         )}`
@@ -587,30 +627,35 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               ) : (
                 <GroupScheduleCalendarProfile teamAccounts={groupAccounts} />
               )}
-              {calendarType === CalendarType.REGULAR && (
-                <Select
-                  disabled={readyToSchedule}
-                  placeholder="Select option"
-                  mt={8}
-                  value={selectedType.id}
-                  onChange={e => e.target.value && changeType(e.target.value)}
-                >
-                  {account!
-                    .preferences!.availableTypes.filter(
-                      type => !type.deleted && (!type.private || isPrivateType)
-                    )
-                    .map(type => (
-                      <option key={type.id} value={type.id}>
-                        {type.title ? `${type.title} - ` : ''}
-                        {durationToHumanReadable(type.duration)}
-                      </option>
-                    ))}
-                </Select>
+              {calendarType === CalendarType.REGULAR && !rescheduleSlotId && (
+                <>
+                  <Select
+                    disabled={readyToSchedule}
+                    placeholder="Select option"
+                    mt={8}
+                    value={selectedType.id}
+                    onChange={e => e.target.value && changeType(e.target.value)}
+                  >
+                    {account!
+                      .preferences!.availableTypes.filter(
+                        type =>
+                          !type.deleted && (!type.private || isPrivateType)
+                      )
+                      .map(type => (
+                        <option key={type.id} value={type.id}>
+                          {type.title ? `${type.title} - ` : ''}
+                          {durationToHumanReadable(type.duration)}
+                        </option>
+                      ))}
+                  </Select>
+                  {selectedType.description && (
+                    <Text p={2}>{selectedType.description}</Text>
+                  )}
+                </>
               )}
-              {selectedType.description && (
-                <Text p={2}>{selectedType.description}</Text>
-              )}
+
               {CalendarType.REGULAR === calendarType &&
+              !rescheduleSlotId &&
               selectedType.scheduleGate ? (
                 <TokenGateValidation
                   gate={selectedType.scheduleGate}
@@ -624,6 +669,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 <Text textAlign="center" mt={4}>
                   {dateRangeText}
                 </Text>
+              )}
+
+              {calendarType === CalendarType.REGULAR && rescheduleSlotId && (
+                <RescheduleInfoBox
+                  loading={!rescheduleSlot}
+                  slot={rescheduleSlot}
+                />
               )}
             </Box>
             {isSSR ? null : (
@@ -676,6 +728,41 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         </Box>
       </Container>
     </>
+  )
+}
+
+const RescheduleInfoBox: React.FC<{
+  loading: boolean
+  slot?: DBSlot
+}> = ({ loading, slot }) => {
+  return (
+    <Flex p={4} mt={4}>
+      {loading ? (
+        <Spinner margin="auto" />
+      ) : (
+        <Box>
+          <Text>
+            <b>Former time</b>
+          </Text>
+          <Text>
+            {dateToHumanReadable(
+              new Date(slot!.start),
+              Intl.DateTimeFormat().resolvedOptions().timeZone,
+              false
+            )}
+          </Text>
+          <Text>{Intl.DateTimeFormat().resolvedOptions().timeZone}</Text>
+
+          <Text mt={2}>
+            Select another time for the meeting, or{' '}
+            <Button variant="link" colorScheme="orange">
+              cancel
+            </Button>{' '}
+            it
+          </Text>
+        </Box>
+      )}
+    </Flex>
   )
 }
 

@@ -4,12 +4,16 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
-import { ParticipantInfo, ParticipantType } from '../types/Meeting'
+import { MeetingChangeType } from '@/types/Meeting'
+import { MeetingChange } from '@/types/Requests'
+
+import { ParticipantInfo, ParticipantType } from '../types/ParticipantInfo'
 import {
   dateToHumanReadable,
   durationToHumanReadable,
   generateIcs,
 } from './calendar_manager'
+import { appUrl } from './constants'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
@@ -23,13 +27,30 @@ export const newMeetingEmail = async (
   timezone: string,
   start: Date,
   end: Date,
-  meeting_info_file_path: string,
+  meeting_id: string,
+  slot_id: string,
+  ownerDomain?: string,
   destinationAccountAddress?: string,
   meetingUrl?: string,
-  id?: string | undefined,
+  title?: string,
+  description?: string,
   created_at?: Date
 ): Promise<boolean> => {
   const email = new Email()
+
+  const guestUrl = undefined
+  if (
+    !destinationAccountAddress &&
+    (participants.length === 2 ||
+      participants.filter(
+        p => p.type === ParticipantType.Scheduler && p.guest_email
+      ).length === 1)
+  ) {
+    // Allow guest to request change if it is only 2 people in the meeting or it is the scheduler
+    // TODO: need to rethink given update and cancelling requires decrypted info
+    // guestUrl = `${appUrl}/${ownerDomain}?slot=${slot_id}`
+  }
+
   const locals = {
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
@@ -39,7 +60,12 @@ export const newMeetingEmail = async (
       start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
       url: meetingUrl,
+      title,
+      description,
     },
+    changeUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      : guestUrl,
   }
 
   const isScheduler =
@@ -60,15 +86,19 @@ export const newMeetingEmail = async (
       meeting_url: meetingUrl as string,
       start: new Date(start),
       end: new Date(end),
-      id: id as string,
-      meeting_id: '', // todo: provide the real meeting id here when implement the embedded url
+      id: meeting_id as string,
+      meeting_id,
       created_at: new Date(created_at as Date),
-      meeting_info_file_path,
+      meeting_info_file_path: '',
       participants,
       version: 0,
       related_slot_ids: [],
     },
-    destinationAccountAddress || ''
+    destinationAccountAddress || '',
+    MeetingChangeType.CREATE,
+    destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      : guestUrl
   )
 
   if (icsFile.error) {
@@ -85,7 +115,211 @@ export const newMeetingEmail = async (
     attachments: [
       {
         content: Buffer.from(icsFile.value!).toString('base64'),
-        filename: `meeting_${id}.ics`,
+        filename: `meeting_${meeting_id}.ics`,
+        type: 'text/plain',
+        disposition: 'attachment',
+      },
+    ],
+  }
+
+  try {
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+
+  return true
+}
+
+export const cancelledMeetingEmail = async (
+  currentActorDisplayName: string,
+  toEmail: string,
+  timezone: string,
+  start: Date,
+  end: Date,
+  meeting_id: string,
+  title?: string,
+  destinationAccountAddress?: string,
+  created_at?: Date
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    currentActorDisplayName,
+    meeting: {
+      title,
+      start: dateToHumanReadable(start, timezone, true),
+      duration: durationToHumanReadable(differenceInMinutes(end, start)),
+    },
+  }
+
+  const icsFile = generateIcs(
+    {
+      meeting_id,
+      meeting_url: '',
+      start: new Date(start),
+      end: new Date(end),
+      id: meeting_id,
+      created_at: new Date(created_at as Date),
+      meeting_info_file_path: '',
+      participants: [],
+      version: 0,
+      related_slot_ids: [],
+    },
+    destinationAccountAddress || '',
+    MeetingChangeType.DELETE
+  )
+
+  if (icsFile.error) {
+    Sentry.captureException(icsFile.error)
+    return false
+  }
+
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'meeting_cancelled')}`,
+    locals
+  )
+
+  const msg: sgMail.MailDataRequired = {
+    to: toEmail,
+    from: FROM,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    attachments: [
+      {
+        content: Buffer.from(icsFile.value!).toString('base64'),
+        filename: `meeting_${meeting_id}.ics`,
+        type: 'text/plain',
+        disposition: 'attachment',
+      },
+    ],
+  }
+
+  try {
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+
+  return true
+}
+
+export const updateMeetingEmail = async (
+  toEmail: string,
+  currentActorDisplayName: string,
+  participants: ParticipantInfo[],
+  timezone: string,
+  start: Date,
+  end: Date,
+  meeting_id: string,
+  slot_id: string,
+  ownerDomain?: string,
+  destinationAccountAddress?: string,
+  meetingUrl?: string,
+  title?: string,
+  description?: string,
+  created_at?: Date,
+  changes?: MeetingChange
+): Promise<boolean> => {
+  if (!changes?.dateChange) {
+    return true
+  }
+  const email = new Email()
+  const newDuration = differenceInMinutes(end, start)
+  const oldDuration = changes?.dateChange
+    ? differenceInMinutes(
+        new Date(changes?.dateChange?.oldEnd),
+        new Date(changes?.dateChange?.oldStart)
+      )
+    : null
+
+  let guestUrl = undefined
+  if (
+    !destinationAccountAddress &&
+    (participants.length === 2 ||
+      participants.filter(
+        p => p.type === ParticipantType.Scheduler && p.guest_email
+      ).length === 1)
+  ) {
+    //Allow guest to request change if it is only 2 people in the meeting or it is the scheduler
+    guestUrl = `${appUrl}/${ownerDomain}?slot=${slot_id}`
+  }
+
+  const locals = {
+    currentActorDisplayName,
+    participantsDisplay: getAllParticipantsDisplayName(
+      participants,
+      destinationAccountAddress
+    ),
+    meeting: {
+      start: dateToHumanReadable(start, timezone, true),
+      duration: durationToHumanReadable(newDuration),
+      url: meetingUrl,
+      title,
+      description,
+    },
+    changeUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      : guestUrl,
+    changes: {
+      oldStart:
+        changes?.dateChange?.oldStart &&
+        new Date(changes.dateChange?.oldStart).getTime() !== start.getTime()
+          ? dateToHumanReadable(
+              new Date(changes!.dateChange!.oldStart),
+              timezone,
+              false
+            )
+          : null,
+      oldDuration:
+        oldDuration && oldDuration !== newDuration
+          ? durationToHumanReadable(oldDuration)
+          : null,
+    },
+  }
+
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'meeting_updated')}`,
+    locals
+  )
+
+  const icsFile = generateIcs(
+    {
+      meeting_url: meetingUrl as string,
+      start: new Date(start),
+      end: new Date(end),
+      id: meeting_id,
+      meeting_id,
+      created_at: new Date(created_at as Date),
+      meeting_info_file_path: '',
+      participants,
+      version: 0,
+      related_slot_ids: [],
+    },
+    destinationAccountAddress || '',
+    MeetingChangeType.UPDATE,
+    destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      : guestUrl
+  )
+
+  if (icsFile.error) {
+    Sentry.captureException(icsFile.error)
+    return false
+  }
+
+  const msg: sgMail.MailDataRequired = {
+    to: toEmail,
+    from: FROM,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    attachments: [
+      {
+        content: Buffer.from(icsFile.value!).toString('base64'),
+        filename: `meeting_${meeting_id}.ics`,
         type: 'text/plain',
         disposition: 'attachment',
       },
