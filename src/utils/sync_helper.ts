@@ -69,12 +69,16 @@ const syncUpdatedEventWithCalendar = async (
       if (innerCalendar.enabled && innerCalendar.sync) {
         promises.push(
           new Promise<void>(async resolve => {
-            await integration.updateEvent(
-              targetAccount,
-              meeting_id,
-              meetingDetails,
-              innerCalendar.calendarId
-            )
+            try {
+              await integration.updateEvent(
+                targetAccount,
+                meeting_id,
+                meetingDetails,
+                innerCalendar.calendarId
+              )
+            } catch (error) {
+              Sentry.captureException(error)
+            }
             resolve()
           })
         )
@@ -112,10 +116,10 @@ const syncDeletedEventWithCalendar = async (
                 meeting_id,
                 innerCalendar.calendarId
               )
-              resolve()
             } catch (error) {
               Sentry.captureException(error)
             }
+            resolve()
           })
         )
       }
@@ -124,7 +128,6 @@ const syncDeletedEventWithCalendar = async (
   }
 }
 
-// TODO: schedule for other users, if they are also pro plan
 export const ExternalCalendarSync = {
   create: async (meetingDetails: MeetingCreationSyncRequest) => {
     const tasks: Promise<any>[] = []
