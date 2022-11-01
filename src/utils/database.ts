@@ -1236,27 +1236,6 @@ const getAppToken = async (tokenType: string): Promise<any | null> => {
   return null
 }
 
-const upsertAppToken = async (
-  tokenType: string,
-  token: object
-): Promise<void> => {
-  const { _, error } = await db.supabase.from('application_tokens').upsert(
-    [
-      {
-        type: tokenType,
-        token,
-      },
-    ],
-    { onConflict: 'type' }
-  )
-
-  if (error) {
-    Sentry.captureException(error)
-  }
-
-  return
-}
-
 const updateMeeting = async (
   participantActing: ParticipantBaseInfo,
   meetingUpdateRequest: MeetingUpdateRequest
@@ -1578,7 +1557,6 @@ export {
   updateAccountFromInvite,
   updateAccountPreferences,
   updateMeeting,
-  upsertAppToken,
   upsertGateCondition,
   workMeetingTypeGates,
 }

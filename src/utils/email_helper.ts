@@ -153,7 +153,6 @@ export const cancelledMeetingEmail = async (
     },
   }
 
-  // TODO: add after having the meeting id so ics's are consistent
   const icsFile = generateIcs(
     {
       meeting_id,
