@@ -124,10 +124,15 @@ const Meetings: React.FC = () => {
     history.pushState(null, '', window.location.pathname)
 
     if (meeting || removedSlots) {
-      const newMeetings = meetings.filter(
-        m => m.id !== meeting?.id || removedSlots?.indexOf(m.id!) === -1
-      )
-      changeType !== MeetingChangeType.DELETE && newMeetings.push(meeting!)
+      let newMeetings: DBSlot[] = []
+
+      if (meeting) {
+        newMeetings = meetings.filter(m => m.id !== meeting.id)
+        newMeetings.push(meeting!)
+      }
+      if (removedSlots) {
+        newMeetings = meetings.filter(m => removedSlots?.indexOf(m.id!) === -1)
+      }
       setMeetings(
         newMeetings.sort(
           (m1, m2) =>

@@ -4,7 +4,6 @@ import { Encrypted } from 'eth-crypto'
 import { ConditionRelation } from '@/types/common'
 
 import { ParticipantInfo } from './ParticipantInfo'
-import { MeetingCreationRequest } from './Requests'
 
 export enum SchedulingType {
   REGULAR,

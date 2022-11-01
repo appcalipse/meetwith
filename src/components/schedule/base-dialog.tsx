@@ -40,14 +40,13 @@ import {
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import NextLink from 'next/link'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import { AccountContext } from '@/providers/AccountProvider'
-import { SimpleAccountInfo } from '@/types/Account'
 import {
   DBSlot,
   MeetingChangeType,
