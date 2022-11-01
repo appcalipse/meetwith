@@ -177,13 +177,17 @@ export const updateMeeting = async (
 export const cancelMeeting = async (
   meeting: MeetingDecrypted,
   currentTimezone: string
-) => {
+): Promise<{ removed: string[] }> => {
   const body: MeetingCancelRequest = {
     meeting,
     currentTimezone,
   }
   try {
-    return await internalFetch(`/secure/meetings/${meeting.id}`, 'DELETE', body)
+    return (await internalFetch(
+      `/secure/meetings/${meeting.id}`,
+      'DELETE',
+      body
+    )) as { removed: string[] }
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()

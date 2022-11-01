@@ -84,7 +84,9 @@ const Meetings: React.FC = () => {
             key={meeting.id}
             meeting={meeting}
             timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
-            onUpdate={fetchMeetings}
+            onCancel={removed =>
+              afterClose(MeetingChangeType.DELETE, undefined, removed)
+            }
             onClickToOpen={(meeting, decryptedMeeting, timezone) =>
               openMeetingDialog(meeting, decryptedMeeting, timezone, afterClose)
             }
@@ -113,13 +115,19 @@ const Meetings: React.FC = () => {
     slotId && fillMeeting()
   }, [slotId])
 
-  const afterClose = (changeType: MeetingChangeType, meeting?: DBSlot) => {
+  const afterClose = (
+    changeType: MeetingChangeType,
+    meeting?: DBSlot,
+    removedSlots?: string[]
+  ) => {
     // not using router API to avoid re-rendinreing component
     history.pushState(null, '', window.location.pathname)
 
-    if (meeting) {
-      const newMeetings = meetings.filter(m => m.id !== meeting.id)
-      changeType !== MeetingChangeType.DELETE && newMeetings.push(meeting)
+    if (meeting || removedSlots) {
+      const newMeetings = meetings.filter(
+        m => m.id !== meeting?.id || removedSlots?.indexOf(m.id!) === -1
+      )
+      changeType !== MeetingChangeType.DELETE && newMeetings.push(meeting!)
       setMeetings(
         newMeetings.sort(
           (m1, m2) =>
