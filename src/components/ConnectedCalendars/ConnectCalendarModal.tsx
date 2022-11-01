@@ -2,13 +2,13 @@ import {
   Button,
   Heading,
   HStack,
+  Image,
   Modal,
   ModalBody,
   ModalCloseButton,
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { useState } from 'react'
@@ -83,7 +83,8 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
               >
                 <Button
                   onClick={selectOption(TimeSlotSource.GOOGLE)}
-                  leftIcon={<FaGoogle />}
+                  // leftIcon={<FaGoogle />}
+                  leftIcon={<Image src="/assets/google.svg" />}
                   variant="outline"
                   isLoading={loading === TimeSlotSource.GOOGLE}
                 >

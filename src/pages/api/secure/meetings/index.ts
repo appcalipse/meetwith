@@ -2,10 +2,10 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import {
-  DBSlotEnhanced,
-  MeetingCreationRequest,
-} from '../../../../types/Meeting'
+import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
+
+import { DBSlotEnhanced } from '../../../../types/Meeting'
+import { MeetingCreationRequest } from '../../../../types/Requests'
 import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import {
   getAccountFromDB,
@@ -38,8 +38,14 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return
     }
 
+    const participantActing = getParticipantBaseInfoFromAccount(
+      await getAccountFromDB(req.session.account!.address)
+    )
     try {
-      const meetingResult: DBSlotEnhanced = await saveMeeting(meeting)
+      const meetingResult: DBSlotEnhanced = await saveMeeting(
+        participantActing,
+        meeting
+      )
 
       res.status(200).json(meetingResult)
     } catch (e) {
