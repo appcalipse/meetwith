@@ -461,7 +461,7 @@ const updateMeeting = async (
 const cancelMeeting = async (
   currentAccountAddress: string,
   decryptedMeeting: MeetingDecrypted
-) => {
+): Promise<{ removed: string[] }> => {
   // Sanity check
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
@@ -499,12 +499,12 @@ const cancelMeeting = async (
   }
 
   // Fetch the updated data one last time
-  await apiCancelMeeting(
+  const response = await apiCancelMeeting(
     decryptedMeeting,
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
 
-  return
+  return response
 }
 
 const scheduleMeeting = async (

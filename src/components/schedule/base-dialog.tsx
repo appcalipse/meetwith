@@ -78,10 +78,7 @@ import { getAddressFromDomain } from '@/utils/rpc_helper_front'
 import { getSignature } from '@/utils/storage'
 import { isProAccount } from '@/utils/subscription_manager'
 import { ParseTime } from '@/utils/time.helper'
-import {
-  ellipsizeAddress,
-  getAddressDisplayForInput,
-} from '@/utils/user_manager'
+import { ellipsizeAddress } from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import { CancelMeetingDialog } from './cancel-dialog'
@@ -90,7 +87,11 @@ import { MeetingDialogState } from './meeting.dialog.hook'
 export interface BaseMeetingDialogProps extends MeetingDialogState {
   isDialogOpen: boolean
   onDialogOpen: () => void
-  onDialogClose: (changeType: MeetingChangeType, meeting?: DBSlot) => void
+  onDialogClose: (
+    changeType: MeetingChangeType,
+    meeting?: DBSlot,
+    removedIds?: string[]
+  ) => void
 }
 
 export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
@@ -727,7 +728,9 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         onClose={onClose}
         decriptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
-        afterCancel={() => onDialogClose(MeetingChangeType.DELETE)}
+        afterCancel={removed =>
+          onDialogClose(MeetingChangeType.DELETE, undefined, removed)
+        }
       />
     </Modal>
   )

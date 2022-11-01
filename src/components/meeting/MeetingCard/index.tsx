@@ -46,7 +46,7 @@ import IPFSLink from '../../IPFSLink'
 interface MeetingCardProps {
   meeting: DBSlot
   timezone: string
-  onUpdate?: () => void
+  onCancel: (removed: string[]) => void
   onClickToOpen: (
     meeting: DBSlot,
     decryptedMeeting: MeetingDecrypted,
@@ -59,12 +59,12 @@ interface Label {
   text: string
 }
 
-const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-11-01')
+const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-10-21')
 
 const MeetingCard = ({
   meeting,
   timezone,
-  onUpdate,
+  onCancel,
   onClickToOpen,
 }: MeetingCardProps) => {
   const duration = differenceInMinutes(meeting.end, meeting.start)
@@ -204,7 +204,7 @@ const MeetingCard = ({
         onClose={onClose}
         decriptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
-        afterCancel={onUpdate}
+        afterCancel={onCancel}
       />
     </>
   )

@@ -9,7 +9,11 @@ export interface MeetingDialogState {
   meeting?: DBSlot
   timezone: string
   decryptedMeeting?: MeetingDecrypted
-  afterClose?: (changeType: MeetingChangeType, meeting?: DBSlot) => void
+  afterClose?: (
+    changeType: MeetingChangeType,
+    meeting?: DBSlot,
+    removedSlots?: string[]
+  ) => void
 }
 
 export const useMeetingDialog = () => {
@@ -24,7 +28,11 @@ export const useMeetingDialog = () => {
     meeting: any,
     decryptedMeeting: any,
     timezone: string,
-    afterClose?: () => void
+    afterClose?: (
+      changeType: MeetingChangeType,
+      meeting?: DBSlot,
+      removedSlots?: string[]
+    ) => void
   ) => {
     setData({
       meeting,
@@ -37,10 +45,11 @@ export const useMeetingDialog = () => {
 
   const closeMeetingDialog = (
     changeType: MeetingChangeType,
-    meeting?: DBSlot
+    meeting?: DBSlot,
+    removedSlots?: string[]
   ) => {
     onClose()
-    data.afterClose && data.afterClose(changeType, meeting)
+    data.afterClose && data.afterClose(changeType, meeting, removedSlots)
     setData({
       meeting: undefined,
       decryptedMeeting: undefined,
