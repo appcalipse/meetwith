@@ -8,7 +8,6 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { useState } from 'react'
@@ -87,7 +86,7 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
                   variant="outline"
                   isLoading={loading === TimeSlotSource.GOOGLE}
                 >
-                  Google
+                  Sign in with Google
                 </Button>
                 <Button
                   onClick={selectOption(TimeSlotSource.OFFICE)}
