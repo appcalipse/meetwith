@@ -20,21 +20,26 @@ export const ConnectedCalendarIcons = {
   [TimeSlotSource.MWW]: FaCalendar,
 }
 
+export interface CalendarSyncInfo {
+  calendarId: string
+  name: string
+  sync: boolean
+  enabled: boolean
+  color?: string
+}
 export interface ConnectedCalendarCore {
   provider: TimeSlotSource
   email: string
-  sync: boolean
+  calendars: CalendarSyncInfo[]
 }
-
-export interface ConnectedCalendarCorePayload extends ConnectedCalendarCore {
-  payload: any
-}
-
-export interface ConnectedCalendar extends ConnectedCalendarCorePayload {
+export interface ConnectedCalendar extends ConnectedCalendarCore {
   id: number
   account_address: string
   updated?: Date
+  calendarId?: string
+  enabled: boolean
   created: Date
+  payload: any
 }
 
 export type NewCalendarEventType = {

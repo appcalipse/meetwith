@@ -26,8 +26,8 @@ import {
   NotificationChannel,
 } from '../types/AccountNotifications'
 import {
+  CalendarSyncInfo,
   ConnectedCalendar,
-  ConnectedCalendarCorePayload,
 } from '../types/CalendarConnections'
 import {
   ConferenceMeeting,
@@ -35,14 +35,21 @@ import {
   DBSlotEnhanced,
   GroupMeetingRequest,
   MeetingAccessType,
-  MeetingCreationRequest,
-  MeetingICS,
   MeetingProvider,
-  MeetingUpdateRequest,
   ParticipantMappingType,
-  ParticipantType,
   TimeSlotSource,
 } from '../types/Meeting'
+import {
+  ParticipantBaseInfo,
+  ParticipantInfo,
+  ParticipantType,
+} from '../types/ParticipantInfo'
+import {
+  MeetingCancelSyncRequest,
+  MeetingCreationRequest,
+  MeetingCreationSyncRequest,
+  MeetingUpdateRequest,
+} from '../types/Requests'
 import { Subscription } from '../types/Subscription'
 import {
   AccountNotFoundError,
@@ -533,35 +540,53 @@ const getMeetingsFromDB = async (
   return meetings
 }
 
-const deleteMeetingFromDB = async (owner: string, slotIds: string[]) => {
+const deleteMeetingFromDB = async (
+  participantActing: ParticipantBaseInfo,
+  slotIds: string[],
+  guestsToRemove: ParticipantInfo[],
+  meeting_id: string,
+  timezone: string
+) => {
   if (!slotIds?.length) {
     throw new Error('No slot ids provided')
   }
+
+  const oldSlots: DBSlot[] = (
+    await db.supabase.from('slots').select().in('id', slotIds)
+  ).data
 
   const { data, error } = await db.supabase
     .from('slots')
     .delete()
     .in('id', slotIds)
 
-  // Doing ntifications and syncs asyncrounously
-  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
-    method: 'DELETE',
-    body: JSON.stringify({
-      owner,
-      slotIds,
-    }),
-    headers: {
-      'X-Server-Secret': process.env.SERVER_SECRET!,
-    },
-  })
-
   if (error) {
     Sentry.captureException(error)
     throw new Error(error)
   }
+
+  const body: MeetingCancelSyncRequest = {
+    participantActing,
+    addressesToRemove: oldSlots.map(s => s.account_address),
+    guestsToRemove,
+    meeting_id,
+    start: new Date(oldSlots[0].start),
+    end: new Date(oldSlots[0].end),
+    created_at: new Date(oldSlots[0].created_at!),
+    timezone,
+  }
+  // Doing ntifications and syncs asyncrounously
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'DELETE',
+    body: JSON.stringify(body),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+    },
+  })
 }
 
 const saveMeeting = async (
+  participantActing: ParticipantBaseInfo,
   meeting: MeetingCreationRequest
 ): Promise<DBSlotEnhanced> => {
   if (
@@ -642,7 +667,7 @@ const saveMeeting = async (
       'Could not create your meeting right now, get in touch with us if the problem persists'
     )
   }
-
+  const timezone = meeting.participants_mapping[0].timeZone
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
       if (
@@ -739,15 +764,22 @@ const saveMeeting = async (
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
-  const meetingICS: MeetingICS = {
-    db_slot: meetingResponse,
-    meeting,
+  const body: MeetingCreationSyncRequest = {
+    participantActing,
+    meeting_id: meeting.meeting_id,
+    start: meeting.start,
+    end: meeting.end,
+    created_at: meetingResponse.created_at!,
+    timezone,
+    meeting_url: meeting.meeting_url,
+    participants: meeting.participants_mapping,
+    title: meeting.title,
+    content: meeting.content,
   }
-
   // Doing notifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'POST',
-    body: JSON.stringify(meetingICS),
+    body: JSON.stringify(body),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
     },
@@ -864,7 +896,13 @@ const getConnectedCalendars = async (
     !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
 
   if (syncOnly) {
-    return connectedCalendars.filter(({ sync }) => sync)
+    const calendars: ConnectedCalendar[] = JSON.parse(
+      JSON.stringify(connectedCalendars)
+    )
+    for (const cal of calendars) {
+      cal.calendars = cal.calendars.filter(c => c.sync)
+    }
+    return calendars
   }
 
   return connectedCalendars
@@ -874,10 +912,10 @@ const connectedCalendarExists = async (
   address: string,
   email: string,
   provider: TimeSlotSource
-): Promise<boolean> => {
-  const { count, error } = await db.supabase
+): Promise<ConnectedCalendar | undefined> => {
+  const { data, error } = await db.supabase
     .from('connected_calendars')
-    .select('*', { count: 'exact' })
+    .select('*')
     .eq('account_address', address.toLowerCase())
     .eq('email', email.toLowerCase())
     .eq('provider', provider)
@@ -886,30 +924,66 @@ const connectedCalendarExists = async (
     Sentry.captureException(error)
   }
 
-  return count > 0
+  return data[0]
+}
+
+export const updateCalendarPayload = async (
+  address: string,
+  email: string,
+  provider: TimeSlotSource,
+  payload: any
+): Promise<void> => {
+  const { data, error } = await db.supabase
+    .from('connected_calendars')
+    .update({ payload, updated: new Date() })
+    .eq('account_address', address.toLowerCase())
+    .eq('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    Sentry.captureException(error)
+  }
 }
 
 const addOrUpdateConnectedCalendar = async (
   address: string,
-  payload: ConnectedCalendarCorePayload
+  email: string,
+  provider: TimeSlotSource,
+  calendars: CalendarSyncInfo[],
+  _payload?: any
 ): Promise<ConnectedCalendar> => {
   const existingConnection = await connectedCalendarExists(
     address,
-    payload.email,
-    payload.provider
+    email,
+    provider
   )
+
   let queryPromise
+  const payload = _payload ? _payload : existingConnection?.payload
   if (existingConnection) {
     queryPromise = db.supabase
       .from('connected_calendars')
-      .update({ ...payload, updated: new Date() })
+      .update({
+        payload,
+        calendars,
+        updated: new Date(),
+      })
       .eq('account_address', address.toLowerCase())
-      .eq('email', payload.email.toLowerCase())
-      .eq('provider', payload.provider)
+      .eq('email', email.toLowerCase())
+      .eq('provider', provider)
   } else {
-    queryPromise = db.supabase
-      .from('connected_calendars')
-      .insert({ ...payload, created: new Date(), account_address: address })
+    if (calendars.filter(c => c.enabled).length === 0) {
+      calendars[0].enabled = true
+      // ensure at least one is enabled when adding it
+    }
+    queryPromise = db.supabase.from('connected_calendars').insert({
+      email,
+      payload,
+      calendars,
+      created: new Date(),
+      account_address: address,
+      provider,
+    })
   }
 
   const { data, error } = await queryPromise
@@ -918,28 +992,7 @@ const addOrUpdateConnectedCalendar = async (
     Sentry.captureException(error)
   }
 
-  return data as ConnectedCalendar
-}
-
-const changeConnectedCalendarSync = async (
-  address: string,
-  email: string,
-  provider: TimeSlotSource,
-  sync?: boolean,
-  payload?: ConnectedCalendarCorePayload['payload']
-): Promise<ConnectedCalendar> => {
-  const { data, error } = await db.supabase
-    .from('connected_calendars')
-    .update({ sync, payload, updated: new Date() })
-    .eq('account_address', address.toLowerCase())
-    .eq('email', email.toLowerCase())
-    .eq('provider', provider)
-
-  if (error) {
-    Sentry.captureException(error)
-  }
-
-  return data as ConnectedCalendar
+  return data[0] as ConnectedCalendar
 }
 
 const removeConnectedCalendar = async (
@@ -1183,28 +1236,8 @@ const getAppToken = async (tokenType: string): Promise<any | null> => {
   return null
 }
 
-const upsertAppToken = async (
-  tokenType: string,
-  token: object
-): Promise<void> => {
-  const { _, error } = await db.supabase.from('application_tokens').upsert(
-    [
-      {
-        type: tokenType,
-        token,
-      },
-    ],
-    { onConflict: 'type' }
-  )
-
-  if (error) {
-    Sentry.captureException(error)
-  }
-
-  return
-}
-
 const updateMeeting = async (
+  participantActing: ParticipantBaseInfo,
   meetingUpdateRequest: MeetingUpdateRequest
 ): Promise<DBSlotEnhanced> => {
   if (
@@ -1238,6 +1271,9 @@ const updateMeeting = async (
       p => p.type === ParticipantType.Scheduler
     ) || null
 
+  const timezone = meetingUpdateRequest.participants_mapping[0].timeZone
+  let changingTime = null
+
   for (const participant of meetingUpdateRequest.participants_mapping) {
     const isEditing = participant.mappingType === ParticipantMappingType.KEEP
 
@@ -1245,8 +1281,7 @@ const updateMeeting = async (
       if (
         existingAccounts
           .map(account => account.address)
-          .includes(participant.account_address!) &&
-        participant.type === ParticipantType.Owner
+          .includes(participant.account_address!)
       ) {
         // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
         const participantIsOwner = Boolean(
@@ -1262,6 +1297,7 @@ const updateMeeting = async (
         )
 
         let isEditingToSameTime = false
+
         if (isEditing) {
           const existingSlot = await getMeetingFromDB(participant.slot_id!)
           const sameStart =
@@ -1271,6 +1307,12 @@ const updateMeeting = async (
             new Date(existingSlot.end).getTime() ===
             new Date(meetingUpdateRequest.end).getTime()
           isEditingToSameTime = sameStart && sameEnd
+          changingTime = !isEditingToSameTime
+            ? {
+                oldStart: new Date(existingSlot.start),
+                oldEnd: new Date(existingSlot.end),
+              }
+            : null
         }
 
         const slotIsTaken = async () =>
@@ -1293,10 +1335,12 @@ const updateMeeting = async (
             ),
             ownerAccount!.preferences!.availabilities
           )
+
         if (
           participantIsOwner &&
           ownerIsNotScheduler &&
           !isEditingToSameTime &&
+          participantActing.account_address !== participant.account_address &&
           (!isTimeAvailable() || (await slotIsTaken()))
         ) {
           throw new TimeNotAvailableError()
@@ -1338,7 +1382,7 @@ const updateMeeting = async (
       if (
         participant.account_address.toLowerCase() ===
           schedulerAccount?.account_address?.toLowerCase() ||
-        (!schedulerAccount &&
+        (!schedulerAccount?.account_address &&
           participant.account_address.toLowerCase() ===
             ownerAccount?.address.toLowerCase())
       ) {
@@ -1349,18 +1393,13 @@ const updateMeeting = async (
         }
       }
       i++
-    } else {
-      // TODO: update guests
     }
   }
 
-  // do something
-  //meeting.guestsToRemove
-
   // one last check to make sure that the version did not change
-  const everySlotId = meetingUpdateRequest.participants_mapping.map(
-    it => it.slot_id
-  )
+  const everySlotId = meetingUpdateRequest.participants_mapping
+    .filter(it => it.slot_id)
+    .map(it => it.slot_id) as string[]
   const everySlot = await getMeetingsFromDB(everySlotId)
   if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version)) {
     throw new MeetingChangeConflictError()
@@ -1369,7 +1408,10 @@ const updateMeeting = async (
   // there is no support from suppabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
   // to the point that our checks will not be able to stop conflicts
-  const { data, error } = await db.supabase.from('slots').upsert(slots)
+
+  const { data, error } = await db.supabase
+    .from('slots')
+    .upsert(slots, { onConflict: 'id' })
 
   //TODO: handle error
   if (error) {
@@ -1378,11 +1420,6 @@ const updateMeeting = async (
 
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
-
-  const meetingICS: MeetingICS = {
-    db_slot: meetingResponse,
-    meeting: meetingUpdateRequest,
-  }
 
   // TODO: for now
   let meetingProvider = MeetingProvider.CUSTOM
@@ -1406,14 +1443,41 @@ const updateMeeting = async (
     )
   }
 
+  const body: MeetingCreationSyncRequest = {
+    participantActing,
+    meeting_id: meetingUpdateRequest.meeting_id,
+    start: meetingUpdateRequest.start,
+    end: meetingUpdateRequest.end,
+    created_at: meetingResponse.created_at!,
+    timezone,
+    meeting_url: meetingUpdateRequest.meeting_url,
+    participants: meetingUpdateRequest.participants_mapping,
+    title: meetingUpdateRequest.title,
+    content: meetingUpdateRequest.content,
+    changes: changingTime ? { dateChange: changingTime } : undefined,
+  }
+
   // Doing ntifications and syncs asyncrounously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'PATCH',
-    body: JSON.stringify(meetingICS),
+    body: JSON.stringify(body),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
     },
   })
+
+  if (
+    meetingUpdateRequest.slotsToRemove.length > 0 ||
+    meetingUpdateRequest.guestsToRemove.length > 0
+  ) {
+    await deleteMeetingFromDB(
+      participantActing,
+      meetingUpdateRequest.slotsToRemove,
+      meetingUpdateRequest.guestsToRemove,
+      meetingUpdateRequest.meeting_id,
+      timezone
+    )
+  }
 
   return meetingResponse
 }
@@ -1433,9 +1497,37 @@ const selectTeamMeetingRequest = async (
   return null
 }
 
+const insertOfficeEventMapping = async (
+  office_id: string,
+  mww_id: string
+): Promise<void> => {
+  const { data, error } = await db.supabase
+    .from('office_event_mapping')
+    .insert({ office_id, mww_id })
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+}
+
+const getOfficeEventMappingId = async (
+  mww_id: string
+): Promise<string | null> => {
+  const { data, error } = await db.supabase
+    .from('office_event_mapping')
+    .select()
+    .eq('mww_id', mww_id)
+
+  if (error) {
+    Sentry.captureException(error)
+    return null
+  }
+
+  return data[0].office_id
+}
+
 export {
   addOrUpdateConnectedCalendar,
-  changeConnectedCalendarSync,
   connectedCalendarExists,
   deleteGateCondition,
   deleteMeetingFromDB,
@@ -1449,10 +1541,12 @@ export {
   getGateCondition,
   getGateConditionsForAccount,
   getMeetingFromDB,
+  getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
   initAccountDBForWallet,
   initDB,
+  insertOfficeEventMapping,
   isSlotFree,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
@@ -1463,7 +1557,6 @@ export {
   updateAccountFromInvite,
   updateAccountPreferences,
   updateMeeting,
-  upsertAppToken,
   upsertGateCondition,
   workMeetingTypeGates,
 }

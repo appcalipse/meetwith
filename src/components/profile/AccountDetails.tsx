@@ -331,7 +331,7 @@ const AccountDetails: React.FC = () => {
             'Customizable booking link',
             'External calendar connections (Google and iCloud)',
             'Unlimited meeting configurations',
-            'Email, Push, EPNS and Discord Notifications (optional)',
+            'Email, Push Notifications with Push protocol, and Discord Notifications (optional)',
             'Schedule meetings with multiple participants',
             'Request payment for meeting scheduling (coming soon)',
           ]}

@@ -1,18 +1,23 @@
 import * as Sentry from '@sentry/nextjs'
+import { constants } from 'buffer'
 
-import { NewCalendarEventType } from '@/types/CalendarConnections'
 import {
-  MeetingCreationRequest,
-  MeetingUpdateRequest,
-  ParticipantInfo,
-  TimeSlotSource,
-} from '@/types/Meeting'
+  CalendarSyncInfo,
+  NewCalendarEventType,
+} from '@/types/CalendarConnections'
+import { TimeSlotSource } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
-import { NO_REPLY_EMAIL } from '../constants'
-import { changeConnectedCalendarSync } from '../database'
+import { appUrl, NO_REPLY_EMAIL } from '../constants'
+import {
+  getOfficeEventMappingId,
+  insertOfficeEventMapping,
+  updateCalendarPayload,
+} from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
-import { CalendarService } from './common.types'
+import { CalendarService } from './calendar.service.types'
 
 export type BufferedBusyTime = {
   start: string
@@ -32,10 +37,16 @@ interface TokenResponse {
   expires_in: number
 }
 
-export function handleErrorsJson(response: Response) {
+export function handleErrorsResponse(
+  response: Response,
+  skipResponseProcess?: boolean
+) {
   if (!response.ok) {
     response.json().then(console.error)
     throw Error(response.statusText)
+  }
+  if (skipResponseProcess) {
+    return
   }
   return response.json()
 }
@@ -90,17 +101,16 @@ export default class Office365CalendarService implements CalendarService {
           }),
         }
       )
-        .then(handleErrorsJson)
+        .then(handleErrorsResponse)
         .then((responseBody: TokenResponse) => {
           credential.access_token = responseBody.access_token
           credential.expiry_date = Math.round(
             new Date().getTime() / 1000 + responseBody.expires_in
           )
-          return changeConnectedCalendarSync(
+          return updateCalendarPayload(
             address,
             email,
             TimeSlotSource.OFFICE,
-            undefined,
             credential
           ).then(() => {
             return credential.access_token
@@ -116,28 +126,58 @@ export default class Office365CalendarService implements CalendarService {
     }
   }
 
+  async refreshConnection(): Promise<CalendarSyncInfo[]> {
+    const accessToken = await this.auth.getToken()
+
+    const calendarsResponse = await fetch(
+      'https://graph.microsoft.com/v1.0/me/calendars',
+      {
+        headers: { Authorization: 'Bearer ' + accessToken },
+      }
+    )
+
+    const calendars = await calendarsResponse.json()
+
+    const mapped = calendars.value.map((c: any) => {
+      return {
+        calendarId: c.id,
+        name: c.name,
+        sync: false,
+        enabled: c.isDefaultCalendar,
+        color: c.hexColor,
+      }
+    })
+
+    return mapped
+  }
+
   /**
    * Creates an event into the owner 365 calendar
    *
    * @param owner
-   * @param details
+   * @param meetingDetails
    * @returns
    */
   async createEvent(
     owner: string,
-    details: MeetingCreationRequest,
-    slot_id: string,
-    meeting_creation_time: Date
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_creation_time: Date,
+    calendarId: string
   ): Promise<NewCalendarEventType> {
     try {
       const accessToken = await this.auth.getToken()
 
       const body = JSON.stringify(
-        this.translateEvent(owner, details, slot_id, meeting_creation_time)
+        this.translateEvent(
+          owner,
+          meetingDetails,
+          meetingDetails.meeting_id,
+          meeting_creation_time
+        )
       )
 
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendar/events`,
+        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events`,
         {
           method: 'POST',
           headers: {
@@ -148,7 +188,10 @@ export default class Office365CalendarService implements CalendarService {
         }
       )
 
-      return handleErrorsJson(response)
+      const event = await handleErrorsResponse(response)
+      await insertOfficeEventMapping(event.id, meetingDetails.meeting_id)
+
+      return event
     } catch (error) {
       Sentry.captureException(error)
       throw error
@@ -157,18 +200,24 @@ export default class Office365CalendarService implements CalendarService {
 
   async updateEvent(
     owner: string,
-    slot_id: string,
-    details: MeetingUpdateRequest
+    meeting_id: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId: string
   ): Promise<NewCalendarEventType> {
     try {
       const accessToken = await this.auth.getToken()
+      const officeId = await getOfficeEventMappingId(meeting_id)
+      const body = JSON.stringify({
+        ...this.translateEvent(owner, meetingDetails, meeting_id, new Date()),
+        id: officeId,
+      })
 
-      const body = JSON.stringify(
-        this.translateEvent(owner, details, slot_id, new Date(), false)
-      )
-
+      if (!officeId) {
+        Sentry.captureException("Can't find office event mapping")
+        throw new Error("Can't find office event mapping")
+      }
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendar/events`,
+        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${officeId}`,
         {
           method: 'PATCH',
           headers: {
@@ -179,18 +228,26 @@ export default class Office365CalendarService implements CalendarService {
         }
       )
 
-      return handleErrorsJson(response)
+      return handleErrorsResponse(response)
     } catch (error) {
       Sentry.captureException(error)
       throw error
     }
   }
 
-  async deleteEvent(slot_id: string): Promise<void> {
+  async deleteEvent(meeting_id: string, calendarId: string): Promise<void> {
     try {
       const accessToken = await this.auth.getToken()
+
+      const officeId = await getOfficeEventMappingId(meeting_id)
+
+      if (!officeId) {
+        Sentry.captureException("Can't find office event mapping")
+        return
+      }
+
       const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendar/events`,
+        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${officeId}`,
         {
           method: 'DELETE',
           headers: {
@@ -200,7 +257,7 @@ export default class Office365CalendarService implements CalendarService {
         }
       )
 
-      return handleErrorsJson(response)
+      return handleErrorsResponse(response, true)
     } catch (error) {
       Sentry.captureException(error)
       throw error
@@ -209,20 +266,24 @@ export default class Office365CalendarService implements CalendarService {
 
   private translateEvent = (
     calendarOwnerAccountAddress: string,
-    details: MeetingCreationRequest,
-    slot_id: string,
-    meeting_creation_time: Date,
-    includeId = true
+    details: MeetingCreationSyncRequest,
+    meeting_id: string,
+    meeting_creation_time: Date
   ) => {
-    const participantsInfo: ParticipantInfo[] =
-      details.participants_mapping.map(participant => ({
+    const participantsInfo: ParticipantInfo[] = details.participants.map(
+      participant => ({
         type: participant.type,
         name: participant.name,
         account_address: participant.account_address,
         status: participant.status,
-        slot_id,
-        meeting_id: '',
-      }))
+        slot_id: '',
+        meeting_id,
+      })
+    )
+
+    const slot_id = details.participants.filter(
+      p => p.account_address === calendarOwnerAccountAddress
+    )[0].slot_id
 
     const payload = {
       subject: CalendarServiceHelper.getMeetingTitle(
@@ -233,7 +294,8 @@ export default class Office365CalendarService implements CalendarService {
         contentType: 'TEXT',
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
-          details.meeting_url
+          details.meeting_url,
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`
         ),
       },
       start: {
@@ -256,11 +318,10 @@ export default class Office365CalendarService implements CalendarService {
       },
       attendees: [],
       allowNewTimeProposals: false,
-      transactionId: slot_id, // avoid duplicating the event if we make more than one request with the same transactionId
-      id: includeId ? slot_id : undefined, //required for editing the event in the future
+      transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
     }
 
-    for (const participant of details.participants_mapping) {
+    for (const participant of details.participants) {
       ;(payload.attendees as any).push({
         emailAddress: {
           name: participant.name || participant.account_address,
@@ -275,6 +336,7 @@ export default class Office365CalendarService implements CalendarService {
   }
 
   async getAvailability(
+    calendarIds: string[],
     dateFrom: string,
     dateTo: string
   ): Promise<EventBusyDate[]> {
@@ -285,46 +347,46 @@ export default class Office365CalendarService implements CalendarService {
       dateFromParsed.toISOString()
     )}&enddatetime=${encodeURIComponent(dateToParsed.toISOString())}&$top=500`
 
-    try {
-      const accessToken = await this.auth.getToken()
+    const promises: Promise<EventBusyDate[]>[] = []
 
-      const calIdResponse = await fetch(
-        'https://graph.microsoft.com/v1.0/me/calendars',
-        {
-          method: 'GET',
-          headers: {
-            Authorization: 'Bearer ' + accessToken,
-            'Content-Type': 'application/json',
-          },
-        }
-      )
-      const calIdJson = await handleErrorsJson(calIdResponse)
-      const calendarId = calIdJson.value.find(
-        (cal: any) => cal.isDefaultCalendar
-      ).id
-      // TODO: consider proper pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
-      // not only the first 500 events
-      const eventsResponse = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/calendarView${filter}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: 'Bearer ' + accessToken,
-            'Content-Type': 'application/json',
-          },
-        }
-      )
-      const eventsJson = await handleErrorsJson(eventsResponse)
+    calendarIds.forEach(async calendarId => {
+      promises.push(
+        new Promise(async (resolve, reject) => {
+          try {
+            const accessToken = await this.auth.getToken()
 
-      return eventsJson.value.map((evt: any) => {
-        return {
-          start: evt.start.dateTime + 'Z',
-          end: evt.end.dateTime + 'Z',
-        }
-      })
-    } catch (err) {
-      Sentry.captureException(err)
-      return Promise.reject([])
-    }
+            // TODO: consider proper pagination https://docs.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0&tabs=http#response
+            // not only the first 500 events
+            const eventsResponse = await fetch(
+              `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/calendarView${filter}`,
+              {
+                method: 'GET',
+                headers: {
+                  Authorization: 'Bearer ' + accessToken,
+                  'Content-Type': 'application/json',
+                },
+              }
+            )
+            const eventsJson = await handleErrorsResponse(eventsResponse)
+
+            resolve(
+              eventsJson.value.map((evt: any) => {
+                return {
+                  start: evt.start.dateTime + 'Z',
+                  end: evt.end.dateTime + 'Z',
+                }
+              })
+            )
+          } catch (err) {
+            Sentry.captureException(err)
+            reject()
+          }
+        })
+      )
+    })
+
+    const result = await Promise.all(promises)
+
+    return result.flat()
   }
 }

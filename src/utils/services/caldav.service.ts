@@ -13,16 +13,18 @@ import {
   updateCalendarObject,
 } from 'tsdav'
 
-import { NewCalendarEventType } from '@/types/CalendarConnections'
 import {
-  MeetingCreationRequest,
-  MeetingUpdateRequest,
-  ParticipantInfo,
-} from '@/types/Meeting'
+  CalendarSyncInfo,
+  NewCalendarEventType,
+} from '@/types/CalendarConnections'
+import { MeetingChangeType } from '@/types/Meeting'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { generateIcs } from '../calendar_manager'
+import { appUrl } from '../constants'
 import { decryptContent } from '../cryptography'
-import { CalendarService } from './common.types'
+import { CalendarService } from './calendar.service.types'
 
 // ical.js has no ts typing
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -92,6 +94,20 @@ export default class CaldavCalendarService implements CalendarService {
     })
   }
 
+  async refreshConnection(): Promise<CalendarSyncInfo[]> {
+    const calendars = await this.listCalendars()
+
+    return calendars.map((calendar: any, index: number) => {
+      return {
+        calendarId: calendar.url,
+        sync: false,
+        enabled: index === 0,
+        name: calendar.displayName || calendar.ctag,
+        color: calendar.calendarColor || calendar.calendarColor._cdata,
+      }
+    })
+  }
+
   /**
    * Creates an event into the owner icalendar
    *
@@ -101,65 +117,115 @@ export default class CaldavCalendarService implements CalendarService {
    */
   async createEvent(
     calendarOwnerAccountAddress: string,
-    details: MeetingCreationRequest,
-    slot_id: string,
-    meeting_creation_time: Date
+    meetingDetails: MeetingCreationSyncRequest,
+    meeting_creation_time: Date,
+    calendarId?: string
   ): Promise<NewCalendarEventType> {
     try {
       const calendars = await this.listCalendars()
 
+      const calendarToSync = calendarId
+        ? calendars.find(c => c.url === calendarId)
+        : calendars[0]
+
       const participantsInfo: ParticipantInfo[] =
-        details.participants_mapping.map(participant => ({
+        meetingDetails.participants.map(participant => ({
           type: participant.type,
           name: participant.name,
           account_address: participant.account_address,
           status: participant.status,
-          slot_id,
-          meeting_id: '',
+          slot_id: participant.slot_id,
+          meeting_id: meetingDetails.meeting_id,
         }))
 
-      const ics = generateIcs(
-        {
-          meeting_url: details.meeting_url,
-          start: new Date(details.start),
-          end: new Date(details.end),
-          id: slot_id, // keep using slot id as meeting id for now
-          meeting_id: '',
-          created_at: new Date(meeting_creation_time),
-          meeting_info_file_path: '',
-          participants: participantsInfo,
-          version: 0,
-          related_slot_ids: [],
-        },
-        calendarOwnerAccountAddress
-      )
+      const slot_id = meetingDetails.participants.filter(
+        p => p.account_address === calendarOwnerAccountAddress
+      )[0].slot_id
 
-      if (!ics.value || ics.error) throw new Error('Error creating iCalString')
-
-      // We create the event directly on iCal
-      const responses = await Promise.all(
-        calendars.map(calendar =>
-          createCalendarObject({
-            calendar,
-            filename: `${slot_id}.ics`,
-            // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-            iCalString: Buffer.from(ics.value!).toString('base64'),
-            headers: this.headers,
-          })
+      try {
+        const ics = generateIcs(
+          {
+            meeting_url: meetingDetails.meeting_url,
+            start: new Date(meetingDetails.start),
+            end: new Date(meetingDetails.end),
+            id: meetingDetails.meeting_id,
+            meeting_id: meetingDetails.meeting_id,
+            created_at: new Date(meeting_creation_time),
+            meeting_info_file_path: '',
+            participants: participantsInfo,
+            version: 0,
+            related_slot_ids: [],
+          },
+          calendarOwnerAccountAddress,
+          MeetingChangeType.CREATE,
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`
         )
-      )
 
-      if (responses.some(r => !r.ok)) {
-        throw new Error(
-          `Error creating event: ${(
-            await Promise.all(responses.map(r => JSON.stringify(r.statusText)))
-          ).join(', ')}`
+        if (!ics.value || ics.error)
+          throw new Error('Error creating iCalString')
+
+        // We create the event directly on iCal
+        const response = await createCalendarObject({
+          calendar: calendarToSync!,
+          filename: `${meetingDetails.meeting_id}.ics`,
+          // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
+          iCalString: ics.value!.toString(),
+          headers: this.headers,
+        })
+
+        if (!response.ok) {
+          throw new Error(
+            `Error creating event: ${(
+              await Promise.all(JSON.stringify(response.statusText))
+            ).join(', ')}`
+          )
+        }
+      } catch (err) {
+        Sentry.captureException(err)
+        //Fastmail issue that doesnt accept attendees
+        const ics = generateIcs(
+          {
+            meeting_url: meetingDetails.meeting_url,
+            start: new Date(meetingDetails.start),
+            end: new Date(meetingDetails.end),
+            id: meetingDetails.meeting_id,
+            meeting_id: meetingDetails.meeting_id,
+            created_at: new Date(meeting_creation_time),
+            meeting_info_file_path: '',
+            participants: participantsInfo,
+            version: 0,
+            related_slot_ids: [],
+          },
+          calendarOwnerAccountAddress,
+          MeetingChangeType.CREATE,
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
+          true
         )
+
+        if (!ics.value || ics.error)
+          throw new Error('Error creating iCalString')
+
+        // We create the event directly on iCal
+        const response = await createCalendarObject({
+          calendar: calendarToSync!,
+          filename: `${meetingDetails.meeting_id}.ics`,
+          // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
+          iCalString: ics.value!.toString(),
+          headers: this.headers,
+        })
+
+        if (!response.ok) {
+          throw new Error(
+            `Error creating event: ${(
+              await Promise.all(JSON.stringify(response.statusText))
+            ).join(', ')}`
+          )
+        }
       }
 
       return {
-        uid: slot_id,
-        id: slot_id,
+        uid: meetingDetails.meeting_id,
+        id: meetingDetails.meeting_id,
         type: 'Cal Dav',
         password: '',
         url: '',
@@ -172,60 +238,97 @@ export default class CaldavCalendarService implements CalendarService {
   }
 
   async updateEvent(
-    owner: string,
-    slot_id: string,
-    details: MeetingUpdateRequest
+    calendarOwnerAccountAddress: string,
+    meeting_id: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    calendarId: string
   ): Promise<NewCalendarEventType> {
     try {
-      const events = await this.getEventsByUID(slot_id)
+      const events = await this.getEventsByUID(meeting_id)
 
       const participantsInfo: ParticipantInfo[] =
-        details.participants_mapping.map(participant => ({
+        meetingDetails.participants.map(participant => ({
           type: participant.type,
           name: participant.name,
           account_address: participant.account_address,
           status: participant.status,
-          slot_id,
-          meeting_id: '',
+          slot_id: participant.slot_id,
+          meeting_id,
         }))
+
+      const slot_id = meetingDetails.participants.filter(
+        p => p.account_address === calendarOwnerAccountAddress
+      )[0].slot_id
 
       const ics = generateIcs(
         {
-          meeting_url: details.meeting_url,
-          start: new Date(details.start),
-          end: new Date(details.end),
-          id: slot_id,
+          meeting_url: meetingDetails.meeting_url,
+          start: new Date(meetingDetails.start),
+          end: new Date(meetingDetails.end),
+          id: meeting_id,
           created_at: new Date(),
           meeting_info_file_path: '',
           participants: participantsInfo,
           version: 0,
           related_slot_ids: [],
-          meeting_id: '',
+          meeting_id,
         },
-        owner
+        calendarOwnerAccountAddress,
+        MeetingChangeType.UPDATE,
+        `${appUrl}/dashboard/meetings?slotId=${slot_id}`
       )
 
       if (!ics.value || ics.error) throw new Error('Error creating iCalString')
 
-      const eventsToUpdate = events.filter(event => event.uid === slot_id)
+      const eventToUpdate = events.filter(event => event.uid === meeting_id)[0]
 
-      await Promise.all(
-        eventsToUpdate.map(event => {
-          return updateCalendarObject({
-            calendarObject: {
-              url: event.url,
-              // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
-              data: Buffer.from(ics.value!).toString('base64'),
-              etag: event?.etag,
-            },
-            headers: this.headers,
-          })
+      const response = await updateCalendarObject({
+        calendarObject: {
+          url: eventToUpdate.url,
+          // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
+          data: ics.value!.toString(),
+          etag: eventToUpdate?.etag,
+        },
+        headers: this.headers,
+      })
+
+      if (response.status === 403) {
+        const ics2 = generateIcs(
+          {
+            meeting_url: meetingDetails.meeting_url,
+            start: new Date(meetingDetails.start),
+            end: new Date(meetingDetails.end),
+            id: meeting_id,
+            created_at: new Date(),
+            meeting_info_file_path: '',
+            participants: participantsInfo,
+            version: 0,
+            related_slot_ids: [],
+            meeting_id,
+          },
+          calendarOwnerAccountAddress,
+          MeetingChangeType.UPDATE,
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
+          true
+        )
+
+        if (!ics.value || ics.error)
+          throw new Error('Error creating iCalString')
+
+        await updateCalendarObject({
+          calendarObject: {
+            url: eventToUpdate.url,
+            // according to https://datatracker.ietf.org/doc/html/rfc4791#section-4.1, Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property.
+            data: ics2.value!.toString(),
+            etag: eventToUpdate?.etag,
+          },
+          headers: this.headers,
         })
-      )
+      }
 
       return {
-        uid: slot_id,
-        id: slot_id,
+        uid: meeting_id,
+        id: meeting_id,
         type: 'Cal Dav',
         password: '',
         url: '',
@@ -236,11 +339,11 @@ export default class CaldavCalendarService implements CalendarService {
       throw reason
     }
   }
-  async deleteEvent(slot_id: string): Promise<void> {
+  async deleteEvent(meeting_id: string, calendarId: string): Promise<void> {
     try {
-      const events = await this.getEventsByUID(slot_id)
+      const events = await this.getEventsByUID(meeting_id)
 
-      const eventsToDelete = events.filter(event => event.uid === slot_id)
+      const eventsToDelete = events.filter(event => event.uid === meeting_id)
 
       await Promise.all(
         eventsToDelete.map(event => {
@@ -260,6 +363,7 @@ export default class CaldavCalendarService implements CalendarService {
   }
 
   async getAvailability(
+    calendarIds: string[],
     dateFrom: string,
     dateTo: string
   ): Promise<EventBusyDate[]> {
@@ -267,17 +371,19 @@ export default class CaldavCalendarService implements CalendarService {
 
     const calendarObjectsFromEveryCalendar = (
       await Promise.all(
-        calendars.map(calendar =>
-          fetchCalendarObjects({
-            calendar,
-            headers: this.headers,
-            expand: true,
-            timeRange: {
-              start: new Date(dateFrom).toISOString(),
-              end: new Date(dateTo).toISOString(),
-            },
-          })
-        )
+        calendars
+          .filter(cal => calendarIds.includes(cal.url!))
+          .map(calendar =>
+            fetchCalendarObjects({
+              calendar,
+              headers: this.headers,
+              expand: true,
+              timeRange: {
+                start: new Date(dateFrom).toISOString(),
+                end: new Date(dateTo).toISOString(),
+              },
+            })
+          )
       )
     ).flat()
 
@@ -294,7 +400,6 @@ export default class CaldavCalendarService implements CalendarService {
           end: event.endDate.toJSDate().toISOString(),
         }
       })
-
     return Promise.resolve(events)
   }
 
