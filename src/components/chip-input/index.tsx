@@ -17,7 +17,7 @@ import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
-} from '@/types/Meeting'
+} from '@/types/ParticipantInfo'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import { BadgeChip } from './chip'
@@ -58,7 +58,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
         const _item = item.trim()
         if (isValidEVMAddress(_item)) {
           return {
-            account_address: _item,
+            account_address: _item.toLowerCase(),
             status: ParticipationStatus.Pending,
             type: ParticipantType.Invitee,
             slot_id: '',

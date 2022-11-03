@@ -1,14 +1,14 @@
+import * as Sentry from '@sentry/nextjs'
+
 import { Account } from '@/types/Account'
-import { MeetingCreationRequest, MeetingUpdateRequest } from '@/types/Meeting'
+import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { getConnectedCalendars } from './database'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 
 const syncCreatedEventWithCalendar = async (
   targetAccount: Account['address'],
-  event: MeetingCreationRequest,
-  slot_id: string,
-  meeting_creation_time: Date
+  meetingDetails: MeetingCreationSyncRequest
 ) => {
   const calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
@@ -17,25 +17,40 @@ const syncCreatedEventWithCalendar = async (
 
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
-      targetAccount,
+      calendar.account_address,
       calendar.email,
       calendar.provider,
       calendar.payload
     )
 
-    await integration.createEvent(
-      targetAccount,
-      event,
-      slot_id,
-      meeting_creation_time
-    )
+    const promises = []
+    for (const innerCalendar of calendar.calendars!) {
+      if (innerCalendar.enabled && innerCalendar.sync) {
+        promises.push(
+          new Promise<void>(async resolve => {
+            try {
+              await integration.createEvent(
+                targetAccount,
+                meetingDetails,
+                meetingDetails.created_at,
+                innerCalendar.calendarId
+              )
+            } catch (error) {
+              Sentry.captureException(error)
+            }
+            resolve()
+          })
+        )
+      }
+    }
+    await Promise.all(promises)
   }
 }
 
 const syncUpdatedEventWithCalendar = async (
   targetAccount: Account['address'],
-  event: MeetingUpdateRequest,
-  slot_id: string
+  meetingDetails: MeetingCreationSyncRequest,
+  meeting_id: string
 ) => {
   const calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
@@ -44,19 +59,38 @@ const syncUpdatedEventWithCalendar = async (
 
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
-      targetAccount,
+      calendar.account_address,
       calendar.email,
       calendar.provider,
       calendar.payload
     )
-
-    await integration.updateEvent(targetAccount, slot_id, event)
+    const promises = []
+    for (const innerCalendar of calendar.calendars!) {
+      if (innerCalendar.enabled && innerCalendar.sync) {
+        promises.push(
+          new Promise<void>(async resolve => {
+            try {
+              await integration.updateEvent(
+                targetAccount,
+                meeting_id,
+                meetingDetails,
+                innerCalendar.calendarId
+              )
+            } catch (error) {
+              Sentry.captureException(error)
+            }
+            resolve()
+          })
+        )
+      }
+    }
+    await Promise.all(promises)
   }
 }
 
 const syncDeletedEventWithCalendar = async (
   targetAccount: Account['address'],
-  slot_id: string
+  meeting_id: string
 ) => {
   const calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
@@ -65,31 +99,44 @@ const syncDeletedEventWithCalendar = async (
 
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
-      targetAccount,
+      calendar.account_address,
       calendar.email,
       calendar.provider,
       calendar.payload
     )
 
-    await integration.deleteEvent(slot_id)
+    const promises = []
+
+    for (const innerCalendar of calendar.calendars!) {
+      if (innerCalendar.enabled && innerCalendar.sync) {
+        promises.push(
+          new Promise<void>(async resolve => {
+            try {
+              await integration.deleteEvent(
+                meeting_id,
+                innerCalendar.calendarId
+              )
+            } catch (error) {
+              Sentry.captureException(error)
+            }
+            resolve()
+          })
+        )
+      }
+    }
+    await Promise.all(promises)
   }
 }
 
-// TODO: schedule for other users, if they are also pro plan
 export const ExternalCalendarSync = {
-  create: async (
-    event: MeetingCreationRequest,
-    meeting_creation_time: Date
-  ) => {
+  create: async (meetingDetails: MeetingCreationSyncRequest) => {
     const tasks: Promise<any>[] = []
-    for (const participant of event.participants_mapping) {
+    for (const participant of meetingDetails.participants) {
       if (participant.account_address) {
         tasks.push(
           syncCreatedEventWithCalendar(
             participant.account_address!,
-            event,
-            participant.slot_id,
-            meeting_creation_time
+            meetingDetails
           )
         )
       }
@@ -97,16 +144,18 @@ export const ExternalCalendarSync = {
 
     await Promise.all(tasks)
   },
-  update: async (event: MeetingUpdateRequest) => {
+  update: async (meetingDetails: MeetingCreationSyncRequest) => {
     const tasks: Promise<any>[] = []
-    for (const participant of event.participants_mapping) {
-      tasks.push(
-        syncUpdatedEventWithCalendar(
-          participant.account_address!,
-          event,
-          participant.slot_id
+    for (const participant of meetingDetails.participants) {
+      if (participant.account_address) {
+        tasks.push(
+          syncUpdatedEventWithCalendar(
+            participant.account_address!,
+            meetingDetails,
+            participant.meeting_id!
+          )
         )
-      )
+      }
     }
 
     await Promise.all(tasks)

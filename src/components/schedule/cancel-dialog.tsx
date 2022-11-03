@@ -17,7 +17,7 @@ import { cancelMeeting } from '@/utils/calendar_manager'
 interface CancelMeetingDialogProps {
   decriptedMeeting?: MeetingDecrypted
   currentAccount?: Account | null
-  afterCancel?: () => void
+  afterCancel?: (slotsRemoved: string[]) => void
   isOpen: boolean
   onClose: () => void
 }
@@ -50,7 +50,7 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
           </AlertDialogBody>
 
           <AlertDialogFooter>
-            <Button ref={cancelRef} onClick={onClose}>
+            <Button ref={cancelRef} onClick={onClose} disabled={cancelling}>
               Do not cancel
             </Button>
             <Button
@@ -58,9 +58,9 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
               onClick={() => {
                 setCancelling(true)
                 cancelMeeting(currentAccount!.address, decriptedMeeting!)
-                  .then(() => {
+                  .then(({ removed }) => {
                     setCancelling(false)
-                    afterCancel && afterCancel()
+                    afterCancel && afterCancel(removed)
                     onClose()
                   })
                   .catch(error => {

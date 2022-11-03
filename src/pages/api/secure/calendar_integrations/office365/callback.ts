@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { TimeSlotSource } from '@/types/Meeting'
 
-import { ConnectedCalendarCorePayload } from '../../../../../types/CalendarConnections'
 import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
 import { apiUrl } from '../../../../../utils/constants'
 import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
@@ -70,6 +69,14 @@ async function handler(
   })
   const graphUser = await whoami.json()
 
+  const calendarsResponse = await fetch(
+    'https://graph.microsoft.com/v1.0/me/calendars',
+    {
+      headers: { Authorization: 'Bearer ' + responseBody.access_token },
+    }
+  )
+  const calendars = await calendarsResponse.json()
+
   // In some cases, graphUser.mail is null. Then graphUser.userPrincipalName most likely contains the email address.
   responseBody.email = graphUser.mail ?? graphUser.userPrincipalName
   responseBody.expiry_date = Math.round(
@@ -77,14 +84,21 @@ async function handler(
   ) // set expiry date in seconds
   delete responseBody.expires_in
 
-  const payload: ConnectedCalendarCorePayload = {
-    provider: TimeSlotSource.OFFICE,
-    email: responseBody.email!,
-    sync: false,
-    payload: responseBody,
-  }
-
-  await addOrUpdateConnectedCalendar(req.session.account.address, payload)
+  await addOrUpdateConnectedCalendar(
+    req.session.account.address,
+    responseBody.email,
+    TimeSlotSource.OFFICE,
+    calendars.value.map((c: any, index: number) => {
+      return {
+        calendarId: c.id,
+        name: c.name,
+        sync: false,
+        enabled: c.isDefaultCalendar,
+        color: c.hexColor,
+      }
+    }),
+    responseBody
+  )
   res.redirect(`/dashboard/calendars?calendarResult=success`)
 }
 
