@@ -120,7 +120,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
           </VStack>
         </HStack>
         <Button
-          display={{ base: 'none', md: 'block' }}
+          display={{ base: 'none', md: 'flex' }}
           onClick={onOpen}
           leftIcon={<FaUnlink />}
           variant="link"
@@ -160,7 +160,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
       )}
 
       <Button
-        display={{ base: 'block', md: 'none' }}
+        display={{ base: 'flex', md: 'none' }}
         onClick={onOpen}
         leftIcon={<FaUnlink />}
         variant="outline"
