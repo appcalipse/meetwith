@@ -84,13 +84,11 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
               >
                 <Button
                   onClick={selectOption(TimeSlotSource.GOOGLE)}
-                  // leftIcon={<FaGoogle />}
-                  leftIcon={<Image src="/assets/google.svg" />}
+                  leftIcon={<FaGoogle />}
                   variant="outline"
-                  bgColor="white"
                   isLoading={loading === TimeSlotSource.GOOGLE}
                 >
-                  <Text color="black">Sign in with Google</Text>
+                  Google
                 </Button>
                 <Button
                   onClick={selectOption(TimeSlotSource.OFFICE)}

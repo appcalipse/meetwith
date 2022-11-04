@@ -15,6 +15,7 @@ const scopes = [
   'https://www.googleapis.com/auth/calendar.events.freebusy',
   'https://www.googleapis.com/auth/calendar.freebusy',
   'https://www.googleapis.com/auth/calendar.events.owned',
+  'https://www.googleapis.com/auth/calendar.readonly',
 ]
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -27,13 +28,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       client_secret,
       redirect_uri
     )
-
-    if (
-      req.session.account?.address.toLowerCase() ==
-      '0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b'.toLowerCase()
-    ) {
-      scopes.push('https://www.googleapis.com/auth/calendar.readonly')
-    }
 
     const authUrl = oAuth2Client.generateAuthUrl({
       access_type: 'offline',
