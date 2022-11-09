@@ -42,7 +42,7 @@ For Caldav integration to work, we need three things:
 - username (usually an email)
 - password
 
-So the first step is to make sure that this information is valid uppon registration. For that to work, we have a http method called `PROPFIND` ready, so we can test the integration before saving the data.
+So the first step is to make sure that this information is valid uppon registration. For that to work, we have a http method called `PROPFIND` (that we changed to `PUT`because we use CloudFront and it doesn't support `PROPFIND`) ready, so we can test the integration before saving the data.
 
 The user password is stored with cryptography, so no one will have access to it.
 
