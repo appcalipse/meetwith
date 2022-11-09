@@ -33,7 +33,8 @@ async function handler(
     )
     res.status(200).send({ connected: true })
     return
-  } else if (req.method === 'PROPFIND') {
+  } else if (req.method === 'PUT') {
+    // Should be propfind, but cloudfront fucks it up by not allowing it
     try {
       const { username, url, password } = req.body as any
       const caldavService = new CaldavCalendarService(
@@ -50,7 +51,8 @@ async function handler(
         res.status(401).send('Invalid Credentials')
       }
       return
-    } catch {
+    } catch (err) {
+      console.log(err)
       res.status(401).send('Invalid Credentials')
       return
     }

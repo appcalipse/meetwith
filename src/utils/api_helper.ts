@@ -454,8 +454,7 @@ export const validateWebdav = async (
   password: string
 ): Promise<any> => {
   return fetch(`${apiUrl}/secure/calendar_integrations/webdav`, {
-    method: 'PROPFIND',
-    mode: 'cors',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
