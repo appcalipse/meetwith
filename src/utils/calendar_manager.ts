@@ -656,7 +656,11 @@ const generateIcs = (
     }
   }
 
-  return createEvent(event)
+  const icsEvent = createEvent(event)
+  // hack to fix https://www.rfc-editor.org/rfc/rfc4791#section-4.1 – "Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property."
+  icsEvent.value = icsEvent.value!.replace(/METHOD\:.*[\n|\r]+/, '')
+
+  return icsEvent
 }
 
 const participantStatusToICSStatus = (status: ParticipationStatus) => {
