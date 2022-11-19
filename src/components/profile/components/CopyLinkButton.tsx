@@ -19,12 +19,16 @@ export const CopyLinkButton = ({
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
   const copyLink = async () => {
-    logEvent('Copied link', { url })
-    if ('clipboard' in navigator) {
-      await navigator.clipboard.writeText(url)
-    } else {
+    try {
+      if ('clipboard' in navigator) {
+        await navigator.clipboard.writeText(url)
+      } else {
+        document.execCommand('copy', true, url)
+      }
+    } catch (err) {
       document.execCommand('copy', true, url)
     }
+    logEvent('Copied link', { url })
     setCopyFeedbackOpen(true)
     setTimeout(() => {
       setCopyFeedbackOpen(false)
