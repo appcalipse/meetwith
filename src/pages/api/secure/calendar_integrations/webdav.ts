@@ -52,7 +52,6 @@ async function handler(
       }
       return
     } catch (err) {
-      console.log(err)
       res.status(401).send('Invalid Credentials')
       return
     }

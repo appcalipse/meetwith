@@ -221,7 +221,7 @@ const buildMeetingData = async (
     )
 
     for (const p of participant) {
-      p.name = getAccountDisplayName(account)
+      p.name = p.name || getAccountDisplayName(account)
       p.status = p.status || ParticipationStatus.Pending
       p.type = p.type || ParticipantType.Invitee
       p.slot_id = uuidv4()
