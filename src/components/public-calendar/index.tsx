@@ -314,7 +314,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     } else {
       participants.push({
         account_address: currentAccount?.address,
-        name: '',
+        name,
         type: ParticipantType.Scheduler,
         status: ParticipationStatus.Accepted,
         slot_id: '',
