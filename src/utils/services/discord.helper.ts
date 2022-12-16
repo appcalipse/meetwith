@@ -41,7 +41,7 @@ export const generateDiscordAuthToken = async (
     const oauthResult = await fetch('https://discord.com/api/oauth2/token', {
       method: 'POST',
       body: new URLSearchParams({
-        client_id: process.env.DISCORD_CLIENT_ID!,
+        client_id: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID!,
         client_secret: process.env.DISCORD_CLIENT_SECRET!,
         code: discordCode,
         grant_type: 'authorization_code',
@@ -94,7 +94,7 @@ export const getDiscordOAuthToken = async (
   const oauthResult = await fetch('https://discord.com/api/oauth2/token', {
     method: 'POST',
     body: new URLSearchParams({
-      client_id: process.env.DISCORD_CLIENT_ID!,
+      client_id: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID!,
       client_secret: process.env.DISCORD_CLIENT_SECRET!,
       grant_type: 'refresh_token',
       refresh_token: discordSubs.accessToken.refresh_token,
