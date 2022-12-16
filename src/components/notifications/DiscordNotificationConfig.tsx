@@ -130,7 +130,9 @@ const DicordNotificationConfig: React.FC<Props> = ({
                   alignSelf="start"
                   variant="outline"
                   colorScheme="orange"
-                  href={`https://discord.com/api/oauth2/authorize?client_id=968540785614139412&redirect_uri=${encodeURIComponent(
+                  href={`https://discord.com/api/oauth2/authorize?client_id=${
+                    process.env.DISCORD_CLIENT_ID
+                  }&redirect_uri=${encodeURIComponent(
                     discordRedirectUrl
                   )}&response_type=code&scope=identify%20guilds`}
                 >
