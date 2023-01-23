@@ -2,7 +2,8 @@
   "name": "meet-with-wallet",
   "private": true,
   "scripts": {
-    "dev": "doppler run --config dev next dev",
+    "dev": "next dev",
+    "dev-doppler": "doppler run --config dev next dev",
     "build": "doppler run next build",
     "static": "next build && next export",
     "start": "next start",
