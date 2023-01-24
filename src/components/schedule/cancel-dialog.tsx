@@ -17,6 +17,7 @@ import { cancelMeeting } from '@/utils/calendar_manager'
 interface CancelMeetingDialogProps {
   decriptedMeeting?: MeetingDecrypted
   currentAccount?: Account | null
+  onCancelChange?: (isCancelling: boolean) => void
   afterCancel?: (slotsRemoved: string[]) => void
   isOpen: boolean
   onClose: () => void
@@ -25,12 +26,17 @@ interface CancelMeetingDialogProps {
 export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
   decriptedMeeting,
   currentAccount,
+  onCancelChange,
   afterCancel,
   isOpen,
   onClose,
 }) => {
   const cancelRef = React.useRef<HTMLButtonElement>(null)
-  const [cancelling, setCancelling] = useState(false)
+  const [cancelling, _setCancelling] = useState(false)
+  const setCancelling = (isCancelling: boolean) => {
+    onCancelChange && onCancelChange(isCancelling)
+    _setCancelling(isCancelling)
+  }
   const toast = useToast()
 
   return (
