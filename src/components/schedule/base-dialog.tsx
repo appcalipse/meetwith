@@ -138,6 +138,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
   )
 
   const [isScheduling, setIsScheduling] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
   const [searchingTimes, setSearchingTimes] = useState(false)
   const [groupTimes, setGroupTimes] = useState<Interval[] | undefined>(
     undefined
@@ -292,7 +293,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       (participants.length === 1 &&
         (participants[0]?.account_address?.toLowerCase() ===
           currentAccount!.address.toLowerCase() ||
-          participants[0]?.name === currentAccount!.preferences?.name))
+          participants[0]?.name === (currentAccount!.preferences?.name || '')))
     ) {
       toast({
         title: 'Missing participants',
@@ -709,6 +710,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               onClick={cancelMeeting}
               variant="outline"
               mr={4}
+              disabled={isScheduling}
             >
               Cancel meeting
             </Button>
@@ -717,6 +719,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
             onClick={scheduleOrUpdate}
             colorScheme={'orange'}
             isLoading={isScheduling}
+            disabled={isCancelling}
           >
             {meeting?.id ? 'Update' : 'Schedule'}
           </Button>
@@ -727,6 +730,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         onClose={onClose}
         decriptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
+        onCancelChange={setIsCancelling}
         afterCancel={removed =>
           onDialogClose(MeetingChangeType.DELETE, undefined, removed)
         }
