@@ -1,139 +1,163 @@
 import {
   Box,
-  Container,
-  Flex,
+  Button,
+  Grid,
   Heading,
-  Icon,
-  IconProps,
+  HStack,
   Image,
+  Link,
+  SlideFade,
   Stack,
   Text,
-  useColorModeValue,
 } from '@chakra-ui/react'
+import { BsArrowRight } from 'react-icons/bs'
+import { useInView } from 'react-intersection-observer'
 
-import MWWButton from '../MWWButton'
+export function Hero() {
+  const { ref: heroContainer, inView: isHeroContainerVisible } = useInView()
 
-export default function CallToActionWithVideo() {
   return (
-    <Container maxW={'7xl'} id="home">
-      <Stack
-        align={'center'}
-        spacing={{ base: 8, md: 10 }}
-        py={{ base: 16, md: 28 }}
-        direction={{ base: 'column', md: 'row' }}
-      >
-        <Stack flex={1} spacing={{ base: 5, md: 10 }}>
-          <Heading
-            lineHeight={1.1}
-            fontWeight={600}
-            fontSize={{ base: '4xl', sm: '4xl', lg: '6xl' }}
-          >
-            <Text
-              as={'span'}
-              position={'relative'}
-              _after={{
-                content: "''",
-                width: 'full',
-                height: '30%',
-                position: 'absolute',
-                bottom: 1,
-                left: 0,
-                bg: 'orange.400',
-                zIndex: -1,
-              }}
-            >
-              Meeting scheduler,
-            </Text>
-            <br />
-            <Text
-              bgGradient={useColorModeValue(
-                'linear(to-r,orange.400 25%, yellow.300)',
-                'linear(to-r,orange.300 25%, yellow.500)'
-              )}
-              bgClip="text"
-              fontSize="6xl"
-              fontWeight="extrabold"
-            >
-              for web3
-            </Text>
-          </Heading>
-          <Text color={useColorModeValue('gray.500', 'gray.300')}>
-            <strong>Meet with Wallet</strong> provides an easy way to share your
-            (or your <strong>DAO&apos;s</strong>) calendar and schedule meetings
-            without any hassle or back-and-forth communication. All possible by
-            simply connecting your crypto wallet. No registration needed, no
-            more emails (only if you want to) - Own your private data! You know{' '}
-            <b>Calendly</b> right? Same thing here, but for{' '}
-            <strong>web3</strong>!
-          </Text>
-          <Stack
-            spacing={{ base: 4, sm: 6 }}
-            direction={{ base: 'column', sm: 'row' }}
-          >
-            <MWWButton
-              rounded={'full'}
-              size={'lg'}
-              fontWeight={'normal'}
-              px={6}
-              as="a"
-              href="#pricing"
-            >
-              Get started
-            </MWWButton>
-          </Stack>
-        </Stack>
-        <Flex
-          flex={1}
-          justify={'center'}
-          align={'center'}
-          position={'relative'}
-          w={'full'}
-        >
-          <Blob
-            w={'150%'}
-            h={'150%'}
-            position={'absolute'}
-            top={{ base: '-15%', md: '-20%' }}
-            left={0}
-            zIndex={-1}
-            color={useColorModeValue('orange.50', 'orange.400')}
-          />
-          <Box
-            position={'relative'}
-            width={'full'}
-            maxW="600px"
-            mt={{ base: 8, md: 0 }}
-            overflow={'hidden'}
-          >
-            <Image
-              alt={'Hero Image'}
-              align={'center'}
-              w={'100%'}
-              h={'auto'}
-              src={'/assets/calendar.png'}
-            />
-          </Box>
-        </Flex>
-      </Stack>
-    </Container>
-  )
-}
-
-export const Blob = (props: IconProps) => {
-  return (
-    <Icon
-      width={'100%'}
-      viewBox="0 0 578 440"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
+    <Box
+      ref={heroContainer}
+      color="neutral.100"
+      marginBottom={{ base: '10', md: '28' }}
+      position="relative"
+      maxW="1360px"
+      mx="auto"
+      px={{ base: 2, md: 10 }}
     >
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M239.184 439.443c-55.13-5.419-110.241-21.365-151.074-58.767C42.307 338.722-7.478 282.729.938 221.217c8.433-61.644 78.896-91.048 126.871-130.712 34.337-28.388 70.198-51.348 112.004-66.78C282.34 8.024 325.382-3.369 370.518.904c54.019 5.115 112.774 10.886 150.881 49.482 39.916 40.427 49.421 100.753 53.385 157.402 4.13 59.015 11.255 128.44-30.444 170.44-41.383 41.683-111.6 19.106-169.213 30.663-46.68 9.364-88.56 35.21-135.943 30.551z"
-        fill="currentColor"
-      />
-    </Icon>
+      <Box
+        background={'rgba(255, 255, 255, 0.05)'}
+        position="absolute"
+        top={0}
+        backdropFilter="blur(12.5px)"
+        h="540px"
+        w="calc(100% - 16px)"
+        display={{ base: 'inline-block', md: 'none' }}
+      ></Box>
+      <Box
+        bgImage={{ base: 'none', md: `url('/assets/glass-effect.svg')` }}
+        bgRepeat="no-repeat"
+        bgSize="cover"
+        backdropFilter={{ base: 'none', md: 'blur(12.5px)' }}
+        px={{ base: 4, md: 16 }}
+        py={{ base: 9, md: 16 }}
+        mb={{ base: 12, md: 20 }}
+      >
+        <Stack
+          flexDirection={{ base: 'column', md: 'row' }}
+          position="relative"
+          justifyContent="space-between"
+        >
+          <Box>
+            <Heading
+              fontSize={{ base: '3xl', md: '5xl' }}
+              lineHeight="shorter"
+              marginBottom={6}
+            >
+              Schedule meetings with full privacy in{' '}
+              <Text as="span" color="primary.400">
+                Web3
+              </Text>{' '}
+              style
+            </Heading>
+            <Text fontSize={{ base: 'lg', md: 'xl' }} marginBottom={4}>
+              The{' '}
+              <Text as="span" textDecoration="line-through">
+                future
+              </Text>{' '}
+              state of work is remote.
+            </Text>
+            <Text fontSize={{ base: 'lg', md: 'xl' }} marginBottom={10}>
+              <Text as="span" color="primary.400">
+                Meet With Wallet
+              </Text>{' '}
+              is a scheduling manager redefined for Web3 to take control of your
+              time on your rules.
+            </Text>
+            <HStack display={{ base: 'none', md: 'inline-block' }}>
+              <Button colorScheme="orange" rightIcon={<BsArrowRight />}>
+                Try for FREE
+              </Button>
+              <Button colorScheme="gray">See Plans</Button>
+            </HStack>
+          </Box>
+          <SlideFade
+            in={isHeroContainerVisible}
+            delay={1}
+            offsetY={-50}
+            unmountOnExit={false}
+          >
+            <Box minW="300px" display="flex" justifyContent="center">
+              <Image
+                width={{ base: '200px', md: '250px' }}
+                src={'/assets/frame.png'}
+                position={{ base: 'unset', md: 'absolute' }}
+                right={0}
+                top={0}
+              />
+            </Box>
+          </SlideFade>
+        </Stack>
+        <Box
+          display={{ base: 'flex', md: 'none' }}
+          flexDirection="column"
+          mt={{ base: '8', md: '0' }}
+        >
+          <Button
+            colorScheme="orange"
+            rightIcon={<BsArrowRight />}
+            width="100%"
+            h={12}
+            mb={4}
+          >
+            Try for FREE
+          </Button>
+          <Button colorScheme="gray" width="100%" h={12}>
+            See Plans
+          </Button>
+        </Box>
+      </Box>
+
+      <Box px={{ base: '6', md: '0' }} maxW="4xl">
+        <Heading
+          fontSize="2xl"
+          fontWeight="bold"
+          color={{ base: 'primary.400', md: 'neutral.100' }}
+          marginBottom={{ base: '4', md: '2' }}
+        >
+          Our partners
+        </Heading>
+        <Text fontSize="md" marginBottom={10}>
+          Web3 is built by collaborating, and we are proud to have incredible
+          partnerships and integrations with the following
+        </Text>
+        <Grid
+          color="neutral.100"
+          marginBottom={10}
+          gridTemplateColumns={{ base: '1fr 1fr 1fr', md: 'none' }}
+          gridAutoFlow={{ base: 'none', md: 'column' }}
+        >
+          <Link>
+            <Image src={'/assets/logo-poap.svg'} />
+          </Link>
+          <Link>
+            <Image src={'/assets/logo-huddle01.svg'} />
+          </Link>
+          <Link>
+            <Image src={'/assets/logo-e.svg'} />
+          </Link>
+          <Link>
+            <Image src={'/assets/logo-u.svg'} />
+          </Link>
+          <Link>
+            <Image src={'/assets/logo-push.svg'} />
+          </Link>
+          <Link>
+            <Image src={'/assets/logo-triangle.svg'} />
+          </Link>
+        </Grid>
+      </Box>
+    </Box>
   )
 }
