@@ -79,6 +79,42 @@ export const getDomainInfo = async (
   return subscriptions
 }
 
+export const getDomainsForAccount = async (
+  accountAddress: string
+): Promise<string[]> => {
+  const domains: string[] = []
+  const chainsToCheck: ChainInfo[] =
+    process.env.NEXT_PUBLIC_ENV === 'production'
+      ? getMainnetChains()
+      : getTestnetChains()
+
+  for (const chain of chainsToCheck) {
+    try {
+      const provider = getProviderBackend(chain.chain)
+      const contract = new ethers.Contract(
+        chain.domainContractAddess,
+        MWWDomain,
+        provider!
+      )
+      const domainsThisChain: string[] = await contract.getDomainsForAccount(
+        accountAddress
+      )
+
+      if (domainsThisChain.length) {
+        for (const domain of domainsThisChain) {
+          if (domains.find(d => d === domain) === undefined) {
+            domains.push(domain)
+          }
+        }
+      }
+    } catch (e) {
+      Sentry.captureException(e)
+    }
+  }
+
+  return domains
+}
+
 export const getProviderBackend = (
   chain: SupportedChain
 ): BaseProvider | null => {

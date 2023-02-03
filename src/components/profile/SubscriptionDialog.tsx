@@ -22,6 +22,8 @@ import { ethers } from 'ethers'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaMinus, FaPlus } from 'react-icons/fa'
 
+import { getDomainsForAccount } from '@/utils/rpc_helper'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import {
   AcceptedToken,
@@ -42,6 +44,7 @@ import {
 } from '../../utils/subscription_manager'
 
 interface IProps {
+  extendSubscription?: boolean
   isDialogOpen: boolean
   cancelDialogRef: React.MutableRefObject<any>
   onDialogClose: () => void
@@ -49,6 +52,7 @@ interface IProps {
 }
 
 const SubscriptionDialog: React.FC<IProps> = ({
+  extendSubscription,
   isDialogOpen,
   cancelDialogRef,
   onDialogClose,
@@ -68,6 +72,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const [waitingConfirmation, setWaitingConfirmation] = useState(false)
   const [txRunning, setTxRunning] = useState(false)
   const [duration, setDuration] = useState(1)
+  const [domains, setDomains] = useState<string[]>([])
 
   const inputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
@@ -112,6 +117,14 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
   const changeDuration = (duration: number) => {
     setDuration(duration)
+  }
+
+  const getDomain = async () => {
+    setDomains(await getDomainsForAccount(currentAccount!.address))
+  }
+
+  if (extendSubscription && !domains.length) {
+    getDomain()
   }
 
   const updateSubscriptionDetails = async () => {
@@ -281,16 +294,18 @@ const SubscriptionDialog: React.FC<IProps> = ({
     >
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>Subscribe to Pro</ModalHeader>
+        <ModalHeader>
+          {extendSubscription ? 'Extend Subscription' : 'Subscribe to Pro'}
+        </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
           <FormControl>
             <Text pt={2}>Booking link</Text>
             <Input
-              value={domain}
+              value={extendSubscription ? domains[0] : domain}
               ref={inputRef}
               type="text"
-              placeholder="your.custom.link"
+              placeholder={extendSubscription ? domains[0] : 'your.custom.link'}
               onChange={e =>
                 setDomain(
                   e.target.value
@@ -304,8 +319,8 @@ const SubscriptionDialog: React.FC<IProps> = ({
               This is the link you will share with others, instead of your
               wallet address. It can&apos;t contain spaces or special
               characters. You can change it later on. Your calendar page will be
-              available at https://meetwihtwallet.xyz/
-              {domain || 'your.custom.link'}
+              available at https://meetwithwallet.xyz/
+              {domain || domains[0] || 'your.custom.link'}
             </FormHelperText>
           </FormControl>
           <FormControl>
