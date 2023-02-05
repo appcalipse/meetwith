@@ -72,7 +72,6 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const [waitingConfirmation, setWaitingConfirmation] = useState(false)
   const [txRunning, setTxRunning] = useState(false)
   const [duration, setDuration] = useState(1)
-  const [domains, setDomains] = useState<string[]>([])
 
   const inputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
@@ -119,12 +118,12 @@ const SubscriptionDialog: React.FC<IProps> = ({
     setDuration(duration)
   }
 
-  const getDomain = async () => {
-    setDomains(await getDomainsForAccount(currentAccount!.address))
+  const updateDomain = async () => {
+    setDomain((await getDomainsForAccount(currentAccount!.address))[0])
   }
 
-  if (extendSubscription && !domains.length) {
-    getDomain()
+  if (extendSubscription && !domain) {
+    updateDomain()
   }
 
   const updateSubscriptionDetails = async () => {
@@ -284,6 +283,39 @@ const SubscriptionDialog: React.FC<IProps> = ({
       : chain.testnet
   )
 
+  const renderBookingLink = () => {
+    if (extendSubscription) {
+      return
+    }
+
+    return (
+      <FormControl>
+        <Text pt={2}>Booking link</Text>
+        <Input
+          value={domain}
+          ref={inputRef}
+          type="text"
+          placeholder={extendSubscription ? domain : 'your.custom.link'}
+          onChange={e =>
+            setDomain(
+              e.target.value
+                .replace(/ /g, '')
+                .replace(/[^\w.]/gi, '')
+                .toLowerCase()
+            )
+          }
+        />
+        <FormHelperText>
+          This is the link you will share with others, instead of your wallet
+          address. It can&apos;t contain spaces or special characters. You can
+          change it later on. Your calendar page will be available at
+          https://meetwithwallet.xyz/
+          {domain || 'your.custom.link'}
+        </FormHelperText>
+      </FormControl>
+    )
+  }
+
   return (
     <Modal
       blockScrollOnMount={false}
@@ -299,30 +331,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <FormControl>
-            <Text pt={2}>Booking link</Text>
-            <Input
-              value={extendSubscription ? domains[0] : domain}
-              ref={inputRef}
-              type="text"
-              placeholder={extendSubscription ? domains[0] : 'your.custom.link'}
-              onChange={e =>
-                setDomain(
-                  e.target.value
-                    .replace(/ /g, '')
-                    .replace(/[^\w.]/gi, '')
-                    .toLowerCase()
-                )
-              }
-            />
-            <FormHelperText>
-              This is the link you will share with others, instead of your
-              wallet address. It can&apos;t contain spaces or special
-              characters. You can change it later on. Your calendar page will be
-              available at https://meetwithwallet.xyz/
-              {domain || domains[0] || 'your.custom.link'}
-            </FormHelperText>
-          </FormControl>
+          {renderBookingLink()}
           <FormControl>
             <Text pt={5}>Which chain do you want your subscription at?</Text>
             <FormHelperText>
