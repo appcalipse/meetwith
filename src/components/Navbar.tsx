@@ -19,7 +19,7 @@ import {
 } from '@chakra-ui/react'
 import NextLink from 'next/link'
 import { useRouter } from 'next/router'
-import React, { useContext } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '../providers/AccountProvider'
 import { useLogin } from '../session/login'
@@ -35,10 +35,22 @@ export const Navbar = () => {
 
   const { handleLogin, currentAccount, logged, loginIn } = useLogin()
 
-  const bgGradient = `linear-gradient(${useColorModeValue(
-    '#F8F8FA',
-    '#1A202C'
-  )} 30%, rgba(245, 247, 250, 0) 100%) repeat scroll 0% 0%`
+  const [backdropFilterValue, setBackdropFilterValue] = useState<string>('0')
+  const [backgroundColorValue, setBackgroundColorValue] =
+    useState<string>('transparent')
+
+  useEffect(() => {
+    const changeNavbarBackground = () => {
+      if (window.scrollY >= 10) {
+        setBackdropFilterValue('24')
+        setBackgroundColorValue('rgba(62, 76, 89, 50%)')
+      } else if (window.scrollY >= 0) {
+        setBackdropFilterValue('0')
+        setBackgroundColorValue('transparent')
+      }
+    }
+    window.addEventListener('scroll', changeNavbarBackground)
+  }, [])
 
   return (
     <Box
@@ -49,12 +61,10 @@ export const Navbar = () => {
       width="100%"
       top="0"
       zIndex={999}
-      backdropFilter="blur(24px)"
-      bg={bgGradient}
+      backdropFilter={`blur(${backdropFilterValue}px)`}
+      bg={backgroundColorValue}
     >
       <Flex
-        backdropFilter={'auto'}
-        backdropBlur={'24px'}
         color={useColorModeValue('gray.600', 'white')}
         minH={'60px'}
         py="2"

@@ -1,958 +1,379 @@
 import 'swiper/css'
 
+import { ArrowForwardIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
+  Center,
   Circle,
   Flex,
   Heading,
   HStack,
+  Icon,
   SlideFade,
   Text,
+  useToast,
 } from '@chakra-ui/react'
+import * as Sentry from '@sentry/nextjs'
+import router from 'next/router'
+import { useContext, useState } from 'react'
+import { IconType } from 'react-icons'
 import { BsCheck } from 'react-icons/bs'
 import { IoMdClose } from 'react-icons/io'
 import { useInView } from 'react-intersection-observer'
-import { Swiper, SwiperSlide } from 'swiper/react'
+
+import { AccountContext } from '@/providers/AccountProvider'
+import { Plan } from '@/types/Subscription'
+import { logEvent } from '@/utils/analytics'
+import { loginWithWallet } from '@/utils/user_manager'
+
+import AlertMeDialog from './AlertMeDialog'
+import { PlansMobileSlider } from './PlansMobileSlider'
+
+export interface Feature {
+  title: string
+  icon: IconType
+}
+
+export interface PlansCard {
+  category: string
+  price: string
+  recurringPaymentTime: string
+  isComingSoon: boolean
+  cta: string
+  features: Feature[]
+}
+
+const plansCards: PlansCard[] = [
+  {
+    category: 'Free',
+    price: '0',
+    recurringPaymentTime: 'forever',
+    isComingSoon: false,
+    cta: 'Try for FREE',
+    features: [
+      {
+        title: 'Public page for scheduling meetings',
+        icon: BsCheck,
+      },
+      {
+        title: 'Configurable availability',
+        icon: BsCheck,
+      },
+      {
+        title: 'Web3 powered meeting room',
+        icon: BsCheck,
+      },
+      {
+        title: 'Email notifications (optional)',
+        icon: BsCheck,
+      },
+      {
+        title: 'Single meeting configuration',
+        icon: IoMdClose,
+      },
+      {
+        title:
+          'Single integration with Google calendar, iCloud, Office 365 or WebDAV',
+        icon: IoMdClose,
+      },
+      {
+        title: 'Fixed booking link with wallet address',
+        icon: IoMdClose,
+      },
+      {
+        title: 'Only 1-1 meetings',
+        icon: IoMdClose,
+      },
+    ],
+  },
+  {
+    category: 'Pro',
+    price: '30',
+    recurringPaymentTime: 'year',
+    isComingSoon: false,
+    cta: 'Go PRO',
+    features: [
+      {
+        title: 'Unlimited meeting configurations',
+        icon: BsCheck,
+      },
+      {
+        title: 'Customizable booking link',
+        icon: BsCheck,
+      },
+      {
+        title: 'ENS and unstoppable domains integration for your calendar link',
+        icon: BsCheck,
+      },
+      {
+        title: 'Email, Push and EPNS Notifications (optional)',
+        icon: BsCheck,
+      },
+      {
+        title:
+          'Unlimited integrations (Google calendar, iCloud, Office 365 and WebDAV)',
+        icon: BsCheck,
+      },
+    ],
+  },
+  {
+    category: 'Guild / Group',
+    price: '200',
+    recurringPaymentTime: 'year',
+    isComingSoon: true,
+    cta: 'Notify me',
+    features: [
+      {
+        title: 'Everything from PRO',
+        icon: BsCheck,
+      },
+      {
+        title: 'Gated scheduled meetings for members with Allow lists',
+        icon: BsCheck,
+      },
+      {
+        title: 'Custom branding',
+        icon: BsCheck,
+      },
+      {
+        title: 'And more to come',
+        icon: BsCheck,
+      },
+    ],
+  },
+  {
+    category: 'DAO / Community',
+    price: '200',
+    recurringPaymentTime: 'Forever',
+    isComingSoon: true,
+    cta: 'Notify me',
+    features: [
+      {
+        title: 'Everything from Guild',
+        icon: BsCheck,
+      },
+      {
+        title: 'Token gated (ERC20 and/or ERC721) access to scheduled meetings',
+        icon: BsCheck,
+      },
+      {
+        title: 'Unlimited sub-teams pages with multiple calendars',
+        icon: BsCheck,
+      },
+      {
+        title: 'Custom branding',
+        icon: BsCheck,
+      },
+      {
+        title: 'And more to come',
+        icon: BsCheck,
+      },
+    ],
+  },
+]
 
 export function Plans() {
-  const { ref: cardsContainer, inView: isCardsContainerVisible } = useInView()
+  const { currentAccount, login, setLoginIn, loginIn } =
+    useContext(AccountContext)
+
+  const [selectedPlan, setSelectedPlan] = useState(
+    undefined as string | undefined
+  )
+
+  const toast = useToast()
+
+  function handleSelectedPlan(plan: string) {
+    setSelectedPlan(plan)
+  }
+
+  const handleLogin = async (selectedPlan?: Plan) => {
+    if (!currentAccount) {
+      logEvent('Clicked to start on FREE plan')
+      try {
+        const account = await loginWithWallet(setLoginIn)
+        if (!account) {
+          return
+        }
+        await login(account)
+        logEvent('Signed in')
+
+        if (selectedPlan && selectedPlan === Plan.PRO) {
+          await router.push('/dashboard/details')
+        } else {
+          await router.push('/dashboard')
+        }
+      } catch (error: any) {
+        Sentry.captureException(error)
+        toast({
+          title: 'Error',
+          description: error.message || error,
+          status: 'error',
+          duration: 7000,
+          position: 'top',
+          isClosable: true,
+        })
+        logEvent('Failed to sign in', error)
+      }
+    } else {
+      if (selectedPlan && selectedPlan === Plan.PRO) {
+        await router.push('/dashboard/details')
+      } else {
+        await router.push('/dashboard')
+      }
+    }
+  }
+
+  function handleCardButton(buttonCategory: string) {
+    switch (buttonCategory) {
+      case 'Free':
+        handleLogin()
+        break
+      case 'Pro':
+        handleLogin(Plan.PRO)
+        break
+      case 'Guild / Group':
+        setSelectedPlan('Guild')
+        break
+      case 'DAO / Community':
+        setSelectedPlan('DAO')
+        break
+      default:
+        break
+    }
+  }
+
+  const { ref: cardsContainer, inView: isCardsContainerVisible } = useInView({
+    triggerOnce: true,
+  })
 
   return (
     <Box
       py={{ base: '10', md: '20' }}
-      //pl={{ base: 10, md: 10, lg: 10 }}
       px={{ base: 0, md: 28 }}
       maxW="1360px"
       mx="auto"
+      position="relative"
     >
-      <Heading fontSize="5xl" color="primary.400">
+      <Text
+        as="span"
+        id="plans"
+        position="absolute"
+        translateY="-50vh"
+        top={isCardsContainerVisible ? '0' : '50%'}
+      ></Text>
+      <Heading fontSize="5xl" color="orange.400">
         Plans
       </Heading>
       <Text fontSize={{ base: '2xl', md: '4xl' }} color="neutral.100" mb={10}>
         that fit your needs
       </Text>
-
       <Flex
         ref={cardsContainer}
         mb={16}
         flexWrap="wrap"
-        gap={2}
+        gridGap={2}
         justifyContent="center"
         display={{ base: 'none', sm: 'flex' }}
       >
-        <SlideFade
-          in={isCardsContainerVisible}
-          delay={0.5}
-          offsetY={-50}
-          reverse={false}
-        >
-          <Box
-            background="rgba(251, 199, 183, 0.15)"
-            backdropFilter="12.5px"
-            borderTopRadius={0}
-            borderBottomRadius="xl"
+        {plansCards.map(plansCard => (
+          <SlideFade
+            in={isCardsContainerVisible}
+            delay={0.5}
+            offsetY={-50}
+            reverse={false}
+            key={plansCard.category}
           >
-            <Box px={6} py={6}>
-              <Text fontSize="lg" color="primary.400" mb={2}>
-                Free
-              </Text>
-              <Flex mb={6}>
-                <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
-                  $0
-                </Text>
-                <Text
-                  fontSize="md"
-                  fontWeight="bold"
-                  color="neutral.100"
-                  ml={2}
-                >
-                  / forever
-                </Text>
-              </Flex>
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Public page for scheduling meetings
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Configurable availability
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Web3 powered meeting room
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Email notifications (optional)
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Single meeting configuration
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Single integration with Google calendar, iCloud, Office 365 or
-                  WebDAV
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Fixed booking link with wallet address
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px">
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Only 1-1 meetings
-                </Text>
-              </HStack>
-            </Box>
-            <Button
-              w="100%"
-              h="78px"
+            <Flex
+              background="rgba(251, 199, 183, 0.15)"
+              backdropFilter="12.5px"
               borderTopRadius={0}
               borderBottomRadius="xl"
-              p={6}
-              justifyContent="left"
-              colorScheme="orange"
+              height="100%"
+              flexDirection="column"
+              justify="space-between"
             >
-              Try for FREE
-            </Button>
-          </Box>
-        </SlideFade>
-
-        <SlideFade
-          in={isCardsContainerVisible}
-          delay={0.6}
-          offsetY={-50}
-          reverse={false}
-        >
-          <Box
-            background="rgba(251, 199, 183, 0.15)"
-            backdropFilter="12.5px"
-            borderTopRadius={0}
-            borderBottomRadius="xl"
-          >
-            <Box px={6} py={6}>
-              <Text fontSize="lg" color="primary.400" mb={2}>
-                Free
-              </Text>
-              <Flex mb={6}>
-                <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
-                  $0
+              <Box px={6} py={6}>
+                <Text fontSize="lg" color="orange.400" mb={2}>
+                  {plansCard.category}
                 </Text>
-                <Text
-                  fontSize="md"
-                  fontWeight="bold"
-                  color="neutral.100"
-                  ml={2}
-                >
-                  / forever
-                </Text>
-              </Flex>
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Public page for scheduling meetings
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Configurable availability
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Web3 powered meeting room
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Email notifications (optional)
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Single meeting configuration
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Single integration with Google calendar, iCloud, Office 365 or
-                  WebDAV
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Fixed booking link with wallet address
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px">
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Only 1-1 meetings
-                </Text>
-              </HStack>
-            </Box>
-            <Button
-              w="100%"
-              h="78px"
-              borderTopRadius={0}
-              borderBottomRadius="xl"
-              p={6}
-              justifyContent="left"
-              colorScheme="orange"
-            >
-              Go PRO
-            </Button>
-          </Box>
-        </SlideFade>
-
-        <SlideFade
-          in={isCardsContainerVisible}
-          delay={0.7}
-          offsetY={-50}
-          reverse={false}
-        >
-          <Box
-            background="rgba(251, 199, 183, 0.15)"
-            backdropFilter="12.5px"
-            borderTopRadius={0}
-            borderBottomRadius="xl"
-          >
-            <Box px={6} py={6}>
-              <Text fontSize="lg" color="primary.400" mb={2}>
-                Free
-              </Text>
-              <Flex mb={6}>
-                <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
-                  $0
-                </Text>
-                <Text
-                  fontSize="md"
-                  fontWeight="bold"
-                  color="neutral.100"
-                  ml={2}
-                >
-                  / forever
-                </Text>
-              </Flex>
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Public page for scheduling meetings
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Configurable availability
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Web3 powered meeting room
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Email notifications (optional)
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Single meeting configuration
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Single integration with Google calendar, iCloud, Office 365 or
-                  WebDAV
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Fixed booking link with wallet address
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px">
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Only 1-1 meetings
-                </Text>
-              </HStack>
-            </Box>
-            <Button
-              w="100%"
-              h="78px"
-              borderTopRadius={0}
-              borderBottomRadius="xl"
-              p={6}
-              justifyContent="left"
-            >
-              Notify me
-            </Button>
-          </Box>
-        </SlideFade>
-
-        <SlideFade
-          in={isCardsContainerVisible}
-          delay={0.8}
-          offsetY={-50}
-          reverse={false}
-        >
-          <Box
-            background="rgba(251, 199, 183, 0.15)"
-            backdropFilter="12.5px"
-            borderTopRadius={0}
-            borderBottomRadius="xl"
-          >
-            <Box px={6} py={6}>
-              <Text fontSize="lg" color="primary.400" mb={2}>
-                Free
-              </Text>
-              <Flex mb={6}>
-                <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
-                  $0
-                </Text>
-                <Text
-                  fontSize="md"
-                  fontWeight="bold"
-                  color="neutral.100"
-                  ml={2}
-                >
-                  / forever
-                </Text>
-              </Flex>
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Public page for scheduling meetings
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Configurable availability
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Web3 powered meeting room
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="primary.400">
-                  <BsCheck />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Email notifications (optional)
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Single meeting configuration
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Single integration with Google calendar, iCloud, Office 365 or
-                  WebDAV
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px" mb={3}>
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Fixed booking link with wallet address
-                </Text>
-              </HStack>
-
-              <HStack gap="10px" maxW="228px">
-                <Circle bg="neutral.100">
-                  <IoMdClose />
-                </Circle>
-                <Text fontSize="sm" color="neutral.100">
-                  Only 1-1 meetings
-                </Text>
-              </HStack>
-            </Box>
-            <Button
-              w="100%"
-              h="78px"
-              borderTopRadius={0}
-              borderBottomRadius="xl"
-              p={6}
-              justifyContent="left"
-            >
-              Notify me
-            </Button>
-          </Box>
-        </SlideFade>
+                <Flex mb={6}>
+                  <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
+                    ${plansCard.price}
+                  </Text>
+                  <Text
+                    fontSize="md"
+                    fontWeight="bold"
+                    color="neutral.100"
+                    ml={2}
+                  >
+                    / {plansCard.recurringPaymentTime}
+                  </Text>
+                </Flex>
+                {plansCard.isComingSoon && (
+                  <Center h={8} bg={'orange.200'} mb={6}>
+                    Comming Soon
+                  </Center>
+                )}
+                {plansCard.features.map(feature => (
+                  <HStack
+                    gridGap="10px"
+                    maxW="228px"
+                    mb={3}
+                    key={feature.title}
+                  >
+                    <Circle
+                      bg={feature.icon === BsCheck ? 'orange.400' : 'gray.100'}
+                      p="2px"
+                    >
+                      <Icon
+                        as={feature.icon}
+                        color="gray.600"
+                        width="12px"
+                        height="12px"
+                      />
+                    </Circle>
+                    <Text fontSize="sm" color="neutral.100">
+                      {feature.title}
+                    </Text>
+                  </HStack>
+                ))}
+              </Box>
+              <Button
+                w="100%"
+                h="78px"
+                borderTopRadius={0}
+                borderBottomRadius="xl"
+                p={6}
+                justifyContent="left"
+                rightIcon={<ArrowForwardIcon />}
+                colorScheme={plansCard.isComingSoon ? 'gray' : 'orange'}
+                onClick={() => handleCardButton(plansCard.category)}
+              >
+                {plansCard.cta}
+              </Button>
+            </Flex>
+          </SlideFade>
+        ))}
       </Flex>
 
       <Box display={{ base: 'block', sm: 'none' }} mb={6}>
-        <Swiper slidesPerView={1.1} spaceBetween={10}>
-          <SwiperSlide>
-            <Box
-              background="rgba(251, 199, 183, 0.15)"
-              backdropFilter="12.5px"
-              borderTopRadius={0}
-              borderBottomRadius="xl"
-            >
-              <Box px={6} py={6}>
-                <Text fontSize="lg" color="primary.400" mb={2}>
-                  Free
-                </Text>
-                <Flex mb={6}>
-                  <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
-                    $0
-                  </Text>
-                  <Text
-                    fontSize="md"
-                    fontWeight="bold"
-                    color="neutral.100"
-                    ml={2}
-                  >
-                    / forever
-                  </Text>
-                </Flex>
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Public page for scheduling meetings
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Configurable availability
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Web3 powered meeting room
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Email notifications (optional)
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Single meeting configuration
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Single integration with Google calendar, iCloud, Office 365
-                    or WebDAV
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Fixed booking link with wallet address
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px">
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Only 1-1 meetings
-                  </Text>
-                </HStack>
-              </Box>
-              <Button
-                w="100%"
-                h="78px"
-                borderTopRadius={0}
-                borderBottomRadius="xl"
-                p={6}
-                justifyContent="left"
-                colorScheme="orange"
-              >
-                Try for FREE
-              </Button>
-            </Box>
-          </SwiperSlide>
-          <SwiperSlide>
-            <Box
-              background="rgba(251, 199, 183, 0.15)"
-              backdropFilter="12.5px"
-              borderTopRadius={0}
-              borderBottomRadius="xl"
-            >
-              <Box px={6} py={6}>
-                <Text fontSize="lg" color="primary.400" mb={2}>
-                  Free
-                </Text>
-                <Flex mb={6}>
-                  <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
-                    $0
-                  </Text>
-                  <Text
-                    fontSize="md"
-                    fontWeight="bold"
-                    color="neutral.100"
-                    ml={2}
-                  >
-                    / forever
-                  </Text>
-                </Flex>
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Public page for scheduling meetings
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Configurable availability
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Web3 powered meeting room
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Email notifications (optional)
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Single meeting configuration
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Single integration with Google calendar, iCloud, Office 365
-                    or WebDAV
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Fixed booking link with wallet address
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px">
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Only 1-1 meetings
-                  </Text>
-                </HStack>
-              </Box>
-              <Button
-                w="100%"
-                h="78px"
-                borderTopRadius={0}
-                borderBottomRadius="xl"
-                p={6}
-                justifyContent="left"
-                colorScheme="orange"
-              >
-                Try for FREE
-              </Button>
-            </Box>
-          </SwiperSlide>
-          <SwiperSlide>
-            <Box
-              background="rgba(251, 199, 183, 0.15)"
-              backdropFilter="12.5px"
-              borderTopRadius={0}
-              borderBottomRadius="xl"
-            >
-              <Box px={6} py={6}>
-                <Text fontSize="lg" color="primary.400" mb={2}>
-                  Free
-                </Text>
-                <Flex mb={6}>
-                  <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
-                    $0
-                  </Text>
-                  <Text
-                    fontSize="md"
-                    fontWeight="bold"
-                    color="neutral.100"
-                    ml={2}
-                  >
-                    / forever
-                  </Text>
-                </Flex>
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Public page for scheduling meetings
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Configurable availability
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Web3 powered meeting room
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Email notifications (optional)
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Single meeting configuration
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Single integration with Google calendar, iCloud, Office 365
-                    or WebDAV
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Fixed booking link with wallet address
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px">
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Only 1-1 meetings
-                  </Text>
-                </HStack>
-              </Box>
-              <Button
-                w="100%"
-                h="78px"
-                borderTopRadius={0}
-                borderBottomRadius="xl"
-                p={6}
-                justifyContent="left"
-                colorScheme="orange"
-              >
-                Try for FREE
-              </Button>
-            </Box>
-          </SwiperSlide>
-          <SwiperSlide>
-            <Box
-              background="rgba(251, 199, 183, 0.15)"
-              backdropFilter="12.5px"
-              borderTopRadius={0}
-              borderBottomRadius="xl"
-            >
-              <Box px={6} py={6}>
-                <Text fontSize="lg" color="primary.400" mb={2}>
-                  Free
-                </Text>
-                <Flex mb={6}>
-                  <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
-                    $0
-                  </Text>
-                  <Text
-                    fontSize="md"
-                    fontWeight="bold"
-                    color="neutral.100"
-                    ml={2}
-                  >
-                    / forever
-                  </Text>
-                </Flex>
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Public page for scheduling meetings
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Configurable availability
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Web3 powered meeting room
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="primary.400">
-                    <BsCheck />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Email notifications (optional)
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Single meeting configuration
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Single integration with Google calendar, iCloud, Office 365
-                    or WebDAV
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px" mb={3}>
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Fixed booking link with wallet address
-                  </Text>
-                </HStack>
-
-                <HStack gap="10px" maxW="228px">
-                  <Circle bg="neutral.100">
-                    <IoMdClose />
-                  </Circle>
-                  <Text fontSize="sm" color="neutral.100">
-                    Only 1-1 meetings
-                  </Text>
-                </HStack>
-              </Box>
-              <Button
-                w="100%"
-                h="78px"
-                borderTopRadius={0}
-                borderBottomRadius="xl"
-                p={6}
-                justifyContent="left"
-                colorScheme="orange"
-              >
-                Try for FREE
-              </Button>
-            </Box>
-          </SwiperSlide>
-        </Swiper>
+        <PlansMobileSlider
+          cards={plansCards}
+          handleCardButton={handleCardButton}
+        />
       </Box>
 
       <Text fontSize="2xl" color="neutral.100">
         Start for free, go Pro, or power your DAO with more organization and
         transparency.
       </Text>
+
+      <AlertMeDialog
+        plan={selectedPlan}
+        isOpen={selectedPlan !== undefined}
+        onClose={() => setSelectedPlan(undefined)}
+      />
     </Box>
   )
 }

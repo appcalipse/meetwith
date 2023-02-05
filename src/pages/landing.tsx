@@ -1,9 +1,8 @@
 import { Box } from '@chakra-ui/react'
 
-import { Faq } from '../components/landing/Faq'
+import { Faq } from '../components/landing/FAQ'
 import { Features } from '../components/landing/Features'
 import { Hero } from '../components/landing/Hero'
-import { MainMenu } from '../components/landing/MainMenu'
 import { Plans } from '../components/landing/Plans'
 import { Why } from '../components/landing/Why'
 
@@ -18,7 +17,6 @@ export default function Landing() {
         bgRepeat="no-repeat"
         bgSize={{ base: 'auto', '2xl': 'cover' }}
       >
-        <MainMenu />
         <Hero />
         <Box display={{ base: 'none', md: 'unset' }}>
           <Why />
