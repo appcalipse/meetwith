@@ -161,7 +161,7 @@ export const subscribeToPlan = async (
 
   try {
     const subExists = await getSubscriptionForDomain(domain)
-    if (subExists) {
+    if (subExists && subExists!.owner_account !== accountAddress) {
       throw Error('Domain already registered')
     }
   } catch (e: any) {
