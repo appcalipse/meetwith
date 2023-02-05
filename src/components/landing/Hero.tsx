@@ -9,12 +9,60 @@ import {
   SlideFade,
   Stack,
   Text,
+  useToast,
 } from '@chakra-ui/react'
+import * as Sentry from '@sentry/nextjs'
+import { useContext } from 'react'
 import { BsArrowRight } from 'react-icons/bs'
 import { useInView } from 'react-intersection-observer'
 
+import { AccountContext } from '@/providers/AccountProvider'
+import { logEvent } from '@/utils/analytics'
+import { loginWithWallet } from '@/utils/user_manager'
+
 export function Hero() {
-  const { ref: heroContainer, inView: isHeroContainerVisible } = useInView()
+  const { currentAccount, login, setLoginIn, loginIn } =
+    useContext(AccountContext)
+
+  const toast = useToast()
+
+  const handleLogin = async () => {
+    if (!currentAccount) {
+      logEvent('Clicked to start on FREE plan')
+      try {
+        const account = await loginWithWallet(setLoginIn)
+        if (!account) {
+          return
+        }
+        await login(account)
+        logEvent('Signed in')
+      } catch (error: any) {
+        Sentry.captureException(error)
+        toast({
+          title: 'Error',
+          description: error.message || error,
+          status: 'error',
+          duration: 7000,
+          position: 'top',
+          isClosable: true,
+        })
+        logEvent('Failed to sign in', error)
+      }
+    } else {
+      toast({
+        title: 'Error',
+        description: 'You already has an account.',
+        status: 'error',
+        duration: 7000,
+        position: 'top',
+        isClosable: true,
+      })
+    }
+  }
+
+  const { ref: heroContainer, inView: isHeroContainerVisible } = useInView({
+    triggerOnce: true,
+  })
 
   return (
     <Box
@@ -25,6 +73,7 @@ export function Hero() {
       maxW="1360px"
       mx="auto"
       px={{ base: 2, md: 10 }}
+      pt="86px"
     >
       <Box
         background={'rgba(255, 255, 255, 0.05)'}
@@ -56,7 +105,7 @@ export function Hero() {
               marginBottom={6}
             >
               Schedule meetings with full privacy in{' '}
-              <Text as="span" color="primary.400">
+              <Text as="span" color="orange.400">
                 Web3
               </Text>{' '}
               style
@@ -69,17 +118,24 @@ export function Hero() {
               state of work is remote.
             </Text>
             <Text fontSize={{ base: 'lg', md: 'xl' }} marginBottom={10}>
-              <Text as="span" color="primary.400">
+              <Text as="span" color="orange.400">
                 Meet With Wallet
               </Text>{' '}
               is a scheduling manager redefined for Web3 to take control of your
               time on your rules.
             </Text>
             <HStack display={{ base: 'none', md: 'inline-block' }}>
-              <Button colorScheme="orange" rightIcon={<BsArrowRight />}>
+              <Button
+                colorScheme="orange"
+                rightIcon={<BsArrowRight />}
+                isLoading={loginIn}
+                onClick={() => handleLogin()}
+              >
                 Try for FREE
               </Button>
-              <Button colorScheme="gray">See Plans</Button>
+              <Button colorScheme="gray" as="a" href="#plans">
+                See Plans
+              </Button>
             </HStack>
           </Box>
           <SlideFade
@@ -87,6 +143,7 @@ export function Hero() {
             delay={1}
             offsetY={-50}
             unmountOnExit={false}
+            reverse={false}
           >
             <Box minW="300px" display="flex" justifyContent="center">
               <Image
@@ -105,6 +162,8 @@ export function Hero() {
           mt={{ base: '8', md: '0' }}
         >
           <Button
+            onClick={() => handleLogin()}
+            isLoading={loginIn}
             colorScheme="orange"
             rightIcon={<BsArrowRight />}
             width="100%"
@@ -113,7 +172,7 @@ export function Hero() {
           >
             Try for FREE
           </Button>
-          <Button colorScheme="gray" width="100%" h={12}>
+          <Button colorScheme="gray" width="100%" h={12} as="a" href="#plans">
             See Plans
           </Button>
         </Box>
