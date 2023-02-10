@@ -22,8 +22,6 @@ import { ethers } from 'ethers'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaMinus, FaPlus } from 'react-icons/fa'
 
-import { getDomainsForAccount } from '@/utils/rpc_helper'
-
 import { AccountContext } from '../../providers/AccountProvider'
 import {
   AcceptedToken,
@@ -40,6 +38,7 @@ import {
   approveTokenSpending,
   checkAllowance,
   confirmSubscription,
+  getActiveProSubscription,
   subscribeToPlan,
 } from '../../utils/subscription_manager'
 
@@ -119,7 +118,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   const updateDomain = async () => {
-    setDomain((await getDomainsForAccount(currentAccount!.address))[0])
+    setDomain((await getActiveProSubscription(currentAccount!))!.domain)
   }
 
   if (extendSubscription && !domain) {
