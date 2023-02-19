@@ -12,6 +12,7 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
+import router from 'next/router'
 import { useContext } from 'react'
 import { BsArrowRight } from 'react-icons/bs'
 import { useInView } from 'react-intersection-observer'
@@ -49,14 +50,7 @@ export function Hero() {
         logEvent('Failed to sign in', error)
       }
     } else {
-      toast({
-        title: 'Error',
-        description: 'You already has an account.',
-        status: 'error',
-        duration: 7000,
-        position: 'top',
-        isClosable: true,
-      })
+      await router.push('/dashboard')
     }
   }
 
