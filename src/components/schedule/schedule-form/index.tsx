@@ -197,7 +197,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           Please{' '}
           <Button
             variant={ButtonType.LINK}
-            colorScheme={Color.ORANGE}
+            colorScheme="orangeButton"
             onClick={() => handleScheduleType(SchedulingType.REGULAR)}
           >
             sign in with wallet
@@ -205,7 +205,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           or{' '}
           <Button
             variant={ButtonType.LINK}
-            colorScheme={Color.ORANGE}
+            colorScheme="orangeButton"
             onClick={() => handleScheduleType(SchedulingType.GUEST)}
           >
             schedule as guest
@@ -241,7 +241,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         }
         isLoading={isScheduling || isSchedulingExternal}
         onClick={handleConfirm}
-        colorScheme={Color.ORANGE}
+        colorScheme="orangeButton"
         mt={2}
       >
         {isScheduling ? 'Scheduling...' : 'Schedule'}

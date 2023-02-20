@@ -34,7 +34,7 @@ export function Why() {
         if (!account) {
           return
         }
-        await login(account)
+        login(account)
         logEvent('Signed in')
       } catch (error: any) {
         Sentry.captureException(error)
@@ -79,7 +79,7 @@ export function Why() {
             lineHeight="10"
             mb={{ base: '6', lg: 'unset' }}
           >
-            <Text as="span" color="orange.400" fontSize="4xl">
+            <Text as="span" color="primary.400" fontSize="4xl">
               Why
             </Text>
             <br />
@@ -100,7 +100,7 @@ export function Why() {
             >
               <Icon as={FaRegHandshake} color="neutral.100" w={8} h={8} />
 
-              <Heading fontSize="xl" color="orange.400">
+              <Heading fontSize="xl" color="primary.400">
                 Meet at your own convenience
               </Heading>
               <Text fontSize="" color="neutral.100">
@@ -113,7 +113,7 @@ export function Why() {
 
           <SlideFade
             in={isWhyContainerVisible}
-            delay={0.5}
+            delay={1}
             offsetY={-50}
             unmountOnExit={true}
           >
@@ -125,7 +125,7 @@ export function Why() {
             >
               <Icon as={BsBell} color="neutral.100" w={8} h={8} />
 
-              <Heading fontSize="xl" color="orange.400">
+              <Heading fontSize="xl" color="primary.400">
                 Stay informed with meeting reminders and follow ups
               </Heading>
               <Text fontSize="" color="neutral.100">
@@ -139,7 +139,7 @@ export function Why() {
         <Flex direction="column" gridGap={{ base: '1', lg: '6' }}>
           <SlideFade
             in={isWhyContainerVisible}
-            delay={0.5}
+            delay={1.5}
             offsetY={-50}
             unmountOnExit={true}
           >
@@ -151,7 +151,7 @@ export function Why() {
             >
               <Icon as={BsShieldShaded} color="neutral.100" w={8} h={8} />
 
-              <Heading fontSize="xl" color="orange.400">
+              <Heading fontSize="xl" color="primary.400">
                 Meet at your own convenience
               </Heading>
               <Text fontSize="" color="neutral.100">
@@ -164,7 +164,7 @@ export function Why() {
 
           <SlideFade
             in={isWhyContainerVisible}
-            delay={0.5}
+            delay={2}
             offsetY={-50}
             unmountOnExit={true}
           >
@@ -176,7 +176,7 @@ export function Why() {
             >
               <Icon as={FaRegCalendarCheck} color="neutral.100" w={8} h={8} />
 
-              <Heading fontSize="xl" color="orange.400">
+              <Heading fontSize="xl" color="primary.400">
                 Stay informed with meeting reminders and follow ups
               </Heading>
               <Text fontSize="" color="neutral.100">
@@ -189,12 +189,12 @@ export function Why() {
           <Box flex={1}>
             <SlideFade
               in={isWhyContainerVisible}
-              delay={0.5}
+              delay={2.5}
               offsetY={-50}
               unmountOnExit={true}
             >
               <Button
-                colorScheme="orange"
+                colorScheme="orangeButton"
                 rightIcon={<BsArrowRight />}
                 display={{ base: 'none', lg: 'unset' }}
                 w="100%"
@@ -208,7 +208,7 @@ export function Why() {
           </Box>
         </Flex>
         <Button
-          colorScheme="orange"
+          colorScheme="orangeButton"
           rightIcon={<BsArrowRight />}
           display={{ base: 'unset', lg: 'none' }}
           height="72px"

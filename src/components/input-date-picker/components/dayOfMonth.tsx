@@ -34,7 +34,7 @@ export const DayOfMonth: React.FC<DayOfMonthProps> = ({
       variant="outline"
       bg={bg}
       _hover={{
-        bg: 'orange.500',
+        bg: 'primary.500',
       }}
       // this intends to fill the visual gap from Grid to improve the UX
       // so the button active area is actually larger than when it's seen

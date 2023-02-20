@@ -87,7 +87,7 @@ export function PlansMobileSlider({
               p={6}
               justifyContent="left"
               rightIcon={<ArrowForwardIcon />}
-              colorScheme={card.isComingSoon ? 'gray' : 'orange'}
+              colorScheme={card.isComingSoon ? 'gray' : 'orangeButton'}
               onClick={() => handleCardButton(card.category)}
             >
               {card.cta}

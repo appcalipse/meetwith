@@ -72,7 +72,7 @@ export function Hero() {
       <Box
         background={'rgba(255, 255, 255, 0.05)'}
         position="absolute"
-        top={0}
+        top={{ base: '91px', md: 0 }}
         backdropFilter="blur(12.5px)"
         h="540px"
         w="calc(100% - 16px)"
@@ -99,7 +99,7 @@ export function Hero() {
               marginBottom={6}
             >
               Schedule meetings with full privacy in{' '}
-              <Text as="span" color="orange.400">
+              <Text as="span" color="primary.400">
                 Web3
               </Text>{' '}
               style
@@ -112,7 +112,7 @@ export function Hero() {
               state of work is remote.
             </Text>
             <Text fontSize={{ base: 'lg', md: 'xl' }} marginBottom={10}>
-              <Text as="span" color="orange.400">
+              <Text as="span" color="primary.400">
                 Meet With Wallet
               </Text>{' '}
               is a scheduling manager redefined for Web3 to take control of your
@@ -120,7 +120,7 @@ export function Hero() {
             </Text>
             <HStack display={{ base: 'none', md: 'inline-block' }}>
               <Button
-                colorScheme="orange"
+                colorScheme="orangeButton"
                 rightIcon={<BsArrowRight />}
                 isLoading={loginIn}
                 onClick={() => handleLogin()}
@@ -158,7 +158,7 @@ export function Hero() {
           <Button
             onClick={() => handleLogin()}
             isLoading={loginIn}
-            colorScheme="orange"
+            colorScheme="orangeButton"
             rightIcon={<BsArrowRight />}
             width="100%"
             h={12}

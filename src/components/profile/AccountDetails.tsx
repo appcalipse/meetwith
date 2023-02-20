@@ -293,7 +293,11 @@ const AccountDetails: React.FC = () => {
       </FormControl>
 
       <Spacer />
-      <Button isLoading={loading} colorScheme="orange" onClick={saveDetails}>
+      <Button
+        isLoading={loading}
+        colorScheme="orangeButton"
+        onClick={saveDetails}
+      >
         Save details
       </Button>
       <Spacer />
@@ -421,7 +425,7 @@ export const SubscriptionCard: React.FC<SubscriptioCardProps> = ({
           <Button
             mt={8}
             isFullWidth
-            colorScheme="orange"
+            colorScheme="orangeButton"
             disabled={active}
             onClick={() => onClick()}
           >

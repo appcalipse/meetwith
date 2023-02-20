@@ -14,7 +14,7 @@ const Dashboard: NextPage<DashboardProps> = props => {
     <Container
       data-testid={`dashboard-${props.section}`}
       maxW="6xl"
-      mt={8}
+      mt={28}
       flex={1}
     >
       <DashboardContent currentSection={props.section} />

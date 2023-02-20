@@ -138,7 +138,7 @@ export const TokenGateConfig = () => {
       {!isPro && (
         <Text pb="6">
           <NextLink href="/dashboard/details" shallow passHref>
-            <Link colorScheme="orange" fontWeight="bold">
+            <Link colorScheme="orangeButton" fontWeight="bold">
               Go PRO
             </Link>
           </NextLink>{' '}
@@ -148,7 +148,7 @@ export const TokenGateConfig = () => {
 
       <Button
         disabled={!isPro}
-        colorScheme="orange"
+        colorScheme="orangeButton"
         onClick={() => setSelectedGate(getDefaultConditionClone())}
       >
         Add new

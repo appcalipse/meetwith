@@ -1,5 +1,13 @@
-import { useColorModeValue } from '@chakra-ui/color-mode'
-import { Box, Flex, Image, Text, useBreakpointValue } from '@chakra-ui/react'
+import { BellIcon } from '@chakra-ui/icons'
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Image,
+  Text,
+  useBreakpointValue,
+} from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
@@ -14,6 +22,8 @@ import { NavMenu } from './components/NavMenu'
 interface NavBarLoggedProfileProps {
   account: Account
   currentSection?: EditMode
+  handleSetActiveLink: (id: string) => void
+  isOpen?: boolean
 }
 const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
   const accountName = ellipsizeAddress(props.account.address)
@@ -24,6 +34,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
   const goToDashboard = () => {
     logEvent('Clicked menu account container')
     router.push('/dashboard')
+    props.handleSetActiveLink('/dashboard')
   }
   const openMenu = () => {
     setNavOpen(true)
@@ -40,6 +51,12 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
 
   return (
     <Flex>
+      {!props.isOpen && (
+        <Button mr={4}>
+          <Icon as={BellIcon} width={6} height={6} />
+        </Button>
+      )}
+
       <Flex
         borderRadius={6}
         px={4}
@@ -48,21 +65,15 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         alignItems="center"
         onClick={variantAction}
         cursor="pointer"
+        color="neutral.800"
         _hover={{
-          bg: useColorModeValue('gray.100', 'gray.500'),
+          bg: 'neutral.100',
           boxShadow: 'lg',
         }}
         transition="all 0.3s"
-        backgroundColor={useColorModeValue('white', 'gray.600')}
+        backgroundColor={'neutral.50'}
       >
-        <Text
-          mr={2}
-          fontSize={'sm'}
-          display={{ base: 'none', md: 'inline-block' }}
-        >
-          {accountName}
-        </Text>
-        <Box width="24px" height="24px">
+        <Box width="24px" height="24px" mr={{ base: 0, md: 2 }}>
           {props.account.preferences?.avatar ? (
             <Image
               src={props.account.preferences.avatar}
@@ -76,6 +87,14 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
             <Jazzicon address={props.account.address} />
           )}
         </Box>
+        {props.isOpen && (
+          <Text fontSize={'sm'} ml={2}>
+            {accountName}
+          </Text>
+        )}
+        <Text fontSize={'sm'} display={{ base: 'none', md: 'inline-block' }}>
+          {accountName}
+        </Text>
       </Flex>
 
       {navOpen && (

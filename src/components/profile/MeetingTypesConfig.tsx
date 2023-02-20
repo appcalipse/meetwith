@@ -123,14 +123,18 @@ const MeetingTypesConfig: React.FC = () => {
             {!isPro && (
               <Text pb="6">
                 <NextLink href="/dashboard/details" shallow passHref>
-                  <Link colorScheme="orange" fontWeight="bold">
+                  <Link colorScheme="orangeButton" fontWeight="bold">
                     Go PRO
                   </Link>
                 </NextLink>{' '}
                 to add as many meeting types as you want
               </Text>
             )}
-            <Button disabled={!isPro} colorScheme="orange" onClick={createType}>
+            <Button
+              disabled={!isPro}
+              colorScheme="orangeButton"
+              onClick={createType}
+            >
               + New Meeting Type
             </Button>
             <NewMeetingTypeDialog
@@ -207,7 +211,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
         </Flex>
         <HStack width="100%" pt={4}>
           <CopyLinkButton url={url} />
-          <Button flex={1} colorScheme="orange" onClick={openType}>
+          <Button flex={1} colorScheme="orangeButton" onClick={openType}>
             Edit
           </Button>
         </HStack>
@@ -259,7 +263,7 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
       <Button
         isLoading={loading}
         alignSelf="start"
-        colorScheme="orange"
+        colorScheme="orangeButton"
         onClick={save}
       >
         Save information

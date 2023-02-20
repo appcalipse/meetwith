@@ -41,6 +41,7 @@ export interface PlansCard {
   recurringPaymentTime: string
   isComingSoon: boolean
   cta: string
+  animationDelay?: number
   features: Feature[]
 }
 
@@ -51,6 +52,7 @@ const plansCards: PlansCard[] = [
     recurringPaymentTime: 'forever',
     isComingSoon: false,
     cta: 'Try for FREE',
+    animationDelay: 0.5,
     features: [
       {
         title: 'Public page for scheduling meetings',
@@ -93,6 +95,7 @@ const plansCards: PlansCard[] = [
     recurringPaymentTime: 'year',
     isComingSoon: false,
     cta: 'Go PRO',
+    animationDelay: 1,
     features: [
       {
         title: 'Unlimited meeting configurations',
@@ -123,6 +126,7 @@ const plansCards: PlansCard[] = [
     recurringPaymentTime: 'year',
     isComingSoon: true,
     cta: 'Notify me',
+    animationDelay: 1.5,
     features: [
       {
         title: 'Everything from PRO',
@@ -148,6 +152,7 @@ const plansCards: PlansCard[] = [
     recurringPaymentTime: 'Forever',
     isComingSoon: true,
     cta: 'Notify me',
+    animationDelay: 2,
     features: [
       {
         title: 'Everything from Guild',
@@ -174,18 +179,13 @@ const plansCards: PlansCard[] = [
 ]
 
 export function Plans() {
-  const { currentAccount, login, setLoginIn, loginIn } =
-    useContext(AccountContext)
+  const { currentAccount, login, setLoginIn } = useContext(AccountContext)
 
   const [selectedPlan, setSelectedPlan] = useState(
     undefined as string | undefined
   )
 
   const toast = useToast()
-
-  function handleSelectedPlan(plan: string) {
-    setSelectedPlan(plan)
-  }
 
   const handleLogin = async (selectedPlan?: Plan) => {
     if (!currentAccount) {
@@ -195,7 +195,7 @@ export function Plans() {
         if (!account) {
           return
         }
-        await login(account)
+        login(account)
         logEvent('Signed in')
 
         if (selectedPlan && selectedPlan === Plan.PRO) {
@@ -262,7 +262,7 @@ export function Plans() {
         translateY="-50vh"
         top={isCardsContainerVisible ? '0' : '50%'}
       ></Text>
-      <Heading fontSize="5xl" color="orange.400">
+      <Heading fontSize="5xl" color="primary.400">
         Plans
       </Heading>
       <Text fontSize={{ base: '2xl', md: '4xl' }} color="neutral.100" mb={10}>
@@ -279,7 +279,7 @@ export function Plans() {
         {plansCards.map(plansCard => (
           <SlideFade
             in={isCardsContainerVisible}
-            delay={0.5}
+            delay={plansCard.animationDelay}
             offsetY={-50}
             reverse={false}
             key={plansCard.category}
@@ -294,7 +294,7 @@ export function Plans() {
               justify="space-between"
             >
               <Box px={6} py={6}>
-                <Text fontSize="lg" color="orange.400" mb={2}>
+                <Text fontSize="lg" color="primary.400" mb={2}>
                   {plansCard.category}
                 </Text>
                 <Flex mb={6}>
@@ -311,7 +311,7 @@ export function Plans() {
                   </Text>
                 </Flex>
                 {plansCard.isComingSoon && (
-                  <Center h={8} bg={'orange.200'} mb={6}>
+                  <Center h={8} bg={'primary.200'} mb={6}>
                     Comming Soon
                   </Center>
                 )}
@@ -323,7 +323,7 @@ export function Plans() {
                     key={feature.title}
                   >
                     <Circle
-                      bg={feature.icon === BsCheck ? 'orange.400' : 'gray.100'}
+                      bg={feature.icon === BsCheck ? 'primary.400' : 'gray.100'}
                       p="2px"
                     >
                       <Icon
@@ -347,7 +347,13 @@ export function Plans() {
                 p={6}
                 justifyContent="left"
                 rightIcon={<ArrowForwardIcon />}
-                colorScheme={plansCard.isComingSoon ? 'gray' : 'orange'}
+                color={plansCard.isComingSoon ? 'neutral.900' : 'neutral.100'}
+                bg={plansCard.isComingSoon ? 'neutral.100' : 'primary.400'}
+                _hover={
+                  plansCard.isComingSoon
+                    ? { bg: 'neutral.300', color: 'neutral.100' }
+                    : { bg: 'primary.600' }
+                }
                 onClick={() => handleCardButton(plansCard.category)}
               >
                 {plansCard.cta}

@@ -33,7 +33,7 @@ export default function NotFound() {
           <Spacer />
           <MWWButton
             onClick={() => router.push('/')}
-            colorScheme="orange"
+            colorScheme="orangeButton"
             color="white"
             variant="solid"
           >

@@ -32,7 +32,7 @@ const GoProCTA = () => (
   <VStack>
     <Text py="6">
       <NextLink href="/dashboard/details" shallow passHref>
-        <Link colorScheme="orange" fontWeight="bold">
+        <Link colorScheme="orangeButton" fontWeight="bold">
           Go PRO
         </Link>
       </NextLink>{' '}
@@ -178,7 +178,7 @@ const ConnectCalendar = () => {
 
       <Button
         onClick={onOpen}
-        colorScheme="orange"
+        colorScheme="orangeButton"
         isFullWidth={false}
         mb={4}
         mt={4}

@@ -7,22 +7,34 @@ const config: ThemeConfig = {
 }
 
 const colors = {
-  orange: {
-    50: '#ffe9e0',
-    100: '#ffc5b3',
-    200: '#faa184',
-    300: '#f67c55',
-    400: '#f35826',
-    500: '#d93f0c',
-    600: '#aa3009',
-    700: '#7a2205',
-    800: '#4b1200',
-    900: '#1f0300',
-    // TO-DO: change to a better name after defining the new color scheme
-    link: '#f15624',
+  primary: {
+    50: '#FCDACF',
+    100: '#FBC7B7',
+    200: '#F9B19A',
+    300: '#F78C69',
+    400: '#F46739',
+    500: '#F35826',
+    600: '#E8420D',
+    700: '#C1370B',
+    800: '#912908',
+    900: '#611C05',
   },
-  gray: {
-    link: '#3E4C67',
+  neutral: {
+    0: '#FFFFFF',
+    50: '#F5F7FA',
+    100: '#E4E7EB',
+    200: '#CBD2D9',
+    300: '#9AA5B1',
+    400: '#7B8794',
+    500: '#616E7C',
+    600: '#52606D',
+    700: '#3E4C59',
+    800: '#323F4B',
+    900: '#1F2933',
+  },
+  orangeButton: {
+    200: '#F78C69',
+    300: '#F46739',
   },
 }
 

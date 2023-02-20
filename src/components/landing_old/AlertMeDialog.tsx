@@ -117,7 +117,7 @@ const AlertMeDialog: React.FC<IProps> = ({ isOpen, onClose, plan }) => {
                 flex={'1 0 auto'}
                 rounded={'full'}
                 fontWeight={'normal'}
-                colorScheme="orange"
+                colorScheme="orangeButton"
                 isLoading={loading}
                 onClick={() => subscribe(email)}
               >

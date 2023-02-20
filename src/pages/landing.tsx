@@ -15,7 +15,7 @@ export default function Landing() {
           md: `url('/assets/bg-hero-why.png')`,
         }}
         bgRepeat="no-repeat"
-        bgSize={{ base: 'auto', '2xl': 'cover' }}
+        bgSize="cover"
       >
         <Hero />
         <Box display={{ base: 'none', md: 'unset' }}>
