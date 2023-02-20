@@ -20,7 +20,7 @@ export function Faq() {
         FAQ
       </Heading>
       <Accordion allowToggle>
-        <AccordionItem mb={2} background="neutral.50" p={4}>
+        <AccordionItem mb={2} background="transparent" p={4}>
           <h2>
             <AccordionButton>
               <Box as="span" flex={1} textAlign="left">
@@ -37,7 +37,7 @@ export function Faq() {
           </AccordionPanel>
         </AccordionItem>
 
-        <AccordionItem mb={2} background="neutral.50" p={4}>
+        <AccordionItem mb={2} background="transparent" p={4}>
           <h2>
             <AccordionButton>
               <Box as="span" flex={1} textAlign="left">
@@ -54,7 +54,7 @@ export function Faq() {
           </AccordionPanel>
         </AccordionItem>
 
-        <AccordionItem mb={2} background="neutral.50" p={4}>
+        <AccordionItem mb={2} background="transparent" p={4}>
           <h2>
             <AccordionButton>
               <Box as="span" flex={1} textAlign="left">
@@ -71,7 +71,7 @@ export function Faq() {
           </AccordionPanel>
         </AccordionItem>
 
-        <AccordionItem mb={2} background="neutral.50" p={4}>
+        <AccordionItem mb={2} background="transparent" p={4}>
           <h2>
             <AccordionButton>
               <Box as="span" flex={1} textAlign="left">
@@ -88,7 +88,7 @@ export function Faq() {
           </AccordionPanel>
         </AccordionItem>
 
-        <AccordionItem mb={2} background="neutral.50" p={4}>
+        <AccordionItem mb={2} background="transparent" p={4}>
           <h2>
             <AccordionButton>
               <Box as="span" flex={1} textAlign="left">
@@ -105,7 +105,7 @@ export function Faq() {
           </AccordionPanel>
         </AccordionItem>
 
-        <AccordionItem mb={2} background="neutral.50" p={4}>
+        <AccordionItem mb={2} background="transparent" p={4}>
           <h2>
             <AccordionButton>
               <Box as="span" flex={1} textAlign="left">

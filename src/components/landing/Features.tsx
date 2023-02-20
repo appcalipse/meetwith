@@ -107,7 +107,7 @@ export function Features() {
       maxW="1360px"
       mx="auto"
     >
-      <Heading fontSize="5xl" color="orange.400">
+      <Heading fontSize="5xl" color="primary.400" mb={16}>
         Features
       </Heading>
       {/* <Image src={listItems} /> */}
@@ -119,7 +119,7 @@ export function Features() {
       >
         <Box position="absolute" top="131px">
           <Text color="neutral.100" fontSize="xs">
-            <Text as="span" color="orange.400" display="block" fontSize="2xl">
+            <Text as="span" color="primary.400" display="block" fontSize="2xl">
               {activeSlideNumber + 1}
             </Text>
             /{slides.length}
@@ -161,7 +161,7 @@ export function Features() {
                 >
                   {slide.price}
                 </Button>
-                <Text fontSize="lg" mb={3} color="orange.400">
+                <Text fontSize="lg" mb={3} color="primary.400">
                   {slide.title}
                 </Text>
                 <Text

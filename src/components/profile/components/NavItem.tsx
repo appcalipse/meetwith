@@ -33,7 +33,7 @@ export const NavItem = ({
   ...rest
 }: NavItemProps) => {
   const unlockedColor = useColorModeValue('gray.link', 'gray.200')
-  const textColor = selected ? 'orange.link' : unlockedColor
+  const textColor = selected ? 'orange.500' : unlockedColor
   const unlockedIconColor = selected ? 'gray.50' : unlockedColor
   const hoverColor = useColorModeValue('gray.200', 'gray.600')
   const lockedColor = useColorModeValue('gray.400', 'gray.100')
@@ -86,7 +86,7 @@ export const NavItem = ({
                 height="100%"
                 width={16}
                 borderRightRadius={999}
-                bgGradient="linear(to-r, orange.400, orange.500)"
+                bgGradient="linear(to-r, primary.400, primary.500)"
               />
             </Slide>
             <Icon

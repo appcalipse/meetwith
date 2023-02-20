@@ -94,7 +94,7 @@ const JoinMeetingPage: NextPage = () => {
             <Spacer />
             <MWWButton
               onClick={() => router.push('/')}
-              colorScheme="orange"
+              colorScheme="orangeButton"
               color="white"
               variant="solid"
             >

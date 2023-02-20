@@ -162,7 +162,7 @@ export default function Pricing() {
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
               <Button
                 w="full"
-                colorScheme="orange"
+                colorScheme="orangeButton"
                 variant="outline"
                 isLoading={loginIn}
                 onClick={() => handleLogin()}
@@ -225,7 +225,7 @@ export default function Pricing() {
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
               <Button
                 w="full"
-                colorScheme="orange"
+                colorScheme="orangeButton"
                 variant="outline"
                 onClick={() => handleLogin(Plan.PRO)}
               >
@@ -303,7 +303,7 @@ export default function Pricing() {
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
               <Button
                 w="full"
-                colorScheme="orange"
+                colorScheme="orangeButton"
                 variant="outline"
                 onClick={() => setSelectedPlan('Guild')}
               >
@@ -384,7 +384,7 @@ export default function Pricing() {
             <Box w="80%" pt={7} display="flex" alignItems="flex-end" flex={1}>
               <Button
                 w="full"
-                colorScheme="orange"
+                colorScheme="orangeButton"
                 variant="outline"
                 onClick={() => setSelectedPlan('DAO')}
               >

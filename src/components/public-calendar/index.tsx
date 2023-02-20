@@ -755,7 +755,7 @@ const RescheduleInfoBox: React.FC<{
 
           <Text mt={2}>
             Select another time for the meeting, or{' '}
-            <Button variant="link" colorScheme="orange">
+            <Button variant="link" colorScheme="orangeButton">
               cancel
             </Button>{' '}
             it
