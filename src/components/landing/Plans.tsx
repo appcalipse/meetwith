@@ -347,12 +347,9 @@ export function Plans() {
                 p={6}
                 justifyContent="left"
                 rightIcon={<ArrowForwardIcon />}
-                color={plansCard.isComingSoon ? 'neutral.900' : 'neutral.100'}
-                bg={plansCard.isComingSoon ? 'neutral.100' : 'primary.400'}
-                _hover={
-                  plansCard.isComingSoon
-                    ? { bg: 'neutral.300', color: 'neutral.100' }
-                    : { bg: 'primary.600' }
+                color={plansCard.isComingSoon ? 'neutral.900' : 'neutral.50'}
+                colorScheme={
+                  plansCard.isComingSoon ? 'grayButton' : 'orangeButton'
                 }
                 onClick={() => handleCardButton(plansCard.category)}
               >
