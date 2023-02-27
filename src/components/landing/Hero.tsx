@@ -1,3 +1,4 @@
+import { ArrowForwardIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
@@ -121,13 +122,14 @@ export function Hero() {
             <HStack display={{ base: 'none', md: 'inline-block' }}>
               <Button
                 colorScheme="orangeButton"
-                rightIcon={<BsArrowRight />}
+                color="neutral.50"
+                rightIcon={<ArrowForwardIcon boxSize={4} />}
                 isLoading={loginIn}
                 onClick={() => handleLogin()}
               >
                 Try for FREE
               </Button>
-              <Button colorScheme="gray" as="a" href="#plans">
+              <Button colorScheme="grayButton" as="a" href="#plans">
                 See Plans
               </Button>
             </HStack>
@@ -159,14 +161,21 @@ export function Hero() {
             onClick={() => handleLogin()}
             isLoading={loginIn}
             colorScheme="orangeButton"
-            rightIcon={<BsArrowRight />}
+            color="neutral.50"
+            rightIcon={<ArrowForwardIcon boxSize={4} />}
             width="100%"
             h={12}
             mb={4}
           >
             Try for FREE
           </Button>
-          <Button colorScheme="gray" width="100%" h={12} as="a" href="#plans">
+          <Button
+            colorScheme="grayButton"
+            width="100%"
+            h={12}
+            as="a"
+            href="#plans"
+          >
             See Plans
           </Button>
         </Box>

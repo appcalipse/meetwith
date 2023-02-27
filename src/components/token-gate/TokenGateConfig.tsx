@@ -149,6 +149,7 @@ export const TokenGateConfig = () => {
       <Button
         disabled={!isPro}
         colorScheme="orangeButton"
+        color="neutral.50"
         onClick={() => setSelectedGate(getDefaultConditionClone())}
       >
         Add new

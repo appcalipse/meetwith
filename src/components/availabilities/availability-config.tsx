@@ -100,6 +100,7 @@ const AvailabilityConfig: React.FC = () => {
         isLoading={loading}
         alignSelf="start"
         colorScheme="orangeButton"
+        color="neutral.50"
         onClick={saveAvailabilities}
       >
         Save information

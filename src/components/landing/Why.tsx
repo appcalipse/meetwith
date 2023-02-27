@@ -1,3 +1,4 @@
+import { ArrowForwardIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
@@ -195,28 +196,37 @@ export function Why() {
             >
               <Button
                 colorScheme="orangeButton"
-                rightIcon={<BsArrowRight />}
-                display={{ base: 'none', lg: 'unset' }}
+                color="neutral.50"
+                display={{ base: 'none', lg: 'flex' }}
+                justifyContent="space-between"
+                fontSize="xl"
                 w="100%"
                 h="80px"
                 onClick={() => handleLogin()}
                 isLoading={loginIn}
               >
-                Ready to control your time Web3 style?
+                <Text fontSize="lg" textAlign="left">
+                  Ready to control your time <br /> Web3 style?
+                </Text>
+                <ArrowForwardIcon boxSize={6} mr={8} />
               </Button>
             </SlideFade>
           </Box>
         </Flex>
         <Button
           colorScheme="orangeButton"
-          rightIcon={<BsArrowRight />}
-          display={{ base: 'unset', lg: 'none' }}
-          height="72px"
+          color="neutral.50"
+          display={{ base: 'flex', lg: 'none' }}
+          justifyContent="space-between"
+          height="80px"
           borderTopRadius="none"
           onClick={() => handleLogin()}
           isLoading={loginIn}
         >
-          Ready to control your time Web3 style?
+          <Text fontSize="lg" textAlign="left">
+            Ready to control your time <br /> Web3 style?
+          </Text>
+          <ArrowForwardIcon boxSize={6} mr={4} />
         </Button>
       </Flex>
     </Box>

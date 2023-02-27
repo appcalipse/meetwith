@@ -637,7 +637,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                 <Switch
                   display="flex"
                   id="video-conference"
-                  colorScheme={'orange'}
+                  colorScheme={'orangeButton'}
                   defaultChecked={useHuddle}
                   isChecked={useHuddle}
                   onChange={() => setHuddle(value => !value)}
@@ -718,6 +718,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           <Button
             onClick={scheduleOrUpdate}
             colorScheme={'orangeButton'}
+            color="neutral.50"
             isLoading={isScheduling}
             disabled={isCancelling}
           >

@@ -198,6 +198,7 @@ const Meetings: React.FC = () => {
             )
           }
           colorScheme="orangeButton"
+          color="neutral.50"
           display={{ base: 'none', md: 'flex' }}
           mt={{ base: 4, md: 0 }}
           mb={4}

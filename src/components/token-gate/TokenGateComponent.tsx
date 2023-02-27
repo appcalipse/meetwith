@@ -64,7 +64,12 @@ export const TokenGateComponent = (props: TokenGateComponentProps) => {
               colorScheme={
                 props.tokenGate.relation == ConditionRelation.AND
                   ? 'orangeButton'
-                  : 'gray'
+                  : 'grayButton'
+              }
+              color={
+                props.tokenGate.relation == ConditionRelation.OR
+                  ? 'neutral.800'
+                  : 'neutral.50'
               }
               onClick={() => setGateCondition(ConditionRelation.AND)}
             >
@@ -74,7 +79,12 @@ export const TokenGateComponent = (props: TokenGateComponentProps) => {
               colorScheme={
                 props.tokenGate.relation == ConditionRelation.OR
                   ? 'orangeButton'
-                  : 'gray'
+                  : 'grayButton'
+              }
+              color={
+                props.tokenGate.relation == ConditionRelation.OR
+                  ? 'neutral.50'
+                  : 'neutral.800'
               }
               onClick={() => setGateCondition(ConditionRelation.OR)}
             >

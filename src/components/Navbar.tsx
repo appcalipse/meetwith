@@ -152,6 +152,7 @@ export const Navbar = () => {
                 width={10}
                 height={10}
                 display={{ base: 'flex', md: 'none' }}
+                zIndex="0"
               >
                 <Icon as={BiMenuAltRight} width={6} height={6} />
               </Button>
