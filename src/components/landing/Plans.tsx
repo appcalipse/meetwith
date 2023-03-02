@@ -249,7 +249,7 @@ export function Plans() {
 
   return (
     <Box
-      py={{ base: '10', md: '20' }}
+      py={{ base: 0, md: 16 }}
       px={{ base: 0, md: 28 }}
       maxW="1360px"
       mx="auto"
