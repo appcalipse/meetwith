@@ -1,9 +1,9 @@
 import 'swiper/css'
 import 'swiper/css/pagination'
 
-import { Box, Button, Flex, Heading, Text } from '@chakra-ui/react'
+import { Box, Button, Heading, Text } from '@chakra-ui/react'
 import { useState } from 'react'
-import { Keyboard, Mousewheel, Pagination } from 'swiper'
+import { Mousewheel, Pagination } from 'swiper'
 import { Swiper, SwiperSlide } from 'swiper/react'
 
 import { FeaturesMobileSlider } from './FeaturesMobileSlider'
@@ -99,25 +99,24 @@ export function Features() {
   const [activeSlideNumber, setActiveSlideNumber] = useState(0)
 
   return (
-    <Flex
-      py={{ base: '10', md: '20' }}
-      px={{ base: 2, md: 28 }}
-      flexDirection="column"
-      gap={10}
+    <Box
       maxW="1360px"
       mx="auto"
+      px={{ sm: '2', md: '18', lg: '28' }}
+      py={{ base: 8, md: 16 }}
     >
-      <Heading fontSize="5xl" color="primary.400" mb={16}>
+      <Heading fontSize="5xl" color="primary.400" mb={8}>
         Features
       </Heading>
-      {/* <Image src={listItems} /> */}
       <Box
-        h="300px"
-        position="relative"
         className="featuresSliderContainer"
+        height="312px"
+        w="100%"
+        overflow="hidden"
+        position="relative"
         display={{ base: 'none', md: 'inline-block' }}
       >
-        <Box position="absolute" top="131px">
+        <Box position="absolute" top="160px">
           <Text color="neutral.100" fontSize="xs">
             <Text as="span" color="primary.400" display="block" fontSize="2xl">
               {activeSlideNumber + 1}
@@ -126,33 +125,37 @@ export function Features() {
           </Text>
         </Box>
         <Swiper
+          modules={[Pagination, Mousewheel]}
           direction={'vertical'}
-          spaceBetween={-20}
-          slidesPerView={1.3}
-          centeredSlides={false}
-          modules={[Pagination, Mousewheel, Keyboard]}
+          className="mySwiperTest"
+          slidesPerView={1}
+          mousewheel={true}
           pagination={{
             type: 'progressbar',
-          }}
-          className="mySwiper"
-          keyboard={true}
-          mousewheel={{
-            forceToAxis: true,
-            sensitivity: 1,
-            releaseOnEdges: true,
           }}
           onSlideChange={swiper => setActiveSlideNumber(swiper.activeIndex)}
         >
           {slides.map(slide => (
             <SwiperSlide key={slide.id}>
               <Box
-                bg="rgba(251, 199, 183, .15)"
+                bg={
+                  activeSlideNumber === slides.indexOf(slide)
+                    ? 'rgba(251, 199, 183, .15)'
+                    : 'rgba(255, 255, 255, 0.05)'
+                }
                 backdropFilter="blur(12.5px)"
-                px={10}
+                px={6}
                 py={6}
+                minH="211px"
+                w={
+                  activeSlideNumber === slides.indexOf(slide)
+                    ? '100%'
+                    : 'fit-content'
+                }
               >
                 <Button
                   mb={3}
+                  colorScheme="grayButton"
                   display={
                     activeSlideNumber === slides.indexOf(slide)
                       ? 'block'
@@ -161,10 +164,19 @@ export function Features() {
                 >
                   {slide.price}
                 </Button>
-                <Text fontSize="lg" mb={3} color="primary.400">
+                <Text
+                  fontSize="lg"
+                  mb={3}
+                  color={
+                    activeSlideNumber === slides.indexOf(slide)
+                      ? 'primary.400'
+                      : 'neutral.100'
+                  }
+                >
                   {slide.title}
                 </Text>
                 <Text
+                  w="90%"
                   color="neutral.100"
                   display={
                     activeSlideNumber === slides.indexOf(slide)
@@ -182,6 +194,6 @@ export function Features() {
       <Box display={{ base: 'inline-block', md: 'none' }}>
         <FeaturesMobileSlider slides={slides} />
       </Box>
-    </Flex>
+    </Box>
   )
 }
