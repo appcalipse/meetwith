@@ -13,7 +13,7 @@ export default function FAQ() {
   return (
     <Container maxW="7xl" id="faq">
       <Box p={4} mb={8} color={useColorModeValue('gray.500', 'gray.300')}>
-        <Heading size="xl" pb={8} textColor="orange.400">
+        <Heading size="xl" pb={8} textColor="primary.400">
           Common questions
         </Heading>
         <Heading

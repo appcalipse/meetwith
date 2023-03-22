@@ -39,7 +39,7 @@ export function PlansMobileSlider({
             justify="space-between"
           >
             <Box px={6} py={6}>
-              <Text fontSize="lg" color="orange.400" mb={2}>
+              <Text fontSize="lg" color="primary.400" mb={2}>
                 {card.category}
               </Text>
               <Flex mb={6}>
@@ -63,7 +63,9 @@ export function PlansMobileSlider({
               {card.features.map(feature => (
                 <HStack gridGap="10px" maxW="228px" mb={3} key={feature.title}>
                   <Circle
-                    bg={feature.icon === BsCheck ? 'orange.400' : 'gray.100'}
+                    bg={
+                      feature.icon === BsCheck ? 'primary.400' : 'neutral.100'
+                    }
                     p="2px"
                   >
                     <Icon

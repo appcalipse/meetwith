@@ -67,7 +67,7 @@ const newTheme = {
   components: {
     Link: {
       baseStyle: {
-        color: 'orange.400',
+        color: 'primary.400',
       },
     },
     Button: {

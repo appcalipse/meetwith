@@ -38,7 +38,7 @@ export default function CallToActionWithVideo() {
                 position: 'absolute',
                 bottom: 1,
                 left: 0,
-                bg: 'orange.400',
+                bg: 'primary.400',
                 zIndex: -1,
               }}
             >
@@ -47,8 +47,8 @@ export default function CallToActionWithVideo() {
             <br />
             <Text
               bgGradient={useColorModeValue(
-                'linear(to-r,orange.400 25%, yellow.300)',
-                'linear(to-r,orange.300 25%, yellow.500)'
+                'linear(to-r,primary.400 25%, yellow.300)',
+                'linear(to-r,primary.300 25%, yellow.500)'
               )}
               bgClip="text"
               fontSize="6xl"
@@ -96,7 +96,7 @@ export default function CallToActionWithVideo() {
             top={{ base: '-15%', md: '-20%' }}
             left={0}
             zIndex={-1}
-            color={useColorModeValue('orange.50', 'orange.400')}
+            color={useColorModeValue('primary.500', 'primary.400')}
           />
           <Box
             position={'relative'}

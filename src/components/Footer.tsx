@@ -69,6 +69,7 @@ export default function SmallWithLogoLeft() {
       bg={useColorModeValue('#F8F8FA', 'gray.900')}
       color={useColorModeValue('gray.700', 'gray.200')}
       display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
+      pb={{ base: '8', md: '0' }}
     >
       <Container
         as={Stack}

@@ -84,7 +84,7 @@ function Root({
                 p={2}
                 justifyContent="center"
                 alignItems="center"
-                _hover={{ cursor: 'pointer', color: 'orange.400' }}
+                _hover={{ cursor: 'pointer', color: 'primary.400' }}
               >
                 {<Text flex={1}>{format(slot.start, 'p')}</Text>}
                 {showSelfAvailability && selfAvailabilityCheck(slot.start) ? (
