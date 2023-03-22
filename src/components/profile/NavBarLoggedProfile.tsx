@@ -52,7 +52,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
   return (
     <Flex>
       {!props.isOpen && (
-        <Button mr={4}>
+        <Button mr={4} display="none">
           <Icon as={BellIcon} width={6} height={6} />
         </Button>
       )}

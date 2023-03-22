@@ -136,7 +136,7 @@ export function Hero() {
           </Box>
           <SlideFade
             in={isHeroContainerVisible}
-            delay={1}
+            delay={0.5}
             offsetY={-50}
             unmountOnExit={false}
             reverse={false}

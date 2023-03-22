@@ -232,7 +232,7 @@ interface TypeConfigProps {
   goBack: () => void
 }
 const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
-  const color = useColorModeValue('orange.500', 'orange.400')
+  const color = useColorModeValue('primary.500', 'primary.400')
 
   const typeConfig = account.preferences!.availableTypes.find(
     type => type.id === typeId

@@ -89,7 +89,7 @@ export function Why() {
 
           <SlideFade
             in={isWhyContainerVisible}
-            delay={0.5}
+            delay={0.25}
             offsetY={-50}
             unmountOnExit={true}
           >
@@ -114,7 +114,7 @@ export function Why() {
 
           <SlideFade
             in={isWhyContainerVisible}
-            delay={1}
+            delay={0.5}
             offsetY={-50}
             unmountOnExit={true}
           >
@@ -140,7 +140,7 @@ export function Why() {
         <Flex direction="column" gridGap={{ base: '1', lg: '6' }}>
           <SlideFade
             in={isWhyContainerVisible}
-            delay={1.5}
+            delay={0.75}
             offsetY={-50}
             unmountOnExit={true}
           >
@@ -153,19 +153,19 @@ export function Why() {
               <Icon as={BsShieldShaded} color="neutral.100" w={8} h={8} />
 
               <Heading fontSize="xl" color="primary.400">
-                Meet at your own convenience
+                Secure meetings with data protection and privacy
               </Heading>
               <Text fontSize="" color="neutral.100">
-                Choose how and when you want others to meet you — Meet With
-                Wallet lets you manage your time on your terms (including any
-                external calendars you want to link).
+                Meet with Wallet does not store your meetings data. Information
+                is encrypted and only your wallet can decrypt it. Only meeting
+                participants have access to meeting private information.
               </Text>
             </VStack>
           </SlideFade>
 
           <SlideFade
             in={isWhyContainerVisible}
-            delay={2}
+            delay={1}
             offsetY={-50}
             unmountOnExit={true}
           >
@@ -178,19 +178,19 @@ export function Why() {
               <Icon as={FaRegCalendarCheck} color="neutral.100" w={8} h={8} />
 
               <Heading fontSize="xl" color="primary.400">
-                Stay informed with meeting reminders and follow ups
+                Find mutual timeslots easily
               </Heading>
               <Text fontSize="" color="neutral.100">
-                Meet with Wallet automatically notifies you of upcoming meetings
-                over email, push, Discord or Push protocol so that you don’t
-                miss a beat. Only if you want it, of course.
+                Find open timeslots in everyone’s calendar in just a few clicks,
+                reduce back-and-forth scheduling by finding the right time to
+                meet.
               </Text>
             </VStack>
           </SlideFade>
           <Box flex={1}>
             <SlideFade
               in={isWhyContainerVisible}
-              delay={2.5}
+              delay={1.25}
               offsetY={-50}
               unmountOnExit={true}
             >

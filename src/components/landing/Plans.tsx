@@ -52,7 +52,7 @@ const plansCards: PlansCard[] = [
     recurringPaymentTime: 'forever',
     isComingSoon: false,
     cta: 'Try for FREE',
-    animationDelay: 0.5,
+    animationDelay: 0.25,
     features: [
       {
         title: 'Public page for scheduling meetings',
@@ -95,7 +95,7 @@ const plansCards: PlansCard[] = [
     recurringPaymentTime: 'year',
     isComingSoon: false,
     cta: 'Go PRO',
-    animationDelay: 1,
+    animationDelay: 0.5,
     features: [
       {
         title: 'Unlimited meeting configurations',
@@ -121,41 +121,19 @@ const plansCards: PlansCard[] = [
     ],
   },
   {
-    category: 'Guild / Group',
-    price: '200',
-    recurringPaymentTime: 'year',
-    isComingSoon: true,
-    cta: 'Notify me',
-    animationDelay: 1.5,
-    features: [
-      {
-        title: 'Everything from PRO',
-        icon: BsCheck,
-      },
-      {
-        title: 'Gated scheduled meetings for members with Allow lists',
-        icon: BsCheck,
-      },
-      {
-        title: 'Custom branding',
-        icon: BsCheck,
-      },
-      {
-        title: 'And more to come',
-        icon: BsCheck,
-      },
-    ],
-  },
-  {
     category: 'DAO / Community',
     price: '200',
     recurringPaymentTime: 'Forever',
     isComingSoon: true,
     cta: 'Notify me',
-    animationDelay: 2,
+    animationDelay: 1,
     features: [
       {
-        title: 'Everything from Guild',
+        title: 'Everything from Pro',
+        icon: BsCheck,
+      },
+      {
+        title: 'Gated scheduled meetings for members with Allow lists',
         icon: BsCheck,
       },
       {
