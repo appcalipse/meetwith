@@ -72,7 +72,7 @@ export function Why() {
         mx="auto"
         direction={{ base: 'column', lg: 'row' }}
       >
-        <Flex direction="column" gridGap={{ base: '1', lg: '6' }}>
+        <Flex direction="column" justify="end" gridGap={{ base: '1', lg: '6' }}>
           <Text
             color="neutral.100"
             fontSize="4xl"

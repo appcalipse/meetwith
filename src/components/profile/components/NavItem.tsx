@@ -33,7 +33,7 @@ export const NavItem = ({
   ...rest
 }: NavItemProps) => {
   const unlockedColor = useColorModeValue('gray.link', 'gray.200')
-  const textColor = selected ? 'orange.500' : unlockedColor
+  const textColor = selected ? 'primary.500' : unlockedColor
   const unlockedIconColor = selected ? 'gray.50' : unlockedColor
   const hoverColor = useColorModeValue('gray.200', 'gray.600')
   const lockedColor = useColorModeValue('gray.400', 'gray.100')

@@ -103,7 +103,7 @@ export const TokenGateElementComponent = (
     <Flex
       position="relative"
       borderRadius={6}
-      borderColor={props.tokenInfo.itemName ? 'orange.500' : 'gray.500'}
+      borderColor={props.tokenInfo.itemName ? 'primary.500' : 'neutral.500'}
       borderWidth={2}
     >
       <Box position="absolute" right={0} top={0}>
