@@ -56,7 +56,7 @@ export function PlansMobileSlider({
                 </Text>
               </Flex>
               {card.isComingSoon && (
-                <Center h={8} bg={'orange.200'} mb={6}>
+                <Center h={8} bg={'primary.200'} mb={6}>
                   Comming Soon
                 </Center>
               )}

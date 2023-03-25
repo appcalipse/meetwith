@@ -19,7 +19,7 @@ export const DayOfMonth: React.FC<DayOfMonthProps> = ({
 }) => {
   const { date, selected, selectable, today } = dateObj
   const { getDateProps } = renderProps
-  let bg = selected || isInRange ? 'orange.200' : 'transparent'
+  let bg = selected || isInRange ? 'primary.200' : 'transparent'
   bg = !selectable ? 'gray.200' : bg
   const halfGap = 0.125 //default Chakra-gap-space-1 is 0.25rem
   return (
@@ -48,7 +48,7 @@ export const DayOfMonth: React.FC<DayOfMonthProps> = ({
         borderWidth: `${halfGap}rem`,
         borderColor: 'transparent',
       }}
-      borderColor={today ? 'orange.500' : 'transparent'}
+      borderColor={today ? 'primary.500' : 'transparent'}
     >
       {selectable ? date.getDate() : 'X'}
     </Button>

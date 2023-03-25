@@ -26,8 +26,8 @@ function Root({
   const filtered = timeSlots.filter(slot => {
     return validator ? validator(slot.start) : true
   })
-  const borderColor = useColorModeValue('gray.200', 'gray.600')
-  const circleColor = useColorModeValue('orange.500', 'orange.500')
+  const borderColor = useColorModeValue('neutral.200', 'neutral.600')
+  const circleColor = useColorModeValue('primary.500', 'primary.500')
 
   return (
     <>

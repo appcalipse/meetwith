@@ -123,7 +123,7 @@ const plansCards: PlansCard[] = [
   {
     category: 'DAO / Community',
     price: '200',
-    recurringPaymentTime: 'Forever',
+    recurringPaymentTime: 'year',
     isComingSoon: true,
     cta: 'Notify me',
     animationDelay: 1,
@@ -254,13 +254,13 @@ export function Plans() {
         justifyContent="center"
         display={{ base: 'none', sm: 'flex' }}
       >
-        {plansCards.map(plansCard => (
+        {plansCards.map(planCard => (
           <SlideFade
             in={isCardsContainerVisible}
-            delay={plansCard.animationDelay}
+            delay={planCard.animationDelay}
             offsetY={-50}
             reverse={false}
-            key={plansCard.category}
+            key={planCard.category}
           >
             <Flex
               background="rgba(251, 199, 183, 0.15)"
@@ -271,29 +271,30 @@ export function Plans() {
               flexDirection="column"
               justify="space-between"
             >
-              <Box px={6} py={6}>
+              <Box px={14} py={6}>
                 <Text fontSize="lg" color="primary.400" mb={2}>
-                  {plansCard.category}
+                  {planCard.category}
                 </Text>
                 <Flex mb={6}>
                   <Text fontSize="3xl" fontWeight="bold" color="neutral.100">
-                    ${plansCard.price}
+                    ${planCard.price}
                   </Text>
                   <Text
                     fontSize="md"
                     fontWeight="bold"
                     color="neutral.100"
                     ml={2}
+                    mt={2}
                   >
-                    / {plansCard.recurringPaymentTime}
+                    / {planCard.recurringPaymentTime}
                   </Text>
                 </Flex>
-                {plansCard.isComingSoon && (
-                  <Center h={8} bg={'primary.200'} mb={6}>
+                {planCard.isComingSoon && (
+                  <Center h={8} bg={'primary.200'} mb={6} color="neutral.700">
                     Comming Soon
                   </Center>
                 )}
-                {plansCard.features.map(feature => (
+                {planCard.features.map(feature => (
                   <HStack
                     gridGap="10px"
                     maxW="228px"
@@ -325,13 +326,13 @@ export function Plans() {
                 p={6}
                 justifyContent="left"
                 rightIcon={<ArrowForwardIcon />}
-                color={plansCard.isComingSoon ? 'neutral.900' : 'neutral.50'}
+                color={planCard.isComingSoon ? 'neutral.900' : 'neutral.50'}
                 colorScheme={
-                  plansCard.isComingSoon ? 'grayButton' : 'orangeButton'
+                  planCard.isComingSoon ? 'grayButton' : 'orangeButton'
                 }
-                onClick={() => handleCardButton(plansCard.category)}
+                onClick={() => handleCardButton(planCard.category)}
               >
-                {plansCard.cta}
+                {planCard.cta}
               </Button>
             </Flex>
           </SlideFade>
