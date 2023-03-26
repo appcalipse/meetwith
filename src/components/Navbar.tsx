@@ -24,6 +24,7 @@ import { useLogin } from '../session/login'
 import ConnectWalletDialog from './ConnectWalletDialog'
 import MWWButton from './MWWButton'
 import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
+import { ThemeSwitcher } from './ThemeSwitcher'
 
 export const Navbar = () => {
   const router = useRouter()
@@ -74,7 +75,7 @@ export const Navbar = () => {
       bg={'transparent'}
     >
       <Flex
-        color={useColorModeValue('gray.600', 'white')}
+        color={useColorModeValue('black', 'white')}
         minH={'60px'}
         py="2"
         px="4"
@@ -156,6 +157,7 @@ export const Navbar = () => {
               >
                 <Icon as={BiMenuAltRight} width={6} height={6} />
               </Button>
+              {activeLink !== '/landing' && <ThemeSwitcher />}
             </Stack>
           </Flex>
         </Container>
@@ -180,7 +182,8 @@ interface DesktopNavProps {
 
 const DesktopNav = ({ activeLink, handleSetActiveLink }: DesktopNavProps) => {
   const { logged } = useContext(AccountContext)
-  const linkHoverColor = useColorModeValue('gray.800', 'white')
+  const linkHoverColor = 'primary.400'
+  const linkColor = useColorModeValue('neutral.800', 'neutral.0')
 
   return (
     <Stack
@@ -198,11 +201,7 @@ const DesktopNav = ({ activeLink, handleSetActiveLink }: DesktopNavProps) => {
                 p={2}
                 fontSize={'sm'}
                 fontWeight={500}
-                color={
-                  activeLink.includes(navItem.href)
-                    ? 'primary.500'
-                    : 'neutral.0'
-                }
+                color={activeLink === '/landing' ? 'neutral.0' : linkColor}
                 _hover={{
                   textDecoration: 'none',
                   color: linkHoverColor,
@@ -326,6 +325,7 @@ const MobileNav = ({
             <Button onClick={doLogout} variant="link">
               Logout
             </Button>
+            <ThemeSwitcher />
           </Flex>
         ) : (
           <MWWButton

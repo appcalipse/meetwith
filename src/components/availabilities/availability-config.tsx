@@ -99,7 +99,7 @@ const AvailabilityConfig: React.FC = () => {
       <Button
         isLoading={loading}
         alignSelf="start"
-        colorScheme="orangeButton"
+        colorScheme="primary"
         color="neutral.50"
         onClick={saveAvailabilities}
       >

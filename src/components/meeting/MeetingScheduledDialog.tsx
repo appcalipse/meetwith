@@ -118,7 +118,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                     your notifications.
                   </Text>
                   <Button
-                    colorScheme="orangeButton"
+                    colorScheme="primary"
                     variant="outline"
                     size="small"
                     p={2}

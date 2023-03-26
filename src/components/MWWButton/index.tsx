@@ -6,7 +6,7 @@ const MWWButton: React.FC<ButtonProps & LinkProps> = prop => {
     <Button
       {...prop}
       color={'neutral.50'}
-      colorScheme="orangeButton"
+      colorScheme="primary"
       leftIcon={<BiWallet />}
     />
   )

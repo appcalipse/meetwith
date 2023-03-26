@@ -146,7 +146,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
         <HStack justifyContent="flex-start">
           <Switch
             size="lg"
-            colorScheme="orangeButton"
+            colorScheme="primary"
             mr="4"
             onChange={onSwitch}
             isChecked={calendars[0].sync}

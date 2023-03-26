@@ -95,7 +95,7 @@ const Meetings: React.FC = () => {
         {!noMoreFetch && !firstFetch && (
           <Button
             isLoading={loading}
-            colorScheme="orangeButton"
+            colorScheme="primary"
             variant="outline"
             alignSelf="center"
             my={4}
@@ -197,8 +197,7 @@ const Meetings: React.FC = () => {
               afterClose
             )
           }
-          colorScheme="orangeButton"
-          color="neutral.50"
+          colorScheme="primary"
           display={{ base: 'none', md: 'flex' }}
           mt={{ base: 4, md: 0 }}
           mb={4}
@@ -216,7 +215,7 @@ const Meetings: React.FC = () => {
             afterClose
           )
         }
-        colorScheme="orangeButton"
+        colorScheme="primary"
         display={{ base: 'flex', md: 'none' }}
         mb={8}
         leftIcon={<FaPlus />}
