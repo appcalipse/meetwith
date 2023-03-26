@@ -90,7 +90,7 @@ const plansCards: PlansCard[] = [
     ],
   },
   {
-    category: 'Pro',
+    category: 'PRO',
     price: '30',
     recurringPaymentTime: 'year',
     isComingSoon: false,
@@ -272,7 +272,12 @@ export function Plans() {
               justify="space-between"
             >
               <Box px={14} py={6}>
-                <Text fontSize="lg" color="primary.400" mb={2}>
+                <Text
+                  fontSize="xl"
+                  fontWeight={'bold'}
+                  color="primary.400"
+                  mb={2}
+                >
                   {planCard.category}
                 </Text>
                 <Flex mb={6}>
@@ -300,10 +305,12 @@ export function Plans() {
                     maxW="228px"
                     mb={3}
                     key={feature.title}
+                    alignItems="flex-start"
                   >
                     <Circle
                       bg={feature.icon === BsCheck ? 'primary.400' : 'gray.100'}
                       p="2px"
+                      mt="4px"
                     >
                       <Icon
                         as={feature.icon}
@@ -312,7 +319,7 @@ export function Plans() {
                         height="12px"
                       />
                     </Circle>
-                    <Text fontSize="sm" color="neutral.100">
+                    <Text fontSize="md" color="neutral.100">
                       {feature.title}
                     </Text>
                   </HStack>
@@ -347,7 +354,7 @@ export function Plans() {
       </Box>
 
       <Text fontSize="2xl" color="neutral.100">
-        Start for free, go Pro, or power your DAO with more organization and
+        Start for free, go PRO, or power your DAO with more organization and
         transparency.
       </Text>
 

@@ -95,7 +95,7 @@ export default function Pricing() {
           Options that fit your needs
         </Heading>
         <Text fontSize="lg" color={useColorModeValue('gray.500', 'gray.300')}>
-          Start for free, go Pro, or power your DAO with more organization and
+          Start for free, go PRO, or power your DAO with more organization and
           transparency.
         </Text>
       </VStack>
