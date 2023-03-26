@@ -25,7 +25,7 @@ const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
   return (
     <Select
       value={tz}
-      colorScheme="orangeButton"
+      colorScheme="primary"
       onChange={_onChange}
       options={tzs}
     />

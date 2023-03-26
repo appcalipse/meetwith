@@ -566,7 +566,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                   disabled={participants.length === 0}
                   size="xs"
                   w="100%"
-                  colorScheme="orangeButton"
+                  colorScheme="primary"
                   variant="outline"
                 >
                   Find the time that works best for participants
@@ -597,7 +597,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                       key={index}
                       variant={isSelected ? 'solid' : 'outline'}
                       onClick={() => selectTime(timeSlot)}
-                      colorScheme={isSelected ? 'orangeButton' : 'gray'}
+                      colorScheme={isSelected ? 'primary' : 'gray'}
                     >
                       {format(timeSlot.start, 'PPp')}
                     </Button>
@@ -637,7 +637,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                 <Switch
                   display="flex"
                   id="video-conference"
-                  colorScheme={'orangeButton'}
+                  colorScheme="primary"
                   defaultChecked={useHuddle}
                   isChecked={useHuddle}
                   onChange={() => setHuddle(value => !value)}
@@ -717,7 +717,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           )}
           <Button
             onClick={scheduleOrUpdate}
-            colorScheme={'orangeButton'}
+            colorScheme="primary"
             color="neutral.50"
             isLoading={isScheduling}
             disabled={isCancelling}

@@ -1,5 +1,6 @@
 import { Button } from '@chakra-ui/button'
 import { useColorMode, useColorModeValue } from '@chakra-ui/color-mode'
+import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import { Stack } from '@chakra-ui/layout'
 import { Switch } from '@chakra-ui/switch'
 import React from 'react'
@@ -23,17 +24,21 @@ export const ThemeSwitcher: React.FC = () => {
         alignItems="center"
         direction="row"
       >
-        <BsSun />
+        <SunIcon
+          color={colorMode === 'light' ? 'primary.400' : 'neutral.300'}
+        />
         <Switch
           data-testid="change-theme"
           pt={1}
-          colorScheme="orangeButton"
+          colorScheme="none"
           size="md"
           onChange={doToggle}
           defaultChecked={colorMode === 'light' ? false : true}
           isChecked={colorMode === 'light' ? false : true}
         />
-        <BsMoon />
+        <MoonIcon
+          color={colorMode === 'dark' ? 'primary.400' : 'neutral.300'}
+        />
       </Stack>
       <Stack
         display={{ base: 'flex', md: 'none' }}

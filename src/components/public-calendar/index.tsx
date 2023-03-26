@@ -613,7 +613,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         teamMeetingRequest={teamMeetingRequest}
         url={url}
       />
-      <Container maxW="7xl" mt={32} flex={1}>
+      <Container maxW="7xl" mt={32} flex={1} minH="71vh">
         <Box>
           <Flex wrap="wrap" justifyContent="center">
             <Box
@@ -755,7 +755,7 @@ const RescheduleInfoBox: React.FC<{
 
           <Text mt={2}>
             Select another time for the meeting, or{' '}
-            <Button variant="link" colorScheme="orangeButton">
+            <Button variant="link" colorScheme="primary">
               cancel
             </Button>{' '}
             it

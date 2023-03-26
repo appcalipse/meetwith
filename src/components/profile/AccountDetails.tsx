@@ -295,7 +295,7 @@ const AccountDetails: React.FC = () => {
       <Spacer />
       <Button
         isLoading={loading}
-        colorScheme="orangeButton"
+        colorScheme="primary"
         color="neutral.50"
         onClick={saveDetails}
       >
@@ -426,7 +426,7 @@ export const SubscriptionCard: React.FC<SubscriptioCardProps> = ({
           <Button
             mt={8}
             isFullWidth
-            colorScheme="orangeButton"
+            colorScheme="primary"
             color="neutral.50"
             disabled={active}
             onClick={() => onClick()}

@@ -93,7 +93,7 @@ const DicordNotificationConfig: React.FC<Props> = ({
     <VStack alignItems="start" flex={1} mb={8}>
       <HStack py={4}>
         <Switch
-          colorScheme="orangeButton"
+          colorScheme="primary"
           size="md"
           isChecked={notificationOn}
           onChange={e => setNotificationsOn(e.target.checked)}
@@ -129,7 +129,7 @@ const DicordNotificationConfig: React.FC<Props> = ({
                   isLoading={loading}
                   alignSelf="start"
                   variant="outline"
-                  colorScheme="orangeButton"
+                  colorScheme="primary"
                   href={`https://discord.com/api/oauth2/authorize?client_id=${
                     process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
                   }&redirect_uri=${encodeURIComponent(
@@ -145,7 +145,7 @@ const DicordNotificationConfig: React.FC<Props> = ({
                   isLoading={loading}
                   alignSelf="start"
                   variant="outline"
-                  colorScheme="orangeButton"
+                  colorScheme="primary"
                   href={MWW_DISCORD_SERVER}
                 >
                   Join the server

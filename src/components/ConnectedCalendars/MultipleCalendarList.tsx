@@ -75,7 +75,7 @@ const MultipleCalendarList: React.FC<MultipleCalendarListProps> = props => {
           >
             <Checkbox
               flex={1}
-              colorScheme="orangeButton"
+              colorScheme="primary"
               isChecked={calendar.enabled}
               onChange={e => toggleCalendar(calendar)}
               mb={{ base: 4, md: 0 }}
@@ -109,7 +109,7 @@ const MultipleCalendarList: React.FC<MultipleCalendarListProps> = props => {
               </Text>
               <Switch
                 size="md"
-                colorScheme="orangeButton"
+                colorScheme="primary"
                 mr="4"
                 isChecked={calendar.enabled && calendar.sync}
                 onChange={() => toggleAddMeetingsToCalendar(calendar)}

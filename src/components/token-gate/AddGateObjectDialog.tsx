@@ -172,7 +172,7 @@ export const AddGateObjectDialog: React.FC<
           </ModalBody>
           <ModalFooter>
             <Button
-              colorScheme="orangeButton"
+              colorScheme="primary"
               color="neutral.50"
               onClick={save}
               isLoading={loading}

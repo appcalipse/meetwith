@@ -123,7 +123,7 @@ const MeetingTypesConfig: React.FC = () => {
             {!isPro && (
               <Text pb="6">
                 <NextLink href="/dashboard/details" shallow passHref>
-                  <Link colorScheme="orangeButton" fontWeight="bold">
+                  <Link colorScheme="primary" fontWeight="bold">
                     Go PRO
                   </Link>
                 </NextLink>{' '}
@@ -132,7 +132,7 @@ const MeetingTypesConfig: React.FC = () => {
             )}
             <Button
               disabled={!isPro}
-              colorScheme="orangeButton"
+              colorScheme="primary"
               color="neutral.50"
               onClick={createType}
             >
@@ -214,7 +214,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
           <CopyLinkButton url={url} />
           <Button
             flex={1}
-            colorScheme="orangeButton"
+            colorScheme="primary"
             color="neutral.50"
             onClick={openType}
           >
@@ -269,7 +269,7 @@ const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
       <Button
         isLoading={loading}
         alignSelf="start"
-        colorScheme="orangeButton"
+        colorScheme="primary"
         color="neutral.50"
         onClick={save}
       >
