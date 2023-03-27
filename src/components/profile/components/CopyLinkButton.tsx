@@ -39,7 +39,7 @@ export const CopyLinkButton = ({
       <Button
         flex={1}
         color="primary.500"
-        borderColor="priamry.500"
+        borderColor="primary.500"
         variant="outline"
         onClick={copyLink}
         {...(withIcon && { rightIcon: <FaLink /> })}

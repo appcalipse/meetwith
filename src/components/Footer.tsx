@@ -63,7 +63,6 @@ const SocialButton = ({
 
 export default function SmallWithLogoLeft() {
   const router = useRouter()
-  console.log(router.pathname)
   const footerBg = useColorModeValue('#F8F8FA', 'gray.900')
   const footerColor = useColorModeValue('gray.700', 'gray.200')
 

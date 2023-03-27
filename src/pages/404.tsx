@@ -13,13 +13,7 @@ import MWWButton from '../components/MWWButton'
 export default function NotFound() {
   return (
     <>
-      <Container
-        maxW="7xl"
-        minH="71vh"
-        mt={8}
-        flex={1}
-        my={{ base: 12, md: 24 }}
-      >
+      <Container maxW="7xl" mt={8} flex={1} my={{ base: 12, md: 24 }}>
         <VStack alignItems="center" py={10} px={6}>
           <Heading
             display="inline-block"

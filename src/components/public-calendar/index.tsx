@@ -613,7 +613,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         teamMeetingRequest={teamMeetingRequest}
         url={url}
       />
-      <Container maxW="7xl" mt={32} flex={1} minH="71vh">
+      <Container maxW="7xl" mt={32} flex={1}>
         <Box>
           <Flex wrap="wrap" justifyContent="center">
             <Box
