@@ -6,7 +6,7 @@ import { Navbar } from '../components/Navbar'
 
 export const BaseLayout: React.FC = ({ children }) => {
   return (
-    <Box>
+    <Box minH="100vh" display="flex" flexDir="column">
       <Navbar />
       {children}
       <Footer />
