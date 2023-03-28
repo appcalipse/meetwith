@@ -2,10 +2,10 @@ import { Container } from '@chakra-ui/react'
 import type { NextPage } from 'next'
 import React from 'react'
 
-import FAQ from '../components/landing/FAQ'
-import Features from '../components/landing/Features'
-import Hero from '../components/landing/Hero'
-import Pricing from '../components/landing/Pricing'
+import FAQ from '../components/landing_old/FAQ'
+import Features from '../components/landing_old/Features'
+import Hero from '../components/landing_old/Hero'
+import Pricing from '../components/landing_old/Pricing'
 import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
 
 const Home: NextPage = () => {
