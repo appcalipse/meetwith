@@ -358,6 +358,7 @@ const AccountDetails: React.FC = () => {
         onDialogClose={() => setIsDialogOpen(false)}
         cancelDialogRef={cancelDialogRef}
         onSuccessPurchase={subsPurchased}
+        currentSubscription={currentAccount?.subscriptions[0]}
       />
     </VStack>
   )
@@ -431,7 +432,7 @@ export const SubscriptionCard: React.FC<SubscriptioCardProps> = ({
             disabled={active}
             onClick={() => onClick()}
           >
-            {active ? 'Extend (coming soon)' : `Subscribe to ${planInfo!.name}`}
+            {active ? 'Extend' : `Subscribe to ${planInfo!.name}`}
           </Button>
         )}
       </Box>
