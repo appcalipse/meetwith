@@ -255,7 +255,7 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
           <VStack alignItems="flex-start">
             <Text py="3">
               <NextLink href="/dashboard/details" shallow passHref>
-                <Link colorScheme="orange" fontWeight="bold">
+                <Link colorScheme="primary" fontWeight="bold">
                   Go PRO
                 </Link>
               </NextLink>{' '}
@@ -268,7 +268,7 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
       <FormControl>
         <HStack py={4}>
           <Switch
-            colorScheme="orange"
+            colorScheme="primary"
             size="md"
             isChecked={isPrivate}
             onChange={e => setPrivate(e.target.checked)}

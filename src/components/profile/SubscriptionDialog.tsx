@@ -429,7 +429,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
         <ModalFooter justifyContent="center">
           <Button
-            colorScheme="orange"
+            colorScheme="primary"
             alignSelf="flex-center"
             loadingText={
               txRunning

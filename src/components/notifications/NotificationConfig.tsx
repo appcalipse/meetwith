@@ -215,7 +215,7 @@ const NotificationsConfig: React.FC = () => {
         <>
           <HStack py={4} alignItems="center">
             <Switch
-              colorScheme="orange"
+              colorScheme="primary"
               size="md"
               isChecked={emailNotifications}
               onChange={e => setEmailNotifications(e.target.checked)}
@@ -248,7 +248,7 @@ const NotificationsConfig: React.FC = () => {
 
           <HStack py={2}>
             <Switch
-              colorScheme="orange"
+              colorScheme="primary"
               size="md"
               isChecked={pushOptedIn?.opted && epnsNotifications}
               onChange={e => onPushChange(e.target.checked)}
@@ -283,7 +283,8 @@ const NotificationsConfig: React.FC = () => {
           <Button
             isLoading={loading}
             alignSelf="start"
-            colorScheme="orange"
+            colorScheme="primary"
+            color="neutral.50"
             onClick={updateNotifications}
           >
             Save preferences

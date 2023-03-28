@@ -173,7 +173,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           mt="10"
           isLoading={loading}
           disabled={loading}
-          colorScheme="orange"
+          colorScheme="primary"
           onClick={onSaveOrUpdate}
         >
           Connect

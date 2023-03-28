@@ -105,7 +105,7 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
                     onChange(format(it, 'p'))
                     setIsEditing.off()
                   }}
-                  _hover={{ color: 'orange.500' }}
+                  _hover={{ color: 'primary.500' }}
                 >
                   <Text>{format(it, 'p')}</Text>
                 </Button>
