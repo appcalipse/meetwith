@@ -105,7 +105,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     setShowPickTime(true)
   }
 
-  const color = useColorModeValue('orange.500', 'orange.400')
+  const color = useColorModeValue('primary.500', 'primary.400')
 
   let validator: (date: Date) => boolean
   if (availabilityInterval) {

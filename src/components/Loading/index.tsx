@@ -29,8 +29,8 @@ const Loading: React.FC<{ label?: string }> = ({ label }) => {
           width="6rem"
           height="6rem"
           border="1px solid transparent"
-          borderTopColor="orange.400"
-          borderBottomColor="orange.400"
+          borderTopColor="primary.400"
+          borderBottomColor="primary.400"
           borderRadius="50%"
           animation={`${spin} 2s ease infinite`}
         ></Box>
