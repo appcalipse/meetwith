@@ -27,6 +27,7 @@ import {
   AcceptedToken,
   AcceptedTokenInfo,
   ChainInfo,
+  getChainInfo,
   SupportedChain,
   supportedChains,
 } from '../../types/chains'
@@ -43,7 +44,7 @@ import {
 } from '../../utils/subscription_manager'
 
 interface IProps {
-  extendSubscription?: boolean
+  currentSubscription?: Subscription
   isDialogOpen: boolean
   cancelDialogRef: React.MutableRefObject<any>
   onDialogClose: () => void
@@ -51,7 +52,7 @@ interface IProps {
 }
 
 const SubscriptionDialog: React.FC<IProps> = ({
-  extendSubscription,
+  currentSubscription,
   isDialogOpen,
   cancelDialogRef,
   onDialogClose,
@@ -60,7 +61,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const { currentAccount } = useContext(AccountContext)
   const [domain, setDomain] = useState<string>('')
   const [currentChain, setCurrentChain] = useState<ChainInfo | undefined>(
-    undefined
+    currentSubscription ? getChainInfo(currentSubscription.chain) : undefined
   )
   const [currentToken, setCurrentToken] = useState<
     AcceptedTokenInfo | undefined
@@ -121,7 +122,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
     setDomain((await getActiveProSubscription(currentAccount!))!.domain)
   }
 
-  if (extendSubscription && !domain) {
+  if (currentSubscription && !domain) {
     updateDomain()
   }
 
@@ -283,8 +284,13 @@ const SubscriptionDialog: React.FC<IProps> = ({
   )
 
   const renderBookingLink = () => {
-    if (extendSubscription) {
-      return
+    if (currentSubscription) {
+      return (
+        <FormControl>
+          <Text pt={2}>Booking link</Text>
+          <Input value={domain} type="text" disabled />
+        </FormControl>
+      )
     }
 
     return (
@@ -294,7 +300,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
           value={domain}
           ref={inputRef}
           type="text"
-          placeholder={extendSubscription ? domain : 'your.custom.link'}
+          placeholder="your.custom.link"
           onChange={e =>
             setDomain(
               e.target.value
@@ -315,22 +321,28 @@ const SubscriptionDialog: React.FC<IProps> = ({
     )
   }
 
-  return (
-    <Modal
-      blockScrollOnMount={false}
-      size={'xl'}
-      isOpen={isDialogOpen}
-      onClose={onDialogClose}
-      initialFocusRef={inputRef}
-    >
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>
-          {extendSubscription ? 'Extend Subscription' : 'Subscribe to Pro'}
-        </ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          {renderBookingLink()}
+  const renderChainInfo = () => {
+    if (currentSubscription) {
+      return (
+        <>
+          <FormControl>
+            <Text pt={5}>You subscription lives in</Text>
+          </FormControl>
+
+          <HStack justify="flex-start" pt={4}>
+            <Button
+              key={currentSubscription.chain}
+              leftIcon={<Image src={getChainIcon(currentSubscription.chain)} />}
+              variant="outline"
+            >
+              {currentChain?.name}
+            </Button>
+          </HStack>
+        </>
+      )
+    } else {
+      return (
+        <>
           <FormControl>
             <Text pt={5}>Which chain do you want your subscription at?</Text>
             <FormHelperText>
@@ -359,6 +371,28 @@ const SubscriptionDialog: React.FC<IProps> = ({
               )
             })}
           </HStack>
+        </>
+      )
+    }
+  }
+
+  return (
+    <Modal
+      blockScrollOnMount={false}
+      size={'xl'}
+      isOpen={isDialogOpen}
+      onClose={onDialogClose}
+      initialFocusRef={inputRef}
+    >
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>
+          {currentSubscription ? 'Extend Subscription' : 'Subscribe to Pro'}
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          {renderBookingLink()}
+          {renderChainInfo()}
           {currentChain && (
             <>
               <Text pt={5} pb={5}>
@@ -411,6 +445,8 @@ const SubscriptionDialog: React.FC<IProps> = ({
           >
             {needsApproval
               ? `Approve ${currentToken?.token} to be spent`
+              : currentSubscription
+              ? 'Extend'
               : 'Subscribe'}
           </Button>
         </ModalFooter>
