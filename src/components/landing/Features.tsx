@@ -1,112 +1,199 @@
-import {
-  Box,
-  Container,
-  Flex,
-  Icon,
-  Link,
-  SimpleGrid,
-  Stack,
-  Text,
-  useColorModeValue,
-} from '@chakra-ui/react'
-import { ReactElement } from 'react'
-import { FcCalendar, FcPrivacy, FcWorkflow } from 'react-icons/fc'
+import 'swiper/css'
+import 'swiper/css/pagination'
 
-interface FeatureProps {
+import { Box, Button, Heading, Text } from '@chakra-ui/react'
+import { useState } from 'react'
+import { Mousewheel, Pagination } from 'swiper'
+import { Swiper, SwiperSlide } from 'swiper/react'
+
+import { FeaturesMobileSlider } from './FeaturesMobileSlider'
+
+export interface Slides {
+  id: number
+  price: string
   title: string
-  text: string | ReactElement
-  icon: ReactElement
+  about: string
 }
 
-const Feature = ({ title, text, icon }: FeatureProps) => {
+const slides = [
+  {
+    id: 1,
+    price: 'Free',
+    title: 'Just like Calendly, but powered by Web3',
+    about:
+      'Meet with Wallet is integrated with Web3 technologies: Major L1 and L2 blockchains, IPFS, ENS, Huddle01, Push protocol and much more, providing a highly secure and private scheduling experience. It’s like Calendly, but tailor made to Web3.',
+  },
+  {
+    id: 2,
+    price: 'Free',
+    title: 'Huddle01 integration for private meetings',
+    about:
+      'Meet with anybody within your DAO, guild or NFT community using Web3 wallets, no signups and email addresses required.',
+  },
+  {
+    id: 3,
+    price: 'Free',
+    title: 'Meetings with full data privacy',
+    about:
+      'All meeting private information is encrypted on the client side, Meet with Wallet does not have access to any of the keys or decrypted information.',
+  },
+  {
+    id: 4,
+    price: 'Free',
+    title: 'Sync availability and meetings across your existing calendars',
+    about:
+      'Connect your existing personal and work calendars on Google, Apple iCloud, Office365 and more to check real-time availability. Preserve your identity while ensuring all your appointments across your calendars do not conflict.',
+  },
+  {
+    id: 5,
+    price: 'Free',
+    title: 'Automated reminders over email, Discord or Push protocol',
+    about:
+      'Receive automated reminders so you don’t miss an important meeting. Meet with Wallet supports a variety of notification options from traditional emails to decentralised alternatives.',
+  },
+  {
+    id: 6,
+    price: 'Free',
+    title: 'Best meeting slot finde',
+    about:
+      'Meet with wallet finds and proposes the best meeting slots for your group to meet, allowing much faster bookings and ensuring everyone is available.',
+  },
+  {
+    id: 7,
+    price: 'PRO',
+    title: 'Custom meeting link',
+    about:
+      'No one likes to memorize 40 character wallet addresses, neither do we. Own your identity by creating your own vanity meeting link, then share it with others in a breeze.',
+  },
+  {
+    id: 8,
+    price: 'PRO',
+    title: 'ENS, Lens protocol and unstoppable domains integration',
+    about:
+      'Fully integrated with ENS, Lens protocol and Unstoppable Domains for your calendar link and profile.',
+  },
+  {
+    id: 9,
+    price: 'PRO',
+    title: 'Unlimited booking configurations',
+    about:
+      'Create an unlimited number of booking configurations to suit your schedule and meeting preferences. Create specific meeting types for specific purposes, including private ones to be shared only with your closest friends/business partners.',
+  },
+  {
+    id: 10,
+    price: 'PRO',
+    title: 'Token-gated meetings',
+    about:
+      'Create token-gated or community meetings only for those holding a set of tokens/NFTs/POAPs. Bring your clients / community / DAO closer, for those who matter.',
+  },
+  {
+    id: 11,
+    price: 'PRO',
+    title: 'Paid meetings',
+    about:
+      'Collect payments in any token when meetings are booked - perfect for consultants, DAOs or communities for one-off or recurring events.',
+  },
+]
+
+export function Features() {
+  const [activeSlideNumber, setActiveSlideNumber] = useState(0)
+
   return (
-    <Stack>
-      <Flex
-        w={16}
-        h={16}
-        align={'center'}
-        justify={'center'}
-        color={'white'}
-        rounded={'full'}
-        bg={'gray.100'}
-        mb={1}
+    <Box
+      maxW="1360px"
+      mx="auto"
+      px={{ sm: '2', md: '18', lg: '28' }}
+      py={{ base: 8, md: 16 }}
+    >
+      <Heading fontSize="5xl" color="primary.400" mb={8}>
+        Features
+      </Heading>
+      <Box
+        className="featuresSliderContainer"
+        height="312px"
+        w="100%"
+        overflow="hidden"
+        position="relative"
+        display={{ base: 'none', md: 'inline-block' }}
       >
-        {icon}
-      </Flex>
-      <Text fontWeight={600}>{title}</Text>
-      <Text color={useColorModeValue('gray.500', 'gray.300')}>{text}</Text>
-    </Stack>
-  )
-}
-
-export default function SimpleThreeColumns() {
-  return (
-    <Container maxW="container.xl">
-      <Box p={4}>
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={10}>
-          <Feature
-            icon={<Icon as={FcCalendar} w={10} h={10} />}
-            title={'Fast and simple'}
-            text={
-              'Enough of Discord conversations to find a good time to meet. Just share your link and let the other participant pick the best time. For 1-1 or group meetings.'
-            }
-          />
-          <Feature
-            icon={<Icon as={FcPrivacy} w={10} h={10} />}
-            title={'Privacy first'}
-            text={
-              'Your private data is only accessible by you. Information is encrypted and only your wallet can decrypt it. Only meeting participants have access to meeting private info.'
-            }
-          />
-          <Feature
-            icon={<Icon as={FcWorkflow} w={10} h={10} />}
-            title={'Integrated'}
-            text={
-              <>
-                Integration with state of the art technology on the web3 space:{' '}
-                <Link
-                  href="https://ethereum.org/?source=meetwithwallet"
-                  isExternal
+        <Box position="absolute" top="160px">
+          <Text color="neutral.100" fontSize="xs">
+            <Text as="span" color="primary.400" display="block" fontSize="2xl">
+              {activeSlideNumber + 1}
+            </Text>
+            /{slides.length}
+          </Text>
+        </Box>
+        <Swiper
+          modules={[Pagination, Mousewheel]}
+          direction={'vertical'}
+          className="mySwiperTest"
+          slidesPerView={1}
+          mousewheel={true}
+          pagination={{
+            type: 'progressbar',
+          }}
+          onSlideChange={swiper => setActiveSlideNumber(swiper.activeIndex)}
+        >
+          {slides.map(slide => (
+            <SwiperSlide key={slide.id}>
+              <Box
+                bg={
+                  activeSlideNumber === slides.indexOf(slide)
+                    ? 'rgba(251, 199, 183, .15)'
+                    : 'rgba(255, 255, 255, 0.05)'
+                }
+                backdropFilter="blur(12.5px)"
+                px={6}
+                py={6}
+                minH="211px"
+                w={
+                  activeSlideNumber === slides.indexOf(slide)
+                    ? '100%'
+                    : 'fit-content'
+                }
+              >
+                <Button
+                  mb={3}
+                  colorScheme="grayButton"
+                  display={
+                    activeSlideNumber === slides.indexOf(slide)
+                      ? 'block'
+                      : 'none'
+                  }
                 >
-                  Ethereum Blockchain
-                </Link>
-                ,{' '}
-                {/* <Link
-                  href="https://arbitrum.io/?source=meetwithwallet"
-                  isExternal
+                  {slide.price}
+                </Button>
+                <Text
+                  fontSize="lg"
+                  mb={3}
+                  color={
+                    activeSlideNumber === slides.indexOf(slide)
+                      ? 'primary.400'
+                      : 'neutral.100'
+                  }
                 >
-                  Arbitrum
-                </Link> */}
-                <Link href="https://ipfs.io/?source=meetwithwallet" isExternal>
-                  IPFS
-                </Link>
-                ,{' '}
-                <Link
-                  href="https://ens.domains/?source=meetwithwallet"
-                  isExternal
+                  {slide.title}
+                </Text>
+                <Text
+                  w="90%"
+                  color="neutral.100"
+                  display={
+                    activeSlideNumber === slides.indexOf(slide)
+                      ? 'block'
+                      : 'none'
+                  }
                 >
-                  ENS
-                </Link>
-                ,{' '}
-                <Link
-                  href="https://huddle01.com/?source=meetwithwallet"
-                  isExternal
-                >
-                  Huddle
-                </Link>{' '}
-                and,{' '}
-                <Link
-                  href="https://app.push.org/?source=meetwithwallet"
-                  isExternal
-                >
-                  Push protocol
-                </Link>
-                . Much more to come.
-              </>
-            }
-          />
-        </SimpleGrid>
+                  {slide.about}
+                </Text>
+              </Box>
+            </SwiperSlide>
+          ))}
+        </Swiper>
       </Box>
-    </Container>
+      <Box display={{ base: 'inline-block', md: 'none' }}>
+        <FeaturesMobileSlider slides={slides} />
+      </Box>
+    </Box>
   )
 }

@@ -360,7 +360,7 @@ const getExistingAccountsFromDB = async (
 
 const getAccountFromDB = async (identifier: string): Promise<Account> => {
   const { data, error } = await db.supabase.rpc('fetch_account', {
-    identifier: identifier,
+    identifier: identifier.toLowerCase(),
   })
 
   if (data) {
@@ -1062,7 +1062,7 @@ export const getSubscription = async (
   const { data, error } = await db.supabase
     .from('subscriptions')
     .select()
-    .ilike('domain', domain)
+    .ilike('domain', domain.toLowerCase())
     .gt('expiry_time', new Date().toISOString())
     .order('registered_at', { ascending: true })
 
