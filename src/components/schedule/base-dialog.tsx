@@ -531,7 +531,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               <Select
                 id="duration"
                 placeholder="Duration"
-                onChange={e => setDuration(Number(e.target.value))}
+                onChange={(e: any) => setDuration(Number(e.target.value))}
                 value={duration}
               >
                 <option value={15}>15 min</option>
@@ -624,9 +624,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
             <FormLabel htmlFor="info">Information (optional)</FormLabel>
             <Textarea
               id="info"
-              type="text"
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onChange={(e: any) => setContent(e.target.value)}
               placeholder="Any information you want to share prior to the meeting?"
             />
           </FormControl>
