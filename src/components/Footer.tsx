@@ -63,17 +63,22 @@ const SocialButton = ({
 
 export default function SmallWithLogoLeft() {
   const router = useRouter()
+  const footerBg = useColorModeValue('#F8F8FA', 'gray.900')
+  const footerColor = useColorModeValue('gray.700', 'gray.200')
 
   return (
     <Box
-      bg={useColorModeValue('#F8F8FA', 'gray.900')}
-      color={useColorModeValue('gray.700', 'gray.200')}
+      bg={router.pathname.split('/')[1] === 'landing' ? 'gray.900' : footerBg}
+      color={
+        router.pathname.split('/')[1] === 'landing' ? 'gray.200' : footerColor
+      }
       display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
+      pb={{ base: '8', md: '0' }}
     >
       <Container
         as={Stack}
         maxW={'6xl'}
-        py={4}
+        py={12}
         direction={{ base: 'column', md: 'row' }}
         spacing={4}
         justify={{ base: 'center', md: 'space-between' }}

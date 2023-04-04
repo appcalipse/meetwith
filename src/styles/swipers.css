@@ -1,0 +1,41 @@
+.featuresSliderContainer {
+  mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+.mySwiperTest {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.mySwiperTest .swiper-wrapper {
+  max-height: 225px;
+  margin-left: 30px;
+}
+
+.mySwiperTest .swiper-pagination-progressbar {
+  background: #616e7c;
+}
+
+.mySwiperTest
+  .swiper-pagination-progressbar
+  .swiper-pagination-progressbar-fill {
+  background: #f46739;
+}
+
+.mySwiperTest .swiper-pagination-progressbar.swiper-pagination-vertical,
+.swiper-vertical > .swiper-pagination-progressbar {
+  height: 70%;
+}
+
+.mySwiperTestMobile {
+  height: auto !important;
+  overflow: visible !important;
+}
+.mySwiperTestMobile .swiper-wrapper {
+  max-height: 293px;
+}
+.mySwiperTestMobile .swiper-slide {
+  height: 300px !important;
+  margin-bottom: 1px;
+}

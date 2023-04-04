@@ -4,10 +4,8 @@ import {
   FlexProps,
   Icon,
   Slide,
-  SlideFade,
   Text,
   useColorModeValue,
-  useDisclosure,
 } from '@chakra-ui/react'
 import React, { useEffect } from 'react'
 import { IconType } from 'react-icons'
@@ -32,8 +30,8 @@ export const NavItem = ({
   locked,
   ...rest
 }: NavItemProps) => {
-  const unlockedColor = useColorModeValue('gray.link', 'gray.200')
-  const textColor = selected ? 'orange.link' : unlockedColor
+  const unlockedColor = useColorModeValue('gray.700', 'gray.200')
+  const textColor = selected ? 'primary.500' : unlockedColor
   const unlockedIconColor = selected ? 'gray.50' : unlockedColor
   const hoverColor = useColorModeValue('gray.200', 'gray.600')
   const lockedColor = useColorModeValue('gray.400', 'gray.100')
@@ -86,7 +84,7 @@ export const NavItem = ({
                 height="100%"
                 width={16}
                 borderRightRadius={999}
-                bgGradient="linear(to-r, orange.400, orange.500)"
+                bgGradient="linear(to-r, primary.400, primary.500)"
               />
             </Slide>
             <Icon

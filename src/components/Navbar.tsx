@@ -1,10 +1,7 @@
-import {
-  ChevronRightIcon,
-  TriangleDownIcon,
-  TriangleUpIcon,
-} from '@chakra-ui/icons'
+import { ChevronRightIcon, CloseIcon } from '@chakra-ui/icons'
 import {
   Box,
+  Button,
   Collapse,
   Container,
   Flex,
@@ -18,8 +15,9 @@ import {
   useDisclosure,
 } from '@chakra-ui/react'
 import NextLink from 'next/link'
-import { useRouter } from 'next/router'
-import React, { useContext } from 'react'
+import router, { useRouter } from 'next/router'
+import React, { useContext, useEffect, useState } from 'react'
+import { BiMenuAltRight } from 'react-icons/bi'
 
 import { AccountContext } from '../providers/AccountProvider'
 import { useLogin } from '../session/login'
@@ -30,15 +28,39 @@ import { ThemeSwitcher } from './ThemeSwitcher'
 
 export const Navbar = () => {
   const router = useRouter()
+  const { asPath } = useRouter()
 
   const { isOpen, onToggle } = useDisclosure()
 
   const { handleLogin, currentAccount, logged, loginIn } = useLogin()
 
-  const bgGradient = `linear-gradient(${useColorModeValue(
-    '#F8F8FA',
-    '#1A202C'
-  )} 30%, rgba(245, 247, 250, 0) 100%) repeat scroll 0% 0%`
+  const [backdropFilterValue, setBackdropFilterValue] = useState<string>('0')
+  const [activeLink, setActiveLink] = useState('')
+
+  function handleSetActiveLink(id: string) {
+    if (id === '/') {
+      setActiveLink('/#home')
+    } else {
+      setActiveLink(id)
+    }
+  }
+
+  useEffect(() => {
+    if (asPath === '/') {
+      setActiveLink('/#home')
+    } else {
+      setActiveLink(asPath)
+    }
+
+    const changeNavbarBackground = () => {
+      if (window.scrollY >= 10) {
+        setBackdropFilterValue('24')
+      } else if (window.scrollY >= 0) {
+        setBackdropFilterValue('0')
+      }
+    }
+    window.addEventListener('scroll', changeNavbarBackground)
+  }, [])
 
   return (
     <Box
@@ -49,13 +71,11 @@ export const Navbar = () => {
       width="100%"
       top="0"
       zIndex={999}
-      backdropFilter="blur(24px)"
-      bg={bgGradient}
+      backdropFilter={`blur(${backdropFilterValue}px)`}
+      bg={'transparent'}
     >
       <Flex
-        backdropFilter={'auto'}
-        backdropBlur={'24px'}
-        color={useColorModeValue('gray.600', 'white')}
+        color={useColorModeValue('black', 'white')}
         minH={'60px'}
         py="2"
         px="4"
@@ -64,24 +84,29 @@ export const Navbar = () => {
         <Container maxW={'7xl'}>
           <Flex alignItems="center">
             <Flex ml={{ base: -2 }} display={{ base: 'flex', md: 'none' }}>
-              <Flex alignItems="center" onClick={onToggle} cursor="pointer">
+              <Flex
+                alignItems="center"
+                onClick={() => {
+                  handleSetActiveLink('/')
+                }}
+                cursor="pointer"
+              >
                 <Image
                   width="100px"
                   p={2}
                   src="/assets/logo.svg"
                   alt="Meet with Wallet"
                 />
-
-                {isOpen ? (
-                  <Icon as={TriangleUpIcon} w={2} h={2} />
-                ) : (
-                  <Icon as={TriangleDownIcon} w={3} h={3} />
-                )}
               </Flex>
             </Flex>
             <Flex flex={{ base: 1 }}>
               <NextLink href={'/'} passHref>
-                <Link display={{ base: 'none', md: 'flex' }}>
+                <Link
+                  display={{ base: 'none', md: 'flex' }}
+                  onClick={() => {
+                    handleSetActiveLink('/')
+                  }}
+                >
                   <HStack>
                     <Image
                       width="100px"
@@ -93,7 +118,10 @@ export const Navbar = () => {
                 </Link>
               </NextLink>
               <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
-                <DesktopNav />
+                <DesktopNav
+                  activeLink={activeLink}
+                  handleSetActiveLink={handleSetActiveLink}
+                />
               </Flex>
             </Flex>
 
@@ -101,40 +129,61 @@ export const Navbar = () => {
               flex={{ base: 1, md: 0 }}
               justify={'flex-end'}
               direction={'row'}
-              spacing={6}
+              spacing={4}
             >
-              <ThemeSwitcher />
               {logged ? (
-                <NavBarLoggedProfile account={currentAccount!} />
+                <NavBarLoggedProfile
+                  account={currentAccount!}
+                  handleSetActiveLink={handleSetActiveLink}
+                />
               ) : (
                 <MWWButton
-                  size="lg"
+                  size="md"
                   onClick={() => handleLogin()}
                   isLoading={loginIn}
                 >
                   Sign in
                   <Box display={{ base: 'none', md: 'flex' }} as="span">
-                    &#160;with wallet
+                    &#160;
                   </Box>
                 </MWWButton>
               )}
+              <Button
+                onClick={onToggle}
+                width={10}
+                height={10}
+                display={{ base: 'flex', md: 'none' }}
+                zIndex="0"
+              >
+                <Icon as={BiMenuAltRight} width={6} height={6} />
+              </Button>
+              {activeLink !== '/landing' && <ThemeSwitcher />}
             </Stack>
           </Flex>
         </Container>
       </Flex>
 
       <Collapse in={isOpen} animateOpacity>
-        <MobileNav />
+        <MobileNav
+          onToggle={onToggle}
+          handleSetActiveLink={handleSetActiveLink}
+          isOpen={isOpen}
+        />
       </Collapse>
       <ConnectWalletDialog isOpen={loginIn} />
     </Box>
   )
 }
 
-const DesktopNav = () => {
+interface DesktopNavProps {
+  activeLink: string
+  handleSetActiveLink: (id: string) => void
+}
+
+const DesktopNav = ({ activeLink, handleSetActiveLink }: DesktopNavProps) => {
   const { logged } = useContext(AccountContext)
-  const linkColor = useColorModeValue('gray.600', 'gray.200')
-  const linkHoverColor = useColorModeValue('gray.800', 'white')
+  const linkHoverColor = 'primary.400'
+  const linkColor = useColorModeValue('neutral.800', 'neutral.0')
 
   return (
     <Stack
@@ -148,10 +197,11 @@ const DesktopNav = () => {
           <Box key={navItem.label}>
             <NextLink href={navItem.href ?? '#'} passHref>
               <Link
+                onClick={() => handleSetActiveLink(navItem.href)}
                 p={2}
                 fontSize={'sm'}
                 fontWeight={500}
-                color={linkColor}
+                color={activeLink === '/landing' ? 'neutral.0' : linkColor}
                 _hover={{
                   textDecoration: 'none',
                   color: linkHoverColor,
@@ -205,45 +255,111 @@ const DesktopSubNav = ({ label, href, subLabel }: NavItem) => {
   )
 }
 
-const MobileNav = () => {
-  const { logged } = useContext(AccountContext)
+interface MobileNavProps {
+  onToggle: () => void
+  handleSetActiveLink: (id: string) => void
+  isOpen: boolean
+}
+
+const MobileNav = ({
+  onToggle,
+  handleSetActiveLink,
+  isOpen,
+}: MobileNavProps) => {
+  const { handleLogin, currentAccount, logged, loginIn } = useLogin()
+  const { logout } = useContext(AccountContext)
+
+  const doLogout = async () => {
+    await logout()
+    await router.push('/')
+    onToggle()
+  }
 
   return (
     <Stack
+      spacing={8}
       id="navbar-mobile"
+      pos="fixed"
+      top="0"
+      width="100%"
+      height="100vh"
       bg={useColorModeValue('white', 'gray.800')}
       p={4}
-      display={{ md: 'none' }}
       borderBottom={1}
       borderStyle={'solid'}
       borderColor={useColorModeValue('gray.200', 'gray.900')}
     >
-      {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
-        navItem => (
-          <MobileNavItem key={navItem.label} {...navItem} />
-        )
-      )}
+      <Flex alignItems="center" justify="space-between" mb={8}>
+        <Flex alignItems="center" cursor="pointer">
+          <Image
+            width="100px"
+            p={2}
+            src="/assets/logo.svg"
+            alt="Meet with Wallet"
+          />
+        </Flex>
+
+        <Button onClick={onToggle} width={10} height={10} bg="transparent">
+          <Icon as={CloseIcon} width={3} height={3} />
+        </Button>
+      </Flex>
+      <Stack>
+        {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
+          navItem => (
+            <MobileNavItem
+              onToggle={onToggle}
+              key={navItem.label}
+              {...navItem}
+            />
+          )
+        )}
+      </Stack>
+      <Flex justify="center">
+        {logged ? (
+          <Flex direction="column" gridGap={8}>
+            <NavBarLoggedProfile
+              isOpen={isOpen}
+              account={currentAccount!}
+              handleSetActiveLink={handleSetActiveLink}
+            />
+            <Button onClick={doLogout} variant="link">
+              Logout
+            </Button>
+            <ThemeSwitcher />
+          </Flex>
+        ) : (
+          <MWWButton
+            size="md"
+            onClick={() => handleLogin()}
+            isLoading={loginIn}
+          >
+            Sign in
+            <Box display={{ base: 'none', md: 'flex' }} as="span">
+              &#160;
+            </Box>
+          </MWWButton>
+        )}
+      </Flex>
     </Stack>
   )
 }
 
-const MobileNavItem = ({ label, href }: NavItem) => {
+const MobileNavItem = ({ label, href, onToggle }: NavItem) => {
   return (
     <Stack spacing={4}>
       <Flex
+        onClick={onToggle}
+        bg="neutral.100"
         py={2}
         as={Link}
         href={href ?? '#'}
-        justify={'space-between'}
+        justify={'center'}
         align={'center'}
         _hover={{
           textDecoration: 'none',
         }}
       >
-        <Text
-          fontWeight={600}
-          color={useColorModeValue('gray.600', 'gray.200')}
-        >
+        <Text fontWeight={600} color="neutral.800">
           {label}
         </Text>
       </Flex>
@@ -254,6 +370,7 @@ const MobileNavItem = ({ label, href }: NavItem) => {
 type NavItem = {
   label: string
   href: string
+  onToggle?: () => void
   logged?: boolean
   subLabel?: string
 }
@@ -269,11 +386,19 @@ const NAV_ITEMS: Array<NavItem> = [
     href: '/#home',
   },
   {
+    label: 'Features',
+    href: '/#features',
+  },
+  {
     label: 'Plans',
     href: '/#pricing',
   },
   {
     label: 'FAQ',
     href: '/#faq',
+  },
+  {
+    label: 'Contact',
+    href: '/#contact',
   },
 ]

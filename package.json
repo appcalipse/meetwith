@@ -86,7 +86,9 @@
     "usehooks-ts": "^2.6.0",
     "uuid": "^8.3.2",
     "web3": "^1.6.0",
-    "web3modal": "^1.9.4"
+    "web3modal": "^1.9.4",
+    "react-intersection-observer": "^9.4.1",
+    "swiper": "^8.4.5"
   },
   "devDependencies": {
     "@babel/core": "^7.16.0",
@@ -105,7 +107,7 @@
     "@types/node": "16.11.7",
     "@types/nodemailer": "^6.4.4",
     "@types/react": "17.0.34",
-    "@types/react-dom": "latest",
+    "@types/react-dom": "17.0.9",
     "@types/react-virtualized": "^9.21.15",
     "@types/uuid": "^8.3.1",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
@@ -130,6 +132,11 @@
     "next-sitemap": "^3.1.11",
     "prettier": "^2.5.0",
     "typescript": "4.4.4"
+  },
+  "resolutions": {
+    "ethereumjs-abi": "https://registry.npmjs.org/ethereumjs-abi/-/ethereumjs-abi-0.6.8.tgz",
+    "@types/react": "17.0.34",
+    "@types/react-dom": "17.0.9"
   },
   "_moduleAliases": {
     "@": "src"

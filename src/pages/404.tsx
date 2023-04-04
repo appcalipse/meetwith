@@ -13,13 +13,13 @@ import MWWButton from '../components/MWWButton'
 export default function NotFound() {
   return (
     <>
-      <Container maxW="7xl" mt={8} flex={1}>
+      <Container maxW="7xl" mt={8} flex={1} my={{ base: 12, md: 24 }}>
         <VStack alignItems="center" py={10} px={6}>
           <Heading
             display="inline-block"
             as="h2"
             size="2xl"
-            bgGradient="linear(to-r, orange.400, orange.600)"
+            bgGradient="linear(to-r, primary.400, primary.600)"
             backgroundClip="text"
           >
             Ops
@@ -33,7 +33,7 @@ export default function NotFound() {
           <Spacer />
           <MWWButton
             onClick={() => router.push('/')}
-            colorScheme="orange"
+            colorScheme="primary"
             color="white"
             variant="solid"
           >

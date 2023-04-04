@@ -70,7 +70,7 @@ const NewMeetingTypeDialog: React.FC<IProps> = ({
                 Cancel
               </Button>
               <Button
-                colorScheme="orange"
+                colorScheme="primary"
                 onClick={() => createMeetingType()}
                 ml={3}
                 isLoading={loading}
