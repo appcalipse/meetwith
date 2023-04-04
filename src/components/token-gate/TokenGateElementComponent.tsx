@@ -120,7 +120,7 @@ export const TokenGateElementComponent = (
           <FormLabel>Type</FormLabel>
           <Select
             value={props.tokenInfo.type}
-            onChange={e => setType(e.target.value as GateInterface)}
+            onChange={(e: any) => setType(e.target.value as GateInterface)}
           >
             <option value={GateInterface.NATIVE}>
               Chain&apos;s native token
@@ -245,7 +245,7 @@ const TokenForm: React.FC<{
         <FormLabel>Chain</FormLabel>
         <Select
           value={tokenInfo?.chain}
-          onChange={e =>
+          onChange={(e: any) =>
             !loadingToken && setChain(e.target.value as SupportedChain)
           }
         >
@@ -327,7 +327,6 @@ const TokenForm: React.FC<{
             inputMode="decimal"
             pattern="[0-9]*(.[0-9]+)?"
             placeholder="0.0"
-            autoComplete="off"
             autoCorrect="off"
             min={0}
           >
