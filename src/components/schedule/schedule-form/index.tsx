@@ -123,7 +123,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
       <FormLabel>Information (optional)</FormLabel>
       <Textarea
-        type="text"
         disabled={isScheduling}
         placeholder="Any information you want to share prior to the meeting?"
         value={content}
@@ -138,7 +137,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           mr={4}
           isDisabled={isScheduling}
           defaultChecked={!customMeeting}
-          onChange={e => setCustomMeeting(!e.target.checked)}
+          onChange={(e: any) => setCustomMeeting(!e.target.checked)}
         />
         <FormLabel mb="0">
           <Text>
@@ -197,7 +196,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           Please{' '}
           <Button
             variant={ButtonType.LINK}
-            colorScheme={Color.ORANGE}
+            colorScheme="primary"
             onClick={() => handleScheduleType(SchedulingType.REGULAR)}
           >
             sign in with wallet
@@ -205,7 +204,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           or{' '}
           <Button
             variant={ButtonType.LINK}
-            colorScheme={Color.ORANGE}
+            colorScheme="primary"
             onClick={() => handleScheduleType(SchedulingType.GUEST)}
           >
             schedule as guest
@@ -241,7 +240,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         }
         isLoading={isScheduling || isSchedulingExternal}
         onClick={handleConfirm}
-        colorScheme={Color.ORANGE}
+        colorScheme="primary"
         mt={2}
       >
         {isScheduling ? 'Scheduling...' : 'Schedule'}

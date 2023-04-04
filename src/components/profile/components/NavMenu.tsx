@@ -114,7 +114,7 @@ export const NavMenu: React.FC<{
   }
 
   return (
-    <Box borderRadius={{ base: 0, md: 16 }} bgColor={menuBg} mb={8}>
+    <Box borderRadius={{ base: 0, md: 16 }} bgColor={menuBg} mb={8} zIndex="10">
       {!isMenuOpen ? (
         <VStack
           alignItems="center"

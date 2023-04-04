@@ -96,7 +96,7 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
     >
       <Checkbox
         pt={2}
-        colorScheme="orange"
+        colorScheme="primary"
         isChecked={isSelected}
         onChange={e => setSelected(e.target.checked)}
         minW="140px"

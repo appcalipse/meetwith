@@ -48,6 +48,7 @@ const IPFSLink: React.FC<IPFSLinkProps> = ({ ipfsHash, title }) => {
               textAlign="start"
               whiteSpace="nowrap"
               overflow="hidden"
+              color="primary.400"
             >
               {ipfsHash}
             </Text>

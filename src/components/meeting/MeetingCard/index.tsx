@@ -294,7 +294,7 @@ const DecodedInfo: React.FC<{
             </Box>
           )}
           <Button
-            colorScheme="orange"
+            colorScheme="primary"
             variant="outline"
             onClick={() =>
               downloadIcs(decryptedMeeting, currentAccount!.address)

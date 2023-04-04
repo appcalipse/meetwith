@@ -531,7 +531,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               <Select
                 id="duration"
                 placeholder="Duration"
-                onChange={e => setDuration(Number(e.target.value))}
+                onChange={(e: any) => setDuration(Number(e.target.value))}
                 value={duration}
               >
                 <option value={15}>15 min</option>
@@ -566,7 +566,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                   disabled={participants.length === 0}
                   size="xs"
                   w="100%"
-                  colorScheme="orange"
+                  colorScheme="primary"
                   variant="outline"
                 >
                   Find the time that works best for participants
@@ -597,7 +597,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                       key={index}
                       variant={isSelected ? 'solid' : 'outline'}
                       onClick={() => selectTime(timeSlot)}
-                      colorScheme={isSelected ? 'orange' : 'gray'}
+                      colorScheme={isSelected ? 'primary' : 'gray'}
                     >
                       {format(timeSlot.start, 'PPp')}
                     </Button>
@@ -624,9 +624,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
             <FormLabel htmlFor="info">Information (optional)</FormLabel>
             <Textarea
               id="info"
-              type="text"
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onChange={(e: any) => setContent(e.target.value)}
               placeholder="Any information you want to share prior to the meeting?"
             />
           </FormControl>
@@ -637,7 +636,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                 <Switch
                   display="flex"
                   id="video-conference"
-                  colorScheme={'orange'}
+                  colorScheme="primary"
                   defaultChecked={useHuddle}
                   isChecked={useHuddle}
                   onChange={() => setHuddle(value => !value)}
@@ -717,7 +716,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           )}
           <Button
             onClick={scheduleOrUpdate}
-            colorScheme={'orange'}
+            colorScheme="primary"
+            color="neutral.50"
             isLoading={isScheduling}
             disabled={isCancelling}
           >
