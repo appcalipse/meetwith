@@ -65,7 +65,7 @@
     "ics": "^2.35.0",
     "ipfs": "^0.59.1",
     "ipfs-http-client": "^54.0.2",
-    "iron-session": "^6.0.5",
+    "iron-session": "6.0.5",
     "next": "12.0.7",
     "nodemailer": "^6.7.2",
     "patch-package": "^6.4.7",
@@ -77,18 +77,18 @@
     "react-cookie": "^4.1.1",
     "react-dom": "17.0.2",
     "react-icons": "^4.3.1",
+    "react-intersection-observer": "^9.4.1",
     "react-virtualized": "^9.22.3",
     "reflect-metadata": "^0.1.13",
     "slugify": "^1.6.5",
     "styled-components": "^4.2.0",
+    "swiper": "^8.4.5",
     "timezones-list": "^3.0.1",
     "tsdav": "^2.0.2",
     "usehooks-ts": "^2.6.0",
     "uuid": "^8.3.2",
     "web3": "^1.6.0",
-    "web3modal": "^1.9.4",
-    "react-intersection-observer": "^9.4.1",
-    "swiper": "^8.4.5"
+    "web3modal": "^1.9.4"
   },
   "devDependencies": {
     "@babel/core": "^7.16.0",
@@ -131,7 +131,8 @@
     "lint-staged": "^12.3.1",
     "next-sitemap": "^3.1.11",
     "prettier": "^2.5.0",
-    "typescript": "4.4.4"
+    "typescript": "4.4.4",
+    "vuepress-plugin-pwa2": "^2.0.0-beta.201"
   },
   "resolutions": {
     "ethereumjs-abi": "https://registry.npmjs.org/ethereumjs-abi/-/ethereumjs-abi-0.6.8.tgz",
