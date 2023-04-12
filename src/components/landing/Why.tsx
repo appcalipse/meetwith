@@ -195,8 +195,7 @@ export function Why() {
               unmountOnExit={true}
             >
               <Button
-                colorScheme="orangeButton"
-                color="neutral.50"
+                colorScheme="primary"
                 display={{ base: 'none', lg: 'flex' }}
                 justifyContent="space-between"
                 fontSize="xl"
@@ -214,8 +213,7 @@ export function Why() {
           </Box>
         </Flex>
         <Button
-          colorScheme="orangeButton"
-          color="neutral.50"
+          colorScheme="primary"
           display={{ base: 'flex', lg: 'none' }}
           justifyContent="space-between"
           height="80px"

@@ -284,7 +284,6 @@ const NotificationsConfig: React.FC = () => {
             isLoading={loading}
             alignSelf="start"
             colorScheme="primary"
-            color="neutral.50"
             onClick={updateNotifications}
           >
             Save preferences
