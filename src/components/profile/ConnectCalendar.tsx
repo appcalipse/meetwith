@@ -179,7 +179,6 @@ const ConnectCalendar = () => {
       <Button
         onClick={onOpen}
         colorScheme="primary"
-        color="neutral.50"
         isFullWidth={false}
         mb={4}
         mt={4}

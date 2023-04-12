@@ -121,8 +121,7 @@ export function Hero() {
             </Text>
             <HStack display={{ base: 'none', md: 'inline-block' }}>
               <Button
-                colorScheme="orangeButton"
-                color="neutral.50"
+                colorScheme="primary"
                 rightIcon={<ArrowForwardIcon boxSize={4} />}
                 isLoading={loginIn}
                 onClick={() => handleLogin()}
@@ -160,8 +159,7 @@ export function Hero() {
           <Button
             onClick={() => handleLogin()}
             isLoading={loginIn}
-            colorScheme="orangeButton"
-            color="neutral.50"
+            colorScheme="primary"
             rightIcon={<ArrowForwardIcon boxSize={4} />}
             width="100%"
             h={12}

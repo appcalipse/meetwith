@@ -717,7 +717,6 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           <Button
             onClick={scheduleOrUpdate}
             colorScheme="primary"
-            color="neutral.50"
             isLoading={isScheduling}
             disabled={isCancelling}
           >
