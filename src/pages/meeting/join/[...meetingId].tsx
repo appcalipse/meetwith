@@ -12,10 +12,10 @@ import {
 import * as Sentry from '@sentry/nextjs'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { BiWallet } from 'react-icons/bi'
 
 import Loading from '@/components/Loading'
-import MWWButton from '@/components/MWWButton'
 import { AccountContext } from '@/providers/AccountProvider'
 import { useLogin } from '@/session/login'
 import { ButtonType, Color } from '@/styles/theme'
@@ -92,14 +92,13 @@ const JoinMeetingPage: NextPage = () => {
               Ooops, the meeting you are looking for was not found.
             </Text>
             <Spacer />
-            <MWWButton
+            <Button
               onClick={() => router.push('/')}
               colorScheme="primary"
-              color="white"
               variant="solid"
             >
               Go to Home
-            </MWWButton>
+            </Button>
           </VStack>
         </Flex>
       </Container>
@@ -121,16 +120,18 @@ const JoinMeetingPage: NextPage = () => {
           >
             <VStack>
               <Text pb={8}>You need to login to join this meeting</Text>
-              <MWWButton
+              <Button
+                colorScheme="primary"
                 size="lg"
                 onClick={() => handleLogin()}
                 isLoading={loginIn}
+                leftIcon={<BiWallet />}
               >
                 Sign in
                 <Box display={{ base: 'none', md: 'flex' }} as="span">
                   &#160;with wallet
                 </Box>
-              </MWWButton>
+              </Button>
             </VStack>
           </Flex>
         </Container>

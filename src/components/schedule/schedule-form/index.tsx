@@ -132,7 +132,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       <HStack my={6} alignItems="center">
         <Switch
           display="flex"
-          colorScheme={Color.ORANGE}
+          colorScheme="primary"
           size="md"
           mr={4}
           isDisabled={isScheduling}

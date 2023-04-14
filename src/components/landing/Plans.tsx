@@ -232,6 +232,8 @@ export function Plans() {
       maxW="1360px"
       mx="auto"
       position="relative"
+      id="plans"
+      scrollMarginTop={{ base: '80px', md: '20px' }}
     >
       <Text
         as="span"

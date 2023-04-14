@@ -69,6 +69,7 @@ export function Hero() {
       mx="auto"
       px={{ base: 2, md: 10 }}
       pt="86px"
+      id="home"
     >
       <Box
         background={'rgba(255, 255, 255, 0.05)'}
@@ -116,8 +117,8 @@ export function Hero() {
               <Text as="span" color="primary.400">
                 Meet With Wallet
               </Text>{' '}
-              is a scheduling manager redefined for Web3 to take control of your
-              time on your rules.
+              is a scheduling manager redefined for Web3. Take control of your
+              time, your privacy, your rules.
             </Text>
             <HStack display={{ base: 'none', md: 'inline-block' }}>
               <Button

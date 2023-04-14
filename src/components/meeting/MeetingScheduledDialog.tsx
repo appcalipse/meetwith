@@ -25,7 +25,6 @@ import { getMeetingsScheduled } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { Account } from '../../types/Account'
-import MWWButton from '../MWWButton'
 
 interface IProps {
   isOpen: boolean
@@ -134,14 +133,15 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
             <Button m={4} onClick={onClose} variant="ghost">
               Schedule another
             </Button>
-            <MWWButton
+            <Button
+              colorScheme="primary"
               mr={3}
               onClick={() =>
                 schedulerAccount ? router.push('/dashboard') : router.push('/')
               }
             >
               {schedulerAccount ? 'Go to dashboard' : 'Go home'}
-            </MWWButton>
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
