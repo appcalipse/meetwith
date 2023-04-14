@@ -348,8 +348,8 @@ const updateMeeting = async (
   decryptedMeeting: MeetingDecrypted,
   signature: string,
   participants: ParticipantInfo[],
-  content?: string,
-  meetingUrl?: string
+  content: string,
+  meetingUrl: string
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
