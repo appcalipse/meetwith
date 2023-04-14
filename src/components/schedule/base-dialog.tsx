@@ -384,7 +384,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           decryptedMeeting!,
           getSignature(currentAccount!.address) || '',
           _participants.valid,
-          content
+          content,
+          meetingUrl
         )
         logEvent('Updated a meeting', {
           fromDashboard: true,
