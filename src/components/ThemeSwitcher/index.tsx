@@ -47,7 +47,7 @@ export const ThemeSwitcher: React.FC = () => {
         direction="row"
       >
         <Button
-          size="lg"
+          size="md"
           onClick={doToggle}
           color={useColorModeValue('grey.500', 'grey.400')}
         >

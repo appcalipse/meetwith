@@ -104,6 +104,8 @@ export function Features() {
       mx="auto"
       px={{ sm: '2', md: '18', lg: '28' }}
       py={{ base: 8, md: 16 }}
+      id="features"
+      scrollMarginTop={{ base: '60px', md: '20px' }}
     >
       <Heading fontSize="5xl" color="primary.400" mb={8}>
         Features

@@ -1,4 +1,5 @@
 import {
+  Button,
   Container,
   Heading,
   Image,
@@ -7,8 +8,6 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import router from 'next/router'
-
-import MWWButton from '../components/MWWButton'
 
 export default function NotFound() {
   return (
@@ -31,14 +30,13 @@ export default function NotFound() {
             The page you&apos;re looking for does not seem to exist
           </Text>
           <Spacer />
-          <MWWButton
+          <Button
             onClick={() => router.push('/')}
             colorScheme="primary"
-            color="white"
             variant="solid"
           >
             Go to Home
-          </MWWButton>
+          </Button>
           <Spacer />
         </VStack>
       </Container>

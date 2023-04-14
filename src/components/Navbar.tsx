@@ -1,4 +1,4 @@
-import { ChevronRightIcon, CloseIcon } from '@chakra-ui/icons'
+import { CloseIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
@@ -18,17 +18,16 @@ import NextLink from 'next/link'
 import router, { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import { BiMenuAltRight } from 'react-icons/bi'
+import { BiWallet } from 'react-icons/bi'
 
 import { AccountContext } from '../providers/AccountProvider'
 import { useLogin } from '../session/login'
 import ConnectWalletDialog from './ConnectWalletDialog'
-import MWWButton from './MWWButton'
 import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
 export const Navbar = () => {
-  const router = useRouter()
-  const { asPath } = useRouter()
+  const { pathname, asPath } = useRouter()
 
   const { isOpen, onToggle } = useDisclosure()
 
@@ -66,7 +65,7 @@ export const Navbar = () => {
     <Box
       id="navbar-container"
       as="header"
-      display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
+      display={pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
       position="fixed"
       width="100%"
       top="0"
@@ -119,7 +118,7 @@ export const Navbar = () => {
               </NextLink>
               <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
                 <DesktopNav
-                  activeLink={activeLink}
+                  pathname={pathname}
                   handleSetActiveLink={handleSetActiveLink}
                 />
               </Flex>
@@ -137,16 +136,18 @@ export const Navbar = () => {
                   handleSetActiveLink={handleSetActiveLink}
                 />
               ) : (
-                <MWWButton
+                <Button
                   size="md"
                   onClick={() => handleLogin()}
                   isLoading={loginIn}
+                  colorScheme="primary"
+                  leftIcon={<BiWallet />}
                 >
                   Sign in
                   <Box display={{ base: 'none', md: 'flex' }} as="span">
                     &#160;
                   </Box>
-                </MWWButton>
+                </Button>
               )}
               <Button
                 onClick={onToggle}
@@ -157,7 +158,7 @@ export const Navbar = () => {
               >
                 <Icon as={BiMenuAltRight} width={6} height={6} />
               </Button>
-              {activeLink !== '/landing' && <ThemeSwitcher />}
+              {pathname !== '/' && <ThemeSwitcher />}
             </Stack>
           </Flex>
         </Container>
@@ -176,11 +177,11 @@ export const Navbar = () => {
 }
 
 interface DesktopNavProps {
-  activeLink: string
+  pathname: string
   handleSetActiveLink: (id: string) => void
 }
 
-const DesktopNav = ({ activeLink, handleSetActiveLink }: DesktopNavProps) => {
+const DesktopNav = ({ pathname, handleSetActiveLink }: DesktopNavProps) => {
   const { logged } = useContext(AccountContext)
   const linkHoverColor = 'primary.400'
   const linkColor = useColorModeValue('neutral.800', 'neutral.0')
@@ -201,7 +202,7 @@ const DesktopNav = ({ activeLink, handleSetActiveLink }: DesktopNavProps) => {
                 p={2}
                 fontSize={'sm'}
                 fontWeight={500}
-                color={activeLink === '/landing' ? 'neutral.0' : linkColor}
+                color={pathname === '/' ? 'neutral.0' : linkColor}
                 _hover={{
                   textDecoration: 'none',
                   color: linkHoverColor,
@@ -214,44 +215,6 @@ const DesktopNav = ({ activeLink, handleSetActiveLink }: DesktopNavProps) => {
         )
       )}
     </Stack>
-  )
-}
-
-const DesktopSubNav = ({ label, href, subLabel }: NavItem) => {
-  return (
-    <NextLink href={href!} passHref>
-      <Link
-        role={'group'}
-        display={'block'}
-        p={2}
-        rounded={'md'}
-        _hover={{ bg: useColorModeValue('pink.50', 'gray.900') }}
-      >
-        <Stack direction={'row'} align={'center'}>
-          <Box>
-            <Text
-              transition={'all .3s ease'}
-              _groupHover={{ color: 'pink.400' }}
-              fontWeight={500}
-            >
-              {label}
-            </Text>
-            <Text fontSize={'sm'}>{subLabel}</Text>
-          </Box>
-          <Flex
-            transition={'all .3s ease'}
-            transform={'translateX(-10px)'}
-            opacity={0}
-            _groupHover={{ opacity: '100%', transform: 'translateX(0)' }}
-            justify={'flex-end'}
-            align={'center'}
-            flex={1}
-          >
-            <Icon color={'pink.400'} w={5} h={5} as={ChevronRightIcon} />
-          </Flex>
-        </Stack>
-      </Link>
-    </NextLink>
   )
 }
 
@@ -328,16 +291,18 @@ const MobileNav = ({
             <ThemeSwitcher />
           </Flex>
         ) : (
-          <MWWButton
+          <Button
+            colorScheme="primary"
             size="md"
             onClick={() => handleLogin()}
             isLoading={loginIn}
+            leftIcon={<BiWallet />}
           >
             Sign in
             <Box display={{ base: 'none', md: 'flex' }} as="span">
               &#160;
             </Box>
-          </MWWButton>
+          </Button>
         )}
       </Flex>
     </Stack>
@@ -391,14 +356,10 @@ const NAV_ITEMS: Array<NavItem> = [
   },
   {
     label: 'Plans',
-    href: '/#pricing',
+    href: '/#plans',
   },
   {
     label: 'FAQ',
     href: '/#faq',
-  },
-  {
-    label: 'Contact',
-    href: '/#contact',
   },
 ]
