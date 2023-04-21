@@ -46,6 +46,7 @@ interface MeetSlotPickerProps {
   reset: boolean
   isGateValid: boolean
   showSelfAvailability: boolean
+  blockedDates?: Date[]
 }
 
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
@@ -62,6 +63,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   isGateValid,
   selfAvailabilityCheck,
   showSelfAvailability,
+  blockedDates,
 }) => {
   const [pickedDay, setPickedDay] = useState(null as Date | null)
   const [pickedTime, setPickedTime] = useState(null as Date | null)
@@ -114,12 +116,16 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
         (isFuture(date) || isToday(date)) &&
         (isWithinInterval(date, availabilityInterval) ||
           isSameDay(date, availabilityInterval.start) ||
-          isSameDay(date, availabilityInterval.end))
+          isSameDay(date, availabilityInterval.end)) &&
+        !blockedDates?.some(blockedDate => isSameDay(blockedDate, date))
       )
     }
   } else {
     validator = (date: Date) => {
-      return isFuture(date) || isToday(date)
+      return (
+        (isFuture(date) || isToday(date)) &&
+        !blockedDates?.some(blockedDate => isSameDay(blockedDate, date))
+      )
     }
   }
 
