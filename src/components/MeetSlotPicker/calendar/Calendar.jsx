@@ -36,31 +36,9 @@ const fakeNext = keyframes`
   }
 `
 
-const fadeIn = keyframes`
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
-`
-
-const fadeOut = keyframes`
-  0% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-`
-
 const ANIM_TIME_SEC = 0.4
-const FADE_TIME_SEC = 0.8
 const _makeAnimation = type => css`
   ${type} ${ANIM_TIME_SEC}s ease-in-out normal both;
-`
-const _makeFadeAnimation = type => css`
-  ${type} ${FADE_TIME_SEC}s ease-in-out normal both;
 `
 
 const animation = props => {
@@ -73,10 +51,6 @@ const animation = props => {
   if (animation === 'next') {
     return _makeAnimation(next)
   }
-
-  if (animation === 'fade') {
-    return _makeFadeAnimation(fadeIn)
-  }
 }
 
 const fakeAnimation = props => {
@@ -88,10 +62,6 @@ const fakeAnimation = props => {
 
   if (animation === 'next') {
     return _makeAnimation(fakeNext)
-  }
-
-  if (animation === 'fade') {
-    return _makeFadeAnimation(fadeOut)
   }
 }
 
