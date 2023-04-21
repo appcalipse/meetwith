@@ -133,6 +133,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     <PopupWrapper>
       {!showPickTime && !showConfirm && (
         <Calendar
+          loading={checkingSlots}
           validator={validator}
           monthChanged={onMonthChange}
           pickDay={handlePickDay}
