@@ -66,6 +66,10 @@ import {
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '@/utils/errors'
+import {
+  getAvailabilitiesForWeekDay,
+  getBlockedAvailabilities,
+} from '@/utils/slots.helper'
 import { isSlotAvailable } from '@/utils/slots.helper'
 import { saveMeetingsScheduled } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
@@ -111,9 +115,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const router = useRouter()
 
   const { currentAccount, logged } = useContext(AccountContext)
-
-  const preferences = account?.preferences
-  const availabilities = preferences?.availabilities
 
   const calendarType =
     account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
@@ -167,8 +168,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }
 
   useEffect(() => {
-    const blockedAvailabilities =
-      availabilities?.filter(_ => _.ranges.length === 0) ?? []
+    const blockedAvailabilities = getBlockedAvailabilities(
+      account?.preferences?.availabilities
+    )
     let startDate = startOfMonth(currentMonth)
     const endDate = endOfMonth(currentMonth)
     const unavailableDate = blockedAvailabilities.reduce((acc, curr) => {
@@ -192,8 +194,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
     let day = startDate
     while (!isAfter(day, endDate)) {
-      const _availability =
-        availabilities?.find(_ => _.weekday === getDay(day))?.ranges ?? []
+      const _availability = getAvailabilitiesForWeekDay(
+        account?.preferences?.availabilities,
+        day
+      )
       if (_availability.length > 0) {
         const _availableSlots = _availability.reduce((acc, curr) => {
           const gap = selectedType.duration
