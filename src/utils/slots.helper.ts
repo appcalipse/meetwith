@@ -142,3 +142,12 @@ export const isTimeInsideAvailabilities = (
 
   return false
 }
+
+export const getBlockedAvailabilities = (
+  availabilities?: DayAvailability[]
+): DayAvailability[] => availabilities?.filter(_ => _.ranges.length === 0) ?? []
+
+export const getAvailabilitiesForWeekDay = (
+  availabilities?: DayAvailability[],
+  day?: Date
+) => availabilities?.find(_ => !!day && _.weekday === getDay(day))?.ranges ?? []

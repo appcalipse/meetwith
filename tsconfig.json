@@ -16,6 +16,7 @@
     "incremental": true,
     "allowSyntheticDefaultImports": true,
     "baseUrl": "./src",
+    "jsxImportSource": "@emotion/react",
     "paths": {
       "@/*": ["*"]
     }
