@@ -18,6 +18,12 @@ const customJestConfig = {
   verbose: false,
   moduleNameMapper: {
     '@/(.*)': 'src/$1',
+    'swiper/react': 'swiper/react/swiper-react.js',
+    'swiper/css': '<rootDir>/__mocks__/jestMock.js',
+    '(.*)PlansMobileSlider': '<rootDir>/__mocks__/jestMock.js',
+    '(.*)Features': '<rootDir>/__mocks__/jestMock.js',
+    'swiper/css/pagination': '<rootDir>/__mocks__/jestMock.js',
+    'react-intersection-observer': '<rootDir>/__mocks__/intersection.js',
   },
 }
 
