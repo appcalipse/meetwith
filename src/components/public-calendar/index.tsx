@@ -5,17 +5,25 @@ import { Select } from '@chakra-ui/select'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
 import {
+  addDays,
   addMinutes,
+  areIntervalsOverlapping,
+  Day,
   endOfMonth,
   format,
+  getDay,
   Interval,
   isAfter,
   isBefore,
   isEqual,
   isFuture,
-  isPast,
+  nextDay,
+  setHours,
+  setMinutes,
+  setSeconds,
   startOfMonth,
   subMinutes,
+  subSeconds,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
@@ -58,6 +66,10 @@ import {
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '@/utils/errors'
+import {
+  getAvailabilitiesForWeekDay,
+  getBlockedAvailabilities,
+} from '@/utils/slots.helper'
 import { isSlotAvailable } from '@/utils/slots.helper'
 import { saveMeetingsScheduled } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
@@ -66,7 +78,6 @@ import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
 import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
-import { CancelMeetingDialog } from '../schedule/cancel-dialog'
 import TokenGateValidation from '../token-gate/TokenGateValidation'
 import GroupScheduleCalendarProfile from './GroupScheduleCalendarProfile'
 
@@ -135,6 +146,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [rescheduleSlot, setRescheduleSlot] = useState<DBSlot | undefined>(
     undefined
   )
+  const [blockedDates, setBlockedDates] = useState<Date[]>([])
 
   const toast = useToast()
 
@@ -154,6 +166,84 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     )
     setTeamAccounts(accounts)
   }
+
+  useEffect(() => {
+    const blockedAvailabilities = getBlockedAvailabilities(
+      account?.preferences?.availabilities
+    )
+    let startDate = startOfMonth(currentMonth)
+    const endDate = endOfMonth(currentMonth)
+    const unavailableDate = blockedAvailabilities.reduce((acc, curr) => {
+      if (getDay(startDate) === curr.weekday) acc.push(startDate)
+      let _nextDay = nextDay(startDate, curr.weekday as Day)
+      while (isBefore(_nextDay, endDate)) {
+        acc.push(_nextDay)
+        _nextDay = nextDay(_nextDay, curr.weekday as Day)
+      }
+      return acc
+    }, [] as Date[])
+
+    if (isBefore(endDate, new Date())) {
+      setBlockedDates(unavailableDate)
+      return
+    }
+
+    if (isAfter(new Date(), startDate) && isBefore(new Date(), endDate)) {
+      startDate = new Date()
+    }
+
+    let day = startDate
+    while (!isAfter(day, endDate)) {
+      const _availability = getAvailabilitiesForWeekDay(
+        account?.preferences?.availabilities,
+        day
+      )
+      if (_availability.length > 0) {
+        const _availableSlots = _availability.reduce((acc, curr) => {
+          const gap = selectedType.duration
+          const startDate = setHours(
+            setMinutes(setSeconds(day, 0), parseInt(curr.start.split(':')[1])),
+            parseInt(curr.start.split(':')[0])
+          )
+          const endDate = setHours(
+            setMinutes(setSeconds(day, 0), parseInt(curr.end.split(':')[1])),
+            parseInt(curr.end.split(':')[0])
+          )
+
+          let _start = startDate
+          let _end = subSeconds(addMinutes(_start, gap), 1)
+
+          while (isBefore(_end, endDate)) {
+            if (
+              !busySlots.some(slot =>
+                areIntervalsOverlapping(
+                  {
+                    start: _start,
+                    end: _end,
+                  },
+                  {
+                    start: slot.start,
+                    end: subSeconds(slot.end, 1),
+                  }
+                )
+              )
+            )
+              acc.push({
+                start: _start,
+                end: _end,
+              })
+
+            _start = _end
+            _end = addMinutes(_start, gap)
+          }
+          return acc
+        }, [] as Interval[])
+        if (_availableSlots.length === 0) unavailableDate.push(day)
+      }
+      day = addDays(day, 1)
+    }
+    setBlockedDates(unavailableDate)
+  }, [currentMonth, selectedType, busySlots])
 
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
@@ -704,6 +794,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                         }
                       : undefined
                   }
+                  blockedDates={blockedDates}
                   onSchedule={confirmSchedule}
                   willStartScheduling={willStartScheduling => {
                     setReadyToSchedule(willStartScheduling)

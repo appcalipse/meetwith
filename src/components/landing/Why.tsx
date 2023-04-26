@@ -13,7 +13,7 @@ import {
 import * as Sentry from '@sentry/nextjs'
 import router from 'next/router'
 import { useContext } from 'react'
-import { BsArrowRight, BsBell, BsShieldShaded } from 'react-icons/bs'
+import { BsBell, BsShieldShaded } from 'react-icons/bs'
 import { FaRegCalendarCheck, FaRegHandshake } from 'react-icons/fa'
 import { useInView } from 'react-intersection-observer'
 
