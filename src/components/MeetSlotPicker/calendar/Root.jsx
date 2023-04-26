@@ -1,8 +1,10 @@
-import { Flex, HStack } from '@chakra-ui/react'
+import { Center, Flex, HStack } from '@chakra-ui/react'
 import { addMonths, format, isSameMonth, isToday, subMonths } from 'date-fns'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+
+import Loading from '@/components/Loading'
 
 import { Calendar, FakeCalendar } from './Calendar'
 import generateDays from './generate-days'
@@ -22,6 +24,7 @@ function Root({
   monthChanged,
   selectedMonth,
   setSelectedMonth,
+  loading,
 }) {
   const [fakeMonth, setFakeMonth] = useState(selectedMonth)
   const [animation, setAnimation] = useState('')
@@ -97,73 +100,81 @@ function Root({
       </MonthYear>
 
       <Wrapper>
-        <Calendar animation={animation} onAnimationEnd={handleAnimationEnd}>
-          <DaysOfWeek>
-            <WeekDays>
-              {WEEK_DAYS.map(weekDay => {
-                return <WeekDay key={weekDay}>{weekDay}</WeekDay>
-              })}
-            </WeekDays>
-          </DaysOfWeek>
+        {!!loading ? (
+          <Center minH="455px">
+            <Loading label="Checking availability" />
+          </Center>
+        ) : (
+          <Wrapper>
+            <Calendar animation={animation} onAnimationEnd={handleAnimationEnd}>
+              <DaysOfWeek>
+                <WeekDays>
+                  {WEEK_DAYS.map(weekDay => {
+                    return <WeekDay key={weekDay}>{weekDay}</WeekDay>
+                  })}
+                </WeekDays>
+              </DaysOfWeek>
 
-          <MonthDays>
-            {days.map(day => {
-              const _isSameMonth = isSameMonth(day, startDay)
-              if (!_isSameMonth) {
-                return <MonthDay key={day} />
-              }
+              <MonthDays>
+                {days.map(day => {
+                  const _isSameMonth = isSameMonth(day, startDay)
+                  if (!_isSameMonth) {
+                    return <MonthDay key={day} />
+                  }
 
-              const formatted = format(day, 'd')
-              const _isToday = isToday(day)
-              const isValid = validator ? validator(day) : true
-              return (
-                <MonthDay
-                  key={day}
-                  isValid={isValid}
-                  isToday={_isToday}
-                  onClick={() => isValid && handlePickDay(day)}
-                >
-                  {formatted}
-                </MonthDay>
-              )
-            })}
-          </MonthDays>
-        </Calendar>
+                  const formatted = format(day, 'd')
+                  const _isToday = isToday(day)
+                  const isValid = validator ? validator(day) : true
+                  return (
+                    <MonthDay
+                      key={day}
+                      isValid={isValid}
+                      isToday={_isToday}
+                      onClick={() => isValid && handlePickDay(day)}
+                    >
+                      {formatted}
+                    </MonthDay>
+                  )
+                })}
+              </MonthDays>
+            </Calendar>
 
-        <FakeCalendar animation={animation}>
-          <DaysOfWeek>
-            <WeekDays>
-              {WEEK_DAYS.map(weekDay => {
-                return <WeekDay key={weekDay}>{weekDay}</WeekDay>
-              })}
-            </WeekDays>
-          </DaysOfWeek>
+            <FakeCalendar animation={animation}>
+              <DaysOfWeek>
+                <WeekDays>
+                  {WEEK_DAYS.map(weekDay => {
+                    return <WeekDay key={weekDay}>{weekDay}</WeekDay>
+                  })}
+                </WeekDays>
+              </DaysOfWeek>
 
-          <DaysOfMonth>
-            <MonthDays>
-              {fakeDays.map(fakeDay => {
-                const _isSameMonth = isSameMonth(fakeDay, fakeStartDay)
-                if (!_isSameMonth) {
-                  return <MonthDay key={fakeDay} />
-                }
+              <DaysOfMonth>
+                <MonthDays>
+                  {fakeDays.map(fakeDay => {
+                    const _isSameMonth = isSameMonth(fakeDay, fakeStartDay)
+                    if (!_isSameMonth) {
+                      return <MonthDay key={fakeDay} />
+                    }
 
-                const formatted = format(fakeDay, 'd')
-                const _isToday = isToday(fakeDay)
-                const isValid = validator ? validator(fakeDay) : true
-                return (
-                  <MonthDay
-                    key={fakeDay}
-                    disabled={!_isSameMonth}
-                    isValid={isValid}
-                    isToday={_isToday}
-                  >
-                    {formatted}
-                  </MonthDay>
-                )
-              })}
-            </MonthDays>
-          </DaysOfMonth>
-        </FakeCalendar>
+                    const formatted = format(fakeDay, 'd')
+                    const _isToday = isToday(fakeDay)
+                    const isValid = validator ? validator(fakeDay) : true
+                    return (
+                      <MonthDay
+                        key={fakeDay}
+                        disabled={!_isSameMonth}
+                        isValid={isValid}
+                        isToday={_isToday}
+                      >
+                        {formatted}
+                      </MonthDay>
+                    )
+                  })}
+                </MonthDays>
+              </DaysOfMonth>
+            </FakeCalendar>
+          </Wrapper>
+        )}
       </Wrapper>
     </Grid>
   )
