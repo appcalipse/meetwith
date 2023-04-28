@@ -215,17 +215,19 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
           while (isBefore(_end, endDate)) {
             if (
-              !busySlots.some(slot =>
-                areIntervalsOverlapping(
-                  {
-                    start: _start,
-                    end: _end,
-                  },
-                  {
-                    start: slot.start,
-                    end: subSeconds(slot.end, 1),
-                  }
-                )
+              !busySlots.some(
+                slot =>
+                  !isEqual(slot.start, slot.end) &&
+                  areIntervalsOverlapping(
+                    {
+                      start: _start,
+                      end: _end,
+                    },
+                    {
+                      start: slot.start,
+                      end: subSeconds(slot.end, 1),
+                    }
+                  )
               )
             )
               acc.push({
