@@ -18,6 +18,7 @@ export enum ProfileInfoProvider {
   LENS = 'lens',
   UNSTOPPABLE_DOAMINS = 'ud',
   MWW = 'mww',
+  FREENAME = 'freename',
   CUSTOM = 'custom',
 }
 
@@ -79,9 +80,16 @@ const HandlePicker: React.FC<{
   const bgColorHover = useColorModeValue('gray.100', 'gray.900')
   const borderColor = useColorModeValue('gray.300', 'gray.700')
 
-  const noENS = !options.some(option => option.type === 'ens')
-  const noLens = !options.some(option => option.type === 'lens')
-  const noUD = !options.some(option => option.type === 'ud')
+  const noENS = !options.some(option => option.type === ProfileInfoProvider.ENS)
+  const noLens = !options.some(
+    option => option.type === ProfileInfoProvider.LENS
+  )
+  const noUD = !options.some(
+    option => option.type === ProfileInfoProvider.UNSTOPPABLE_DOAMINS
+  )
+  const noFreename = !options.some(
+    option => option.type === ProfileInfoProvider.FREENAME
+  )
 
   const _options = [
     {
@@ -113,6 +121,14 @@ const HandlePicker: React.FC<{
       label: 'No name found on Unstoppable Domains',
       value: '',
       type: ProfileInfoProvider.UNSTOPPABLE_DOAMINS,
+    })
+  }
+
+  if (noFreename) {
+    _options.push({
+      label: 'No name found on Freename',
+      value: '',
+      type: ProfileInfoProvider.FREENAME,
     })
   }
 
@@ -185,16 +201,18 @@ const HandlePicker: React.FC<{
                   let extraText = ''
                   if (value !== '') {
                     switch (type) {
-                      case 'ens':
+                      case ProfileInfoProvider.ENS:
                         extraText = ' (from ENS)'
                         break
-                      case 'lens':
+                      case ProfileInfoProvider.LENS:
                         extraText = ' (from Lens Protocol)'
                         break
-                      case 'ud':
+                      case ProfileInfoProvider.UNSTOPPABLE_DOAMINS:
                         extraText = ' (from Unstoppable Domains)'
+                      case ProfileInfoProvider.FREENAME:
+                        extraText = ' (from Freename)'
                         break
-                      case 'mww':
+                      case ProfileInfoProvider.MWW:
                         extraText = ' (from your PRO plan)'
                         break
                       default:
