@@ -88,6 +88,7 @@
     "usehooks-ts": "^2.6.0",
     "uuid": "^8.3.2",
     "web3": "^1.6.0",
+    "web3-domain-resolver": "^1.0.4",
     "web3modal": "^1.9.4"
   },
   "devDependencies": {
