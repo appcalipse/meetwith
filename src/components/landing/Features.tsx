@@ -68,9 +68,10 @@ const slides = [
   {
     id: 8,
     price: 'PRO',
-    title: 'ENS, Lens protocol and unstoppable domains integration',
+    title:
+      'ENS, Lens protocol, unstoppable domains and many name services integration',
     about:
-      'Fully integrated with ENS, Lens protocol and Unstoppable Domains for your calendar link and profile.',
+      'Fully integrated with ENS, Lens protocol, Unstoppable Domains, and many other name services for your calendar link and profile.',
   },
   {
     id: 9,

@@ -6,6 +6,7 @@ import {
 import { Resolution } from '@unstoppabledomains/resolution'
 import { ethers } from 'ethers'
 import Web3 from 'web3'
+import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
 import lensHelper from './lens.helper'
@@ -72,6 +73,31 @@ const checkENSBelongsTo = async (domain: string): Promise<string | null> => {
   }
 
   return await provider.resolveName(domain)
+}
+
+const checkFreenameBelongsTo = async (
+  domain: string
+): Promise<string | null> => {
+  const web3resolver = new Web3Resolver()
+  web3resolver.setResolversPriority([ProviderName.FREENAME])
+
+  const resolvedDomain = await web3resolver.resolve(domain)
+
+  return resolvedDomain?.ownerAddress || null
+}
+
+export const resolveFreename = async (
+  address: string
+): Promise<AccountExtraProps | null> => {
+  const web3resolver = new Web3Resolver()
+  const resolvedDomain = await web3resolver.reverseResolve(
+    address,
+    ProviderName.FREENAME
+  )
+
+  return resolvedDomain
+    ? { name: resolvedDomain.fullname!, avatar: resolvedDomain.imageUrl }
+    : null
 }
 
 const checkUnstoppableDomainBelongsTo = async (
@@ -159,36 +185,10 @@ export const checkValidDomain = async (
   _domain: string,
   currentAccountAddress: string
 ): Promise<boolean> => {
-  const domain = _domain.toLowerCase()
-  if (domain.endsWith('.eth')) {
-    const owner = await checkENSBelongsTo(domain)
-
-    if (owner?.toLowerCase() === currentAccountAddress.toLowerCase()) {
-      return true
-    } else {
-      return false
-    }
-  } else if (
-    domain.endsWith('.x') ||
-    domain.endsWith('.wallet') ||
-    domain.endsWith('.crypto') ||
-    domain.endsWith('.coin') ||
-    domain.endsWith('.bitcoin') ||
-    domain.endsWith('.888') ||
-    domain.endsWith('.nft') ||
-    domain.endsWith('.dao') ||
-    domain.endsWith('.zil') ||
-    domain.endsWith('.blockchain')
-  ) {
-    const owner = await checkUnstoppableDomainBelongsTo(domain)
-    return owner?.toLowerCase() === currentAccountAddress.toLowerCase()
-  } else if (domain.endsWith('.lens')) {
-    const lensProfile = await lensHelper.getLensProfile(domain)
-    return (
-      lensProfile?.ownedBy.toLowerCase() === currentAccountAddress.toLowerCase()
-    )
-  }
-  return true
+  const address = await getAddressFromDomain(_domain)
+  return (
+    !address || address.toLowerCase() === currentAccountAddress.toLowerCase()
+  )
 }
 
 export const getAddressFromDomain = async (
@@ -213,8 +213,9 @@ export const getAddressFromDomain = async (
   } else if (domain.endsWith('.lens')) {
     const lensProfile = await lensHelper.getLensProfile(domain)
     return lensProfile?.ownedBy.toLowerCase()
+  } else {
+    return (await checkFreenameBelongsTo(domain))?.toLowerCase()
   }
-  return undefined
 }
 
 export const getProvider = (chain: SupportedChain): BaseProvider | null => {
