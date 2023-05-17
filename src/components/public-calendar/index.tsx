@@ -781,7 +781,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 />
               )}
             </Box>
-            {isSSR ? null : (
+            {isSSR ? null : !lastScheduledMeeting ? (
               <Box flex="2" p={8}>
                 <MeetSlotPicker
                   reset={reset}
@@ -814,6 +814,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   isGateValid={isGateValid!}
                 />
               </Box>
+            ) : (
+              <Box>TESTE</Box>
             )}
           </Flex>
           {isSSR
