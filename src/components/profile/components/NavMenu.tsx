@@ -7,7 +7,6 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect } from 'react'
 import { IconType } from 'react-icons'
@@ -28,6 +27,7 @@ import { getAccountDisplayName } from '@/utils/user_manager'
 import { AccountContext } from '../../../providers/AccountProvider'
 import { EditMode } from '../../../types/Dashboard'
 import { logEvent } from '../../../utils/analytics'
+import { Avatar } from './Avatar'
 import { CopyLinkButton } from './CopyLinkButton'
 import { NavItem } from './NavItem'
 
@@ -130,7 +130,7 @@ export const NavMenu: React.FC<{
         >
           <VStack width="100%" textAlign="center">
             <Box width="120px" height="120px" mb={2}>
-              <Jazzicon address={currentAccount.address} />
+              <Avatar account={currentAccount} />
             </Box>
 
             <Text fontSize="lg" fontWeight={500}>
@@ -178,7 +178,7 @@ export const NavMenu: React.FC<{
           >
             <VStack width="100%" textAlign="center">
               <Box width="120px" height="120px" mb={2}>
-                <Jazzicon address={currentAccount.address} />
+                <Avatar account={currentAccount} />
               </Box>
 
               <Text fontSize="lg" fontWeight={500}>

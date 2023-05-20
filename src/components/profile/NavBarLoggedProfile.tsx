@@ -8,7 +8,6 @@ import {
   Text,
   useBreakpointValue,
 } from '@chakra-ui/react'
-import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 
@@ -17,6 +16,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 import { Account } from '../../types/Account'
 import { EditMode } from '../../types/Dashboard'
 import { logEvent } from '../../utils/analytics'
+import { Avatar } from './components/Avatar'
 import { NavMenu } from './components/NavMenu'
 
 interface NavBarLoggedProfileProps {
@@ -84,7 +84,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
               objectFit="cover"
             />
           ) : (
-            <Jazzicon address={props.account.address} />
+            <Avatar account={props.account} />
           )}
         </Box>
         {props.isOpen && (

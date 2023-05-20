@@ -11,7 +11,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     if (gateConditionObject) {
       res.status(200).json(gateConditionObject)
     } else {
-      res.status(404)
+      res.status(404).send('Not found')
     }
   }
 })

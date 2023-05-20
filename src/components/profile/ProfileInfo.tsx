@@ -1,7 +1,6 @@
 import { Image } from '@chakra-ui/image'
 import { Box, Flex, HStack, Link, Spacer, Text } from '@chakra-ui/layout'
 import { Tooltip, useColorModeValue } from '@chakra-ui/react'
-import { Jazzicon } from '@ukstv/jazzicon-react'
 import { useState } from 'react'
 import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
 
@@ -11,6 +10,7 @@ import {
   generateTwitterUrl,
 } from '../../utils/generic_utils'
 import { getAccountDisplayName } from '../../utils/user_manager'
+import { Avatar } from './components/Avatar'
 
 interface ProfileInfoProps {
   account: Account
@@ -45,7 +45,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
   return (
     <Flex direction="column" alignItems="center">
       <Box width="100px" height="100px" mb={4}>
-        <Jazzicon address={props.account.address} />
+        <Avatar account={props.account} />
       </Box>
       <Text fontSize="lg">{getAccountDisplayName(props.account)}</Text>
       <HStack my={6}>
