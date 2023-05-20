@@ -15,6 +15,7 @@ const getAccount = async (req: NextApiRequest, res: NextApiResponse) => {
       res.status(404).send('Not found')
     }
   }
+  res.status(404).send('Not found')
 }
 
 export default withSessionRoute(withSentry(getAccount))
