@@ -2,14 +2,12 @@ import {
   Button,
   Heading,
   HStack,
-  Image,
   Modal,
   ModalBody,
   ModalCloseButton,
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  Text,
   VStack,
 } from '@chakra-ui/react'
 import { useState } from 'react'
