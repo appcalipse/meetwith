@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
 
-import { BadgeChip, BadgeChipProps } from './chip'
+import { BadgeChip, BadgeChipProps } from '@/components/chip-input/chip'
+
 describe('Time Selector', () => {
   it('should correctly render child content', () => {
     // given

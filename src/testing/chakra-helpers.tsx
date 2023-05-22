@@ -5,4 +5,13 @@ import customTheme from '../styles/theme'
 
 export const ChakraTestWrapper: React.FC<{ children: any }> = ({
   children,
-}) => <ChakraProvider theme={customTheme}>{children}</ChakraProvider>
+}) => (
+  <ChakraProvider
+    theme={{
+      ...customTheme,
+      config: { ...customTheme.config, initialColorMode: 'dark' },
+    }}
+  >
+    {children}
+  </ChakraProvider>
+)
