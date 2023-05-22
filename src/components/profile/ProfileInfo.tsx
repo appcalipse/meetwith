@@ -1,5 +1,6 @@
 import { Image } from '@chakra-ui/image'
-import { Box, Flex, HStack, Link, Spacer, Text } from '@chakra-ui/layout'
+import { Box, Flex, HStack, Spacer, Text } from '@chakra-ui/layout'
+import { Link } from '@chakra-ui/react'
 import { Tooltip, useColorModeValue } from '@chakra-ui/react'
 import { useState } from 'react'
 import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'

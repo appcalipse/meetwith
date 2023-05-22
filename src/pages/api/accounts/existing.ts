@@ -11,6 +11,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       addresses as string[],
       fullInformation
     )
-    res.status(200).json(accounts)
+    return res.status(200).json(accounts)
   }
+  return res.status(404).send('Not found')
 })

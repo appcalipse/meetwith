@@ -40,15 +40,12 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
         )
       }
 
-      res.status(200).json(meetings)
-      return
+      return res.status(200).json(meetings)
     } catch (error) {
       if (error instanceof AccountNotFoundError) {
-        res.status(404).json({ error: error.message })
+        return res.status(404).json({ error: error.message })
       }
-      console.error(error)
-      return
     }
   }
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

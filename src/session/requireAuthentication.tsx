@@ -1,7 +1,6 @@
 import { Flex } from '@chakra-ui/react'
 import { NextComponentType, NextPageContext } from 'next'
 import router from 'next/router'
-import React from 'react'
 import { useContext } from 'react'
 
 import Loading from '../components/Loading'

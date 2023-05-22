@@ -1,13 +1,5 @@
-import {
-  Button,
-  HStack,
-  Link,
-  Spinner,
-  Switch,
-  Text,
-  VStack,
-} from '@chakra-ui/react'
-import NextLink from 'next/link'
+import { Link } from '@chakra-ui/next-js'
+import { Button, HStack, Spinner, Switch, Text, VStack } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 
@@ -104,9 +96,9 @@ const DicordNotificationConfig: React.FC<Props> = ({
           {!isPro && (
             <>
               (
-              <NextLink href="/dashboard/details" shallow passHref>
-                <Link>Go Pro</Link>
-              </NextLink>{' '}
+              <Link href="/dashboard/details" shallow>
+                Go Pro
+              </Link>{' '}
               to enable it)
             </>
           )}

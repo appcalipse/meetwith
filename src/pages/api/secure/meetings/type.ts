@@ -2,10 +2,10 @@ import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { v4 } from 'uuid'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { isProAccount } from '@/utils/subscription_manager'
 
 import { MeetingType } from '../../../../types/Account'
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import {
   getAccountFromDB,
   initDB,
@@ -39,8 +39,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       )
 
       if (!type) {
-        res.status(403).send("You can't edit this meeting type")
-        return
+        return res.status(403).send("You can't edit this meeting type")
       }
       updatedInfo = {
         ...account,
@@ -71,8 +70,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     await workMeetingTypeGates(updatedAccount.preferences?.availableTypes || [])
 
-    res.status(200).json(updatedAccount)
-    return
+    return res.status(200).json(updatedAccount)
   } else if (req.method === 'DELETE') {
     initDB()
 
@@ -85,13 +83,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const type = account.preferences!.availableTypes.find(t => t.id === typeId)
 
     if (!type) {
-      res.status(403).send("You can't remove this meeting type")
-      return
+      return res.status(403).send("You can't remove this meeting type")
     }
 
     if (account.preferences!.availableTypes.length == 1) {
-      res.status(403).send('You should keep at least one meeting type')
-      return
+      return res.status(403).send('You should keep at least one meeting type')
     }
 
     type.deleted = true
@@ -111,11 +107,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const updatedAccount = await updateAccountPreferences(updatedInfo)
 
-    res.status(200).json(updatedAccount)
-    return
+    return res.status(200).json(updatedAccount)
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(withSessionRoute(handle))

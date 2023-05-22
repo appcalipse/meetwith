@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { useCookies } from 'react-cookie'
 
+import { SESSION_COOKIE_NAME } from '@/middleware'
 import { logoutWallet } from '@/utils/user_manager'
 
 import { Account } from '../types/Account'
-import { SESSION_COOKIE_NAME } from '../utils/auth/withSessionApiRoute'
 import { removeSignature } from '../utils/storage'
 
 interface IAccountContext {
@@ -29,6 +29,7 @@ const AccountContext = React.createContext<IAccountContext>(DEFAULT_STATE)
 interface AccountProviderProps {
   currentAccount?: Account | null
   logged: boolean
+  children: any
 }
 
 const AccountProvider: React.FC<AccountProviderProps> = ({

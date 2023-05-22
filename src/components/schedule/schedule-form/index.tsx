@@ -1,3 +1,4 @@
+import { Link } from '@chakra-ui/react'
 import {
   Box,
   Button,
@@ -7,7 +8,6 @@ import {
   HStack,
   Icon,
   Input,
-  Link,
   Switch,
   Text,
   Textarea,
@@ -231,7 +231,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       )}
 
       <Button
-        isFullWidth
+        width="full"
         disabled={
           (!logged && !isEmailValid) ||
           isScheduling ||

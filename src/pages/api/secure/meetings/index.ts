@@ -2,11 +2,11 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
 
 import { DBSlotEnhanced } from '../../../../types/Meeting'
 import { MeetingCreationRequest } from '../../../../types/Requests'
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import {
   getAccountFromDB,
   initDB,
@@ -34,8 +34,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           account.address.toLowerCase()
       ).length === 0
     ) {
-      res.status(403).send('You cant schedule a meeting for someone else')
-      return
+      return res
+        .status(403)
+        .send('You cant schedule a meeting for someone else')
     }
 
     const participantActing = getParticipantBaseInfoFromAccount(
@@ -47,24 +48,22 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         meeting
       )
 
-      res.status(200).json(meetingResult)
+      return res.status(200).json(meetingResult)
     } catch (e) {
       if (e instanceof TimeNotAvailableError) {
-        res.status(409).send(e)
+        return res.status(409).send(e)
       } else if (e instanceof MeetingCreationError) {
-        res.status(412).send(e)
+        return res.status(412).send(e)
       } else if (e instanceof GateConditionNotValidError) {
-        res.status(403).send(e)
+        return res.status(403).send(e)
       } else {
         Sentry.captureException(e)
-        res.status(500).send(e)
+        return res.status(500).send(e)
       }
     }
-
-    return
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(withSessionRoute(handle))
