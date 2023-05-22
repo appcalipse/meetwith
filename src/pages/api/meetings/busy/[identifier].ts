@@ -38,16 +38,14 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
           offset
         )
 
-      res.status(200).json(busySlots)
-      return
+      return res.status(200).json(busySlots)
     } catch (error) {
       if (error instanceof AccountNotFoundError) {
-        res.status(404).json({ error: error.message })
+        return res.status(404).json({ error: error.message })
       }
       Sentry.captureException(error)
-      res.status(500).send(error)
-      return
+      return res.status(500).send(error)
     }
   }
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

@@ -1,3 +1,4 @@
+import { Link } from '@chakra-ui/react'
 import {
   Accordion,
   AccordionButton,
@@ -6,7 +7,6 @@ import {
   AccordionPanel,
   Box,
   Heading,
-  Link,
 } from '@chakra-ui/react'
 import { ReactElement } from 'react'
 

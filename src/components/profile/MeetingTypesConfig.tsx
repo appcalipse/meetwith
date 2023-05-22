@@ -1,3 +1,4 @@
+import { Link } from '@chakra-ui/next-js'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -12,7 +13,6 @@ import {
   HStack,
   Icon,
   IconButton,
-  Link,
   SimpleGrid,
   Spacer,
   Text,
@@ -20,7 +20,6 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import NextLink from 'next/link'
 import { useContext, useRef, useState } from 'react'
 import { FaArrowLeft, FaTrash } from 'react-icons/fa'
 
@@ -122,11 +121,14 @@ const MeetingTypesConfig: React.FC = () => {
           >
             {!isPro && (
               <Text pb="6">
-                <NextLink href="/dashboard/details" shallow passHref>
-                  <Link colorScheme="primary" fontWeight="bold">
-                    Go PRO
-                  </Link>
-                </NextLink>{' '}
+                <Link
+                  href="/dashboard/details"
+                  shallow
+                  colorScheme="primary"
+                  fontWeight="bold"
+                >
+                  Go PRO
+                </Link>{' '}
                 to add as many meeting types as you want
               </Text>
             )}

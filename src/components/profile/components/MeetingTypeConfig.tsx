@@ -1,3 +1,4 @@
+import { Link } from '@chakra-ui/next-js'
 import {
   Checkbox,
   FormControl,
@@ -5,14 +6,12 @@ import {
   HStack,
   Icon,
   Input,
-  Link,
   Select,
   Switch,
   Text,
   Textarea,
   VStack,
 } from '@chakra-ui/react'
-import NextLink from 'next/link'
 import {
   forwardRef,
   ReactNode,
@@ -254,11 +253,14 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
         {!isPro && (
           <VStack alignItems="flex-start">
             <Text py="3">
-              <NextLink href="/dashboard/details" shallow passHref>
-                <Link colorScheme="primary" fontWeight="bold">
-                  Go PRO
-                </Link>
-              </NextLink>{' '}
+              <Link
+                href="/dashboard/details"
+                shallow
+                colorScheme="primary"
+                fontWeight="bold"
+              >
+                Go PRO
+              </Link>{' '}
               to add token gates to your meetings
             </Text>
           </VStack>

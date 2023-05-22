@@ -1,4 +1,5 @@
 import { ArrowForwardIcon } from '@chakra-ui/icons'
+import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
@@ -6,7 +7,6 @@ import {
   Heading,
   HStack,
   Image,
-  Link,
   SlideFade,
   Stack,
   Text,
@@ -199,22 +199,22 @@ export function Hero() {
           gridTemplateColumns={{ base: '1fr 1fr 1fr', md: 'none' }}
           gridAutoFlow={{ base: 'none', md: 'column' }}
         >
-          <Link>
+          <Link href="https://poap.xyz/">
             <Image src={'/assets/logo-poap.svg'} />
           </Link>
-          <Link>
+          <Link href="http://huddle01.xyz/">
             <Image src={'/assets/logo-huddle01.svg'} />
           </Link>
-          <Link>
+          {/* <Link href="">
             <Image src={'/assets/logo-e.svg'} />
-          </Link>
-          <Link>
+          </Link> */}
+          <Link href="https://unstoppabledomains.com/">
             <Image src={'/assets/logo-u.svg'} />
           </Link>
-          <Link>
+          <Link href="https://push.org">
             <Image src={'/assets/logo-push.svg'} />
           </Link>
-          <Link>
+          <Link href="">
             <Image src={'/assets/logo-triangle.svg'} />
           </Link>
         </Grid>

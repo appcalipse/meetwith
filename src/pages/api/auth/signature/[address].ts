@@ -18,9 +18,10 @@ const getDefaultSignature = async (
         .json({ message: DEFAULT_MESSAGE(account.nonce), nonce: account.nonce })
     } catch (e) {
       const nonce = Number(Math.random().toString(8).substring(2, 10))
-      res.status(200).send({ message: DEFAULT_MESSAGE(nonce), nonce })
+      return res.status(200).send({ message: DEFAULT_MESSAGE(nonce), nonce })
     }
   }
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(getDefaultSignature)

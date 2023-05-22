@@ -1,7 +1,7 @@
 import { google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 
 import { apiUrl } from '../../../../../utils/constants'
 
@@ -35,7 +35,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       scope: scopes,
     })
 
-    res.status(200).json({ url: authUrl })
+    return res.status(200).json({ url: authUrl })
   }
 }
 
