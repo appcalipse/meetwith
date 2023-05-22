@@ -1,17 +1,16 @@
+import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   chakra,
   Container,
   Heading,
   Image,
-  Link,
   SimpleGrid,
   Stack,
   Text,
   useColorModeValue,
   VisuallyHidden,
 } from '@chakra-ui/react'
-import NextLink from 'next/link'
 import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
@@ -20,11 +19,9 @@ import { MWW_DISCORD_SERVER } from '../utils/constants'
 
 const Logo = () => {
   return (
-    <NextLink href={'/'} passHref>
-      <Link>
-        <Image boxSize="100px" src="/assets/logo.svg" alt="Meet with Wallet" />
-      </Link>
-    </NextLink>
+    <Link href={'/'}>
+      <Image boxSize="100px" src="/assets/logo.svg" alt="Meet with Wallet" />
+    </Link>
   )
 }
 
@@ -90,9 +87,7 @@ export default function SmallWithLogoLeft() {
               Product
             </Heading>
             <Text textAlign="justify">
-              <NextLink href="/#pricing" passHref>
-                <Link>Pricing</Link>
-              </NextLink>
+              <Link href="/#pricing">Pricing</Link>
             </Text>
             <Text textAlign="justify">
               <Link
@@ -103,9 +98,7 @@ export default function SmallWithLogoLeft() {
               </Link>
             </Text>
             <Text textAlign="justify">
-              <NextLink href="/#faq" passHref>
-                <Link>FAQ</Link>
-              </NextLink>
+              <Link href="/#faq">FAQ</Link>
             </Text>
           </Box>
           <Box>
@@ -134,19 +127,13 @@ export default function SmallWithLogoLeft() {
               Legal
             </Heading>
             <Text textAlign="justify">
-              <NextLink href={'/legal/terms'} passHref>
-                <Link>Terms of Service</Link>
-              </NextLink>
+              <Link href={'/legal/terms'}>Terms of Service</Link>
             </Text>
             <Text textAlign="justify">
-              <NextLink href={'/legal/privacy'} passHref>
-                <Link>Privacy Policy</Link>
-              </NextLink>
+              <Link href={'/legal/privacy'}>Privacy Policy</Link>
             </Text>
             <Text textAlign="justify">
-              <NextLink href={'/legal/dpa'} passHref>
-                <Link>Data Protection</Link>
-              </NextLink>
+              <Link href={'/legal/dpa'}>Data Protection</Link>
             </Text>
           </Box>
         </SimpleGrid>

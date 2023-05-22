@@ -9,9 +9,8 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
     const teamMeetingRequest = await selectTeamMeetingRequest(id as string)
     if (teamMeetingRequest) {
-      res.status(200).json(teamMeetingRequest)
-      return
+      return res.status(200).json(teamMeetingRequest)
     }
   }
-  res.status(404)
+  return res.status(404).send('Not found')
 })

@@ -31,9 +31,8 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       Sentry.captureException(e)
     }
 
-    res.status(200).json([])
-    return
+    return res.status(200).json([])
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

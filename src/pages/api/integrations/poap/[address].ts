@@ -18,9 +18,8 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     } else {
       poaps = await fetchWalletPOAPs(req.query.address as string)
     }
-    res.status(200).json(poaps)
-    return
+    return res.status(200).json(poaps)
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

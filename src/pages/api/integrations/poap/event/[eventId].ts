@@ -10,12 +10,11 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     )
 
     if (event) {
-      res.status(200).json(event)
+      return res.status(200).json(event)
     } else {
-      res.status(200).json({ id: null })
+      return res.status(200).json({ id: null })
     }
-    return
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

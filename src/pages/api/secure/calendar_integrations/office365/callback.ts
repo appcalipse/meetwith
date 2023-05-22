@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { TimeSlotSource } from '@/types/Meeting'
 
-import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
 import { apiUrl } from '../../../../../utils/constants'
 import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
 
@@ -20,13 +20,11 @@ async function handler(
   const { code, error } = req.query
 
   if (typeof code !== 'string') {
-    res.status(400).json({ message: 'No code returned' })
-    return
+    return res.status(400).json({ message: 'No code returned' })
   }
 
   if (!req.session.account) {
-    res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
-    return
+    return res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
   }
 
   const toUrlEncoded = (payload: Record<string, string>) =>

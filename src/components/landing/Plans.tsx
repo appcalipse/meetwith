@@ -194,7 +194,6 @@ export function Plans() {
         logEvent('Failed to sign in', error)
       }
     } else {
-      console.log(selectedPlan)
       if (selectedPlan && selectedPlan === Plan.PRO) {
         await router.push('/dashboard/details')
       } else {
@@ -204,7 +203,6 @@ export function Plans() {
   }
 
   function handleCardButton(buttonCategory: string) {
-    console.log(buttonCategory)
     switch (buttonCategory) {
       case 'Free':
         handleLogin()

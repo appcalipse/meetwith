@@ -17,15 +17,14 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
         req.query.meetingTypeId as string
       )
 
-      res.status(200).json({ isFree: free })
-      return
+      return res.status(200).json({ isFree: free })
     } catch (error) {
       if (error instanceof AccountNotFoundError) {
-        res.status(404).json({ error: error.message })
+        return res.status(404).json({ error: error.message })
       }
       Sentry.captureException(error)
       return res.status(500).send('Server error')
     }
   }
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

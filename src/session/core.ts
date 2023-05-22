@@ -3,13 +3,10 @@ import { getIronSession } from 'iron-session'
 import { NextPageContext } from 'next'
 import { AppContext } from 'next/app'
 
+import { SESSION_COOKIE_NAME, sessionOptions } from '@/middleware'
 import { getIPFSContent } from '@/utils/api_helper'
 
 import { Account, AccountPreferences } from '../types/Account'
-import {
-  SESSION_COOKIE_NAME,
-  sessionOptions,
-} from '../utils/auth/withSessionApiRoute'
 
 export const validateAuthentication = async (
   ctx: NextPageContext
@@ -27,6 +24,7 @@ export const validateAuthentication = async (
   if (authCookie) {
     // Actually, we cannot check if the user owns the wallet or get any update on backend side,
     // this should be done
+
     if (!!ctx.req) {
       const session = await getIronSession(ctx.req, ctx.res!, sessionOptions)
 
@@ -42,6 +40,7 @@ export const validateAuthentication = async (
           account.preferences_path
         )) as AccountPreferences
       }
+
       return account
     }
 
