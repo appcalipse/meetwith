@@ -34,5 +34,5 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     }
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

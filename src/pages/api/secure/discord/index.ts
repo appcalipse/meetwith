@@ -2,11 +2,11 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
   DiscordNotificationType,
   NotificationChannel,
 } from '@/types/AccountNotifications'
-import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
 import { initDB } from '@/utils/database'
 import {
   generateDiscordAuthToken,
@@ -32,17 +32,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         inMWWServer: userInfo!.isInMWWServer,
       }
 
-      res.status(200).json(newNotification)
+      return res.status(200).json(newNotification)
     } catch (e) {
       console.error(e)
       Sentry.captureException(e)
-      res.status(500).send(e)
+      return res.status(500).send(e)
     }
-
-    return
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(withSessionRoute(handle))

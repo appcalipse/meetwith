@@ -10,14 +10,16 @@ const getAccountUrl = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const account = await getAccountFromDB(identifier as string)
       if (account.is_invited) {
-        res.status(404).send('Not found')
-        return
+        return res.status(404).send('Not found')
       }
-      res.status(200).json({ calendar_url: getAccountCalendarUrl(account) })
+      return res
+        .status(200)
+        .json({ calendar_url: getAccountCalendarUrl(account) })
     } catch (e) {
-      res.status(404).send('Not found')
+      return res.status(404).send('Not found')
     }
   }
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(getAccountUrl)

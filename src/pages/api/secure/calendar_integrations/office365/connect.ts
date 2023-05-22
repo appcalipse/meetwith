@@ -43,6 +43,6 @@ export default async function handler(
     }
     const query = stringify(params)
     const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${query}`
-    res.status(200).json({ url })
+    return res.status(200).json({ url })
   }
 }

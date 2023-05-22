@@ -119,6 +119,7 @@ const loginOrSignup = async (
   try {
     // preload account data
     account = await getAccount(accountAddress.toLowerCase())
+
     if (account.is_invited) {
       const { signature, nonce } = await generateSignature()
 

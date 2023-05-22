@@ -82,8 +82,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       }
     }
 
-    res.status(200).json(suggestedTimes)
-    return
+    return res.status(200).json(suggestedTimes)
   }
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

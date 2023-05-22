@@ -1,7 +1,8 @@
 import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+
 import { initDB, updateAccountPreferences } from '../../../../utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -12,20 +13,27 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const account = req.body
 
     if (account.address !== account_id) {
-      res.status(403).send("You cant edit someone else's account")
+      return res.status(403).send("You cant edit someone else's account")
     }
 
     try {
       const updatedAccount = await updateAccountPreferences(account)
 
-      res.status(200).json(updatedAccount)
+      req.session.account = {
+        ...updatedAccount,
+        signature: req.session.account!.signature,
+      }
+      delete req.session.account.preferences
+
+      await req.session.save()
+
+      return res.status(200).json(updatedAccount)
     } catch (e) {
-      res.status(500).send(e)
+      return res.status(500).send(e)
     }
-    return
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(withSessionRoute(handle))
