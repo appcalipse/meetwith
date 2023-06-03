@@ -76,7 +76,6 @@ import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
-import MeetingScheduledDialog2 from '../meeting/MeetingScheduledDialog2'
 import MeetSlotPicker from '../MeetSlotPicker'
 import ProfileInfo from '../profile/ProfileInfo'
 import TokenGateValidation from '../token-gate/TokenGateValidation'
@@ -820,23 +819,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 </Box>
               )}
             </Flex>
-            {/* {isSSR
-            ? null
-            : lastScheduledMeeting && (
-                <MeetingScheduledDialog
-                  participants={lastScheduledMeeting!.participants}
-                  schedulerAccount={currentAccount!}
-                  scheduleType={schedulingType}
-                  meeting={lastScheduledMeeting}
-                  accountNotificationSubs={notificationsSubs}
-                  isOpen={isOpen}
-                  onClose={_onClose}
-                />
-              )} */}
           </Box>
         ) : isSSR ? null : (
           <Flex justify="center">
-            <MeetingScheduledDialog2
+            <MeetingScheduledDialog
               participants={lastScheduledMeeting!.participants}
               schedulerAccount={currentAccount!}
               scheduleType={schedulingType}
