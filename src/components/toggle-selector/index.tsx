@@ -1,4 +1,4 @@
-import { Button, Flex } from '@chakra-ui/react'
+import { Button, Flex, useColorMode, useColorModeValue } from '@chakra-ui/react'
 
 export interface ToggleSelectorProps<T> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,17 +14,21 @@ export const ToggleSelector = <T,>({
   onChange,
   options,
 }: ToggleSelectorProps<T>) => {
+  const bgColor = useColorModeValue('gray.300', 'neutral.900')
+  const { colorMode } = useColorMode()
+
   return (
-    <Flex bg="neutral.900" padding={1} borderRadius={8} gap={1}>
+    <Flex bg={bgColor} padding={1} borderRadius={8} gap={1}>
       {options.map((option, index) => (
         <Button
+          fontWeight={500}
           flexGrow={1}
           flexShrink={0}
           flexBasis={0}
           key={index}
           variant={value === option.value ? 'solid' : 'ghost'}
           onClick={() => onChange(option.value)}
-          colorScheme="primary"
+          colorScheme={colorMode === 'light' ? 'primary' : undefined}
         >
           {option.label}
         </Button>
