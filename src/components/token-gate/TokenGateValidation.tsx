@@ -20,6 +20,7 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
   const [loading, setLoading] = useState<boolean>(true)
 
   const handleGateValidation = async (gateId: string) => {
+    if (!gateId || gateId === 'No gate') return
     setLoading(true)
     const chosenGate = await getGateCondition(gateId)
 

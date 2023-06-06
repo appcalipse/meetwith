@@ -38,8 +38,7 @@ export const CopyLinkButton = ({
     <Tooltip label="Copied" placement="top" isOpen={copyFeedbackOpen}>
       <Button
         flex={1}
-        color="primary.500"
-        borderColor="primary.500"
+        colorScheme="primary"
         variant="outline"
         onClick={copyLink}
         {...(withIcon && { rightIcon: <FaLink /> })}
