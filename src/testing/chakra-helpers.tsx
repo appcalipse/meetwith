@@ -3,6 +3,15 @@ import React from 'react'
 
 import customTheme from '../styles/theme'
 
-export const ChakraTestWrapper: React.FC = ({ children }) => (
-  <ChakraProvider theme={customTheme}>{children}</ChakraProvider>
+export const ChakraTestWrapper: React.FC<{ children: any }> = ({
+  children,
+}) => (
+  <ChakraProvider
+    theme={{
+      ...customTheme,
+      config: { ...customTheme.config, initialColorMode: 'dark' },
+    }}
+  >
+    {children}
+  </ChakraProvider>
 )

@@ -2,9 +2,9 @@ import * as Sentry from '@sentry/nextjs'
 import { Auth, google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { TimeSlotSource } from '@/types/Meeting'
 
-import { withSessionRoute } from '../../../../../utils/auth/withSessionApiRoute'
 import { apiUrl } from '../../../../../utils/constants'
 import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
 
@@ -19,25 +19,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   // if user did not complete the cicle, just log it and go to the dashboard page again
   if (error) {
     Sentry.captureException(error)
-    res.redirect(`/dashboard/calendars?calendarResult=error`)
-    return
+    return res.redirect(`/dashboard/calendars?calendarResult=error`)
   }
 
   if (!req.session.account) {
-    res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
-    return
+    return res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
   }
 
   if (code && typeof code !== 'string') {
-    res.status(400).json({ message: '`code` must be a string' })
-    return
+    return res.status(400).json({ message: '`code` must be a string' })
   }
 
   if (!credentials) {
-    res
+    return res
       .status(400)
       .json({ message: 'There are no Google Credentials installed.' })
-    return
   }
 
   const { client_secret, client_id } = credentials
@@ -99,7 +95,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     calendars,
     key
   )
-  res.redirect(`/dashboard/calendars?calendarResult=success`)
+  return res.redirect(`/dashboard/calendars?calendarResult=success`)
 }
 
 export default withSessionRoute(handler)

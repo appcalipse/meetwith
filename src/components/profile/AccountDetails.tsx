@@ -21,7 +21,11 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
 
 import lensHelper from '@/utils/lens.helper'
-import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
+import {
+  checkValidDomain,
+  resolveENS,
+  resolveFreename,
+} from '@/utils/rpc_helper_front'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { SocialLinkType } from '../../types/Account'
@@ -162,11 +166,23 @@ const AccountDetails: React.FC = () => {
       }
     }
 
+    const getFreenameHandles = async () => {
+      const freename = await resolveFreename(currentAccount!.address)
+      if (freename) {
+        handles.push({
+          label: freename.name,
+          value: freename.name,
+          type: ProfileInfoProvider.FREENAME,
+        })
+      }
+    }
+
     await Promise.all([
       getMWWDomains(),
       lensProfiles(),
       getENSHandle(),
       getUNHandles(),
+      getFreenameHandles(),
     ])
     setNameOptions(handles)
   }
@@ -186,7 +202,7 @@ const AccountDetails: React.FC = () => {
       toast({
         title: 'You are not the owner of this name',
         description:
-          'To use ENS, Lens, or Unstoppable domain as your name you need to be the owner of it',
+          'To use ENS, Lens, Unstoppable domain, or other name services as your name you need to be the owner of it',
         status: 'error',
         duration: 5000,
         position: 'top',
@@ -421,9 +437,8 @@ export const SubscriptionCard: React.FC<SubscriptioCardProps> = ({
         {planInfo && (
           <Button
             mt={8}
-            isFullWidth
+            width="full"
             colorScheme="primary"
-            disabled={active}
             onClick={() => onClick()}
           >
             {active ? 'Extend' : `Subscribe to ${planInfo!.name}`}

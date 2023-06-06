@@ -1,3 +1,4 @@
+import { Link } from '@chakra-ui/next-js'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -11,7 +12,6 @@ import {
   HStack,
   IconButton,
   Image,
-  Link,
   Skeleton,
   Spinner,
   Stack,
@@ -20,7 +20,6 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import NextLink from 'next/link'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaEdit, FaTrash } from 'react-icons/fa'
 
@@ -137,11 +136,14 @@ export const TokenGateConfig = () => {
 
       {!isPro && (
         <Text pb="6">
-          <NextLink href="/dashboard/details" shallow passHref>
-            <Link colorScheme="primary" fontWeight="bold">
-              Go PRO
-            </Link>
-          </NextLink>{' '}
+          <Link
+            href="/dashboard/details"
+            shallow
+            colorScheme="primary"
+            fontWeight="bold"
+          >
+            Go PRO
+          </Link>{' '}
           to create token gates.
         </Text>
       )}

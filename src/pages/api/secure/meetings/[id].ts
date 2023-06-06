@@ -2,9 +2,9 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { DBSlotEnhanced } from '@/types/Meeting'
 import { MeetingCancelRequest, MeetingUpdateRequest } from '@/types/Requests'
-import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
 import {
   deleteMeetingFromDB,
   getAccountFromDB,
@@ -38,8 +38,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const meeting: MeetingUpdateRequest = req.body as MeetingUpdateRequest
 
     if (existingSlot.account_address !== account_address) {
-      res.status(403).send("You can't edit a meeting that is not yours")
-      return
+      return res.status(403).send("You can't edit a meeting that is not yours")
     }
 
     if (
@@ -49,8 +48,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           account.address.toLowerCase()
       ).length === 0
     ) {
-      res.status(403).send('You cant schedule a meeting for someone else')
-      return
+      return res
+        .status(403)
+        .send('You cant schedule a meeting for someone else')
     }
 
     try {
@@ -58,23 +58,21 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         getParticipantBaseInfoFromAccount(account),
         meeting
       )
-      res.status(200).json(meetingResult)
+      return res.status(200).json(meetingResult)
     } catch (e) {
       if (e instanceof TimeNotAvailableError) {
-        res.status(409).send(e)
+        return res.status(409).send(e)
       } else if (e instanceof MeetingCreationError) {
-        res.status(412).send(e)
+        return res.status(412).send(e)
       } else if (e instanceof MeetingChangeConflictError) {
-        res.status(417).send(e)
+        return res.status(417).send(e)
       } else if (e instanceof GateConditionNotValidError) {
-        res.status(405).send(e)
+        return res.status(405).send(e)
       } else {
         Sentry.captureException(e)
-        res.status(500).send(e)
+        return res.status(500).send(e)
       }
     }
-
-    return
   } else if (req.method === 'DELETE') {
     initDB()
     const slotId = req.query.id as string
@@ -105,26 +103,24 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         request.meeting.meeting_id,
         request.currentTimezone
       )
-      res.status(200).json({ removed: slotsToRemove })
+      return res.status(200).json({ removed: slotsToRemove })
     } catch (e) {
       if (e instanceof TimeNotAvailableError) {
-        res.status(409).send(e)
+        return res.status(409).send(e)
       } else if (e instanceof MeetingChangeConflictError) {
-        res.status(417).send(e) // this is really bad, we will run out of http codes to use
+        return res.status(417).send(e) // this is really bad, we will run out of http codes to use
       } else if (e instanceof MeetingCreationError) {
-        res.status(412).send(e)
+        return res.status(412).send(e)
       } else if (e instanceof GateConditionNotValidError) {
-        res.status(403).send(e)
+        return res.status(403).send(e)
       } else {
         Sentry.captureException(e)
-        res.status(500).send(e)
+        return res.status(500).send(e)
       }
     }
-
-    return
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(withSessionRoute(handle))

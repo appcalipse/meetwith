@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 
 function userRoute(req: NextApiRequest, res: NextApiResponse) {
   res.send({ account: req.session.account })

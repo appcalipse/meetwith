@@ -1,3 +1,5 @@
+import { Link } from '@chakra-ui/next-js'
+import { Link as ChakraLink } from '@chakra-ui/react'
 import {
   Button,
   FormControl,
@@ -6,7 +8,6 @@ import {
   Heading,
   HStack,
   Input,
-  Link,
   Spacer,
   Spinner,
   Switch,
@@ -14,17 +15,15 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { BaseProvider } from '@ethersproject/providers'
 import * as PushAPI from '@pushprotocol/restapi'
 import { ethers } from 'ethers'
-import NextLink from 'next/link'
 import { useContext, useState } from 'react'
 import { useEffect } from 'react'
 
 import { SupportedChain } from '@/types/chains'
 import { getCAIPAddress, PUSH_CHANNEL } from '@/utils/push_protocol_helper'
 import { validateChainToActOn } from '@/utils/rpc_helper_front'
-import { connectedProvider, web3 } from '@/utils/user_manager'
+import { connectedProvider } from '@/utils/user_manager'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import {
@@ -256,16 +255,16 @@ const NotificationsConfig: React.FC = () => {
             />
             <Text>
               Push notifications by{' '}
-              <NextLink href="https://push.org" shallow passHref>
-                <Link isExternal>Push protocol</Link>
-              </NextLink>
+              <ChakraLink href="https://push.org" isExternal>
+                Push protocol
+              </ChakraLink>
               {!isPro && (
                 <>
                   {' '}
                   (
-                  <NextLink href="/dashboard/details" passHref>
-                    <Link>Go Pro</Link>
-                  </NextLink>{' '}
+                  <Link href="/dashboard/details" shallow>
+                    Go Pro
+                  </Link>{' '}
                   to enable it)
                 </>
               )}

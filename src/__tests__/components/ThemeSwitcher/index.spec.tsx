@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
 
-import { ChakraTestWrapper } from '../../testing/chakra-helpers'
-import { ThemeSwitcher } from '.'
+import { ThemeSwitcher } from '../../../components/ThemeSwitcher'
+import { ChakraTestWrapper } from '../../../testing/chakra-helpers'
 
 describe('ThemeSwitcher', () => {
   it('should react to theme mode switch', () => {

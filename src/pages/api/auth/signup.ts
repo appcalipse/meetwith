@@ -1,7 +1,8 @@
 import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { withSessionRoute } from '../../../utils/auth/withSessionApiRoute'
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+
 import { checkSignature } from '../../../utils/cryptography'
 import { initAccountDBForWallet, initDB } from '../../../utils/database'
 
@@ -15,8 +16,7 @@ const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
       req.body.nonce! as number
     )
     if (req.body.address.toLowerCase() !== recovered.toLowerCase()) {
-      res.status(401).send('Not authorized')
-      return
+      return res.status(401).send('Not authorized')
     }
 
     const account = await initAccountDBForWallet(
@@ -35,11 +35,10 @@ const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
 
     await req.session.save()
 
-    res.status(200).json(account)
-    return
+    return res.status(200).json(account)
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 }
 
 export default withSessionRoute(withSentry(signupRoute))

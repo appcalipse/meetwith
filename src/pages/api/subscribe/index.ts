@@ -11,10 +11,9 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (email) {
       const success = await saveEmailToDB(email, plan)
-      res.status(200).json({ success })
-      return
+      return res.status(200).json({ success })
     }
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })
