@@ -371,7 +371,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       >
         {isScheduling
           ? 'Scheduling...'
-          : scheduleType === SchedulingType.GUEST
+          : logged || scheduleType === SchedulingType.GUEST
           ? 'Schedule'
           : 'Connect wallet to schedule'}
       </Button>

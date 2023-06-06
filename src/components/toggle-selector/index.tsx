@@ -15,7 +15,6 @@ export const ToggleSelector = <T,>({
   options,
 }: ToggleSelectorProps<T>) => {
   const bgColor = useColorModeValue('gray.300', 'neutral.900')
-  const { colorMode } = useColorMode()
 
   return (
     <Flex bg={bgColor} padding={1} borderRadius={8} gap={1}>
@@ -28,7 +27,7 @@ export const ToggleSelector = <T,>({
           key={index}
           variant={value === option.value ? 'solid' : 'ghost'}
           onClick={() => onChange(option.value)}
-          colorScheme={colorMode === 'light' ? 'primary' : undefined}
+          colorScheme="primary"
         >
           {option.label}
         </Button>
