@@ -9,9 +9,10 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
     const gateConditionObject = await getGateCondition(id as string)
     if (gateConditionObject) {
-      res.status(200).json(gateConditionObject)
+      return res.status(200).json(gateConditionObject)
     } else {
-      res.status(404)
+      return res.status(404).send('Not found')
     }
   }
+  return res.status(404).send('Not found')
 })

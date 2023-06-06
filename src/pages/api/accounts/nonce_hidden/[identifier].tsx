@@ -8,9 +8,8 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     initDB()
 
     const nonce = await getAccountNonce(req.query.identifier as string)
-    res.status(200).json({ nonce })
-    return
+    return res.status(200).json({ nonce })
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

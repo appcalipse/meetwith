@@ -1,4 +1,5 @@
 import { CloseIcon } from '@chakra-ui/icons'
+import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
@@ -8,15 +9,13 @@ import {
   HStack,
   Icon,
   Image,
-  Link,
   Stack,
   Text,
   useColorModeValue,
   useDisclosure,
 } from '@chakra-ui/react'
-import NextLink from 'next/link'
 import router, { useRouter } from 'next/router'
-import React, { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { BiMenuAltRight } from 'react-icons/bi'
 import { BiWallet } from 'react-icons/bi'
 
@@ -99,23 +98,22 @@ export const Navbar = () => {
               </Flex>
             </Flex>
             <Flex flex={{ base: 1 }}>
-              <NextLink href={'/'} passHref>
-                <Link
-                  display={{ base: 'none', md: 'flex' }}
-                  onClick={() => {
-                    handleSetActiveLink('/')
-                  }}
-                >
-                  <HStack>
-                    <Image
-                      width="100px"
-                      p={2}
-                      src="/assets/logo.svg"
-                      alt="Meet with Wallet"
-                    />
-                  </HStack>
-                </Link>
-              </NextLink>
+              <Link
+                href={'/'}
+                display={{ base: 'none', md: 'flex' }}
+                onClick={() => {
+                  handleSetActiveLink('/')
+                }}
+              >
+                <HStack>
+                  <Image
+                    width="100px"
+                    p={2}
+                    src="/assets/logo.svg"
+                    alt="Meet with Wallet"
+                  />
+                </HStack>
+              </Link>
               <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
                 <DesktopNav
                   pathname={pathname}
@@ -196,21 +194,20 @@ const DesktopNav = ({ pathname, handleSetActiveLink }: DesktopNavProps) => {
       {NAV_ITEMS.filter(item => !item.logged || (logged && item.logged)).map(
         navItem => (
           <Box key={navItem.label}>
-            <NextLink href={navItem.href ?? '#'} passHref>
-              <Link
-                onClick={() => handleSetActiveLink(navItem.href)}
-                p={2}
-                fontSize={'sm'}
-                fontWeight={500}
-                color={pathname === '/' ? 'neutral.0' : linkColor}
-                _hover={{
-                  textDecoration: 'none',
-                  color: linkHoverColor,
-                }}
-              >
-                {navItem.label}
-              </Link>
-            </NextLink>
+            <Link
+              href={navItem.href ?? '#'}
+              onClick={() => handleSetActiveLink(navItem.href)}
+              p={2}
+              fontSize={'sm'}
+              fontWeight={500}
+              color={pathname === '/' ? 'neutral.0' : linkColor}
+              _hover={{
+                textDecoration: 'none',
+                color: linkHoverColor,
+              }}
+            >
+              {navItem.label}
+            </Link>
           </Box>
         )
       )}

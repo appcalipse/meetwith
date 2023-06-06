@@ -2,12 +2,12 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { MeetingChangeType } from '@/types/Meeting'
 import {
   MeetingCancelSyncRequest,
   MeetingCreationSyncRequest,
 } from '@/types/Requests'
-import { withSessionRoute } from '@/utils/auth/withSessionApiRoute'
 import {
   notifyForMeetingCancellation,
   notifyForOrUpdateNewMeeting,
@@ -44,8 +44,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       Sentry.captureException(error)
     }
 
-    res.status(200).send(true)
-    return
+    return res.status(200).send(true)
   } else if (req.method === 'PATCH') {
     const request = JSON.parse(req.body) as MeetingCreationSyncRequest
 
@@ -76,8 +75,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       Sentry.captureException(error)
     }
 
-    res.status(200).send(true)
-    return
+    return res.status(200).send(true)
   } else if (req.method === 'DELETE') {
     const {
       participantActing,
@@ -113,11 +111,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       Sentry.captureException(error)
     }
 
-    res.status(200).send(true)
-    return
+    return res.status(200).send(true)
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(withSessionRoute(handle))

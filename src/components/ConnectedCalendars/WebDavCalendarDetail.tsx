@@ -1,3 +1,4 @@
+import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
@@ -6,7 +7,6 @@ import {
   Input,
   InputGroup,
   InputRightElement,
-  Link,
   Text,
   useToast,
 } from '@chakra-ui/react'

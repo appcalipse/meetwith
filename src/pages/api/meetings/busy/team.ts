@@ -28,8 +28,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
         endDate
       )
 
-    res.status(200).json(busySlots)
-    return
+    return res.status(200).json(busySlots)
   }
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 })

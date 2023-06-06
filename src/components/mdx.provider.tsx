@@ -30,6 +30,8 @@ const components = {
   li: ({ children }: any) => <ListItem>{children}</ListItem>,
 }
 
-export const ChakraMDXProvider: React.FC = ({ children }) => {
+export const ChakraMDXProvider: React.FC<{ children: any }> = ({
+  children,
+}) => {
   return <MDXProvider components={components}>{children}</MDXProvider>
 }
