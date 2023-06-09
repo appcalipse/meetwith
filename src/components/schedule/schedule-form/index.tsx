@@ -53,7 +53,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const toast = useToast()
 
   const [content, setContent] = useState('')
-  const [isStart, setIsStart] = useState(true)
   const [name, setName] = useState(currentAccount?.preferences?.name || '')
   const [isScheduling, setIsScheduling] = useState(false)
   const [customMeeting, setCustomMeeting] = useState(false)
@@ -125,14 +124,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   useMemo(() => {
     if (logged) setScheduleType(SchedulingType.REGULAR)
-    else {
-      if (isStart) {
-        handleScheduleType(SchedulingType.REGULAR)
-        setIsStart(false)
-      } else {
-        setScheduleType(SchedulingType.GUEST)
-      }
-    }
+    else setScheduleType(SchedulingType.GUEST)
   }, [logged])
 
   return (
