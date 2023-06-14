@@ -18,3 +18,13 @@ export const isValidUrl = (url: string): boolean => {
   )
   return !!match
 }
+
+export const isEmptyString = (value: string): boolean => {
+  if (value === undefined || value === null) {
+    return true
+  }
+  if (typeof value === 'string' && value.trim() === '') {
+    return true
+  }
+  return false
+}
