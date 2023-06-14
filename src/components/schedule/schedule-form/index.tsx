@@ -142,23 +142,25 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
       {scheduleType === SchedulingType.GUEST && (
         <>
-          <FormLabel>Your name</FormLabel>
-          <Input
-            type="text"
-            disabled={isScheduling}
-            placeholder="Your name or an identifier"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            mb={4}
-          />
-
-          <FormControl isInvalid={!isGuestEmailValid}>
-            <FormLabel>Your Email*</FormLabel>
+          <FormControl>
+            <FormLabel>Your name (optional)</FormLabel>
             <Input
               autoFocus
+              type="text"
+              disabled={isScheduling}
+              placeholder="Your name or an identifier"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              mb={4}
+            />
+          </FormControl>
+
+          <FormControl isInvalid={!isGuestEmailValid}>
+            <FormLabel>Your Email</FormLabel>
+            <Input
               mb={4}
               type="email"
-              placeholder="insert your email"
+              placeholder="Insert your email"
               disabled={isScheduling}
               value={guestEmail}
               onKeyPress={event =>
@@ -168,44 +170,26 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             />
           </FormControl>
 
-          <FormLabel>Information (optional)</FormLabel>
-          <Textarea
-            disabled={isScheduling}
-            placeholder="Any information you want to share prior to the meeting?"
-            value={content}
-            onChange={e => setContent(e.target.value)}
-          />
+          <FormControl>
+            <FormLabel>What is this meeting about? (optional)</FormLabel>
+            <Textarea
+              disabled={isScheduling}
+              placeholder="Any information you want to share prior to the meeting?"
+              value={content}
+              onChange={e => setContent(e.target.value)}
+            />
+          </FormControl>
         </>
       )}
 
       {scheduleType === SchedulingType.REGULAR && (
         <>
-          {/* <Alert
-            colorScheme="primary"
-            rounded="md"
-            bgColor="neutral.600"
-            color="white"
-            padding="12px"
-          >
-            <Icon
-              name="ipfs link"
-              boxSize="22px"
-              as={FaBell}
-              color="primary.600"
-              margin="22px"
-            />
-            <AlertTitle>
-              Don&apos;t miss your meeting, setup your notification by adding
-              your email.
-            </AlertTitle>
-          </Alert> */}
-
           <FormControl isInvalid={isNameEmpty}>
-            <FormLabel>Your name*</FormLabel>
+            <FormLabel>Your name</FormLabel>
             <Input
               autoFocus
-              type="email"
-              // placeholder="insert your email"
+              type="text"
+              placeholder="Your name or an identifier"
               disabled={isScheduling}
               value={name}
               onKeyPress={event =>
@@ -214,13 +198,15 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               onChange={e => setName(e.target.value)}
             />
           </FormControl>
-          <FormLabel>What is this meeting about?</FormLabel>
-          <Textarea
-            disabled={isScheduling}
-            // placeholder="Any information you want to share prior to the meeting?"
-            value={content}
-            onChange={e => setContent(e.target.value)}
-          />
+          <FormControl>
+            <FormLabel>What is this meeting about? (optional)</FormLabel>
+            <Textarea
+              disabled={isScheduling}
+              placeholder="Any information you want to share prior to the meeting?"
+              value={content}
+              onChange={e => setContent(e.target.value)}
+            />
+          </FormControl>
         </>
       )}
 
@@ -285,50 +271,22 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               onChange={e => setMeetingUrl(e.target.value)}
             />
           )}
-          <HStack alignItems="center">
-            <Switch
-              display="flex"
-              colorScheme="primary"
-              size="md"
-              mr={4}
-              isDisabled={isScheduling}
-              defaultChecked={false}
-              onChange={e => setSendEmailReminders(e.target.checked)}
-            />
-            <FormLabel mb="0">
-              <Text>Send me email reminders</Text>
-            </FormLabel>
-            <Tooltip.Provider delayDuration={400}>
-              <Tooltip.Root>
-                <Tooltip.Trigger>
-                  <Flex
-                    w="16px"
-                    h="16px"
-                    borderRadius="50%"
-                    bgColor={iconColor}
-                    justifyContent="center"
-                    alignItems="center"
-                    ml={1}
-                  >
-                    <Icon w={1} color={bgColor} as={FaInfo} />
-                  </Flex>
-                </Tooltip.Trigger>
-                <Tooltip.Content>
-                  <Text
-                    fontSize="sm"
-                    p={4}
-                    maxW="200px"
-                    bgColor={bgColor}
-                    shadow="lg"
-                  >
-                    Huddle01 is a web3-powered video conferencing tailored for
-                    DAOs and NFT communities.
-                  </Text>
-                  <Tooltip.Arrow />
-                </Tooltip.Content>
-              </Tooltip.Root>
-            </Tooltip.Provider>
-          </HStack>
+          {scheduleType === SchedulingType.REGULAR && (
+            <HStack alignItems="center">
+              <Switch
+                display="flex"
+                colorScheme="primary"
+                size="md"
+                mr={4}
+                isDisabled={isScheduling}
+                defaultChecked={false}
+                onChange={e => setSendEmailReminders(e.target.checked)}
+              />
+              <FormLabel mb="0">
+                <Text>Send me email reminders</Text>
+              </FormLabel>
+            </HStack>
+          )}
           {doSendEmailReminders && (
             <FormControl isInvalid={!isUserEmailValid}>
               <Input
