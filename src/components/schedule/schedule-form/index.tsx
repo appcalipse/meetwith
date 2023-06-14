@@ -143,7 +143,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       {scheduleType === SchedulingType.GUEST && (
         <>
           <FormControl>
-            <FormLabel>Your name (optional)</FormLabel>
+            <FormLabel>Your name</FormLabel>
             <Input
               autoFocus
               type="text"
