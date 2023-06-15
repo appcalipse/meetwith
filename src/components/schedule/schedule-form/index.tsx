@@ -38,6 +38,7 @@ interface ScheduleFormProps {
     content?: string,
     meetingUrl?: string
   ) => Promise<boolean>
+  notificationsSubs?: number
 }
 
 export const ScheduleForm: React.FC<ScheduleFormProps> = ({
@@ -46,6 +47,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   willStartScheduling,
   isGateValid,
   onConfirm,
+  notificationsSubs,
 }) => {
   const { handleLogin } = useLogin()
   const { currentAccount, logged } = useContext(AccountContext)
@@ -271,32 +273,35 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               onChange={e => setMeetingUrl(e.target.value)}
             />
           )}
-          {scheduleType === SchedulingType.REGULAR && (
-            <HStack alignItems="center">
-              <Switch
-                display="flex"
-                colorScheme="primary"
-                size="md"
-                mr={4}
-                isDisabled={isScheduling}
-                defaultChecked={false}
-                onChange={e => setSendEmailReminders(e.target.checked)}
-              />
-              <FormLabel mb="0">
-                <Text>Send me email reminders</Text>
-              </FormLabel>
-            </HStack>
-          )}
-          {doSendEmailReminders && (
-            <FormControl isInvalid={!isUserEmailValid}>
-              <Input
-                type="text"
-                disabled={isScheduling}
-                value={userEmail}
-                onChange={e => setUserEmail(e.target.value)}
-              />
-            </FormControl>
-          )}
+          {scheduleType === SchedulingType.REGULAR &&
+            (!notificationsSubs || notificationsSubs === 0) && (
+              <>
+                <HStack alignItems="center">
+                  <Switch
+                    display="flex"
+                    colorScheme="primary"
+                    size="md"
+                    mr={4}
+                    isDisabled={isScheduling}
+                    defaultChecked={doSendEmailReminders}
+                    onChange={e => setSendEmailReminders(e.target.checked)}
+                  />
+                  <FormLabel mb="0">
+                    <Text>Send me email reminders</Text>
+                  </FormLabel>
+                </HStack>
+                {doSendEmailReminders === true && (
+                  <FormControl isInvalid={!isUserEmailValid}>
+                    <Input
+                      type="text"
+                      disabled={isScheduling}
+                      value={userEmail}
+                      onChange={e => setUserEmail(e.target.value)}
+                    />
+                  </FormControl>
+                )}
+              </>
+            )}
         </VStack>
       )}
 

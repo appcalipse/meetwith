@@ -1,4 +1,5 @@
-export const isValidEmail = (email: string): boolean => {
+export const isValidEmail = (email?: string): boolean => {
+  if (!email) return false
   const match = email
     .toLowerCase()
     .match(

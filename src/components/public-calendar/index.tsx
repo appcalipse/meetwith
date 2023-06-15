@@ -1,4 +1,4 @@
-import { useDisclosure } from '@chakra-ui/hooks'
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Box, Container, Flex, Text } from '@chakra-ui/layout'
 import { Button, Spinner } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
@@ -134,7 +134,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [isGateValid, setIsGateValid] = useState<boolean | undefined>(undefined)
   const [isScheduling, setIsScheduling] = useState(false)
   const [readyToSchedule, setReadyToSchedule] = useState(false)
-  const { isOpen, onOpen, onClose } = useDisclosure()
   const [reset, setReset] = useState(false)
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
     undefined as MeetingDecrypted | undefined
@@ -292,24 +291,28 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     }
   }
 
-  useEffect(() => {
-    logged && updateSelfSlots()
-    if (logged && unloggedSchedule) {
-      confirmSchedule(
-        unloggedSchedule.scheduleType,
-        unloggedSchedule.startTime,
-        unloggedSchedule.guestEmail,
-        unloggedSchedule.name,
-        unloggedSchedule.content,
-        unloggedSchedule.meetingUrl
-      )
-    }
-  }, [currentAccount])
-
   const fetchNotificationSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()
     setNotificationSubs(subs.notification_types.length)
   }
+
+  useEffect(() => {
+    if (logged) {
+      updateSelfSlots()
+      fetchNotificationSubscriptions()
+
+      if (unloggedSchedule) {
+        confirmSchedule(
+          unloggedSchedule.scheduleType,
+          unloggedSchedule.startTime,
+          unloggedSchedule.guestEmail,
+          unloggedSchedule.name,
+          unloggedSchedule.content,
+          unloggedSchedule.meetingUrl
+        )
+      }
+    }
+  }, [currentAccount])
 
   const confirmSchedule = async (
     scheduleType: SchedulingType,
@@ -434,7 +437,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         fromPublicCalendar: true,
         participantsSize: meeting.participants.length,
       })
-      onOpen()
       setIsScheduling(false)
       return true
     } catch (e) {
@@ -502,7 +504,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const _onClose = () => {
     setReset(true)
-    onClose()
+    setLastScheduledMeeting(undefined)
     setTimeout(() => setReset(false), 200)
   }
 
@@ -815,6 +817,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                     selfAvailabilityCheck={selfAvailabilityCheck}
                     showSelfAvailability={checkedSelfSlots}
                     isGateValid={isGateValid!}
+                    notificationsSubs={notificationsSubs}
                   />
                 </Box>
               )}
