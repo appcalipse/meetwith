@@ -5,7 +5,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { ParticipantType } from '@/types/ParticipantInfo'
 
-import { DBSlotEnhanced } from '../../../../types/Meeting'
+import { DBSlotEnhanced, SchedulingType } from '../../../../types/Meeting'
 import { MeetingCreationRequest } from '../../../../types/Requests'
 import { initDB, saveMeeting } from '../../../../utils/database'
 import {
@@ -23,7 +23,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const guest = meeting.participants_mapping.filter(
         p => p.guest_email && p.type === ParticipantType.Scheduler
       )[0]
-      if (!guest) {
+      if (meeting.type === SchedulingType.GUEST && !guest) {
         return res.status(500).send('No guest scheduler found')
       }
       try {
@@ -49,7 +49,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         }
       }
     } else {
-      return res.status(503).send('You cant schedule a meeting as guest')
+      return res.status(503).send("You can't schedule a meeting as guest")
     }
   }
   return res.status(404).send('Not found')

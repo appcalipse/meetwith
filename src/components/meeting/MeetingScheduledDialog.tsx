@@ -10,6 +10,7 @@ import {
   Link,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import router from 'next/router'
@@ -39,6 +40,7 @@ interface IProps {
   accountNotificationSubs: number
   meeting?: MeetingDecrypted
   scheduleType: SchedulingType
+  hasConnectedCalendar: boolean
   reset: () => void
 }
 
@@ -48,21 +50,21 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   accountNotificationSubs,
   meeting,
   scheduleType,
+  hasConnectedCalendar,
   reset,
 }) => {
   const { currentAccount } = useContext(AccountContext)
   const { handleLogin } = useLogin()
 
+  const toast = useToast()
+
   const [emailSub, setEmailSub] = useState<string>()
   const [loadingSub, setLoadingSub] = useState<boolean>(false)
 
-  const notificationsAlertBackground = useColorModeValue(
-    'white',
-    'rgba(47, 56, 71, 1)'
-  )
+  const notificationsAlertBackground = useColorModeValue('white', 'gray.800')
   const notificationsAlertIconBackground = useColorModeValue(
-    'gray.700',
-    'gray.500'
+    'gray.300',
+    'gray.700'
   )
 
   let participantsToDisplay = []
@@ -83,7 +85,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
     : 0
 
   const subs = {
-    account_address: currentAccount!.address,
+    account_address: currentAccount?.address,
     notification_types: [],
   } as AccountNotifications
 
@@ -106,7 +108,17 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
       channels: subs.notification_types.map(sub => sub.channel),
     })
 
+    toast({
+      title: 'Email notifications saved successfully!',
+      status: 'success',
+      duration: 5000,
+      position: 'top',
+      isClosable: true,
+    })
+
     setLoadingSub(false)
+
+    router.push('/dashboard/notifications')
   }
 
   return (
@@ -146,7 +158,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
         {schedulerAccount &&
         accountNotificationSubs === 0 &&
         accountMeetingsScheduled <= 3 &&
-        currentAccount ? (
+        !!currentAccount ? (
           <VStack gap={4}>
             <HStack
               borderRadius={6}
@@ -155,12 +167,12 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               p={4}
             >
               <Icon as={FaBell} color="primary.300" />
-              <Text color="primary.300">
-                Set reminders so you don`t miss your meeting!
+              <Text>
+                Set notifications so you don&apos;t miss your meeting!
               </Text>
             </HStack>
             <Flex justify="start" direction="column" width="full">
-              <FormControl>
+              <FormControl isInvalid={!isValidEmail(emailSub)}>
                 <FormLabel>Your Email</FormLabel>
                 <HStack width="full">
                   <Input
@@ -171,54 +183,80 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                     disabled={loadingSub}
                   />
                   <Button
-                    colorScheme="orangeButton"
+                    colorScheme="primary"
                     px={8}
                     onClick={setReminder}
                     isLoading={loadingSub}
-                    loadingText="Updating..."
+                    loadingText="Saving..."
                   >
-                    Set Reminder
+                    Save email
                   </Button>
                 </HStack>
               </FormControl>
             </Flex>
           </VStack>
         ) : !!currentAccount ? (
-          <Button
-            colorScheme="orangeButton"
-            onClick={() => router.push('/dashboard/calendars')}
-          >
-            Connect Calendar
-          </Button>
-        ) : (
-          <>
-            <Button colorScheme="orangeButton" onClick={() => handleLogin()}>
-              Create Account
-            </Button>
-            <Button colorScheme="orangeButton" onClick={() => reset()}>
-              Schedule Another
-            </Button>
-          </>
-        )}
-        {!!currentAccount ? (
-          <>
+          <VStack gap={4}>
+            {!hasConnectedCalendar ? (
+              <Button
+                colorScheme="primary"
+                onClick={() => router.push('/dashboard/notifications')}
+                width="100%"
+              >
+                Go to Notification Settings
+              </Button>
+            ) : (
+              <>
+                <HStack
+                  borderRadius={6}
+                  bg={notificationsAlertIconBackground}
+                  width="100%"
+                  p={4}
+                >
+                  <Icon as={FaBell} color="primary.300" />
+                  <Text>
+                    Connect a calendar so you don&apos;t miss your next meeting!
+                  </Text>
+                </HStack>
+                <Button
+                  colorScheme="primary"
+                  width="100%"
+                  onClick={() => router.push('/dashboard/calendars')}
+                >
+                  Connect Calendar
+                </Button>
+              </>
+            )}
             <Button
-              colorScheme="orange"
-              onClick={() => router.push('/dashboard/notifications')}
-            >
-              Go to Notification Settings
-            </Button>
-            <Link
-              fontWeight={600}
-              textAlign="center"
+              variant="outline"
+              colorScheme="primary"
+              width="100%"
               onClick={() =>
                 router.push(`/dashboard/meetings?slotId=${meeting?.id}`)
               }
             >
               View/Edit Meeting
-            </Link>
+            </Button>
+          </VStack>
+        ) : (
+          <>
+            <Button
+              colorScheme="primary"
+              width="100%"
+              onClick={() => handleLogin()}
+            >
+              Create Account
+            </Button>
+            <Button
+              colorScheme="primary"
+              variant="outline"
+              width="100%"
+              onClick={() => reset()}
+            >
+              Schedule Another
+            </Button>
           </>
-        ) : null}
+        )}
       </Flex>
     </>
   )
