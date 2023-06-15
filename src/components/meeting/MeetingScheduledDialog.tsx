@@ -10,6 +10,7 @@ import {
   Link,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import router from 'next/router'
@@ -53,6 +54,8 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   const { currentAccount } = useContext(AccountContext)
   const { handleLogin } = useLogin()
 
+  const toast = useToast()
+
   const [emailSub, setEmailSub] = useState<string>()
   const [loadingSub, setLoadingSub] = useState<boolean>(false)
 
@@ -64,6 +67,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
     'gray.700',
     'gray.500'
   )
+  const actionButton = useColorModeValue('orange', 'orangeButton')
 
   let participantsToDisplay = []
   if (scheduleType === SchedulingType.GUEST) {
@@ -83,7 +87,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
     : 0
 
   const subs = {
-    account_address: currentAccount!.address,
+    account_address: currentAccount?.address,
     notification_types: [],
   } as AccountNotifications
 
@@ -106,7 +110,17 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
       channels: subs.notification_types.map(sub => sub.channel),
     })
 
+    toast({
+      title: 'Reminder set with succes!',
+      status: 'success',
+      duration: 5000,
+      position: 'top',
+      isClosable: true,
+    })
+
     setLoadingSub(false)
+
+    router.push('/dashboard/notifications')
   }
 
   return (
@@ -160,7 +174,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               </Text>
             </HStack>
             <Flex justify="start" direction="column" width="full">
-              <FormControl>
+              <FormControl isInvalid={!isValidEmail(emailSub)}>
                 <FormLabel>Your Email</FormLabel>
                 <HStack width="full">
                   <Input
@@ -171,7 +185,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                     disabled={loadingSub}
                   />
                   <Button
-                    colorScheme="orangeButton"
+                    colorScheme={actionButton}
                     px={8}
                     onClick={setReminder}
                     isLoading={loadingSub}
@@ -185,17 +199,17 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
           </VStack>
         ) : !!currentAccount ? (
           <Button
-            colorScheme="orangeButton"
+            colorScheme={actionButton}
             onClick={() => router.push('/dashboard/calendars')}
           >
             Connect Calendar
           </Button>
         ) : (
           <>
-            <Button colorScheme="orangeButton" onClick={() => handleLogin()}>
+            <Button colorScheme="orange" onClick={() => handleLogin()}>
               Create Account
             </Button>
-            <Button colorScheme="orangeButton" onClick={() => reset()}>
+            <Button colorScheme="orange" onClick={() => reset()}>
               Schedule Another
             </Button>
           </>
@@ -203,7 +217,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
         {!!currentAccount ? (
           <>
             <Button
-              colorScheme="orange"
+              colorScheme={actionButton}
               onClick={() => router.push('/dashboard/notifications')}
             >
               Go to Notification Settings

@@ -47,6 +47,7 @@ interface MeetSlotPickerProps {
   isGateValid: boolean
   showSelfAvailability: boolean
   blockedDates?: Date[]
+  notificationsSubs?: number
 }
 
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
@@ -64,6 +65,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   selfAvailabilityCheck,
   showSelfAvailability,
   blockedDates,
+  notificationsSubs,
 }) => {
   const [pickedDay, setPickedDay] = useState(null as Date | null)
   const [pickedTime, setPickedTime] = useState(null as Date | null)
@@ -207,6 +209,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             pickedTime={pickedTime!}
             isSchedulingExternal={isSchedulingExternal}
             isGateValid={isGateValid}
+            notificationsSubs={notificationsSubs}
           />
         </Popup>
       )}
