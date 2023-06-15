@@ -27,10 +27,19 @@ import {
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
+import { type } from 'os'
 import React, { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account, MeetingType } from '@/types/Account'
+import {
+  AccountNotifications,
+  NotificationChannel,
+} from '@/types/AccountNotifications'
+import {
+  ConnectedCalendar,
+  ConnectedCalendarCore,
+} from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
 import {
   DBSlot,
@@ -38,6 +47,7 @@ import {
   GroupMeetingType,
   MeetingDecrypted,
   SchedulingType,
+  TimeSlotSource,
 } from '@/types/Meeting'
 import {
   ParticipantInfo,
@@ -51,6 +61,8 @@ import {
   getBusySlots,
   getMeeting,
   getNotificationSubscriptions,
+  listConnectedCalendars,
+  setNotificationSubscriptions,
 } from '@/utils/api_helper'
 import {
   dateToHumanReadable,
@@ -73,6 +85,7 @@ import {
 import { isSlotAvailable } from '@/utils/slots.helper'
 import { saveMeetingsScheduled } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
+import { isValidEmail } from '@/utils/validations'
 
 import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'
@@ -138,7 +151,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
     undefined as MeetingDecrypted | undefined
   )
+
   const [notificationsSubs, setNotificationSubs] = useState(0)
+  const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
   const [rescheduleSlotId, setRescheduleSlotId] = useState<string | undefined>(
     undefined
   )
@@ -292,8 +307,19 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }
 
   const fetchNotificationSubscriptions = async () => {
-    const subs = await getNotificationSubscriptions()
+    let subs: AccountNotifications | null = null
+    let connectedCalendars: ConnectedCalendarCore[] = []
+    await Promise.all([
+      (subs = await getNotificationSubscriptions()),
+      (connectedCalendars = await listConnectedCalendars()),
+    ])
+
+    const validCals = connectedCalendars
+      .filter(cal => cal.provider !== TimeSlotSource.MWW)
+      .some(cal => cal.calendars.some(_cal => _cal.enabled))
+
     setNotificationSubs(subs.notification_types.length)
+    setHasConnectedCalendar(!!validCals)
   }
 
   useEffect(() => {
@@ -320,7 +346,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     guestEmail?: string,
     name?: string,
     content?: string,
-    meetingUrl?: string
+    meetingUrl?: string,
+    emailToSendReminders?: string
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
@@ -427,11 +454,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         participants,
         currentAccount,
         content,
-        meetingUrl
+        meetingUrl,
+        emailToSendReminders
       )
       await updateSlots()
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
+
       setLastScheduledMeeting(meeting)
       logEvent('Scheduled a meeting', {
         fromPublicCalendar: true,
@@ -831,6 +860,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               scheduleType={schedulingType}
               meeting={lastScheduledMeeting}
               accountNotificationSubs={notificationsSubs}
+              hasConnectedCalendar={hasConnectedCalendar}
               reset={_onClose}
             />
           </Flex>

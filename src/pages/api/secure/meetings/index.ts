@@ -3,20 +3,23 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
-
-import { DBSlotEnhanced } from '../../../../types/Meeting'
-import { MeetingCreationRequest } from '../../../../types/Requests'
+import { NotificationChannel } from '@/types/AccountNotifications'
+import { DBSlotEnhanced } from '@/types/Meeting'
+import { MeetingCreationRequest } from '@/types/Requests'
 import {
   getAccountFromDB,
+  getAccountNotificationSubscriptions,
   initDB,
   saveMeeting,
-} from '../../../../utils/database'
+  setAccountNotificationSubscriptions,
+} from '@/utils/database'
 import {
   GateConditionNotValidError,
   MeetingCreationError,
   TimeNotAvailableError,
-} from '../../../../utils/errors'
+} from '@/utils/errors'
+import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
+import { isValidEmail } from '@/utils/validations'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -42,6 +45,26 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const participantActing = getParticipantBaseInfoFromAccount(
       await getAccountFromDB(req.session.account!.address)
     )
+
+    const updateEmailNotifications = async (email: string) => {
+      const subs = await getAccountNotificationSubscriptions(account_address)
+
+      subs.notification_types = subs.notification_types.filter(
+        type => type.channel !== NotificationChannel.EMAIL
+      )
+
+      if (isValidEmail(email)) {
+        subs.notification_types.push({
+          channel: NotificationChannel.EMAIL,
+          destination: email,
+          disabled: false,
+        })
+        await setAccountNotificationSubscriptions(account_address, subs)
+      }
+    }
+    await (isValidEmail(meeting.emailToSendReminders) &&
+      updateEmailNotifications(meeting.emailToSendReminders!))
+
     try {
       const meetingResult: DBSlotEnhanced = await saveMeeting(
         participantActing,

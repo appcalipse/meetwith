@@ -36,7 +36,8 @@ interface ScheduleFormProps {
     guestEmail?: string,
     name?: string,
     content?: string,
-    meetingUrl?: string
+    meetingUrl?: string,
+    emailToSendReminders?: string
   ) => Promise<boolean>
   notificationsSubs?: number
 }
@@ -97,6 +98,18 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       })
       return
     }
+    if (doSendEmailReminders && !isValidEmail(userEmail)) {
+      toast({
+        title: 'Missing information',
+        description:
+          'Please provide a valid email address to send reminders to',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
     setIsScheduling(true)
     const success = await onConfirm(
       scheduleType!,
@@ -104,7 +117,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       guestEmail,
       name,
       content,
-      meetingUrl
+      meetingUrl,
+      doSendEmailReminders ? userEmail : undefined
     )
     setIsScheduling(false)
     willStartScheduling(!success)
@@ -117,8 +131,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     }
   }
 
-  const isGuestEmailValid = isValidEmail(guestEmail)
-  const isUserEmailValid = isValidEmail(userEmail)
+  const isGuestEmailValid = !guestEmail || isValidEmail(guestEmail)
+  const isUserEmailValid = !userEmail || isValidEmail(userEmail)
   const isNameEmpty = isEmptyString(name)
 
   const bgColor = useColorModeValue('white', 'gray.600')
@@ -131,16 +145,18 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   return (
     <Flex direction="column" gap={4} paddingTop={6}>
-      <ToggleSelector
-        value={scheduleType}
-        onChange={v => {
-          v !== undefined && setScheduleType(v)
-        }}
-        options={[
-          { label: 'Schedule with wallet', value: SchedulingType.REGULAR },
-          { label: 'Schedule as guest', value: SchedulingType.GUEST },
-        ]}
-      />
+      {!currentAccount && (
+        <ToggleSelector
+          value={scheduleType}
+          onChange={v => {
+            v !== undefined && setScheduleType(v)
+          }}
+          options={[
+            { label: 'Schedule with wallet', value: SchedulingType.REGULAR },
+            { label: 'Schedule as guest', value: SchedulingType.GUEST },
+          ]}
+        />
+      )}
 
       {scheduleType === SchedulingType.GUEST && (
         <>
@@ -165,7 +181,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               placeholder="Insert your email"
               disabled={isScheduling}
               value={guestEmail}
-              onKeyPress={event =>
+              onKeyDown={event =>
                 event.key === 'Enter' && isGuestEmailValid && handleConfirm()
               }
               onChange={e => setGuestEmail(e.target.value)}
@@ -293,7 +309,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                 {doSendEmailReminders === true && (
                   <FormControl isInvalid={!isUserEmailValid}>
                     <Input
-                      type="text"
+                      type="email"
+                      placeholder="Insert your email"
                       disabled={isScheduling}
                       value={userEmail}
                       onChange={e => setUserEmail(e.target.value)}

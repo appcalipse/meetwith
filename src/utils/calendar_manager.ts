@@ -198,7 +198,7 @@ const buildMeetingData = async (
   meetingContent?: string,
   meetingUrl?: string,
   meetingId = ''
-) => {
+): Promise<MeetingCreationRequest> => {
   if (meetingUrl) {
     if (isValidEmail(meetingUrl)) {
       throw new InvalidURL()
@@ -516,7 +516,8 @@ const scheduleMeeting = async (
   participants: ParticipantInfo[],
   currentAccount?: Account | null,
   meetingContent?: string,
-  meetingUrl?: string
+  meetingUrl?: string,
+  emailToSendReminders?: string
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const meeting = await buildMeetingData(
@@ -552,6 +553,7 @@ const scheduleMeeting = async (
       if (schedulingType === SchedulingType.GUEST) {
         slot = await scheduleMeetingAsGuest(meeting)
       } else {
+        meeting.emailToSendReminders = emailToSendReminders
         slot = await apiScheduleMeeting(meeting)
       }
 
