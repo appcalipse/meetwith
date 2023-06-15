@@ -32,7 +32,8 @@ interface MeetSlotPickerProps {
     guestEmail?: string,
     name?: string,
     content?: string,
-    meetingUrl?: string
+    meetingUrl?: string,
+    emailToSendReminders?: string
   ) => Promise<boolean>
   timeSlotAvailability: (slot: Date) => boolean
   selfAvailabilityCheck: (slot: Date) => boolean
