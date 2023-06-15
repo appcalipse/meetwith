@@ -38,6 +38,7 @@ export function Hero() {
         }
         await login(account)
         logEvent('Signed in')
+        await router.push('/dashboard')
       } catch (error: any) {
         Sentry.captureException(error)
         toast({
