@@ -1,5 +1,5 @@
+import { Link } from '@chakra-ui/react'
 import {
-  Box,
   Button,
   Flex,
   FormControl,
@@ -7,22 +7,23 @@ import {
   HStack,
   Icon,
   Input,
-  Link,
   Switch,
   Text,
   Textarea,
   useColorModeValue,
   useToast,
+  VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { useContext, useState } from 'react'
+import { useContext, useMemo, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
+
+import { ToggleSelector } from '@/components/toggle-selector'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { useLogin } from '../../../session/login'
-import { ButtonType, Color } from '../../../styles/theme'
 import { SchedulingType } from '../../../types/Meeting'
-import { isValidEmail } from '../../../utils/validations'
+import { isEmptyString, isValidEmail } from '../../../utils/validations'
 
 interface ScheduleFormProps {
   pickedTime: Date
@@ -35,8 +36,10 @@ interface ScheduleFormProps {
     guestEmail?: string,
     name?: string,
     content?: string,
-    meetingUrl?: string
+    meetingUrl?: string,
+    emailToSendReminders?: string
   ) => Promise<boolean>
+  notificationsSubs?: number
 }
 
 export const ScheduleForm: React.FC<ScheduleFormProps> = ({
@@ -45,6 +48,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   willStartScheduling,
   isGateValid,
   onConfirm,
+  notificationsSubs,
 }) => {
   const { handleLogin } = useLogin()
   const { currentAccount, logged } = useContext(AccountContext)
@@ -55,11 +59,21 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [name, setName] = useState(currentAccount?.preferences?.name || '')
   const [isScheduling, setIsScheduling] = useState(false)
   const [customMeeting, setCustomMeeting] = useState(false)
+  const [doSendEmailReminders, setSendEmailReminders] = useState(false)
   const [scheduleType, setScheduleType] = useState(
     undefined as SchedulingType | undefined
   )
   const [guestEmail, setGuestEmail] = useState('')
+  const [userEmail, setUserEmail] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
+
+  const handleScheduleWithWallet = async () => {
+    if (!logged && scheduleType === SchedulingType.REGULAR) {
+      await handleScheduleType(SchedulingType.REGULAR)
+    }
+    if (!logged) return
+    await handleConfirm()
+  }
 
   const handleConfirm = async () => {
     if (customMeeting && !meetingUrl) {
@@ -84,6 +98,18 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       })
       return
     }
+    if (doSendEmailReminders && !isValidEmail(userEmail)) {
+      toast({
+        title: 'Missing information',
+        description:
+          'Please provide a valid email address to send reminders to',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
     setIsScheduling(true)
     const success = await onConfirm(
       scheduleType!,
@@ -91,7 +117,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       guestEmail,
       name,
       content,
-      meetingUrl
+      meetingUrl,
+      doSendEmailReminders ? userEmail : undefined
     )
     setIsScheduling(false)
     willStartScheduling(!success)
@@ -99,152 +126,227 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   const handleScheduleType = async (type: SchedulingType) => {
     setScheduleType(type)
-    if (type === SchedulingType.REGULAR) {
+    if (type === SchedulingType.REGULAR && !logged) {
       await handleLogin()
     }
   }
 
-  const isEmailValid = isValidEmail(guestEmail)
+  const isGuestEmailValid = !guestEmail || isValidEmail(guestEmail)
+  const isUserEmailValid = !userEmail || isValidEmail(userEmail)
+  const isNameEmpty = isEmptyString(name)
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
 
+  useMemo(() => {
+    if (logged) setScheduleType(SchedulingType.REGULAR)
+    else setScheduleType(SchedulingType.GUEST)
+  }, [logged])
+
   return (
-    <Box>
-      <FormLabel>Your name</FormLabel>
-      <Input
-        type="text"
-        disabled={isScheduling}
-        placeholder="Your name or an identifier"
-        value={name}
-        onChange={e => setName(e.target.value)}
-        mb={4}
-      />
-
-      <FormLabel>Information (optional)</FormLabel>
-      <Textarea
-        disabled={isScheduling}
-        placeholder="Any information you want to share prior to the meeting?"
-        value={content}
-        onChange={e => setContent(e.target.value)}
-      />
-
-      <HStack my={6} alignItems="center">
-        <Switch
-          display="flex"
-          colorScheme="primary"
-          size="md"
-          mr={4}
-          isDisabled={isScheduling}
-          defaultChecked={!customMeeting}
-          onChange={(e: any) => setCustomMeeting(!e.target.checked)}
+    <Flex direction="column" gap={4} paddingTop={6}>
+      {!currentAccount && (
+        <ToggleSelector
+          value={scheduleType}
+          onChange={v => {
+            v !== undefined && setScheduleType(v)
+          }}
+          options={[
+            { label: 'Schedule with wallet', value: SchedulingType.REGULAR },
+            { label: 'Schedule as guest', value: SchedulingType.GUEST },
+          ]}
         />
-        <FormLabel mb="0">
-          <Text>
-            Use{' '}
-            <Link href="https://huddle01.com/?utm_source=mww" isExternal>
-              Huddle01
-            </Link>{' '}
-            for your meeting
-          </Text>
-        </FormLabel>
-        <Tooltip.Provider delayDuration={400}>
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              <Flex
-                w="16px"
-                h="16px"
-                borderRadius="50%"
-                bgColor={iconColor}
-                justifyContent="center"
-                alignItems="center"
-                ml={1}
-              >
-                <Icon w={1} color={bgColor} as={FaInfo} />
-              </Flex>
-            </Tooltip.Trigger>
-            <Tooltip.Content>
-              <Text
-                fontSize="sm"
-                p={4}
-                maxW="200px"
-                bgColor={bgColor}
-                shadow="lg"
-              >
-                Huddle01 is a web3-powered video conferencing tailored for DAOs
-                and NFT communities.
-              </Text>
-              <Tooltip.Arrow />
-            </Tooltip.Content>
-          </Tooltip.Root>
-        </Tooltip.Provider>
-      </HStack>
-
-      {customMeeting && (
-        <Input
-          mb={4}
-          type="text"
-          placeholder="insert a custom meeting url"
-          disabled={isScheduling}
-          value={meetingUrl}
-          onChange={e => setMeetingUrl(e.target.value)}
-        />
-      )}
-
-      {!logged && (
-        <Text textAlign="left" color={Color.GRAY} mb="4">
-          Please{' '}
-          <Button
-            variant={ButtonType.LINK}
-            colorScheme="primary"
-            onClick={() => handleScheduleType(SchedulingType.REGULAR)}
-          >
-            sign in with wallet
-          </Button>{' '}
-          or{' '}
-          <Button
-            variant={ButtonType.LINK}
-            colorScheme="primary"
-            onClick={() => handleScheduleType(SchedulingType.GUEST)}
-          >
-            schedule as guest
-          </Button>
-          .
-        </Text>
       )}
 
       {scheduleType === SchedulingType.GUEST && (
-        <FormControl isInvalid={!isEmailValid}>
-          <Input
-            autoFocus
-            mb={4}
-            type="email"
-            placeholder="insert your email"
-            disabled={isScheduling}
-            value={guestEmail}
-            onKeyPress={event =>
-              event.key === 'Enter' && isEmailValid && handleConfirm()
-            }
-            onChange={e => setGuestEmail(e.target.value)}
-          />
-        </FormControl>
+        <>
+          <FormControl>
+            <FormLabel>Your name</FormLabel>
+            <Input
+              autoFocus
+              type="text"
+              disabled={isScheduling}
+              placeholder="Your name or an identifier"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              mb={4}
+            />
+          </FormControl>
+
+          <FormControl isInvalid={!isGuestEmailValid}>
+            <FormLabel>Your Email</FormLabel>
+            <Input
+              mb={4}
+              type="email"
+              placeholder="Insert your email"
+              disabled={isScheduling}
+              value={guestEmail}
+              onKeyDown={event =>
+                event.key === 'Enter' && isGuestEmailValid && handleConfirm()
+              }
+              onChange={e => setGuestEmail(e.target.value)}
+            />
+          </FormControl>
+
+          <FormControl>
+            <FormLabel>What is this meeting about? (optional)</FormLabel>
+            <Textarea
+              disabled={isScheduling}
+              placeholder="Any information you want to share prior to the meeting?"
+              value={content}
+              onChange={e => setContent(e.target.value)}
+            />
+          </FormControl>
+        </>
+      )}
+
+      {scheduleType === SchedulingType.REGULAR && (
+        <>
+          <FormControl isInvalid={isNameEmpty}>
+            <FormLabel>Your name</FormLabel>
+            <Input
+              autoFocus
+              type="text"
+              placeholder="Your name or an identifier"
+              disabled={isScheduling}
+              value={name}
+              onKeyPress={event =>
+                event.key === 'Enter' && isNameEmpty && handleConfirm()
+              }
+              onChange={e => setName(e.target.value)}
+            />
+          </FormControl>
+          <FormControl>
+            <FormLabel>What is this meeting about? (optional)</FormLabel>
+            <Textarea
+              disabled={isScheduling}
+              placeholder="Any information you want to share prior to the meeting?"
+              value={content}
+              onChange={e => setContent(e.target.value)}
+            />
+          </FormControl>
+        </>
+      )}
+
+      {scheduleType !== undefined && (
+        <VStack alignItems="start">
+          <HStack alignItems="center">
+            <Switch
+              display="flex"
+              colorScheme="primary"
+              size="md"
+              mr={4}
+              isDisabled={isScheduling}
+              defaultChecked={!customMeeting}
+              onChange={e => setCustomMeeting(!e.target.checked)}
+            />
+            <FormLabel mb="0">
+              <Text>
+                Use{' '}
+                <Link href="https://huddle01.com/?utm_source=mww" isExternal>
+                  Huddle01
+                </Link>{' '}
+                for your meeting
+              </Text>
+            </FormLabel>
+            <Tooltip.Provider delayDuration={400}>
+              <Tooltip.Root>
+                <Tooltip.Trigger>
+                  <Flex
+                    w="16px"
+                    h="16px"
+                    borderRadius="50%"
+                    bgColor={iconColor}
+                    justifyContent="center"
+                    alignItems="center"
+                    ml={1}
+                  >
+                    <Icon w={1} color={bgColor} as={FaInfo} />
+                  </Flex>
+                </Tooltip.Trigger>
+                <Tooltip.Content>
+                  <Text
+                    fontSize="sm"
+                    p={4}
+                    maxW="200px"
+                    bgColor={bgColor}
+                    shadow="lg"
+                  >
+                    Huddle01 is a web3-powered video conferencing tailored for
+                    DAOs and NFT communities.
+                  </Text>
+                  <Tooltip.Arrow />
+                </Tooltip.Content>
+              </Tooltip.Root>
+            </Tooltip.Provider>
+          </HStack>
+          {customMeeting && (
+            <Input
+              type="text"
+              placeholder="insert a custom meeting url"
+              disabled={isScheduling}
+              value={meetingUrl}
+              onChange={e => setMeetingUrl(e.target.value)}
+            />
+          )}
+          {scheduleType === SchedulingType.REGULAR &&
+            (!notificationsSubs || notificationsSubs === 0) && (
+              <>
+                <HStack alignItems="center">
+                  <Switch
+                    display="flex"
+                    colorScheme="primary"
+                    size="md"
+                    mr={4}
+                    isDisabled={isScheduling}
+                    defaultChecked={doSendEmailReminders}
+                    onChange={e => setSendEmailReminders(e.target.checked)}
+                  />
+                  <FormLabel mb="0">
+                    <Text>Send me email reminders</Text>
+                  </FormLabel>
+                </HStack>
+                {doSendEmailReminders === true && (
+                  <FormControl isInvalid={!isUserEmailValid}>
+                    <Input
+                      type="email"
+                      placeholder="Insert your email"
+                      disabled={isScheduling}
+                      value={userEmail}
+                      onChange={e => setUserEmail(e.target.value)}
+                    />
+                  </FormControl>
+                )}
+              </>
+            )}
+        </VStack>
       )}
 
       <Button
-        isFullWidth
+        width="full"
         disabled={
-          (!logged && !isEmailValid) ||
+          (!logged && !isGuestEmailValid) ||
+          (logged &&
+            ((doSendEmailReminders && !isUserEmailValid) || isNameEmpty)) ||
           isScheduling ||
           isSchedulingExternal ||
           isGateValid === false
         }
         isLoading={isScheduling || isSchedulingExternal}
-        onClick={handleConfirm}
+        onClick={
+          scheduleType === SchedulingType.REGULAR
+            ? handleScheduleWithWallet
+            : handleConfirm
+        }
         colorScheme="primary"
-        mt={2}
+        mt={6}
       >
-        {isScheduling ? 'Scheduling...' : 'Schedule'}
+        {isScheduling
+          ? 'Scheduling...'
+          : logged || scheduleType === SchedulingType.GUEST
+          ? 'Schedule'
+          : 'Connect wallet to schedule'}
       </Button>
-    </Box>
+    </Flex>
   )
 }

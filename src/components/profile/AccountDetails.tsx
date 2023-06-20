@@ -437,7 +437,7 @@ export const SubscriptionCard: React.FC<SubscriptioCardProps> = ({
         {planInfo && (
           <Button
             mt={8}
-            isFullWidth
+            width="full"
             colorScheme="primary"
             onClick={() => onClick()}
           >

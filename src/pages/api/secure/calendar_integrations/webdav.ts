@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { TimeSlotSource } from '@/types/Meeting'
 
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { encryptContent } from '../../../../utils/cryptography'
 import { addOrUpdateConnectedCalendar } from '../../../../utils/database'
 import CaldavCalendarService from '../../../../utils/services/caldav.service'
@@ -12,8 +12,7 @@ async function handler(
   res: NextApiResponse
 ): Promise<void> {
   if (!req.session.account) {
-    res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
-    return
+    return res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
   }
 
   if (req.method === 'POST') {
@@ -31,8 +30,7 @@ async function handler(
         password: encryptContent(symetricKey, details.password),
       }
     )
-    res.status(200).send({ connected: true })
-    return
+    return res.status(200).send({ connected: true })
   } else if (req.method === 'PUT') {
     // Should be propfind, but cloudfront fucks it up by not allowing it
     try {
@@ -46,18 +44,16 @@ async function handler(
       const calendars = await caldavService.listCalendars()
 
       if (calendars.length) {
-        res.status(200).send(calendars)
+        return res.status(200).send(calendars)
       } else {
-        res.status(401).send('Invalid Credentials')
+        return res.status(401).send('Invalid Credentials')
       }
-      return
     } catch (err) {
-      res.status(401).send('Invalid Credentials')
-      return
+      return res.status(401).send('Invalid Credentials')
     }
   }
 
-  res.status(404).send('Method Not found')
+  return res.status(404).send('Method Not found')
 }
 
 export default withSessionRoute(handler)

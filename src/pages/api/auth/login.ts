@@ -1,7 +1,8 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { withSessionRoute } from '../../../utils/auth/withSessionApiRoute'
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+
 import { checkSignature } from '../../../utils/cryptography'
 import { getAccountFromDB } from '../../../utils/database'
 
@@ -16,8 +17,7 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
       const recovered = checkSignature(signature, account.nonce)
 
       if (identifier?.toLowerCase() !== recovered.toLowerCase()) {
-        res.status(401).send('Not authorized')
-        return
+        return res.status(401).send('Not authorized')
       }
 
       // set the account in the session in order to use it on other requests
@@ -28,10 +28,10 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
       delete req.session.account.preferences
       await req.session.save()
 
-      res.status(200).json(account)
+      return res.status(200).json(account)
     } catch (e) {
       Sentry.captureException(e)
-      res.status(404).send('Not found')
+      return res.status(404).send('Not found')
     }
   }
 }

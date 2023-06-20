@@ -1,3 +1,4 @@
+import { Link } from '@chakra-ui/next-js'
 import {
   Alert,
   AlertDescription,
@@ -12,7 +13,7 @@ import {
   HStack,
   Icon,
   Input,
-  Link,
+  Link as ChakraLink,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -39,8 +40,7 @@ import {
   parse,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import NextLink from 'next/link'
-import { useContext, useState } from 'react'
+import { ReactNode, useContext, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
@@ -129,7 +129,9 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       : ParseTime(new Date(), true)
   )
   const [content, setContent] = useState(decryptedMeeting?.content || '')
-  const [inputError, setInputError] = useState(undefined as object | undefined)
+  const [inputError, setInputError] = useState(
+    undefined as ReactNode | undefined
+  )
   const [meetingUrl, setMeetingUrl] = useState(
     decryptedMeeting?.meeting_url || ''
   )
@@ -161,9 +163,9 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     if (!isProAccount(currentAccount!) && _participants.length > 1) {
       setInputError(
         <Text>
-          <NextLink href="/dashboard/details" shallow passHref>
-            <Link>Go PRO</Link>
-          </NextLink>{' '}
+          <Link href="/dashboard/details" shallow>
+            Go PRO
+          </Link>
           to be able to schedule meetings with more than one invitee
         </Text>
       )
@@ -521,9 +523,14 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               }}
             />
             <FormHelperText>
-              {inputError
-                ? inputError
-                : 'Separate participants by comma. You will be added automatically, no need to insert yourself'}
+              {inputError ? (
+                inputError
+              ) : (
+                <Text>
+                  Separate participants by comma. You will be added
+                  automatically, no need to insert yourself
+                </Text>
+              )}
             </FormHelperText>
           </FormControl>
           <Flex wrap="wrap" mt={4} direction={{ base: 'column', sm: 'row' }}>
@@ -650,12 +657,12 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                 >
                   <Text>
                     Use{' '}
-                    <Link
+                    <ChakraLink
                       isExternal
                       href="https://huddle01.com/?utm_source=mww"
                     >
                       Huddle01
-                    </Link>{' '}
+                    </ChakraLink>{' '}
                     for your meeting
                   </Text>
                 </FormLabel>

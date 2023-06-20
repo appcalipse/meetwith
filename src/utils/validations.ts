@@ -1,4 +1,5 @@
-export const isValidEmail = (email: string): boolean => {
+export const isValidEmail = (email?: string): boolean => {
+  if (!email) return false
   const match = email
     .toLowerCase()
     .match(
@@ -17,4 +18,14 @@ export const isValidUrl = (url: string): boolean => {
     /^(https?:\/\/)([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/
   )
   return !!match
+}
+
+export const isEmptyString = (value: string): boolean => {
+  if (value === undefined || value === null) {
+    return true
+  }
+  if (typeof value === 'string' && value.trim() === '') {
+    return true
+  }
+  return false
 }

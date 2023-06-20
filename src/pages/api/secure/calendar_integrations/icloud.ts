@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { TimeSlotSource } from '@/types/Meeting'
 
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { encryptContent } from '../../../../utils/cryptography'
 import { addOrUpdateConnectedCalendar } from '../../../../utils/database'
 
@@ -13,8 +13,7 @@ async function handler(
   res: NextApiResponse
 ): Promise<void> {
   if (!req.session.account) {
-    res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
-    return
+    return res.status(400).json({ message: 'SHOULD BE LOGGED IN' })
   }
 
   if (req.method === 'POST') {
@@ -32,11 +31,10 @@ async function handler(
         password: encryptContent(symetricKey, details.password),
       }
     )
-    res.status(200).send({ connected: true })
-    return
+    return res.status(200).send({ connected: true })
   }
 
-  res.status(404).send('Method Not found')
+  return res.status(404).send('Method Not found')
 }
 
 export default withSessionRoute(handler)

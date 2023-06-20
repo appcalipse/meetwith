@@ -29,8 +29,7 @@ export const ThemeSwitcher: React.FC = () => {
         />
         <Switch
           data-testid="change-theme"
-          pt={1}
-          colorScheme="none"
+          colorScheme="primary"
           size="md"
           onChange={doToggle}
           defaultChecked={colorMode === 'light' ? false : true}

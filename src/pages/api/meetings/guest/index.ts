@@ -2,11 +2,11 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { ParticipantType } from '@/types/ParticipantInfo'
 
-import { DBSlotEnhanced } from '../../../../types/Meeting'
+import { DBSlotEnhanced, SchedulingType } from '../../../../types/Meeting'
 import { MeetingCreationRequest } from '../../../../types/Requests'
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
 import { initDB, saveMeeting } from '../../../../utils/database'
 import {
   GateConditionNotValidError,
@@ -23,8 +23,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const guest = meeting.participants_mapping.filter(
         p => p.guest_email && p.type === ParticipantType.Scheduler
       )[0]
-      if (!guest) {
-        res.status(500).send('No guest scheduler found')
+      if (meeting.type === SchedulingType.GUEST && !guest) {
+        return res.status(500).send('No guest scheduler found')
       }
       try {
         const meetingResult: DBSlotEnhanced = await saveMeeting(
@@ -35,26 +35,24 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           meeting
         )
 
-        res.status(200).json(meetingResult)
+        return res.status(200).json(meetingResult)
       } catch (e) {
         if (e instanceof TimeNotAvailableError) {
-          res.status(409).send(e)
+          return res.status(409).send(e)
         } else if (e instanceof MeetingCreationError) {
-          res.status(412).send(e)
+          return res.status(412).send(e)
         } else if (e instanceof GateConditionNotValidError) {
-          res.status(403).send(e)
+          return res.status(403).send(e)
         } else {
           Sentry.captureException(e)
-          res.status(500).send(e)
+          return res.status(500).send(e)
         }
       }
-      return
     } else {
-      res.status(503).send('You cant schedule a meeting as guest')
-      return
+      return res.status(503).send("You can't schedule a meeting as guest")
     }
   }
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(withSessionRoute(handle))
