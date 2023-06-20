@@ -2,21 +2,24 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
-
-import { DBSlotEnhanced } from '../../../../types/Meeting'
-import { MeetingCreationRequest } from '../../../../types/Requests'
-import { withSessionRoute } from '../../../../utils/auth/withSessionApiRoute'
+import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { NotificationChannel } from '@/types/AccountNotifications'
+import { DBSlotEnhanced } from '@/types/Meeting'
+import { MeetingCreationRequest } from '@/types/Requests'
 import {
   getAccountFromDB,
+  getAccountNotificationSubscriptions,
   initDB,
   saveMeeting,
-} from '../../../../utils/database'
+  setAccountNotificationSubscriptions,
+} from '@/utils/database'
 import {
   GateConditionNotValidError,
   MeetingCreationError,
   TimeNotAvailableError,
-} from '../../../../utils/errors'
+} from '@/utils/errors'
+import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
+import { isValidEmail } from '@/utils/validations'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -34,37 +37,56 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           account.address.toLowerCase()
       ).length === 0
     ) {
-      res.status(403).send('You cant schedule a meeting for someone else')
-      return
+      return res
+        .status(403)
+        .send('You cant schedule a meeting for someone else')
     }
 
     const participantActing = getParticipantBaseInfoFromAccount(
       await getAccountFromDB(req.session.account!.address)
     )
+
+    const updateEmailNotifications = async (email: string) => {
+      const subs = await getAccountNotificationSubscriptions(account_address)
+
+      subs.notification_types = subs.notification_types.filter(
+        type => type.channel !== NotificationChannel.EMAIL
+      )
+
+      if (isValidEmail(email)) {
+        subs.notification_types.push({
+          channel: NotificationChannel.EMAIL,
+          destination: email,
+          disabled: false,
+        })
+        await setAccountNotificationSubscriptions(account_address, subs)
+      }
+    }
+    await (isValidEmail(meeting.emailToSendReminders) &&
+      updateEmailNotifications(meeting.emailToSendReminders!))
+
     try {
       const meetingResult: DBSlotEnhanced = await saveMeeting(
         participantActing,
         meeting
       )
 
-      res.status(200).json(meetingResult)
+      return res.status(200).json(meetingResult)
     } catch (e) {
       if (e instanceof TimeNotAvailableError) {
-        res.status(409).send(e)
+        return res.status(409).send(e)
       } else if (e instanceof MeetingCreationError) {
-        res.status(412).send(e)
+        return res.status(412).send(e)
       } else if (e instanceof GateConditionNotValidError) {
-        res.status(403).send(e)
+        return res.status(403).send(e)
       } else {
         Sentry.captureException(e)
-        res.status(500).send(e)
+        return res.status(500).send(e)
       }
     }
-
-    return
   }
 
-  res.status(404).send('Not found')
+  return res.status(404).send('Not found')
 }
 
 export default withSentry(withSessionRoute(handle))

@@ -29,6 +29,7 @@ export interface MeetingCreationRequest {
   title?: string
   meeting_url: string
   meeting_id: ConferenceMeeting['id']
+  emailToSendReminders?: string
 }
 
 export interface RequestParticipantMapping {
