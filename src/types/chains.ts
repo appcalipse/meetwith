@@ -1,4 +1,4 @@
-import { ethers } from 'ethers'
+import { ethers, ZeroAddress } from 'ethers'
 
 export interface ChainInfo {
   chain: SupportedChain
@@ -59,7 +59,7 @@ export const supportedChains: ChainInfo[] = [
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
-        contractAddress: ethers.constants.AddressZero,
+        contractAddress: ZeroAddress,
       },
       {
         token: AcceptedToken.DAI,
@@ -81,7 +81,7 @@ export const supportedChains: ChainInfo[] = [
     acceptableTokens: [
       {
         token: AcceptedToken.MATIC,
-        contractAddress: ethers.constants.AddressZero,
+        contractAddress: ZeroAddress,
       },
       {
         token: AcceptedToken.DAI,
@@ -103,7 +103,7 @@ export const supportedChains: ChainInfo[] = [
     acceptableTokens: [
       {
         token: AcceptedToken.ONE,
-        contractAddress: ethers.constants.AddressZero,
+        contractAddress: ZeroAddress,
       },
       {
         token: AcceptedToken.DAI,
@@ -126,7 +126,7 @@ export const supportedChains: ChainInfo[] = [
     acceptableTokens: [
       {
         token: AcceptedToken.METIS,
-        contractAddress: ethers.constants.AddressZero,
+        contractAddress: ZeroAddress,
       },
       {
         token: AcceptedToken.DAI,
@@ -149,7 +149,7 @@ export const supportedChains: ChainInfo[] = [
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
-        contractAddress: ethers.constants.AddressZero,
+        contractAddress: ZeroAddress,
       },
       {
         token: AcceptedToken.DAI,
@@ -175,7 +175,7 @@ export const supportedChains: ChainInfo[] = [
     acceptableTokens: [
       {
         token: AcceptedToken.MATIC,
-        contractAddress: ethers.constants.AddressZero,
+        contractAddress: ZeroAddress,
       },
       {
         token: AcceptedToken.DAI,
@@ -201,7 +201,7 @@ export const supportedChains: ChainInfo[] = [
     acceptableTokens: [
       {
         token: AcceptedToken.ONE,
-        contractAddress: ethers.constants.AddressZero,
+        contractAddress: ZeroAddress,
       },
       {
         token: AcceptedToken.DAI,
@@ -227,7 +227,7 @@ export const supportedChains: ChainInfo[] = [
     acceptableTokens: [
       {
         token: AcceptedToken.METIS,
-        contractAddress: ethers.constants.AddressZero,
+        contractAddress: ZeroAddress,
       },
       {
         token: AcceptedToken.USDC,

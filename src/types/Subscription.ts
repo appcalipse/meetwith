@@ -1,7 +1,4 @@
-import { BigNumber } from 'ethers'
-
 import { SupportedChain } from './chains'
-
 export interface PlanInfo {
   plan: Plan
   usdPrice: number

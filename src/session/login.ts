@@ -1,52 +1,57 @@
 import { useToast } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
+import { watchAccount } from '@wagmi/core'
 import router from 'next/router'
 import { useContext } from 'react'
 
 import { AccountContext } from '../providers/AccountProvider'
 import { logEvent } from '../utils/analytics'
 import { InvalidSessionError } from '../utils/errors'
-import { loginWithWallet, web3 } from '../utils/user_manager'
-
+import { loginWithAddress } from '../utils/user_manager'
 export const useLogin = () => {
   const { currentAccount, logged, login, loginIn, setLoginIn, logout } =
     useContext(AccountContext)
   const toast = useToast()
-  const handleLogin = async (useWaiting = true, forceRedirect = true) => {
+
+  watchAccount(async account => {
+    if (!account || !account.address) {
+      await router.push('/logout')
+      return
+    }
+
+    if (
+      account.address.toLowerCase() !== currentAccount?.address.toLowerCase()
+    ) {
+      const newAccount = await loginWithAddress(account.address!, setLoginIn)
+      if (newAccount) {
+        login(newAccount)
+      }
+    }
+  })
+
+  const handleLogin = async (
+    address: string | undefined,
+    useWaiting = true,
+    forceRedirect = true
+  ) => {
     !forceRedirect && logEvent('Clicked to connect wallet')
+    if (!address) return
     try {
-      const account = await loginWithWallet(
+      const account = await loginWithAddress(
+        address,
         useWaiting ? setLoginIn : () => null
       )
 
       // user could revoke wallet authorization any moment
       if (!account) {
+        await logout(address)
         if (logged && forceRedirect) {
-          await logout()
           await router.push('/')
         }
         return
       }
 
       login(account)
-      const provider = web3.currentProvider as any
-      provider &&
-        provider.on('accountsChanged', async (accounts: string[]) => {
-          // for this to get called, we need to have an account connected first
-          // if this changed, then the user removed the permission directly in
-          // the wallet manager, and we should logout the user right away,
-          // because the account provider will throw an exception and not ask the
-          // user to give the required permissions automatically
-          if (!accounts?.length) {
-            await router.push('/logout')
-            return
-          }
-
-          const newAccount = await loginWithWallet(setLoginIn)
-          if (newAccount) {
-            login(newAccount)
-          }
-        })
 
       logEvent('Signed in')
 
@@ -54,6 +59,7 @@ export const useLogin = () => {
         await router.push('/dashboard')
       }
     } catch (error: any) {
+      console.log(error)
       if (error instanceof InvalidSessionError) {
         await router.push('/logout')
         return

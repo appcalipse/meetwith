@@ -1,5 +1,3 @@
-import { BigNumber, ethers } from 'ethers'
-
 import { SupportedChain } from '@/types/chains'
 import { isConditionValid } from '@/utils/token.gate.service'
 
@@ -42,15 +40,15 @@ describe('get balance for tokens', () => {
           balanceOf: async () => {
             switch (addressOrName) {
               case DAI_ELEMENT.itemId:
-                return Promise.resolve(BigNumber.from((2e18).toString()))
+                return Promise.resolve(BigInt(2e18))
               case USDT_ELEMENT.itemId:
-                return Promise.resolve(BigNumber.from(0))
+                return Promise.resolve(0n)
               case USDC_ELEMENT.itemId:
-                return Promise.resolve(BigNumber.from(0))
+                return Promise.resolve(0n)
               case NFT_ELEMENT.itemId:
-                return Promise.resolve(BigNumber.from(1))
+                return Promise.resolve(1n)
               default:
-                return Promise.resolve(BigNumber.from(0))
+                return Promise.resolve(0n)
             }
           },
         } as any

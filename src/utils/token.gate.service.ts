@@ -1,5 +1,3 @@
-import { BigNumber } from 'ethers'
-
 import { ConditionRelation } from '@/types/common'
 import { GateCondition, GateInterface } from '@/types/TokenGating'
 
@@ -13,7 +11,7 @@ export const isConditionValid = async (
   if (gateCondition.elements.length > 0) {
     const isValid = []
     for (const element of gateCondition.elements) {
-      let balance = BigNumber.from(0)
+      let balance = 0n
       if (
         [
           GateInterface.ERC20,
@@ -31,7 +29,7 @@ export const isConditionValid = async (
           targetAddress,
           Number(parseInt(element.itemId))
         )
-        balance = BigNumber.from(poap ? 1 : 0)
+        balance = poap ? 1n : 0n
       } else if (element.type === GateInterface.NATIVE) {
         balance = await getNativeBalance(targetAddress, element.chain!)
       }
@@ -61,7 +59,7 @@ export const safeConvertConditionFromAPI = (
 ): GateCondition => {
   for (const element of object.elements) {
     if (element.minimumBalance) {
-      element.minimumBalance = BigNumber.from(element.minimumBalance)
+      element.minimumBalance = BigInt(element.minimumBalance)
     }
   }
   for (let condition of object.conditions) {

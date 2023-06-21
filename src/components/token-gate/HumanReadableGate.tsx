@@ -1,6 +1,5 @@
 import { Flex, HStack, Image, Text } from '@chakra-ui/react'
-import { BigNumber } from 'ethers'
-import { formatUnits } from 'ethers/lib/utils'
+import { formatUnits } from 'ethers'
 
 import { ConditionRelation } from '@/types/common'
 import { GateCondition, GateInterface } from '@/types/TokenGating'
@@ -16,7 +15,7 @@ const HumanReadableGate: React.FC<HumanReadableGateProps> = props => {
       let text = ''
       let image = null
       const element = props.gateCondition.elements[i]
-      element.minimumBalance = BigNumber.from(element.minimumBalance)
+      element.minimumBalance = BigInt(element.minimumBalance)
       if (element.minimumBalance && !element.minimumBalance.isZero()) {
         text += `${formatUnits(
           element.minimumBalance,

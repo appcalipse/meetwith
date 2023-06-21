@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { useCookies } from 'react-cookie'
+import { useDisconnect } from 'wagmi'
 
 import { SESSION_COOKIE_NAME } from '@/middleware'
-import { logoutWallet } from '@/utils/user_manager'
 
 import { Account } from '../types/Account'
 import { removeSignature } from '../utils/storage'
@@ -11,7 +11,7 @@ interface IAccountContext {
   currentAccount?: Account | null
   logged: boolean
   login: (user: Account) => void
-  logout: () => void
+  logout: (address?: string) => void
   setLoginIn: (value: boolean) => void
   loginIn: boolean
 }
@@ -19,7 +19,7 @@ interface IAccountContext {
 const DEFAULT_STATE: IAccountContext = {
   logged: false,
   login: () => null,
-  logout: () => null,
+  logout: (address?: string) => null,
   loginIn: false,
   setLoginIn: () => null,
 }
@@ -42,7 +42,7 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
     currentAccount,
     logged,
   })
-
+  const { disconnect } = useDisconnect()
   const [loginIn, setLoginIn] = useState(false)
   const [_, setCookie, removeCookie] = useCookies([SESSION_COOKIE_NAME])
 
@@ -54,10 +54,14 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
     }))
   }
 
-  const logout = async () => {
-    logoutWallet()
-    userContext.currentAccount &&
+  const logout = async (address?: string) => {
+    disconnect()
+    if (address) {
+      removeSignature(address)
+    } else if (userContext.currentAccount) {
       removeSignature(userContext.currentAccount!.address)
+    }
+
     removeCookie(SESSION_COOKIE_NAME, {
       path: '/',
       secure:
@@ -70,7 +74,6 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
       logged: false,
     }))
   }
-
   const context = { ...userContext, loginIn, setLoginIn, login, logout }
   return (
     <AccountContext.Provider value={context}>

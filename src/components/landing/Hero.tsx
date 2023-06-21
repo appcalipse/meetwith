@@ -127,6 +127,7 @@ export function Hero() {
                 rightIcon={<ArrowForwardIcon boxSize={4} />}
                 isLoading={loginIn}
                 onClick={() => handleLogin()}
+                mr={2}
               >
                 Try for FREE
               </Button>

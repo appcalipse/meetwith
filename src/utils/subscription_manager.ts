@@ -75,7 +75,7 @@ export const checkAllowance = async (
     if (allowance.lt(amount)) {
       return amount
     } else {
-      return BigNumber.from(0)
+      return 0n
     }
   } else {
     throw new Error(`Plan does not exists`)
