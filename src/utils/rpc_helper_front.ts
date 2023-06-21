@@ -4,8 +4,8 @@ import {
   Web3Provider,
 } from '@ethersproject/providers'
 import { Resolution } from '@unstoppabledomains/resolution'
+import { fetchEnsAddress, fetchEnsAvatar, fetchEnsName } from '@wagmi/core'
 import { ethers } from 'ethers'
-import Web3 from 'web3'
 import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
@@ -27,52 +27,29 @@ export const resolveENS = async (
 ): Promise<AccountExtraProps | undefined> => {
   let provider: JsonRpcProvider
 
-  if (window.ethereum && window.ethereum.chainId === '0x1') {
-    provider = new ethers.providers.Web3Provider(window.ethereum)
-  } else {
-    provider = new ethers.providers.InfuraProvider(
-      'homestead',
-      process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID
-    )
-  }
-
-  const name = await provider.lookupAddress(address)
+  const name = await fetchEnsName({ address: address as `0x${string}` })
 
   if (!name) {
     return undefined
   }
 
-  const resolver = await provider.getResolver(name)
-
-  const validatedAddress = await resolver?.getAddress()
+  const validatedAddress = await fetchEnsAddress({ name })
 
   // Check to be sure the reverse record is correct.
   if (address.toLowerCase() !== validatedAddress?.toLowerCase()) {
     return undefined
   }
 
-  const avatarInfo = await resolver?.getText('avatar')
-  const avatar = avatarInfo ? (await resolver?.getAvatar())?.url : undefined
+  const avatar = await fetchEnsAvatar({ name })
 
   return {
     name,
-    avatar,
+    avatar: avatar || undefined,
   }
 }
 
 const checkENSBelongsTo = async (domain: string): Promise<string | null> => {
-  let provider: JsonRpcProvider
-
-  if (window.ethereum && window.ethereum.chainId === '0x1') {
-    provider = new ethers.providers.Web3Provider(window.ethereum)
-  } else {
-    provider = new ethers.providers.InfuraProvider(
-      'homestead',
-      process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID
-    )
-  }
-
-  return await provider.resolveName(domain)
+  return await fetchEnsAddress({ name: domain })
 }
 
 const checkFreenameBelongsTo = async (

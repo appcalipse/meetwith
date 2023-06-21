@@ -21,8 +21,7 @@ import {
   Spinner,
   useColorModeValue,
 } from '@chakra-ui/react'
-import { BigNumber } from 'ethers'
-import { formatUnits } from 'ethers/lib/utils'
+import { formatUnits } from 'ethers'
 import { useEffect, useRef, useState } from 'react'
 
 import {
@@ -59,7 +58,7 @@ export const TokenGateElementComponent = (
     try {
       const valueAsFloat = parseFloat(value)
       const info = props.tokenInfo
-      info.minimumBalance = BigNumber.from(
+      info.minimumBalance = BigInt(
         (valueAsFloat * 10 ** (props.tokenInfo.decimals || 0)).toString()
       )
       props.onChange(info, props.position)
@@ -377,7 +376,7 @@ const POAPForm: React.FC<{
       itemName: '',
       itemSymbol: '',
       itemId: tokenInfo!.itemId,
-      minimumBalance: BigNumber.from(1),
+      minimumBalance: 1n,
     }
     if (!isNaN(parseInt(tokenInfo!.itemId))) {
       const info = await getPOAPEvent(parseInt(tokenInfo!.itemId))

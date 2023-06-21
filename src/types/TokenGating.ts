@@ -1,5 +1,3 @@
-import { BigNumber, ethers } from 'ethers'
-
 import { isProduction } from '@/utils/constants'
 
 import { getNativeDecimals, SupportedChain } from './chains'
@@ -44,7 +42,7 @@ export const DummyGateElement: TokenGateElement = {
   chain: isProduction
     ? SupportedChain.POLYGON_MATIC
     : SupportedChain.POLYGON_MUMBAI,
-  minimumBalance: BigNumber.from(0),
+  minimumBalance: 0n,
 }
 
 export enum GateUsageType {
@@ -67,7 +65,7 @@ export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
         itemSymbol: 'ETH',
         itemId: '0x0000000000000000000000000000000000000000',
         chain: chain,
-        minimumBalance: ethers.BigNumber.from(0),
+        minimumBalance: 0n,
         decimals: getNativeDecimals(chain),
       }
     case SupportedChain.POLYGON_MATIC:
@@ -78,7 +76,7 @@ export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
         itemSymbol: 'MATIC',
         itemId: '0x0000000000000000000000000000000000000000',
         chain: chain,
-        minimumBalance: ethers.BigNumber.from(0),
+        minimumBalance: 0n,
         decimals: getNativeDecimals(chain),
       }
     case SupportedChain.HARMONY:
@@ -89,7 +87,7 @@ export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
         itemSymbol: 'ONE',
         itemId: '0x0000000000000000000000000000000000000000',
         chain: chain,
-        minimumBalance: ethers.BigNumber.from(0),
+        minimumBalance: 0n,
         decimals: getNativeDecimals(chain),
       }
     case SupportedChain.METIS_ANDROMEDA:
@@ -100,7 +98,7 @@ export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
         itemSymbol: 'METIS',
         itemId: '0x0000000000000000000000000000000000000000',
         chain: chain,
-        minimumBalance: ethers.BigNumber.from(0),
+        minimumBalance: 0n,
         decimals: getNativeDecimals(chain),
       }
   }

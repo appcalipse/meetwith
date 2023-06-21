@@ -8,8 +8,10 @@ import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
 import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
+import { WagmiConfig } from 'wagmi'
 
 import { getLocaleForDateFNS } from '@/utils/time.helper'
+import { wagmiConfig } from '@/utils/user_manager'
 
 import { CookieConsent } from '../components/CookieConsent'
 import { Head } from '../components/Head'
@@ -65,16 +67,18 @@ function MyApp({
     <ChakraProvider theme={customTheme}>
       <ChakraMDXProvider>
         <CookiesProvider>
-          <AccountProvider
-            currentAccount={currentAccount}
-            logged={!!currentAccount}
-          >
-            <Head />
-            <BaseLayout>
-              <Component {...customProps} />
-            </BaseLayout>
-          </AccountProvider>
-          <CookieConsent consentCookie={consentCookie as boolean} />
+          <WagmiConfig config={wagmiConfig}>
+            <AccountProvider
+              currentAccount={currentAccount}
+              logged={!!currentAccount}
+            >
+              <Head />
+              <BaseLayout>
+                <Component {...customProps} />
+              </BaseLayout>
+            </AccountProvider>
+            <CookieConsent consentCookie={consentCookie as boolean} />
+          </WagmiConfig>
         </CookiesProvider>
       </ChakraMDXProvider>
     </ChakraProvider>

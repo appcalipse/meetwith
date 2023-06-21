@@ -11,7 +11,7 @@ export const getTokenBalance = async (
   chain: SupportedChain
 ): Promise<BigNumber> => {
   const provider = getProvider(chain)
-  if (!provider) return BigNumber.from(0)
+  if (!provider) return 0n
 
   const contract = new Contract(
     tokenAddress,
@@ -29,7 +29,7 @@ export const getNativeBalance = async (
   chain: SupportedChain
 ): Promise<BigNumber> => {
   const provider = getProvider(chain)
-  if (!provider) return BigNumber.from(0)
+  if (!provider) return 0n
 
   const balance = await provider.getBalance(walletAddress)
 
@@ -84,7 +84,7 @@ export const getTokenInfo = async (
       decimals,
       chain: chain,
       type: isNFT ? GateInterface.ERC721 : GateInterface.ERC20,
-      minimumBalance: BigNumber.from(0),
+      minimumBalance: 0n,
     }
   } catch (error) {
     return null

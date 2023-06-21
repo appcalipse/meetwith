@@ -34,7 +34,7 @@ describe('get balance for tokens', () => {
           decimals: async () => {
             switch (addressOrName) {
               case USDT_ELEMENT.itemId:
-                return Promise.resolve(BigNumber.from(18))
+                return Promise.resolve(18n)
               case NFT_ELEMENT.itemId:
                 return Promise.resolve(0)
             }
@@ -50,15 +50,15 @@ describe('get balance for tokens', () => {
           balanceOf: async () => {
             switch (addressOrName) {
               case DAI_ELEMENT.itemId:
-                return Promise.resolve(BigNumber.from((1e18).toString()))
+                return Promise.resolve(BigInt(1e18))
               case USDT_ELEMENT.itemId:
-                return Promise.resolve(BigNumber.from(0))
+                return Promise.resolve(0n)
               case USDC_ELEMENT.itemId:
-                return Promise.resolve(BigNumber.from(0))
+                return Promise.resolve(0n)
               case NFT_ELEMENT.itemId:
-                return Promise.resolve(BigNumber.from(1))
+                return Promise.resolve(1n)
               default:
-                return Promise.resolve(BigNumber.from(0))
+                return Promise.resolve(0n)
             }
           },
         } as any
@@ -77,7 +77,7 @@ describe('get balance for tokens', () => {
       USDT_ELEMENT.itemId,
       USDT_ELEMENT.chain!
     )
-    expect(balance).toEqual(BigNumber.from(0))
+    expect(balance).toEqual(0n)
   })
 
   it('returns more than zero cause wallet has balance of a mock DAI', async () => {
@@ -86,7 +86,7 @@ describe('get balance for tokens', () => {
       DAI_ELEMENT.itemId,
       DAI_ELEMENT.chain!
     )
-    expect(balance).toEqual(BigNumber.from((1e18).toString()))
+    expect(balance).toEqual(BigInt(1e18))
   })
 
   it('returns one cause wallet holds NFT', async () => {
@@ -95,7 +95,7 @@ describe('get balance for tokens', () => {
       NFT_ELEMENT.itemId,
       NFT_ELEMENT.chain!
     )
-    expect(balance).toEqual(BigNumber.from(1))
+    expect(balance).toEqual(1n)
   })
 
   it('returns token info for NFT', async () => {
