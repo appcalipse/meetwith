@@ -2,6 +2,7 @@ import '../styles/globals.css'
 import '../styles/swipers.css'
 
 import { ChakraProvider } from '@chakra-ui/react'
+import { ConnectKitProvider } from 'connectkit'
 import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
@@ -10,6 +11,7 @@ import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
 import { WagmiConfig } from 'wagmi'
 
+import { useLogin } from '@/session/login'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
 import { wagmiConfig } from '@/utils/user_manager'
 
@@ -72,10 +74,9 @@ function MyApp({
               currentAccount={currentAccount}
               logged={!!currentAccount}
             >
-              <Head />
-              <BaseLayout>
+              <Inner>
                 <Component {...customProps} />
-              </BaseLayout>
+              </Inner>
             </AccountProvider>
             <CookieConsent consentCookie={consentCookie as boolean} />
           </WagmiConfig>
@@ -85,6 +86,19 @@ function MyApp({
   )
 }
 
+const Inner = (props: any) => {
+  const { handleLogin } = useLogin()
+
+  return (
+    <ConnectKitProvider
+      options={{ initialChainId: 0, enforceSupportedChains: false }}
+      onConnect={({ address }) => handleLogin(address)}
+    >
+      <Head />
+      <BaseLayout>{props.children}</BaseLayout>
+    </ConnectKitProvider>
+  )
+}
 MyApp.getInitialProps = async (appContext: AppContext) => {
   const appProps: AppInitialProps = await App.getInitialProps(appContext)
 

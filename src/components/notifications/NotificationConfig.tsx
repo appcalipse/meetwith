@@ -16,14 +16,15 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as PushAPI from '@pushprotocol/restapi'
+import { SubscribeOptionsType } from '@pushprotocol/restapi/src/lib/channels'
 import { ethers } from 'ethers'
-import { useContext, useState } from 'react'
+import { useContext, useMemo, useState } from 'react'
 import { useEffect } from 'react'
+import { useWalletClient, WalletClient } from 'wagmi'
 
 import { SupportedChain } from '@/types/chains'
 import { getCAIPAddress, PUSH_CHANNEL } from '@/utils/push_protocol_helper'
 import { validateChainToActOn } from '@/utils/rpc_helper_front'
-import { connectedProvider } from '@/utils/user_manager'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import {
@@ -84,10 +85,10 @@ const NotificationsConfig: React.FC = () => {
 
   const toast = useToast()
 
-  const onPushChange = (selected: boolean) => {
+  const onPushChange = (selected: boolean, signer?: any) => {
     setEPNSNotifications(selected)
-    if (selected) {
-      subscribeToPushChannel()
+    if (selected && signer) {
+      subscribeToPushChannel(signer)
     }
   }
 
@@ -105,17 +106,17 @@ const NotificationsConfig: React.FC = () => {
       setPushOptedIn({ opted: false })
     }
   }
-  const subscribeToPushChannel = async () => {
+  const subscribeToPushChannel = async (
+    signer: SubscribeOptionsType['signer']
+  ) => {
     if (pushOptedIn?.opted === true) {
       return
     }
-    const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
     try {
       await validateChainToActOn(
         process.env.NEXT_PUBLIC_ENV === 'production'
           ? SupportedChain.ETHEREUM
-          : SupportedChain.GOERLI,
-        provider
+          : SupportedChain.GOERLI
       )
     } catch (e) {
       toast({
@@ -129,10 +130,9 @@ const NotificationsConfig: React.FC = () => {
       })
       return
     }
-    const _signer = provider.getSigner()
 
     await PushAPI.channels.subscribe({
-      signer: _signer as any,
+      signer,
       channelAddress: getCAIPAddress(PUSH_CHANNEL), // channel address in CAIP
       userAddress: getCAIPAddress(currentAccount!.address.toLowerCase()), // user address in CAIP
       onSuccess: () => {
@@ -201,6 +201,29 @@ const NotificationsConfig: React.FC = () => {
 
   const isPro = isProAccount(currentAccount!)
 
+  const walletClientToSigner = (walletClient: WalletClient) => {
+    const { account, chain, transport } = walletClient
+    const network = {
+      chainId: chain.id,
+      name: chain.name,
+      ensAddress: chain.contracts?.ensRegistry?.address,
+    }
+    const provider = new ethers.providers.Web3Provider(transport, network)
+    const signer = provider.getSigner(account.address)
+    return signer
+  }
+
+  /** Hook to convert a viem Wallet Client to an ethers.js Signer. */
+  const useEthersSigner = ({ chainId }: { chainId?: number } = {}) => {
+    const { data: walletClient } = useWalletClient({ chainId })
+    return useMemo(
+      () => (walletClient ? walletClientToSigner(walletClient) : undefined),
+      [walletClient]
+    )
+  }
+
+  const signer = useEthersSigner()
+
   return (
     <VStack alignItems="start" flex={1} mb={8}>
       <Heading fontSize="2xl">Notification Settings</Heading>
@@ -250,7 +273,7 @@ const NotificationsConfig: React.FC = () => {
               colorScheme="primary"
               size="md"
               isChecked={pushOptedIn?.opted && epnsNotifications}
-              onChange={e => onPushChange(e.target.checked)}
+              onChange={e => onPushChange(e.target.checked, signer)}
               isDisabled={!isPro || !pushOptedIn}
             />
             <Text>

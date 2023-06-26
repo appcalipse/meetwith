@@ -1,6 +1,6 @@
-import { BaseProvider } from '@ethersproject/providers'
 import * as Sentry from '@sentry/nextjs'
-import { ethers } from 'ethers'
+import { readContract } from '@wagmi/core'
+import { createPublicClient, http, PublicClient } from 'viem'
 
 import { MWWDomain } from '../abis/mww'
 import {
@@ -15,7 +15,7 @@ import { BlockchainSubscription } from '../types/Subscription'
 export const getBlockchainSubscriptionsForAccount = async (
   accountAddress: string
 ): Promise<BlockchainSubscription[]> => {
-  const subscriptions: BlockchainSubscription[] = []
+  const subscriptions: any[] = []
 
   const chainsToCheck: ChainInfo[] =
     process.env.NEXT_PUBLIC_ENV === 'production'
@@ -23,17 +23,25 @@ export const getBlockchainSubscriptionsForAccount = async (
       : getTestnetChains()
 
   for (const chain of chainsToCheck) {
-    const provider = getProviderBackend(chain.chain)
+    const info = {
+      address: chain.domainContractAddess as `0x${string}`,
+      chainId: chain.id,
+      abi: MWWDomain,
+    }
 
-    const contract = new ethers.Contract(
-      chain.domainContractAddess,
-      MWWDomain,
-      provider!
-    )
     try {
-      const domains = await contract.getDomainsForAccount(accountAddress)
+      const domains = (await getProviderBackend(chain.chain)!.readContract({
+        ...info,
+        functionName: 'getDomainsForAccount',
+        args: [accountAddress],
+      })) as string[]
       for (const domain of domains) {
-        const subs = (await contract.domains(domain)) as BlockchainSubscription
+        const subs = (await getProviderBackend(chain.chain)!.readContract({
+          ...info,
+          functionName: 'domains',
+          args: [domain],
+        })) as any[]
+
         subscriptions.push({
           ...subs,
           chain: chain.chain,
@@ -44,13 +52,23 @@ export const getBlockchainSubscriptionsForAccount = async (
     }
   }
 
-  return subscriptions
+  return subscriptions.map(sub => {
+    return {
+      planId: sub[1],
+      owner: sub[0],
+      expiryTime: sub[2],
+      domain: sub[3],
+      configIpfsHash: sub[4],
+      registeredAt: sub[5],
+      chain: sub.chain,
+    }
+  }) as BlockchainSubscription[]
 }
 
 export const getDomainInfo = async (
   domain: string
 ): Promise<BlockchainSubscription[]> => {
-  const subscriptions: BlockchainSubscription[] = []
+  const subscriptions: any[] = []
 
   const chainsToCheck: ChainInfo[] =
     process.env.NEXT_PUBLIC_ENV === 'production'
@@ -58,15 +76,19 @@ export const getDomainInfo = async (
       : getTestnetChains()
 
   for (const chain of chainsToCheck) {
-    const provider = getProviderBackend(chain.chain)
+    const info = {
+      address: chain.domainContractAddess as `0x${string}`,
+      chainId: chain.id,
+      abi: MWWDomain,
+    }
 
-    const contract = new ethers.Contract(
-      chain.domainContractAddess,
-      MWWDomain,
-      provider!
-    )
     try {
-      const subs = (await contract.domains(domain)) as BlockchainSubscription
+      const subs = (await readContract({
+        ...info,
+        functionName: 'domains',
+        args: [domain],
+      })) as any[]
+
       subscriptions.push({
         ...subs,
         chain: chain.chain,
@@ -75,17 +97,30 @@ export const getDomainInfo = async (
       Sentry.captureException(e)
     }
   }
-
-  return subscriptions
+  return subscriptions.map(sub => {
+    return {
+      planId: sub[1],
+      owner: sub[0],
+      expiryTime: sub[2],
+      domain: sub[3],
+      configIpfsHash: sub[4],
+      registeredAt: sub[5],
+      chain: sub.chain,
+    }
+  }) as BlockchainSubscription[]
 }
 
 export const getProviderBackend = (
   chain: SupportedChain
-): BaseProvider | null => {
+): PublicClient | null => {
   const chainInfo = getChainInfo(chain)
   if (!chainInfo) return null
 
-  const provider = new ethers.providers.JsonRpcProvider(chainInfo.rpcUrl)
+  const transport = http(chainInfo.rpcUrl)
 
-  return provider
+  const client = createPublicClient({
+    transport,
+  })
+
+  return client
 }

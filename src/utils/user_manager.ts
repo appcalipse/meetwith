@@ -98,8 +98,6 @@ const uauthClient = new UAuthSPA({
 // },
 // }
 
-let connectedProvider: any
-
 export const loginWithAddress = async (
   address: string,
   setLoginIn: (loginIn: boolean) => void
@@ -272,7 +270,6 @@ const getAllParticipantsDisplayName = (
 }
 
 export {
-  connectedProvider,
   ellipsizeAddress,
   getAccountDisplayName,
   getAddressDisplayForInput,
