@@ -1,3 +1,5 @@
+import { MockConnector } from 'wagmi/connectors/mock'
+
 import { SupportedChain } from '@/types/chains'
 import { isConditionValid } from '@/utils/token.gate.service'
 
@@ -12,7 +14,7 @@ import {
   POAP_MWW,
   USDC_ELEMENT,
   USDT_ELEMENT,
-} from '../../testing/mocks'
+} from '../../../testing/mocks'
 
 describe('get balance for tokens', () => {
   beforeAll(() => {
@@ -33,26 +35,26 @@ describe('get balance for tokens', () => {
       })
     })
 
-    jest
-      .spyOn(ethers, 'Contract')
-      .mockImplementation((addressOrName: string) => {
-        return {
-          balanceOf: async () => {
-            switch (addressOrName) {
-              case DAI_ELEMENT.itemId:
-                return Promise.resolve(BigInt(2e18))
-              case USDT_ELEMENT.itemId:
-                return Promise.resolve(0n)
-              case USDC_ELEMENT.itemId:
-                return Promise.resolve(0n)
-              case NFT_ELEMENT.itemId:
-                return Promise.resolve(1n)
-              default:
-                return Promise.resolve(0n)
-            }
-          },
-        } as any
-      })
+    // jest
+    //   .spyOn(ethers, 'Contract')
+    //   .mockImplementation((addressOrName: string) => {
+    //     return {
+    //       balanceOf: async () => {
+    //         switch (addressOrName) {
+    //           case DAI_ELEMENT.itemId:
+    //             return Promise.resolve(BigInt(2e18))
+    //           case USDT_ELEMENT.itemId:
+    //             return Promise.resolve(0n)
+    //           case USDC_ELEMENT.itemId:
+    //             return Promise.resolve(0n)
+    //           case NFT_ELEMENT.itemId:
+    //             return Promise.resolve(1n)
+    //           default:
+    //             return Promise.resolve(0n)
+    //         }
+    //       },
+    //     } as any
+    //   })
   })
 
   afterAll(() => {

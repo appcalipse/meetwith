@@ -10,47 +10,24 @@ import {
   SlideFade,
   Stack,
   Text,
-  useToast,
 } from '@chakra-ui/react'
-import * as Sentry from '@sentry/nextjs'
+import { useModal } from 'connectkit'
 import router from 'next/router'
 import { useContext } from 'react'
-import { BsArrowRight } from 'react-icons/bs'
 import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { logEvent } from '@/utils/analytics'
-import { loginWithWallet } from '@/utils/user_manager'
 
 export function Hero() {
-  const { currentAccount, login, setLoginIn, loginIn } =
-    useContext(AccountContext)
+  const { currentAccount, loginIn } = useContext(AccountContext)
 
-  const toast = useToast()
+  const { setOpen } = useModal()
 
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on FREE plan')
-      try {
-        const account = await loginWithWallet(setLoginIn)
-        if (!account) {
-          return
-        }
-        await login(account)
-        logEvent('Signed in')
-        await router.push('/dashboard')
-      } catch (error: any) {
-        Sentry.captureException(error)
-        toast({
-          title: 'Error',
-          description: error.message || error,
-          status: 'error',
-          duration: 7000,
-          position: 'top',
-          isClosable: true,
-        })
-        logEvent('Failed to sign in', error)
-      }
+      setOpen(true)
     } else {
       await router.push('/dashboard')
     }

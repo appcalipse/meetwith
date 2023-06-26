@@ -14,8 +14,7 @@ export const useLogin = () => {
   const toast = useToast()
 
   watchAccount(async account => {
-    if (!account || !account.address) {
-      await router.push('/logout')
+    if (!account || !account.address || !currentAccount) {
       return
     }
 

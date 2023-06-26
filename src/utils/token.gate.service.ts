@@ -21,7 +21,7 @@ export const isConditionValid = async (
       ) {
         balance = await getTokenBalance(
           targetAddress,
-          element.itemId,
+          element.itemId as `0x${string}`,
           element.chain!
         )
       } else if (element.type === GateInterface.POAP) {
@@ -31,10 +31,13 @@ export const isConditionValid = async (
         )
         balance = poap ? 1n : 0n
       } else if (element.type === GateInterface.NATIVE) {
-        balance = await getNativeBalance(targetAddress, element.chain!)
+        balance = await getNativeBalance(
+          targetAddress as `0x${string}`,
+          element.chain!
+        )
       }
 
-      isValid.push(balance.gt(0) && element.minimumBalance.lte(balance))
+      isValid.push(balance > 0 && element.minimumBalance <= balance)
     }
     if (gateCondition.relation === ConditionRelation.AND) {
       return isValid.every(valid => valid === true)

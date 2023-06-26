@@ -2,6 +2,9 @@ import { isProduction } from '@/utils/constants'
 
 import { getNativeDecimals, SupportedChain } from './chains'
 import { ConditionRelation } from './common'
+;(BigInt as any).prototype['toJSON'] = function () {
+  return this.toString()
+}
 
 export enum GateInterface {
   NATIVE = 'native',
@@ -16,7 +19,7 @@ export interface TokenGateElement {
   itemId: string
   itemSymbol: string
   type: GateInterface
-  minimumBalance: BigNumber
+  minimumBalance: bigint
   chain?: SupportedChain
   itemLogo?: string
   decimals?: number

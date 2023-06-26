@@ -32,11 +32,11 @@ export interface Subscription {
 }
 
 export interface BlockchainSubscription {
-  planId: BigNumber
+  planId: bigint
   owner: string
-  expiryTime: BigNumber
+  expiryTime: bigint
   domain: string
   configIpfsHash: string
-  registeredAt: BigNumber
+  registeredAt: bigint
   chain: SupportedChain
 }
