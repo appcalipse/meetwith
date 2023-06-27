@@ -14,7 +14,7 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react'
-import * as Sentry from '@sentry/nextjs'
+import { useModal } from 'connectkit'
 import router from 'next/router'
 import { useContext, useState } from 'react'
 import { IconType } from 'react-icons'
@@ -25,7 +25,6 @@ import { useInView } from 'react-intersection-observer'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Plan } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
-import { loginWithWallet } from '@/utils/user_manager'
 
 import AlertMeDialog from './AlertMeDialog'
 import { PlansMobileSlider } from './PlansMobileSlider'
@@ -163,36 +162,12 @@ export function Plans() {
     undefined as string | undefined
   )
 
-  const toast = useToast()
+  const { setOpen } = useModal()
 
   const handleLogin = async (selectedPlan?: Plan) => {
     if (!currentAccount) {
-      logEvent('Clicked to start on FREE plan')
-      try {
-        const account = await loginWithWallet(setLoginIn)
-        if (!account) {
-          return
-        }
-        login(account)
-        logEvent('Signed in')
-
-        if (selectedPlan && selectedPlan === Plan.PRO) {
-          await router.push('/dashboard/details')
-        } else {
-          await router.push('/dashboard')
-        }
-      } catch (error: any) {
-        Sentry.captureException(error)
-        toast({
-          title: 'Error',
-          description: error.message || error,
-          status: 'error',
-          duration: 7000,
-          position: 'top',
-          isClosable: true,
-        })
-        logEvent('Failed to sign in', error)
-      }
+      logEvent(`Clicked to start on ${selectedPlan} plan`)
+      setOpen(true)
     } else {
       if (selectedPlan && selectedPlan === Plan.PRO) {
         await router.push('/dashboard/details')

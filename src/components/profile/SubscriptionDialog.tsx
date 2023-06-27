@@ -18,9 +18,10 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react'
-import { ethers } from 'ethers'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaMinus, FaPlus } from 'react-icons/fa'
+import { zeroAddress } from 'viem'
+import { useWalletClient } from 'wagmi'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import {
@@ -59,6 +60,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   onSuccessPurchase,
 }) => {
   const { currentAccount } = useContext(AccountContext)
+  const { data: walletClient } = useWalletClient()
   const [domain, setDomain] = useState<string>('')
   const [currentChain, setCurrentChain] = useState<ChainInfo | undefined>(
     currentSubscription ? getChainInfo(currentSubscription.chain) : undefined
@@ -119,7 +121,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   const updateDomain = async () => {
-    setDomain((await getActiveProSubscription(currentAccount!))!.domain)
+    setDomain((await getActiveProSubscription(currentAccount!))?.domain || '')
   }
 
   if (currentSubscription && !domain) {
@@ -129,20 +131,18 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const updateSubscriptionDetails = async () => {
     setNeedsAproval(false)
     setCheckingCanSubscribe(false)
-    if (
-      currentToken &&
-      currentToken.contractAddress !== ethers.constants.AddressZero
-    ) {
+    if (currentToken && currentToken.contractAddress !== zeroAddress) {
       setCheckingCanSubscribe(true)
       try {
         const neededApproval = await checkAllowance(
-          currentAccount!.address,
+          currentAccount!.address as `0x${string}`,
           Plan.PRO,
           currentChain!.chain,
           currentToken!.token,
-          duration * YEAR_DURATION_IN_SECONDS
+          duration * YEAR_DURATION_IN_SECONDS,
+          walletClient
         )
-        if (!neededApproval.isZero()) {
+        if (neededApproval != 0n) {
           setNeedsAproval(true)
         }
       } catch (e: any) {
@@ -213,23 +213,22 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
     setNeedsAproval(false)
     try {
-      if (
-        currentToken &&
-        currentToken.contractAddress !== ethers.constants.AddressZero
-      ) {
+      if (currentToken && currentToken.contractAddress !== zeroAddress) {
         const neededApproval = await checkAllowance(
-          currentAccount!.address,
+          currentAccount!.address as `0x${string}`,
           Plan.PRO,
           currentChain!.chain,
           currentToken!.token,
-          duration * YEAR_DURATION_IN_SECONDS
+          duration * YEAR_DURATION_IN_SECONDS,
+          walletClient
         )
-        if (!neededApproval.isZero()) {
+        if (neededApproval != 0n) {
           setNeedsAproval(true)
           await approveTokenSpending(
             currentChain!.chain,
             currentToken!.token,
-            neededApproval
+            neededApproval,
+            walletClient
           )
           setNeedsAproval(false)
         }
@@ -242,7 +241,8 @@ const SubscriptionDialog: React.FC<IProps> = ({
         currentChain!.chain,
         duration * YEAR_DURATION_IN_SECONDS,
         domain,
-        currentToken!.token
+        currentToken!.token,
+        walletClient
       )
       setWaitingConfirmation(true)
       const sub = await confirmSubscription(tx, domain)

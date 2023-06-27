@@ -15,6 +15,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { useModal } from 'connectkit'
 import { useContext, useMemo, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
@@ -124,10 +125,12 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     willStartScheduling(!success)
   }
 
+  const { setOpen } = useModal()
+
   const handleScheduleType = async (type: SchedulingType) => {
     setScheduleType(type)
     if (type === SchedulingType.REGULAR && !logged) {
-      await handleLogin()
+      setOpen(true)
     }
   }
 

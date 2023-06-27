@@ -12,7 +12,6 @@ import {
   ModalOverlay,
   useToast,
 } from '@chakra-ui/react'
-import { BigNumber } from 'ethers'
 import { useState } from 'react'
 
 import { ConditionRelation } from '@/types/common'
@@ -43,7 +42,7 @@ const DEFAULT_CONDITION_OBJECT: GateConditionObject = {
 
 export const getDefaultConditionClone = () => {
   const clone = JSON.parse(JSON.stringify(DEFAULT_CONDITION_OBJECT))
-  clone.definition.elements[0].minimumBalance = BigNumber.from(0)
+  clone.definition.elements[0].minimumBalance = 0n
   return clone
 }
 

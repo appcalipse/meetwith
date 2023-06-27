@@ -14,6 +14,7 @@ import {
   useColorModeValue,
   useDisclosure,
 } from '@chakra-ui/react'
+import { useModal } from 'connectkit'
 import router, { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { BiMenuAltRight } from 'react-icons/bi'
@@ -30,7 +31,9 @@ export const Navbar = () => {
 
   const { isOpen, onToggle } = useDisclosure()
 
-  const { handleLogin, currentAccount, logged, loginIn } = useLogin()
+  const { setOpen } = useModal()
+
+  const { currentAccount, logged, loginIn } = useLogin()
 
   const [backdropFilterValue, setBackdropFilterValue] = useState<string>('0')
   const [activeLink, setActiveLink] = useState('')
@@ -136,7 +139,7 @@ export const Navbar = () => {
               ) : (
                 <Button
                   size="md"
-                  onClick={() => handleLogin()}
+                  onClick={() => setOpen(true)}
                   isLoading={loginIn}
                   colorScheme="primary"
                   leftIcon={<BiWallet />}
@@ -226,8 +229,9 @@ const MobileNav = ({
   handleSetActiveLink,
   isOpen,
 }: MobileNavProps) => {
-  const { handleLogin, currentAccount, logged, loginIn } = useLogin()
+  const { currentAccount, logged, loginIn } = useLogin()
   const { logout } = useContext(AccountContext)
+  const { setOpen } = useModal()
 
   const doLogout = async () => {
     await logout()
@@ -291,7 +295,7 @@ const MobileNav = ({
           <Button
             colorScheme="primary"
             size="md"
-            onClick={() => handleLogin()}
+            onClick={() => setOpen(true)}
             isLoading={loginIn}
             leftIcon={<BiWallet />}
           >
