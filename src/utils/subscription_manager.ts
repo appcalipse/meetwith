@@ -1,5 +1,13 @@
-import { TransactionResponse } from '@ethersproject/abstract-provider'
-import { BigNumber, ethers } from 'ethers'
+import {
+  GetWalletClientResult,
+  prepareWriteContract,
+  readContract,
+  waitForTransaction,
+  WalletClient,
+  writeContract,
+  WriteContractResult,
+} from '@wagmi/core'
+import { parseUnits, zeroAddress } from 'viem'
 
 import { ERC20 } from '../abis/erc20'
 import { MWWRegister } from '../abis/mww'
@@ -14,7 +22,6 @@ import {
 import { getSubscriptionForDomain, syncSubscriptions } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
 import { validateChainToActOn } from './rpc_helper_front'
-import { connectedProvider } from './user_manager'
 
 export const isProAccount = (account?: Account): boolean => {
   return Boolean(getActiveProSubscription(account))
@@ -29,23 +36,19 @@ export const getActiveProSubscription = (
 }
 
 export const checkAllowance = async (
-  accountAddress: string,
+  accountAddress: `0x${string}`,
   plan: Plan,
   chain: SupportedChain,
   token: AcceptedToken,
-  duration: number
-): Promise<BigNumber> => {
-  if (!connectedProvider) {
-    throw Error('Please connect a wallet')
-  }
+  duration: number,
+  walletClient?: GetWalletClientResult
+): Promise<bigint> => {
   const price = getPlanInfo(plan)?.usdPrice
   if (price) {
     const chainInfo = getChainInfo(chain)
 
-    const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
-
     try {
-      await validateChainToActOn(chain, provider)
+      await validateChainToActOn(chain, walletClient)
     } catch (e) {
       throw Error('Please connect to the correct network')
     }
@@ -57,25 +60,34 @@ export const checkAllowance = async (
       throw Error('Token not accepted')
     }
 
-    const tokenContract = new ethers.Contract(
-      tokenInfo.contractAddress,
-      ERC20,
-      provider.getSigner()
-    )
+    const info = {
+      address: tokenInfo.contractAddress as `0x${string}`,
+      chainId: chainInfo!.id,
+      abi: ERC20,
+    }
 
-    const decimals = await tokenContract.decimals()
-    const allowance = await tokenContract.allowance(
-      accountAddress.toLocaleLowerCase(),
-      chainInfo!.registarContractAddress
-    )
-    const amount = ethers.utils
-      .parseUnits(price.toString(), decimals)
-      .mul(duration)
-      .div(YEAR_DURATION_IN_SECONDS)
-    if (allowance.lt(amount)) {
+    const decimals = (await readContract({
+      ...info,
+      functionName: 'decimals',
+    })) as bigint
+
+    const allowance = (await readContract({
+      ...info,
+      functionName: 'decimals',
+      args: [
+        accountAddress.toLocaleLowerCase(),
+        chainInfo!.registarContractAddress,
+      ],
+    })) as bigint
+
+    const amount =
+      (parseUnits(`${price}`, Number(decimals)) * BigInt(duration)) /
+      BigInt(YEAR_DURATION_IN_SECONDS)
+
+    if (allowance < amount) {
       return amount
     } else {
-      return BigNumber.from(0)
+      return 0n
     }
   } else {
     throw new Error(`Plan does not exists`)
@@ -85,13 +97,13 @@ export const checkAllowance = async (
 export const approveTokenSpending = async (
   chain: SupportedChain,
   token: AcceptedToken,
-  amount: BigNumber
+  amount: bigint,
+  walletClient: GetWalletClientResult | undefined
 ): Promise<void> => {
   const chainInfo = getChainInfo(chain)
-  const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
 
   try {
-    await validateChainToActOn(chain, provider)
+    await validateChainToActOn(chain, walletClient)
   } catch (e) {
     throw Error('Please connect to the correct network')
   }
@@ -103,43 +115,45 @@ export const approveTokenSpending = async (
     throw Error('Token not accepted')
   }
 
-  const tokenContract = new ethers.Contract(
-    tokenInfo.contractAddress,
-    ERC20,
-    provider.getSigner()
-  )
+  const info = {
+    address: tokenInfo.contractAddress as `0x${string}`,
+    chainId: chainInfo!.id,
+    abi: ERC20,
+  }
 
-  const tx = await tokenContract.approve(
-    chainInfo!.registarContractAddress,
-    amount
-  )
-  await tx.wait()
+  const config = await prepareWriteContract({
+    ...info,
+    functionName: 'approve',
+    args: [chainInfo!.registarContractAddress, amount],
+  })
+
+  const { hash } = await writeContract(config)
+  await waitForTransaction({
+    hash,
+  })
 }
 
 export const getNativePriceForDuration = async (
   plan: Plan,
   duration: number,
   chain: SupportedChain
-): Promise<BigNumber> => {
-  if (!connectedProvider) {
-    throw Error('Please connect a wallet')
-  }
-
-  const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
+): Promise<bigint> => {
   const chainInfo = getChainInfo(chain)
   const planInfo = getPlanInfo(plan)
   if (planInfo) {
-    const price = planInfo.usdPrice
-    const contract = new ethers.Contract(
-      chainInfo!.registarContractAddress,
-      MWWRegister,
-      provider.getSigner()
-    )
-    const value = (
-      await contract.getNativeConvertedValue(planInfo.usdPrice)
-    ).amountInNative
-      .mul(duration)
-      .div(YEAR_DURATION_IN_SECONDS)
+    const info = {
+      address: chainInfo!.registarContractAddress as `0x${string}`,
+      chainId: chainInfo!.id,
+      abi: MWWRegister,
+    }
+
+    const result = (await readContract({
+      ...info,
+      functionName: 'getNativeConvertedValue',
+      args: [planInfo.usdPrice],
+    })) as any
+    const value =
+      (result[0] * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
 
     return value
   } else {
@@ -153,12 +167,9 @@ export const subscribeToPlan = async (
   chain: SupportedChain,
   duration: number,
   domain: string,
-  token: AcceptedToken
-): Promise<TransactionResponse> => {
-  if (!connectedProvider) {
-    throw Error('Please connect a wallet')
-  }
-
+  token: AcceptedToken,
+  walletClient?: GetWalletClientResult
+): Promise<WriteContractResult> => {
   try {
     const subExists = await getSubscriptionForDomain(domain)
     if (subExists && subExists!.owner_account !== accountAddress) {
@@ -171,79 +182,89 @@ export const subscribeToPlan = async (
   }
 
   const chainInfo = getChainInfo(chain)
-  const provider = new ethers.providers.Web3Provider(connectedProvider, 'any')
 
   try {
-    await validateChainToActOn(chain, provider)
+    await validateChainToActOn(chain, walletClient)
   } catch (e) {
     throw Error('Please connect to the correct network')
   }
 
-  const contract = new ethers.Contract(
-    chainInfo!.registarContractAddress,
-    MWWRegister,
-    provider.getSigner()
-  )
+  const info = {
+    address: chainInfo!.registarContractAddress as `0x${string}`,
+    chainId: chainInfo!.id,
+    abi: MWWRegister,
+  }
 
   try {
-    let tx: TransactionResponse
     const tokenInfo = chainInfo!.acceptableTokens.find(
       _token => _token.token === token
     )
 
-    if (tokenInfo?.contractAddress !== ethers.constants.AddressZero) {
+    if (tokenInfo?.contractAddress !== zeroAddress) {
       if (!tokenInfo) {
         throw Error('Token not accepted')
       }
       const neededApproval = await checkAllowance(
-        accountAddress,
+        accountAddress as `0x${string}`,
         plan,
         chain,
         token,
-        duration
+        duration,
+        walletClient
       )
 
-      if (neededApproval.gt(0)) {
-        const tokenContract = new ethers.Contract(
-          tokenInfo.contractAddress,
-          ERC20,
-          provider.getSigner()
-        )
-        await tokenContract.approve(
-          chainInfo!.registarContractAddress,
-          neededApproval
-        )
+      if (neededApproval > 0) {
+        const tokenConfig = await prepareWriteContract({
+          address: tokenInfo.contractAddress as `0x${string}`,
+          chainId: chainInfo!.id,
+          abi: ERC20,
+          functionName: 'approve',
+          args: [chainInfo!.registarContractAddress, neededApproval],
+        })
+
+        const tokenResult = await writeContract(tokenConfig)
+        await waitForTransaction({
+          hash: tokenResult.hash,
+        })
       }
 
-      tx = await contract.purchaseWithToken(
-        tokenInfo.contractAddress,
-        plan,
-        accountAddress.toLocaleLowerCase(),
-        duration,
-        domain,
-        ''
-      )
+      const config = await prepareWriteContract({
+        ...info,
+        functionName: 'purchaseWithToken',
+        args: [
+          tokenInfo.contractAddress,
+          plan,
+          accountAddress.toLocaleLowerCase(),
+          duration,
+          domain,
+          '',
+        ],
+      })
+
+      return await writeContract(config)
     } else {
       const planInfo = getPlanInfo(plan)
       if (!planInfo) {
         throw Error('Plan does not exists')
       }
-      const value = (
-        await contract.getNativeConvertedValue(planInfo.usdPrice)
-      ).amountInNative
-        .mul(duration)
-        .div(YEAR_DURATION_IN_SECONDS)
 
-      tx = await contract.purchaseWithNative(
-        plan,
-        accountAddress.toLocaleLowerCase(),
-        duration,
-        domain,
-        '',
-        { value }
-      )
+      const result = (await readContract({
+        ...info,
+        functionName: 'getNativeConvertedValue',
+        args: [planInfo.usdPrice],
+      })) as any
+      const value =
+        (result[0] * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
+
+      const config = await prepareWriteContract({
+        ...info,
+        functionName: 'purchaseWithNative',
+        args: [plan, accountAddress.toLocaleLowerCase(), duration, domain, ''],
+        value: BigInt(value),
+      })
+
+      return await writeContract(config)
     }
-    return tx
   } catch (error) {
     // TODO handle insufficient funds error
     throw error
@@ -251,10 +272,12 @@ export const subscribeToPlan = async (
 }
 
 export const confirmSubscription = async (
-  tx: TransactionResponse,
+  result: WriteContractResult,
   domain: string
 ): Promise<Subscription | undefined> => {
-  await tx.wait()
+  await waitForTransaction({
+    hash: result.hash,
+  })
   const subscriptions = await syncSubscriptions()
   return subscriptions.find(sub => sub.domain === domain)
 }
@@ -262,7 +285,7 @@ export const confirmSubscription = async (
 export const convertBlockchainSubscriptionToSubscription = (
   sub: BlockchainSubscription
 ): Subscription => {
-  let expiryTime = sub.expiryTime.toNumber()
+  let expiryTime = Number(sub.expiryTime)
 
   if (expiryTime.toString().length === 13) {
     //bad domain adding with expiry in milliseconds and not seconds
@@ -270,7 +293,7 @@ export const convertBlockchainSubscriptionToSubscription = (
   }
 
   const subscriptionInfo: Subscription = {
-    plan_id: sub.planId.toNumber(),
+    plan_id: Number(sub.planId),
     chain: sub.chain,
     owner_account: sub.owner.toLowerCase(),
     expiry_time:
@@ -279,7 +302,7 @@ export const convertBlockchainSubscriptionToSubscription = (
         : new Date(2200, 1, 1), // bad initial domain injections
     domain: sub.domain,
     config_ipfs_hash: sub.configIpfsHash,
-    registered_at: new Date(sub.registeredAt.toNumber() * 1000),
+    registered_at: new Date(Number(sub.registeredAt) * 1000),
   }
 
   return subscriptionInfo

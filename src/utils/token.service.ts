@@ -1,79 +1,90 @@
-import { BigNumber, Contract } from 'ethers'
+import { fetchBalance, readContract } from '@wagmi/core'
 
-import { SupportedChain } from '@/types/chains'
+import { ERC20 } from '@/abis/erc20'
+import { ERC721 } from '@/abis/erc721'
+import { getChainInfo, SupportedChain } from '@/types/chains'
 import { GateInterface, TokenGateElement } from '@/types/TokenGating'
-
-import { getProvider } from './rpc_helper_front'
 
 export const getTokenBalance = async (
   walletAddress: string,
-  tokenAddress: string,
+  tokenAddress: `0x${string}`,
   chain: SupportedChain
-): Promise<BigNumber> => {
-  const provider = getProvider(chain)
-  if (!provider) return BigNumber.from(0)
-
-  const contract = new Contract(
-    tokenAddress,
-    ['function balanceOf(address owner) public view returns (uint256 balance)'],
-    provider
-  ) as Contract
-
-  const balance = await contract.balanceOf(walletAddress)
+): Promise<bigint> => {
+  const balance = (await readContract({
+    address: tokenAddress,
+    abi: ERC20,
+    functionName: 'balanceOf',
+    args: [walletAddress],
+    chainId: getChainInfo(chain)!.id,
+  })) as bigint
 
   return balance
 }
 
 export const getNativeBalance = async (
-  walletAddress: string,
+  walletAddress: `0x${string}`,
   chain: SupportedChain
-): Promise<BigNumber> => {
-  const provider = getProvider(chain)
-  if (!provider) return BigNumber.from(0)
+): Promise<bigint> => {
+  const balance = await fetchBalance({
+    address: walletAddress,
+    chainId: getChainInfo(chain)!.id,
+  })
 
-  const balance = await provider.getBalance(walletAddress)
-
-  return balance
+  return balance.value
 }
 
 export const getTokenInfo = async (
-  tokenAddress: string,
+  tokenAddress: `0x${string}`,
   chain: SupportedChain
 ): Promise<TokenGateElement | null> => {
-  const provider = getProvider(chain)
-  if (!provider) return null
+  const erc20info = {
+    address: tokenAddress,
+    abi: ERC20,
+    chainId: getChainInfo(chain)!.id,
+  }
 
-  const contract = new Contract(
-    tokenAddress,
-    [
-      'function balanceOf(address owner) public view returns (uint256 balance)', //ERC20 or ERC721
-      'function name() public view returns (string name)', //ERC20 or ERC721
-      'function symbol() public view returns (string symbol)', //ERC20 or ERC721
-      'function decimals() public view returns (uint256 decimals)', //ERC20
-      'function baseURI() public view returns (string)', //ERC721
-      'function tokenURI(uint256 tokenId) public view returns (string)', //ERC721
-    ],
-    provider
-  ) as Contract
+  const nftInfo = {
+    address: tokenAddress,
+    abi: ERC721,
+    chainId: getChainInfo(chain)!.id,
+  }
 
   try {
-    const name = await contract.name()
-    const symbol = await contract.symbol()
+    const name = (await readContract({
+      ...erc20info,
+      functionName: 'name',
+    })) as string
+    const symbol = (await readContract({
+      ...erc20info,
+      functionName: 'symbol',
+    })) as string
+
     let isNFT = false
     let decimals = 0
 
     try {
-      await contract.baseURI()
-      isNFT = true
+      const baseURI = (await readContract({
+        ...nftInfo,
+        functionName: 'baseURI',
+      })) as string
+      if (baseURI) isNFT = true
     } catch (error) {
       for (const i of [0, 1, 100, 1000, 10000]) {
         try {
-          await contract.tokenURI(i)
+          const tokenURI = (await readContract({
+            ...nftInfo,
+            functionName: 'tokenURI',
+            args: [i],
+          })) as string
+          if (tokenURI) isNFT = true
           isNFT = true
         } catch (error) {}
       }
       if (!isNFT) {
-        decimals = (await contract.decimals()).toNumber()
+        decimals = (await readContract({
+          ...erc20info,
+          functionName: 'decimals',
+        })) as number
       }
     }
 
@@ -84,7 +95,7 @@ export const getTokenInfo = async (
       decimals,
       chain: chain,
       type: isNFT ? GateInterface.ERC721 : GateInterface.ERC20,
-      minimumBalance: BigNumber.from(0),
+      minimumBalance: 0n,
     }
   } catch (error) {
     return null

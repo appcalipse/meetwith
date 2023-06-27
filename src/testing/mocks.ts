@@ -1,5 +1,3 @@
-import { BigNumber } from 'ethers'
-
 import { SupportedChain } from '@/types/chains'
 import { ConditionRelation } from '@/types/common'
 import {
@@ -13,7 +11,7 @@ export const DAI_ELEMENT: TokenGateElement = {
   itemSymbol: 'DAI',
   chain: SupportedChain.POLYGON_MUMBAI,
   type: GateInterface.ERC20,
-  minimumBalance: BigNumber.from((1e18).toString()),
+  minimumBalance: BigInt(1e18),
 }
 
 export const USDC_ELEMENT: TokenGateElement = {
@@ -22,7 +20,7 @@ export const USDC_ELEMENT: TokenGateElement = {
   itemSymbol: 'USDC',
   chain: SupportedChain.POLYGON_MUMBAI,
   type: GateInterface.ERC20,
-  minimumBalance: BigNumber.from(0),
+  minimumBalance: 0n,
 }
 
 export const USDT_ELEMENT: TokenGateElement = {
@@ -31,7 +29,7 @@ export const USDT_ELEMENT: TokenGateElement = {
   itemSymbol: 'USDT',
   chain: SupportedChain.POLYGON_MUMBAI,
   type: GateInterface.ERC20,
-  minimumBalance: BigNumber.from(1),
+  minimumBalance: 1n,
 }
 
 export const NFT_ELEMENT: TokenGateElement = {
@@ -40,7 +38,7 @@ export const NFT_ELEMENT: TokenGateElement = {
   itemSymbol: 'NFM',
   chain: SupportedChain.POLYGON_MATIC,
   type: GateInterface.ERC721,
-  minimumBalance: BigNumber.from(1),
+  minimumBalance: 1n,
 }
 
 export const POAP_MWW: TokenGateElement = {
@@ -48,7 +46,7 @@ export const POAP_MWW: TokenGateElement = {
   itemId: '33550',
   itemSymbol: '',
   type: GateInterface.POAP,
-  minimumBalance: BigNumber.from(1),
+  minimumBalance: 1n,
 }
 
 export const POAP_RANDOM: TokenGateElement = {
@@ -56,7 +54,7 @@ export const POAP_RANDOM: TokenGateElement = {
   itemId: '3350',
   itemSymbol: '',
   type: GateInterface.POAP,
-  minimumBalance: BigNumber.from(1),
+  minimumBalance: 1n,
 }
 
 export const CONDITION_MOCK_DAI_OR_USDT: GateCondition = {

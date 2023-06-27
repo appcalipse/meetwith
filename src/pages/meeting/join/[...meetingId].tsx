@@ -10,15 +10,14 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
+import { useModal } from 'connectkit'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { BiWallet } from 'react-icons/bi'
 
 import Loading from '@/components/Loading'
-import { AccountContext } from '@/providers/AccountProvider'
 import { useLogin } from '@/session/login'
-import { ButtonType, Color } from '@/styles/theme'
 import { ConferenceMeeting, MeetingAccessType } from '@/types/Meeting'
 import { getConferenceMeeting } from '@/utils/api_helper'
 
@@ -27,8 +26,8 @@ const JoinMeetingPage: NextPage = () => {
   const { meetingId } = router.query
   const [loading, setLoading] = useState(true)
   const [conference, setConference] = useState<ConferenceMeeting>()
-  const [error, setError] = useState<string>()
 
+  const { setOpen } = useModal()
   const { handleLogin, currentAccount, loginIn } = useLogin()
 
   useEffect(() => {
@@ -123,7 +122,7 @@ const JoinMeetingPage: NextPage = () => {
               <Button
                 colorScheme="primary"
                 size="lg"
-                onClick={() => handleLogin()}
+                onClick={() => setOpen(true)}
                 isLoading={loginIn}
                 leftIcon={<BiWallet />}
               >

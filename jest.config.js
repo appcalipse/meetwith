@@ -6,16 +6,24 @@ const createJestConfig = nextJest({
   dir: './',
 })
 
+const esModules = ['@wagmi/core', 'connectkit', 'uuid'].join('|')
+
 // Add any custom config to be passed to Jest
 const customJestConfig = {
   // Add more setup options before each test is run
   // setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   // if using TypeScript with a baseUrl set to the root directory then you need the below for alias' to work
   moduleDirectories: ['node_modules', '<rootDir>/'],
-  testEnvironment: 'jest-environment-jsdom',
+  testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   collectCoverageFrom: ['./src/**'],
-  verbose: false,
+  verbose: true,
+  resolver: `./resolver.js`,
+  // transform: {
+  //   '\\.m?[j|t]sx?$': 'jest-esm-transformer',
+  // },
+  // transformIgnorePatterns: [`/node_modules/(?!${esModules})`],
+  testPathIgnorePatterns: ['<rootDir>/src/__tests__/tofix'],
   moduleNameMapper: {
     '@/(.*)': 'src/$1',
     'swiper/react': 'swiper/react/swiper-react.js',

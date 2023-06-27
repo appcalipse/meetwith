@@ -324,7 +324,7 @@ const AccountDetails: React.FC = () => {
       {purchased && (
         <Alert status="success">
           <AlertIcon />
-          Subscription succesfull. Enjoy your{' '}
+          Subscription succesful. Enjoy your{' '}
           {getPlanInfo(purchased!.plan_id)!.name} Plan
         </Alert>
       )}
