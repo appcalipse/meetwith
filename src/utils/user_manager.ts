@@ -1,11 +1,10 @@
-import UAuthSPA from '@uauth/js'
-import * as UAuthWeb3Modal from '@uauth/web3modal'
-import WalletConnectProvider from '@walletconnect/web3-provider'
-import Web3 from 'web3'
-import Web3Modal from 'web3modal'
+import { mainnet, signMessage } from '@wagmi/core'
+import { getDefaultConfig } from 'connectkit'
+import { configureChains, createConfig } from 'wagmi'
+import { infuraProvider } from 'wagmi/providers/infura'
+import { publicProvider } from 'wagmi/providers/public'
 
 import { Account } from '../types/Account'
-import { supportedChains } from '../types/chains'
 import {
   ParticipantBaseInfo,
   ParticipantInfo,
@@ -18,84 +17,77 @@ import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, saveSignature } from './storage'
 import { isValidEVMAddress } from './validations'
 
-// These options are used to construct the UAuthSPA instance.
-const uauthOptions: UAuthWeb3Modal.IUAuthOptions = {
-  clientID: process.env.NEXT_PUBLIC_UD_CLIENT_ID!,
-  redirectUri: typeof window === 'undefined' ? '' : window.location.origin,
-  scope: 'openid wallet',
-}
+// Add your custom chains to the list of wagmi configured chains
+const { publicClient, chains } = configureChains(
+  [mainnet],
+  [
+    infuraProvider({ apiKey: process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID! }),
+    publicProvider(),
+    // ,
+    // jsonRpcProvider({
+    //   rpc: chain => {
+    //     return {
+    //       http:
+    //         supportedChains.filter(_chain => _chain.id === chain.id)[0]
+    //           ?.rpcUrl || '',
+    //     }
+    //   },
+    // }),
+  ]
+)
 
-const providerOptions = {
-  walletconnect: {
-    package: WalletConnectProvider, // required
-    options: {
-      infuraId: process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID,
-      rpc: supportedChains.reduce(
-        (obj, item) => Object.assign(obj, { [item.id]: item.rpcUrl }),
-        {}
-      ),
-    },
-  },
-  'custom-uauth': {
-    display: UAuthWeb3Modal.display,
-    connector: UAuthWeb3Modal.connector,
-    package: UAuthSPA,
-    options: uauthOptions,
-  },
-}
+// const uauthClient = new UAuthSPA({
+//   clientID: process.env.NEXT_PUBLIC_UD_CLIENT_ID!,
+//   redirectUri: typeof window === 'undefined' ? '' : window.location.origin,
+//   scope: 'openid wallet',
+// })
 
-let web3: Web3
-let connectedProvider: any
+// const uauthConnector = new UAuthWagmiConnector({
+//   chains,
+//   options: {
+//     uauth: uauthClient,
+//   },
+// })
 
-const loginWithWallet = async (
-  setLoginIn: (loginIn: boolean) => void
-): Promise<Account | undefined> => {
-  const web3Modal = new Web3Modal({
-    cacheProvider: true, // optional
-    providerOptions, // required
+export const wagmiConfig = createConfig(
+  getDefaultConfig({
+    walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
+    appName: 'Meet with Wallet',
+    appDescription: 'Your App Description',
+    appUrl: 'https://meetwithwallet.xyz',
+    chains,
+    publicClient,
+    // connectors: [uauthConnector],
   })
+)
 
+export const loginWithAddress = async (
+  address: string,
+  setLoginIn: (loginIn: boolean) => void
+) => {
+  setLoginIn(true)
   try {
-    connectedProvider = await web3Modal.connect()
-    web3 = new Web3(connectedProvider)
-    setLoginIn(true)
-
-    const accounts = await web3.eth.getAccounts()
-
     const account = await loginOrSignup(
-      accounts[0].toLowerCase(),
+      address,
       Intl.DateTimeFormat().resolvedOptions().timeZone
     )
     return account
   } catch (err) {
+    console.error(err)
     return undefined
   } finally {
     setLoginIn(false)
   }
 }
 
-const logoutWallet = async (): Promise<void> => {
-  const web3Modal = new Web3Modal({
-    cacheProvider: true, // optional
-    providerOptions, // required
-  })
-
-  if (web3Modal.cachedProvider === 'custom-uauth') {
-    const uauth = new UAuthSPA(uauthOptions)
-    await uauth.logout()
-  }
-  web3Modal.clearCachedProvider()
-}
-
 const signDefaultMessage = async (
   accountAddress: string,
   nonce: number
 ): Promise<string> => {
-  const signature = await web3.eth.personal.sign(
-    DEFAULT_MESSAGE(nonce),
-    accountAddress,
-    'meetwithwallet.xyz'
-  )
+  const signature = await signMessage({
+    message: DEFAULT_MESSAGE(nonce),
+  })
+
   saveSignature(accountAddress, signature)
   return signature
 }
@@ -241,15 +233,11 @@ const getAllParticipantsDisplayName = (
 }
 
 export {
-  connectedProvider,
   ellipsizeAddress,
   getAccountDisplayName,
   getAddressDisplayForInput,
   getAllParticipantsDisplayName,
   getParticipantDisplay,
   loginOrSignup,
-  loginWithWallet,
-  logoutWallet,
   signDefaultMessage,
-  web3,
 }

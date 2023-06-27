@@ -7,18 +7,17 @@ import {
   Icon,
   Image,
   Input,
-  Link,
   Text,
   useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { useModal } from 'connectkit'
 import router from 'next/router'
 import { useContext, useState } from 'react'
 import { FaBell } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import { useLogin } from '@/session/login'
 import {
   AccountNotifications,
   NotificationChannel,
@@ -54,9 +53,19 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   reset,
 }) => {
   const { currentAccount } = useContext(AccountContext)
-  const { handleLogin } = useLogin()
 
   const toast = useToast()
+
+  const { setOpen } = useModal()
+
+  const handleLogin = async () => {
+    if (!currentAccount) {
+      logEvent('Clicked to start on WHY section')
+      setOpen(true)
+    } else {
+      await router.push('/dashboard')
+    }
+  }
 
   const [emailSub, setEmailSub] = useState<string>()
   const [loadingSub, setLoadingSub] = useState<boolean>(false)

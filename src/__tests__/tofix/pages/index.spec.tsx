@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import crypto from 'crypto'
 
 import Home from '@/pages/index'
 import { ChakraTestWrapper } from '@/testing/chakra-helpers'

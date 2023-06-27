@@ -1,5 +1,6 @@
 import { NextComponentType, NextPage, NextPageContext } from 'next'
 import React from 'react'
+import { useAccount } from 'wagmi'
 
 import { useLogin } from './login'
 
@@ -9,10 +10,11 @@ export const forceAuthenticationCheck = <P,>(
   const ForceAuthenticationCheckHOC: NextPage = (props: any) => {
     const { checkAuthOnClient } = props
     const { handleLogin } = useLogin()
+    const { address } = useAccount()
 
     React.useEffect(() => {
       if (checkAuthOnClient) {
-        handleLogin(false, false)
+        handleLogin(address, false, false)
       }
     }, [checkAuthOnClient])
 
