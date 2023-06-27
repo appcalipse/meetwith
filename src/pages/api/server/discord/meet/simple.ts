@@ -18,7 +18,7 @@ export default async function simpleDiscordMeet(
         meeting_info_file_path: 'string',
         version: 1,
         source: 'mww',
-        account_address: 'the scheduler 0xAddress'
+        account_address: 'the scheduler 0xAddress',
       },
       participants: ['string1', 'string2'],
       participants_not_available: ['string3', 'string4'],
