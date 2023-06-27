@@ -58,7 +58,6 @@ export const useLogin = () => {
         await router.push('/dashboard')
       }
     } catch (error: any) {
-      console.log(error)
       if (error instanceof InvalidSessionError) {
         await router.push('/logout')
         return

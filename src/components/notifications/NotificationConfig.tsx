@@ -43,6 +43,7 @@ import DicordNotificationConfig from './DiscordNotificationConfig'
 
 const NotificationsConfig: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
+  const { data: walletClient } = useWalletClient()
 
   const [loading, setLoading] = useState(false)
   const [loadingInitialInfo, setLoadingInitialInfo] = useState(true)
@@ -116,7 +117,8 @@ const NotificationsConfig: React.FC = () => {
       await validateChainToActOn(
         process.env.NEXT_PUBLIC_ENV === 'production'
           ? SupportedChain.ETHEREUM
-          : SupportedChain.GOERLI
+          : SupportedChain.GOERLI,
+        walletClient
       )
     } catch (e) {
       toast({

@@ -1,7 +1,9 @@
 import {
+  GetWalletClientResult,
   prepareWriteContract,
   readContract,
   waitForTransaction,
+  WalletClient,
   writeContract,
   WriteContractResult,
 } from '@wagmi/core'
@@ -38,14 +40,15 @@ export const checkAllowance = async (
   plan: Plan,
   chain: SupportedChain,
   token: AcceptedToken,
-  duration: number
+  duration: number,
+  walletClient?: GetWalletClientResult
 ): Promise<bigint> => {
   const price = getPlanInfo(plan)?.usdPrice
   if (price) {
     const chainInfo = getChainInfo(chain)
 
     try {
-      await validateChainToActOn(chain)
+      await validateChainToActOn(chain, walletClient)
     } catch (e) {
       throw Error('Please connect to the correct network')
     }
@@ -94,12 +97,13 @@ export const checkAllowance = async (
 export const approveTokenSpending = async (
   chain: SupportedChain,
   token: AcceptedToken,
-  amount: bigint
+  amount: bigint,
+  walletClient: GetWalletClientResult | undefined
 ): Promise<void> => {
   const chainInfo = getChainInfo(chain)
 
   try {
-    await validateChainToActOn(chain)
+    await validateChainToActOn(chain, walletClient)
   } catch (e) {
     throw Error('Please connect to the correct network')
   }
@@ -163,7 +167,8 @@ export const subscribeToPlan = async (
   chain: SupportedChain,
   duration: number,
   domain: string,
-  token: AcceptedToken
+  token: AcceptedToken,
+  walletClient?: GetWalletClientResult
 ): Promise<WriteContractResult> => {
   try {
     const subExists = await getSubscriptionForDomain(domain)
@@ -179,7 +184,7 @@ export const subscribeToPlan = async (
   const chainInfo = getChainInfo(chain)
 
   try {
-    await validateChainToActOn(chain)
+    await validateChainToActOn(chain, walletClient)
   } catch (e) {
     throw Error('Please connect to the correct network')
   }
@@ -204,7 +209,8 @@ export const subscribeToPlan = async (
         plan,
         chain,
         token,
-        duration
+        duration,
+        walletClient
       )
 
       if (neededApproval > 0) {

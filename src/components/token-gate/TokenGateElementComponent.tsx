@@ -21,8 +21,8 @@ import {
   Spinner,
   useColorModeValue,
 } from '@chakra-ui/react'
-import { formatUnits } from 'ethers'
 import { useEffect, useRef, useState } from 'react'
+import { formatUnits } from 'viem'
 
 import {
   getMainnetChains,
@@ -181,7 +181,7 @@ const TokenForm: React.FC<{
   const [firstLoad, setFirstLoad] = useState(true)
   const [invalidTokenAddress, setInvalidTokenAddress] = useState(false)
   const [haveMinimumAmount, setHaveMinimumAmount] = useState(
-    tokenInfo?.minimumBalance ? !tokenInfo!.minimumBalance.isZero() : false
+    tokenInfo?.minimumBalance ? !(tokenInfo!.minimumBalance == 0n) : false
   )
 
   const chains = isProduction ? getMainnetChains() : getTestnetChains()
@@ -215,7 +215,10 @@ const TokenForm: React.FC<{
       ].includes(tokenInfo!.type) &&
       isValidEVMAddress(tokenInfo!.itemId)
     ) {
-      const info = await getTokenInfo(tokenInfo!.itemId, tokenInfo!.chain!)
+      const info = await getTokenInfo(
+        tokenInfo!.itemId as `0x${string}`,
+        tokenInfo!.chain!
+      )
       let _tokenInfo: TokenGateElement = {
         type: GateInterface.ERC20,
         itemName: '',
