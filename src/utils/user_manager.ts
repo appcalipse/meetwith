@@ -1,33 +1,10 @@
-import UAuthSPA from '@uauth/js'
-import { UAuthWagmiConnector } from '@uauth/wagmi'
-import { signMessage } from '@wagmi/core'
-import WalletConnectProvider from '@walletconnect/web3-provider'
-import {
-  ConnectKitButton,
-  ConnectKitProvider,
-  getDefaultConfig,
-} from 'connectkit'
-import {
-  goerli,
-  harmonyOne,
-  mainnet,
-  metis,
-  metisGoerli,
-  polygon,
-  polygonMumbai,
-} from 'viem/chains'
-import {
-  configureChains,
-  createConfig,
-  useDisconnect,
-  useSignMessage,
-  WagmiConfigProps,
-} from 'wagmi'
+import { mainnet, signMessage } from '@wagmi/core'
+import { getDefaultConfig } from 'connectkit'
+import { configureChains, createConfig } from 'wagmi'
 import { infuraProvider } from 'wagmi/providers/infura'
-import { jsonRpcProvider } from 'wagmi/providers/jsonRpc'
+import { publicProvider } from 'wagmi/providers/public'
 
 import { Account } from '../types/Account'
-import { supportedChains } from '../types/chains'
 import {
   ParticipantBaseInfo,
   ParticipantInfo,
@@ -42,9 +19,10 @@ import { isValidEVMAddress } from './validations'
 
 // Add your custom chains to the list of wagmi configured chains
 const { publicClient, chains } = configureChains(
-  [mainnet, polygon, polygonMumbai, goerli],
+  [mainnet],
   [
     infuraProvider({ apiKey: process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID! }),
+    publicProvider(),
     // ,
     // jsonRpcProvider({
     //   rpc: chain => {
@@ -58,6 +36,19 @@ const { publicClient, chains } = configureChains(
   ]
 )
 
+// const uauthClient = new UAuthSPA({
+//   clientID: process.env.NEXT_PUBLIC_UD_CLIENT_ID!,
+//   redirectUri: typeof window === 'undefined' ? '' : window.location.origin,
+//   scope: 'openid wallet',
+// })
+
+// const uauthConnector = new UAuthWagmiConnector({
+//   chains,
+//   options: {
+//     uauth: uauthClient,
+//   },
+// })
+
 export const wagmiConfig = createConfig(
   getDefaultConfig({
     walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
@@ -66,37 +57,9 @@ export const wagmiConfig = createConfig(
     appUrl: 'https://meetwithwallet.xyz',
     chains,
     publicClient,
+    // connectors: [uauthConnector],
   })
 )
-
-const uauthClient = new UAuthSPA({
-  clientID: process.env.NEXT_PUBLIC_UD_CLIENT_ID!,
-  redirectUri: typeof window === 'undefined' ? '' : window.location.origin,
-  scope: 'openid wallet',
-})
-
-// const uauthConnector = new UAuthWagmiConnector({
-//   chains,
-//   options: {
-//     uauth: uauthClient,
-//     metaMaskConnector,
-//     walletConnectConnector,
-//   },
-// });
-
-// const wagmiClient = createClient({
-//   autoConnect: true,
-//   connectors: [uauthConnector, metaMaskConnector, walletConnectConnector],
-//   provider,
-// });
-
-// 'custom-uauth': {
-//   display: UAuthWeb3Modal.display,
-//   connector: UAuthWeb3Modal.connector,
-//   package: UAuthSPA,
-//   options: uauthOptions,
-// },
-// }
 
 export const loginWithAddress = async (
   address: string,

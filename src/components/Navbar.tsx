@@ -14,7 +14,7 @@ import {
   useColorModeValue,
   useDisclosure,
 } from '@chakra-ui/react'
-import { ConnectKitProvider, useModal } from 'connectkit'
+import { useModal } from 'connectkit'
 import router, { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { BiMenuAltRight } from 'react-icons/bi'
@@ -27,18 +27,6 @@ import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
 export const Navbar = () => {
-  const { handleLogin } = useLogin()
-
-  return (
-    <ConnectKitProvider
-      options={{ initialChainId: 0, enforceSupportedChains: false }}
-      onConnect={({ address }) => handleLogin(address)}
-    >
-      <NavbarInner />
-    </ConnectKitProvider>
-  )
-}
-const NavbarInner = () => {
   const { pathname, asPath } = useRouter()
 
   const { isOpen, onToggle } = useDisclosure()

@@ -1,11 +1,15 @@
-import {
-  BaseProvider,
-  JsonRpcProvider,
-  Web3Provider,
-} from '@ethersproject/providers'
 import { Resolution } from '@unstoppabledomains/resolution'
-import { fetchEnsAddress, fetchEnsAvatar, fetchEnsName } from '@wagmi/core'
-import { ethers } from 'ethers'
+import {
+  fetchEnsAddress,
+  fetchEnsAvatar,
+  fetchEnsName,
+  getNetwork,
+  GetWalletClientResult,
+  mainnet,
+  switchNetwork,
+  WalletClient,
+} from '@wagmi/core'
+import { useWalletClient } from 'wagmi'
 import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
@@ -25,9 +29,10 @@ export const resolveExtraInfo = async (
 export const resolveENS = async (
   address: string
 ): Promise<AccountExtraProps | undefined> => {
-  let provider: JsonRpcProvider
-
-  const name = await fetchEnsName({ address: address as `0x${string}` })
+  const name = await fetchEnsName({
+    address: address as `0x${string}`,
+    chainId: 1,
+  })
 
   if (!name) {
     return undefined
@@ -115,37 +120,53 @@ const checkUnstoppableDomainBelongsTo = async (
 
 export const validateChainToActOn = async (
   desiredChain: SupportedChain,
-  provider: Web3Provider
+  walletClient: GetWalletClientResult | undefined
 ): Promise<void> => {
-  const connectedChain = await provider.getNetwork()
+  const { chain } = getNetwork()
+
   const chainInfo = getChainInfo(desiredChain)
-  if (chainInfo && connectedChain.chainId !== chainInfo.id) {
+  if (chainInfo && chain?.id !== chainInfo.id) {
     try {
-      await provider.send('wallet_switchEthereumChain', [
-        { chainId: Web3.utils.toHex(chainInfo.id) },
-      ])
+      await switchNetwork({
+        chainId: chainInfo.id,
+      })
 
       return
     } catch (switchError: any) {
-      // This error code indicates that the chain has not been added to MetaMask.
-      if (switchError.code === 4902) {
+      if (switchError.name === 'ChainNotConfiguredForConnectorError') {
         try {
-          await provider.send('wallet_addEthereumChain', [
-            {
-              chainId: Web3.utils.toHex(chainInfo.id),
-              chainName: chainInfo.fullName,
-              rpcUrls: [chainInfo.rpcUrl],
+          await walletClient?.addChain({
+            chain: {
+              id: chainInfo.id,
+              name: chainInfo.fullName,
+              network: chainInfo.name,
               nativeCurrency: {
                 name: chainInfo.nativeTokenSymbol,
                 symbol: chainInfo.nativeTokenSymbol,
                 decimals: 18,
               },
-              blockExplorerUrls: [chainInfo.blockExplorerUrl],
+              rpcUrls: {
+                default: {
+                  http: [chainInfo.rpcUrl],
+                },
+                public: {
+                  http: [chainInfo.rpcUrl],
+                },
+              },
+              /** Collection of block explorers */
+              blockExplorers: {
+                default: {
+                  name: chainInfo.fullName,
+                  url: chainInfo.blockExplorerUrl,
+                },
+              },
+              testnet: chainInfo.testnet,
             },
-          ])
-          const connectedChain = await provider.getNetwork()
+          })
+
+          const connectedChain = await walletClient?.getChainId()
           //check if user accepted chain switch after adding it
-          if (connectedChain.chainId !== chainInfo.id) {
+          if (connectedChain !== chainInfo.id) {
             throw Error('User did not accept chain switch')
           }
           return
@@ -193,26 +214,4 @@ export const getAddressFromDomain = async (
   } else {
     return (await checkFreenameBelongsTo(domain))?.toLowerCase()
   }
-}
-
-export const getProvider = (chain: SupportedChain): BaseProvider | null => {
-  let provider
-  const chainInfo = getChainInfo(chain)
-  if (!chainInfo) return null
-  if (window && window.ethereum && window.ethereum.chainId === chainInfo?.id) {
-    provider = new ethers.providers.Web3Provider(window.ethereum)
-  } else {
-    if (
-      chainInfo.chain === SupportedChain.POLYGON_MATIC &&
-      process.env.NEXT_PUBLIC_ENV === 'production'
-    ) {
-      provider = new ethers.providers.InfuraProvider(
-        'matic',
-        process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID
-      )
-    } else {
-      provider = new ethers.providers.JsonRpcProvider(chainInfo.rpcUrl)
-    }
-  }
-  return provider
 }
