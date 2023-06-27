@@ -2,14 +2,18 @@ import '../styles/globals.css'
 import '../styles/swipers.css'
 
 import { ChakraProvider } from '@chakra-ui/react'
+import { ConnectKitProvider } from 'connectkit'
 import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
 import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
+import { WagmiConfig } from 'wagmi'
 
+import { useLogin } from '@/session/login'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
+import { wagmiConfig } from '@/utils/user_manager'
 
 import { CookieConsent } from '../components/CookieConsent'
 import { Head } from '../components/Head'
@@ -65,22 +69,36 @@ function MyApp({
     <ChakraProvider theme={customTheme}>
       <ChakraMDXProvider>
         <CookiesProvider>
-          <AccountProvider
-            currentAccount={currentAccount}
-            logged={!!currentAccount}
-          >
-            <Head />
-            <BaseLayout>
-              <Component {...customProps} />
-            </BaseLayout>
-          </AccountProvider>
-          <CookieConsent consentCookie={consentCookie as boolean} />
+          <WagmiConfig config={wagmiConfig}>
+            <AccountProvider
+              currentAccount={currentAccount}
+              logged={!!currentAccount}
+            >
+              <Inner>
+                <Component {...customProps} />
+              </Inner>
+            </AccountProvider>
+            <CookieConsent consentCookie={consentCookie as boolean} />
+          </WagmiConfig>
         </CookiesProvider>
       </ChakraMDXProvider>
     </ChakraProvider>
   )
 }
 
+const Inner = (props: any) => {
+  const { handleLogin } = useLogin()
+
+  return (
+    <ConnectKitProvider
+      options={{ initialChainId: 0, enforceSupportedChains: false }}
+      onConnect={({ address }) => handleLogin(address)}
+    >
+      <Head />
+      <BaseLayout>{props.children}</BaseLayout>
+    </ConnectKitProvider>
+  )
+}
 MyApp.getInitialProps = async (appContext: AppContext) => {
   const appProps: AppInitialProps = await App.getInitialProps(appContext)
 

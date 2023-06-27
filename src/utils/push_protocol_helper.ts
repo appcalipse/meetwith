@@ -10,6 +10,7 @@ export const sendPushNotification = async (
 ): Promise<boolean> => {
   const Pkey = `0x${process.env.BACKEND_NOTIFIER_WALLET_PVT_KEY!}`
   const signer = new ethers.Wallet(Pkey)
+
   try {
     const apiResponse = await PushAPI.payloads.sendNotification({
       signer,
