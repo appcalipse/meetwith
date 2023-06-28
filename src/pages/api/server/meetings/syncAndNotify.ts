@@ -16,7 +16,7 @@ import { ExternalCalendarSync } from '@/utils/sync_helper'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    const request = JSON.parse(req.body) as MeetingCreationSyncRequest
+    const request = req.body as MeetingCreationSyncRequest
 
     request.start = new Date(request.start)
     request.end = new Date(request.end)
@@ -86,7 +86,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       end,
       created_at,
       timezone,
-    } = JSON.parse(req.body) as MeetingCancelSyncRequest
+    } = req.body as MeetingCancelSyncRequest
 
     for (const address of addressesToRemove) {
       try {

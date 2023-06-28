@@ -1,4 +1,4 @@
-import { addHours, addMinutes } from 'date-fns'
+import { addMinutes } from 'date-fns'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
@@ -9,7 +9,8 @@ export default async function simpleDiscordMeet(
   res: NextApiResponse
 ) {
   if (req.method === 'POST') {
-    const request = JSON.parse(req.body) as DiscordMeetingRequest
+    console.log(req.body)
+    const request = req.body as DiscordMeetingRequest
 
     return res.status(200).json({
       meetingInfo: {
