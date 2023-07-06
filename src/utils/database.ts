@@ -575,12 +575,13 @@ const deleteMeetingFromDB = async (
     created_at: new Date(oldSlots[0].created_at!),
     timezone,
   }
-  // Doing ntifications and syncs asyncrounously
+  // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'DELETE',
     body: JSON.stringify(body),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
     },
   })
 }
@@ -776,12 +777,13 @@ const saveMeeting = async (
     title: meeting.title,
     content: meeting.content,
   }
-  // Doing notifications and syncs asyncrounously
+  // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'POST',
     body: JSON.stringify(body),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
     },
   })
 
@@ -1457,12 +1459,13 @@ const updateMeeting = async (
     changes: changingTime ? { dateChange: changingTime } : undefined,
   }
 
-  // Doing ntifications and syncs asyncrounously
+  // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
     method: 'PATCH',
     body: JSON.stringify(body),
     headers: {
       'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
     },
   })
 
