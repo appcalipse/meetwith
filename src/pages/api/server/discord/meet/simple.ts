@@ -9,7 +9,6 @@ export default async function simpleDiscordMeet(
   res: NextApiResponse
 ) {
   if (req.method === 'POST') {
-    console.log(req.body)
     const request = req.body as DiscordMeetingRequest
 
     return res.status(200).json({
