@@ -76,7 +76,7 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       if (validSlot) {
         let overLappingSlot = false
         for (const busySlot of busySlots) {
-          if (areIntervalsOverlapping(busySlot, slot, { inclusive: true })) {
+          if (areIntervalsOverlapping(busySlot, slot)) {
             overLappingSlot = true
             break
           }
