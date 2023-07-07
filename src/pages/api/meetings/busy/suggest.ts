@@ -1,5 +1,5 @@
 import { withSentry } from '@sentry/nextjs'
-import { areIntervalsOverlapping, startOfDay } from 'date-fns'
+import { areIntervalsOverlapping, isPast, startOfDay } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -54,6 +54,10 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
 
     for (const slot of allSlots) {
       let validSlot = true
+      if (isPast(slot.start as Date)) {
+        validSlot = false
+        break
+      }
       for (const account of accounts) {
         const availabilities = account.preferences!.availabilities
         const tz = account.preferences!.timezone
@@ -72,9 +76,10 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
       if (validSlot) {
         let overLappingSlot = false
         for (const busySlot of busySlots) {
-          if (areIntervalsOverlapping(busySlot, slot, { inclusive: true }))
+          if (areIntervalsOverlapping(busySlot, slot, { inclusive: true })) {
             overLappingSlot = true
-          break
+            break
+          }
         }
         if (!overLappingSlot) {
           suggestedTimes.push(slot)
