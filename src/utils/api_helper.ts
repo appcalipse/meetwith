@@ -48,7 +48,8 @@ export const internalFetch = async (
   path: string,
   method = 'GET',
   body?: any,
-  options = {}
+  options = {},
+  headers = {}
 ): Promise<object> => {
   const response = await fetch(`${apiUrl}${path}`, {
     method,
@@ -56,6 +57,7 @@ export const internalFetch = async (
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
+      ...headers,
     },
     ...options,
     body: (body && JSON.stringify(body)) || null,
@@ -108,6 +110,32 @@ export const saveAccountChanges = async (
   account: Account
 ): Promise<Account> => {
   return (await internalFetch(`/secure/accounts`, 'POST', account)) as Account
+}
+
+export const scheduleMeetingFromServer = async (
+  scheduler_address: string,
+  meeting: MeetingCreationRequest
+): Promise<DBSlotEnhanced> => {
+  try {
+    return (await internalFetch(
+      `/server/meetings`,
+      'POST',
+      { scheduler_address, ...meeting },
+      {},
+      {
+        'X-Server-Secret': process.env.SERVER_SECRET!,
+      }
+    )) as DBSlotEnhanced
+  } catch (e: any) {
+    if (e.status && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e.status && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e.status && e.status === 403) {
+      throw new GateConditionNotValidError()
+    }
+    throw e
+  }
 }
 
 export const scheduleMeeting = async (

@@ -1,8 +1,13 @@
-import { addMinutes } from 'date-fns'
+import { addDays } from 'date-fns'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { Account } from '@/types/Account'
+import { SchedulingType } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { DiscordMeetingRequest, DiscordMeetingResponse } from '@/types/Requests'
+import { getSuggestedSlots } from '@/utils/api_helper'
+import { scheduleMeeting } from '@/utils/calendar_manager'
+import { getAccountFromDiscordId } from '@/utils/database'
 
 export default async function simpleDiscordMeet(
   req: NextApiRequest,
@@ -11,44 +16,98 @@ export default async function simpleDiscordMeet(
   if (req.method === 'POST') {
     const request = req.body as DiscordMeetingRequest
 
-    return res.status(200).json({
-      meetingInfo: {
-        id: 'some_uuid',
-        created_at: new Date(),
-        meeting_info_file_path: 'string',
-        version: 1,
-        source: 'mww',
-        account_address: 'the scheduler 0xAddress',
-        start: new Date(),
-        end: addMinutes(new Date(), request.duration),
-        participants: [
-          {
-            account_address: '',
-            name: 'string',
-            status: ParticipationStatus.Accepted,
-            meeting_id: '',
-            slot_id: '',
-            type: ParticipantType.Scheduler,
-          },
-          {
-            account_address: '',
-            name: 'string 2',
-            status: ParticipationStatus.Pending,
-            meeting_id: '',
-            slot_id: '',
-            type: ParticipantType.Invitee,
-          },
-        ],
+    const account = await getAccountFromDiscordId(request.scheduler_discord_id)
+
+    if (!account) {
+      return res
+        .status(404)
+        .send(
+          "You don't have a MWW account, or have not linked to your Discord one. Go to https://meetwithwallet.xyz to create or link it."
+        )
+    }
+
+    const accounts: Account[] = []
+    const linked_accounts: string[] = []
+    const not_linked_accounts: string[] = []
+
+    await Promise.all(
+      request.participantsDiscordIds.map(async discordId => {
+        const account = await getAccountFromDiscordId(discordId)
+        if (account) {
+          linked_accounts.push(discordId)
+          accounts.push(account)
+        } else {
+          not_linked_accounts.push(discordId)
+        }
+      })
+    )
+
+    if (accounts.map(a => a.address).indexOf(account.address) === -1) {
+      accounts.push(account)
+    }
+
+    if (accounts.length < 2) {
+      return res
+        .status(403)
+        .send("You can't schedule a meeting with less than 2 participants.")
+    }
+
+    const startDate = new Date()
+    const suggestions = await getSuggestedSlots(
+      accounts.map(p => p.address),
+      startDate,
+      addDays(startDate, request.interval),
+      request.duration
+    )
+
+    if (suggestions.length === 0) {
+      return res
+        .status(409)
+        .send(
+          `There is no slot that fits participants schedules in the next ${request.interval} days.`
+        )
+    }
+
+    const slot = suggestions[0]
+
+    const participants = accounts.map(_account => {
+      return {
+        account_address: _account.address,
+        name: _account.preferences?.name,
+        type:
+          account.address === _account.address
+            ? ParticipantType.Scheduler
+            : ParticipantType.Invitee,
+        status:
+          account.address === _account.address
+            ? ParticipationStatus.Accepted
+            : ParticipationStatus.Pending,
+        slot_id: '',
         meeting_id: '',
-        meeting_url: 'https://meethere',
-        title: 'a meeting title',
-        content: '',
-        related_slot_ids: [],
-      },
-      discordParticipantIds: request.discordParticipantIds,
-      discordParticipantsNotAvailable: ['string1', 'string2'],
-      discordParticipantsWithoutAccountIds: ['string1', 'string2'],
-    } as DiscordMeetingResponse)
+      }
+    })
+
+    try {
+      const meeting = await scheduleMeeting(
+        SchedulingType.DISCORD,
+        'no_type',
+        new Date(slot.start),
+        new Date(slot.end),
+        participants,
+        account,
+        'Scheduled from Discord'
+      )
+
+      return res.status(200).json({
+        meetingInfo: meeting,
+        discordParticipantIds: linked_accounts,
+        discordParticipantsNotAvailable: [],
+        discordParticipantsWithoutAccountIds: not_linked_accounts,
+      } as DiscordMeetingResponse)
+    } catch (e: any) {
+      console.log(e)
+      return res.status(e.status).send(e.message)
+    }
   }
 
   return res.status(404).send('Not found')

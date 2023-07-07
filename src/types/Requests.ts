@@ -77,7 +77,8 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
 }
 
 export interface DiscordMeetingRequest {
-  discordParticipantIds: string[]
+  scheduler_discord_id: string
+  participantsDiscordIds: string[]
   duration: number
   interval: number
 }
