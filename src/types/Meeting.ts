@@ -8,6 +8,7 @@ import { ParticipantInfo } from './ParticipantInfo'
 export enum SchedulingType {
   REGULAR,
   GUEST,
+  DISCORD,
 }
 
 export enum ParticipantMappingType {

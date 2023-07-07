@@ -41,6 +41,7 @@ import {
   isSlotFreeApiCall,
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
+  scheduleMeetingFromServer,
   updateMeeting as apiUpdateMeeting,
 } from '@/utils/api_helper'
 
@@ -538,7 +539,7 @@ const scheduleMeeting = async (
   )[0]
 
   if (
-    !owner || // scheduling from dashbaord
+    !owner || // scheduling from dashboard
     (
       await isSlotFreeApiCall(
         owner.account_address!,
@@ -552,12 +553,14 @@ const scheduleMeeting = async (
       let slot: DBSlotEnhanced
       if (schedulingType === SchedulingType.GUEST) {
         slot = await scheduleMeetingAsGuest(meeting)
+      } else if (schedulingType === SchedulingType.DISCORD) {
+        slot = await scheduleMeetingFromServer(currentAccount!.address, meeting)
       } else {
         meeting.emailToSendReminders = emailToSendReminders
         slot = await apiScheduleMeeting(meeting)
       }
 
-      if (currentAccount) {
+      if (currentAccount && schedulingType !== SchedulingType.DISCORD) {
         return (await decryptMeeting(slot, currentAccount))!
       }
 
