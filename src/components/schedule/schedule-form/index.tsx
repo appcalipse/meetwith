@@ -61,7 +61,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [customMeeting, setCustomMeeting] = useState(false)
   const [doSendEmailReminders, setSendEmailReminders] = useState(false)
   const [scheduleType, setScheduleType] = useState(
-    undefined as SchedulingType | undefined
+    SchedulingType.REGULAR as SchedulingType
   )
   const [guestEmail, setGuestEmail] = useState('')
   const [userEmail, setUserEmail] = useState('')
@@ -140,7 +140,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   useMemo(() => {
     if (logged) setScheduleType(SchedulingType.REGULAR)
-    else setScheduleType(SchedulingType.GUEST)
   }, [logged])
 
   return (
