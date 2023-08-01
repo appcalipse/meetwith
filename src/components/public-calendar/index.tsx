@@ -62,7 +62,6 @@ import {
   getMeeting,
   getNotificationSubscriptions,
   listConnectedCalendars,
-  setNotificationSubscriptions,
 } from '@/utils/api_helper'
 import {
   dateToHumanReadable,
@@ -85,7 +84,6 @@ import {
 import { isSlotAvailable } from '@/utils/slots.helper'
 import { saveMeetingsScheduled } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
-import { isValidEmail } from '@/utils/validations'
 
 import { Head } from '../Head'
 import MeetingScheduledDialog from '../meeting/MeetingScheduledDialog'

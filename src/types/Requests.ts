@@ -75,3 +75,17 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   addressesToRemove: string[]
   guestsToRemove: ParticipantInfo[]
 }
+
+export interface DiscordMeetingRequest {
+  scheduler_discord_id: string
+  participantsDiscordIds: string[]
+  duration: number
+  interval: number
+}
+
+export interface DiscordMeetingResponse {
+  meetingInfo: MeetingDecrypted
+  discordParticipantIds: string[]
+  discordParticipantsNotAvailable: string[]
+  discordParticipantsWithoutAccountIds: string[]
+}
