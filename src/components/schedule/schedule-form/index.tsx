@@ -144,18 +144,16 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   return (
     <Flex direction="column" gap={4} paddingTop={6}>
-      {!currentAccount && (
-        <ToggleSelector
-          value={scheduleType}
-          onChange={v => {
-            v !== undefined && setScheduleType(v)
-          }}
-          options={[
-            { label: 'Schedule with wallet', value: SchedulingType.REGULAR },
-            { label: 'Schedule as guest', value: SchedulingType.GUEST },
-          ]}
-        />
-      )}
+      <ToggleSelector
+        value={scheduleType}
+        onChange={v => {
+          v !== undefined && setScheduleType(v)
+        }}
+        options={[
+          { label: 'Schedule with wallet', value: SchedulingType.REGULAR },
+          { label: 'Schedule as guest', value: SchedulingType.GUEST },
+        ]}
+      />
 
       {scheduleType === SchedulingType.GUEST && (
         <>
