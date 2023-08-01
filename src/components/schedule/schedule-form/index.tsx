@@ -134,8 +134,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     }
   }
 
-  const isGuestEmailValid = !guestEmail || isValidEmail(guestEmail)
-  const isUserEmailValid = !userEmail || isValidEmail(userEmail)
+  const isGuestEmailValid = () => !guestEmail || isValidEmail(guestEmail)
+  const isUserEmailValid = () => !userEmail || isValidEmail(userEmail)
   const isNameEmpty = isEmptyString(name)
 
   const bgColor = useColorModeValue('white', 'gray.600')
@@ -173,7 +173,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             />
           </FormControl>
 
-          <FormControl isInvalid={!isGuestEmailValid}>
+          <FormControl isInvalid={!isGuestEmailValid()}>
             <FormLabel>Your Email</FormLabel>
             <Input
               mb={4}
@@ -182,7 +182,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               disabled={isScheduling}
               value={guestEmail}
               onKeyDown={event =>
-                event.key === 'Enter' && isGuestEmailValid && handleConfirm()
+                event.key === 'Enter' && isGuestEmailValid() && handleConfirm()
               }
               onChange={e => setGuestEmail(e.target.value)}
             />
@@ -307,7 +307,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                   </FormLabel>
                 </HStack>
                 {doSendEmailReminders === true && (
-                  <FormControl isInvalid={!isUserEmailValid}>
+                  <FormControl isInvalid={!isUserEmailValid()}>
                     <Input
                       type="email"
                       placeholder="Insert your email"
@@ -325,9 +325,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       <Button
         width="full"
         disabled={
-          (!logged && !isGuestEmailValid) ||
+          (!logged && !isGuestEmailValid()) ||
           (logged &&
-            ((doSendEmailReminders && !isUserEmailValid) || isNameEmpty)) ||
+            ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
           isScheduling ||
           isSchedulingExternal ||
           isGateValid === false
