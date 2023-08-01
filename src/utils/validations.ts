@@ -6,15 +6,13 @@ export const isValidEmail = (email?: string): boolean => {
 }
 
 export const isValidEVMAddress = (address: string): boolean => {
-  const match = address.match(/^0x[a-fA-F0-9]{40}$/i)
-  return !!match
+  const reg = /^0x[a-fA-F0-9]{40}$/i
+  return reg.test(address)
 }
 
 export const isValidUrl = (url: string): boolean => {
-  const match = url.match(
-    /^(https?:\/\/)([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/
-  )
-  return !!match
+  const reg = /^(https?:\/\/)([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/
+  return reg.test(url)
 }
 
 export const isEmptyString = (value: string): boolean => {
