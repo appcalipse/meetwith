@@ -22,13 +22,22 @@ import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
 import { isValidEmail } from '@/utils/validations'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
+  const account_address = req.session.account!.address
+  const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
+
+  return handleMeetingSchedule(account_address, meeting, req, res)
+}
+
+export const handleMeetingSchedule = async (
+  account_address: string,
+  meeting: MeetingCreationRequest,
+  req: NextApiRequest,
+  res: NextApiResponse
+) => {
   if (req.method === 'POST') {
     initDB()
 
-    const account_address = req.session.account!.address
     const account = await getAccountFromDB(account_address)
-
-    const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
 
     if (
       meeting.participants_mapping.filter(
@@ -43,7 +52,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     const participantActing = getParticipantBaseInfoFromAccount(
-      await getAccountFromDB(req.session.account!.address)
+      await getAccountFromDB(account_address)
     )
 
     const updateEmailNotifications = async (email: string) => {

@@ -2,7 +2,6 @@ import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { MeetingChangeType } from '@/types/Meeting'
 import {
   MeetingCancelSyncRequest,
@@ -16,7 +15,7 @@ import { ExternalCalendarSync } from '@/utils/sync_helper'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    const request = JSON.parse(req.body) as MeetingCreationSyncRequest
+    const request = req.body as MeetingCreationSyncRequest
 
     request.start = new Date(request.start)
     request.end = new Date(request.end)
@@ -86,7 +85,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       end,
       created_at,
       timezone,
-    } = JSON.parse(req.body) as MeetingCancelSyncRequest
+    } = req.body as MeetingCancelSyncRequest
 
     for (const address of addressesToRemove) {
       try {
@@ -117,4 +116,4 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default withSentry(withSessionRoute(handle))
+export default withSentry(handle)
