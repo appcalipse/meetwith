@@ -1,8 +1,19 @@
 import { mainnet, signMessage } from '@wagmi/core'
+import { jsonRpcProvider } from '@wagmi/core/providers/jsonRpc'
 import { getDefaultConfig } from 'connectkit'
+import {
+  goerli,
+  harmonyOne,
+  metis,
+  metisGoerli,
+  polygon,
+  polygonMumbai,
+} from 'viem/chains'
 import { configureChains, createConfig } from 'wagmi'
 import { infuraProvider } from 'wagmi/providers/infura'
 import { publicProvider } from 'wagmi/providers/public'
+
+import { getChainInfo, getSupportedChainFromId } from '@/types/chains'
 
 import { Account } from '../types/Account'
 import {
@@ -19,21 +30,36 @@ import { isValidEVMAddress } from './validations'
 
 // Add your custom chains to the list of wagmi configured chains
 const { publicClient, chains } = configureChains(
-  [mainnet],
+  [mainnet, goerli, harmonyOne, metis, polygon, polygonMumbai],
   [
-    infuraProvider({ apiKey: process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID! }),
     publicProvider(),
-    // ,
-    // jsonRpcProvider({
-    //   rpc: chain => {
-    //     return {
-    //       http:
-    //         supportedChains.filter(_chain => _chain.id === chain.id)[0]
-    //           ?.rpcUrl || '',
-    //     }
-    //   },
-    // }),
+    jsonRpcProvider({
+      rpc: chain => ({
+        http: getSupportedChainFromId(chain.id)!.rpcUrl,
+      }),
+    }),
   ]
+  // [
+  //   infuraProvider({ apiKey: process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID! }),
+  //   [
+  //     jsonRpcProvider({
+  //       rpc: (chain) => ({
+  //         http: `https://${chain.id}.example.com`,
+  //       }),
+  //     }),
+  //   ],
+  //   publicProvider(),
+  //   // ,
+  //   // jsonRpcProvider({
+  //   //   rpc: chain => {
+  //   //     return {
+  //   //       http:
+  //   //         supportedChains.filter(_chain => _chain.id === chain.id)[0]
+  //   //           ?.rpcUrl || '',
+  //   //     }
+  //   //   },
+  //   // }),
+  // ]
 )
 
 // const uauthClient = new UAuthSPA({
