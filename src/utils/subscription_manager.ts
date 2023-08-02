@@ -3,7 +3,6 @@ import {
   prepareWriteContract,
   readContract,
   waitForTransaction,
-  WalletClient,
   writeContract,
   WriteContractResult,
 } from '@wagmi/core'
@@ -73,7 +72,7 @@ export const checkAllowance = async (
 
     const allowance = (await readContract({
       ...info,
-      functionName: 'decimals',
+      functionName: 'allowance',
       args: [
         accountAddress.toLocaleLowerCase(),
         chainInfo!.registarContractAddress,
