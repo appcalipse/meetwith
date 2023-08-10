@@ -18,18 +18,14 @@ export enum SupportedChain {
   ETHEREUM = 'ETHEREUM',
   POLYGON_MATIC = 'POLYGON_MATIC',
   POLYGON_MUMBAI = 'POLYGON_MUMBAI',
-  HARMONY = 'HARMONY',
   GOERLI = 'GOERLI',
-  HARMONY_TESTNET = 'HARMONY_TESTNET',
   METIS_ANDROMEDA = 'METIS_ANDROMEDA',
-  METIS_STARTDUST = 'METIS_STARTDUST',
 }
 
 export enum AcceptedToken {
   ETHER = 'ETHER',
   MATIC = 'MATIC',
   METIS = 'METIS',
-  ONE = 'ONE',
   DAI = 'DAI',
   USDC = 'USDC',
 }
@@ -89,51 +85,6 @@ export const supportedChains: ChainInfo[] = [
       },
     ],
   },
-  // {
-  //   chain: SupportedChain.HARMONY_TESTNET,
-  //   id: 1666700000,
-  //   name: 'Harmony Testnet',
-  //   fullName: 'Harmony Testnet Shard 0',
-  //   rpcUrl: 'https://api.s0.b.hmny.io',
-  //   testnet: true,
-  //   nativeTokenSymbol: 'ONE',
-  //   domainContractAddess: '0xa1C624685b0B5AF16be093bbc00ad525Be3f046B',
-  //   registarContractAddress: '0xC1A78C9ce8FC447030eDff6728822cfd6fFc1948',
-  //   blockExplorerUrl: 'https://explorer.pops.one',
-  //   acceptableTokens: [
-  //     {
-  //       token: AcceptedToken.ONE,
-  //       contractAddress: zeroAddress,
-  //     },
-  //     {
-  //       token: AcceptedToken.DAI,
-  //       contractAddress: '0x0C1d5a01ab6a8D3CAe7C03feF6cAF513E5A98E00',
-  //     },
-  //   ],
-  // },
-
-  // {
-  //   chain: SupportedChain.METIS_STARTDUST,
-  //   id: 588,
-  //   name: 'Metis Stardust',
-  //   fullName: 'Metis Stardust Testnet',
-  //   rpcUrl: 'https://stardust.metis.io/?owner=588',
-  //   testnet: true,
-  //   nativeTokenSymbol: 'METIS',
-  //   domainContractAddess: '0xECfd0052945e235a1E4aE78C02F05F802282cb74',
-  //   registarContractAddress: '0x13B5065B2586f0D457641b4C4FA09C2550843F42',
-  //   blockExplorerUrl: 'https://stardust-explorer.metis.io',
-  //   acceptableTokens: [
-  //     {
-  //       token: AcceptedToken.METIS,
-  //       contractAddress: zeroAddress,
-  //     },
-  //     {
-  //       token: AcceptedToken.DAI,
-  //       contractAddress: '0xFf8d4104D0bcE4ad3480326Ea8202514CBF09B6C',
-  //     },
-  //   ],
-  // },
   {
     chain: SupportedChain.ETHEREUM,
     id: 1,
@@ -184,32 +135,6 @@ export const supportedChains: ChainInfo[] = [
       {
         token: AcceptedToken.USDC,
         contractAddress: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
-      },
-    ],
-  },
-  {
-    chain: SupportedChain.HARMONY,
-    id: 1666600000,
-    name: 'Harmony',
-    fullName: 'Harmony Mainnet Shard 0',
-    rpcUrl: 'https://api.harmony.one',
-    testnet: false,
-    nativeTokenSymbol: 'ONE',
-    domainContractAddess: '0x45eB1cFf81A01DdC89eE2C4ad122fFB260e0C5e1',
-    registarContractAddress: '0x1DF8FcA6035342eeD37c3C10dcD4cC1B4030628D',
-    blockExplorerUrl: 'https://explorer.harmony.one',
-    acceptableTokens: [
-      {
-        token: AcceptedToken.ONE,
-        contractAddress: zeroAddress,
-      },
-      {
-        token: AcceptedToken.DAI,
-        contractAddress: '0xef977d2f931c1978db5f6747666fa1eacb0d0339',
-      },
-      {
-        token: AcceptedToken.USDC,
-        contractAddress: '0x985458e523db3d53125813ed68c274899e9dfab4',
       },
     ],
   },
