@@ -14,7 +14,7 @@ const DEFAULT_MESSAGE = (nonce: number) =>
 
 const YEAR_DURATION_IN_SECONDS = 31536000
 
-const MWW_DISCORD_SERVER = 'https://discord.gg/an2q4xUkcR'
+const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 
 const discordRedirectUrl = `${baseURL}/dashboard/notifications?discordResult=true`
 
