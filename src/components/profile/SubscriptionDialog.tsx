@@ -84,11 +84,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
       case SupportedChain.POLYGON_MUMBAI:
         return '/assets/chains/Polygon.svg'
       case SupportedChain.METIS_ANDROMEDA:
-      case SupportedChain.METIS_STARTDUST:
         return '/assets/chains/Metis.svg'
-      case SupportedChain.HARMONY:
-      case SupportedChain.HARMONY_TESTNET:
-        return '/assets/chains/Harmony.svg'
       case SupportedChain.ETHEREUM:
       case SupportedChain.GOERLI:
         return '/assets/chains/ethereum.svg'
@@ -107,8 +103,6 @@ const SubscriptionDialog: React.FC<IProps> = ({
         return '/assets/chains/Metis.svg'
       case AcceptedToken.MATIC:
         return '/assets/chains/Polygon.svg'
-      case AcceptedToken.ONE:
-        return '/assets/chains/Harmony.svg'
       case AcceptedToken.ETHER:
         return '/assets/chains/ethereum.svg'
       default:
