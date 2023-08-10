@@ -1,7 +1,7 @@
 import { mainnet, signMessage } from '@wagmi/core'
 import { jsonRpcProvider } from '@wagmi/core/providers/jsonRpc'
 import { getDefaultConfig } from 'connectkit'
-import { goerli, harmonyOne, metis, polygon, polygonMumbai } from 'viem/chains'
+import { goerli, metis, polygon, polygonMumbai } from 'viem/chains'
 import { configureChains, createConfig } from 'wagmi'
 import { publicProvider } from 'wagmi/providers/public'
 
