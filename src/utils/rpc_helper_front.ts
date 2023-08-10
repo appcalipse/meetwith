@@ -5,11 +5,8 @@ import {
   fetchEnsName,
   getNetwork,
   GetWalletClientResult,
-  mainnet,
   switchNetwork,
-  WalletClient,
 } from '@wagmi/core'
-import { useWalletClient } from 'wagmi'
 import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
@@ -38,14 +35,14 @@ export const resolveENS = async (
     return undefined
   }
 
-  const validatedAddress = await fetchEnsAddress({ name })
+  const validatedAddress = await fetchEnsAddress({ name, chainId: 1 })
 
   // Check to be sure the reverse record is correct.
   if (address.toLowerCase() !== validatedAddress?.toLowerCase()) {
     return undefined
   }
 
-  const avatar = await fetchEnsAvatar({ name })
+  const avatar = await fetchEnsAvatar({ name, chainId: 1 })
 
   return {
     name,
@@ -54,7 +51,7 @@ export const resolveENS = async (
 }
 
 const checkENSBelongsTo = async (domain: string): Promise<string | null> => {
-  return await fetchEnsAddress({ name: domain })
+  return await fetchEnsAddress({ name: domain, chainId: 1 })
 }
 
 const checkFreenameBelongsTo = async (
