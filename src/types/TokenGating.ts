@@ -82,19 +82,7 @@ export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
         minimumBalance: 0n,
         decimals: getNativeDecimals(chain),
       }
-    case SupportedChain.HARMONY:
-    case SupportedChain.HARMONY_TESTNET:
-      return {
-        type: GateInterface.NATIVE,
-        itemName: 'One',
-        itemSymbol: 'ONE',
-        itemId: '0x0000000000000000000000000000000000000000',
-        chain: chain,
-        minimumBalance: 0n,
-        decimals: getNativeDecimals(chain),
-      }
     case SupportedChain.METIS_ANDROMEDA:
-    case SupportedChain.METIS_STARTDUST:
       return {
         type: GateInterface.NATIVE,
         itemName: 'Metis',
