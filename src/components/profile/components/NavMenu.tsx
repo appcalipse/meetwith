@@ -142,7 +142,7 @@ export const NavMenu: React.FC<{
             <CopyLinkButton
               url={accountUrl}
               size="md"
-              label="Copy my calendar link"
+              label="Share my calendar link"
               withIcon
             />
           </Box>
@@ -190,7 +190,7 @@ export const NavMenu: React.FC<{
               <CopyLinkButton
                 url={accountUrl}
                 size="md"
-                label="Copy my calendar link"
+                label="Share my calendar link"
                 withIcon
               />
             </Box>
