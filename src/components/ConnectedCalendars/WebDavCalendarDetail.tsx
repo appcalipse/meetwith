@@ -133,7 +133,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           type="url"
           placeholder="Calendar URL"
           onChange={event => setUrl(event.target.value)}
-          disabled={isApple}
+          isDisabled={isApple}
         />
       </FormControl>
       <FormControl pt={2}>
@@ -172,7 +172,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
         <Button
           mt="10"
           isLoading={loading}
-          disabled={loading}
+          isDisabled={loading}
           colorScheme="primary"
           onClick={onSaveOrUpdate}
         >
