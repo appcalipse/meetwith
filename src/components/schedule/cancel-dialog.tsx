@@ -56,7 +56,7 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
           </AlertDialogBody>
 
           <AlertDialogFooter>
-            <Button ref={cancelRef} onClick={onClose} disabled={cancelling}>
+            <Button ref={cancelRef} onClick={onClose} isDisabled={cancelling}>
               Do not cancel
             </Button>
             <Button

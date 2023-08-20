@@ -249,7 +249,7 @@ const NotificationsConfig: React.FC = () => {
           <FormControl>
             <FormLabel htmlFor="email">Email address</FormLabel>
             <Input
-              disabled={!emailNotifications}
+              isDisabled={!emailNotifications}
               id="email"
               type="email"
               value={emailNotifications ? email : ''}
