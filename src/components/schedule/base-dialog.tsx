@@ -571,7 +571,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                 <Button
                   onClick={suggestTimes}
                   isLoading={searchingTimes}
-                  disabled={participants.length === 0}
+                  isDisabled={participants.length === 0}
                   size="xs"
                   w="100%"
                   colorScheme="primary"
@@ -717,7 +717,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               onClick={cancelMeeting}
               variant="outline"
               mr={4}
-              disabled={isScheduling}
+              isDisabled={isScheduling}
             >
               Cancel meeting
             </Button>
@@ -726,7 +726,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
             onClick={scheduleOrUpdate}
             colorScheme="primary"
             isLoading={isScheduling}
-            disabled={isCancelling}
+            isDisabled={isCancelling}
           >
             {meeting?.id ? 'Update' : 'Schedule'}
           </Button>

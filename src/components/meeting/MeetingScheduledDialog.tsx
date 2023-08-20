@@ -189,7 +189,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                     placeholder="Your email"
                     value={emailSub}
                     onChange={e => setEmailSub(e.target.value)}
-                    disabled={loadingSub}
+                    isDisabled={loadingSub}
                   />
                   <Button
                     colorScheme="primary"

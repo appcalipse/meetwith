@@ -150,7 +150,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
             mr="4"
             onChange={onSwitch}
             isChecked={calendars[0].sync}
-            disabled={isUpdating}
+            isDisabled={isUpdating}
           ></Switch>
           <Text color={textColor}>
             Add new Meet with Wallet events to this calendar

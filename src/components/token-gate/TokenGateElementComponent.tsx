@@ -312,7 +312,7 @@ const TokenForm: React.FC<{
             size="sm"
             variant="ghost"
             onClick={() => !loadingToken && setHaveMinimumAmount(true)}
-            disabled={tokenInfo?.itemName === ''}
+            isDisabled={tokenInfo?.itemName === ''}
           >
             Set a minimium amount
           </Button>
