@@ -64,7 +64,7 @@ const NewMeetingTypeDialog: React.FC<IProps> = ({
               <Button
                 color={useColorModeValue('gray.700', 'gray.300')}
                 ref={cancelDialogRef}
-                disabled={loading}
+                isDisabled={loading}
                 onClick={onDialogClose}
               >
                 Cancel

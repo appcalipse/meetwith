@@ -29,7 +29,7 @@ export const DayOfMonth: React.FC<DayOfMonthProps> = ({
         disabled: !selectable,
         onMouseEnter: onMouseEnter,
       })}
-      disabled={!selectable}
+      isDisabled={!selectable}
       size="sm"
       variant="outline"
       bg={bg}

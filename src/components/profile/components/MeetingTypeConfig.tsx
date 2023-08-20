@@ -235,7 +235,7 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
         </Text>
         <Select
           width="160px"
-          disabled={loadingGates || !isPro}
+          isDisabled={loadingGates || !isPro}
           ref={selectRef}
           value={meetingGate}
           onChange={e => handleSetSelectedGate(e.target.value)}
