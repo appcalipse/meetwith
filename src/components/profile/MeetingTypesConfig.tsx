@@ -133,7 +133,7 @@ const MeetingTypesConfig: React.FC = () => {
               </Text>
             )}
             <Button
-              disabled={!isPro}
+              isDisabled={!isPro}
               colorScheme="primary"
               onClick={createType}
             >

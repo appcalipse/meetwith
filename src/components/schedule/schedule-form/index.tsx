@@ -165,7 +165,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             <Input
               autoFocus
               type="text"
-              disabled={isScheduling}
+              isDisabled={isScheduling}
               placeholder="Your name or an identifier"
               value={name}
               onChange={e => setName(e.target.value)}
@@ -179,7 +179,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               mb={4}
               type="email"
               placeholder="Insert your email"
-              disabled={isScheduling}
+              isDisabled={isScheduling}
               value={guestEmail}
               onKeyDown={event =>
                 event.key === 'Enter' && isGuestEmailValid() && handleConfirm()
@@ -191,7 +191,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           <FormControl>
             <FormLabel>What is this meeting about? (optional)</FormLabel>
             <Textarea
-              disabled={isScheduling}
+              isDisabled={isScheduling}
               placeholder="Any information you want to share prior to the meeting?"
               value={content}
               onChange={e => setContent(e.target.value)}
@@ -208,7 +208,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               autoFocus
               type="text"
               placeholder="Your name or an identifier"
-              disabled={isScheduling}
+              isDisabled={isScheduling}
               value={name}
               onKeyPress={event =>
                 event.key === 'Enter' && isNameEmpty && handleConfirm()
@@ -219,7 +219,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           <FormControl>
             <FormLabel>What is this meeting about? (optional)</FormLabel>
             <Textarea
-              disabled={isScheduling}
+              isDisabled={isScheduling}
               placeholder="Any information you want to share prior to the meeting?"
               value={content}
               onChange={e => setContent(e.target.value)}
@@ -284,7 +284,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             <Input
               type="text"
               placeholder="insert a custom meeting url"
-              disabled={isScheduling}
+              isDisabled={isScheduling}
               value={meetingUrl}
               onChange={e => setMeetingUrl(e.target.value)}
             />
@@ -311,7 +311,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     <Input
                       type="email"
                       placeholder="Insert your email"
-                      disabled={isScheduling}
+                      isDisabled={isScheduling}
                       value={userEmail}
                       onChange={e => setUserEmail(e.target.value)}
                     />
@@ -324,7 +324,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
       <Button
         width="full"
-        disabled={
+        isDisabled={
           (!logged && !isGuestEmailValid()) ||
           (logged &&
             ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
