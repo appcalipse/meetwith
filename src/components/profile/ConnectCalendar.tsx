@@ -185,7 +185,7 @@ const ConnectCalendar = () => {
         mt={4}
         alignSelf="flex-start"
         leftIcon={<FaPlus />}
-        disabled={hasReachedConnectionCountLimit}
+        isDisabled={hasReachedConnectionCountLimit}
       >
         Add calendar connection
       </Button>

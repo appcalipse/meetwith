@@ -10,6 +10,7 @@ import {
   PopoverBody,
   PopoverContent,
   PopoverTrigger,
+  Portal,
   Text,
   useBoolean,
   useColorModeValue,
@@ -52,68 +53,68 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
   const times = generateTimes(currentDate)
 
   return (
-    <InputGroup>
-      <InputLeftElement
-        pointerEvents="none"
-        children={
-          <Icon
-            fontSize="16"
-            color={iconColor}
-            _groupHover={{
-              color: iconColor,
-            }}
-            as={FaClock}
+    <Popover
+      isOpen={isEditing}
+      onOpen={setIsEditing.on}
+      onClose={setIsEditing.off}
+      closeOnBlur={true}
+      isLazy
+      lazyBehavior="keepMounted"
+    >
+      <PopoverTrigger>
+        <InputGroup>
+          <InputLeftElement
+            pointerEvents="none"
+            children={
+              <Icon
+                fontSize="16"
+                color={iconColor}
+                _groupHover={{
+                  color: iconColor,
+                }}
+                as={FaClock}
+              />
+            }
           />
-        }
-      />
-      <Popover
-        isOpen={isEditing}
-        onOpen={setIsEditing.on}
-        onClose={setIsEditing.off}
-        closeOnBlur={true}
-        isLazy
-        lazyBehavior="keepMounted"
-      >
-        <HStack>
-          <PopoverTrigger>
-            <Input
-              cursor="pointer"
-              id="time"
-              sx={{ paddingLeft: '36px' }}
-              placeholder="Time"
-              type="text"
-              value={value}
-              onChange={ev => {
-                onChange(ev.target.value)
-                setIsEditing.off()
-              }}
-            />
-          </PopoverTrigger>
-        </HStack>
 
-        <PopoverContent>
-          <PopoverArrow />
-          <PopoverBody>
-            <VStack sx={{ maxHeight: '300px', overflowY: 'scroll' }}>
-              {times.map((it, idx) => (
-                <Button
-                  width="100%"
-                  variant="link"
-                  disabled={isBefore(it, new Date())}
-                  key={it.toString()}
-                  onClick={() => {
-                    onChange(format(it, 'p'))
-                    setIsEditing.off()
-                  }}
-                  _hover={{ color: 'primary.500' }}
-                >
-                  <Text>{format(it, 'p')}</Text>
-                </Button>
-              ))}
-            </VStack>
-          </PopoverBody>
-        </PopoverContent>
-      </Popover>
-    </InputGroup>
+          <Input
+            cursor="pointer"
+            id="time"
+            sx={{ paddingLeft: '36px' }}
+            placeholder="Time"
+            type="text"
+            value={value}
+            onChange={ev => {
+              onChange(ev.target.value)
+              setIsEditing.off()
+            }}
+          />
+        </InputGroup>
+      </PopoverTrigger>
+
+      <PopoverContent>
+        <PopoverArrow />
+        <PopoverBody>
+          <VStack sx={{ maxHeight: '300px', overflowY: 'scroll' }}>
+            {times.map(it => (
+              <Button
+                width="100%"
+                variant="ghost"
+                isDisabled={isBefore(it, new Date())}
+                key={it.toString()}
+                onClick={() => {
+                  console.log(isBefore(it, new Date()))
+                  onChange(format(it, 'p'))
+                  setIsEditing.off()
+                }}
+                _hover={{ color: 'primary.500' }}
+              >
+                <Text>{format(it, 'p')}</Text>
+              </Button>
+            ))}
+          </VStack>
+        </PopoverBody>
+      </PopoverContent>
+    </Popover>
   )
 }

@@ -763,7 +763,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 {calendarType === CalendarType.REGULAR && !rescheduleSlotId && (
                   <>
                     <Select
-                      disabled={readyToSchedule}
+                      isDisabled={readyToSchedule}
                       placeholder="Select option"
                       mt={8}
                       value={selectedType.id}
