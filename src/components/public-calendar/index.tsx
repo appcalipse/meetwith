@@ -27,19 +27,12 @@ import {
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
-import { type } from 'os'
 import React, { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account, MeetingType } from '@/types/Account'
-import {
-  AccountNotifications,
-  NotificationChannel,
-} from '@/types/AccountNotifications'
-import {
-  ConnectedCalendar,
-  ConnectedCalendarCore,
-} from '@/types/CalendarConnections'
+import { AccountNotifications } from '@/types/AccountNotifications'
+import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
 import {
   DBSlot,
@@ -829,6 +822,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                         : undefined
                     }
                     blockedDates={blockedDates}
+                    preferences={account?.preferences}
                     onSchedule={confirmSchedule}
                     willStartScheduling={willStartScheduling => {
                       setReadyToSchedule(willStartScheduling)
