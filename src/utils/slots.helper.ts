@@ -19,7 +19,6 @@ export const generateTimeSlots = (
   slotSizeMinutes: number,
   endDate?: Date
 ): Interval[] => {
-  console.log({ selectedDate, slotSizeMinutes, endDate })
 
   const _isToday = isToday(selectedDate)
 
