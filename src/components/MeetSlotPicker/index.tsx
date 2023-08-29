@@ -8,14 +8,22 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import {
+  addDays,
+  addMinutes,
+  areIntervalsOverlapping,
+  eachMinuteOfInterval,
   format,
   isFuture,
+  isLastDayOfMonth,
   isSameDay,
   isToday,
   isWithinInterval,
 } from 'date-fns'
+import { zonedTimeToUtc } from 'date-fns-tz'
 import React, { useState } from 'react'
 import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
+
+import { AccountPreferences } from '@/types/Account'
 
 import { SchedulingType } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
@@ -26,6 +34,14 @@ import { Popup, PopupHeader, PopupWrapper } from './Popup'
 import TimeSlots from './time-slots'
 
 interface MeetSlotPickerProps {
+  availabilityInterval?: Interval
+  blockedDates?: Date[]
+  checkingSlots: boolean
+  isGateValid: boolean
+  isSchedulingExternal: boolean
+  notificationsSubs?: number
+  onDayChange?: (day: Date) => void
+  onMonthChange?: (day: Date) => void
   onSchedule: (
     scheduleType: SchedulingType,
     startTime: Date,
@@ -35,38 +51,32 @@ interface MeetSlotPickerProps {
     meetingUrl?: string,
     emailToSendReminders?: string
   ) => Promise<boolean>
-  timeSlotAvailability: (slot: Date) => boolean
-  selfAvailabilityCheck: (slot: Date) => boolean
-  slotDurationInMinutes: number
-  onDayChange?: (day: Date) => void
-  onMonthChange?: (day: Date) => void
-  availabilityInterval?: Interval
-  willStartScheduling: (isScheduling: boolean) => void
-  isSchedulingExternal: boolean
-  checkingSlots: boolean
+  preferences?: AccountPreferences
   reset: boolean
-  isGateValid: boolean
+  selfAvailabilityCheck: (slot: Date) => boolean
   showSelfAvailability: boolean
-  blockedDates?: Date[]
-  notificationsSubs?: number
+  slotDurationInMinutes: number
+  timeSlotAvailability: (slot: Date) => boolean
+  willStartScheduling: (isScheduling: boolean) => void
 }
 
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
-  onSchedule,
-  timeSlotAvailability,
-  slotDurationInMinutes,
+  availabilityInterval,
+  blockedDates,
+  checkingSlots,
+  isGateValid,
+  isSchedulingExternal,
+  notificationsSubs,
   onDayChange,
   onMonthChange,
-  willStartScheduling,
-  availabilityInterval,
-  isSchedulingExternal,
-  checkingSlots,
+  onSchedule,
+  preferences,
   reset,
-  isGateValid,
   selfAvailabilityCheck,
   showSelfAvailability,
-  blockedDates,
-  notificationsSubs,
+  slotDurationInMinutes,
+  timeSlotAvailability,
+  willStartScheduling,
 }) => {
   const [pickedDay, setPickedDay] = useState(null as Date | null)
   const [pickedTime, setPickedTime] = useState(null as Date | null)
@@ -112,22 +122,116 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 
   const color = useColorModeValue('primary.500', 'primary.400')
 
+  const timeZone =
+    preferences?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  const blockedIntervals =
+    blockedDates
+      ?.sort((a, b) => a.getTime() - b.getTime())
+      ?.reduce(
+        (
+          acc: {
+            start: Date
+            end: Date
+          }[],
+          date,
+          index,
+          array
+        ) => {
+          if (acc.length === 0) {
+            return [
+              {
+                start: zonedTimeToUtc(date.setHours(0, 0, 0, 0), timeZone),
+                end: zonedTimeToUtc(date.setHours(23, 59, 59, 59), timeZone),
+              },
+            ]
+          } else {
+            if (isSameDay(date, addDays(array[index - 1], 1))) {
+              return [
+                ...acc.slice(0, -1),
+                {
+                  start: acc[acc.length - 1].start,
+                  end: zonedTimeToUtc(date.setHours(23, 59, 59, 59), timeZone),
+                },
+              ]
+            } else {
+              return [
+                ...acc,
+                {
+                  start: zonedTimeToUtc(date.setHours(0, 0, 0, 0), timeZone),
+                  end: zonedTimeToUtc(date.setHours(23, 59, 59, 59), timeZone),
+                },
+              ]
+            }
+          }
+        },
+        []
+      ) ?? []
+
   let validator: (date: Date) => boolean
   if (availabilityInterval) {
     validator = (date: Date) => {
+      const startLocalDate = new Date(date)
+      startLocalDate.setHours(0, 0, 0, 0)
+
+      const endLocalDate = new Date(date)
+      endLocalDate.setHours(23, 59, 59, 59)
+
+      const slots = eachMinuteOfInterval(
+        { start: startLocalDate, end: endLocalDate },
+        { step: slotDurationInMinutes }
+      ).map(s => ({
+        start: s,
+        end: addMinutes(s, slotDurationInMinutes),
+      }))
+
+      const intervals = blockedIntervals?.filter(interval =>
+        slots.some(slot => areIntervalsOverlapping(slot, interval))
+      )
+
       return (
         (isFuture(date) || isToday(date)) &&
         (isWithinInterval(date, availabilityInterval) ||
           isSameDay(date, availabilityInterval.start) ||
           isSameDay(date, availabilityInterval.end)) &&
-        !blockedDates?.some(blockedDate => isSameDay(blockedDate, date))
+        (intervals?.length === 0 ||
+          slots.some(
+            slot =>
+              !intervals.some(interval =>
+                areIntervalsOverlapping(slot, interval)
+              )
+          ))
       )
     }
   } else {
     validator = (date: Date) => {
+      const startLocalDate = new Date(date)
+      startLocalDate.setHours(0, 0, 0, 0)
+
+      const endLocalDate = new Date(date)
+      endLocalDate.setHours(23, 59, 59, 59)
+
+      const slots = eachMinuteOfInterval(
+        { start: startLocalDate, end: endLocalDate },
+        { step: slotDurationInMinutes }
+      ).map(s => ({
+        start: s,
+        end: addMinutes(s, slotDurationInMinutes),
+      }))
+
+      const intervals = blockedIntervals?.filter(interval =>
+        slots.some(slot => areIntervalsOverlapping(slot, interval))
+      )
+
       return (
         (isFuture(date) || isToday(date)) &&
-        !blockedDates?.some(blockedDate => isSameDay(blockedDate, date))
+        (intervals?.length === 0 ||
+          slots.some(
+            slot =>
+              !intervals.some(interval =>
+                areIntervalsOverlapping(slot, interval)
+              )
+          ))
       )
     }
   }

@@ -21,7 +21,9 @@ export const generateTimeSlots = (
 ): Interval[] => {
   const _isToday = isToday(selectedDate)
 
-  let start = selectedDate
+  let start = new Date(selectedDate)
+  start.setHours(0, 0, 0, 0)
+
   if (_isToday) {
     const now = new Date()
     const offsetHours = getHours(now)
