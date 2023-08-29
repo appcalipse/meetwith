@@ -19,10 +19,11 @@ export const generateTimeSlots = (
   slotSizeMinutes: number,
   endDate?: Date
 ): Interval[] => {
-
   const _isToday = isToday(selectedDate)
 
-  let start = new Date(selectedDate.setHours(0, 0, 0, 0))
+  let start = new Date(selectedDate)
+  start.setHours(0, 0, 0, 0)
+
   if (_isToday) {
     const now = new Date()
     const offsetHours = getHours(now)
