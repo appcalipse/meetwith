@@ -22,24 +22,18 @@ import {
   setMinutes,
   setSeconds,
   startOfMonth,
+  subDays,
   subMinutes,
   subSeconds,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
-import { type } from 'os'
 import React, { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account, MeetingType } from '@/types/Account'
-import {
-  AccountNotifications,
-  NotificationChannel,
-} from '@/types/AccountNotifications'
-import {
-  ConnectedCalendar,
-  ConnectedCalendarCore,
-} from '@/types/CalendarConnections'
+import { AccountNotifications } from '@/types/AccountNotifications'
+import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
 import {
   DBSlot,
@@ -183,8 +177,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     const blockedAvailabilities = getBlockedAvailabilities(
       account?.preferences?.availabilities
     )
-    let startDate = startOfMonth(currentMonth)
-    const endDate = endOfMonth(currentMonth)
+    // We need to take into consideration 1 day before the beginning of the month
+    // and 1 day after the end of the month in the calculation due to Timezone
+    // spans be able to be inside one month for one user and in another for other
+    // user when we consider first and last days of the month.
+    let startDate = subDays(startOfMonth(currentMonth), 1)
+    const endDate = addDays(endOfMonth(currentMonth), 1)
+
     const unavailableDate = blockedAvailabilities.reduce((acc, curr) => {
       if (getDay(startDate) === curr.weekday) acc.push(startDate)
       let _nextDay = nextDay(startDate, curr.weekday as Day)
@@ -829,6 +828,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                         : undefined
                     }
                     blockedDates={blockedDates}
+                    preferences={account?.preferences}
                     onSchedule={confirmSchedule}
                     willStartScheduling={willStartScheduling => {
                       setReadyToSchedule(willStartScheduling)
