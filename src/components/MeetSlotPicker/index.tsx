@@ -14,6 +14,7 @@ import {
   eachMinuteOfInterval,
   format,
   isFuture,
+  isLastDayOfMonth,
   isSameDay,
   isToday,
   isWithinInterval,
@@ -170,8 +171,12 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   let validator: (date: Date) => boolean
   if (availabilityInterval) {
     validator = (date: Date) => {
-      const startLocalDate = date.setHours(0, 0, 0, 0)
-      const endLocalDate = date.setHours(23, 59, 59, 59)
+      const startLocalDate = new Date(date)
+      startLocalDate.setHours(0, 0, 0, 0)
+
+      const endLocalDate = new Date(date)
+      endLocalDate.setHours(23, 59, 59, 59)
+
       const slots = eachMinuteOfInterval(
         { start: startLocalDate, end: endLocalDate },
         { step: slotDurationInMinutes }
@@ -200,8 +205,12 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     }
   } else {
     validator = (date: Date) => {
-      const startLocalDate = date.setHours(0, 0, 0, 0)
-      const endLocalDate = date.setHours(23, 59, 59, 59)
+      const startLocalDate = new Date(date)
+      startLocalDate.setHours(0, 0, 0, 0)
+
+      const endLocalDate = new Date(date)
+      endLocalDate.setHours(23, 59, 59, 59)
+
       const slots = eachMinuteOfInterval(
         { start: startLocalDate, end: endLocalDate },
         { step: slotDurationInMinutes }
