@@ -16,7 +16,7 @@ const withMDX = require('@next/mdx')({
 })
 
 const moduleExports = {
-  reactStrictMode: true,
+  reactStrictMode: false,
   eslint: { dirs: ['src'] },
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
 }
