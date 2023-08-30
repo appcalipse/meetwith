@@ -817,20 +817,43 @@ const setAccountNotificationSubscriptions = async (
   const account = await getAccountFromDB(address)
   if (!isProAccount(account)) {
     notifications.notification_types = notifications.notification_types.filter(
-      n => n.channel === NotificationChannel.EMAIL
+      n =>
+        n.channel === NotificationChannel.EMAIL ||
+        n.channel === NotificationChannel.DISCORD
     )
   }
-
+  const discord_notification = notifications.notification_types.filter(
+    n => n.channel === NotificationChannel.DISCORD
+  )
   const { _, error } = await db.supabase
     .from('account_notifications')
     .upsert(notifications, { onConflict: 'account_address' })
     .eq('account_address', address.toLowerCase())
-
   if (error) {
     Sentry.captureException(error)
   }
 
   return notifications
+}
+
+const getOrCreateDiscordAccount = async (
+  address: string,
+  notification: NotificationType
+): Promise<DiscordAccount> => {
+  const account = await getAccountFromDiscordId(notification.destination)
+  if (!account) {
+    const { data, error } = await db.supabase.from('discord_accounts').insert([
+      {
+        address: address,
+        discord_id: notification.destination,
+        access_token: notification.accessToken,
+      },
+    ])
+    if (error) {
+      Sentry.captureException(error)
+    }
+    return data
+  }
 }
 
 const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
