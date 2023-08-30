@@ -45,6 +45,10 @@ const DicordNotificationConfig: React.FC<Props> = ({
           const notification = await generateDiscordNotification(code)
           setNotificationsOn(true)
           onDiscordNotificationChange(notification)
+          localStorage.setItem(
+            'discordNotification',
+            JSON.stringify(notification)
+          )
           if (!notification.disabled) {
             setHelperText(
               'You are in the Meet with Wallet Discord server and your Discord notifications are enabled'
@@ -89,9 +93,9 @@ const DicordNotificationConfig: React.FC<Props> = ({
           size="md"
           isChecked={notificationOn}
           onChange={e => setNotificationsOn(e.target.checked)}
-          isDisabled={!isPro}
+          // isDisabled={!isPro}
         />
-        <Text>
+        {/* <Text>
           Discord{' '}
           {!isPro && (
             <>
@@ -102,7 +106,7 @@ const DicordNotificationConfig: React.FC<Props> = ({
               to enable it)
             </>
           )}
-        </Text>
+        </Text> */}
       </HStack>
       {loading ? (
         <HStack>
