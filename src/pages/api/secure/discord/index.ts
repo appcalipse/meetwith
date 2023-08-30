@@ -23,6 +23,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const oAuthToken = await generateDiscordAuthToken(discordCode)
 
       const userInfo = await getDiscordAccountInfo(oAuthToken!)
+      if (!userInfo) {
+        return res.status(301).send('Could not get user info')
+      }
 
       const newNotification: DiscordNotificationType = {
         channel: NotificationChannel.DISCORD,
