@@ -68,7 +68,7 @@ export const supportedChains: ChainInfo[] = [
     id: 80001,
     name: 'Mumbai',
     fullName: 'Polygon Mumbai',
-    rpcUrl: 'https://rpc-mumbai.matic.today',
+    rpcUrl: 'https://rpc-mumbai.polygon.technology/',
     testnet: true,
     nativeTokenSymbol: 'MATIC',
     domainContractAddess: '0x87cEbF6684488998bd48C07E0691D31b64D30e2A',
