@@ -58,9 +58,9 @@ const NotificationsConfig: React.FC = () => {
   )
 
   useEffect(() => {
-    const notification = JSON.parse(localStorage.getItem('discordNotification'))
-    if (notification) {
-      setDiscordNotificationConfig(notification)
+    const notification = localStorage.getItem('discordNotification')
+    if (notification != null) {
+      setDiscordNotificationConfig(JSON.parse(notification))
     }
     fetchSubscriptions()
   }, [])

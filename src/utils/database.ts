@@ -25,6 +25,7 @@ import {
 } from '../types/Account'
 import {
   AccountNotifications,
+  DiscordNotificationType,
   NotificationChannel,
 } from '../types/AccountNotifications'
 import {
@@ -838,8 +839,8 @@ const setAccountNotificationSubscriptions = async (
 
 const getOrCreateDiscordAccount = async (
   address: string,
-  notification: NotificationType
-): Promise<DiscordAccount> => {
+  notification: DiscordNotificationType
+): Promise<DiscordAccount | undefined> => {
   const account = await getAccountFromDiscordId(notification.destination)
   if (!account) {
     const { data, error } = await db.supabase.from('discord_accounts').insert([
