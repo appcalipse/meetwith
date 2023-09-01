@@ -8,6 +8,11 @@ import { AccountContext } from '../providers/AccountProvider'
 import { Account } from '../types/Account'
 import { validateAuthentication } from './core'
 
+enum AuthRedirect {
+  REDIRECT_IF_AUTHED = 'redirect-if-authed',
+  REDIRECT_IF_NOT_AUTHED = 'redirect-if-not-authed',
+}
+
 /**
  * A function that queries for the logged in user before rendering the page.
  * Should be called in getInitialProps. It redirects as desired.
@@ -23,10 +28,14 @@ import { validateAuthentication } from './core'
 const redirectBasedOnLogin = async (
   ctx: NextPageContext,
   route: string,
-  redirectIfAuthed: boolean
+  redirectType: AuthRedirect
 ): Promise<Account | null> => {
   const currentAccount = await validateAuthentication(ctx)
-  const shouldRedirect = redirectIfAuthed ? !!currentAccount : !currentAccount
+
+  const shouldRedirect =
+    redirectType === AuthRedirect.REDIRECT_IF_AUTHED
+      ? !!currentAccount
+      : !currentAccount
 
   // Only redirect here if we are on server side
   if (!!ctx.req && shouldRedirect) {
@@ -46,7 +55,7 @@ const redirectBasedOnLogin = async (
 }
 
 const withAuthRedirect =
-  (route: string, redirectIfAuthed: boolean) =>
+  (route: string, redirectType: AuthRedirect) =>
   <P,>(Page: NextComponentType<NextPageContext, any, P>) => {
     function HOC(props: any) {
       const { checkAuthOnClient } = props
@@ -54,8 +63,9 @@ const withAuthRedirect =
 
       // On the client side, if the user is not logged in,
       // then redirect it to the equivalent endpoint
-      if (!logged && redirectIfAuthed) {
+      if (!logged && redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED) {
         router.push(route)
+
         return (
           <Flex
             width="100%"
@@ -88,15 +98,8 @@ const withAuthRedirect =
       const currentAccount = await redirectBasedOnLogin(
         ctx,
         route,
-        redirectIfAuthed
+        redirectType
       )
-
-      // Only continue if we're logged in. Otherwise, it might cause an
-      // unnecessary call to a downstream getInitialProps that requires
-      // authentication.
-      if (!currentAccount) {
-        return { currentAccount }
-      }
 
       if (Page.getInitialProps) {
         return {
@@ -113,9 +116,15 @@ const withAuthRedirect =
 /**
  * HOC that redirects to login page if the user is not logged in.
  */
-export const withLoginRedirect = withAuthRedirect('/', false)
+export const withLoginRedirect = withAuthRedirect(
+  '/',
+  AuthRedirect.REDIRECT_IF_NOT_AUTHED
+)
 
 /**
  * HOC that redirects to the dashboard if the user is logged in.
  */
-export const withDashboardRedirect = withAuthRedirect('/dashboard', true)
+export const withDashboardRedirect = withAuthRedirect(
+  '/dashboard',
+  AuthRedirect.REDIRECT_IF_AUTHED
+)

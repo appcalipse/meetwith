@@ -10,6 +10,7 @@ import App from 'next/app'
 import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
 import { WagmiConfig } from 'wagmi'
+import { useDisconnect } from 'wagmi'
 
 import { useLogin } from '@/session/login'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
@@ -87,12 +88,22 @@ function MyApp({
 }
 
 const Inner = (props: any) => {
-  const { handleLogin } = useLogin()
+  const { handleLogin, logged } = useLogin()
+  const { disconnect } = useDisconnect()
+
+  React.useEffect(() => {
+    if (!logged) {
+      //make sure wagmi doesn't stay connect if for any reason we don't have the account
+      disconnect()
+    }
+  }, [])
 
   return (
     <ConnectKitProvider
       options={{ initialChainId: 0, enforceSupportedChains: false }}
-      onConnect={({ address }) => handleLogin(address)}
+      onConnect={({ address }) => {
+        handleLogin(address)
+      }}
     >
       <Head />
       <BaseLayout>{props.children}</BaseLayout>

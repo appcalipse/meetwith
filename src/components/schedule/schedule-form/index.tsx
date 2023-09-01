@@ -51,7 +51,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   onConfirm,
   notificationsSubs,
 }) => {
-  const { handleLogin } = useLogin()
   const { currentAccount, logged } = useContext(AccountContext)
 
   const toast = useToast()

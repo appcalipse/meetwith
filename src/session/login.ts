@@ -19,6 +19,7 @@ export const useLogin = () => {
     }
 
     if (
+      currentAccount &&
       account.address.toLowerCase() !== currentAccount?.address.toLowerCase()
     ) {
       const newAccount = await loginWithAddress(account.address!, setLoginIn)
@@ -54,8 +55,13 @@ export const useLogin = () => {
 
       logEvent('Signed in')
 
-      if (forceRedirect && router.pathname === '/') {
-        await router.push('/dashboard')
+      // avoid redirecting if person is scheduling on a public calendar of someone else and was not logged. Definitely not the best way to do this
+      if (
+        forceRedirect &&
+        (router.pathname === '/' || router.pathname.indexOf('/embed') != -1)
+      ) {
+        await router.push('/dashboard/meetings')
+        return
       }
     } catch (error: any) {
       if (error instanceof InvalidSessionError) {

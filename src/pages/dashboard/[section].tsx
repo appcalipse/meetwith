@@ -22,13 +22,11 @@ const Dashboard: NextPage<DashboardProps> = props => {
   )
 }
 
-const EnhancedDashboard: NextPage = withLoginRedirect(
-  forceAuthenticationCheck(Dashboard)
-)
+const EnhancedDashboard: NextPage = forceAuthenticationCheck(Dashboard)
 
 EnhancedDashboard.getInitialProps = async ctx => {
   const { section } = ctx.query
   return { section }
 }
 
-export default EnhancedDashboard
+export default withLoginRedirect(EnhancedDashboard)

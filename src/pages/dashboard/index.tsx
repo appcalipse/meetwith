@@ -1,11 +1,10 @@
 import { NextPage } from 'next'
 import React from 'react'
 
+import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
+import { withLoginRedirect } from '@/session/requireAuthentication'
 import { EditMode } from '@/types/Dashboard'
 import redirectTo from '@/utils/redirect'
-
-import { forceAuthenticationCheck } from '../../session/forceAuthenticationCheck'
-import { withLoginRedirect } from '../../session/requireAuthentication'
 
 const Dashboard: NextPage = () => {
   return <></>
