@@ -9,8 +9,16 @@ import { logEvent } from '../utils/analytics'
 import { InvalidSessionError } from '../utils/errors'
 import { loginWithAddress } from '../utils/user_manager'
 export const useLogin = () => {
-  const { currentAccount, logged, login, loginIn, setLoginIn, logout } =
-    useContext(AccountContext)
+  const {
+    waitLoginResolve,
+    setWaitLoginResolve,
+    currentAccount,
+    logged,
+    login,
+    loginIn,
+    setLoginIn,
+    logout,
+  } = useContext(AccountContext)
   const toast = useToast()
 
   watchAccount(async account => {
@@ -20,12 +28,15 @@ export const useLogin = () => {
 
     if (
       currentAccount &&
-      account.address.toLowerCase() !== currentAccount?.address.toLowerCase()
+      account.address.toLowerCase() !== currentAccount?.address.toLowerCase() &&
+      !waitLoginResolve
     ) {
+      setWaitLoginResolve(true)
       const newAccount = await loginWithAddress(account.address!, setLoginIn)
       if (newAccount) {
         login(newAccount)
       }
+      setWaitLoginResolve(false)
     }
   })
 
