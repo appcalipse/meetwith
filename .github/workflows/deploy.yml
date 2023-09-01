@@ -26,13 +26,13 @@ jobs:
 
     - name: Deploy in the Preview env
       if: ${{ github.ref == 'refs/heads/develop' }}
-      run: copilot deploy env preview --force
+      run: copilot deploy -e preview --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
 
     - name: Deploy in the Production env
       if: ${{ github.ref == 'refs/heads/main' }}
-      run: copilot deploy env production --force
+      run: copilot deploy -e production --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
 
