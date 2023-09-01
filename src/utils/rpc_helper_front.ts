@@ -7,6 +7,7 @@ import {
   GetWalletClientResult,
   switchNetwork,
 } from '@wagmi/core'
+import { ca } from 'date-fns/locale'
 import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
@@ -42,7 +43,10 @@ export const resolveENS = async (
     return undefined
   }
 
-  const avatar = await fetchEnsAvatar({ name, chainId: 1 })
+  let avatar = undefined
+  try {
+    avatar = await fetchEnsAvatar({ name, chainId: 1 })
+  } catch (e) {}
 
   return {
     name,

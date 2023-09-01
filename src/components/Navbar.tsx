@@ -61,6 +61,7 @@ export const Navbar = () => {
       }
     }
     window.addEventListener('scroll', changeNavbarBackground)
+    changeNavbarBackground()
   }, [])
 
   return (
