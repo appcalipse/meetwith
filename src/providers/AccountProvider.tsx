@@ -14,14 +14,19 @@ interface IAccountContext {
   logout: (address?: string) => void
   setLoginIn: (value: boolean) => void
   loginIn: boolean
+  waitLoginResolve: boolean
+  setWaitLoginResolve: (value: boolean) => void
 }
 
 const DEFAULT_STATE: IAccountContext = {
   logged: false,
   login: () => null,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   logout: (address?: string) => null,
   loginIn: false,
   setLoginIn: () => null,
+  waitLoginResolve: false,
+  setWaitLoginResolve: () => null,
 }
 
 const AccountContext = React.createContext<IAccountContext>(DEFAULT_STATE)

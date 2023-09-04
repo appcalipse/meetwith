@@ -1,4 +1,3 @@
-import { Container } from '@chakra-ui/react'
 import { Box, DarkMode } from '@chakra-ui/react'
 import type { NextPage } from 'next'
 import React from 'react'

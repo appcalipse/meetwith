@@ -22,7 +22,6 @@ import { FaInfo } from 'react-icons/fa'
 import { ToggleSelector } from '@/components/toggle-selector'
 
 import { AccountContext } from '../../../providers/AccountProvider'
-import { useLogin } from '../../../session/login'
 import { SchedulingType } from '../../../types/Meeting'
 import { isEmptyString, isValidEmail } from '../../../utils/validations'
 
@@ -51,7 +50,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   onConfirm,
   notificationsSubs,
 }) => {
-  const { handleLogin } = useLogin()
   const { currentAccount, logged } = useContext(AccountContext)
 
   const toast = useToast()
