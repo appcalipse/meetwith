@@ -47,6 +47,7 @@ import HandlePicker, {
   DisplayName,
   ProfileInfoProvider,
 } from './components/HandlePicker'
+import ConnectedAccounts from './ConnectedAccounts'
 import SubscriptionDialog from './SubscriptionDialog'
 
 const AccountDetails: React.FC = () => {
@@ -312,6 +313,12 @@ const AccountDetails: React.FC = () => {
       <Button isLoading={loading} colorScheme="primary" onClick={saveDetails}>
         Save details
       </Button>
+      <Spacer />
+      <Spacer />
+      <Spacer />
+      <Spacer />
+
+      <ConnectedAccounts discord_account={currentAccount?.discord_account} />
       <Spacer />
       <Spacer />
       <Spacer />

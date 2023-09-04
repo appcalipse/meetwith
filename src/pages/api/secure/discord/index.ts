@@ -3,11 +3,8 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import {
-  DiscordNotificationType,
-  NotificationChannel,
-} from '@/types/AccountNotifications'
-import { initDB } from '@/utils/database'
+import { DiscordAccount } from '@/types/Discord'
+import { createOrUpdatesDiscordAccount, initDB } from '@/utils/database'
 import {
   generateDiscordAuthToken,
   getDiscordAccountInfo,
@@ -27,15 +24,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(301).send('Could not get user info')
       }
 
-      const newNotification: DiscordNotificationType = {
-        channel: NotificationChannel.DISCORD,
-        destination: userInfo!.id,
-        disabled: !userInfo!.isInMWWServer,
-        accessToken: oAuthToken!,
-        inMWWServer: userInfo!.isInMWWServer,
+      const discordAccount: DiscordAccount = {
+        discord_id: userInfo!.id,
+        address: req.session.account!.address!,
+        access_token: oAuthToken!,
       }
 
-      return res.status(200).json(newNotification)
+      const result = await createOrUpdatesDiscordAccount(discordAccount)
+
+      return res.status(200).json(result)
     } catch (e) {
       console.error(e)
       Sentry.captureException(e)
