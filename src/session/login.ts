@@ -9,8 +9,16 @@ import { logEvent } from '../utils/analytics'
 import { InvalidSessionError } from '../utils/errors'
 import { loginWithAddress } from '../utils/user_manager'
 export const useLogin = () => {
-  const { currentAccount, logged, login, loginIn, setLoginIn, logout } =
-    useContext(AccountContext)
+  const {
+    waitLoginResolve,
+    setWaitLoginResolve,
+    currentAccount,
+    logged,
+    login,
+    loginIn,
+    setLoginIn,
+    logout,
+  } = useContext(AccountContext)
   const toast = useToast()
 
   watchAccount(async account => {
@@ -19,12 +27,16 @@ export const useLogin = () => {
     }
 
     if (
-      account.address.toLowerCase() !== currentAccount?.address.toLowerCase()
+      currentAccount &&
+      account.address.toLowerCase() !== currentAccount?.address.toLowerCase() &&
+      !waitLoginResolve
     ) {
+      setWaitLoginResolve(true)
       const newAccount = await loginWithAddress(account.address!, setLoginIn)
       if (newAccount) {
         login(newAccount)
       }
+      setWaitLoginResolve(false)
     }
   })
 
@@ -54,8 +66,13 @@ export const useLogin = () => {
 
       logEvent('Signed in')
 
-      if (forceRedirect && router.pathname === '/') {
-        await router.push('/dashboard')
+      // avoid redirecting if person is scheduling on a public calendar of someone else and was not logged. Definitely not the best way to do this
+      if (
+        forceRedirect &&
+        (router.pathname === '/' || router.pathname.indexOf('/embed') != -1)
+      ) {
+        await router.push('/dashboard/meetings')
+        return
       }
     } catch (error: any) {
       if (error instanceof InvalidSessionError) {

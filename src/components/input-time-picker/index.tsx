@@ -101,7 +101,6 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
                 isDisabled={isBefore(it, new Date())}
                 key={it.toString()}
                 onClick={() => {
-                  console.log(isBefore(it, new Date()))
                   onChange(format(it, 'p'))
                   setIsEditing.off()
                 }}
