@@ -112,6 +112,11 @@ export const getDiscordOAuthToken = async (
   }
 }
 
+export const getDiscordInfoForAddress = async (address: string) => {
+  const token = await getDiscordOAuthToken(address)
+  return getDiscordAccountInfo(token!)
+}
+
 export const getDiscordAccountInfo = async (
   discordAccessToken: AuthToken
 ): Promise<DiscordUserInfo | null> => {
@@ -141,12 +146,13 @@ export const getDiscordAccountInfo = async (
       return null
     }
 
+    const guilds = await userGuilds.json()
+
     return {
       id: (await userResult.json()).id,
       isInMWWServer:
-        ((await userGuilds.json()) || []).find(
-          (guild: any) => guild.id === MWW_DISCORD_SERVER_ID
-        ) !== null,
+        guilds.find((guild: any) => guild.id === MWW_DISCORD_SERVER_ID) !==
+        null,
     }
   } catch (error) {
     console.error(error)

@@ -1,6 +1,5 @@
 import {
   Button,
-  HStack,
   Icon,
   Input,
   InputGroup,
@@ -10,7 +9,6 @@ import {
   PopoverBody,
   PopoverContent,
   PopoverTrigger,
-  Portal,
   Text,
   useBoolean,
   useColorModeValue,
