@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 
 import { ConditionRelation } from '@/types/common'
 import { DiscordAccount } from '@/types/Discord'
+import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
@@ -528,6 +529,10 @@ export const generateDiscordAccount = async (
   return (await internalFetch(`/secure/discord`, 'POST', {
     discordCode,
   })) as DiscordAccount
+}
+
+export const getDiscordInfo = async (): Promise<DiscordUserInfo | null> => {
+  return (await internalFetch(`/secure/discord`)) as DiscordUserInfo | null
 }
 
 export const getGateCondition = async (

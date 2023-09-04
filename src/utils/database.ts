@@ -825,14 +825,10 @@ const setAccountNotificationSubscriptions = async (
   const account = await getAccountFromDB(address)
   if (!isProAccount(account)) {
     notifications.notification_types = notifications.notification_types.filter(
-      n =>
-        n.channel === NotificationChannel.EMAIL ||
-        n.channel === NotificationChannel.DISCORD
+      n => n.channel === NotificationChannel.EMAIL
     )
   }
-  const discord_notification = notifications.notification_types.filter(
-    n => n.channel === NotificationChannel.DISCORD
-  )
+
   const { _, error } = await db.supabase
     .from('account_notifications')
     .upsert(notifications, { onConflict: 'account_address' })
@@ -1574,7 +1570,6 @@ export const getDiscordAccount = async (
     .select()
     .eq('address', account_address)
 
-  console.log(data)
   if (error) {
     Sentry.captureException(error)
     return undefined
@@ -1586,7 +1581,7 @@ export const getDiscordAccount = async (
 }
 
 export const getAccountFromDiscordId = async (
-  discord_id: number
+  discord_id: string
 ): Promise<Account | null> => {
   const { data, error } = await db.supabase
     .from('discord_accounts')
