@@ -122,8 +122,7 @@ const MeetingTypesConfig: React.FC = () => {
             {!isPro && (
               <Text pb="6">
                 <Link
-                  href="/dashboard/details"
-                  shallow
+                  href="/dashboard/details#subscriptions"
                   colorScheme="primary"
                   fontWeight="bold"
                 >

@@ -254,8 +254,7 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
           <VStack alignItems="flex-start">
             <Text py="3">
               <Link
-                href="/dashboard/details"
-                shallow
+                href="/dashboard/details#subscriptions"
                 colorScheme="primary"
                 fontWeight="bold"
               >

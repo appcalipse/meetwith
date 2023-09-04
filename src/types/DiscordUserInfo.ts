@@ -1,4 +1,4 @@
 export interface DiscordUserInfo {
-  id: number
+  id: string
   isInMWWServer: boolean
 }

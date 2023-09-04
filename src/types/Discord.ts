@@ -2,6 +2,6 @@ import { AuthToken } from './Account'
 
 export interface DiscordAccount {
   access_token: AuthToken
-  discord_id: number
+  discord_id: string
   address: string
 }
