@@ -88,7 +88,7 @@
     "tsdav": "^2.0.2",
     "usehooks-ts": "^2.6.0",
     "uuid": "^8.3.2",
-    "viem": "^1.0.7",
+    "viem": "1.0.7",
     "wagmi": "^1.2.0",
     "web3-domain-resolver": "^1.0.4"
   },

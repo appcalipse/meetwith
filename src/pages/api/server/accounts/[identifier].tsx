@@ -1,7 +1,6 @@
 import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { getAccountFromDB } from '@/utils/database'
 
 const getAccount = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -9,7 +8,7 @@ const getAccount = async (req: NextApiRequest, res: NextApiResponse) => {
     const { identifier } = req.query
 
     try {
-      const account = await getAccountFromDB(identifier as string)
+      const account = await getAccountFromDB(identifier as string, true)
       return res.status(200).json(account)
     } catch (e) {
       return res.status(404).send('Not found')
@@ -18,4 +17,4 @@ const getAccount = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default withSessionRoute(withSentry(getAccount))
+export default withSentry(getAccount)

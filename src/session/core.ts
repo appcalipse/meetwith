@@ -4,9 +4,9 @@ import { NextPageContext } from 'next'
 import { AppContext } from 'next/app'
 
 import { SESSION_COOKIE_NAME, sessionOptions } from '@/middleware'
-import { getIPFSContent } from '@/utils/api_helper'
+import { getFullAccountInfo } from '@/utils/api_helper'
 
-import { Account, AccountPreferences } from '../types/Account'
+import { Account } from '../types/Account'
 
 export const validateAuthentication = async (
   ctx: NextPageContext
@@ -28,20 +28,12 @@ export const validateAuthentication = async (
     if (!!ctx.req) {
       const session = await getIronSession(ctx.req, ctx.res!, sessionOptions)
 
-      const account: Account = {
-        ...session.account!,
-      }
+      const updatedAccount = await getFullAccountInfo(session.account!.address!)
 
       // this should be server side only
-      delete (account as any).signature
+      delete (updatedAccount as any).signature
 
-      if (!account.preferences) {
-        account.preferences = (await getIPFSContent(
-          account.preferences_path
-        )) as AccountPreferences
-      }
-
-      return account
+      return updatedAccount
     }
 
     // on the client side we force a check the first time the

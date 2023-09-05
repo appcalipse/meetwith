@@ -11,6 +11,7 @@ import { DiscordUserInfo } from '../../types/DiscordUserInfo'
 import { discordRedirectUrl, isProduction } from '../constants'
 import {
   getAccountNotificationSubscriptions,
+  getDiscordAccount,
   setAccountNotificationSubscriptions,
 } from '../database'
 
@@ -70,23 +71,17 @@ export const generateDiscordAuthToken = async (
 export const getDiscordOAuthToken = async (
   accountAddress: string
 ): Promise<AuthToken | null> => {
-  const notifications = await getAccountNotificationSubscriptions(
-    accountAddress
-  )
+  const discordAccount = await getDiscordAccount(accountAddress)
 
-  const discordSubs = notifications.notification_types.find(
-    notif => notif.channel === NotificationChannel.DISCORD
-  ) as DiscordNotificationType | null
-
-  if (!discordSubs) return null
+  if (!discordAccount) return null
 
   if (
-    discordSubs.accessToken.created_at &&
-    !discordSubs.disabled &&
-    discordSubs.accessToken.created_at + discordSubs.accessToken.expires_in <=
+    discordAccount.access_token.created_at &&
+    discordAccount.access_token.created_at +
+      discordAccount.access_token.expires_in <=
       new Date().getTime()
   ) {
-    return discordSubs.accessToken
+    return discordAccount.access_token
   }
 
   console.debug('Token expired, refreshing')
@@ -97,7 +92,7 @@ export const getDiscordOAuthToken = async (
       client_id: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID!,
       client_secret: process.env.DISCORD_CLIENT_SECRET!,
       grant_type: 'refresh_token',
-      refresh_token: discordSubs.accessToken.refresh_token,
+      refresh_token: discordAccount.access_token.refresh_token,
     }),
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -110,6 +105,13 @@ export const getDiscordOAuthToken = async (
     ...oauthData,
     created_at: new Date(),
   }
+}
+
+export const getDiscordInfoForAddress = async (
+  address: string
+): Promise<DiscordUserInfo | null> => {
+  const token = await getDiscordOAuthToken(address)
+  return getDiscordAccountInfo(token!)
 }
 
 export const getDiscordAccountInfo = async (
@@ -141,12 +143,15 @@ export const getDiscordAccountInfo = async (
       return null
     }
 
+    const user = await userResult.json()
+    const guilds = await userGuilds.json()
+    console.log(user)
+
     return {
-      id: (await userResult.json()).id,
+      id: user.id,
       isInMWWServer:
-        ((await userGuilds.json()) || []).find(
-          (guild: any) => guild.id === MWW_DISCORD_SERVER_ID
-        ) !== null,
+        guilds.find((guild: any) => guild.id === MWW_DISCORD_SERVER_ID) !==
+        null,
     }
   } catch (error) {
     console.error(error)
@@ -181,7 +186,6 @@ export const dmAccount = async (
       const accountInfo = await getDiscordAccountInfo(token!)
       discordSubs.inMWWServer = accountInfo!.isInMWWServer
       discordSubs.disabled = true
-      discordSubs.accessToken = token!
       await setAccountNotificationSubscriptions(accountAddress, notifications)
     }
 
