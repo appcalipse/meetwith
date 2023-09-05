@@ -39,7 +39,7 @@ import {
 } from '../../utils/api_helper'
 import { isProAccount } from '../../utils/subscription_manager'
 import { isValidEmail } from '../../utils/validations'
-import DicordNotificationConfig from './DiscordNotificationConfig'
+import DiscordNotificationConfig from './DiscordNotificationConfig'
 
 const NotificationsConfig: React.FC = () => {
   const { currentAccount } = useContext(AccountContext)
@@ -262,8 +262,8 @@ const NotificationsConfig: React.FC = () => {
 
           <Spacer />
 
-          <DicordNotificationConfig
-            account={currentAccount}
+          <DiscordNotificationConfig
+            account={currentAccount!}
             onDiscordNotificationChange={onDiscordNotificationChange}
             discordNotification={discordNotificationConfig}
           />
@@ -286,8 +286,7 @@ const NotificationsConfig: React.FC = () => {
               {!isPro && (
                 <>
                   {' '}
-                  (
-                  <Link href="/dashboard/details" shallow>
+                  (<Link href="/dashboard/details#subscriptions">
                     Go Pro
                   </Link>{' '}
                   to enable it)

@@ -1,3 +1,4 @@
+import { DiscordAccount } from './Discord'
 import { Subscription } from './Subscription'
 
 export interface AuthToken {
@@ -19,6 +20,7 @@ export interface Account {
   nonce: number
   is_invited: boolean
   subscriptions: Subscription[]
+  discord_account?: DiscordAccount
 }
 
 export interface SimpleAccountInfo {

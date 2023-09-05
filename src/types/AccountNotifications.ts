@@ -1,5 +1,3 @@
-import { AuthToken } from './Account'
-
 export interface AccountNotifications {
   account_address: string
   notification_types: NotificationType[]
@@ -18,6 +16,5 @@ export interface NotificationType {
 }
 
 export interface DiscordNotificationType extends NotificationType {
-  accessToken: AuthToken
   inMWWServer: boolean
 }

@@ -1,13 +1,12 @@
 import * as Sentry from '@sentry/nextjs'
 
 import { ConditionRelation } from '@/types/common'
+import { DiscordAccount } from '@/types/Discord'
+import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
-import {
-  AccountNotifications,
-  DiscordNotificationType,
-} from '../types/AccountNotifications'
+import { AccountNotifications } from '../types/AccountNotifications'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -133,6 +132,27 @@ export const scheduleMeetingFromServer = async (
       throw new MeetingCreationError()
     } else if (e.status && e.status === 403) {
       throw new GateConditionNotValidError()
+    }
+    throw e
+  }
+}
+
+export const getFullAccountInfo = async (
+  identifier: string
+): Promise<Account> => {
+  try {
+    return (await internalFetch(
+      `/server/accounts/${identifier}`,
+      'GET',
+      null,
+      {},
+      {
+        'X-Server-Secret': process.env.SERVER_SECRET!,
+      }
+    )) as Account
+  } catch (e: any) {
+    if (e.status && e.status === 404) {
+      throw new AccountNotFoundError(identifier)
     }
     throw e
   }
@@ -503,12 +523,16 @@ export const validateWebdav = async (
     .catch(() => false)
 }
 
-export const generateDiscordNotification = async (
+export const generateDiscordAccount = async (
   discordCode: string
-): Promise<DiscordNotificationType> => {
+): Promise<DiscordAccount> => {
   return (await internalFetch(`/secure/discord`, 'POST', {
     discordCode,
-  })) as DiscordNotificationType
+  })) as DiscordAccount
+}
+
+export const getDiscordInfo = async (): Promise<DiscordUserInfo | null> => {
+  return (await internalFetch(`/secure/discord`)) as DiscordUserInfo | null
 }
 
 export const getGateCondition = async (
