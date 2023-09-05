@@ -45,7 +45,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     return res.status(200).send(true)
   } else if (req.method === 'PATCH') {
-    const request = JSON.parse(req.body) as MeetingCreationSyncRequest
+    const request = req.body as MeetingCreationSyncRequest
 
     request.start = new Date(request.start)
     request.end = new Date(request.end)
