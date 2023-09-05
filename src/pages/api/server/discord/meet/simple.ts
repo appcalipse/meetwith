@@ -105,7 +105,6 @@ export default async function simpleDiscordMeet(
         discordParticipantsWithoutAccountIds: not_linked_accounts,
       } as DiscordMeetingResponse)
     } catch (e: any) {
-      console.log(e)
       return res.status(e.status).send(e.message)
     }
   }
