@@ -2,6 +2,7 @@ import '../styles/globals.css'
 import '../styles/swipers.css'
 
 import { ChakraProvider } from '@chakra-ui/react'
+import { watchAccount } from '@wagmi/core'
 import { ConnectKitProvider } from 'connectkit'
 import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
@@ -14,7 +15,7 @@ import { useDisconnect } from 'wagmi'
 
 import { useLogin } from '@/session/login'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
-import { wagmiConfig } from '@/utils/user_manager'
+import { loginWithAddress, wagmiConfig } from '@/utils/user_manager'
 
 import { CookieConsent } from '../components/CookieConsent'
 import { Head } from '../components/Head'
@@ -65,6 +66,26 @@ function MyApp({
     ...pageProps,
     checkAuthOnClient,
   }
+
+  const { login, setLoginIn } = useLogin()
+
+  watchAccount(async account => {
+    if (!account || !account.address || !currentAccount) {
+      return
+    }
+
+    console.log('watchAccount', account, currentAccount)
+
+    if (
+      currentAccount &&
+      account.address.toLowerCase() !== currentAccount?.address.toLowerCase()
+    ) {
+      const newAccount = await loginWithAddress(account.address, setLoginIn)
+      if (newAccount) {
+        login(newAccount)
+      }
+    }
+  })
 
   return (
     <ChakraProvider theme={customTheme}>

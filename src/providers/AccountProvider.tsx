@@ -14,8 +14,6 @@ interface IAccountContext {
   logout: (address?: string) => void
   setLoginIn: (value: boolean) => void
   loginIn: boolean
-  waitLoginResolve: boolean
-  setWaitLoginResolve: (value: boolean) => void
 }
 
 const DEFAULT_STATE: IAccountContext = {
@@ -25,8 +23,6 @@ const DEFAULT_STATE: IAccountContext = {
   logout: (address?: string) => null,
   loginIn: false,
   setLoginIn: () => null,
-  waitLoginResolve: false,
-  setWaitLoginResolve: () => null,
 }
 
 const AccountContext = React.createContext<IAccountContext>(DEFAULT_STATE)
