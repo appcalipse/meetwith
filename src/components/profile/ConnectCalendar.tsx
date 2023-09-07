@@ -10,10 +10,11 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
-import { AccountContext } from '../../providers/AccountProvider'
+import { Account } from '@/types/Account'
+
 import {
   ConnectedCalendarCore,
   ConnectedCalendarIcons,
@@ -103,13 +104,13 @@ const ConnectedCalendars: React.FC<{
   )
 }
 
-const ConnectCalendar = () => {
+const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
+  currentAccount,
+}) => {
   const [loading, setLoading] = useState(true)
   const [calendarConnections, setCalendarConnections] = useState<
     ConnectedCalendarCore[]
   >([])
-
-  const { currentAccount } = useContext(AccountContext)
 
   const { isOpen, onOpen, onClose } = useDisclosure()
 
@@ -133,7 +134,7 @@ const ConnectCalendar = () => {
 
   useEffect(() => {
     loadCalendars()
-  }, [])
+  }, [currentAccount])
 
   if (loading) {
     return (

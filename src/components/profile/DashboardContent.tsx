@@ -21,19 +21,19 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   const renderSelected = () => {
     switch (currentSection) {
       case EditMode.MEETINGS:
-        return <Meetings />
+        return <Meetings currentAccount={currentAccount!} />
       case EditMode.AVAILABILITY:
-        return <AvailabilityConfig />
+        return <AvailabilityConfig currentAccount={currentAccount!} />
       case EditMode.DETAILS:
-        return <AccountDetails />
+        return <AccountDetails currentAccount={currentAccount!} />
       case EditMode.TYPES:
-        return <MeetingTypesConfig />
+        return <MeetingTypesConfig currentAccount={currentAccount!} />
       case EditMode.CALENDARS:
-        return <ConnectCalendar />
+        return <ConnectCalendar currentAccount={currentAccount!} />
       case EditMode.NOTIFICATIONS:
-        return <NotificationsConfig />
+        return <NotificationsConfig currentAccount={currentAccount!} />
       case EditMode.GATES:
-        return <TokenGateConfig />
+        return <TokenGateConfig currentAccount={currentAccount!} />
     }
   }
 

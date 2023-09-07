@@ -38,8 +38,10 @@ import { CopyLinkButton } from './components/CopyLinkButton'
 import MeetingTypeConfig from './components/MeetingTypeConfig'
 import NewMeetingTypeDialog from './NewMeetingTypeDialog'
 
-const MeetingTypesConfig: React.FC = () => {
-  const { currentAccount, login } = useContext(AccountContext)
+const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
+  currentAccount,
+}) => {
+  const { login } = useContext(AccountContext)
 
   const [selectedType, setSelectedType] = useState<string>('')
   const [typeToRemove, setTypeToRemove] = useState<string | undefined>(

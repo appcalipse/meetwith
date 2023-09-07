@@ -24,6 +24,7 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { FaEdit, FaTrash } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { Account } from '@/types/Account'
 import { GateConditionObject } from '@/types/TokenGating'
 import {
   deleteGateCondition,
@@ -38,9 +39,9 @@ import {
 } from './AddGateObjectDialog'
 import HumanReadableGate from './HumanReadableGate'
 
-export const TokenGateConfig = () => {
-  const { currentAccount } = useContext(AccountContext)
-
+export const TokenGateConfig: React.FC<{ currentAccount: Account }> = ({
+  currentAccount,
+}) => {
   const [loading, setLoading] = useState(true)
   const [configs, setConfigs] = useState<GateConditionObject[]>([])
   const [gateToRemove, setGateToRemove] = useState<string | undefined>(
@@ -70,8 +71,9 @@ export const TokenGateConfig = () => {
   }
 
   useEffect(() => {
+    setLoading(true)
     fetchConfigs()
-  }, [])
+  }, [currentAccount])
 
   const isPro = isProAccount(currentAccount!)
 

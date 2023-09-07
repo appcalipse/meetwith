@@ -18,15 +18,15 @@ import {
 import * as PushAPI from '@pushprotocol/restapi'
 import { SubscribeOptionsType } from '@pushprotocol/restapi/src/lib/channels'
 import { ethers } from 'ethers'
-import { useContext, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useEffect } from 'react'
 import { useWalletClient, WalletClient } from 'wagmi'
 
+import { Account } from '@/types/Account'
 import { SupportedChain } from '@/types/chains'
 import { getCAIPAddress, PUSH_CHANNEL } from '@/utils/push_protocol_helper'
 import { validateChainToActOn } from '@/utils/rpc_helper_front'
 
-import { AccountContext } from '../../providers/AccountProvider'
 import {
   AccountNotifications,
   DiscordNotificationType,
@@ -41,8 +41,9 @@ import { isProAccount } from '../../utils/subscription_manager'
 import { isValidEmail } from '../../utils/validations'
 import DicordNotificationConfig from './DiscordNotificationConfig'
 
-const NotificationsConfig: React.FC = () => {
-  const { currentAccount } = useContext(AccountContext)
+const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
+  currentAccount,
+}) => {
   const { data: walletClient } = useWalletClient()
 
   const [loading, setLoading] = useState(false)
@@ -58,8 +59,14 @@ const NotificationsConfig: React.FC = () => {
   )
 
   useEffect(() => {
+    setLoadingInitialInfo(true)
+    setEmailNotifications(false)
+    setEmail('')
+    setPushOptedIn(null)
+    setEPNSNotifications(false)
     fetchSubscriptions()
-  }, [])
+    setDiscordNotificationConfig(undefined)
+  }, [currentAccount])
 
   const fetchSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()

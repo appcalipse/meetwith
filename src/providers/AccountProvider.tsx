@@ -1,8 +1,10 @@
-import React, { useState } from 'react'
+import { watchAccount } from '@wagmi/core'
+import React, { useEffect, useState } from 'react'
 import { useCookies } from 'react-cookie'
 import { useDisconnect } from 'wagmi'
 
 import { SESSION_COOKIE_NAME } from '@/middleware'
+import { loginWithAddress } from '@/utils/user_manager'
 
 import { Account } from '../types/Account'
 import { removeSignature } from '../utils/storage'
@@ -45,7 +47,39 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
   })
   const { disconnect } = useDisconnect()
   const [loginIn, setLoginIn] = useState(false)
+  const [newAccount, setNewAccount] = useState(undefined as string | undefined)
   const [_, setCookie, removeCookie] = useCookies([SESSION_COOKIE_NAME])
+
+  watchAccount(async account => {
+    if (
+      !account ||
+      !account.address ||
+      !context.currentAccount ||
+      !context.logged
+    ) {
+      return
+    } else if (
+      account.address.toLowerCase() !==
+      context.currentAccount.address.toLowerCase()
+    ) {
+      setNewAccount(account.address)
+    }
+  })
+
+  const changeAccount = async (accountAddress: string) => {
+    const newAccount = await loginWithAddress(accountAddress, setLoginIn)
+    if (newAccount) {
+      login(newAccount)
+    }
+  }
+
+  useEffect(() => {
+    if (newAccount && context.logged) {
+      const accountAddress = newAccount
+      setNewAccount(undefined)
+      changeAccount(accountAddress)
+    }
+  }, [newAccount])
 
   function login(account: Account) {
     setUserContext(() => ({
