@@ -12,19 +12,20 @@ import {
 } from '@chakra-ui/react'
 import { addHours } from 'date-fns'
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
+import { Account } from '@/types/Account'
 import { decodeMeeting } from '@/utils/calendar_manager'
 
-import { AccountContext } from '../../providers/AccountProvider'
 import { DBSlot, MeetingChangeType } from '../../types/Meeting'
 import { getMeeting, getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 
-const Meetings: React.FC = () => {
-  const { currentAccount } = useContext(AccountContext)
+const Meetings: React.FC<{ currentAccount: Account }> = ({
+  currentAccount,
+}) => {
   const [meetings, setMeetings] = useState<DBSlot[]>([])
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
@@ -38,22 +39,30 @@ const Meetings: React.FC = () => {
     const PAGE_SIZE = 5
     setLoading(true)
     const newMeetings = (await getMeetingsForDashboard(
-      currentAccount!.address,
+      currentAccount.address,
       endToFetch,
       PAGE_SIZE,
       meetings.length
     )) as DBSlot[]
+
     if (newMeetings.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
-    setMeetings(meetings.concat(newMeetings))
+    setMeetings([...meetings].concat(newMeetings))
     setLoading(false)
     setFirstFetch(false)
   }
 
-  useEffect(() => {
+  const resetState = async () => {
+    setFirstFetch(true)
+    setNoMoreFetch(false)
+    await setMeetings([])
     fetchMeetings()
-  }, [])
+  }
+
+  useEffect(() => {
+    resetState()
+  }, [currentAccount.address])
 
   let content: any
 
