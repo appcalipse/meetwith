@@ -7,7 +7,6 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
-import { get } from 'http'
 import { validate } from 'uuid'
 
 import { DiscordAccount } from '@/types/Discord'
@@ -25,6 +24,7 @@ import {
 } from '../types/Account'
 import {
   AccountNotifications,
+  DiscordNotificationType,
   NotificationChannel,
 } from '../types/AccountNotifications'
 import {
@@ -360,7 +360,10 @@ const getExistingAccountsFromDB = async (
   return data
 }
 
-const getAccountFromDB = async (identifier: string): Promise<Account> => {
+const getAccountFromDB = async (
+  identifier: string,
+  includPrivateInformation?: boolean
+): Promise<Account> => {
   const { data, error } = await db.supabase.rpc('fetch_account', {
     identifier: identifier.toLowerCase(),
   })
@@ -375,6 +378,11 @@ const getAccountFromDB = async (identifier: string): Promise<Account> => {
       account.address
     )
 
+    if (includPrivateInformation) {
+      const discord_account = await getDiscordAccount(account.address)
+
+      account.discord_account = discord_account
+    }
     return account
   } else if (error) {
     Sentry.captureException(error)
@@ -825,12 +833,35 @@ const setAccountNotificationSubscriptions = async (
     .from('account_notifications')
     .upsert(notifications, { onConflict: 'account_address' })
     .eq('account_address', address.toLowerCase())
-
   if (error) {
     Sentry.captureException(error)
   }
 
   return notifications
+}
+
+export const createOrUpdatesDiscordAccount = async (
+  discordAccount: DiscordAccount
+): Promise<DiscordAccount | undefined> => {
+  const account = await getAccountFromDiscordId(discordAccount.discord_id)
+  if (!account) {
+    const { data, error } = await db.supabase
+      .from('discord_accounts')
+      .insert([discordAccount])
+    if (error) {
+      Sentry.captureException(error)
+    }
+    return data[0]
+  } else {
+    const { data, error } = await db.supabase
+      .from('discord_accounts')
+      .update(discordAccount)
+      .eq('discord_id', discordAccount.discord_id)
+    if (error) {
+      Sentry.captureException(error)
+    }
+    return data[0]
+  }
 }
 
 const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
@@ -1533,18 +1564,18 @@ const getOfficeEventMappingId = async (
 
 export const getDiscordAccount = async (
   account_address: string
-): Promise<DiscordAccount | null> => {
+): Promise<DiscordAccount | undefined> => {
   const { data, error } = await db.supabase
     .from('discord_accounts')
     .select()
-    .eq('mww_id', account_address)
+    .eq('address', account_address)
 
   if (error) {
     Sentry.captureException(error)
-    return null
+    return undefined
   }
 
-  if (data.length === 0) return null
+  if (data.length === 0) return undefined
 
   return data[0] as DiscordAccount
 }

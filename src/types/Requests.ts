@@ -1,5 +1,6 @@
 import { Encrypted } from 'eth-crypto'
 
+import { Account } from './Account'
 import {
   ConferenceMeeting,
   MeetingDecrypted,
@@ -76,16 +77,20 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   guestsToRemove: ParticipantInfo[]
 }
 
-export interface DiscordMeetingRequest {
+export interface DiscordAccountInfoRequest {
   scheduler_discord_id: string
   participantsDiscordIds: string[]
-  duration: number
-  interval: number
 }
 
-export interface DiscordMeetingResponse {
-  meetingInfo: MeetingDecrypted
+export interface DiscordAccountInfoResponse {
+  accounts: Account[]
   discordParticipantIds: string[]
-  discordParticipantsNotAvailable: string[]
   discordParticipantsWithoutAccountIds: string[]
+}
+
+export interface DiscordMeetingRequest {
+  schedulerDiscordId: string
+  accounts: Account[]
+  duration: number
+  interval: number
 }

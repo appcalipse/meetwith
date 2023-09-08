@@ -1,77 +1,48 @@
 import { Link } from '@chakra-ui/next-js'
 import { Button, HStack, Spinner, Switch, Text, VStack } from '@chakra-ui/react'
-import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 
-import { Account } from '../../types/Account'
-import { DiscordNotificationType } from '../../types/AccountNotifications'
-import { generateDiscordNotification } from '../../utils/api_helper'
-import { discordRedirectUrl, MWW_DISCORD_SERVER } from '../../utils/constants'
-import { isProAccount } from '../../utils/subscription_manager'
+import { Account } from '@/types/Account'
+import {
+  DiscordNotificationType,
+  NotificationChannel,
+} from '@/types/AccountNotifications'
+import { DiscordUserInfo } from '@/types/DiscordUserInfo'
+import { getDiscordInfo } from '@/utils/api_helper'
+import { MWW_DISCORD_SERVER } from '@/utils/constants'
+import { isProAccount } from '@/utils/subscription_manager'
 
 interface Props {
-  account?: Account | null
+  account: Account
   discordNotification?: DiscordNotificationType
   onDiscordNotificationChange: (
     discordNotification?: DiscordNotificationType
   ) => void
 }
 
-const DicordNotificationConfig: React.FC<Props> = ({
+const DiscordNotificationConfig: React.FC<Props> = ({
   account,
   discordNotification,
   onDiscordNotificationChange,
 }) => {
-  const router = useRouter()
-
   const [loading, setLoading] = useState(true)
-  const [helperText, setHelperText] = useState(
-    discordNotification && !discordNotification.disabled
-      ? 'You are in the Meet with Wallet Discord server and your Discord notifications are enabled'
-      : ''
-  )
-
-  const notificationEnabled =
-    discordNotification && !discordNotification.disabled
-
-  const [notificationOn, setNotificationsOn] = useState(notificationEnabled)
+  const [canEnable, setCanEnable] = useState(false)
 
   const validateDiscord = async () => {
-    if (!discordNotification || discordNotification.disabled) {
-      const { discordResult, code } = router.query
+    if (
+      (!discordNotification || discordNotification.disabled) &&
+      account.discord_account
+    ) {
+      const discordInfo: DiscordUserInfo | null = await getDiscordInfo()
 
-      const subscribeToDiscord = async (code: string) => {
-        try {
-          const notification = await generateDiscordNotification(code)
-          setNotificationsOn(true)
-          onDiscordNotificationChange(notification)
-          if (!notification.disabled) {
-            setHelperText(
-              'You are in the Meet with Wallet Discord server and your Discord notifications are enabled'
-            )
-          }
-        } catch (error) {}
-        setLoading(false)
+      if (discordInfo?.isInMWWServer) {
+        setCanEnable(true)
       }
-
-      if (discordResult && code) {
-        subscribeToDiscord(code as string)
-      } else {
-        setLoading(false)
-      }
-    } else if (discordNotification && !discordNotification.inMWWServer) {
-      setHelperText(
-        'Please join the Meet with Wallet server to receive your Discord notifications'
-      )
-      setLoading(false)
-    } else {
-      setLoading(false)
+    } else if (discordNotification && !discordNotification.disabled) {
+      setCanEnable(true)
     }
+    setLoading(false)
   }
-
-  useEffect(() => {
-    !notificationOn && onDiscordNotificationChange(undefined)
-  }, [notificationOn])
 
   useEffect(() => {
     validateDiscord()
@@ -79,25 +50,40 @@ const DicordNotificationConfig: React.FC<Props> = ({
 
   const isPro = isProAccount(account!)
 
-  const notInServer = !discordNotification || !discordNotification.inMWWServer
-
   return (
     <VStack alignItems="start" flex={1} mb={8}>
       <HStack py={4}>
         <Switch
           colorScheme="primary"
           size="md"
-          isChecked={notificationOn}
-          onChange={e => setNotificationsOn(e.target.checked)}
-          isDisabled={!isPro}
+          isChecked={!!discordNotification && !discordNotification.disabled}
+          onChange={e => {
+            if (e.target.checked) {
+              onDiscordNotificationChange({
+                channel: NotificationChannel.DISCORD,
+                destination: account.discord_account!.discord_id.toString(),
+                disabled: false,
+                inMWWServer: true,
+              })
+            } else {
+              onDiscordNotificationChange(undefined)
+            }
+          }}
+          isDisabled={!isPro || (!loading && !canEnable)}
         />
         <Text>
           Discord{' '}
           {!isPro && (
             <>
-              (
-              <Link href="/dashboard/details" shallow>
-                Go Pro
+              (<Link href="/dashboard/details#subscriptions">Go Pro</Link> to
+              enable it)
+            </>
+          )}
+          {isPro && !account.discord_account && (
+            <>
+              (Please first{' '}
+              <Link href="/dashboard/details#connected">
+                connect your Discord account
               </Link>{' '}
               to enable it)
             </>
@@ -111,45 +97,28 @@ const DicordNotificationConfig: React.FC<Props> = ({
         </HStack>
       ) : (
         <>
-          {helperText && <Text>{helperText}</Text>}
-
-          {notificationOn && (
+          {isPro && !loading && !canEnable && (
             <>
-              {!notificationEnabled && (
-                <Button
-                  as="a"
-                  isLoading={loading}
-                  alignSelf="start"
-                  variant="outline"
-                  colorScheme="primary"
-                  href={`https://discord.com/api/oauth2/authorize?client_id=${
-                    process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
-                  }&redirect_uri=${encodeURIComponent(
-                    discordRedirectUrl
-                  )}&response_type=code&scope=identify%20guilds`}
-                >
-                  Authorize MWW on Discord
-                </Button>
-              )}
-              {discordNotification && notInServer && (
-                <Button
-                  as="a"
-                  isLoading={loading}
-                  alignSelf="start"
-                  variant="outline"
-                  colorScheme="primary"
-                  href={MWW_DISCORD_SERVER}
-                >
-                  Join the server
-                </Button>
-              )}
+              <Text>
+                Please join the Meet with Wallet server to receive your Discord
+                notifications
+              </Text>
+              <Button
+                as="a"
+                isLoading={loading}
+                alignSelf="start"
+                variant="outline"
+                colorScheme="primary"
+                href={MWW_DISCORD_SERVER}
+              >
+                Join the server and refresh page
+              </Button>
             </>
           )}
         </>
       )}
-      )
     </VStack>
   )
 }
 
-export default DicordNotificationConfig
+export default DiscordNotificationConfig
