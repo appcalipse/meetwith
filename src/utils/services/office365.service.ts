@@ -86,6 +86,7 @@ export default class Office365CalendarService implements CalendarService {
       process.env.MS_GRAPH_CLIENT_SECRET!,
       process.env.MS_GRAPH_CLIENT_ID!,
     ]
+
     const refreshAccessToken = (refreshToken: string) => {
       return fetch(
         'https://login.microsoftonline.com/common/oauth2/v2.0/token',
