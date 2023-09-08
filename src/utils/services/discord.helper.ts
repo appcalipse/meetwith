@@ -145,7 +145,6 @@ export const getDiscordAccountInfo = async (
 
     const user = await userResult.json()
     const guilds = await userGuilds.json()
-    console.log(user)
 
     return {
       id: user.id,

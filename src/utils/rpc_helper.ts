@@ -11,16 +11,16 @@ import {
   SupportedChain,
 } from '../types/chains'
 import { BlockchainSubscription } from '../types/Subscription'
+import { isProduction } from './constants'
 
 export const getBlockchainSubscriptionsForAccount = async (
   accountAddress: string
 ): Promise<BlockchainSubscription[]> => {
   const subscriptions: any[] = []
 
-  const chainsToCheck: ChainInfo[] =
-    process.env.NEXT_PUBLIC_ENV === 'production'
-      ? getMainnetChains()
-      : getTestnetChains()
+  const chainsToCheck: ChainInfo[] = isProduction
+    ? getMainnetChains()
+    : getTestnetChains()
 
   for (const chain of chainsToCheck) {
     const info = {
@@ -70,10 +70,9 @@ export const getDomainInfo = async (
 ): Promise<BlockchainSubscription[]> => {
   const subscriptions: any[] = []
 
-  const chainsToCheck: ChainInfo[] =
-    process.env.NEXT_PUBLIC_ENV === 'production'
-      ? getMainnetChains()
-      : getTestnetChains()
+  const chainsToCheck: ChainInfo[] = isProduction
+    ? getMainnetChains()
+    : getTestnetChains()
 
   for (const chain of chainsToCheck) {
     const info = {

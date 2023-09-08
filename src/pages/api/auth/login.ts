@@ -10,7 +10,7 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     const { identifier, signature } = req.body
     try {
-      const account = await getAccountFromDB(identifier as string)
+      const account = await getAccountFromDB(identifier as string, true)
 
       // match signature and identifier
       // make sure people don't screw up others by sending requests to create accounts
