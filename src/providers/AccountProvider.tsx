@@ -47,6 +47,7 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
     currentAccount,
     logged,
   })
+
   const { disconnect } = useDisconnect()
   const [loginIn, setLoginIn] = useState(false)
   const [_, setCookie, removeCookie] = useCookies([SESSION_COOKIE_NAME])

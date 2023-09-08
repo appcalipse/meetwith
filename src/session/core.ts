@@ -29,7 +29,6 @@ export const validateAuthentication = async (
       const session = await getIronSession(ctx.req, ctx.res!, sessionOptions)
 
       const updatedAccount = await getFullAccountInfo(session.account!.address!)
-
       // this should be server side only
       delete (updatedAccount as any).signature
 
