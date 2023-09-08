@@ -23,6 +23,7 @@ import { useEffect } from 'react'
 import { useWalletClient, WalletClient } from 'wagmi'
 
 import { SupportedChain } from '@/types/chains'
+import { isProduction } from '@/utils/constants'
 import { getCAIPAddress, PUSH_CHANNEL } from '@/utils/push_protocol_helper'
 import { validateChainToActOn } from '@/utils/rpc_helper_front'
 
@@ -144,7 +145,7 @@ const NotificationsConfig: React.FC = () => {
       onError: () => {
         setPushOptedIn({ opted: false })
       },
-      env: process.env.NEXT_PUBLIC_ENV === 'production' ? 'prod' : 'staging',
+      env: isProduction ? 'prod' : 'staging',
     })
   }
 

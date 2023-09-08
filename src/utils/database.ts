@@ -377,7 +377,6 @@ const getAccountFromDB = async (
     account.subscriptions = await getSubscriptionFromDBForAccount(
       account.address
     )
-
     if (includPrivateInformation) {
       const discord_account = await getDiscordAccount(account.address)
 

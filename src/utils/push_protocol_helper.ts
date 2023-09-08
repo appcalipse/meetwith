@@ -2,6 +2,8 @@ import * as PushAPI from '@pushprotocol/restapi'
 import * as Sentry from '@sentry/nextjs'
 import { ethers } from 'ethers'
 
+import { isProduction } from './constants'
+
 export const PUSH_CHANNEL = '0xe5b06bfd663C94005B8b159Cd320Fd7976549f9b'
 export const sendPushNotification = async (
   destination_address: string,
@@ -28,7 +30,7 @@ export const sendPushNotification = async (
       },
       recipients: [getCAIPAddress(destination_address)],
       channel: getCAIPAddress(PUSH_CHANNEL),
-      env: process.env.NEXT_PUBLIC_ENV === 'production' ? 'prod' : 'staging',
+      env: isProduction ? 'prod' : 'staging',
     })
     if (apiResponse?.status === 204) {
       return true
@@ -41,7 +43,5 @@ export const sendPushNotification = async (
 }
 
 export const getCAIPAddress = (address: string): string => {
-  return `eip155:${
-    process.env.NEXT_PUBLIC_ENV === 'production' ? '1' : '5'
-  }:${address}`
+  return `eip155:${isProduction ? '1' : '5'}:${address}`
 }
