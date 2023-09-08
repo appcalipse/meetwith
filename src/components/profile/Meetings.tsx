@@ -35,7 +35,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
 
   const { slotId } = useRouter().query
 
-  const fetchMeetings = async () => {
+  const fetchMeetings = async (reset?: boolean) => {
     const PAGE_SIZE = 5
     setLoading(true)
     const newMeetings = (await getMeetingsForDashboard(
@@ -48,7 +48,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
     if (newMeetings.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
-    setMeetings([...meetings].concat(newMeetings))
+    setMeetings((reset ? [] : [...meetings]).concat(newMeetings))
     setLoading(false)
     setFirstFetch(false)
   }
@@ -56,13 +56,12 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const resetState = async () => {
     setFirstFetch(true)
     setNoMoreFetch(false)
-    await setMeetings([])
-    fetchMeetings()
+    fetchMeetings(true)
   }
 
   useEffect(() => {
     resetState()
-  }, [currentAccount.address])
+  }, [currentAccount?.address])
 
   let content: any
 
@@ -108,7 +107,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
             variant="outline"
             alignSelf="center"
             my={4}
-            onClick={fetchMeetings}
+            onClick={() => fetchMeetings()}
           >
             Load more
           </Button>
