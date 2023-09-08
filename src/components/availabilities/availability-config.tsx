@@ -47,8 +47,6 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     setInitialAvailabilities(availabilities)
   }, [currentAccount.address])
 
-  const borderColor = useColorModeValue('gray.300', 'gray.700')
-
   const saveAvailabilities = async () => {
     setLoading(true)
 
@@ -71,9 +69,9 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     setLoading(false)
   }
 
-  const onChange = (day: number, ranges: TimeRange[]) => {
+  const onChange = (day: number, ranges: TimeRange[] | null) => {
     const newAvailabilities = [...initialAvailabilities]
-    newAvailabilities[day] = { weekday: day, ranges }
+    newAvailabilities[day] = { weekday: day, ranges: ranges ?? [] }
     setInitialAvailabilities(newAvailabilities)
   }
 
@@ -90,15 +88,11 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
       </Box>
       <Text pt={2}>Your availabilities</Text>
       {initialAvailabilities.map((availability, index) => (
-        <Box
+        <WeekdayConfig
           key={`${currentAccount.address}:${index}`}
-          py={2}
-          width="100%"
-          borderBottom="1px solid"
-          borderColor={borderColor}
-        >
-          <WeekdayConfig dayAvailability={availability} onChange={onChange} />
-        </Box>
+          dayAvailability={availability}
+          onChange={onChange}
+        />
       ))}
       <Spacer />
       <Button
