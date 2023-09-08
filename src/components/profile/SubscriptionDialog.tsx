@@ -34,7 +34,7 @@ import {
 } from '../../types/chains'
 import { Plan, Subscription } from '../../types/Subscription'
 import { logEvent } from '../../utils/analytics'
-import { YEAR_DURATION_IN_SECONDS } from '../../utils/constants'
+import { isProduction, YEAR_DURATION_IN_SECONDS } from '../../utils/constants'
 import { checkValidDomain } from '../../utils/rpc_helper_front'
 import {
   approveTokenSpending,
@@ -272,9 +272,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }, [currentToken, currentChain, duration])
 
   const chains = supportedChains.filter(chain =>
-    process.env.NEXT_PUBLIC_ENV === 'production'
-      ? !chain.testnet
-      : chain.testnet
+    isProduction ? !chain.testnet : chain.testnet
   )
 
   const renderBookingLink = () => {

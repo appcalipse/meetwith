@@ -1,3 +1,5 @@
+import { isProduction } from '@/utils/constants'
+
 import { SupportedChain } from './chains'
 export interface PlanInfo {
   plan: Plan
@@ -12,7 +14,7 @@ export enum Plan {
 export const existingPlans: PlanInfo[] = [
   {
     plan: Plan.PRO,
-    usdPrice: process.env.NEXT_PUBLIC_ENV === 'production' ? 30 : 1,
+    usdPrice: isProduction ? 30 : 1,
     name: 'Pro',
   },
 ]
