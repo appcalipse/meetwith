@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 
 import {
   addOrUpdateConnectedCalendar,
@@ -21,6 +22,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       req.session.account!.address,
       { syncOnly: syncOnly === 'true', activeOnly: false }
     )
+
+    // Force all connected calendars to renew its Tokens
+    // if needed for displaying calendars...
+    for (const calendar of calendars) {
+      const integration = getConnectedCalendarIntegration(
+        req.session.account!.address,
+        calendar.email,
+        calendar.provider,
+        calendar.payload
+      )
+      await integration.refreshConnection()
+    }
+
     return res.status(200).json(
       calendars.map(it => ({
         provider: it.provider,

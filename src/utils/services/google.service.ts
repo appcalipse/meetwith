@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/nextjs'
-import { id } from 'date-fns/locale'
 import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
 import { Auth, calendar_v3, google } from 'googleapis'
 
