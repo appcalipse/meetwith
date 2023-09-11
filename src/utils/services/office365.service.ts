@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/nextjs'
-import { constants } from 'buffer'
 
 import {
   CalendarSyncInfo,
@@ -80,7 +79,8 @@ export default class Office365CalendarService implements CalendarService {
     credential: O365AuthCredentials
   ) => {
     const isExpired = (expiryDate: number) =>
-      expiryDate < Math.round(new Date().getTime() / 1000)
+      // Giving 1 minute safety renewal for token to renew
+      expiryDate < Math.round((new Date().getTime() - 1000 * 60) / 1000)
 
     const [client_secret, client_id] = [
       process.env.MS_GRAPH_CLIENT_SECRET!,
