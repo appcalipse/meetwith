@@ -28,7 +28,7 @@ import {
 } from '@/utils/rpc_helper_front'
 
 import { AccountContext } from '../../providers/AccountProvider'
-import { SocialLinkType } from '../../types/Account'
+import { Account, SocialLink, SocialLinkType } from '../../types/Account'
 import {
   getPlanInfo,
   Plan,
@@ -50,8 +50,10 @@ import HandlePicker, {
 import ConnectedAccounts from './ConnectedAccounts'
 import SubscriptionDialog from './SubscriptionDialog'
 
-const AccountDetails: React.FC = () => {
-  const { currentAccount, login } = useContext(AccountContext)
+const AccountDetails: React.FC<{ currentAccount: Account }> = ({
+  currentAccount,
+}) => {
+  const { login } = useContext(AccountContext)
   const cancelDialogRef = useRef<any>()
 
   const [loading, setLoading] = useState(false)
@@ -79,17 +81,51 @@ const AccountDetails: React.FC = () => {
   )
 
   const [twitter, setTwitter] = useState(
-    socialLinks.filter(link => link.type === SocialLinkType.TWITTER)[0]?.url ||
-      ''
+    socialLinks.filter(
+      (link: SocialLink) => link.type === SocialLinkType.TWITTER
+    )[0]?.url || ''
   )
   const [discord, setDiscord] = useState(
-    socialLinks.filter(link => link.type === SocialLinkType.DISCORD)[0]?.url ||
-      ''
+    socialLinks.filter(
+      (link: SocialLink) => link.type === SocialLinkType.DISCORD
+    )[0]?.url || ''
   )
   const [telegram, setTelegram] = useState(
-    socialLinks.filter(link => link.type === SocialLinkType.TELEGRAM)[0]?.url ||
-      ''
+    socialLinks.filter(
+      (link: SocialLink) => link.type === SocialLinkType.TELEGRAM
+    )[0]?.url || ''
   )
+
+  const updateAccountInfo = () => {
+    const socialLinks = currentAccount?.preferences?.socialLinks || []
+
+    setTwitter(
+      socialLinks.filter(
+        (link: SocialLink) => link.type === SocialLinkType.TWITTER
+      )[0]?.url || ''
+    )
+    setTelegram(
+      socialLinks.filter(
+        (link: SocialLink) => link.type === SocialLinkType.TELEGRAM
+      )[0]?.url || ''
+    )
+    setDiscord(
+      socialLinks.filter(
+        (link: SocialLink) => link.type === SocialLinkType.DISCORD
+      )[0]?.url || ''
+    )
+
+    setDescription(currentAccount?.preferences?.description || '')
+    setName(
+      currentAccount?.preferences?.name
+        ? {
+            label: currentAccount.preferences.name,
+            value: currentAccount.preferences.name,
+            type: ProfileInfoProvider.CUSTOM,
+          }
+        : undefined
+    )
+  }
 
   const updateAccountSubs = async () => {
     setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
@@ -189,9 +225,10 @@ const AccountDetails: React.FC = () => {
   }
 
   useEffect(() => {
+    updateAccountInfo()
     updateAccountSubs()
     getHandles()
-  }, [])
+  }, [currentAccount])
 
   const toast = useToast()
 

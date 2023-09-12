@@ -96,6 +96,7 @@ const loginOrSignup = async (
   let account: Account
   const generateSignature = async () => {
     const nonce = Number(Math.random().toString(8).substring(2, 10))
+
     const signature = await signDefaultMessage(
       accountAddress.toLowerCase(),
       nonce

@@ -1,8 +1,10 @@
-import React, { useState } from 'react'
+import { watchAccount } from '@wagmi/core'
+import React, { useEffect, useState } from 'react'
 import { useCookies } from 'react-cookie'
 import { useDisconnect } from 'wagmi'
 
 import { SESSION_COOKIE_NAME } from '@/middleware'
+import { loginWithAddress } from '@/utils/user_manager'
 
 import { Account } from '../types/Account'
 import { removeSignature } from '../utils/storage'
@@ -14,8 +16,6 @@ interface IAccountContext {
   logout: (address?: string) => void
   setLoginIn: (value: boolean) => void
   loginIn: boolean
-  waitLoginResolve: boolean
-  setWaitLoginResolve: (value: boolean) => void
 }
 
 const DEFAULT_STATE: IAccountContext = {
@@ -25,8 +25,6 @@ const DEFAULT_STATE: IAccountContext = {
   logout: (address?: string) => null,
   loginIn: false,
   setLoginIn: () => null,
-  waitLoginResolve: false,
-  setWaitLoginResolve: () => null,
 }
 
 const AccountContext = React.createContext<IAccountContext>(DEFAULT_STATE)
@@ -50,7 +48,39 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
 
   const { disconnect } = useDisconnect()
   const [loginIn, setLoginIn] = useState(false)
+  const [newAccount, setNewAccount] = useState(undefined as string | undefined)
   const [_, setCookie, removeCookie] = useCookies([SESSION_COOKIE_NAME])
+
+  watchAccount(async account => {
+    if (
+      !account ||
+      !account.address ||
+      !context.currentAccount ||
+      !context.logged
+    ) {
+      return
+    } else if (
+      account.address.toLowerCase() !==
+      context.currentAccount.address.toLowerCase()
+    ) {
+      setNewAccount(account.address)
+    }
+  })
+
+  const changeAccount = async (accountAddress: string) => {
+    const newAccount = await loginWithAddress(accountAddress, setLoginIn)
+    if (newAccount) {
+      login(newAccount)
+    }
+  }
+
+  useEffect(() => {
+    if (newAccount && context.logged) {
+      const accountAddress = newAccount
+      setNewAccount(undefined)
+      changeAccount(accountAddress)
+    }
+  }, [newAccount])
 
   function login(account: Account) {
     setUserContext(() => ({

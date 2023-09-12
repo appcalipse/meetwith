@@ -7,26 +7,32 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
+
+import { Account, TimeRange } from '@/types/Account'
 
 import { AccountContext } from '../../providers/AccountProvider'
-import { TimeRange } from '../../types/Account'
 import { logEvent } from '../../utils/analytics'
 import { saveAccountChanges } from '../../utils/api_helper'
 import TimezoneSelector from '../TimezoneSelector'
 import { WeekdayConfig } from './weekday-config'
 
-const AvailabilityConfig: React.FC = () => {
-  const { currentAccount, login } = useContext(AccountContext)
+const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
+  currentAccount,
+}) => {
+  const { login } = useContext(AccountContext)
 
   const [loading, setLoading] = useState(false)
   const [timezone, setTimezone] = useState(
     currentAccount!.preferences!.timezone
   )
-
-  const initialAvailabilities = [...currentAccount!.preferences!.availabilities]
+  const [initialAvailabilities, setInitialAvailabilities] = useState([
+    ...currentAccount!.preferences!.availabilities,
+  ])
 
   useEffect(() => {
+    setTimezone(currentAccount!.preferences!.timezone)
+    const availabilities = [...currentAccount!.preferences!.availabilities]
     for (let i = 0; i <= 6; i++) {
       let found = false
       for (const availability of initialAvailabilities) {
@@ -35,14 +41,11 @@ const AvailabilityConfig: React.FC = () => {
         }
       }
       if (!found) {
-        initialAvailabilities.push({ weekday: i, ranges: [] })
+        availabilities.push({ weekday: i, ranges: [] })
       }
     }
-  }, [])
-
-  const availabilities = useRef(initialAvailabilities)
-
-  const borderColor = useColorModeValue('gray.300', 'gray.700')
+    setInitialAvailabilities(availabilities)
+  }, [currentAccount.address])
 
   const saveAvailabilities = async () => {
     setLoading(true)
@@ -52,7 +55,7 @@ const AvailabilityConfig: React.FC = () => {
         ...currentAccount!,
         preferences: {
           ...currentAccount!.preferences!,
-          availabilities: availabilities.current,
+          availabilities: initialAvailabilities,
           timezone: timezone,
         },
       })
@@ -66,10 +69,10 @@ const AvailabilityConfig: React.FC = () => {
     setLoading(false)
   }
 
-  const onChange = (day: number, ranges: TimeRange[]) => {
-    const newAvailabilities = [...availabilities.current]
-    newAvailabilities[day] = { weekday: day, ranges }
-    availabilities.current = newAvailabilities
+  const onChange = (day: number, ranges: TimeRange[] | null) => {
+    const newAvailabilities = [...initialAvailabilities]
+    newAvailabilities[day] = { weekday: day, ranges: ranges ?? [] }
+    setInitialAvailabilities(newAvailabilities)
   }
 
   const onChangeTz = (_timezone: string) => {
@@ -85,15 +88,11 @@ const AvailabilityConfig: React.FC = () => {
       </Box>
       <Text pt={2}>Your availabilities</Text>
       {initialAvailabilities.map((availability, index) => (
-        <Box
-          key={index}
-          py={2}
-          width="100%"
-          borderBottom="1px solid"
-          borderColor={borderColor}
-        >
-          <WeekdayConfig dayAvailability={availability} onChange={onChange} />
-        </Box>
+        <WeekdayConfig
+          key={`${currentAccount.address}:${index}`}
+          dayAvailability={availability}
+          onChange={onChange}
+        />
       ))}
       <Spacer />
       <Button
