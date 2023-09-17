@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   Flex,
   HStack,
   Icon,
@@ -10,18 +11,22 @@ import {
 import {
   addDays,
   addMinutes,
+  addMonths,
   areIntervalsOverlapping,
   eachMinuteOfInterval,
   format,
+  isBefore,
   isFuture,
   isLastDayOfMonth,
   isSameDay,
+  isSameMonth,
   isToday,
   isWithinInterval,
+  subDays,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import React, { useState } from 'react'
-import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
+import { FaArrowLeft, FaArrowRight, FaCalendar, FaClock } from 'react-icons/fa'
 
 import { AccountPreferences } from '@/types/Account'
 
@@ -118,6 +123,68 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     willStartScheduling(false)
     setShowConfirm(false)
     setShowPickTime(true)
+  }
+
+  function findNextDay(currentDay: Date, next: number) {
+    const nextDay = {
+      start: new Date(addDays(currentDay, next).setHours(0, 0, 0)),
+      end: new Date(addDays(currentDay, next).setHours(23, 59, 59)),
+    }
+    detectNextMonth(nextDay.start)
+    return nextDay
+  }
+
+  function detectNextMonth(day: Date) {
+    if (!isSameMonth(day, selectedMonth)) {
+      setSelectedMonth(day)
+      onMonthChange?.(day)
+    }
+  }
+
+  function onPreviousDay() {
+    let nextDay: Date | undefined = undefined
+    let possibleDay = findNextDay(pickedDay!, -1)
+    let i = 1
+    while (!nextDay) {
+      if (
+        blockedIntervals?.some(
+          blockedInterval =>
+            isWithinInterval(possibleDay.start, blockedInterval) &&
+            isWithinInterval(possibleDay.end, blockedInterval)
+        )
+      ) {
+        i++
+        possibleDay = findNextDay(pickedDay!, -i)
+      } else {
+        nextDay = new Date(possibleDay.start)
+      }
+    }
+
+    if (isBefore(nextDay, new Date())) return
+
+    handlePickDay(nextDay)
+  }
+
+  function onNextDay() {
+    let nextDay: Date | undefined = undefined
+    let possibleDay = findNextDay(pickedDay!, 1)
+    let i = 1
+    while (!nextDay) {
+      if (
+        blockedIntervals?.some(
+          blockedInterval =>
+            isWithinInterval(possibleDay.start, blockedInterval) &&
+            isWithinInterval(possibleDay.end, blockedInterval)
+        )
+      ) {
+        i++
+        possibleDay = findNextDay(pickedDay!, i)
+      } else {
+        nextDay = new Date(possibleDay.start)
+      }
+    }
+
+    handlePickDay(nextDay)
   }
 
   const color = useColorModeValue('primary.500', 'primary.400')
@@ -258,16 +325,24 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
                 Back
               </Text>
             </HStack>
-            <HStack alignItems="flex-start">
-              <Box mt="4px">
-                <FaCalendar />
-              </Box>
-              <VStack alignItems="flex-start">
-                <Text>{format(pickedDay!, 'PPPP')}</Text>
-                <Text fontSize="sm">
-                  Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
-                </Text>
-              </VStack>
+            <HStack gap={4}>
+              <Button onClick={onPreviousDay}>
+                <Icon as={FaArrowLeft} size={1} color={color} />
+              </Button>
+              <HStack alignItems="flex-start">
+                <Box mt="4px">
+                  <FaCalendar />
+                </Box>
+                <VStack alignItems="flex-start">
+                  <Text>{format(pickedDay!, 'PPPP')}</Text>
+                  <Text fontSize="sm">
+                    Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                  </Text>
+                </VStack>
+              </HStack>
+              <Button onClick={onNextDay}>
+                <Icon as={FaArrowRight} size="1.5em" color={color} />
+              </Button>
             </HStack>
           </PopupHeader>
 
