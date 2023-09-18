@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   Flex,
   HStack,
   Icon,
@@ -11,17 +12,20 @@ import {
   addDays,
   addMinutes,
   areIntervalsOverlapping,
+  differenceInDays,
   eachMinuteOfInterval,
   format,
+  isBefore,
   isFuture,
-  isLastDayOfMonth,
   isSameDay,
+  isSameMonth,
   isToday,
   isWithinInterval,
+  startOfDay,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import React, { useState } from 'react'
-import { FaArrowLeft, FaCalendar, FaClock } from 'react-icons/fa'
+import React, { useEffect, useState } from 'react'
+import { FaArrowLeft, FaArrowRight, FaCalendar, FaClock } from 'react-icons/fa'
 
 import { AccountPreferences } from '@/types/Account'
 
@@ -82,16 +86,22 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   const [pickedTime, setPickedTime] = useState(null as Date | null)
   const [showPickTime, setShowPickTime] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [disablePrev, setDisablePrev] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(new Date())
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (reset) {
       setPickedDay(null)
       setPickedTime(null)
       setShowPickTime(false)
       setShowConfirm(false)
+      setDisablePrev(false)
     }
   }, [reset])
+
+  useEffect(() => {
+    workDayArrows()
+  }, [pickedDay])
 
   const handlePickDay = (day: Date) => {
     if (pickedDay !== day) {
@@ -118,6 +128,80 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     willStartScheduling(false)
     setShowConfirm(false)
     setShowPickTime(true)
+  }
+
+  function findNextDay(currentDay: Date, next: number) {
+    const nextDay = {
+      start: new Date(addDays(currentDay, next).setHours(0, 0, 0)),
+      end: new Date(addDays(currentDay, next).setHours(23, 59, 59)),
+    }
+    detectNextMonth(nextDay.start)
+    return nextDay
+  }
+
+  function detectNextMonth(day: Date) {
+    if (!isSameMonth(day, selectedMonth)) {
+      setSelectedMonth(day)
+      onMonthChange?.(day)
+    }
+  }
+
+  function workDayArrows() {
+    if (
+      pickedDay &&
+      differenceInDays(pickedDay, startOfDay(new Date())) === 0
+    ) {
+      setDisablePrev(true)
+    } else {
+      setDisablePrev(false)
+    }
+  }
+
+  function onPreviousDay() {
+    let nextDay: Date | undefined = undefined
+    let possibleDay = findNextDay(pickedDay!, -1)
+    let i = 1
+    while (!nextDay) {
+      if (
+        blockedIntervals?.some(
+          blockedInterval =>
+            isWithinInterval(possibleDay.start, blockedInterval) &&
+            isWithinInterval(possibleDay.end, blockedInterval)
+        )
+      ) {
+        i++
+        possibleDay = findNextDay(pickedDay!, -i)
+      } else {
+        nextDay = new Date(possibleDay.start)
+      }
+    }
+
+    if (isBefore(nextDay, startOfDay(new Date()))) return
+
+    handlePickDay(nextDay)
+  }
+
+  function onNextDay() {
+    setDisablePrev(false)
+    let nextDay: Date | undefined = undefined
+    let possibleDay = findNextDay(pickedDay!, 1)
+    let i = 1
+    while (!nextDay) {
+      if (
+        blockedIntervals?.some(
+          blockedInterval =>
+            isWithinInterval(possibleDay.start, blockedInterval) &&
+            isWithinInterval(possibleDay.end, blockedInterval)
+        )
+      ) {
+        i++
+        possibleDay = findNextDay(pickedDay!, i)
+      } else {
+        nextDay = new Date(possibleDay.start)
+      }
+    }
+
+    handlePickDay(nextDay)
   }
 
   const color = useColorModeValue('primary.500', 'primary.400')
@@ -258,17 +342,25 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
                 Back
               </Text>
             </HStack>
-            <HStack alignItems="flex-start">
-              <Box mt="4px">
-                <FaCalendar />
-              </Box>
-              <VStack alignItems="flex-start">
-                <Text>{format(pickedDay!, 'PPPP')}</Text>
-                <Text fontSize="sm">
-                  Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
-                </Text>
-              </VStack>
+            <HStack gap={4} mb={4}>
+              <Button onClick={onPreviousDay} isDisabled={disablePrev}>
+                <Icon as={FaArrowLeft} size="1.5em" color={color} />
+              </Button>
+              <HStack alignItems="flex-start" flex={1}>
+                <Box mt="4px">
+                  <FaCalendar />
+                </Box>
+                <VStack alignItems="flex-start">
+                  <Text>{format(pickedDay!, 'PPPP')}</Text>
+                </VStack>
+              </HStack>
+              <Button onClick={onNextDay}>
+                <Icon as={FaArrowRight} size="1.5em" color={color} />
+              </Button>
             </HStack>
+            <Text align="center" fontSize="sm">
+              Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+            </Text>
           </PopupHeader>
 
           {checkingSlots ? (

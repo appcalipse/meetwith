@@ -7,6 +7,7 @@ import * as Sentry from '@sentry/nextjs'
 import {
   addDays,
   addMinutes,
+  addMonths,
   areIntervalsOverlapping,
   Day,
   endOfMonth,
@@ -24,6 +25,7 @@ import {
   startOfMonth,
   subDays,
   subMinutes,
+  subMonths,
   subSeconds,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
@@ -177,12 +179,12 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     const blockedAvailabilities = getBlockedAvailabilities(
       account?.preferences?.availabilities
     )
-    // We need to take into consideration 1 day before the beginning of the month
-    // and 1 day after the end of the month in the calculation due to Timezone
+    // We need to take into consideration 1 month before the beginning of the month
+    // and 1 month after the end of the month in the calculation due to Timezone
     // spans be able to be inside one month for one user and in another for other
     // user when we consider first and last days of the month.
-    let startDate = subDays(startOfMonth(currentMonth), 1)
-    const endDate = addDays(endOfMonth(currentMonth), 1)
+    let startDate = subMonths(startOfMonth(currentMonth), 1)
+    const endDate = addMonths(endOfMonth(currentMonth), 1)
 
     const unavailableDate = blockedAvailabilities.reduce((acc, curr) => {
       if (getDay(startDate) === curr.weekday) acc.push(startDate)
