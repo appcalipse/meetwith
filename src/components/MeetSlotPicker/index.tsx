@@ -11,21 +11,20 @@ import {
 import {
   addDays,
   addMinutes,
-  addMonths,
   areIntervalsOverlapping,
+  differenceInDays,
   eachMinuteOfInterval,
   format,
   isBefore,
   isFuture,
-  isLastDayOfMonth,
   isSameDay,
   isSameMonth,
   isToday,
   isWithinInterval,
-  subDays,
+  startOfDay,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { FaArrowLeft, FaArrowRight, FaCalendar, FaClock } from 'react-icons/fa'
 
 import { AccountPreferences } from '@/types/Account'
@@ -87,16 +86,22 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   const [pickedTime, setPickedTime] = useState(null as Date | null)
   const [showPickTime, setShowPickTime] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [disablePrev, setDisablePrev] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(new Date())
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (reset) {
       setPickedDay(null)
       setPickedTime(null)
       setShowPickTime(false)
       setShowConfirm(false)
+      setDisablePrev(false)
     }
   }, [reset])
+
+  useEffect(() => {
+    workDayArrows()
+  }, [pickedDay])
 
   const handlePickDay = (day: Date) => {
     if (pickedDay !== day) {
@@ -141,6 +146,17 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     }
   }
 
+  function workDayArrows() {
+    if (
+      pickedDay &&
+      differenceInDays(pickedDay, startOfDay(new Date())) === 0
+    ) {
+      setDisablePrev(true)
+    } else {
+      setDisablePrev(false)
+    }
+  }
+
   function onPreviousDay() {
     let nextDay: Date | undefined = undefined
     let possibleDay = findNextDay(pickedDay!, -1)
@@ -160,12 +176,13 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       }
     }
 
-    if (isBefore(nextDay, new Date())) return
+    if (isBefore(nextDay, startOfDay(new Date()))) return
 
     handlePickDay(nextDay)
   }
 
   function onNextDay() {
+    setDisablePrev(false)
     let nextDay: Date | undefined = undefined
     let possibleDay = findNextDay(pickedDay!, 1)
     let i = 1
@@ -325,25 +342,25 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
                 Back
               </Text>
             </HStack>
-            <HStack gap={4}>
-              <Button onClick={onPreviousDay}>
-                <Icon as={FaArrowLeft} size={1} color={color} />
+            <HStack gap={4} mb={4}>
+              <Button onClick={onPreviousDay} isDisabled={disablePrev}>
+                <Icon as={FaArrowLeft} size="1.5em" color={color} />
               </Button>
-              <HStack alignItems="flex-start">
+              <HStack alignItems="flex-start" flex={1}>
                 <Box mt="4px">
                   <FaCalendar />
                 </Box>
                 <VStack alignItems="flex-start">
                   <Text>{format(pickedDay!, 'PPPP')}</Text>
-                  <Text fontSize="sm">
-                    Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
-                  </Text>
                 </VStack>
               </HStack>
               <Button onClick={onNextDay}>
                 <Icon as={FaArrowRight} size="1.5em" color={color} />
               </Button>
             </HStack>
+            <Text align="center" fontSize="sm">
+              Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+            </Text>
           </PopupHeader>
 
           {checkingSlots ? (
