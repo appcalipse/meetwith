@@ -13,7 +13,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const account = req.body
 
     if (account.address !== account_id) {
-      return res.status(403).send("You cant edit someone else's account")
+      return res.status(403).send("You can't edit someone else's account")
     }
 
     try {
