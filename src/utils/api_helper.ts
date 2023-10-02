@@ -79,6 +79,20 @@ export const getAccount = async (identifier: string): Promise<Account> => {
   }
 }
 
+export const getAccountByDomain = async (
+  domain: string
+): Promise<Subscription | null> => {
+  try {
+    return (await internalFetch(`/accounts/domain/${domain}`)) as Subscription
+  } catch (e: any) {
+    if (e.status && e.status === 404) {
+      return null
+      // throw new AccountNotFoundError(domain)
+    }
+    throw e
+  }
+}
+
 export const getExistingAccountsSimple = async (
   addresses: string[]
 ): Promise<SimpleAccountInfo[]> => {

@@ -11,6 +11,7 @@ import { ca } from 'date-fns/locale'
 import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
+import { getAccountByDomain } from './api_helper'
 import lensHelper from './lens.helper'
 
 interface AccountExtraProps {
@@ -67,6 +68,10 @@ const checkFreenameBelongsTo = async (
   const resolvedDomain = await web3resolver.resolve(domain)
 
   return resolvedDomain?.ownerAddress || null
+}
+
+const checkDomainBelongsTo = async (domain: string): Promise<string | null> => {
+  return (await getAccountByDomain(domain as string))?.owner_account || null
 }
 
 export const resolveFreename = async (
@@ -213,6 +218,13 @@ export const getAddressFromDomain = async (
     const lensProfile = await lensHelper.getLensProfile(domain)
     return lensProfile?.ownedBy.toLowerCase()
   } else {
-    return (await checkFreenameBelongsTo(domain))?.toLowerCase()
+    const freename_address = (
+      await checkFreenameBelongsTo(domain)
+    )?.toLowerCase()
+    if (freename_address) {
+      return freename_address
+    } else {
+      return (await checkDomainBelongsTo(domain))?.toLowerCase()
+    }
   }
 }
