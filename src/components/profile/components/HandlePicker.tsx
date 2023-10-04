@@ -52,26 +52,27 @@ const HandlePicker: React.FC<{
       return e.stopPropagation()
     }
 
-    if (option.type === ProfileInfoProvider.CUSTOM && inputRef.current) {
+    if (
+      (option.type === ProfileInfoProvider.CUSTOM ||
+        option.type === ProfileInfoProvider.MWW) &&
+      inputRef.current
+    ) {
       ;(inputRef.current as HTMLInputElement).focus()
     }
 
-    return setValue(
-      option.type !== ProfileInfoProvider.CUSTOM
-        ? option
-        : { ...option, label: '' }
-    )
+    return setValue(option)
   }
 
-  const textChange = (text: string) => {
+  const textChange = (text: string, type: any) => {
     const option = options.find(({ value }) => text === value)
+
     if (option) {
       setValue(option)
     } else {
       setValue({
         label: text,
-        value: '',
-        type: ProfileInfoProvider.CUSTOM,
+        value: text,
+        type: type,
       })
     }
   }
@@ -90,15 +91,21 @@ const HandlePicker: React.FC<{
   const noFreename = !options.some(
     option => option.type === ProfileInfoProvider.FREENAME
   )
+  const noMWW = !options.some(option => option.type === ProfileInfoProvider.MWW)
+  const noCustom = !options.some(
+    option => option.type === ProfileInfoProvider.CUSTOM
+  )
 
-  const _options = [
-    {
-      label: 'Custom display name',
-      value: '',
-      type: ProfileInfoProvider.CUSTOM,
-    },
-    ...options,
-  ]
+  const _options = noCustom
+    ? [
+        {
+          label: 'Custom display name',
+          value: '',
+          type: ProfileInfoProvider.CUSTOM,
+        },
+        ...options,
+      ]
+    : options
 
   if (noENS) {
     _options.push({
@@ -132,6 +139,14 @@ const HandlePicker: React.FC<{
     })
   }
 
+  if (noMWW) {
+    _options.push({
+      label: 'No MWW Domain (PRO plan)',
+      value: '',
+      type: ProfileInfoProvider.MWW,
+    })
+  }
+
   let filtered: (DisplayName & { isSelected: boolean })[] = []
   for (const element of _options) {
     const isDuplicate = filtered
@@ -139,13 +154,21 @@ const HandlePicker: React.FC<{
       .includes(element.label)
 
     const isSelected =
+      (selected?.type === ProfileInfoProvider.MWW &&
+        element.type === ProfileInfoProvider.MWW) ||
       (selected?.type === ProfileInfoProvider.CUSTOM &&
         element.type === ProfileInfoProvider.CUSTOM) ||
       (selected?.value === element.value && element.value !== '')
 
-    if (!isDuplicate) {
+    if (
+      !isDuplicate ||
+      (element.type === ProfileInfoProvider.MWW &&
+        filtered.some(filter => filter.type !== ProfileInfoProvider.MWW)) ||
+      (element.type === ProfileInfoProvider.CUSTOM &&
+        filtered.some(filter => filter.type !== ProfileInfoProvider.CUSTOM))
+    ) {
       filtered.push({ ...element, isSelected })
-    } else if (element.type !== ProfileInfoProvider.MWW) {
+    } else {
       filtered = filtered.filter(filter => filter.label !== element.label)
       filtered.push({ ...element, isSelected })
     }
@@ -153,7 +176,7 @@ const HandlePicker: React.FC<{
 
   if (filtered.filter(option => option.isSelected).length > 1) {
     for (const element of filtered) {
-      if (element.isSelected && element.type === ProfileInfoProvider.CUSTOM) {
+      if (element.isSelected && selected?.type != element.type) {
         element.isSelected = false
       }
     }
@@ -172,9 +195,9 @@ const HandlePicker: React.FC<{
           ref={inputRef}
           type="text"
           placeholder="Write down your display name, or pick one from the list (if available)"
-          value={selected?.label || ''}
+          value={selected?.value || selected?.label || ''}
           flex={1}
-          onChange={e => textChange(e.target.value)}
+          onChange={e => textChange(e.target.value, selected?.type)}
         />
         <InputRightElement children={<FaChevronDown />} />
       </InputGroup>
@@ -196,11 +219,16 @@ const HandlePicker: React.FC<{
               <VStack overflow="hidden">
                 {filtered.map(({ value, label, type, isSelected }, i) => {
                   const disabled =
-                    type !== ProfileInfoProvider.CUSTOM && value === ''
+                    type !== ProfileInfoProvider.CUSTOM &&
+                    type !== ProfileInfoProvider.MWW &&
+                    value == ''
 
                   let extraText = ''
                   if (value !== '') {
                     switch (type) {
+                      case ProfileInfoProvider.CUSTOM:
+                        extraText = ' (Saved Custom Name)'
+                        break
                       case ProfileInfoProvider.ENS:
                         extraText = ' (from ENS)'
                         break

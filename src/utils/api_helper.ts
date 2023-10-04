@@ -37,6 +37,7 @@ import {
   InvalidSessionError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  SubscriptionUpdateError,
   TimeNotAvailableError,
 } from './errors'
 import { POAP, POAPEvent } from './services/poap.helper'
@@ -508,6 +509,23 @@ export const getSubscriptionForDomain = async (
   return (await internalFetch(
     `/secure/subscriptions/check/${domain}`
   )) as Subscription
+}
+
+export const updateSubscriptionForDomain = async (
+  domain: string,
+  address: string
+): Promise<Subscription[] | undefined> => {
+  try {
+    return (await internalFetch(`/accounts/domain/update`, 'POST', {
+      domain,
+      address,
+    })) as Subscription[]
+  } catch (e: any) {
+    if (e.status && e.status === 404) {
+      throw new SubscriptionUpdateError(domain)
+    }
+    throw e
+  }
 }
 
 export const validateWebdav = async (

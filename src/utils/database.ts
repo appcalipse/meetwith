@@ -1104,9 +1104,51 @@ export const getSubscription = async (
     Sentry.captureException(error)
   }
 
-  if (data) {
+  if (data && data?.length > 0) {
     return data[0] as Subscription
   }
+  return undefined
+}
+
+export const getExistingSubscriptionsByAddress = async (
+  address: string
+): Promise<Subscription[] | undefined> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select()
+    .ilike('owner_account', address.toLocaleLowerCase())
+  // .gt('expiry_time', new Date().toISOString())
+  // .order('registered_at', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  if (data && data?.length > 0) {
+    return data as Subscription[]
+  }
+
+  return undefined
+}
+
+export const getExistingSubscriptionsByDomain = async (
+  domain: string
+): Promise<Subscription[] | undefined> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select()
+    .ilike('domain', domain.toLocaleLowerCase())
+  // .gt('expiry_time', new Date().toISOString())
+  // .order('registered_at', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  if (data && data?.length > 0) {
+    return data as Subscription[]
+  }
+
   return undefined
 }
 
@@ -1120,9 +1162,9 @@ export const updateAccountSubscriptions = async (
         expiry_time: subscription.expiry_time,
         config_ipfs_hash: subscription.config_ipfs_hash,
         plan_id: subscription.plan_id,
-        owner_account: subscription.owner_account,
+        domain: subscription.domain,
       })
-      .eq('domain', subscription.domain)
+      .eq('owner_account', subscription.owner_account)
       .eq('chain', subscription.chain)
 
     if (error && error.length > 0) {
