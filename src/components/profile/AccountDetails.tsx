@@ -40,6 +40,7 @@ import {
   getUnstoppableDomainsForAddress,
   saveAccountChanges,
   syncSubscriptions,
+  updateSubscriptionForDomain,
 } from '../../utils/api_helper'
 import { isProAccount } from '../../utils/subscription_manager'
 import IPFSLink from '../IPFSLink'
@@ -203,6 +204,16 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       }
     }
 
+    const getCUSTOMHandles = async () => {
+      if (currentAccount?.preferences?.name) {
+        handles.push({
+          label: currentAccount.preferences.name,
+          value: currentAccount.preferences.name,
+          type: ProfileInfoProvider.CUSTOM,
+        })
+      }
+    }
+
     const getFreenameHandles = async () => {
       const freename = await resolveFreename(currentAccount!.address)
       if (freename) {
@@ -215,6 +226,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     }
 
     await Promise.all([
+      getCUSTOMHandles(),
       getMWWDomains(),
       lensProfiles(),
       getENSHandle(),
@@ -248,13 +260,29 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       })
       return
     }
-
+    let new_domain
+    if (name?.type === ProfileInfoProvider.MWW) {
+      try {
+        const subscriptions = await updateSubscriptionForDomain(
+          name?.label,
+          currentAccount.address
+        )
+        if (subscriptions && subscriptions.length) {
+          new_domain = subscriptions[0].domain
+        }
+      } catch (e) {
+        //TODO handle error
+        console.error(e)
+      }
+    } else {
+      new_domain = name?.label
+    }
     try {
       const updatedAccount = await saveAccountChanges({
         ...currentAccount!,
         preferences: {
           ...currentAccount!.preferences!,
-          name: name?.label,
+          name: new_domain,
           description,
           socialLinks: [
             { type: SocialLinkType.TWITTER, url: twitter },
