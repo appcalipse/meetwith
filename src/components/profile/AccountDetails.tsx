@@ -267,6 +267,8 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           name?.label,
           currentAccount.address
         )
+        // ToDo: return for in used domain
+        // ToDo: Provide invalid domains
         if (subscriptions && subscriptions.length) {
           new_domain = subscriptions[0].domain
         }
