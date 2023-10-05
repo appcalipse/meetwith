@@ -87,7 +87,6 @@ export const getAccountByDomain = async (
   } catch (e: any) {
     if (e.status && e.status === 404) {
       return null
-      // throw new AccountNotFoundError(domain)
     }
     throw e
   }
