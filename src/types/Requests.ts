@@ -93,5 +93,4 @@ export interface DiscordMeetingRequest {
   accounts: Account[]
   duration: number
   interval: number
-  agenda: string
 }

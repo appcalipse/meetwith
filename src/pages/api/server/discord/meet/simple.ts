@@ -13,7 +13,7 @@ export default async function simpleDiscordMeet(
   res: NextApiResponse
 ) {
   if (req.method === 'POST') {
-    const { schedulerDiscordId, accounts, duration, interval, agenda } =
+    const { schedulerDiscordId, accounts, duration, interval } =
       req.body as DiscordMeetingRequest
 
     const scheduler = await getAccountFromDiscordId(schedulerDiscordId)
@@ -69,7 +69,7 @@ export default async function simpleDiscordMeet(
         new Date(slot.end),
         participants,
         scheduler,
-        agenda
+        'Scheduled from Discord'
       )
 
       return res.status(200).json(meeting)
