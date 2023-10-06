@@ -501,7 +501,7 @@ export const syncSubscriptions = async (): Promise<Subscription[]> => {
   return (await internalFetch(`/secure/subscriptions/sync`)) as Subscription[]
 }
 
-export const getSubscriptionForDomain = async (
+export const getSubscriptionByDomain = async (
   domain: string
 ): Promise<Subscription | undefined> => {
   return (await internalFetch(
