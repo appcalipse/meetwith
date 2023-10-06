@@ -7,11 +7,10 @@ import {
   GetWalletClientResult,
   switchNetwork,
 } from '@wagmi/core'
-import { ca } from 'date-fns/locale'
 import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
-import { getAccountByDomain } from './api_helper'
+import { getSubscriptionByDomain } from './api_helper'
 import lensHelper from './lens.helper'
 
 interface AccountExtraProps {
@@ -71,7 +70,9 @@ const checkFreenameBelongsTo = async (
 }
 
 const checkDomainBelongsTo = async (domain: string): Promise<string | null> => {
-  return (await getAccountByDomain(domain as string))?.owner_account || null
+  return (
+    (await getSubscriptionByDomain(domain as string))?.owner_account || null
+  )
 }
 
 export const resolveFreename = async (
