@@ -6,13 +6,9 @@ import { getSubscription } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    try {
-      const subscription = await getSubscription(req.query.domain as string)
-      if (subscription) {
-        return res.status(200).json(subscription)
-      }
-    } catch (e) {
-      return res.status(500).send('Internal Server Error')
+    const subscription = await getSubscription(req.query.domain as string)
+    if (subscription) {
+      return res.status(200).json(subscription)
     }
   }
 
