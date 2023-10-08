@@ -18,7 +18,7 @@ import {
   Plan,
   Subscription,
 } from '../types/Subscription'
-import { getSubscriptionForDomain, syncSubscriptions } from './api_helper'
+import { getSubscriptionByDomain, syncSubscriptions } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
 import { validateChainToActOn } from './rpc_helper_front'
 
@@ -170,7 +170,7 @@ export const subscribeToPlan = async (
   walletClient?: GetWalletClientResult
 ): Promise<WriteContractResult> => {
   try {
-    const subExists = await getSubscriptionForDomain(domain)
+    const subExists = await getSubscriptionByDomain(domain)
     if (subExists && subExists!.owner_account !== accountAddress) {
       throw Error('Domain already registered')
     }
