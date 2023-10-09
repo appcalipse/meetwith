@@ -2,7 +2,7 @@ import '../styles/globals.css'
 import '../styles/swipers.css'
 
 import { ChakraProvider } from '@chakra-ui/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ConnectKitProvider } from 'connectkit'
 import cookie from 'cookie'
@@ -11,10 +11,10 @@ import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
 import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
-import { WagmiConfig } from 'wagmi'
-import { useDisconnect } from 'wagmi'
+import { useDisconnect, WagmiConfig } from 'wagmi'
 
 import { useLogin } from '@/session/login'
+import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
 import { wagmiConfig } from '@/utils/user_manager'
 
@@ -33,8 +33,6 @@ interface MyAppProps extends AppProps {
   currentAccount?: Account | null
   checkAuthOnClient?: boolean
 }
-
-const queryClient = new QueryClient()
 
 function MyApp({
   Component,
