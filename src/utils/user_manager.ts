@@ -16,6 +16,7 @@ import {
 import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
+import { queryClient } from './react_query'
 import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, saveSignature } from './storage'
 import { isValidEVMAddress } from './validations'
@@ -64,10 +65,10 @@ export const loginWithAddress = async (
 ) => {
   setLoginIn(true)
   try {
-    const account = await loginOrSignup(
-      address,
-      Intl.DateTimeFormat().resolvedOptions().timeZone
+    const account = await queryClient.fetchQuery(['account', address], () =>
+      loginOrSignup(address, Intl.DateTimeFormat().resolvedOptions().timeZone)
     )
+
     return account
   } catch (err) {
     console.error(err)
