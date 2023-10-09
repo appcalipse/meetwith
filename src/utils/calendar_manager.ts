@@ -57,6 +57,7 @@ import {
   TimeNotAvailableError,
 } from './errors'
 import { getSlugFromText } from './generic_utils'
+import { queryClient } from './react_query'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
@@ -563,6 +564,27 @@ const scheduleMeeting = async (
       if (currentAccount && schedulingType !== SchedulingType.DISCORD) {
         return (await decryptMeeting(slot, currentAccount))!
       }
+
+      // Invalidate meetings cache and update meetings where required
+      queryClient.invalidateQueries([
+        'meetings',
+        currentAccount?.address?.toLowerCase(),
+      ])
+      queryClient.invalidateQueries([
+        'busySlots',
+        currentAccount?.address?.toLowerCase(),
+      ])
+
+      participants.forEach(p => {
+        queryClient.invalidateQueries([
+          'meetings',
+          p.account_address?.toLowerCase(),
+        ])
+        queryClient.invalidateQueries([
+          'busySlots',
+          p.account_address?.toLowerCase(),
+        ])
+      })
 
       return {
         id: slot.id!,

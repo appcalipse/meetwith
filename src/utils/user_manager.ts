@@ -65,8 +65,10 @@ export const loginWithAddress = async (
 ) => {
   setLoginIn(true)
   try {
-    const account = await queryClient.fetchQuery(['account', address], () =>
-      loginOrSignup(address, Intl.DateTimeFormat().resolvedOptions().timeZone)
+    const account = await queryClient.fetchQuery(
+      ['account', address.toLowerCase()],
+      () =>
+        loginOrSignup(address, Intl.DateTimeFormat().resolvedOptions().timeZone)
     )
 
     return account
