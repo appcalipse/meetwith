@@ -2,6 +2,8 @@ import '../styles/globals.css'
 import '../styles/swipers.css'
 
 import { ChakraProvider } from '@chakra-ui/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ConnectKitProvider } from 'connectkit'
 import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
@@ -31,6 +33,8 @@ interface MyAppProps extends AppProps {
   currentAccount?: Account | null
   checkAuthOnClient?: boolean
 }
+
+const queryClient = new QueryClient()
 
 function MyApp({
   Component,
@@ -67,23 +71,26 @@ function MyApp({
   }
 
   return (
-    <ChakraProvider theme={customTheme}>
-      <ChakraMDXProvider>
-        <CookiesProvider>
-          <WagmiConfig config={wagmiConfig}>
-            <AccountProvider
-              currentAccount={currentAccount}
-              logged={!!currentAccount}
-            >
-              <Inner>
-                <Component {...customProps} />
-              </Inner>
-            </AccountProvider>
-            <CookieConsent consentCookie={consentCookie as boolean} />
-          </WagmiConfig>
-        </CookiesProvider>
-      </ChakraMDXProvider>
-    </ChakraProvider>
+    <QueryClientProvider client={queryClient}>
+      <ReactQueryDevtools initialIsOpen={true} />
+      <ChakraProvider theme={customTheme}>
+        <ChakraMDXProvider>
+          <CookiesProvider>
+            <WagmiConfig config={wagmiConfig}>
+              <AccountProvider
+                currentAccount={currentAccount}
+                logged={!!currentAccount}
+              >
+                <Inner>
+                  <Component {...customProps} />
+                </Inner>
+              </AccountProvider>
+              <CookieConsent consentCookie={consentCookie as boolean} />
+            </WagmiConfig>
+          </CookiesProvider>
+        </ChakraMDXProvider>
+      </ChakraProvider>
+    </QueryClientProvider>
   )
 }
 
