@@ -39,6 +39,7 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
+import { queryClient } from './react_query'
 import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
@@ -70,7 +71,11 @@ export const internalFetch = async (
 
 export const getAccount = async (identifier: string): Promise<Account> => {
   try {
-    return (await internalFetch(`/accounts/${identifier}`)) as Account
+    const account = await queryClient.fetchQuery(
+      ['account', identifier.toLowerCase()],
+      () => internalFetch(`/accounts/${identifier}`)
+    )
+    return account as Account
   } catch (e: any) {
     if (e.status && e.status === 404) {
       throw new AccountNotFoundError(identifier)
@@ -297,11 +302,17 @@ export const getBusySlots = async (
   limit?: number,
   offset?: number
 ): Promise<Interval[]> => {
-  const response = (await internalFetch(
-    `/meetings/busy/${accountIdentifier}?limit=${limit || undefined}&offset=${
-      offset || 0
-    }&start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`
-  )) as Interval[]
+  const response = await queryClient.fetchQuery(
+    ['busySlots', accountIdentifier?.toLowerCase(), start, end, limit, offset],
+    () =>
+      internalFetch(
+        `/meetings/busy/${accountIdentifier}?limit=${
+          limit || undefined
+        }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
+          end?.getTime() || undefined
+        }`
+      ) as Promise<Interval[]>
+  )
   return response.map(slot => ({
     ...slot,
     start: new Date(slot.start),
@@ -361,9 +372,11 @@ export const subscribeToWaitlist = async (
 }
 
 export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
-  const response = (await internalFetch(
-    `/meetings/meeting/${slot_id}`
-  )) as DBSlotEnhanced
+  const response = await queryClient.fetchQuery(
+    ['meeting', slot_id],
+    () =>
+      internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlotEnhanced>
+  )
   return {
     ...response,
     start: new Date(response.start),
@@ -457,9 +470,10 @@ export const signup = async (
 export const listConnectedCalendars = async (
   syncOnly?: boolean
 ): Promise<ConnectedCalendarCore[]> => {
-  return (await internalFetch(
-    `/secure/calendar_integrations?syncOnly=${syncOnly ? 'true' : 'false'}`
-  )) as ConnectedCalendarCore[]
+  return []
+  // return (await internalFetch(
+  //   `/secure/calendar_integrations?syncOnly=${syncOnly ? 'true' : 'false'}`
+  // )) as ConnectedCalendarCore[]
 }
 
 export const deleteConnectedCalendar = async (
