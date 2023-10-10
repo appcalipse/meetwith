@@ -50,7 +50,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     ) {
       return res
         .status(403)
-        .send('You cant schedule a meeting for someone else')
+        .send("You can't schedule a meeting for someone else")
     }
 
     try {
