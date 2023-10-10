@@ -70,9 +70,13 @@ const checkFreenameBelongsTo = async (
 }
 
 const checkDomainBelongsTo = async (domain: string): Promise<string | null> => {
-  return (
-    (await getSubscriptionByDomain(domain as string))?.owner_account || null
-  )
+  try {
+    return (
+      (await getSubscriptionByDomain(domain as string))?.owner_account || null
+    )
+  } catch (e) {
+    return null
+  }
 }
 
 export const resolveFreename = async (
