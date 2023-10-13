@@ -48,7 +48,7 @@
     "amplitude-js": "^8.12.0",
     "arrow-keys-react": "^1.0.6",
     "chakra-react-select": "^4.6.0",
-    "connectkit": "^1.4.0",
+    "connectkit": "^1.5.0",
     "cookie": "^0.4.1",
     "crypto-js": "^4.1.1",
     "date-fns": "^2.29.0",

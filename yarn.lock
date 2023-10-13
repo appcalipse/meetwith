@@ -8326,10 +8326,10 @@ configstore@^5.0.1:
     write-file-atomic "^3.0.0"
     xdg-basedir "^4.0.0"
 
-connectkit@^1.4.0:
-  version "1.5.2"
-  resolved "https://registry.yarnpkg.com/connectkit/-/connectkit-1.5.2.tgz#fb7193d05f9917778c6631b93740618117d2d0ed"
-  integrity sha512-H3sRZjd8u2DG68+eQ7OUcTCA8fgTiZx7N6s06seZcC+PV47luevljzTX8nkkdLAcU+zhUJknL2gmko340+f8RA==
+connectkit@^1.5.0:
+  version "1.5.3"
+  resolved "https://registry.yarnpkg.com/connectkit/-/connectkit-1.5.3.tgz#3e6bcd6f766c4577cb314d72cd42eee807b5fd51"
+  integrity sha512-vXneVOa+oit5Migoxca2QkgVBHaROItzb2kW13o7aUrcEcecYIGZjsizsVM2YvIdKihyWs+zJFrlED4g8zAMew==
   dependencies:
     buffer "^6.0.3"
     detect-browser "^5.3.0"
