@@ -122,13 +122,14 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
         )}
         <Spacer flex={1} />
 
-        {isSelected && !times.some(time => time.end === '24:00') && (
+        {isSelected && (
           <IconButton
             margin="0"
             color={iconColor}
             aria-label="add"
             icon={<FaPlus size={18} />}
             onClick={handleAddSlotClick}
+            isDisabled={times.some(time => time.end === '24:00')}
           />
         )}
       </HStack>

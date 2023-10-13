@@ -235,6 +235,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         position: 'top',
         isClosable: true,
       })
+      setSearchingTimes(false)
       return
     }
 
@@ -273,7 +274,9 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       setGroupTimes(suggestions.slice(0, 20))
     }
 
-    await Promise.all([checkAccount(), checkSuggestions()])
+    try {
+      await Promise.all([checkAccount(), checkSuggestions()])
+    } catch (e) {}
     setSearchingTimes(false)
   }
 
