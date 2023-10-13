@@ -9,7 +9,7 @@ import {
 import { parseUnits, zeroAddress } from 'viem'
 
 import { ERC20 } from '../abis/erc20'
-import { MWWRegister } from '../abis/mww'
+import { MWWDomain, MWWRegister } from '../abis/mww'
 import { Account } from '../types/Account'
 import { AcceptedToken, getChainInfo, SupportedChain } from '../types/chains'
 import {
@@ -18,7 +18,7 @@ import {
   Plan,
   Subscription,
 } from '../types/Subscription'
-import { getSubscriptionForDomain, syncSubscriptions } from './api_helper'
+import { getSubscriptionByDomain, syncSubscriptions } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
 import { validateChainToActOn } from './rpc_helper_front'
 
@@ -170,7 +170,7 @@ export const subscribeToPlan = async (
   walletClient?: GetWalletClientResult
 ): Promise<WriteContractResult> => {
   try {
-    const subExists = await getSubscriptionForDomain(domain)
+    const subExists = await getSubscriptionByDomain(domain)
     if (subExists && subExists!.owner_account !== accountAddress) {
       throw Error('Domain already registered')
     }
@@ -305,4 +305,50 @@ export const convertBlockchainSubscriptionToSubscription = (
   }
 
   return subscriptionInfo
+}
+
+export const changeDomainOnChain = async (
+  accountAddress: string,
+  chain: SupportedChain,
+  domain: string,
+  newDomain: string,
+  walletClient?: GetWalletClientResult
+): Promise<WriteContractResult> => {
+  try {
+    const subExists = await getSubscriptionByDomain(newDomain)
+    if (subExists && subExists!.owner_account !== accountAddress) {
+      throw Error('Domain already registered')
+    }
+  } catch (e: any) {
+    if (e.status !== 404) {
+      throw e
+    }
+  }
+
+  const chainInfo = getChainInfo(chain)
+
+  try {
+    await validateChainToActOn(chain, walletClient)
+  } catch (e) {
+    throw Error('Please connect to the correct network')
+  }
+
+  const info = {
+    address: chainInfo!.domainContractAddess as `0x${string}`,
+    chainId: chainInfo!.id,
+    abi: MWWDomain,
+  }
+
+  try {
+    const config = await prepareWriteContract({
+      ...info,
+      functionName: 'changeDomain',
+      args: [domain, newDomain],
+    })
+
+    return await writeContract(config)
+  } catch (error) {
+    // TODO handle insufficient funds error
+    throw error
+  }
 }

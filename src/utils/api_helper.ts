@@ -84,7 +84,9 @@ export const getAccountByDomain = async (
   domain: string
 ): Promise<Subscription | null> => {
   try {
-    return (await internalFetch(`/accounts/domain/${domain}`)) as Subscription
+    return (await internalFetch(
+      `/accounts/subscriptions/check/${domain}`
+    )) as Subscription
   } catch (e: any) {
     if (e.status && e.status === 404) {
       return null
@@ -502,29 +504,12 @@ export const syncSubscriptions = async (): Promise<Subscription[]> => {
   return (await internalFetch(`/secure/subscriptions/sync`)) as Subscription[]
 }
 
-export const getSubscriptionForDomain = async (
+export const getSubscriptionByDomain = async (
   domain: string
 ): Promise<Subscription | undefined> => {
   return (await internalFetch(
     `/secure/subscriptions/check/${domain}`
   )) as Subscription
-}
-
-export const updateSubscriptionForDomain = async (
-  domain: string,
-  address: string
-): Promise<Subscription[] | undefined> => {
-  try {
-    return (await internalFetch(`/accounts/domain/update`, 'POST', {
-      domain,
-      address,
-    })) as Subscription[]
-  } catch (e: any) {
-    if (e.status && e.status === 404) {
-      throw new SubscriptionUpdateError(domain)
-    }
-    throw e
-  }
 }
 
 export const validateWebdav = async (

@@ -10,6 +10,7 @@ import {
   Heading,
   HStack,
   Input,
+  Link,
   ListItem,
   UnorderedList,
   useColorModeValue,
@@ -19,6 +20,7 @@ import { Textarea } from '@chakra-ui/textarea'
 import { format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
+import { useWalletClient } from 'wagmi'
 
 import lensHelper from '@/utils/lens.helper'
 import {
@@ -29,6 +31,7 @@ import {
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { Account, SocialLink, SocialLinkType } from '../../types/Account'
+import { getChainInfo } from '../../types/chains'
 import {
   getPlanInfo,
   Plan,
@@ -40,9 +43,11 @@ import {
   getUnstoppableDomainsForAddress,
   saveAccountChanges,
   syncSubscriptions,
-  updateSubscriptionForDomain,
 } from '../../utils/api_helper'
-import { isProAccount } from '../../utils/subscription_manager'
+import {
+  changeDomainOnChain,
+  isProAccount,
+} from '../../utils/subscription_manager'
 import IPFSLink from '../IPFSLink'
 import HandlePicker, {
   DisplayName,
@@ -55,6 +60,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { login } = useContext(AccountContext)
+
   const cancelDialogRef = useRef<any>()
 
   const [loading, setLoading] = useState(false)
@@ -71,6 +77,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   )
 
   const [nameOptions, setNameOptions] = useState<DisplayName[]>([])
+  const [proDomain, setProDomain] = useState<string>('')
+  const [newProDomain, setNewProDomain] = useState<string>('')
+
   const [name, setName] = useState<DisplayName | undefined>(
     currentAccount?.preferences?.name
       ? {
@@ -128,6 +137,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     )
   }
 
+  const chainInfo = getChainInfo(currentAccount.subscriptions[0]?.chain)
+  const { data: walletClient } = useWalletClient({ chainId: chainInfo?.id })
+
   const updateAccountSubs = async () => {
     setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
     const subscriptions = await syncSubscriptions()
@@ -163,15 +175,8 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         .filter(sub => sub.plan_id === Plan.PRO)
         .map(sub => sub.domain)
       if (domains) {
-        handles = handles.concat(
-          domains.map(domain => {
-            return {
-              label: domain,
-              value: domain,
-              type: ProfileInfoProvider.MWW,
-            }
-          })
-        )
+        setProDomain(domains[0])
+        setNewProDomain(domains[0])
       }
     }
 
@@ -204,16 +209,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       }
     }
 
-    const getCUSTOMHandles = async () => {
-      if (currentAccount?.preferences?.name) {
-        handles.push({
-          label: currentAccount.preferences.name,
-          value: currentAccount.preferences.name,
-          type: ProfileInfoProvider.CUSTOM,
-        })
-      }
-    }
-
     const getFreenameHandles = async () => {
       const freename = await resolveFreename(currentAccount!.address)
       if (freename) {
@@ -226,7 +221,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     }
 
     await Promise.all([
-      getCUSTOMHandles(),
       getMWWDomains(),
       lensProfiles(),
       getENSHandle(),
@@ -260,31 +254,13 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       })
       return
     }
-    let new_domain
-    if (name?.type === ProfileInfoProvider.MWW) {
-      try {
-        const subscriptions = await updateSubscriptionForDomain(
-          name?.label,
-          currentAccount.address
-        )
-        // ToDo: return for in used domain
-        // ToDo: Provide invalid domains
-        if (subscriptions && subscriptions.length) {
-          new_domain = subscriptions[0].domain
-        }
-      } catch (e) {
-        //TODO handle error
-        console.error(e)
-      }
-    } else {
-      new_domain = name?.label
-    }
+
     try {
       const updatedAccount = await saveAccountChanges({
         ...currentAccount!,
         preferences: {
           ...currentAccount!.preferences!,
-          name: new_domain,
+          name: name?.label,
           description,
           socialLinks: [
             { type: SocialLinkType.TWITTER, url: twitter },
@@ -299,6 +275,36 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       //TODO handle error
       console.error(e)
     }
+
+    setLoading(false)
+  }
+
+  const changeDomain = async () => {
+    setLoading(true)
+
+    if (!(await checkValidDomain(name?.label || '', currentAccount!.address))) {
+      setLoading(false)
+      toast({
+        title: 'You are not the owner of this name',
+        description: 'This name is used before.',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+
+    await changeDomainOnChain(
+      currentAccount.address,
+      currentAccount.subscriptions[0].chain,
+      proDomain,
+      newProDomain,
+      walletClient!
+    )
+
+    logEvent('Account Domain Chainged!')
+    login(currentAccount)
 
     setLoading(false)
   }
@@ -323,6 +329,50 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         ipfsHash={currentAccount!.preferences_path}
         title="Your account information is public and stored on IPFS. Your current IPFS link is"
       />
+
+      {currentAccount?.subscriptions?.filter(
+        sub => sub.plan_id === Plan.PRO
+      )[0] ? (
+        <FormControl pt={2}>
+          <FormLabel>⭐ PRO Account Configs</FormLabel>
+          <Input
+            value={newProDomain}
+            type="text"
+            placeholder="Your Custom Domain"
+            onChange={e => setNewProDomain(e.target.value)}
+          />
+          <FormHelperText>
+            This is your personal domain. Users can discover you through this
+            personal domain.
+            <Spacer />
+            Your current personal link is:{' '}
+            <Link
+              href={`${process.env.NEXT_PUBLIC_HOSTED_AT}/${proDomain}`}
+              target="_blank"
+            >
+              {process.env.NEXT_PUBLIC_HOSTED_AT}/{proDomain}{' '}
+            </Link>
+          </FormHelperText>
+        </FormControl>
+      ) : null}
+
+      {currentAccount?.subscriptions?.filter(
+        sub => sub.plan_id === Plan.PRO
+      )[0] ? (
+        <>
+          <Spacer />
+          <Button
+            isLoading={loading}
+            colorScheme="primary"
+            onClick={changeDomain}
+          >
+            Update Domain
+          </Button>
+          <Spacer />
+          <Spacer />
+          <Spacer />
+        </>
+      ) : null}
 
       <FormControl pt={2}>
         <FormLabel>Display name (optional)</FormLabel>
