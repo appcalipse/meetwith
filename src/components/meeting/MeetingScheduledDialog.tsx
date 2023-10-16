@@ -206,7 +206,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
           </VStack>
         ) : !!currentAccount ? (
           <VStack gap={4}>
-            {!hasConnectedCalendar ? (
+            {hasConnectedCalendar ? (
               <Button
                 colorScheme="primary"
                 onClick={() => router.push('/dashboard/notifications')}
