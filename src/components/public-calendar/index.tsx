@@ -424,26 +424,17 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
     setSchedulingType(scheduleType)
 
-    if (scheduleType === SchedulingType.GUEST) {
-      participants.push({
-        account_address: currentAccount?.address,
+    participants.push({
+      account_address: currentAccount?.address,
+      ...(scheduleType === SchedulingType.GUEST && {
         guest_email: guestEmail!,
-        name,
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Accepted,
-        slot_id: '',
-        meeting_id: '',
-      })
-    } else {
-      participants.push({
-        account_address: currentAccount?.address,
-        name,
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Accepted,
-        slot_id: '',
-        meeting_id: '',
-      })
-    }
+      }),
+      name,
+      type: ParticipantType.Scheduler,
+      status: ParticipationStatus.Accepted,
+      slot_id: '',
+      meeting_id: '',
+    })
 
     try {
       const meeting = await scheduleMeeting(
