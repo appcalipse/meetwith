@@ -18,7 +18,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
-    if (!req.session.account?.address) {
+    if (req.session.account?.address) {
       const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
       const guest = meeting.participants_mapping.filter(
         p => p.guest_email && p.type === ParticipantType.Scheduler
