@@ -135,6 +135,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const isGuestEmailValid = () => !guestEmail || isValidEmail(guestEmail)
   const isUserEmailValid = () => !userEmail || isValidEmail(userEmail)
   const isNameEmpty = isEmptyString(name)
+  const isGuestEmailEmpty = isEmptyString(guestEmail)
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
@@ -323,7 +324,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       <Button
         width="full"
         isDisabled={
-          (!logged && !isGuestEmailValid()) ||
+          (scheduleType === SchedulingType.GUEST &&
+            (isGuestEmailEmpty || !isGuestEmailValid())) ||
           (logged &&
             ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
           isScheduling ||
