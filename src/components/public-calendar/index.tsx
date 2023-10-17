@@ -426,6 +426,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
     if (scheduleType === SchedulingType.GUEST) {
       participants.push({
+        account_address: currentAccount?.address,
         guest_email: guestEmail!,
         name,
         type: ParticipantType.Scheduler,
