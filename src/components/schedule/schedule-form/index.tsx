@@ -65,6 +65,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [guestEmail, setGuestEmail] = useState('')
   const [userEmail, setUserEmail] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
+  const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
+  const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
 
   const handleScheduleWithWallet = async () => {
     if (!logged && scheduleType === SchedulingType.REGULAR) {
@@ -75,18 +77,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   }
 
   const handleConfirm = async () => {
-    if (scheduleType === SchedulingType.GUEST && isGuestEmailEmpty) {
-      toast({
-        title: 'Empty guest email',
-        description:
-          'Please provide a valid email to be able to schedule a meeting as guest',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-      return
-    }
     if (customMeeting && !meetingUrl) {
       toast({
         title: 'Missing information',
@@ -98,10 +88,22 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       })
       return
     }
-    if (!name) {
+    if (isNameEmpty) {
       toast({
         title: 'Missing information',
         description: 'Please fill in your name (or any identifier)',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+    if (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) {
+      toast({
+        title: 'Missing information',
+        description:
+          'Please provide a valid email to be able to schedule a meeting as guest',
         status: 'error',
         duration: 5000,
         position: 'top',
@@ -144,10 +146,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     }
   }
 
-  const isGuestEmailValid = () => !guestEmail || isValidEmail(guestEmail)
-  const isUserEmailValid = () => !userEmail || isValidEmail(userEmail)
+  const isGuestEmailValid = () => isValidEmail(guestEmail)
+  const isUserEmailValid = () => isValidEmail(userEmail)
   const isNameEmpty = isEmptyString(name)
-  const isGuestEmailEmpty = isEmptyString(guestEmail)
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
@@ -171,7 +172,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
       {scheduleType === SchedulingType.GUEST && (
         <>
-          <FormControl>
+          <FormControl isInvalid={isNameEmpty}>
             <FormLabel>Your name</FormLabel>
             <Input
               autoFocus
@@ -180,11 +181,14 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               placeholder="Your name or an identifier"
               value={name}
               onChange={e => setName(e.target.value)}
+              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
               mb={4}
             />
           </FormControl>
 
-          <FormControl isInvalid={!isGuestEmailValid()}>
+          <FormControl
+            isInvalid={!isFirstGuestEmailValid && !isGuestEmailValid()}
+          >
             <FormLabel>Your Email</FormLabel>
             <Input
               mb={4}
@@ -192,10 +196,11 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               placeholder="Insert your email"
               isDisabled={isScheduling}
               value={guestEmail}
-              onKeyDown={event =>
-                event.key === 'Enter' && isGuestEmailValid() && handleConfirm()
-              }
-              onChange={e => setGuestEmail(e.target.value)}
+              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+              onChange={e => {
+                setGuestEmail(e.target.value)
+                setIsFirstGuestEmailValid(false)
+              }}
             />
           </FormControl>
 
@@ -221,10 +226,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               placeholder="Your name or an identifier"
               isDisabled={isScheduling}
               value={name}
-              onKeyPress={event =>
-                event.key === 'Enter' && isNameEmpty && handleConfirm()
-              }
+              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
               onChange={e => setName(e.target.value)}
+              mb={4}
             />
           </FormControl>
           <FormControl>
@@ -311,20 +315,31 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     mr={4}
                     isDisabled={isScheduling}
                     defaultChecked={doSendEmailReminders}
-                    onChange={e => setSendEmailReminders(e.target.checked)}
+                    onChange={e => {
+                      setSendEmailReminders(e.target.checked)
+                      isUserEmailValid() ? setIsFirstUserEmailValid(true) : null
+                    }}
                   />
                   <FormLabel mb="0">
                     <Text>Send me email reminders</Text>
                   </FormLabel>
                 </HStack>
                 {doSendEmailReminders === true && (
-                  <FormControl isInvalid={!isUserEmailValid()}>
+                  <FormControl
+                    isInvalid={!isFirstUserEmailValid && !isUserEmailValid()}
+                  >
                     <Input
                       type="email"
                       placeholder="Insert your email"
                       isDisabled={isScheduling}
                       value={userEmail}
-                      onChange={e => setUserEmail(e.target.value)}
+                      onKeyDown={event =>
+                        event.key === 'Enter' && handleConfirm()
+                      }
+                      onChange={e => {
+                        setUserEmail(e.target.value)
+                        setIsFirstUserEmailValid(false)
+                      }}
                     />
                   </FormControl>
                 )}
@@ -336,8 +351,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       <Button
         width="full"
         isDisabled={
-          (scheduleType === SchedulingType.GUEST &&
-            (isGuestEmailEmpty || !isGuestEmailValid())) ||
+          (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) ||
           (logged &&
             ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
           isScheduling ||
