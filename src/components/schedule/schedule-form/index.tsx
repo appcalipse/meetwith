@@ -75,6 +75,18 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   }
 
   const handleConfirm = async () => {
+    if (scheduleType === SchedulingType.GUEST && isGuestEmailEmpty) {
+      toast({
+        title: 'Empty guest email',
+        description:
+          'Please provide a valid email to be able to schedule a meeting as guest',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
     if (customMeeting && !meetingUrl) {
       toast({
         title: 'Missing information',
