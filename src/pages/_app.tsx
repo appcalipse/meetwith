@@ -70,7 +70,9 @@ function MyApp({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ReactQueryDevtools initialIsOpen={true} />
+      {process.env.NODE_ENV === 'development' && (
+        <ReactQueryDevtools initialIsOpen={true} />
+      )}
       <ChakraProvider theme={customTheme}>
         <ChakraMDXProvider>
           <CookiesProvider>
