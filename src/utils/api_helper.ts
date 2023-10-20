@@ -39,6 +39,7 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
+import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
 import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
@@ -72,7 +73,7 @@ export const internalFetch = async (
 export const getAccount = async (identifier: string): Promise<Account> => {
   try {
     const account = await queryClient.fetchQuery(
-      ['account', identifier.toLowerCase()],
+      [QueryKeys.account(identifier.toLowerCase())],
       () => internalFetch(`/accounts/${identifier}`)
     )
     return account as Account
@@ -113,7 +114,15 @@ export const getExistingAccounts = async (
 export const saveAccountChanges = async (
   account: Account
 ): Promise<Account> => {
-  return (await internalFetch(`/secure/accounts`, 'POST', account)) as Account
+  const response = (await internalFetch(
+    `/secure/accounts`,
+    'POST',
+    account
+  )) as Account
+  await queryClient.invalidateQueries(
+    QueryKeys.account(account.address?.toLowerCase())
+  )
+  return response
 }
 
 export const scheduleMeetingFromServer = async (
@@ -303,7 +312,13 @@ export const getBusySlots = async (
   offset?: number
 ): Promise<Interval[]> => {
   const response = await queryClient.fetchQuery(
-    ['busySlots', accountIdentifier?.toLowerCase(), start, end, limit, offset],
+    QueryKeys.busySlots({
+      id: accountIdentifier?.toLowerCase(),
+      start,
+      end,
+      limit,
+      offset,
+    }),
     () =>
       internalFetch(
         `/meetings/busy/${accountIdentifier}?limit=${
