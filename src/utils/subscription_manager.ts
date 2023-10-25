@@ -330,7 +330,9 @@ export const changeDomainOnChain = async (
   try {
     await validateChainToActOn(chain, walletClient)
   } catch (e) {
-    throw Error('Please connect to the correct network')
+    throw Error(
+      'Please connect to the correct network (consider you must unlock your metamask and also reload the page after that)'
+    )
   }
 
   const info = {
@@ -347,8 +349,18 @@ export const changeDomainOnChain = async (
     })
 
     return await writeContract(config)
-  } catch (error) {
-    // TODO handle insufficient funds error
+  } catch (error: any) {
+    console.error(error)
+    if (
+      error['details']?.toLowerCase()?.includes('user rejected') ||
+      error['details']?.toLocaleLowerCase()?.includes('user denied')
+    ) {
+      throw Error('User rejected transaction')
+    } else if (error['details']?.toLowerCase()?.includes('insufficient')) {
+      throw Error('Insufficient funds')
+    } else if ('details' in error) {
+      throw Error(error['details'])
+    }
     throw error
   }
 }

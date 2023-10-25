@@ -295,13 +295,35 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       return
     }
 
-    await changeDomainOnChain(
-      currentAccount.address,
-      currentAccount.subscriptions[0].chain,
-      proDomain,
-      newProDomain,
-      walletClient!
-    )
+    try {
+      await changeDomainOnChain(
+        currentAccount.address,
+        currentAccount.subscriptions[0].chain,
+        proDomain,
+        newProDomain,
+        walletClient!
+      )
+    } catch (e: any) {
+      const isMetaMask =
+        (window as any).ethereum !== undefined &&
+        (window as any).ethereum.isMetaMask
+      const isBrave =
+        (navigator as any).brave && (await (navigator as any).brave.isBrave())
+
+      console.error(e)
+      setLoading(false)
+      toast({
+        title: 'Error',
+        description:
+          isMetaMask && isBrave
+            ? 'Please connect to the correct network (consider you must unlock your metamask and also reload the page after that).\nIf the error persists, please also try with chrome.'
+            : `${e.message}`,
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    }
 
     logEvent('Account Domain Chainged!')
     login(currentAccount)
