@@ -57,6 +57,7 @@ import {
   TimeNotAvailableError,
 } from './errors'
 import { getSlugFromText } from './generic_utils'
+import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
 import { CalendarServiceHelper } from './services/calendar.helper'
 import { getSignature } from './storage'
@@ -566,24 +567,22 @@ const scheduleMeeting = async (
       }
 
       // Invalidate meetings cache and update meetings where required
-      queryClient.invalidateQueries([
-        'meetings',
-        currentAccount?.address?.toLowerCase(),
-      ])
-      queryClient.invalidateQueries([
-        'busySlots',
-        currentAccount?.address?.toLowerCase(),
-      ])
+      queryClient.invalidateQueries(
+        QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
+      )
+      queryClient.invalidateQueries(
+        QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
+      )
 
       participants.forEach(p => {
-        queryClient.invalidateQueries([
-          'meetings',
-          p.account_address?.toLowerCase(),
-        ])
-        queryClient.invalidateQueries([
-          'busySlots',
-          p.account_address?.toLowerCase(),
-        ])
+        queryClient.invalidateQueries(
+          QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
+        )
+        queryClient.invalidateQueries(
+          QueryKeys.busySlots({
+            id: p.account_address?.toLowerCase(),
+          })
+        )
       })
 
       return {

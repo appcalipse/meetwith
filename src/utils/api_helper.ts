@@ -73,7 +73,7 @@ export const internalFetch = async (
 export const getAccount = async (identifier: string): Promise<Account> => {
   try {
     const account = await queryClient.fetchQuery(
-      [QueryKeys.account(identifier.toLowerCase())],
+      QueryKeys.account(identifier.toLowerCase()),
       () => internalFetch(`/accounts/${identifier}`)
     )
     return account as Account
@@ -388,7 +388,7 @@ export const subscribeToWaitlist = async (
 
 export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
   const response = await queryClient.fetchQuery(
-    ['meeting', slot_id],
+    QueryKeys.meeting(slot_id),
     () =>
       internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlotEnhanced>
   )

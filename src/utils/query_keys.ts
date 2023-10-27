@@ -1,4 +1,12 @@
 export default class QueryKeys {
+  static meetingsByAccount(account?: string) {
+    return ['meetingsByAccount', account]
+  }
+
+  static meeting(slot_id?: string) {
+    return ['meeting', slot_id]
+  }
+
   static account(id?: string) {
     return ['account', id]
   }
