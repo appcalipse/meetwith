@@ -16,6 +16,7 @@ import {
 import { getAccount, login, signup } from './api_helper'
 import { DEFAULT_MESSAGE } from './constants'
 import { AccountNotFoundError } from './errors'
+import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
 import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, saveSignature } from './storage'
@@ -66,7 +67,7 @@ export const loginWithAddress = async (
   setLoginIn(true)
   try {
     const account = await queryClient.fetchQuery(
-      ['account', address.toLowerCase()],
+      QueryKeys.account(address?.toLowerCase()),
       () =>
         loginOrSignup(address, Intl.DateTimeFormat().resolvedOptions().timeZone)
     )
