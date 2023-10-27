@@ -2,6 +2,8 @@ import '../styles/globals.css'
 import '../styles/swipers.css'
 
 import { ChakraProvider } from '@chakra-ui/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ConnectKitProvider } from 'connectkit'
 import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
@@ -9,10 +11,10 @@ import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
 import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
-import { WagmiConfig } from 'wagmi'
-import { useDisconnect } from 'wagmi'
+import { useDisconnect, WagmiConfig } from 'wagmi'
 
 import { useLogin } from '@/session/login'
+import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
 import { wagmiConfig } from '@/utils/user_manager'
 
@@ -67,23 +69,28 @@ function MyApp({
   }
 
   return (
-    <ChakraProvider theme={customTheme}>
-      <ChakraMDXProvider>
-        <CookiesProvider>
-          <WagmiConfig config={wagmiConfig}>
-            <AccountProvider
-              currentAccount={currentAccount}
-              logged={!!currentAccount}
-            >
-              <Inner>
-                <Component {...customProps} />
-              </Inner>
-            </AccountProvider>
-            <CookieConsent consentCookie={consentCookie as boolean} />
-          </WagmiConfig>
-        </CookiesProvider>
-      </ChakraMDXProvider>
-    </ChakraProvider>
+    <QueryClientProvider client={queryClient}>
+      {process.env.NODE_ENV === 'development' && (
+        <ReactQueryDevtools initialIsOpen={true} />
+      )}
+      <ChakraProvider theme={customTheme}>
+        <ChakraMDXProvider>
+          <CookiesProvider>
+            <WagmiConfig config={wagmiConfig}>
+              <AccountProvider
+                currentAccount={currentAccount}
+                logged={!!currentAccount}
+              >
+                <Inner>
+                  <Component {...customProps} />
+                </Inner>
+              </AccountProvider>
+              <CookieConsent consentCookie={consentCookie as boolean} />
+            </WagmiConfig>
+          </CookiesProvider>
+        </ChakraMDXProvider>
+      </ChakraProvider>
+    </QueryClientProvider>
   )
 }
 
