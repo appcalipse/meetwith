@@ -39,6 +39,8 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
+import QueryKeys from './query_keys'
+import { queryClient } from './react_query'
 import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
@@ -70,7 +72,11 @@ export const internalFetch = async (
 
 export const getAccount = async (identifier: string): Promise<Account> => {
   try {
-    return (await internalFetch(`/accounts/${identifier}`)) as Account
+    const account = await queryClient.fetchQuery(
+      QueryKeys.account(identifier.toLowerCase()),
+      () => internalFetch(`/accounts/${identifier}`)
+    )
+    return account as Account
   } catch (e: any) {
     if (e.status && e.status === 404) {
       throw new AccountNotFoundError(identifier)
@@ -108,7 +114,15 @@ export const getExistingAccounts = async (
 export const saveAccountChanges = async (
   account: Account
 ): Promise<Account> => {
-  return (await internalFetch(`/secure/accounts`, 'POST', account)) as Account
+  const response = (await internalFetch(
+    `/secure/accounts`,
+    'POST',
+    account
+  )) as Account
+  await queryClient.invalidateQueries(
+    QueryKeys.account(account.address?.toLowerCase())
+  )
+  return response
 }
 
 export const scheduleMeetingFromServer = async (
@@ -297,11 +311,23 @@ export const getBusySlots = async (
   limit?: number,
   offset?: number
 ): Promise<Interval[]> => {
-  const response = (await internalFetch(
-    `/meetings/busy/${accountIdentifier}?limit=${limit || undefined}&offset=${
-      offset || 0
-    }&start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`
-  )) as Interval[]
+  const response = await queryClient.fetchQuery(
+    QueryKeys.busySlots({
+      id: accountIdentifier?.toLowerCase(),
+      start,
+      end,
+      limit,
+      offset,
+    }),
+    () =>
+      internalFetch(
+        `/meetings/busy/${accountIdentifier}?limit=${
+          limit || undefined
+        }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
+          end?.getTime() || undefined
+        }`
+      ) as Promise<Interval[]>
+  )
   return response.map(slot => ({
     ...slot,
     start: new Date(slot.start),
@@ -361,9 +387,11 @@ export const subscribeToWaitlist = async (
 }
 
 export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
-  const response = (await internalFetch(
-    `/meetings/meeting/${slot_id}`
-  )) as DBSlotEnhanced
+  const response = await queryClient.fetchQuery(
+    QueryKeys.meeting(slot_id),
+    () =>
+      internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlotEnhanced>
+  )
   return {
     ...response,
     start: new Date(response.start),

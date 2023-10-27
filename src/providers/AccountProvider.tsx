@@ -4,6 +4,8 @@ import { useCookies } from 'react-cookie'
 import { useDisconnect } from 'wagmi'
 
 import { SESSION_COOKIE_NAME } from '@/middleware'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 import { loginWithAddress } from '@/utils/user_manager'
 
 import { Account } from '../types/Account'
@@ -92,6 +94,7 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
 
   const logout = async (address?: string) => {
     disconnect()
+    queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
     if (address) {
       removeSignature(address)
     } else if (userContext.currentAccount) {
