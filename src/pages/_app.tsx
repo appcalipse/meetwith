@@ -13,6 +13,7 @@ import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
 import { useDisconnect, WagmiConfig } from 'wagmi'
 
+import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import { useLogin } from '@/session/login'
 import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
@@ -34,6 +35,8 @@ interface MyAppProps extends AppProps {
   checkAuthOnClient?: boolean
 }
 
+let appDidInit = false
+
 function MyApp({
   Component,
   pageProps,
@@ -43,12 +46,14 @@ function MyApp({
   checkAuthOnClient,
 }: MyAppProps) {
   React.useEffect(() => {
+    if (appDidInit) return
     const initApp = async () => {
       setDefaultOptions({
         locale: getLocaleForDateFNS(),
       })
       await initAnalytics()
       pageView(router.asPath)
+      appDidInit = true
     }
     initApp()
   }, [])
@@ -114,6 +119,7 @@ const Inner = (props: any) => {
     >
       <Head />
       <BaseLayout>{props.children}</BaseLayout>
+      <OnboardingModal />
     </ConnectKitProvider>
   )
 }
