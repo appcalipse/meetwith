@@ -13,6 +13,7 @@ import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
 import { useDisconnect, WagmiConfig } from 'wagmi'
 
+import DiscordOnboardingModal from '@/components/onboarding/DiscordOnboardingModal'
 import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import { useLogin } from '@/session/login'
 import { queryClient } from '@/utils/react_query'
@@ -110,6 +111,8 @@ const Inner = (props: any) => {
     }
   }, [])
 
+  const onboardingModalRef = React.useRef<{ onOpen: () => void }>(null)
+
   return (
     <ConnectKitProvider
       options={{ initialChainId: 0, enforceSupportedChains: false }}
@@ -119,7 +122,9 @@ const Inner = (props: any) => {
     >
       <Head />
       <BaseLayout>{props.children}</BaseLayout>
-      <OnboardingModal />
+
+      <OnboardingModal ref={onboardingModalRef} />
+      <DiscordOnboardingModal callback={onboardingModalRef.current?.onOpen} />
     </ConnectKitProvider>
   )
 }

@@ -1,33 +1,36 @@
 import {
-  Box,
-  Button,
   Flex,
   Modal,
-  ModalBody,
-  ModalCloseButton,
   ModalContent,
-  ModalFooter,
-  ModalHeader,
   ModalOverlay,
   useDisclosure,
 } from '@chakra-ui/react'
 import { useModal } from 'connectkit'
 import { useSearchParams } from 'next/navigation'
-import { useContext, useEffect, useState } from 'react'
+import {
+  forwardRef,
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from 'react'
+
+import { OnboardingSubject } from '@/utils/constants'
 
 import { AccountContext } from '../../providers/AccountProvider'
 
-export enum OnboardingSubject {
-  Discord,
-}
-
-let didDiscordInit = false
+let didInit = false
 let didOpenConnectWallet = false
 
-export default function OnboardingModal() {
+const OnboardingModal = forwardRef((props, ref) => {
   const queryParams = useSearchParams()
-  const origin = queryParams.get('origin')
-  console.log({ origin })
+  const state = queryParams.get('state')
+
+  const origin = state
+    ? (JSON.parse(Buffer.from(state as string, 'base64').toString())?.origin as
+        | OnboardingSubject
+        | undefined)
+    : undefined
 
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { setOpen } = useModal()
@@ -36,20 +39,27 @@ export default function OnboardingModal() {
 
   const [subject, setSubject] = useState<OnboardingSubject>()
 
+  useImperativeHandle(ref, () => ({
+    onOpen,
+    onClose,
+    isOpen,
+  }))
+
   useEffect(() => {
-    if (!!currentAccount?.address && !didDiscordInit) {
-      console.log({ currentAccount })
-      if (origin === 'discord' && !currentAccount.discord_account) {
-        setSubject(OnboardingSubject.Discord)
+    if (!!currentAccount?.address && !didInit) {
+      if (
+        origin === OnboardingSubject.DiscordConnectedModal &&
+        !!currentAccount.discord_account
+      ) {
+        setSubject(OnboardingSubject.DiscordConnectedModal)
         onOpen()
-        didDiscordInit = true
+        didInit = true
       }
     } else if (!!origin && !didOpenConnectWallet) {
-      console.log({ currentAccount, origin })
       setOpen(true)
       didOpenConnectWallet = true
     }
-  }, [currentAccount, onOpen, origin, setOpen, subject])
+  }, [currentAccount, onOpen, origin, setOpen])
 
   return (
     <>
@@ -61,20 +71,13 @@ export default function OnboardingModal() {
         size="xl"
       >
         <ModalOverlay />
-        {subject === OnboardingSubject.Discord && (
-          <ModalContent padding={20} maxW="45rem">
-            <Flex fontSize={39} justifyContent="center">
-              Welcome from Discord!
-            </Flex>
-            <ModalBody>Lorem FDP</ModalBody>
-
-            <ModalFooter>
-              <Button onClick={onClose}>Close</Button>
-              <Button>Secondary Action</Button>
-            </ModalFooter>
-          </ModalContent>
-        )}
+        <ModalContent padding={20} maxW="45rem">
+          <Flex>First Step</Flex>
+        </ModalContent>
       </Modal>
     </>
   )
-}
+})
+
+OnboardingModal.displayName = 'OnboardingModal'
+export default OnboardingModal
