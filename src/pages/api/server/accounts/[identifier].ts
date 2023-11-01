@@ -9,7 +9,7 @@ const getAccount = async (req: NextApiRequest, res: NextApiResponse) => {
 
     try {
       const account = await getAccountFromDB(identifier as string, true)
-      return res.status(200).json({ ...account, fuckyou: true })
+      return res.status(200).json({ ...account })
     } catch (e) {
       return res.status(404).send('Not found')
     }

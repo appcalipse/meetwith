@@ -6,7 +6,7 @@ import { FaDiscord } from 'react-icons/fa'
 
 import { DiscordAccount } from '@/types/Discord'
 import { generateDiscordAccount } from '@/utils/api_helper'
-import { discordRedirectUrl } from '@/utils/constants'
+import { discordRedirectUrl, OnboardingSubject } from '@/utils/constants'
 
 interface ConnectedAccountProps {
   discord_account?: DiscordAccount
@@ -26,9 +26,14 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
 
   const generateDiscord = async () => {
     if (!discord_account) {
-      const { discordResult, code } = router.query
+      const { code, state } = router.query
 
-      if (discordResult && code) {
+      const origin = state
+        ? (JSON.parse(Buffer.from(state as string, 'base64').toString())
+            ?.origin as OnboardingSubject | undefined)
+        : undefined
+
+      if (origin && code) {
         setConnecting(true)
         try {
           await generateDiscordAccount(code as string)
@@ -68,7 +73,9 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
             process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
           }&redirect_uri=${encodeURIComponent(
             discordRedirectUrl
-          )}&response_type=code&scope=identify%20guilds`}
+          )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
+            JSON.stringify({ origin: 'discord_connected' })
+          ).toString('base64')}`}
         >
           Connect Discord
         </Button>
