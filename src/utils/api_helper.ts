@@ -37,7 +37,6 @@ import {
   InvalidSessionError,
   MeetingChangeConflictError,
   MeetingCreationError,
-  SubscriptionUpdateError,
   TimeNotAvailableError,
 } from './errors'
 import { POAP, POAPEvent } from './services/poap.helper'

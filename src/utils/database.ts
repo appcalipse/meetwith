@@ -1117,8 +1117,8 @@ export const getExistingSubscriptionsByAddress = async (
     .from('subscriptions')
     .select()
     .ilike('owner_account', address.toLocaleLowerCase())
-  // .gt('expiry_time', new Date().toISOString())
-  // .order('registered_at', { ascending: true })
+    .gt('expiry_time', new Date().toISOString())
+    .order('registered_at', { ascending: true })
 
   if (error) {
     Sentry.captureException(error)
@@ -1138,8 +1138,8 @@ export const getExistingSubscriptionsByDomain = async (
     .from('subscriptions')
     .select()
     .ilike('domain', domain.toLocaleLowerCase())
-  // .gt('expiry_time', new Date().toISOString())
-  // .order('registered_at', { ascending: true })
+    .gt('expiry_time', new Date().toISOString())
+    .order('registered_at', { ascending: true })
 
   if (error) {
     Sentry.captureException(error)

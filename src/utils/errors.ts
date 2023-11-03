@@ -12,13 +12,6 @@ export class AccountNotFoundError extends Error {
   }
 }
 
-export class SubscriptionUpdateError extends Error {
-  constructor(domain: string) {
-    super(`Couldn't create Subscription with domain ${domain}.`)
-    this.name = 'SubscriptionUpdateError'
-  }
-}
-
 export class InvalidSessionError extends Error {
   constructor() {
     super('Session was invalidated.')
