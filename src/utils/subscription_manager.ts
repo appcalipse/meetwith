@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import {
   GetWalletClientResult,
   prepareWriteContract,
@@ -20,7 +21,7 @@ import {
 } from '../types/Subscription'
 import { getSubscriptionByDomain, syncSubscriptions } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
-import { validateChainToActOn } from './rpc_helper_front'
+import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
 
 export const isProAccount = (account?: Account): boolean => {
   return Boolean(getActiveProSubscription(account))
@@ -309,14 +310,13 @@ export const convertBlockchainSubscriptionToSubscription = (
 
 export const changeDomainOnChain = async (
   accountAddress: string,
-  chain: SupportedChain,
   domain: string,
   newDomain: string,
   walletClient?: GetWalletClientResult
 ): Promise<WriteContractResult> => {
   try {
     const subExists = await getSubscriptionByDomain(newDomain)
-    if (subExists && subExists!.owner_account !== accountAddress) {
+    if (subExists) {
       throw Error('Domain already registered')
     }
   } catch (e: any) {
@@ -325,13 +325,29 @@ export const changeDomainOnChain = async (
     }
   }
 
-  const chainInfo = getChainInfo(chain)
+  let chain
+  try {
+    const subExists = await getSubscriptionByDomain(newDomain)
+    if (!subExists) {
+      throw Error('The domain you want to change is not registered')
+    } else if (subExists && subExists!.owner_account !== accountAddress) {
+      throw Error('You can not change a domain you do not own')
+    } else {
+      chain = subExists.chain
+    }
+  } catch (e: any) {
+    if (e.status !== 404) {
+      throw e
+    }
+  }
+
+  const chainInfo = getChainInfo(chain!)
 
   try {
-    await validateChainToActOn(chain, walletClient)
+    await validateChainToActOn(chain!, walletClient)
   } catch (e) {
     throw Error(
-      'Please connect to the correct network (consider you must unlock your metamask and also reload the page after that)'
+      'Please connect to the ${chain} network. (consider you must unlock your wallet and also reload the page after that)'
     )
   }
 
@@ -350,17 +366,7 @@ export const changeDomainOnChain = async (
 
     return await writeContract(config)
   } catch (error: any) {
-    console.error(error)
-    if (
-      error['details']?.toLowerCase()?.includes('user rejected') ||
-      error['details']?.toLocaleLowerCase()?.includes('user denied')
-    ) {
-      throw Error('User rejected transaction')
-    } else if (error['details']?.toLowerCase()?.includes('insufficient')) {
-      throw Error('Insufficient funds')
-    } else if ('details' in error) {
-      throw Error(error['details'])
-    }
-    throw error
+    Sentry.captureException(error)
+    throw Error(checkTransactionError(error))
   }
 }
