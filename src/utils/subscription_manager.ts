@@ -325,7 +325,7 @@ export const changeDomainOnChain = async (
     }
   }
 
-  let chain
+  let chain: any
   try {
     const subExists = await getSubscriptionByDomain(newDomain)
     if (!subExists) {
