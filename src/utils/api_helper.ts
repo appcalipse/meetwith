@@ -45,13 +45,13 @@ import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
 
-export const internalFetch = async (
+export const internalFetch = async <T>(
   path: string,
   method = 'GET',
   body?: any,
   options = {},
   headers = {}
-): Promise<object> => {
+) => {
   try {
     const response = await fetch(`${apiUrl}${path}`, {
       method,
@@ -65,7 +65,7 @@ export const internalFetch = async (
       body: (body && JSON.stringify(body)) || null,
     })
     if (response.status >= 200 && response.status < 300) {
-      return await response.json()
+      return (await response.json()) as T
     }
 
     throw new ApiFetchError(response.status, await response.text())
