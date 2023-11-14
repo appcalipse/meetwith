@@ -52,22 +52,26 @@ export const internalFetch = async (
   options = {},
   headers = {}
 ): Promise<object> => {
-  const response = await fetch(`${apiUrl}${path}`, {
-    method,
-    mode: 'cors',
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      ...headers,
-    },
-    ...options,
-    body: (body && JSON.stringify(body)) || null,
-  })
-  if (response.status >= 200 && response.status < 300) {
-    return await response.json()
-  }
+  try {
+    const response = await fetch(`${apiUrl}${path}`, {
+      method,
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        ...headers,
+      },
+      ...options,
+      body: (body && JSON.stringify(body)) || null,
+    })
+    if (response.status >= 200 && response.status < 300) {
+      return await response.json()
+    }
 
-  throw new ApiFetchError(response.status, await response.text())
+    throw new ApiFetchError(response.status, await response.text())
+  } catch (e) {
+    Sentry.captureException(e)
+  }
 }
 
 export const getAccount = async (identifier: string): Promise<Account> => {

@@ -21,4 +21,8 @@ export default class QueryKeys {
     const { id, start, end, limit, offset } = options
     return ['busySlots', id, start, end, limit, offset]
   }
+
+  static discordUserInfo(address?: string) {
+    return ['discordUserInfo', address]
+  }
 }

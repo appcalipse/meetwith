@@ -863,8 +863,19 @@ export const createOrUpdatesDiscordAccount = async (
   }
 }
 
+export const deleteDiscordAccount = async (accountAddress: string) => {
+  console.debug('Deleting discord account...')
+  const { error } = await db.supabase
+    .from('discord_accounts')
+    .delete()
+    .eq('address', accountAddress)
+  if (error) {
+    Sentry.captureException(error)
+  }
+}
+
 const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
-  const { _, error } = await db.supabase.from('emails').upsert([
+  const { error } = await db.supabase.from('emails').upsert([
     {
       email,
       plan,

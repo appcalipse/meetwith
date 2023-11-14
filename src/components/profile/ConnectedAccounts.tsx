@@ -1,5 +1,4 @@
 import { Button, Heading, useToast } from '@chakra-ui/react'
-import { set } from 'date-fns'
 import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 import { FaDiscord } from 'react-icons/fa'
@@ -20,7 +19,7 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
   )
   const [connecting, setConnecting] = useState(false)
 
-  const toast = useToast()
+  // const toast = useToast()
 
   const router = useRouter()
 
@@ -38,13 +37,13 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
         try {
           await generateDiscordAccount(code as string)
           setIsDiscordConnected(true)
-          toast({
-            title: 'Discord Connected',
-            description: 'Your Discord account has been connected',
-            status: 'success',
-            duration: 3000,
-            isClosable: true,
-          })
+          // toast({
+          //   title: 'Discord Connected',
+          //   description: 'Your Discord account has been connected',
+          //   status: 'success',
+          //   duration: 3000,
+          //   isClosable: true,
+          // })
         } catch (error) {}
         setConnecting(false)
       }
@@ -74,7 +73,7 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
           }&redirect_uri=${encodeURIComponent(
             discordRedirectUrl
           )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
-            JSON.stringify({ origin: 'discord_connected' })
+            JSON.stringify({ origin: OnboardingSubject.DiscordConnectedInPage })
           ).toString('base64')}`}
         >
           Connect Discord
