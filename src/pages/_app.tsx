@@ -9,12 +9,11 @@ import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
 import { useDisconnect, WagmiConfig } from 'wagmi'
 
-import DiscordOnboardingModal from '@/components/onboarding/DiscordOnboardingModal'
-import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import { useLogin } from '@/session/login'
 import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
@@ -29,6 +28,16 @@ import { validateAuthenticationApp } from '../session/core'
 import customTheme from '../styles/theme'
 import { Account } from '../types/Account'
 import { initAnalytics, pageView } from '../utils/analytics'
+
+const DiscordOnboardingModal = dynamic(
+  () => import('@/components/onboarding/DiscordOnboardingModal'),
+  { ssr: false }
+)
+
+const OnboardingModal = dynamic(
+  () => import('@/components/onboarding/OnboardingModal'),
+  { ssr: false }
+)
 
 interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
@@ -100,7 +109,7 @@ function MyApp({
   )
 }
 
-const Inner = (props: any) => {
+const Inner = (props: { children: React.ReactNode }) => {
   const { handleLogin, logged } = useLogin()
   const { disconnect } = useDisconnect()
 

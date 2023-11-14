@@ -10,6 +10,8 @@ import {
 import { DiscordUserInfo } from '../../types/DiscordUserInfo'
 import { discordRedirectUrl, isProduction } from '../constants'
 import {
+  createOrUpdatesDiscordAccount,
+  deleteDiscordAccount,
   getAccountNotificationSubscriptions,
   getDiscordAccount,
   setAccountNotificationSubscriptions,
@@ -70,40 +72,84 @@ export const generateDiscordAuthToken = async (
 
 export const getDiscordOAuthToken = async (
   accountAddress: string
-): Promise<AuthToken | null> => {
-  const discordAccount = await getDiscordAccount(accountAddress)
+): Promise<AuthToken | undefined> => {
+  try {
+    const discordAccount = await getDiscordAccount(accountAddress)
 
-  if (!discordAccount) return null
+    console.debug({ discordAccount })
 
-  if (
-    discordAccount.access_token.created_at &&
-    discordAccount.access_token.created_at +
-      discordAccount.access_token.expires_in <=
-      new Date().getTime()
-  ) {
-    return discordAccount.access_token
+    if (!discordAccount) {
+      throw new Error('Discord account not found')
+    }
+
+    if (
+      discordAccount.access_token.created_at &&
+      discordAccount.access_token.created_at +
+        discordAccount.access_token.expires_in +
+        60000 >
+        new Date().getTime()
+    ) {
+      console.log('return old token')
+      return discordAccount.access_token
+    }
+
+    console.debug('Token expired, refreshing')
+
+    return await refreshDiscordOAuthToken(
+      accountAddress,
+      discordAccount.discord_id,
+      discordAccount.access_token.refresh_token
+    )
+  } catch (error) {
+    console.error(error)
+    Sentry.captureException(error)
   }
+}
 
-  console.debug('Token expired, refreshing')
+export const refreshDiscordOAuthToken = async (
+  accountAddress: string,
+  discordId: string,
+  refreshToken: string
+) => {
+  try {
+    const oauthResult = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      body: new URLSearchParams({
+        client_id: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID!,
+        client_secret: process.env.DISCORD_CLIENT_SECRET!,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    })
 
-  const oauthResult = await fetch('https://discord.com/api/oauth2/token', {
-    method: 'POST',
-    body: new URLSearchParams({
-      client_id: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID!,
-      client_secret: process.env.DISCORD_CLIENT_SECRET!,
-      grant_type: 'refresh_token',
-      refresh_token: discordAccount.access_token.refresh_token,
-    }),
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-  })
+    if (oauthResult.status === 401) {
+      throw new Error('Unauthorized API call to Discord')
+    }
 
-  const oauthData = await oauthResult.json()
+    const oauthData = await oauthResult.json()
 
-  return {
-    ...oauthData,
-    created_at: new Date(),
+    if (!!oauthData.error) {
+      throw new Error('Invalid grant')
+    }
+
+    const account = await createOrUpdatesDiscordAccount({
+      access_token: { ...oauthData, created_at: new Date().getTime() },
+      address: accountAddress,
+      discord_id: discordId,
+    })
+
+    if (!account) {
+      throw new Error('Could not create or update discord account')
+    }
+
+    return account.access_token
+  } catch (e) {
+    deleteDiscordAccount(accountAddress)
+    console.error(e)
+    Sentry.captureException(e)
   }
 }
 
@@ -111,6 +157,7 @@ export const getDiscordInfoForAddress = async (
   address: string
 ): Promise<DiscordUserInfo | null> => {
   const token = await getDiscordOAuthToken(address)
+
   return getDiscordAccountInfo(token!)
 }
 
@@ -147,11 +194,13 @@ export const getDiscordAccountInfo = async (
     const guilds = await userGuilds.json()
 
     return {
-      id: user.id,
-      isInMWWServer:
-        guilds.find((guild: any) => guild.id === MWW_DISCORD_SERVER_ID) !==
-        null,
-    }
+      ...user,
+      isInMWWServer: Array.isArray(guilds)
+        ? !!guilds.find(
+            (guild: { id: string }) => guild.id === MWW_DISCORD_SERVER_ID
+          )
+        : false,
+    } as DiscordUserInfo
   } catch (error) {
     console.error(error)
     Sentry.captureException(error)

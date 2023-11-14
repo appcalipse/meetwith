@@ -85,7 +85,9 @@ export default function DiscordOnboardingModal({
                 }&redirect_uri=${encodeURIComponent(
                   discordRedirectUrl
                 )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
-                  JSON.stringify({ origin: 'discord_connected' })
+                  JSON.stringify({
+                    origin: OnboardingSubject.DiscordConnectedInModal,
+                  })
                 ).toString('base64')}`}
               >
                 Connect Discord

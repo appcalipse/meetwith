@@ -22,8 +22,8 @@ const NO_REPLY_EMAIL = 'no-reply@meetwithwallet.xyz'
 
 export enum OnboardingSubject {
   Discord = 'discord',
-  DiscordConnected = 'discord_connected',
-  DiscordConnectedModal = 'discord_connected_modal',
+  DiscordConnectedInPage = 'discord_connected_page',
+  DiscordConnectedInModal = 'discord_connected_modal',
 }
 
 export {
