@@ -5,6 +5,7 @@ import {
   Spacer,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useContext, useEffect, useState } from 'react'
@@ -22,8 +23,10 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 }) => {
   const { login } = useContext(AccountContext)
 
+  const toast = useToast()
+
   const [loading, setLoading] = useState(false)
-  const [timezone, setTimezone] = useState(
+  const [timezone, setTimezone] = useState<string | null | undefined>(
     currentAccount!.preferences!.timezone
   )
   const [initialAvailabilities, setInitialAvailabilities] = useState([
@@ -48,9 +51,21 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   }, [currentAccount.address])
 
   const saveAvailabilities = async () => {
-    setLoading(true)
-
     try {
+      if (!timezone) {
+        toast({
+          title: 'Timezone needed',
+          description: 'You need to provide a proper timezone.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+        return
+      }
+
+      setLoading(true)
+
       const updatedAccount = await saveAccountChanges({
         ...currentAccount!,
         preferences: {
@@ -75,7 +90,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     setInitialAvailabilities(newAvailabilities)
   }
 
-  const onChangeTz = (_timezone: string) => {
+  const onChangeTz = (_timezone?: string | null) => {
     setTimezone(_timezone)
   }
 
