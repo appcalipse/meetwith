@@ -20,6 +20,7 @@ const scopes = [
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
+    const { state } = req.query
     // Get token from Google Calendar API
     const { client_secret, client_id } = credentials
     const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
@@ -33,6 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       access_type: 'offline',
       prompt: 'consent',
       scope: scopes,
+      state: typeof state === 'string' ? state : undefined,
     })
 
     return res.status(200).json({ url: authUrl })
