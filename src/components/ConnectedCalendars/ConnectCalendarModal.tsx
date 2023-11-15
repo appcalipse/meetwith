@@ -39,12 +39,12 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
 
     switch (provider) {
       case TimeSlotSource.GOOGLE:
-        const { url: googleUrl } = await getGoogleAuthConnectUrl()
-        window.location.assign(googleUrl)
+        const googleResponse = await getGoogleAuthConnectUrl()
+        !!googleResponse && window.location.assign(googleResponse.url)
         return
       case TimeSlotSource.OFFICE:
-        const { url: officeUrl } = await getOffice365ConnectUrl()
-        window.location.assign(officeUrl)
+        const officeResponse = await getOffice365ConnectUrl()
+        !!officeResponse && window.location.assign(officeResponse.url)
         return
       case TimeSlotSource.ICLOUD:
       case TimeSlotSource.WEBDAV:
