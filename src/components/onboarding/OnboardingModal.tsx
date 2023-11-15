@@ -21,12 +21,16 @@ import {
   useContext,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useState,
 } from 'react'
+import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
-import { internalFetch } from '@/utils/api_helper'
+import {
+  getGoogleAuthConnectUrl,
+  getOffice365ConnectUrl,
+  internalFetch,
+} from '@/utils/api_helper'
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
@@ -40,12 +44,11 @@ let didOpenConnectWallet = false
 const OnboardingModal = forwardRef((props, ref) => {
   const queryParams = useSearchParams()
   const state = queryParams.get('state')
-
-  const origin =
+  const stateObject =
     typeof state === 'string'
-      ? (JSON.parse(Buffer.from(state as string, 'base64').toString())
-          ?.origin as OnboardingSubject | undefined)
+      ? JSON.parse(Buffer.from(state as string, 'base64').toString())
       : undefined
+  const origin = stateObject?.origin as OnboardingSubject | undefined
 
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { setOpen } = useModal()
@@ -113,9 +116,15 @@ const OnboardingModal = forwardRef((props, ref) => {
     if (isOpen === true) fillDiscordUserInfo()
   }, [isOpen])
 
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [timezone, setTimezone] = useState('')
+  const [name, setName] = useState<string | undefined>(
+    stateObject?.name || undefined
+  )
+  const [email, setEmail] = useState<string | undefined>(
+    stateObject?.email || undefined
+  )
+  const [timezone, setTimezone] = useState<string | undefined | null>(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
 
   function validateFirstStep() {
     if (!name || !timezone) return
@@ -124,6 +133,32 @@ const OnboardingModal = forwardRef((props, ref) => {
   }
 
   function validateLastStep() {}
+
+  async function onConnectGoogleCalendar() {
+    stateObject.name = name
+    stateObject.email = email
+    stateObject.timezone = timezone
+
+    const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
+      'base64'
+    )
+
+    const response = await getGoogleAuthConnectUrl(newState64)
+    response && window.location.assign(response.url)
+  }
+
+  async function onConnectOfficeCalendar() {
+    stateObject.name = name
+    stateObject.email = email
+    stateObject.timezone = timezone
+
+    const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
+      'base64'
+    )
+
+    const response = await getOffice365ConnectUrl(newState64)
+    response && window.location.assign(response.url)
+  }
 
   return (
     <>
@@ -218,10 +253,44 @@ const OnboardingModal = forwardRef((props, ref) => {
                   </Flex>
 
                   <Flex direction="column" gap={4}>
-                    <Button variant="outline">Google</Button>
-                    <Button variant="outline">Office 365</Button>
-                    <Button variant="outline">iCloud</Button>
-                    <Button variant="outline">Webdav</Button>
+                    <Button
+                      variant="outline"
+                      display="flex"
+                      gap={2}
+                      alignItems="center"
+                      onClick={onConnectGoogleCalendar}
+                    >
+                      <FaGoogle />
+                      Google
+                    </Button>
+                    <Button
+                      variant="outline"
+                      display="flex"
+                      gap={2}
+                      alignItems="center"
+                      onClick={onConnectOfficeCalendar}
+                    >
+                      <FaMicrosoft />
+                      Office 365
+                    </Button>
+                    <Button
+                      variant="outline"
+                      display="flex"
+                      gap={2}
+                      alignItems="center"
+                    >
+                      <FaApple />
+                      iCloud
+                    </Button>
+                    <Button
+                      variant="outline"
+                      display="flex"
+                      gap={2}
+                      alignItems="center"
+                    >
+                      <FaMicrosoft />
+                      Webdav
+                    </Button>
                   </Flex>
 
                   <Flex gap={5}>

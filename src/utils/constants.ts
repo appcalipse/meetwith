@@ -24,6 +24,8 @@ export enum OnboardingSubject {
   Discord = 'discord',
   DiscordConnectedInPage = 'discord_connected_page',
   DiscordConnectedInModal = 'discord_connected_modal',
+  GoogleCalendarConnected = 'google_calendar_connected',
+  Office365CalendarConnected = 'office365_calendar_connected',
 }
 
 export {

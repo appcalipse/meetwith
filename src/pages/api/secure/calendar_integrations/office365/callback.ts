@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { TimeSlotSource } from '@/types/Meeting'
 
-import { apiUrl } from '../../../../../utils/constants'
+import { apiUrl, OnboardingSubject } from '../../../../../utils/constants'
 import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
 
 const credentials = {
@@ -17,7 +17,12 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<void> {
-  const { code, error } = req.query
+  const { code, state } = req.query
+
+  const stateObject =
+    typeof state === 'string'
+      ? JSON.parse(Buffer.from(state, 'base64').toString())
+      : undefined
 
   if (typeof code !== 'string') {
     return res.status(400).json({ message: 'No code returned' })
@@ -86,7 +91,7 @@ async function handler(
     req.session.account.address,
     responseBody.email,
     TimeSlotSource.OFFICE,
-    calendars.value.map((c: any, index: number) => {
+    calendars.value.map((c: any) => {
       return {
         calendarId: c.id,
         name: c.name,
@@ -97,7 +102,19 @@ async function handler(
     }),
     responseBody
   )
-  res.redirect(`/dashboard/calendars?calendarResult=success`)
+
+  if (stateObject) {
+    stateObject.origin = OnboardingSubject.Office365CalendarConnected
+  }
+  const newState64 = stateObject
+    ? Buffer.from(JSON.stringify(stateObject)).toString('base64')
+    : undefined
+
+  res.redirect(
+    `/dashboard/calendars?calendarResult=success${
+      newState64 ? `&state=${newState64}` : ''
+    }`
+  )
 }
 
 export default withSessionRoute(handler)

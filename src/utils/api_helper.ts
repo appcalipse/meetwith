@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
+import { NullAddress } from '@unstoppabledomains/resolution/build/types'
 
 import { ConditionRelation } from '@/types/common'
 import { DiscordAccount } from '@/types/Discord'
@@ -431,16 +432,20 @@ export const fetchContentFromIPFSFromBrowser = async (
   }
 }
 
-export const getGoogleAuthConnectUrl = async (): Promise<ConnectResponse> => {
-  return (await internalFetch(
-    `/secure/calendar_integrations/google/connect`
-  )) as ConnectResponse
+export const getGoogleAuthConnectUrl = async (state?: string | null) => {
+  return await internalFetch<ConnectResponse>(
+    `/secure/calendar_integrations/google/connect${
+      state ? `?state=${state}` : ''
+    }`
+  )
 }
 
-export const getOffice365ConnectUrl = async (): Promise<ConnectResponse> => {
-  return (await internalFetch(
-    `/secure/calendar_integrations/office365/connect`
-  )) as ConnectResponse
+export const getOffice365ConnectUrl = async (state?: string) => {
+  return await internalFetch<ConnectResponse>(
+    `/secure/calendar_integrations/office365/connect${
+      state ? `?state=${state}` : ''
+    }`
+  )
 }
 
 export const addOrUpdateICloud = async (details: any): Promise<any> => {

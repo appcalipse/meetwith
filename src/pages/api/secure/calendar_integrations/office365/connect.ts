@@ -19,27 +19,19 @@ export type IntegrationOAuthCallbackState = {
   returnTo: string
 }
 
-export function encodeOAuthState(req: NextApiRequest) {
-  if (typeof req.query.state !== 'string') {
-    return undefined
-  }
-  const state: IntegrationOAuthCallbackState = JSON.parse(req.query.state)
-
-  return JSON.stringify(state)
-}
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === 'GET') {
-    const state = encodeOAuthState(req)
+    const { state } = req.query
+
     const params = {
       response_type: 'code',
       scope: scopes.join(' '),
       client_id: credentials.client_id,
       redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
-      state,
+      state: typeof state === 'string' ? state : undefined,
     }
     const query = stringify(params)
     const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${query}`
