@@ -23,7 +23,7 @@ import {
   useImperativeHandle,
   useState,
 } from 'react'
-import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
+import { FaApple, FaCross, FaGoogle, FaMicrosoft, FaXing } from 'react-icons/fa'
 
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
@@ -36,6 +36,7 @@ import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 
 import { AccountContext } from '../../providers/AccountProvider'
+import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
 import TimezoneSelector from '../TimezoneSelector'
 
 let didInit = false
@@ -160,6 +161,9 @@ const OnboardingModal = forwardRef((props, ref) => {
     response && window.location.assign(response.url)
   }
 
+  const [isAppleCalDavOpen, setIsAppleCalDavOpen] = useState(false)
+  const [isCalDavOpen, setIsCalDavOpen] = useState(false)
+
   return (
     <>
       <Modal
@@ -273,24 +277,96 @@ const OnboardingModal = forwardRef((props, ref) => {
                       <FaMicrosoft />
                       Office 365
                     </Button>
-                    <Button
-                      variant="outline"
-                      display="flex"
-                      gap={2}
-                      alignItems="center"
-                    >
-                      <FaApple />
-                      iCloud
-                    </Button>
-                    <Button
-                      variant="outline"
-                      display="flex"
-                      gap={2}
-                      alignItems="center"
-                    >
-                      <FaMicrosoft />
-                      Webdav
-                    </Button>
+
+                    {!isAppleCalDavOpen && (
+                      <Button
+                        variant="outline"
+                        display="flex"
+                        gap={2}
+                        alignItems="center"
+                        onClick={() => setIsAppleCalDavOpen(!isAppleCalDavOpen)}
+                      >
+                        <FaApple />
+                        iCloud
+                      </Button>
+                    )}
+
+                    {isAppleCalDavOpen && (
+                      <Flex
+                        borderWidth="1px"
+                        borderRadius={6}
+                        paddingX={4}
+                        paddingY={2}
+                        flexDirection="column"
+                      >
+                        <Flex
+                          justifyContent="space-between"
+                          alignItems="center"
+                          width="100%"
+                          gap={2}
+                        >
+                          <Flex width={10} />
+
+                          <Flex alignItems="baseline" gap={2}>
+                            <FaApple />
+                            iCloud
+                          </Flex>
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              setIsAppleCalDavOpen(!isAppleCalDavOpen)
+                            }
+                          >
+                            X
+                          </Button>
+                        </Flex>
+                        <WebDavDetailsPanel isApple={true} />
+                      </Flex>
+                    )}
+
+                    {!isCalDavOpen && (
+                      <Button
+                        variant="outline"
+                        display="flex"
+                        gap={2}
+                        alignItems="center"
+                        onClick={() => setIsCalDavOpen(!isCalDavOpen)}
+                      >
+                        <FaMicrosoft />
+                        Webdav
+                      </Button>
+                    )}
+
+                    {isCalDavOpen && (
+                      <Flex
+                        borderWidth="1px"
+                        borderRadius={6}
+                        paddingX={4}
+                        paddingY={2}
+                        flexDirection="column"
+                      >
+                        <Flex
+                          justifyContent="space-between"
+                          alignItems="center"
+                          width="100%"
+                          gap={2}
+                        >
+                          <Flex width={10} />
+
+                          <Flex alignItems="baseline" gap={2}>
+                            <FaMicrosoft />
+                            Webdav
+                          </Flex>
+                          <Button
+                            variant="ghost"
+                            onClick={() => setIsCalDavOpen(!isCalDavOpen)}
+                          >
+                            X
+                          </Button>
+                        </Flex>
+                        <WebDavDetailsPanel isApple={false} />
+                      </Flex>
+                    )}
                   </Flex>
 
                   <Flex gap={5}>
