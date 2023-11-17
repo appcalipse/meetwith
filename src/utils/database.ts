@@ -995,7 +995,9 @@ const addOrUpdateConnectedCalendar = async (
   email: string,
   provider: TimeSlotSource,
   calendars: CalendarSyncInfo[],
-  _payload?: any
+
+  // Unknown as it can be anything
+  _payload?: unknown
 ): Promise<ConnectedCalendar> => {
   const existingConnection = await connectedCalendarExists(
     address,

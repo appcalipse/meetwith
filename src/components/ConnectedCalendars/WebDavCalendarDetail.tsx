@@ -10,13 +10,14 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react'
+import { randomUUID } from 'crypto'
 import { useState } from 'react'
 
 import {
   addOrUpdateICloud,
   addOrUpdateWebdav,
   validateWebdav,
-} from '../../utils/api_helper'
+} from '@/utils/api_helper'
 
 interface WebDavDetailsPanelProps {
   isApple: boolean
@@ -85,33 +86,66 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
       }
 
       if (isApple) {
+        if (!username || !password) {
+          toast({
+            title: 'Username and Password are required.',
+            description:
+              'Please enter your Apple ID email and app specific password.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+          setLoading(false)
+          return
+        }
+
         await addOrUpdateICloud({
           url: APPLE_WEBDAV_URL,
           username,
           password,
-          calendars: calendars.map((calendar: any, index: number) => {
+          calendars: calendars.map((calendar, index: number) => {
             return {
               calendarId: calendar.url,
               sync: false,
               enabled: index === 0,
-              name: calendar.displayName || calendar.ctag,
-              color: calendar.calendarColor,
+              name:
+                typeof calendar.displayName === 'string'
+                  ? calendar.displayName
+                  : calendar.ctag ?? randomUUID(),
+              color: calendar.calendarColor && calendar.calendarColor._cdata,
             }
           }),
         })
         window.location.href = '/dashboard/calendars?calendarResult=success'
       } else {
+        if (!username || !password || !url) {
+          toast({
+            title: 'URL, Username and Password are required.',
+            description: 'Please enter your WebDAV URL, username and password.',
+            status: 'error',
+            duration: 5000,
+            position: 'top',
+            isClosable: true,
+          })
+          setLoading(false)
+          return
+        }
+
         await addOrUpdateWebdav({
           url,
           username,
           password,
-          calendars: calendars.map((calendar: any, index: number) => {
+          calendars: calendars.map((calendar, index: number) => {
             return {
               calendarId: calendar.url,
               sync: false,
               enabled: index === 0,
-              name: calendar.displayName || calendar.ctag,
-              color: calendar.calendarColor || calendar.calendarColor._cdata,
+              name:
+                typeof calendar.displayName === 'string'
+                  ? calendar.displayName
+                  : calendar.ctag ?? randomUUID(),
+              color: calendar.calendarColor && calendar.calendarColor._cdata,
             }
           }),
         })
