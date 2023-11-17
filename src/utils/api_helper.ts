@@ -1,19 +1,17 @@
 import * as Sentry from '@sentry/nextjs'
-import { NullAddress } from '@unstoppabledomains/resolution/build/types'
+import { DAVCalendar } from 'tsdav'
 
-import { ConditionRelation } from '@/types/common'
-import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/DiscordUserInfo'
-import { GateConditionObject } from '@/types/TokenGating'
-
-import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
-import { AccountNotifications } from '../types/AccountNotifications'
+import { Account, MeetingType, SimpleAccountInfo } from '@/types/Account'
+import { AccountNotifications } from '@/types/AccountNotifications'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
   ConnectedCalendarCore,
   ConnectResponse,
-} from '../types/CalendarConnections'
+} from '@/types/CalendarConnections'
+import { ConditionRelation } from '@/types/common'
+import { DiscordAccount } from '@/types/Discord'
+import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -21,13 +19,15 @@ import {
   GroupMeetingRequest,
   MeetingDecrypted,
   TimeSlotSource,
-} from '../types/Meeting'
+} from '@/types/Meeting'
 import {
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
-} from '../types/Requests'
-import { Subscription } from '../types/Subscription'
+} from '@/types/Requests'
+import { Subscription } from '@/types/Subscription'
+import { GateConditionObject } from '@/types/TokenGating'
+
 import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
@@ -49,7 +49,7 @@ import { safeConvertConditionFromAPI } from './token.gate.service'
 export const internalFetch = async <T>(
   path: string,
   method = 'GET',
-  body?: any,
+  body?: unknown,
   options = {},
   headers = {}
 ) => {
@@ -63,7 +63,7 @@ export const internalFetch = async <T>(
         ...headers,
       },
       ...options,
-      body: (body && JSON.stringify(body)) || null,
+      body: (!!body && (JSON.stringify(body) as string)) || null,
     })
     if (response.status >= 200 && response.status < 300) {
       return (await response.json()) as T
@@ -448,16 +448,30 @@ export const getOffice365ConnectUrl = async (state?: string) => {
   )
 }
 
-export const addOrUpdateICloud = async (details: any): Promise<any> => {
-  return (await internalFetch(`/secure/calendar_integrations/icloud`, 'POST', {
-    ...details,
-  })) as any
+export const addOrUpdateICloud = async (body: {
+  url: string
+  username: string
+  password: string
+  calendars: CalendarSyncInfo[]
+}) => {
+  return await internalFetch<{ connected: boolean }>(
+    `/secure/calendar_integrations/icloud`,
+    'POST',
+    body
+  )
 }
 
-export const addOrUpdateWebdav = async (details: any): Promise<any> => {
-  return (await internalFetch(`/secure/calendar_integrations/webdav`, 'POST', {
-    ...details,
-  })) as any
+export const addOrUpdateWebdav = async (body: {
+  url: string
+  username: string
+  password: string
+  calendars: CalendarSyncInfo[]
+}) => {
+  return await internalFetch<void>(
+    `/secure/calendar_integrations/webdav`,
+    'POST',
+    body
+  )
 }
 
 export const login = async (accountAddress: string): Promise<Account> => {
@@ -535,27 +549,18 @@ export const validateWebdav = async (
   url: string,
   username: string,
   password: string
-): Promise<any> => {
-  return fetch(`${apiUrl}/secure/calendar_integrations/webdav`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
-    body: JSON.stringify({
-      url,
-      username,
-      password,
-    }),
-  })
-    .then(async res => {
-      if (res.status >= 200 && res.status < 300) {
-        return await res.json()
-      } else {
-        return false
+) => {
+  return await internalFetch<
+    (DAVCalendar & {
+      calendarColor?: {
+        _cdata?: string
       }
-    })
-    .catch(() => false)
+    })[]
+  >('/secure/calendar_integrations/webdav', 'PUT', {
+    url,
+    username,
+    password,
+  })
 }
 
 export const generateDiscordAccount = async (

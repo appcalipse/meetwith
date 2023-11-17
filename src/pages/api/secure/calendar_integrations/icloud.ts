@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
-
-import { encryptContent } from '../../../../utils/cryptography'
-import { addOrUpdateConnectedCalendar } from '../../../../utils/database'
+import { encryptContent } from '@/utils/cryptography'
+import { addOrUpdateConnectedCalendar } from '@/utils/database'
 
 const APPLE_WEBDAV_URL = 'https://caldav.icloud.com'
 
@@ -17,8 +17,20 @@ async function handler(
   }
 
   if (req.method === 'POST') {
-    const symetricKey = process.env.SYMETRIC_KEY!
-    const details: any = req.body as any
+    const symmetricKey = process.env.SYNMETRIC_KEY!
+
+    const details: {
+      url: string
+      username?: string
+      password?: string
+      calendars: CalendarSyncInfo[]
+    } = req.body
+
+    if (!details.username || !details.password) {
+      return res
+        .status(400)
+        .json({ message: 'MUST HAVE USERNAME AND PASSWORD' })
+    }
 
     await addOrUpdateConnectedCalendar(
       req.session.account.address,
@@ -28,7 +40,7 @@ async function handler(
       {
         username: details.username,
         url: APPLE_WEBDAV_URL,
-        password: encryptContent(symetricKey, details.password),
+        password: encryptContent(symmetricKey, details.password),
       }
     )
     return res.status(200).send({ connected: true })
