@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { stringify } from 'querystring'
 
-import { apiUrl } from '../../../../../utils/constants'
+import { apiUrl } from '@/utils/constants'
 
 const credentials = {
   client_id: process.env.MS_GRAPH_CLIENT_ID,

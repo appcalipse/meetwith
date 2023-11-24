@@ -2,8 +2,7 @@ import { google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-
-import { apiUrl } from '../../../../../utils/constants'
+import { apiUrl } from '@/utils/constants'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,

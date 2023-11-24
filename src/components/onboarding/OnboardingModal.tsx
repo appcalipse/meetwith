@@ -1,6 +1,8 @@
 import {
   Box,
   Button,
+  Circle,
+  Divider,
   Flex,
   FormControl,
   FormLabel,
@@ -10,10 +12,14 @@ import {
   ModalContent,
   ModalOverlay,
   Select,
+  Spinner,
+  Switch,
   Text,
+  useColorModeValue,
   useDisclosure,
   useSteps,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import { useModal } from 'connectkit'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -23,13 +29,17 @@ import {
   useImperativeHandle,
   useState,
 } from 'react'
-import { FaApple, FaCross, FaGoogle, FaMicrosoft, FaXing } from 'react-icons/fa'
+import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
+import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
+import { TimeSlotSource } from '@/types/Meeting'
 import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
   internalFetch,
+  listConnectedCalendars,
+  updateConnectedCalendar,
 } from '@/utils/api_helper'
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
@@ -43,6 +53,7 @@ let didInit = false
 let didOpenConnectWallet = false
 
 const OnboardingModal = forwardRef((props, ref) => {
+  // Callback Control
   const queryParams = useSearchParams()
   const state = queryParams.get('state')
   const stateObject =
@@ -51,26 +62,34 @@ const OnboardingModal = forwardRef((props, ref) => {
       : undefined
   const origin = stateObject?.origin as OnboardingSubject | undefined
 
+  // Color Control
+  const bgColor = useColorModeValue('white', 'gray.600')
+  const avatarBg = useColorModeValue('gray.700', 'gray.500')
+
+  // Onboarding Modal Control
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const { setOpen } = useModal()
-
-  const { currentAccount } = useContext(AccountContext)
-
+  // Wallet Modal Control
+  const { setOpen: setWalletModalOpen } = useModal()
   const {
     activeStep,
     goToNext: goToNextStep,
     goToPrevious: goToPreviousStep,
+    setActiveStep,
   } = useSteps({
     index: 0,
     count: 2,
   })
-
+  // Necessary to call these functions from parent
   useImperativeHandle(ref, () => ({
     onOpen,
     onClose,
     isOpen,
   }))
 
+  // User Control
+  const { currentAccount } = useContext(AccountContext)
+
+  // Modal opening flow
   useEffect(() => {
     // When something related to user changes, check if we should open the modal
 
@@ -86,6 +105,15 @@ const OnboardingModal = forwardRef((props, ref) => {
         didInit = true
       }
 
+      if (
+        (origin === OnboardingSubject.GoogleCalendarConnected ||
+          origin === OnboardingSubject.Office365CalendarConnected) &&
+        !!currentAccount.discord_account
+      ) {
+        setActiveStep(1)
+        onOpen()
+        didInit = true
+      }
       // If not, we check if any origin is passed in and if the user its not logged in
       // and connection modal is not open this way we will trigger the wallet connection
       // modal
@@ -96,11 +124,12 @@ const OnboardingModal = forwardRef((props, ref) => {
       !isOpen
     ) {
       // We open the connection modal and avoid it being opened again
-      setOpen(true)
+      setWalletModalOpen(true)
       didOpenConnectWallet = true
     }
-  }, [currentAccount, onOpen, origin, setOpen, isOpen])
+  }, [currentAccount, onOpen, origin, setWalletModalOpen, isOpen])
 
+  // Discord Step
   async function fillDiscordUserInfo() {
     const discordUserInfo = await queryClient.fetchQuery(
       QueryKeys.discordUserInfo(currentAccount?.address),
@@ -129,12 +158,10 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   function validateFirstStep() {
     if (!name || !timezone) return
-    console.log({ activeStep })
     goToNextStep()
   }
 
-  function validateLastStep() {}
-
+  // Calendar Connection Functions
   async function onConnectGoogleCalendar() {
     stateObject.name = name
     stateObject.email = email
@@ -161,8 +188,79 @@ const OnboardingModal = forwardRef((props, ref) => {
     response && window.location.assign(response.url)
   }
 
+  // Calendar Buttons Behavior
   const [isAppleCalDavOpen, setIsAppleCalDavOpen] = useState(false)
   const [isCalDavOpen, setIsCalDavOpen] = useState(false)
+
+  // Data Control over Calendar Connections
+  const [calendarConnections, setCalendarConnections] = useState<
+    ConnectedCalendarCore[]
+  >([])
+
+  const {
+    data: calendarConnectionsData,
+    isFetching: isFetchingCalendarConnections,
+  } = useQuery({
+    queryKey: ['calendars'],
+    enabled: activeStep === 1,
+    queryFn: () => listConnectedCalendars(),
+  })
+
+  function getGoogleCalendar() {
+    return calendarConnections.find(
+      calendar => calendar.provider === TimeSlotSource.GOOGLE
+    )
+  }
+
+  function getOfficeCalendar() {
+    return calendarConnections.find(
+      calendar => calendar.provider === TimeSlotSource.OFFICE
+    )
+  }
+
+  function getAppleCalendar() {
+    return calendarConnections.find(
+      calendar => calendar.provider === TimeSlotSource.ICLOUD
+    )
+  }
+
+  function getDavCalendar() {
+    return calendarConnections.find(
+      calendar => calendar.provider === TimeSlotSource.WEBDAV
+    )
+  }
+
+  useEffect(() => {
+    setCalendarConnections(calendarConnectionsData ?? [])
+  }, [calendarConnectionsData])
+
+  async function toggleCalendar(
+    calendar?: ConnectedCalendarCore,
+    index?: number
+  ) {
+    if (!calendar || index === undefined || index === null) return
+    const newCalendarObject: ConnectedCalendarCore = calendar
+    newCalendarObject.calendars[index] = {
+      ...newCalendarObject.calendars[index],
+      enabled: !newCalendarObject.calendars[index].enabled,
+    }
+
+    const newConnections: ConnectedCalendarCore[] = calendarConnections.filter(
+      connection => connection.provider !== calendar.provider
+    )
+    newConnections.push(newCalendarObject)
+
+    setCalendarConnections(newConnections)
+
+    await updateConnectedCalendar(
+      calendar.email,
+      calendar.provider,
+      calendar.calendars
+    )
+    queryClient.invalidateQueries(['calendars'])
+  }
+
+  // TODO: Needs to handle Pro Account Block
 
   return (
     <>
@@ -256,29 +354,173 @@ const OnboardingModal = forwardRef((props, ref) => {
                     </Text>
                   </Flex>
 
-                  <Flex direction="column" gap={4}>
-                    <Button
-                      variant="outline"
-                      display="flex"
-                      gap={2}
+                  {isFetchingCalendarConnections && (
+                    <Flex
+                      width="100%"
+                      justifyContent="center"
                       alignItems="center"
-                      onClick={onConnectGoogleCalendar}
-                    >
-                      <FaGoogle />
-                      Google
-                    </Button>
-                    <Button
-                      variant="outline"
-                      display="flex"
                       gap={2}
-                      alignItems="center"
-                      onClick={onConnectOfficeCalendar}
                     >
-                      <FaMicrosoft />
-                      Office 365
-                    </Button>
+                      {/* TODO: Temporary needs better design */}
+                      <Spinner />
+                      <Text>Updating ...</Text>
+                    </Flex>
+                  )}
 
-                    {!isAppleCalDavOpen && (
+                  <Flex direction="column" gap={4}>
+                    {!!getGoogleCalendar() ? (
+                      <Flex
+                        direction="column"
+                        bgColor={bgColor}
+                        borderRadius={12}
+                        padding={10}
+                        gap={6}
+                      >
+                        <Flex gap={4} alignItems="center">
+                          <Circle size={14} bg={avatarBg}>
+                            <FaGoogle size={28} />
+                          </Circle>
+                          <Flex direction="column" gap={2} lineHeight={1}>
+                            <Text fontSize={24} fontWeight="600">
+                              Google
+                            </Text>
+                            <Text textColor="neutral.200" fontSize={24}>
+                              {getGoogleCalendar()?.email}
+                            </Text>
+                          </Flex>
+                        </Flex>
+                        <Divider />
+                        {getGoogleCalendar()?.calendars?.map(
+                          (calendar, index) => {
+                            return (
+                              <Flex
+                                key={calendar.calendarId}
+                                gap={3}
+                                alignItems="center"
+                              >
+                                <Switch
+                                  isChecked={calendar.enabled}
+                                  onChange={() =>
+                                    toggleCalendar(getGoogleCalendar(), index)
+                                  }
+                                />
+                                <Text>{calendar.name}</Text>
+                              </Flex>
+                            )
+                          }
+                        )}
+                      </Flex>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        display="flex"
+                        gap={2}
+                        alignItems="center"
+                        onClick={onConnectGoogleCalendar}
+                      >
+                        <FaGoogle />
+                        Google
+                      </Button>
+                    )}
+
+                    {!!getOfficeCalendar() ? (
+                      <Flex
+                        direction="column"
+                        bgColor={bgColor}
+                        borderRadius={12}
+                        padding={10}
+                        gap={6}
+                      >
+                        <Flex gap={4} alignItems="center">
+                          <Circle size={14} bg={avatarBg}>
+                            <FaMicrosoft size={28} />
+                          </Circle>
+                          <Flex direction="column" gap={2} lineHeight={1}>
+                            <Text fontSize={24} fontWeight="600">
+                              Office 365
+                            </Text>
+                            <Text textColor="neutral.200" fontSize={24}>
+                              {getOfficeCalendar()?.email}
+                            </Text>
+                          </Flex>
+                        </Flex>
+                        <Divider />
+                        {getOfficeCalendar()?.calendars?.map(
+                          (calendar, index) => {
+                            return (
+                              <Flex
+                                key={calendar.calendarId}
+                                gap={3}
+                                alignItems="center"
+                              >
+                                <Switch
+                                  isChecked={calendar.enabled}
+                                  onChange={() =>
+                                    toggleCalendar(getOfficeCalendar(), index)
+                                  }
+                                />
+                                <Text>{calendar.name}</Text>
+                              </Flex>
+                            )
+                          }
+                        )}
+                      </Flex>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        display="flex"
+                        gap={2}
+                        alignItems="center"
+                        onClick={onConnectOfficeCalendar}
+                      >
+                        <FaMicrosoft />
+                        Office 365
+                      </Button>
+                    )}
+
+                    {!!getAppleCalendar() ? (
+                      <Flex
+                        direction="column"
+                        bgColor={bgColor}
+                        borderRadius={12}
+                        padding={10}
+                        gap={6}
+                      >
+                        <Flex gap={4} alignItems="center">
+                          <Circle size={14} bg={avatarBg}>
+                            <FaApple size={28} />
+                          </Circle>
+                          <Flex direction="column" gap={2} lineHeight={1}>
+                            <Text fontSize={24} fontWeight="600">
+                              iCloud
+                            </Text>
+                            <Text textColor="neutral.200" fontSize={24}>
+                              {getAppleCalendar()?.email}
+                            </Text>
+                          </Flex>
+                        </Flex>
+                        <Divider />
+                        {getAppleCalendar()?.calendars?.map(
+                          (calendar, index) => {
+                            return (
+                              <Flex
+                                key={calendar.calendarId}
+                                gap={3}
+                                alignItems="center"
+                              >
+                                <Switch
+                                  isChecked={calendar.enabled}
+                                  onChange={() =>
+                                    toggleCalendar(getOfficeCalendar(), index)
+                                  }
+                                />
+                                <Text>{calendar.name}</Text>
+                              </Flex>
+                            )
+                          }
+                        )}
+                      </Flex>
+                    ) : !isAppleCalDavOpen ? (
                       <Button
                         variant="outline"
                         display="flex"
@@ -289,9 +531,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         <FaApple />
                         iCloud
                       </Button>
-                    )}
-
-                    {isAppleCalDavOpen && (
+                    ) : (
                       <Flex
                         borderWidth="1px"
                         borderRadius={6}
@@ -324,7 +564,47 @@ const OnboardingModal = forwardRef((props, ref) => {
                       </Flex>
                     )}
 
-                    {!isCalDavOpen && (
+                    {!!getDavCalendar() ? (
+                      <Flex
+                        direction="column"
+                        bgColor={bgColor}
+                        borderRadius={12}
+                        padding={10}
+                        gap={6}
+                      >
+                        <Flex gap={4} alignItems="center">
+                          <Circle size={14} bg={avatarBg}>
+                            <FaMicrosoft size={28} />
+                          </Circle>
+                          <Flex direction="column" gap={2} lineHeight={1}>
+                            <Text fontSize={24} fontWeight="600">
+                              Webdav
+                            </Text>
+                            <Text textColor="neutral.200" fontSize={24}>
+                              {getDavCalendar()?.email}
+                            </Text>
+                          </Flex>
+                        </Flex>
+                        <Divider />
+                        {getDavCalendar()?.calendars?.map((calendar, index) => {
+                          return (
+                            <Flex
+                              key={calendar.calendarId}
+                              gap={3}
+                              alignItems="center"
+                            >
+                              <Switch
+                                isChecked={calendar.enabled}
+                                onChange={() =>
+                                  toggleCalendar(getDavCalendar(), index)
+                                }
+                              />
+                              <Text>{calendar.name}</Text>
+                            </Flex>
+                          )
+                        })}
+                      </Flex>
+                    ) : !isCalDavOpen ? (
                       <Button
                         variant="outline"
                         display="flex"
@@ -335,9 +615,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         <FaMicrosoft />
                         Webdav
                       </Button>
-                    )}
-
-                    {isCalDavOpen && (
+                    ) : (
                       <Flex
                         borderWidth="1px"
                         borderRadius={6}
@@ -422,11 +700,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                     >
                       Back
                     </Button>
-                    <Button
-                      flex={1}
-                      colorScheme="primary"
-                      onClick={validateLastStep}
-                    >
+                    <Button flex={1} colorScheme="primary">
                       Get Started
                     </Button>
                   </Flex>
