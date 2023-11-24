@@ -113,10 +113,18 @@ const Inner = (props: { children: React.ReactNode }) => {
   const { handleLogin, logged } = useLogin()
   const { disconnect } = useDisconnect()
 
+  // This protection is to avoid pre-rendering of the modal
+  // that leads to errors
+  const [isClient, setIsClient] = React.useState(false)
+
   React.useEffect(() => {
     if (!logged) {
       //make sure wagmi doesn't stay connect if for any reason we don't have the account
       disconnect()
+    }
+
+    if (!isClient) {
+      setIsClient(true)
     }
   }, [])
 
@@ -132,8 +140,14 @@ const Inner = (props: { children: React.ReactNode }) => {
       <Head />
       <BaseLayout>{props.children}</BaseLayout>
 
-      <OnboardingModal ref={onboardingModalRef} />
-      <DiscordOnboardingModal callback={onboardingModalRef.current?.onOpen} />
+      {isClient && (
+        <>
+          <OnboardingModal ref={onboardingModalRef} />
+          <DiscordOnboardingModal
+            callback={onboardingModalRef.current?.onOpen}
+          />
+        </>
+      )}
     </ConnectKitProvider>
   )
 }
