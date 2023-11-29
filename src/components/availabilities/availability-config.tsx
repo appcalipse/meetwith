@@ -4,18 +4,17 @@ import {
   Heading,
   Spacer,
   Text,
-  useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useContext, useEffect, useState } from 'react'
 
+import TimezoneSelector from '@/components/TimezoneSelector'
+import { AccountContext } from '@/providers/AccountProvider'
 import { Account, TimeRange } from '@/types/Account'
+import { logEvent } from '@/utils/analytics'
+import { saveAccountChanges } from '@/utils/api_helper'
 
-import { AccountContext } from '../../providers/AccountProvider'
-import { logEvent } from '../../utils/analytics'
-import { saveAccountChanges } from '../../utils/api_helper'
-import TimezoneSelector from '../TimezoneSelector'
 import { WeekdayConfig } from './weekday-config'
 
 const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({

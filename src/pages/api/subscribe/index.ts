@@ -1,7 +1,7 @@
 import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { initDB, saveEmailToDB } from '../../../utils/database'
+import { initDB, saveEmailToDB } from '@/utils/database'
 
 export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
