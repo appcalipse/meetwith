@@ -1,16 +1,13 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
-
-import { fetchWalletPOAPs } from '@/utils/services/poap.helper'
 
 import {
   getSlotsForAccount,
   getSlotsForDashboard,
   initDB,
-} from '../../../utils/database'
-import { AccountNotFoundError } from '../../../utils/errors'
+} from '@/utils/database'
+import { AccountNotFoundError } from '@/utils/errors'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     initDB()
     try {
@@ -48,4 +45,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     }
   }
   return res.status(404).send('Not found')
-})
+}
+
+export default handler

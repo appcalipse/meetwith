@@ -1,15 +1,10 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-
-import {
-  BlockchainSubscription,
-  Subscription,
-} from '../../../../types/Subscription'
-import { initDB, updateAccountSubscriptions } from '../../../../utils/database'
-import { getBlockchainSubscriptionsForAccount } from '../../../../utils/rpc_helper'
-import { convertBlockchainSubscriptionToSubscription } from '../../../../utils/subscription_manager'
+import { BlockchainSubscription, Subscription } from '@/types/Subscription'
+import { initDB, updateAccountSubscriptions } from '@/utils/database'
+import { getBlockchainSubscriptionsForAccount } from '@/utils/rpc_helper'
+import { convertBlockchainSubscriptionToSubscription } from '@/utils/subscription_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -31,4 +26,4 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default withSentry(withSessionRoute(handle))
+export default withSessionRoute(handle)
