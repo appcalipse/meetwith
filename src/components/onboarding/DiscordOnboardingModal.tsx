@@ -1,3 +1,5 @@
+'use client'
+
 import {
   Box,
   Button,
@@ -44,7 +46,13 @@ export default function DiscordOnboardingModal({
         onOpen()
         didDiscordInit = true
       }
-    } else if (!!origin && !didOpenConnectWallet) {
+    } else if (
+      !currentAccount?.address &&
+      !!origin &&
+      !didOpenConnectWallet &&
+      !isOpen
+    ) {
+      console.log('discord modal')
       setOpen(true)
       didOpenConnectWallet = true
     }
