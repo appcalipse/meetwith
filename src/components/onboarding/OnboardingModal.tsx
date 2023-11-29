@@ -13,7 +13,6 @@ import {
   Modal,
   ModalContent,
   ModalOverlay,
-  Select,
   Spinner,
   Switch,
   Text,
@@ -33,21 +32,28 @@ import {
 } from 'react'
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
+import { TimeRange } from '@/types/Account'
+import { NotificationChannel } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import { TimeSlotSource } from '@/types/Meeting'
+import { logEvent } from '@/utils/analytics'
 import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
   internalFetch,
   listConnectedCalendars,
+  saveAccountChanges,
+  setNotificationSubscriptions,
   updateConnectedCalendar,
 } from '@/utils/api_helper'
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import { checkValidDomain } from '@/utils/rpc_helper_front'
 
 import { AccountContext } from '../../providers/AccountProvider'
+import { WeekdayConfig } from '../availabilities/weekday-config'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
 import TimezoneSelector from '../TimezoneSelector'
 
@@ -89,20 +95,14 @@ const OnboardingModal = forwardRef((props, ref) => {
   }))
 
   // User Control
-  const { currentAccount } = useContext(AccountContext)
+  const { currentAccount, login } = useContext(AccountContext)
+  const [availabilities, setInitialAvailabilities] = useState([
+    ...currentAccount!.preferences!.availabilities,
+  ])
 
   // Modal opening flow
   useEffect(() => {
     // When something related to user changes, check if we should open the modal
-
-    console.log({ stateObject })
-    console.log({
-      currentAccount,
-      didInit,
-      didOpenConnectWallet,
-      isOpen,
-    })
-
     // If the user is logged in and modal hans't been opened yet
     if (!!currentAccount?.address && !didInit) {
       // We check if the user is comming from Discord Onboarding Modal
@@ -149,7 +149,7 @@ const OnboardingModal = forwardRef((props, ref) => {
         >
     )
 
-    if (discordUserInfo?.global_name) setName(discordUserInfo.global_name)
+    if (discordUserInfo?.username) setName(discordUserInfo.username)
   }
 
   useEffect(() => {
@@ -240,6 +240,15 @@ const OnboardingModal = forwardRef((props, ref) => {
     )
   }
 
+  function hasCalendar() {
+    return (
+      !!getGoogleCalendar() ||
+      !!getOfficeCalendar() ||
+      !!getAppleCalendar() ||
+      !!getDavCalendar()
+    )
+  }
+
   useEffect(() => {
     setCalendarConnections(calendarConnectionsData ?? [])
   }, [calendarConnectionsData])
@@ -271,6 +280,65 @@ const OnboardingModal = forwardRef((props, ref) => {
   }
 
   // TODO: Needs to handle Pro Account Block
+
+  useEffect(() => {
+    setTimezone(currentAccount!.preferences!.timezone)
+    const availabilities = [...currentAccount!.preferences!.availabilities]
+    for (let i = 0; i <= 6; i++) {
+      let found = false
+      for (const availability of availabilities) {
+        if (availability.weekday === i) {
+          found = true
+        }
+      }
+      if (!found) {
+        availabilities.push({ weekday: i, ranges: [] })
+      }
+    }
+    setInitialAvailabilities(availabilities)
+  }, [currentAccount?.address])
+
+  const onChange = (day: number, ranges: TimeRange[] | null) => {
+    const newAvailabilities = [...availabilities]
+    newAvailabilities[day] = { weekday: day, ranges: ranges ?? [] }
+    setInitialAvailabilities(newAvailabilities)
+  }
+
+  async function onSave() {
+    if (!currentAccount?.preferences || !timezone) return
+
+    if (!(await checkValidDomain(name ?? '', currentAccount?.address))) {
+      // Show error
+      return
+    }
+
+    try {
+      const updatedAccount = await saveAccountChanges({
+        ...currentAccount,
+        preferences: {
+          ...currentAccount.preferences,
+          name: name,
+          timezone,
+          availabilities,
+        },
+      })
+      if (!!email)
+        await setNotificationSubscriptions({
+          account_address: currentAccount.address,
+          notification_types: [
+            {
+              channel: NotificationChannel.EMAIL,
+              destination: email,
+              disabled: false,
+            },
+          ],
+        })
+      logEvent('Updated account details')
+      login(updatedAccount)
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   return (
     <>
@@ -427,6 +495,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={onConnectGoogleCalendar}
+                        disabled={hasCalendar()}
                       >
                         <FaGoogle />
                         Google
@@ -482,6 +551,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={onConnectOfficeCalendar}
+                        disabled={hasCalendar()}
                       >
                         <FaMicrosoft />
                         Office 365
@@ -537,6 +607,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={() => setIsAppleCalDavOpen(!isAppleCalDavOpen)}
+                        disabled={hasCalendar()}
                       >
                         <FaApple />
                         iCloud
@@ -621,6 +692,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={() => setIsCalDavOpen(!isCalDavOpen)}
+                        disabled={hasCalendar()}
                       >
                         <FaMicrosoft />
                         Webdav
@@ -687,17 +759,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                     </Text>
                   </Flex>
 
-                  <Flex direction="column" gap={4} justifyContent="center">
-                    {[1, 2, 3, 4, 5, 6, 7].map(weekDay => (
-                      <Flex gap={3} key={weekDay}>
-                        <Text>X</Text>
-                        <Text flex={1}>weekDay</Text>
-                        <Select />
-                        -
-                        <Select />
-                        <Button>D</Button>
-                        <Button>+</Button>
-                      </Flex>
+                  <Flex direction="column" justifyContent="center">
+                    {availabilities.map((availability, index) => (
+                      <WeekdayConfig
+                        key={`${currentAccount?.address}:${index}`}
+                        dayAvailability={availability}
+                        onChange={onChange}
+                      />
                     ))}
                   </Flex>
 
@@ -710,7 +778,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                     >
                       Back
                     </Button>
-                    <Button flex={1} colorScheme="primary">
+                    <Button flex={1} colorScheme="primary" onClick={onSave}>
                       Get Started
                     </Button>
                   </Flex>
