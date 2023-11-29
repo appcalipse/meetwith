@@ -1,3 +1,5 @@
+'use client'
+
 import {
   Box,
   Button,
@@ -92,6 +94,14 @@ const OnboardingModal = forwardRef((props, ref) => {
   // Modal opening flow
   useEffect(() => {
     // When something related to user changes, check if we should open the modal
+
+    console.log({ stateObject })
+    console.log({
+      currentAccount,
+      didInit,
+      didOpenConnectWallet,
+      isOpen,
+    })
 
     // If the user is logged in and modal hans't been opened yet
     if (!!currentAccount?.address && !didInit) {

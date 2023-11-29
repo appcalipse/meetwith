@@ -1,7 +1,6 @@
 import '../styles/globals.css'
 import '../styles/swipers.css'
 
-import { ChakraProvider } from '@chakra-ui/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ConnectKitProvider } from 'connectkit'
@@ -9,35 +8,21 @@ import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
-import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { CookiesProvider } from 'react-cookie'
 import { useDisconnect, WagmiConfig } from 'wagmi'
 
+import { CookieConsent } from '@/components/CookieConsent'
+import { Head } from '@/components/Head'
+import { BaseLayout } from '@/layouts/Base'
+import { AccountProvider } from '@/providers/AccountProvider'
+import { validateAuthenticationApp } from '@/session/core'
 import { useLogin } from '@/session/login'
+import { Account } from '@/types/Account'
+import { initAnalytics, pageView } from '@/utils/analytics'
 import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
 import { wagmiConfig } from '@/utils/user_manager'
-
-import { CookieConsent } from '../components/CookieConsent'
-import { Head } from '../components/Head'
-import { ChakraMDXProvider } from '../components/mdx.provider'
-import { BaseLayout } from '../layouts/Base'
-import { AccountProvider } from '../providers/AccountProvider'
-import { validateAuthenticationApp } from '../session/core'
-import customTheme from '../styles/theme'
-import { Account } from '../types/Account'
-import { initAnalytics, pageView } from '../utils/analytics'
-
-const DiscordOnboardingModal = dynamic(
-  () => import('@/components/onboarding/DiscordOnboardingModal'),
-  { ssr: false }
-)
-
-const OnboardingModal = dynamic(
-  () => import('@/components/onboarding/OnboardingModal'),
-  { ssr: false }
-)
 
 interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
@@ -88,23 +73,19 @@ function MyApp({
       {process.env.NODE_ENV === 'development' && (
         <ReactQueryDevtools initialIsOpen={true} />
       )}
-      <ChakraProvider theme={customTheme}>
-        <ChakraMDXProvider>
-          <CookiesProvider>
-            <WagmiConfig config={wagmiConfig}>
-              <AccountProvider
-                currentAccount={currentAccount}
-                logged={!!currentAccount}
-              >
-                <Inner>
-                  <Component {...customProps} />
-                </Inner>
-              </AccountProvider>
-              <CookieConsent consentCookie={consentCookie as boolean} />
-            </WagmiConfig>
-          </CookiesProvider>
-        </ChakraMDXProvider>
-      </ChakraProvider>
+      <CookiesProvider>
+        <WagmiConfig config={wagmiConfig}>
+          <AccountProvider
+            currentAccount={currentAccount}
+            logged={!!currentAccount}
+          >
+            <Inner>
+              <Component {...customProps} />
+            </Inner>
+          </AccountProvider>
+          <CookieConsent consentCookie={consentCookie as boolean} />
+        </WagmiConfig>
+      </CookiesProvider>
     </QueryClientProvider>
   )
 }
@@ -128,8 +109,6 @@ const Inner = (props: { children: React.ReactNode }) => {
     }
   }, [])
 
-  const onboardingModalRef = React.useRef<{ onOpen: () => void }>(null)
-
   return (
     <ConnectKitProvider
       options={{ initialChainId: 0, enforceSupportedChains: false }}
@@ -139,15 +118,6 @@ const Inner = (props: { children: React.ReactNode }) => {
     >
       <Head />
       <BaseLayout>{props.children}</BaseLayout>
-
-      {isClient && (
-        <>
-          <OnboardingModal ref={onboardingModalRef} />
-          <DiscordOnboardingModal
-            callback={onboardingModalRef.current?.onOpen}
-          />
-        </>
-      )}
     </ConnectKitProvider>
   )
 }

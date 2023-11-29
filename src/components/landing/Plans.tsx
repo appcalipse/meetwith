@@ -12,7 +12,6 @@ import {
   Icon,
   SlideFade,
   Text,
-  useToast,
 } from '@chakra-ui/react'
 import { useModal } from 'connectkit'
 import router from 'next/router'
