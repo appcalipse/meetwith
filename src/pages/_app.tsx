@@ -73,19 +73,17 @@ function MyApp({
       {process.env.NODE_ENV === 'development' && (
         <ReactQueryDevtools initialIsOpen={true} />
       )}
-      <CookiesProvider>
-        <WagmiConfig config={wagmiConfig}>
-          <AccountProvider
-            currentAccount={currentAccount}
-            logged={!!currentAccount}
-          >
-            <Inner>
-              <Component {...customProps} />
-            </Inner>
-          </AccountProvider>
-          <CookieConsent consentCookie={consentCookie as boolean} />
-        </WagmiConfig>
-      </CookiesProvider>
+      <WagmiConfig config={wagmiConfig}>
+        <AccountProvider
+          currentAccount={currentAccount}
+          logged={!!currentAccount}
+        >
+          <Inner>
+            <Component {...customProps} />
+          </Inner>
+        </AccountProvider>
+        <CookieConsent consentCookie={consentCookie as boolean} />
+      </WagmiConfig>
     </QueryClientProvider>
   )
 }
