@@ -238,3 +238,18 @@ export const getAddressFromDomain = async (
     }
   }
 }
+
+export const checkTransactionError = (error: any) => {
+  if (
+    error['details']?.toLowerCase()?.includes('user rejected') ||
+    error['details']?.toLocaleLowerCase()?.includes('user denied')
+  ) {
+    return 'You rejected the transaction'
+  } else if (error['details']?.toLowerCase()?.includes('insufficient')) {
+    return 'Insufficient funds'
+  } else if ('details' in error) {
+    return error['details']
+  } else {
+    return error.message
+  }
+}

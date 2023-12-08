@@ -17,6 +17,7 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
+import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
@@ -244,7 +245,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     if (!(await checkValidDomain(name?.label || '', currentAccount!.address))) {
       setLoading(false)
       toast({
-        title: 'You are not the owner of this name',
+        title: 'You are not the owner of this domain',
         description:
           'To use ENS, Lens, Unstoppable domain, or other name services as your name you need to be the owner of it',
         status: 'error',
@@ -285,8 +286,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     if (!(await checkValidDomain(name?.label || '', currentAccount!.address))) {
       setLoading(false)
       toast({
-        title: 'You are not the owner of this name',
-        description: 'This name is used before.',
+        title: 'You are not the owner of this domain',
+        description:
+          'To use ENS, Lens, Unstoppable domain, or other name services as your name you need to be the owner of it',
         status: 'error',
         duration: 5000,
         position: 'top',
@@ -298,7 +300,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     try {
       await changeDomainOnChain(
         currentAccount.address,
-        currentAccount.subscriptions[0].chain,
         proDomain,
         newProDomain,
         walletClient!
@@ -310,7 +311,8 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       const isBrave =
         (navigator as any).brave && (await (navigator as any).brave.isBrave())
 
-      console.error(e)
+      Sentry.captureException(e)
+
       setLoading(false)
       toast({
         title: 'Error',
@@ -325,8 +327,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       })
     }
 
-    logEvent('Account Domain Chainged!')
-    login(currentAccount)
+    logEvent(
+      `Account Domain Changed: old domain: ${proDomain}, new domain: ${newProDomain}`
+    )
 
     setLoading(false)
   }
