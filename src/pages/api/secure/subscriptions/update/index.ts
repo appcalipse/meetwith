@@ -17,16 +17,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       existingSubscriptionsForAddress &&
       existingSubscriptionsForAddress.length > 0
     ) {
-      if (
-        existingSubscriptionsForAddress.some(
-          subscription =>
-            subscription.domain !== existingSubscriptionsForAddress[0].domain
-        )
-      ) {
-        return res
-          .status(409)
-          .send('Confilict Detected: multiple domains for one account')
-      }
       const existingSubscriptionsForDomain =
         await getExistingSubscriptionsByDomain(domain as string)
       if (
