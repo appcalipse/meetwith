@@ -7,6 +7,7 @@ import {
   GetWalletClientResult,
   switchNetwork,
 } from '@wagmi/core'
+import { ca } from 'date-fns/locale'
 import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
@@ -27,30 +28,34 @@ export const resolveExtraInfo = async (
 export const resolveENS = async (
   address: string
 ): Promise<AccountExtraProps | undefined> => {
-  const name = await fetchEnsName({
-    address: address as `0x${string}`,
-    chainId: 1,
-  })
-
-  if (!name) {
-    return undefined
-  }
-
-  const validatedAddress = await fetchEnsAddress({ name, chainId: 1 })
-
-  // Check to be sure the reverse record is correct.
-  if (address.toLowerCase() !== validatedAddress?.toLowerCase()) {
-    return undefined
-  }
-
-  let avatar = undefined
   try {
-    avatar = await fetchEnsAvatar({ name, chainId: 1 })
-  } catch (e) {}
+    const name = await fetchEnsName({
+      address: address as `0x${string}`,
+      chainId: 1,
+    })
 
-  return {
-    name,
-    avatar: avatar || undefined,
+    if (!name) {
+      return undefined
+    }
+
+    const validatedAddress = await fetchEnsAddress({ name, chainId: 1 })
+
+    // Check to be sure the reverse record is correct.
+    if (address.toLowerCase() !== validatedAddress?.toLowerCase()) {
+      return undefined
+    }
+
+    let avatar = undefined
+    try {
+      avatar = await fetchEnsAvatar({ name, chainId: 1 })
+    } catch (e) {}
+
+    return {
+      name,
+      avatar: avatar || undefined,
+    }
+  } catch (e) {
+    return undefined
   }
 }
 
