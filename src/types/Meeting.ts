@@ -141,3 +141,12 @@ export enum MeetingChangeType {
   UPDATE,
   DELETE,
 }
+
+export enum NotBefore {
+  OneHour = 1,
+  TwoHours = 2,
+  SixHours = 6,
+  TwelveHours = 12,
+  Tomorrow = 500,
+  NextWeek = 1000,
+}
