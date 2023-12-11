@@ -96,9 +96,11 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   // User Control
   const { currentAccount, login } = useContext(AccountContext)
-  const [availabilities, setInitialAvailabilities] = useState([
-    ...currentAccount!.preferences!.availabilities,
-  ])
+  const [availabilities, setInitialAvailabilities] = useState(
+    currentAccount?.preferences?.availabilities
+      ? [...currentAccount.preferences.availabilities]
+      : []
+  )
 
   // Modal opening flow
   useEffect(() => {
@@ -282,8 +284,9 @@ const OnboardingModal = forwardRef((props, ref) => {
   // TODO: Needs to handle Pro Account Block
 
   useEffect(() => {
-    setTimezone(currentAccount!.preferences!.timezone)
-    const availabilities = [...currentAccount!.preferences!.availabilities]
+    if (!currentAccount?.preferences) return
+    setTimezone(currentAccount.preferences.timezone)
+    const availabilities = [...currentAccount.preferences.availabilities]
     for (let i = 0; i <= 6; i++) {
       let found = false
       for (const availability of availabilities) {
