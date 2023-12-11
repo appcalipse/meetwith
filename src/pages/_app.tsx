@@ -78,17 +78,19 @@ function MyApp({
           currentAccount={currentAccount}
           logged={!!currentAccount}
         >
-          <Inner>
+          <Inner consentCookie={consentCookie ?? false}>
             <Component {...customProps} />
           </Inner>
         </AccountProvider>
-        <CookieConsent consentCookie={consentCookie as boolean} />
       </WagmiConfig>
     </QueryClientProvider>
   )
 }
 
-const Inner = (props: { children: React.ReactNode }) => {
+const Inner = (props: {
+  children: React.ReactNode
+  consentCookie: boolean
+}) => {
   const { handleLogin, logged } = useLogin()
   const { disconnect } = useDisconnect()
 
@@ -115,7 +117,9 @@ const Inner = (props: { children: React.ReactNode }) => {
       }}
     >
       <Head />
-      <BaseLayout>{props.children}</BaseLayout>
+      <BaseLayout consentCookie={props.consentCookie}>
+        {props.children}
+      </BaseLayout>
     </ConnectKitProvider>
   )
 }
