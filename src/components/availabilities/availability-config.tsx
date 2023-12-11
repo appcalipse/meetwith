@@ -53,7 +53,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     try {
       if (!timezone) {
         toast({
-          title: 'Timezone needed',
+          title: 'Please select timezone',
           description: 'You need to provide a proper timezone.',
           status: 'error',
           duration: 5000,
