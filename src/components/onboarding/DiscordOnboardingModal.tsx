@@ -14,9 +14,8 @@ import { useSearchParams } from 'next/navigation'
 import { useContext, useEffect, useState } from 'react'
 import { FaDiscord } from 'react-icons/fa'
 
+import { AccountContext } from '@/providers/AccountProvider'
 import { discordRedirectUrl, OnboardingSubject } from '@/utils/constants'
-
-import { AccountContext } from '../../providers/AccountProvider'
 
 let didDiscordInit = false
 let didOpenConnectWallet = false
@@ -52,7 +51,6 @@ export default function DiscordOnboardingModal({
       !didOpenConnectWallet &&
       !isOpen
     ) {
-      console.log('discord modal')
       setOpen(true)
       didOpenConnectWallet = true
     }
@@ -75,8 +73,8 @@ export default function DiscordOnboardingModal({
             </Flex>
 
             <Box fontSize={18} marginBottom={10}>
-              We noticed that you arrived from our bot Discord message. Would
-              you like to connect your account to enable our Discord scheduling
+              We noticed that you arrived from our Discord Bot message. Would
+              you like to connect your account to use our Discord scheduling
               bot?
             </Box>
 

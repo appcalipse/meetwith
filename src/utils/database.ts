@@ -9,28 +9,21 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import { DiscordAccount } from '@/types/Discord'
-import {
-  GateConditionObject,
-  GateUsage,
-  GateUsageType,
-} from '@/types/TokenGating'
-
 import {
   Account,
   AccountPreferences,
   MeetingType,
   SimpleAccountInfo,
-} from '../types/Account'
+} from '@/types/Account'
 import {
   AccountNotifications,
-  DiscordNotificationType,
   NotificationChannel,
-} from '../types/AccountNotifications'
+} from '@/types/AccountNotifications'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
-} from '../types/CalendarConnections'
+} from '@/types/CalendarConnections'
+import { DiscordAccount } from '@/types/Discord'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -40,19 +33,24 @@ import {
   MeetingProvider,
   ParticipantMappingType,
   TimeSlotSource,
-} from '../types/Meeting'
+} from '@/types/Meeting'
 import {
   ParticipantBaseInfo,
   ParticipantInfo,
   ParticipantType,
-} from '../types/ParticipantInfo'
+} from '@/types/ParticipantInfo'
 import {
   MeetingCancelSyncRequest,
   MeetingCreationRequest,
   MeetingCreationSyncRequest,
   MeetingUpdateRequest,
-} from '../types/Requests'
-import { Subscription } from '../types/Subscription'
+} from '@/types/Requests'
+import { Subscription } from '@/types/Subscription'
+import {
+  GateConditionObject,
+  GateUsage,
+  GateUsageType,
+} from '@/types/TokenGating'
 import {
   AccountNotFoundError,
   GateConditionNotValidError,
@@ -62,7 +60,8 @@ import {
   MeetingNotFoundError,
   TimeNotAvailableError,
   UnauthorizedError,
-} from '../utils/errors'
+} from '@/utils/errors'
+
 import {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
@@ -864,7 +863,6 @@ export const createOrUpdatesDiscordAccount = async (
 }
 
 export const deleteDiscordAccount = async (accountAddress: string) => {
-  console.debug('Deleting discord account...')
   const { error } = await db.supabase
     .from('discord_accounts')
     .delete()
