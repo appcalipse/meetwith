@@ -10,6 +10,7 @@ import {
   useDisclosure,
 } from '@chakra-ui/react'
 import { useModal } from 'connectkit'
+import { isSameDay } from 'date-fns'
 import { useSearchParams } from 'next/navigation'
 import { useContext, useEffect, useState } from 'react'
 import { FaDiscord } from 'react-icons/fa'
@@ -28,8 +29,8 @@ export default function DiscordOnboardingModal({
   const queryParams = useSearchParams()
   const origin = queryParams.get('origin')
 
-  const { isOpen, onOpen, onClose } = useDisclosure()
-  const { setOpen } = useModal()
+  const { isOpen, onOpen: openOnboardingModal, onClose } = useDisclosure()
+  const { setOpen: openLogin } = useModal()
 
   const { currentAccount } = useContext(AccountContext)
 
@@ -42,7 +43,7 @@ export default function DiscordOnboardingModal({
         !currentAccount.discord_account
       ) {
         setSubject(OnboardingSubject.Discord)
-        onOpen()
+        openOnboardingModal()
         didDiscordInit = true
       }
     } else if (
@@ -51,10 +52,10 @@ export default function DiscordOnboardingModal({
       !didOpenConnectWallet &&
       !isOpen
     ) {
-      setOpen(true)
+      openLogin(true)
       didOpenConnectWallet = true
     }
-  }, [currentAccount, onOpen, origin, setOpen, subject])
+  }, [currentAccount, openOnboardingModal, origin, openLogin, subject])
 
   return (
     <>
@@ -93,6 +94,9 @@ export default function DiscordOnboardingModal({
                 )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
                   JSON.stringify({
                     origin: OnboardingSubject.DiscordConnectedInModal,
+                    skipNextSteps:
+                      !!currentAccount?.created &&
+                      !isSameDay(currentAccount.created, new Date()),
                   })
                 ).toString('base64')}`}
               >

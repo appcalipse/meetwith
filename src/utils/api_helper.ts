@@ -77,10 +77,8 @@ export const internalFetch = async <T>(
 
 export const getAccount = async (identifier: string): Promise<Account> => {
   try {
-    const account = await queryClient.fetchQuery(
-      QueryKeys.account(identifier.toLowerCase()),
-      () => internalFetch(`/accounts/${identifier}`)
-    )
+    const account = await internalFetch(`/accounts/${identifier}`)
+    if (!account) throw new AccountNotFoundError(identifier)
     return account as Account
   } catch (e: any) {
     if (e.status && e.status === 404) {
