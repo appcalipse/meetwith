@@ -52,6 +52,6 @@ describe('test not before', () => {
     expect(notBeforeOneHour).toEqual(new Date('2023-12-06T02:00:00.000Z'))
     expect(notBeforeSixHours).toEqual(new Date('2023-12-06T07:00:00.000Z'))
     expect(notBeforeTomorrow).toEqual(new Date('2023-12-06T03:00:00.000Z'))
-    expect(notBeforeNextWeek).toEqual(new Date('2023-12-10T03:00:00.000Z'))
+    expect(notBeforeNextWeek).toEqual(new Date('2023-12-11T03:00:00.000Z'))
   })
 })

@@ -34,7 +34,10 @@ export const findStartDateForNotBefore = (
       const zonedNow2 = utcToZonedTime(new Date(startDate), timezone)
       zonedNow2.setDate(zonedNow2.getDate() + 7)
       zonedNow2.setHours(0, 0, 0, 0)
-      startDate = zonedTimeToUtc(startOfWeek(zonedNow2), timezone)
+      startDate = zonedTimeToUtc(
+        startOfWeek(zonedNow2, { weekStartsOn: 1 }),
+        timezone
+      )
       break
   }
 
