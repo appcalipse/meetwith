@@ -69,13 +69,14 @@ const OnboardingModal = forwardRef((props, ref) => {
       ? JSON.parse(Buffer.from(state as string, 'base64').toString())
       : undefined
   const origin = stateObject?.origin as OnboardingSubject | undefined
+  const skipNextSteps = stateObject?.skipNextSteps as boolean
 
   // Color Control
   const bgColor = useColorModeValue('white', 'gray.600')
   const avatarBg = useColorModeValue('gray.700', 'gray.500')
 
   // Onboarding Modal Control
-  const { isOpen, onOpen, onClose } = useDisclosure()
+  const { isOpen, onOpen: onOpenOnboardingModal, onClose } = useDisclosure()
   // Wallet Modal Control
   const { setOpen: setWalletModalOpen } = useModal()
   const {
@@ -89,7 +90,7 @@ const OnboardingModal = forwardRef((props, ref) => {
   })
   // Necessary to call these functions from parent
   useImperativeHandle(ref, () => ({
-    onOpen,
+    onOpen: onOpenOnboardingModal,
     onClose,
     isOpen,
   }))
@@ -106,14 +107,14 @@ const OnboardingModal = forwardRef((props, ref) => {
   useEffect(() => {
     // When something related to user changes, check if we should open the modal
     // If the user is logged in and modal hans't been opened yet
-    if (!!currentAccount?.address && !didInit) {
+    if (!!currentAccount?.address && !didInit && !skipNextSteps) {
       // We check if the user is comming from Discord Onboarding Modal
       // and has its discord account linked
       if (
         origin === OnboardingSubject.DiscordConnectedInModal &&
         !!currentAccount.discord_account
       ) {
-        onOpen()
+        onOpenOnboardingModal()
         didInit = true
       }
 
@@ -123,7 +124,7 @@ const OnboardingModal = forwardRef((props, ref) => {
         !!currentAccount.discord_account
       ) {
         setActiveStep(1)
-        onOpen()
+        onOpenOnboardingModal()
         didInit = true
       }
       // If not, we check if any origin is passed in and if the user its not logged in
@@ -139,7 +140,13 @@ const OnboardingModal = forwardRef((props, ref) => {
       setWalletModalOpen(true)
       didOpenConnectWallet = true
     }
-  }, [currentAccount, onOpen, origin, setWalletModalOpen, isOpen])
+  }, [
+    currentAccount,
+    onOpenOnboardingModal,
+    origin,
+    setWalletModalOpen,
+    isOpen,
+  ])
 
   // Discord Step
   async function fillDiscordUserInfo() {
