@@ -23,6 +23,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useModal } from 'connectkit'
 import { useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/router'
 import {
   forwardRef,
   useContext,
@@ -61,6 +62,8 @@ let didInit = false
 let didOpenConnectWallet = false
 
 const OnboardingModal = forwardRef((props, ref) => {
+  const router = useRouter()
+
   // Callback Control
   const queryParams = useSearchParams()
   const state = queryParams.get('state')
@@ -288,8 +291,6 @@ const OnboardingModal = forwardRef((props, ref) => {
     queryClient.invalidateQueries(['calendars'])
   }
 
-  // TODO: Needs to handle Pro Account Block
-
   useEffect(() => {
     if (!currentAccount?.preferences) return
     setTimezone(currentAccount.preferences.timezone)
@@ -345,6 +346,8 @@ const OnboardingModal = forwardRef((props, ref) => {
         })
       logEvent('Updated account details')
       login(updatedAccount)
+
+      router.push('/dashboard')
     } catch (e) {
       console.error(e)
     }
@@ -442,19 +445,6 @@ const OnboardingModal = forwardRef((props, ref) => {
                     </Text>
                   </Flex>
 
-                  {isFetchingCalendarConnections && (
-                    <Flex
-                      width="100%"
-                      justifyContent="center"
-                      alignItems="center"
-                      gap={2}
-                    >
-                      {/* TODO: Temporary needs better design */}
-                      <Spinner />
-                      <Text>Updating ...</Text>
-                    </Flex>
-                  )}
-
                   <Flex direction="column" gap={4}>
                     {!!getGoogleCalendar() ? (
                       <Flex
@@ -506,6 +496,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         alignItems="center"
                         onClick={onConnectGoogleCalendar}
                         disabled={hasCalendar()}
+                        isLoading={isFetchingCalendarConnections}
                       >
                         <FaGoogle />
                         Google
@@ -562,6 +553,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         alignItems="center"
                         onClick={onConnectOfficeCalendar}
                         disabled={hasCalendar()}
+                        isLoading={isFetchingCalendarConnections}
                       >
                         <FaMicrosoft />
                         Office 365
@@ -618,6 +610,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         alignItems="center"
                         onClick={() => setIsAppleCalDavOpen(!isAppleCalDavOpen)}
                         disabled={hasCalendar()}
+                        isLoading={isFetchingCalendarConnections}
                       >
                         <FaApple />
                         iCloud
@@ -703,6 +696,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         alignItems="center"
                         onClick={() => setIsCalDavOpen(!isCalDavOpen)}
                         disabled={hasCalendar()}
+                        isLoading={isFetchingCalendarConnections}
                       >
                         <FaMicrosoft />
                         Webdav
