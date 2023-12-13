@@ -76,7 +76,7 @@ import {
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
 import { getSignature } from '@/utils/storage'
 import { isProAccount } from '@/utils/subscription_manager'
-import { ParseTime } from '@/utils/time.helper'
+import { parseTime } from '@/utils/time.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
@@ -125,8 +125,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
   const [notAccounts, setNotAccounts] = useState([] as ParticipantInfo[])
   const [selectedTime, setTime] = useState(
     decryptedMeeting
-      ? ParseTime(decryptedMeeting?.start, false)
-      : ParseTime(new Date(), true)
+      ? parseTime(decryptedMeeting?.start, false)
+      : parseTime(new Date(), true)
   )
   const [content, setContent] = useState(decryptedMeeting?.content || '')
   const [inputError, setInputError] = useState(
