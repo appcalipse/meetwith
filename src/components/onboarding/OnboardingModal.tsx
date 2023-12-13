@@ -161,7 +161,7 @@ const OnboardingModal = forwardRef((props, ref) => {
         >
     )
 
-    if (discordUserInfo?.username) setName(discordUserInfo.username)
+    if (discordUserInfo?.global_name) setName(discordUserInfo.global_name)
   }
 
   useEffect(() => {
