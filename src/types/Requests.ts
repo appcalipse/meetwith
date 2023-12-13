@@ -4,6 +4,7 @@ import { Account } from './Account'
 import {
   ConferenceMeeting,
   MeetingDecrypted,
+  NotBefore,
   ParticipantMappingType,
   SchedulingType,
 } from './Meeting'
@@ -94,4 +95,5 @@ export interface DiscordMeetingRequest {
   duration: number
   interval: number
   description: string
+  notBefore?: NotBefore
 }
