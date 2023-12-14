@@ -21,6 +21,7 @@ export interface Account {
   is_invited: boolean
   subscriptions: Subscription[]
   discord_account?: DiscordAccount
+  signedUp?: boolean
 }
 
 export interface SimpleAccountInfo {
