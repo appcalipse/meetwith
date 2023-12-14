@@ -83,10 +83,7 @@ export default function DiscordOnboardingModal({
               <Button
                 leftIcon={<FaDiscord />}
                 as="a"
-                // isLoading={connecting}
-                loadingText="Connecting"
                 variant="outline"
-                // onClick={() => setConnecting(true)}
                 href={`https://discord.com/api/oauth2/authorize?client_id=${
                   process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
                 }&redirect_uri=${encodeURIComponent(

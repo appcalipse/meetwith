@@ -17,7 +17,7 @@ async function handler(
   }
 
   if (req.method === 'POST') {
-    const symmetricKey = process.env.SYNMETRIC_KEY!
+    const symmetricKey = process.env.SYMETRIC_KEY!
 
     const details: {
       url: string

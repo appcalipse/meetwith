@@ -26,20 +26,30 @@ const DiscordNotificationConfig: React.FC<Props> = ({
   onDiscordNotificationChange,
 }) => {
   const [loading, setLoading] = useState(true)
+  const [discordConnected, setDiscordConnected] = useState(false)
+  const [inMWWServer, setInMWWServer] = useState(false)
   const [canEnable, setCanEnable] = useState(false)
 
   const validateDiscord = async () => {
-    if (
-      (!discordNotification || discordNotification.disabled) &&
-      account.discord_account
-    ) {
+    if (account.discord_account) {
       const discordInfo: DiscordUserInfo | null = await getDiscordInfo()
 
+      if (discordInfo?.id) {
+        setDiscordConnected(true)
+      }
+
       if (discordInfo?.isInMWWServer) {
+        setInMWWServer(true)
+      }
+
+      if (
+        (!discordNotification ||
+          (discordNotification && discordNotification.disabled)) &&
+        discordInfo?.isInMWWServer
+      ) {
         setCanEnable(true)
       }
-    } else if (discordNotification && !discordNotification.disabled) {
-      setCanEnable(true)
+      console.log(account.discord_account)
     }
     setLoading(false)
   }
@@ -47,8 +57,6 @@ const DiscordNotificationConfig: React.FC<Props> = ({
   useEffect(() => {
     validateDiscord()
   }, [])
-
-  const isPro = isProAccount(account!)
 
   return (
     <VStack alignItems="start" flex={1} mb={8}>
@@ -69,17 +77,11 @@ const DiscordNotificationConfig: React.FC<Props> = ({
               onDiscordNotificationChange(undefined)
             }
           }}
-          isDisabled={!isPro || (!loading && !canEnable)}
+          isDisabled={!loading && !canEnable}
         />
         <Text>
           Discord{' '}
-          {!isPro && (
-            <>
-              (<Link href="/dashboard/details#subscriptions">Go Pro</Link> to
-              enable it)
-            </>
-          )}
-          {isPro && !account.discord_account && (
+          {!discordConnected && (
             <>
               (Please first{' '}
               <Link href="/dashboard/details#connected">
@@ -97,7 +99,7 @@ const DiscordNotificationConfig: React.FC<Props> = ({
         </HStack>
       ) : (
         <>
-          {isPro && !loading && !canEnable && (
+          {!loading && discordConnected && !inMWWServer && (
             <>
               <Text>
                 Please join the Meet with Wallet server to receive your Discord

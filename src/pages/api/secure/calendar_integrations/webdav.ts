@@ -31,7 +31,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === 'POST') {
-    const synmetricKey = process.env.SYNMETRIC_KEY!
+    const symmetricKey = process.env.SYMETRIC_KEY!
 
     await addOrUpdateConnectedCalendar(
       req.session.account.address,
@@ -41,7 +41,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       {
         username: body.username,
         url: body.url,
-        password: encryptContent(synmetricKey, body.password),
+        password: encryptContent(symmetricKey, body.password),
       }
     )
     return res.status(200).send({ connected: true })

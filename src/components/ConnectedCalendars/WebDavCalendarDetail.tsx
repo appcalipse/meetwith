@@ -10,8 +10,8 @@ import {
   Text,
   useToast,
 } from '@chakra-ui/react'
-import { randomUUID } from 'crypto'
 import { useState } from 'react'
+import { v4 } from 'uuid'
 
 import {
   addOrUpdateICloud,
@@ -112,7 +112,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
               name:
                 typeof calendar.displayName === 'string'
                   ? calendar.displayName
-                  : calendar.ctag ?? randomUUID(),
+                  : calendar.ctag ?? v4(),
               color: calendar.calendarColor && calendar.calendarColor._cdata,
             }
           }),
@@ -144,7 +144,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
               name:
                 typeof calendar.displayName === 'string'
                   ? calendar.displayName
-                  : calendar.ctag ?? randomUUID(),
+                  : calendar.ctag ?? v4(),
               color: calendar.calendarColor && calendar.calendarColor._cdata,
             }
           }),

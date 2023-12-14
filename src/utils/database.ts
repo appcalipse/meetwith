@@ -819,7 +819,7 @@ const setAccountNotificationSubscriptions = async (
   const account = await getAccountFromDB(address)
   if (!isProAccount(account)) {
     notifications.notification_types = notifications.notification_types.filter(
-      n => n.channel === NotificationChannel.EMAIL
+      n => n.channel !== NotificationChannel.EPNS
     )
   }
 
