@@ -328,11 +328,10 @@ const TokenForm: React.FC<{
             }
             inputMode="decimal"
             pattern="[0-9]*(.[0-9]+)?"
-            placeholder="0.0"
             autoCorrect="off"
             min={0}
           >
-            <NumberInputField />
+            <NumberInputField placeholder="0.0" />
             <NumberInputStepper>
               <NumberIncrementStepper />
               <NumberDecrementStepper />
