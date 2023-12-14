@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/nextjs'
-import { randomUUID } from 'crypto'
 import { format } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import {
@@ -13,6 +12,7 @@ import {
   getBasicAuthHeaders,
   updateCalendarObject,
 } from 'tsdav'
+import { v4 } from 'uuid'
 
 import {
   CalendarSyncInfo,
@@ -79,7 +79,7 @@ export default class CaldavCalendarService implements CalendarService {
     credential: CaldavCredentials,
     encripted = true
   ) {
-    const synmetricKey = process.env.SYNMETRIC_KEY!
+    const symmetricKey = process.env.SYMETRIC_KEY!
 
     const { username, password, url } =
       typeof credential === 'string' ? JSON.parse(credential) : credential
@@ -87,7 +87,7 @@ export default class CaldavCalendarService implements CalendarService {
     this.url = url
     this.credentials = {
       username,
-      password: !encripted ? password : decryptContent(synmetricKey, password),
+      password: !encripted ? password : decryptContent(symmetricKey, password),
     }
     this.headers = getBasicAuthHeaders({
       username,
@@ -106,7 +106,7 @@ export default class CaldavCalendarService implements CalendarService {
         name:
           typeof calendar.displayName === 'string'
             ? calendar.displayName
-            : calendar.ctag || randomUUID(),
+            : calendar.ctag || v4(),
         color: calendar.calendarColor && calendar.calendarColor._cdata,
       }
     })
