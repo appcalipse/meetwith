@@ -373,7 +373,7 @@ export const getMeetingsForDashboard = async (
       limit || undefined
     }&offset=${offset || 0}&end=${end.getTime()}`
   )) as DBSlot[]
-  return response.map(slot => ({
+  return response?.map(slot => ({
     ...slot,
     start: new Date(slot.start),
     end: new Date(slot.end),

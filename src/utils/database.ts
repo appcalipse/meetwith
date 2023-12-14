@@ -134,7 +134,7 @@ const initAccountDBForWallet = async (
   const availabilities = generateDefaultAvailabilities()
 
   const preferences: AccountPreferences = {
-    availableTypes: [generateDefaultMeetingType()],
+    availableTypes: [],
     description: '',
     availabilities,
     socialLinks: [],

@@ -155,7 +155,7 @@ const loginOrSignup = async (
     account = await login(accountAddress.toLowerCase())
   }
 
-  return { ...account, ...extraInfo }
+  return { ...account, ...extraInfo, signedUp }
 }
 
 const getAccountDisplayName = (account: Account): string => {

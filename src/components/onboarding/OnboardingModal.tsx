@@ -13,7 +13,6 @@ import {
   Modal,
   ModalContent,
   ModalOverlay,
-  Spinner,
   Switch,
   Text,
   useColorModeValue,
@@ -33,6 +32,7 @@ import {
 } from 'react'
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
+import { AccountContext } from '@/providers/AccountProvider'
 import { TimeRange } from '@/types/Account'
 import { NotificationChannel } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
@@ -53,7 +53,6 @@ import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { checkValidDomain } from '@/utils/rpc_helper_front'
 
-import { AccountContext } from '../../providers/AccountProvider'
 import { WeekdayConfig } from '../availabilities/weekday-config'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
 import TimezoneSelector from '../TimezoneSelector'
@@ -72,7 +71,8 @@ const OnboardingModal = forwardRef((props, ref) => {
       ? JSON.parse(Buffer.from(state as string, 'base64').toString())
       : undefined
   const origin = stateObject?.origin as OnboardingSubject | undefined
-  const skipNextSteps = stateObject?.skipNextSteps as boolean
+  const skipNextSteps = stateObject?.skipNextSteps as boolean | undefined
+  const signedUp = stateObject?.signedUp as boolean | undefined
 
   // Color Control
   const bgColor = useColorModeValue('white', 'gray.600')
@@ -113,15 +113,14 @@ const OnboardingModal = forwardRef((props, ref) => {
     if (!!currentAccount?.address && !didInit && !skipNextSteps) {
       // We check if the user is comming from Discord Onboarding Modal
       // and has its discord account linked
+
       if (
         origin === OnboardingSubject.DiscordConnectedInModal &&
         !!currentAccount.discord_account
       ) {
         onOpenOnboardingModal()
         didInit = true
-      }
-
-      if (
+      } else if (
         (origin === OnboardingSubject.GoogleCalendarConnected ||
           origin === OnboardingSubject.Office365CalendarConnected) &&
         !!currentAccount.discord_account
@@ -129,7 +128,12 @@ const OnboardingModal = forwardRef((props, ref) => {
         setActiveStep(1)
         onOpenOnboardingModal()
         didInit = true
+      } else if (!origin && signedUp) {
+        console.log('here')
+        onOpenOnboardingModal()
+        didInit = true
       }
+
       // If not, we check if any origin is passed in and if the user its not logged in
       // and connection modal is not open this way we will trigger the wallet connection
       // modal
@@ -149,16 +153,19 @@ const OnboardingModal = forwardRef((props, ref) => {
     origin,
     setWalletModalOpen,
     isOpen,
+    signedUp,
   ])
 
   // Discord Step
   async function fillDiscordUserInfo() {
     const discordUserInfo = await queryClient.fetchQuery(
       QueryKeys.discordUserInfo(currentAccount?.address),
-      () =>
-        internalFetch('/secure/discord/info') as Promise<
-          DiscordUserInfo | undefined
-        >
+      async () => {
+        const data = (await internalFetch('/secure/discord/info')) as
+          | DiscordUserInfo
+          | undefined
+        return data ?? null
+      }
     )
 
     if (discordUserInfo?.global_name) setName(discordUserInfo.global_name)
@@ -315,13 +322,12 @@ const OnboardingModal = forwardRef((props, ref) => {
     setInitialAvailabilities(newAvailabilities)
   }
 
+  const [loadingSave, setLoadingSave] = useState(false)
+
   async function onSave() {
     if (!currentAccount?.preferences || !timezone) return
 
-    if (!(await checkValidDomain(name ?? '', currentAccount?.address))) {
-      // Show error
-      return
-    }
+    setLoadingSave(true)
 
     try {
       const updatedAccount = await saveAccountChanges({
@@ -350,6 +356,8 @@ const OnboardingModal = forwardRef((props, ref) => {
       router.push('/dashboard')
     } catch (e) {
       console.error(e)
+    } finally {
+      setLoadingSave(false)
     }
   }
 
@@ -782,7 +790,12 @@ const OnboardingModal = forwardRef((props, ref) => {
                     >
                       Back
                     </Button>
-                    <Button flex={1} colorScheme="primary" onClick={onSave}>
+                    <Button
+                      flex={1}
+                      colorScheme="primary"
+                      onClick={onSave}
+                      isLoading={loadingSave}
+                    >
                       Get Started
                     </Button>
                   </Flex>
