@@ -131,12 +131,10 @@ const initAccountDBForWallet = async (
     throw new Error(error)
   }
 
-  const availabilities = generateDefaultAvailabilities()
-
   const preferences: AccountPreferences = {
-    availableTypes: [],
+    availableTypes: [generateDefaultMeetingType()],
     description: '',
-    availabilities,
+    availabilities: [],
     socialLinks: [],
     timezone,
   }

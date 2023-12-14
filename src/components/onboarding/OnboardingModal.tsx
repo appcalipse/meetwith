@@ -129,7 +129,6 @@ const OnboardingModal = forwardRef((props, ref) => {
         onOpenOnboardingModal()
         didInit = true
       } else if (!origin && signedUp) {
-        console.log('here')
         onOpenOnboardingModal()
         didInit = true
       }
@@ -353,10 +352,10 @@ const OnboardingModal = forwardRef((props, ref) => {
       logEvent('Updated account details')
       login(updatedAccount)
 
-      router.push('/dashboard')
+      await router.push('/dashboard')
+      onClose()
     } catch (e) {
       console.error(e)
-    } finally {
       setLoadingSave(false)
     }
   }
@@ -787,6 +786,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                       colorScheme="primary"
                       onClick={goToPreviousStep}
                       flex={1}
+                      disabled={loadingSave}
                     >
                       Back
                     </Button>

@@ -49,7 +49,6 @@ const DiscordNotificationConfig: React.FC<Props> = ({
       ) {
         setCanEnable(true)
       }
-      console.log(account.discord_account)
     }
     setLoading(false)
   }
