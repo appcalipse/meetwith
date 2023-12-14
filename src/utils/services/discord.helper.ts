@@ -76,8 +76,6 @@ export const getDiscordOAuthToken = async (
   try {
     const discordAccount = await getDiscordAccount(accountAddress)
 
-    console.debug({ discordAccount })
-
     if (!discordAccount) {
       throw new Error('Discord account not found')
     }
@@ -89,11 +87,8 @@ export const getDiscordOAuthToken = async (
         60000 >
         new Date().getTime()
     ) {
-      console.log('return old token')
       return discordAccount.access_token
     }
-
-    console.debug('Token expired, refreshing')
 
     return await refreshDiscordOAuthToken(
       accountAddress,
