@@ -51,7 +51,6 @@ import {
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
-import { checkValidDomain } from '@/utils/rpc_helper_front'
 
 import { WeekdayConfig } from '../availabilities/weekday-config'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
@@ -157,6 +156,8 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   // Discord Step
   async function fillDiscordUserInfo() {
+    if (!!currentAccount?.preferences?.name) return
+
     const discordUserInfo = await queryClient.fetchQuery(
       QueryKeys.discordUserInfo(currentAccount?.address),
       async () => {

@@ -11,7 +11,7 @@ export interface AuthToken {
 
 export interface Account {
   id: string
-  created: Date
+  created_at: Date
   address: string
   internal_pub_key: string
   encoded_signature: string
