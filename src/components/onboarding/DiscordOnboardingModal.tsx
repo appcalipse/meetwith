@@ -10,7 +10,7 @@ import {
   useDisclosure,
 } from '@chakra-ui/react'
 import { useModal } from 'connectkit'
-import { isSameDay } from 'date-fns'
+import { isSameDay, parseISO } from 'date-fns'
 import { useSearchParams } from 'next/navigation'
 import { useContext, useEffect, useState } from 'react'
 import { FaDiscord } from 'react-icons/fa'
@@ -92,8 +92,13 @@ export default function DiscordOnboardingModal({
                   JSON.stringify({
                     origin: OnboardingSubject.DiscordConnectedInModal,
                     skipNextSteps:
-                      !!currentAccount?.created &&
-                      !isSameDay(currentAccount.created, new Date()),
+                      !!currentAccount?.created_at &&
+                      !isSameDay(
+                        parseISO(
+                          currentAccount.created_at as unknown as string
+                        ),
+                        new Date()
+                      ),
                   })
                 ).toString('base64')}`}
               >
