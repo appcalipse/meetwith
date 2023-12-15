@@ -150,5 +150,8 @@
   "_moduleAliases": {
     "@": "src"
   },
-  "packageManager": "yarn@4.0.2"
+  "engines": {
+    "node": "18.18"
+  },
+  "packageManager": "yarn@1.22.19"
 }
