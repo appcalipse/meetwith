@@ -151,7 +151,7 @@
     "@": "src"
   },
   "engines": {
-    "node": "18.18"
+    "node": "18.19"
   },
-  "packageManager": "yarn@1.22.19"
+  "packageManager": "yarn@1.22.21"
 }
