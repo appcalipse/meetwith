@@ -16,9 +16,17 @@ const YEAR_DURATION_IN_SECONDS = 31536000
 
 const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 
-const discordRedirectUrl = `${baseURL}/dashboard/details?discordResult=true`
+const discordRedirectUrl = `${baseURL}/dashboard/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwithwallet.xyz'
+
+export enum OnboardingSubject {
+  Discord = 'discord',
+  DiscordConnectedInPage = 'discord_connected_page',
+  DiscordConnectedInModal = 'discord_connected_modal',
+  GoogleCalendarConnected = 'google_calendar_connected',
+  Office365CalendarConnected = 'office365_calendar_connected',
+}
 
 export {
   apiUrl,

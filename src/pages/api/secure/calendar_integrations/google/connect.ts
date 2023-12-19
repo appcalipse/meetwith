@@ -2,8 +2,7 @@ import { google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-
-import { apiUrl } from '../../../../../utils/constants'
+import { apiUrl } from '@/utils/constants'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -20,6 +19,7 @@ const scopes = [
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
+    const { state } = req.query
     // Get token from Google Calendar API
     const { client_secret, client_id } = credentials
     const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
@@ -33,6 +33,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       access_type: 'offline',
       prompt: 'consent',
       scope: scopes,
+      state: typeof state === 'string' ? state : undefined,
     })
 
     return res.status(200).json({ url: authUrl })

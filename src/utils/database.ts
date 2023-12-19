@@ -9,28 +9,21 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import { DiscordAccount } from '@/types/Discord'
-import {
-  GateConditionObject,
-  GateUsage,
-  GateUsageType,
-} from '@/types/TokenGating'
-
 import {
   Account,
   AccountPreferences,
   MeetingType,
   SimpleAccountInfo,
-} from '../types/Account'
+} from '@/types/Account'
 import {
   AccountNotifications,
-  DiscordNotificationType,
   NotificationChannel,
-} from '../types/AccountNotifications'
+} from '@/types/AccountNotifications'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
-} from '../types/CalendarConnections'
+} from '@/types/CalendarConnections'
+import { DiscordAccount } from '@/types/Discord'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -40,19 +33,24 @@ import {
   MeetingProvider,
   ParticipantMappingType,
   TimeSlotSource,
-} from '../types/Meeting'
+} from '@/types/Meeting'
 import {
   ParticipantBaseInfo,
   ParticipantInfo,
   ParticipantType,
-} from '../types/ParticipantInfo'
+} from '@/types/ParticipantInfo'
 import {
   MeetingCancelSyncRequest,
   MeetingCreationRequest,
   MeetingCreationSyncRequest,
   MeetingUpdateRequest,
-} from '../types/Requests'
-import { Subscription } from '../types/Subscription'
+} from '@/types/Requests'
+import { Subscription } from '@/types/Subscription'
+import {
+  GateConditionObject,
+  GateUsage,
+  GateUsageType,
+} from '@/types/TokenGating'
 import {
   AccountNotFoundError,
   GateConditionNotValidError,
@@ -62,7 +60,8 @@ import {
   MeetingNotFoundError,
   TimeNotAvailableError,
   UnauthorizedError,
-} from '../utils/errors'
+} from '@/utils/errors'
+
 import {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
@@ -129,16 +128,13 @@ const initAccountDBForWallet = async (
   ])
 
   if (error) {
-    Sentry.captureException(error)
-    throw new Error("Account couldn't be created")
+    throw new Error(error)
   }
-
-  const availabilities = generateDefaultAvailabilities()
 
   const preferences: AccountPreferences = {
     availableTypes: [generateDefaultMeetingType()],
     description: '',
-    availabilities,
+    availabilities: [],
     socialLinks: [],
     timezone,
   }
@@ -198,8 +194,7 @@ const updateAccountFromInvite = async (
   )
 
   if (error) {
-    Sentry.captureException(error)
-    throw new Error("Account couldn't be updated")
+    throw new Error(error)
   }
 
   const account = await getAccountFromDB(account_address)
@@ -231,7 +226,7 @@ const updateAccountFromInvite = async (
         .match({ id: slot.id })
 
       if (error) {
-        Sentry.captureException(error)
+        throw new Error(error)
       }
     } catch (err) {
       //if any fail, dont fail them all
@@ -303,7 +298,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     .match({ id: account.id })
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
     //TODO: handle error
   }
 
@@ -345,8 +340,7 @@ const getExistingAccountsFromDB = async (
     )
 
   if (error) {
-    Sentry.captureException(error)
-    throw new Error("Couldn't get accounts")
+    throw new Error(error)
   }
 
   if (fullInformation) {
@@ -362,7 +356,7 @@ const getExistingAccountsFromDB = async (
 
 const getAccountFromDB = async (
   identifier: string,
-  includPrivateInformation?: boolean
+  includePrivateInformation?: boolean
 ): Promise<Account> => {
   const { data, error } = await db.supabase.rpc('fetch_account', {
     identifier: identifier.toLowerCase(),
@@ -377,14 +371,14 @@ const getAccountFromDB = async (
     account.subscriptions = await getSubscriptionFromDBForAccount(
       account.address
     )
-    if (includPrivateInformation) {
+    if (includePrivateInformation) {
       const discord_account = await getDiscordAccount(account.address)
 
       account.discord_account = discord_account
     }
     return account
   } else if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   throw new AccountNotFoundError(identifier)
@@ -413,7 +407,7 @@ const getSlotsForAccount = async (
     .order('start')
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
     // //TODO: handle error
   }
 
@@ -439,7 +433,7 @@ const getSlotsForDashboard = async (
     .order('start')
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
     // //TODO: handle error
   }
 
@@ -479,7 +473,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
     .eq('id', slot_id)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
     // todo handle error
   }
 
@@ -507,7 +501,7 @@ const getConferenceMeetingFromDB = async (
     .eq('id', meetingId)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   if (data.length == 0) {
@@ -527,7 +521,7 @@ const getMeetingsFromDB = async (
     .in('id', slotIds)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
     // todo handle error
   }
 
@@ -570,7 +564,6 @@ const deleteMeetingFromDB = async (
     .in('id', slotIds)
 
   if (error) {
-    Sentry.captureException(error)
     throw new Error(error)
   }
 
@@ -768,7 +761,7 @@ const saveMeeting = async (
 
   //TODO: handle error
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   meetingResponse.id = data[index].id
@@ -808,7 +801,7 @@ const getAccountNotificationSubscriptions = async (
     .eq('account_address', address.toLowerCase())
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   if (data && data[0]) {
@@ -824,7 +817,7 @@ const setAccountNotificationSubscriptions = async (
   const account = await getAccountFromDB(address)
   if (!isProAccount(account)) {
     notifications.notification_types = notifications.notification_types.filter(
-      n => n.channel === NotificationChannel.EMAIL
+      n => n.channel !== NotificationChannel.EPNS
     )
   }
 
@@ -833,7 +826,7 @@ const setAccountNotificationSubscriptions = async (
     .upsert(notifications, { onConflict: 'account_address' })
     .eq('account_address', address.toLowerCase())
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   return notifications
@@ -848,7 +841,7 @@ export const createOrUpdatesDiscordAccount = async (
       .from('discord_accounts')
       .insert([discordAccount])
     if (error) {
-      Sentry.captureException(error)
+      throw new Error(error)
     }
     return data[0]
   } else {
@@ -857,14 +850,24 @@ export const createOrUpdatesDiscordAccount = async (
       .update(discordAccount)
       .eq('discord_id', discordAccount.discord_id)
     if (error) {
-      Sentry.captureException(error)
+      throw new Error(error)
     }
     return data[0]
   }
 }
 
+export const deleteDiscordAccount = async (accountAddress: string) => {
+  const { error } = await db.supabase
+    .from('discord_accounts')
+    .delete()
+    .eq('address', accountAddress)
+  if (error) {
+    throw new Error(error)
+  }
+}
+
 const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
-  const { _, error } = await db.supabase.from('emails').upsert([
+  const { error } = await db.supabase.from('emails').upsert([
     {
       email,
       plan,
@@ -874,9 +877,7 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
   if (!error) {
     return true
   }
-  Sentry.captureException(error)
-
-  return false
+  throw new Error(error)
 }
 
 const saveConferenceMeetingToDB = async (
@@ -892,9 +893,7 @@ const saveConferenceMeetingToDB = async (
   if (!error) {
     return true
   }
-  Sentry.captureException(error)
-
-  return false
+  throw new Error(error)
 }
 
 const getConnectedCalendars = async (
@@ -919,7 +918,7 @@ const getConnectedCalendars = async (
   ])
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   if (!data) {
@@ -955,7 +954,7 @@ const connectedCalendarExists = async (
     .eq('provider', provider)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   return data[0]
@@ -975,7 +974,7 @@ export const updateCalendarPayload = async (
     .eq('provider', provider)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 }
 
@@ -984,7 +983,9 @@ const addOrUpdateConnectedCalendar = async (
   email: string,
   provider: TimeSlotSource,
   calendars: CalendarSyncInfo[],
-  _payload?: any
+
+  // Unknown as it can be anything
+  _payload?: unknown
 ): Promise<ConnectedCalendar> => {
   const existingConnection = await connectedCalendarExists(
     address,
@@ -1023,7 +1024,7 @@ const addOrUpdateConnectedCalendar = async (
   const { data, error } = await queryPromise
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   return data[0] as ConnectedCalendar
@@ -1042,7 +1043,7 @@ const removeConnectedCalendar = async (
     .eq('provider', provider)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   return data as ConnectedCalendar
@@ -1058,8 +1059,7 @@ export const getSubscriptionFromDBForAccount = async (
     .eq('owner_account', accountAddress.toLowerCase())
 
   if (error) {
-    Sentry.captureException(error)
-    return []
+    throw new Error(error)
   }
 
   if (data && data.length > 0) {
@@ -1072,7 +1072,7 @@ export const getSubscriptionFromDBForAccount = async (
       .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
 
     if (collisionExists.error) {
-      Sentry.captureException(error)
+      throw new Error(error)
     }
 
     // If for any reason some smart ass registered a domain manually on the blockchain, but such domain already existed for someone else and is not expired, we remove it here
@@ -1101,7 +1101,7 @@ export const getSubscription = async (
     .order('registered_at', { ascending: true })
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   if (data) {
@@ -1127,7 +1127,7 @@ export const updateAccountSubscriptions = async (
 
     if (error && error.length > 0) {
       console.error(error)
-      Sentry.captureException(error)
+      throw new Error(error)
     }
 
     if (!data || data.length == 0) {
@@ -1136,7 +1136,7 @@ export const updateAccountSubscriptions = async (
         .insert(subscription)
 
       if (error) {
-        Sentry.captureException(error)
+        throw new Error(error)
       }
     }
   }
@@ -1179,9 +1179,7 @@ const upsertGateCondition = async (
   if (!error) {
     return data[0] as GateConditionObject
   }
-  Sentry.captureException(error)
-
-  return null
+  throw new Error(error)
 }
 
 const deleteGateCondition = async (
@@ -1220,9 +1218,7 @@ const deleteGateCondition = async (
   if (!error) {
     return true
   }
-  Sentry.captureException(error)
-
-  return false
+  throw new Error(error)
 }
 
 const getGateCondition = async (
@@ -1236,9 +1232,7 @@ const getGateCondition = async (
   if (!error) {
     return data[0] as GateConditionObject
   }
-  Sentry.captureException(error)
-
-  return null
+  throw new Error(error)
 }
 
 const getGateConditionsForAccount = async (
@@ -1252,9 +1246,7 @@ const getGateConditionsForAccount = async (
   if (!error) {
     return data as GateConditionObject[]
   }
-  Sentry.captureException(error)
-
-  return []
+  throw new Error(error)
 }
 
 const getAppToken = async (tokenType: string): Promise<any | null> => {
@@ -1449,7 +1441,7 @@ const updateMeeting = async (
 
   //TODO: handle error
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   meetingResponse.id = data[index].id
@@ -1541,7 +1533,7 @@ const insertOfficeEventMapping = async (
     .insert({ office_id, mww_id })
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 }
 
@@ -1554,8 +1546,7 @@ const getOfficeEventMappingId = async (
     .eq('mww_id', mww_id)
 
   if (error) {
-    Sentry.captureException(error)
-    return null
+    throw new Error(error)
   }
 
   return data[0].office_id
@@ -1570,8 +1561,7 @@ export const getDiscordAccount = async (
     .eq('address', account_address)
 
   if (error) {
-    Sentry.captureException(error)
-    return undefined
+    throw new Error(error)
   }
 
   if (data.length === 0) return undefined
@@ -1588,8 +1578,7 @@ export const getAccountFromDiscordId = async (
     .eq('discord_id', discord_id)
 
   if (error) {
-    Sentry.captureException(error)
-    return null
+    throw new Error(error)
   }
 
   if (data.length === 0) return null
