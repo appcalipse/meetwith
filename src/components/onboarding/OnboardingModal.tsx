@@ -156,7 +156,10 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   // Discord Step
   async function fillDiscordUserInfo() {
-    if (!!currentAccount?.preferences?.name) return
+    if (!!currentAccount?.preferences?.name) {
+      setName(currentAccount?.preferences?.name)
+      return
+    }
 
     const discordUserInfo = await queryClient.fetchQuery(
       QueryKeys.discordUserInfo(currentAccount?.address),
