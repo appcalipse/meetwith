@@ -1,8 +1,7 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { getAccountCalendarUrl } from '../../../../utils/calendar_manager'
-import { getAccountFromDB } from '../../../../utils/database'
+import { getAccountCalendarUrl } from '@/utils/calendar_manager'
+import { getAccountFromDB } from '@/utils/database'
 
 const getAccountUrl = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -22,4 +21,4 @@ const getAccountUrl = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default withSentry(getAccountUrl)
+export default getAccountUrl

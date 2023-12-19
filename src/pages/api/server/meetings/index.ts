@@ -1,4 +1,3 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { MeetingCreationRequest } from '@/types/Requests'
@@ -12,4 +11,4 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   return handleMeetingSchedule(account_address, meeting, req, res)
 }
 
-export default withSentry(handle)
+export default handle

@@ -1,10 +1,9 @@
-import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { getConferenceMeetingFromDB, initDB } from '../../../../utils/database'
+import { getConferenceMeetingFromDB, initDB } from '@/utils/database'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     initDB()
 
@@ -22,4 +21,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   return res.status(404).send('Not found')
-})
+}
+
+export default handler

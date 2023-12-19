@@ -42,3 +42,7 @@ yarn-error.log*
 
 #vscode
 /.vscode
+
+.yarn
+.idea
+bun.lockb

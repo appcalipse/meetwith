@@ -1,10 +1,9 @@
-import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { HUDDLE_API_URL } from '@/utils/huddle.helper'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     const { title } = req.body
 
@@ -41,4 +40,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   return res.status(404).send('Not found')
-})
+}
+
+export default handler
