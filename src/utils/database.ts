@@ -24,7 +24,6 @@ import {
 } from '../types/Account'
 import {
   AccountNotifications,
-  DiscordNotificationType,
   NotificationChannel,
 } from '../types/AccountNotifications'
 import {
@@ -135,34 +134,63 @@ const initAccountDBForWallet = async (
 
   const availabilities = generateDefaultAvailabilities()
 
+  const default_meeting_type = generateDefaultMeetingType()
   const preferences: AccountPreferences = {
-    availableTypes: [generateDefaultMeetingType()],
+    availableTypes: [default_meeting_type],
     description: '',
     availabilities,
     socialLinks: [],
     timezone,
   }
 
-  const path = await addContentToIPFS(preferences)
-  //TODO handle ipfs error
+  try {
+    const user_account = await getAccountFromDB(address)
 
-  const responsePrefs = await db.supabase
-    .from('accounts')
-    .update({
-      preferences_path: path,
+    const responseAvailableTypes = await db.supabase
+      .from('availability_types')
+      .insert(default_meeting_type)
+    if (responseAvailableTypes.error) {
+      Sentry.captureException(responseAvailableTypes.error)
+      throw new Error("Availablity Type couldn't be created")
+    }
+
+    const responsePrefs = await db.supabase.from('account_preferences').insert({
+      description: '',
+      availabilities,
+      socialLinks: [],
+      timezone,
+      availableTypes: responseAvailableTypes,
+      owner_account: user_account,
     })
-    .match({ id: data[0].id })
 
-  if (responsePrefs.error) {
-    Sentry.captureException(responsePrefs.error)
-    //TODO: handle error
+    if (responsePrefs.error) {
+      Sentry.captureException(responsePrefs.error)
+      throw new Error("Account preferences couldn't be created")
+    }
+
+    const responseAvailableTypesPrefsPivot = await db.supabase
+      .from('account_preferences_availability_types')
+      .insert({
+        availability_types_id: responseAvailableTypes,
+        account_preferences_address: user_account,
+      })
+
+    if (responseAvailableTypesPrefsPivot.error) {
+      Sentry.captureException(responseAvailableTypesPrefsPivot.error)
+      throw new Error(
+        "Pivot for account preferences and availablity type couldn't be created"
+      )
+    }
+
+    user_account.preferences = preferences
+    user_account.is_invited = is_invited || false
+
+    return user_account
+  } catch (error) {
+    console.log(error)
+    Sentry.captureException(error)
+    throw new Error("Account couldn't be created")
   }
-
-  const account = responsePrefs.data[0] as Account
-  account.preferences = preferences
-  account.is_invited = is_invited || false
-
-  return account
 }
 
 const updateAccountFromInvite = async (
@@ -291,23 +319,30 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     ...link,
     url: link.url?.trim(),
   }))
-  const path = await addContentToIPFS(account.preferences!)
-  //TODO handle ipfs error
 
   await workMeetingTypeGates(account.preferences!.availableTypes || [])
-  const { data, error } = await db.supabase
-    .from('accounts')
-    .update({
-      preferences_path: path,
-    })
-    .match({ id: account.id })
 
-  if (error) {
-    Sentry.captureException(error)
-    //TODO: handle error
+  const responsePrefsUpdate = await db.supabase
+    .from('account_preferences')
+    .update({
+      description: preferences.description,
+      timezone: preferences.timezone,
+      availabilities: preferences.availabilities,
+      name: preferences.name,
+      socialLinks: preferences.socialLinks,
+    })
+    .match({ owner_account: account.address })
+
+  if (responsePrefsUpdate.error) {
+    Sentry.captureException(responsePrefsUpdate.error)
+    console.log(responsePrefsUpdate.error)
+    throw new Error("Account preferences couldn't be updated")
   }
 
-  const _account = { ...data[0], preferences: account.preferences }
+  const _account = {
+    ...responsePrefsUpdate[0],
+    preferences: account.preferences,
+  }
   _account.subscriptions = await getSubscriptionFromDBForAccount(
     account.address
   )
@@ -332,13 +367,46 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
   throw new AccountNotFoundError(identifier)
 }
 
+export const getAccountPreferences = async (
+  address: string
+): Promise<AccountPreferences> => {
+  const { data: account_preferences, error: account_preferences_error } =
+    await db.supabase
+      .from('account_preferences_availability_types')
+      .select(
+        'account_preferences_address(description, social_links, timezone, availabilities, name), availability_types_id(id, title, url, duration, min_advance_time)'
+      )
+      .match({ account_preferences_address: address.toLowerCase() })
+
+  const availableTypes = account_preferences.map((item: any) => {
+    return {
+      id: item.availability_types_id.id,
+      title: item.availability_types_id.title,
+      url: item.availability_types_id.url,
+      duration: item.availability_types_id.duration,
+      min_advance_time: item.availability_types_id.min_advance_time,
+    }
+  })
+
+  if (account_preferences_error || !account_preferences) {
+    Sentry.captureException(account_preferences_error)
+    throw new Error("Couldn't get account's preferences")
+  }
+
+  return {
+    ...account_preferences[0].account_preferences_address,
+    availableTypes,
+  }
+}
+
 const getExistingAccountsFromDB = async (
   addresses: string[],
   fullInformation?: boolean
 ): Promise<SimpleAccountInfo[] | Account[]> => {
+  console.log('Hi')
   const { data, error } = await db.supabase
     .from('accounts')
-    .select('address, internal_pub_key, preferences_path')
+    .select('address, internal_pub_key')
     .in(
       'address',
       addresses.map(address => address.toLowerCase())
@@ -351,8 +419,8 @@ const getExistingAccountsFromDB = async (
 
   if (fullInformation) {
     for (const account of data) {
-      account.preferences = (await fetchContentFromIPFS(
-        account.preferences_path
+      account.preferences = (await getAccountPreferences(
+        account.address.toLowerCase()
       )) as AccountPreferences
     }
   }
@@ -367,13 +435,24 @@ const getAccountFromDB = async (
   const { data, error } = await db.supabase.rpc('fetch_account', {
     identifier: identifier.toLowerCase(),
   })
-
+  // console.log('A')
   if (data) {
-    const account = data as Account
-    account.preferences = (await fetchContentFromIPFS(
-      account.preferences_path
-    )) as AccountPreferences
+    // const account = data as Account
+    // account.preferences = (await fetchContentFromIPFS(
+    //   account.preferences_path
+    // )) as AccountPreferences
 
+    const account = data as Account
+    try {
+      account.preferences = (await getAccountPreferences(
+        account.address.toLowerCase()
+      )) as AccountPreferences
+      console.log('C')
+    } catch (e) {
+      console.log('D')
+      console.log(e)
+      return account
+    }
     account.subscriptions = await getSubscriptionFromDBForAccount(
       account.address
     )
@@ -382,6 +461,7 @@ const getAccountFromDB = async (
 
       account.discord_account = discord_account
     }
+    console.log(account.preferences)
     return account
   } else if (error) {
     Sentry.captureException(error)
@@ -949,7 +1029,7 @@ const connectedCalendarExists = async (
 ): Promise<ConnectedCalendar | undefined> => {
   const { data, error } = await db.supabase
     .from('connected_calendars')
-    .select('*')
+    .select()
     .eq('account_address', address.toLowerCase())
     .eq('email', email.toLowerCase())
     .eq('provider', provider)
