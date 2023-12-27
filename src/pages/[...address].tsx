@@ -38,6 +38,17 @@ EnhancedSchedule.getInitialProps = async ctx => {
   }
 
   try {
+    console.log({ address })
+    if (
+      !address ||
+      !address[0] ||
+      address[0] == '_next' ||
+      address[0] == '401' ||
+      address[0] == 'api'
+    ) {
+      // ToDo: Rasoul
+      throw new Error('Invalid address')
+    }
     const account = await getAccount(address[0])
 
     if (account.is_invited || !isProAccount(account)) {

@@ -18,7 +18,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     try {
       const updatedAccount = await updateAccountPreferences(account)
-
+      if (!updatedAccount) {
+        throw new Error('Invalid account data')
+      }
       req.session.account = {
         ...updatedAccount,
         signature: req.session.account!.signature,
