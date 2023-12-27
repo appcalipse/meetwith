@@ -11,7 +11,7 @@ export interface AuthToken {
 
 export interface Account {
   id: string
-  created: Date
+  created_at: Date
   address: string
   internal_pub_key: string
   encoded_signature: string
@@ -21,6 +21,7 @@ export interface Account {
   is_invited: boolean
   subscriptions: Subscription[]
   discord_account?: DiscordAccount
+  signedUp?: boolean
 }
 
 export interface SimpleAccountInfo {

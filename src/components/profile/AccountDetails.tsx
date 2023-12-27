@@ -409,7 +409,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         onDialogClose={() => setIsDialogOpen(false)}
         cancelDialogRef={cancelDialogRef}
         onSuccessPurchase={subsPurchased}
-        currentSubscription={currentAccount?.subscriptions[0]}
+        currentSubscription={currentAccount?.subscriptions?.[0]}
       />
     </VStack>
   )

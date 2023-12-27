@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { Resolution } from '@unstoppabledomains/resolution'
 import {
   fetchEnsAddress,
@@ -203,33 +204,38 @@ export const checkValidDomain = async (
 export const getAddressFromDomain = async (
   _domain: string
 ): Promise<string | undefined> => {
-  const domain = _domain.toLowerCase()
-  if (domain.endsWith('.eth')) {
-    return (await checkENSBelongsTo(domain))?.toLowerCase()
-  } else if (
-    domain.endsWith('.x') ||
-    domain.endsWith('.wallet') ||
-    domain.endsWith('.crypto') ||
-    domain.endsWith('.coin') ||
-    domain.endsWith('.bitcoin') ||
-    domain.endsWith('.888') ||
-    domain.endsWith('.nft') ||
-    domain.endsWith('.dao') ||
-    domain.endsWith('.zil') ||
-    domain.endsWith('.blockchain')
-  ) {
-    return (await checkUnstoppableDomainBelongsTo(domain))?.toLowerCase()
-  } else if (domain.endsWith('.lens')) {
-    const lensProfile = await lensHelper.getLensProfile(domain)
-    return lensProfile?.ownedBy.toLowerCase()
-  } else {
-    const freename_address = (
-      await checkFreenameBelongsTo(domain)
-    )?.toLowerCase()
-    if (freename_address) {
-      return freename_address
+  try {
+    const domain = _domain.toLowerCase()
+    if (domain.endsWith('.eth')) {
+      return (await checkENSBelongsTo(domain))?.toLowerCase()
+    } else if (
+      domain.endsWith('.x') ||
+      domain.endsWith('.wallet') ||
+      domain.endsWith('.crypto') ||
+      domain.endsWith('.coin') ||
+      domain.endsWith('.bitcoin') ||
+      domain.endsWith('.888') ||
+      domain.endsWith('.nft') ||
+      domain.endsWith('.dao') ||
+      domain.endsWith('.zil') ||
+      domain.endsWith('.blockchain')
+    ) {
+      return (await checkUnstoppableDomainBelongsTo(domain))?.toLowerCase()
+    } else if (domain.endsWith('.lens')) {
+      const lensProfile = await lensHelper.getLensProfile(domain)
+      return lensProfile?.ownedBy.toLowerCase()
     } else {
-      return (await checkDomainBelongsTo(domain))?.toLowerCase()
+      const freename_address = (
+        await checkFreenameBelongsTo(domain)
+      )?.toLowerCase()
+      if (freename_address) {
+        return freename_address
+      } else {
+        return (await checkDomainBelongsTo(domain))?.toLowerCase()
+      }
     }
+  } catch (e) {
+    Sentry.captureException(e)
+    return undefined
   }
 }

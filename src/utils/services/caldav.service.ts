@@ -12,6 +12,7 @@ import {
   getBasicAuthHeaders,
   updateCalendarObject,
 } from 'tsdav'
+import { v4 } from 'uuid'
 
 import {
   CalendarSyncInfo,
@@ -78,7 +79,7 @@ export default class CaldavCalendarService implements CalendarService {
     credential: CaldavCredentials,
     encripted = true
   ) {
-    const symetricKey = process.env.SYMETRIC_KEY!
+    const symmetricKey = process.env.SYMETRIC_KEY!
 
     const { username, password, url } =
       typeof credential === 'string' ? JSON.parse(credential) : credential
@@ -86,7 +87,7 @@ export default class CaldavCalendarService implements CalendarService {
     this.url = url
     this.credentials = {
       username,
-      password: !encripted ? password : decryptContent(symetricKey, password),
+      password: !encripted ? password : decryptContent(symmetricKey, password),
     }
     this.headers = getBasicAuthHeaders({
       username,
@@ -97,19 +98,22 @@ export default class CaldavCalendarService implements CalendarService {
   async refreshConnection(): Promise<CalendarSyncInfo[]> {
     const calendars = await this.listCalendars()
 
-    return calendars.map((calendar: any, index: number) => {
+    return calendars.map((calendar, index: number) => {
       return {
         calendarId: calendar.url,
         sync: false,
         enabled: index === 0,
-        name: calendar.displayName || calendar.ctag,
-        color: calendar.calendarColor || calendar.calendarColor._cdata,
+        name:
+          typeof calendar.displayName === 'string'
+            ? calendar.displayName
+            : calendar.ctag || v4(),
+        color: calendar.calendarColor && calendar.calendarColor._cdata,
       }
     })
   }
 
   /**
-   * Creates an event into the owner icalendar
+   * Creates an event into the owner iCalendar
    *
    * @param owner
    * @param details
@@ -182,7 +186,7 @@ export default class CaldavCalendarService implements CalendarService {
         }
       } catch (err) {
         Sentry.captureException(err)
-        //Fastmail issue that doesnt accept attendees
+        //Fastmail issue that doesn't accept attendees
         const ics = generateIcs(
           {
             meeting_url: meetingDetails.meeting_url,
@@ -412,7 +416,13 @@ export default class CaldavCalendarService implements CalendarService {
         headers: this.headers,
       })
 
-      return calendars.reduce<DAVCalendar[]>((newCalendars, calendar) => {
+      return calendars.reduce<
+        (DAVCalendar & {
+          calendarColor?: {
+            _cdata?: string
+          }
+        })[]
+      >((newCalendars, calendar) => {
         if (!calendar.components?.includes('VEVENT')) return newCalendars
         newCalendars.push(calendar)
         return newCalendars

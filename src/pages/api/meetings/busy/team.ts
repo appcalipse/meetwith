@@ -1,4 +1,3 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { ConditionRelation } from '@/types/common'
@@ -6,7 +5,7 @@ import { initDB } from '@/utils/database'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 import { isValidEVMAddress } from '@/utils/validations'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
     const { body } = req
@@ -31,4 +30,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(200).json(busySlots)
   }
   return res.status(404).send('Not found')
-})
+}
+
+export default handler
