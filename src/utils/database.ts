@@ -331,7 +331,12 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       name: preferences.name,
       socialLinks: preferences.socialLinks,
     })
-    .match({ owner_account: account.address })
+    .match({ owner_account: account.address.toLowerCase() })
+
+  const availableTypes = await db.supabase
+    .from('availability_types')
+    .select('title, url, duration, min_advance_time')
+    .match({ account_preferences_address: account.address.toLowerCase() })
 
   if (responsePrefsUpdate.error) {
     Sentry.captureException(responsePrefsUpdate.error)
@@ -339,10 +344,23 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     throw new Error("Account preferences couldn't be updated")
   }
 
-  const _account = {
-    ...responsePrefsUpdate[0],
-    preferences: account.preferences,
-  }
+  // const _account = {
+  //   ...responsePrefsUpdate[0],
+  //   preferences: account.preferences,
+  // }
+
+  console.log(responsePrefsUpdate)
+  console.log('availableTypes')
+  console.log(availableTypes)
+  delete account.preferences
+  responsePrefsUpdate.data[0]['availableTypes'] = availableTypes.data[0]
+  console.log(responsePrefsUpdate.data[0])
+  account['preferences'] = responsePrefsUpdate.data[0]
+
+  const _account = account
+
+  console.log('in end updateAccountPreferences')
+
   _account.subscriptions = await getSubscriptionFromDBForAccount(
     account.address
   )
@@ -374,7 +392,7 @@ export const getAccountPreferences = async (
     await db.supabase
       .from('account_preferences_availability_types')
       .select(
-        'account_preferences_address(description, social_links, timezone, availabilities, name), availability_types_id(id, title, url, duration, min_advance_time)'
+        'account_preferences_address(description, socialLinks, timezone, availabilities, name), availability_types_id(id, title, url, duration, min_advance_time)'
       )
       .match({ account_preferences_address: address.toLowerCase() })
 
@@ -393,8 +411,15 @@ export const getAccountPreferences = async (
     throw new Error("Couldn't get account's preferences")
   }
 
+  try {
+    const temp = account_preferences[0].account_preferences_address
+  } catch (e) {
+    console.log(account_preferences)
+    console.log(e)
+  }
+
   return {
-    ...account_preferences[0].account_preferences_address,
+    ...account_preferences[0]?.account_preferences_address,
     availableTypes,
   }
 }
@@ -435,19 +460,12 @@ const getAccountFromDB = async (
   const { data, error } = await db.supabase.rpc('fetch_account', {
     identifier: identifier.toLowerCase(),
   })
-  // console.log('A')
   if (data) {
-    // const account = data as Account
-    // account.preferences = (await fetchContentFromIPFS(
-    //   account.preferences_path
-    // )) as AccountPreferences
-
     const account = data as Account
     try {
       account.preferences = (await getAccountPreferences(
         account.address.toLowerCase()
       )) as AccountPreferences
-      console.log('C')
     } catch (e) {
       console.log('D')
       console.log(e)
@@ -461,12 +479,11 @@ const getAccountFromDB = async (
 
       account.discord_account = discord_account
     }
-    console.log(account.preferences)
     return account
   } else if (error) {
     Sentry.captureException(error)
   }
-
+  console.log(error)
   throw new AccountNotFoundError(identifier)
 }
 

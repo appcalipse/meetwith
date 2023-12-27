@@ -289,12 +289,8 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   return (
     <VStack mb={8} alignItems="start" flex={1}>
       <Heading fontSize="2xl">Account Details</Heading>
-      <IPFSLink
-        ipfsHash={currentAccount!.preferences_path}
-        title="Your account information is public and stored on IPFS. Your current IPFS link is"
-      />
 
-      <FormControl pt={2}>
+      <FormControl pt={8}>
         <FormLabel>Display name (optional)</FormLabel>
         <HandlePicker
           selected={name}
