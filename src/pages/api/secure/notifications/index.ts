@@ -1,14 +1,12 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-
-import { AccountNotifications } from '../../../../types/AccountNotifications'
+import { AccountNotifications } from '@/types/AccountNotifications'
 import {
   getAccountNotificationSubscriptions,
   initDB,
   setAccountNotificationSubscriptions,
-} from '../../../../utils/database'
+} from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -33,4 +31,4 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default withSentry(withSessionRoute(handle))
+export default withSessionRoute(handle)

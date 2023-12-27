@@ -1,4 +1,3 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
@@ -52,4 +51,4 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 }
 
-export default withSentry(withSessionRoute(handle))
+export default withSessionRoute(handle)

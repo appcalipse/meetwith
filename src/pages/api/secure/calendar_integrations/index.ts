@@ -1,13 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
-
 import {
   addOrUpdateConnectedCalendar,
   getConnectedCalendars,
   removeConnectedCalendar,
-} from '../../../../utils/database'
+} from '@/utils/database'
+import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {

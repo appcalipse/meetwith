@@ -1,12 +1,14 @@
 import { Button, Heading, useToast } from '@chakra-ui/react'
-import { set } from 'date-fns'
 import { useRouter } from 'next/router'
-import React, { useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { FaDiscord } from 'react-icons/fa'
 
+import { AccountContext } from '@/providers/AccountProvider'
 import { DiscordAccount } from '@/types/Discord'
 import { generateDiscordAccount } from '@/utils/api_helper'
-import { discordRedirectUrl } from '@/utils/constants'
+import { discordRedirectUrl, OnboardingSubject } from '@/utils/constants'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 
 interface ConnectedAccountProps {
   discord_account?: DiscordAccount
@@ -15,6 +17,7 @@ interface ConnectedAccountProps {
 const DiscordConnection: React.FC<ConnectedAccountProps> = ({
   discord_account,
 }) => {
+  const { updateUser, currentAccount } = useContext(AccountContext)
   const [isDiscordConnected, setIsDiscordConnected] = useState(
     !!discord_account
   )
@@ -26,9 +29,14 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
 
   const generateDiscord = async () => {
     if (!discord_account) {
-      const { discordResult, code } = router.query
+      const { code, state } = router.query
 
-      if (discordResult && code) {
+      const origin = state
+        ? (JSON.parse(Buffer.from(state as string, 'base64').toString())
+            ?.origin as OnboardingSubject | undefined)
+        : undefined
+
+      if (origin && code) {
         setConnecting(true)
         try {
           await generateDiscordAccount(code as string)
@@ -40,6 +48,10 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
             duration: 3000,
             isClosable: true,
           })
+          await queryClient.invalidateQueries(
+            QueryKeys.account(currentAccount?.address?.toLowerCase())
+          )
+          await updateUser()
         } catch (error) {}
         setConnecting(false)
       }
@@ -47,7 +59,7 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
   }
 
   useEffect(() => {
-    generateDiscord()
+    !connecting && generateDiscord()
   }, [])
 
   return (
@@ -68,7 +80,9 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
             process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
           }&redirect_uri=${encodeURIComponent(
             discordRedirectUrl
-          )}&response_type=code&scope=identify%20guilds`}
+          )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
+            JSON.stringify({ origin: OnboardingSubject.DiscordConnectedInPage })
+          ).toString('base64')}`}
         >
           Connect Discord
         </Button>

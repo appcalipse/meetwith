@@ -7,14 +7,21 @@ import { DiscordMeetingRequest } from '@/types/Requests'
 import { getSuggestedSlots } from '@/utils/api_helper'
 import { scheduleMeeting } from '@/utils/calendar_manager'
 import { getAccountFromDiscordId } from '@/utils/database'
+import { findStartDateForNotBefore } from '@/utils/time.helper'
 
 export default async function simpleDiscordMeet(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === 'POST') {
-    const { schedulerDiscordId, accounts, duration, interval, description } =
-      req.body as DiscordMeetingRequest
+    const {
+      schedulerDiscordId,
+      accounts,
+      duration,
+      interval,
+      description,
+      notBefore,
+    } = req.body as DiscordMeetingRequest
 
     const scheduler = await getAccountFromDiscordId(schedulerDiscordId)
 
@@ -26,7 +33,15 @@ export default async function simpleDiscordMeet(
         )
     }
 
-    const startDate = new Date()
+    let startDate = new Date()
+    if (notBefore) {
+      startDate = findStartDateForNotBefore(
+        startDate,
+        notBefore,
+        scheduler.preferences?.timezone || 'UTC'
+      )
+    }
+
     const suggestions = await getSuggestedSlots(
       accounts.map(p => p.address),
       startDate,

@@ -12,7 +12,6 @@ import {
   Icon,
   SlideFade,
   Text,
-  useToast,
 } from '@chakra-ui/react'
 import { useModal } from 'connectkit'
 import router from 'next/router'
@@ -66,7 +65,7 @@ const plansCards: PlansCard[] = [
         icon: BsCheck,
       },
       {
-        title: 'Email notifications (optional)',
+        title: 'Email and Discord notifications (optional)',
         icon: BsCheck,
       },
       {
@@ -109,7 +108,7 @@ const plansCards: PlansCard[] = [
         icon: BsCheck,
       },
       {
-        title: 'Email, Push and EPNS Notifications (optional)',
+        title: 'Email, Discord, Push and EPNS Notifications (optional)',
         icon: BsCheck,
       },
       {

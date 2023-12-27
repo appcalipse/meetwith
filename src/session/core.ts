@@ -4,9 +4,8 @@ import { NextPageContext } from 'next'
 import { AppContext } from 'next/app'
 
 import { SESSION_COOKIE_NAME, sessionOptions } from '@/middleware'
+import { Account } from '@/types/Account'
 import { getFullAccountInfo } from '@/utils/api_helper'
-
-import { Account } from '../types/Account'
 
 export const validateAuthentication = async (
   ctx: NextPageContext
@@ -25,10 +24,13 @@ export const validateAuthentication = async (
     // Actually, we cannot check if the user owns the wallet or get any update on backend side,
     // this should be done
 
-    if (!!ctx.req) {
-      const session = await getIronSession(ctx.req, ctx.res!, sessionOptions)
+    if (!!ctx.req && !!ctx.res) {
+      const session = await getIronSession(ctx.req, ctx.res, sessionOptions)
+      if (!session?.account?.address) return null
 
-      const updatedAccount = await getFullAccountInfo(session.account!.address!)
+      const updatedAccount = await getFullAccountInfo(session.account.address)
+      if (!updatedAccount) return null
+
       // this should be server side only
       delete (updatedAccount as any).signature
 
