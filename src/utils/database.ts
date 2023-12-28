@@ -391,6 +391,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       availabilities: preferences.availabilities,
       name: preferences.name,
       socialLinks: preferences.socialLinks,
+      availableTypes: preferences.availableTypes,
     })
     .match({ owner_account: account.address.toLowerCase() })
 
