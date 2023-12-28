@@ -7,7 +7,7 @@ import {
   writeContract,
   WriteContractResult,
 } from '@wagmi/core'
-import { parseUnits, zeroAddress } from 'viem'
+import { parseUnits, TransactionReceipt, zeroAddress } from 'viem'
 
 import { ERC20 } from '../abis/erc20'
 import { MWWDomain, MWWRegister } from '../abis/mww'
@@ -169,7 +169,7 @@ export const subscribeToPlan = async (
   domain: string,
   token: AcceptedToken,
   walletClient?: GetWalletClientResult
-): Promise<WriteContractResult> => {
+): Promise<TransactionReceipt> => {
   try {
     const subExists = await getSubscriptionByDomain(domain)
     if (subExists && subExists!.owner_account !== accountAddress) {
@@ -241,20 +241,23 @@ export const subscribeToPlan = async (
         ],
       })
 
-      return await writeContract(config)
+      const result = await writeContract(config)
+      return await waitForTransaction({
+        hash: result.hash,
+      })
     } else {
       const planInfo = getPlanInfo(plan)
       if (!planInfo) {
         throw Error('Plan does not exists')
       }
 
-      const result = (await readContract({
+      const readResult = (await readContract({
         ...info,
         functionName: 'getNativeConvertedValue',
         args: [planInfo.usdPrice],
       })) as any
       const value =
-        (result[0] * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
+        (readResult[0] * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
 
       const config = await prepareWriteContract({
         ...info,
@@ -263,7 +266,10 @@ export const subscribeToPlan = async (
         value: BigInt(value),
       })
 
-      return await writeContract(config)
+      const result = await writeContract(config)
+      return await waitForTransaction({
+        hash: result.hash,
+      })
     }
   } catch (error) {
     // TODO handle insufficient funds error
@@ -313,7 +319,7 @@ export const changeDomainOnChain = async (
   domain: string,
   newDomain: string,
   walletClient?: GetWalletClientResult
-): Promise<WriteContractResult> => {
+): Promise<TransactionReceipt> => {
   try {
     const subExists = await getSubscriptionByDomain(newDomain)
     if (subExists) {
@@ -327,18 +333,14 @@ export const changeDomainOnChain = async (
 
   let chain: any
   try {
-    const subExists = await getSubscriptionByDomain(newDomain)
-    if (!subExists) {
-      throw Error('The domain you want to change is not registered')
-    } else if (subExists && subExists!.owner_account !== accountAddress) {
+    const subExists = await getSubscriptionByDomain(domain)
+    if (subExists && subExists!.owner_account !== accountAddress) {
       throw Error('You can not change a domain you do not own')
     } else {
-      chain = subExists.chain
+      chain = subExists!.chain
     }
   } catch (e: any) {
-    if (e.status !== 404) {
-      throw e
-    }
+    throw Error('Your current domain is not registered. Please contact us')
   }
 
   const chainInfo = getChainInfo(chain!)
@@ -364,7 +366,10 @@ export const changeDomainOnChain = async (
       args: [domain, newDomain],
     })
 
-    return await writeContract(config)
+    const result = await writeContract(config)
+    return await waitForTransaction({
+      hash: result.hash,
+    })
   } catch (error: any) {
     Sentry.captureException(error)
     throw Error(checkTransactionError(error))

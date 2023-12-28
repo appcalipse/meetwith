@@ -15,6 +15,11 @@ export const isValidUrl = (url: string): boolean => {
   return reg.test(url)
 }
 
+export const isValidSlug = (slug: string): boolean => {
+  const reg = /^([A-Za-z0-9\-\_]+)$/
+  return reg.test(slug)
+}
+
 export const isEmptyString = (value: string): boolean => {
   if (value === undefined || value === null) {
     return true

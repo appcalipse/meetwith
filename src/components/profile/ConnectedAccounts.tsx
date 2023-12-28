@@ -80,7 +80,7 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
 const ConnectedAccounts: React.FC<ConnectedAccountProps> = props => {
   return (
     <>
-      <Heading id="connected" fontSize="2xl">
+      <Heading id="connected" fontSize="2xl" mb={8}>
         Connected Accounts
       </Heading>
       <DiscordConnection {...props} />
