@@ -23,6 +23,8 @@ import { FaMinus, FaPlus } from 'react-icons/fa'
 import { zeroAddress } from 'viem'
 import { useWalletClient } from 'wagmi'
 
+import { syncSubscriptions } from '@/utils/api_helper'
+
 import { AccountContext } from '../../providers/AccountProvider'
 import {
   AcceptedToken,
@@ -39,7 +41,6 @@ import { checkValidDomain } from '../../utils/rpc_helper_front'
 import {
   approveTokenSpending,
   checkAllowance,
-  confirmSubscription,
   getActiveProSubscription,
   subscribeToPlan,
 } from '../../utils/subscription_manager'
@@ -239,7 +240,8 @@ const SubscriptionDialog: React.FC<IProps> = ({
         walletClient
       )
       setWaitingConfirmation(true)
-      const sub = await confirmSubscription(tx, domain)
+      const subscriptions = await syncSubscriptions()
+      const sub = subscriptions.find(sub => sub.domain === domain)
       setTxRunning(false)
       setWaitingConfirmation(false)
       setCheckingCanSubscribe(false)
