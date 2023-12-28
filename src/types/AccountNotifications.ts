@@ -16,5 +16,5 @@ export interface NotificationType {
 }
 
 export interface DiscordNotificationType extends NotificationType {
-  inMWWServer: boolean
+  inMWWServer?: boolean
 }

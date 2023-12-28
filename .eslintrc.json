@@ -3,9 +3,14 @@
     "plugin:@typescript-eslint/recommended",
     "plugin:prettier/recommended",
     "plugin:tailwindcss/recommended",
+    "plugin:json/recommended",
     "next/core-web-vitals",
     "prettier"
   ],
+  "env": {
+    "browser": true,
+    "node": true
+  },
   "plugins": [
     "simple-import-sort",
     "prettier",
@@ -24,7 +29,7 @@
     "simple-import-sort/imports": "error",
     "simple-import-sort/exports": "error",
     "jsx-a11y/accessible-emoji": "off",
-    "jsx-a11y/no-static-element-interactions": "off",
-    "jsx-a11y/click-events-have-key-events": "off"
+    "jsx-a11y/click-events-have-key-events": "off",
+    "react-hooks/exhaustive-deps": "off"
   }
 }

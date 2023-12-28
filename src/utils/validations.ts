@@ -11,7 +11,8 @@ export const isValidEVMAddress = (address: string): boolean => {
 }
 
 export const isValidUrl = (url: string): boolean => {
-  const reg = /^(https?:\/\/)([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/
+  const reg =
+    /(http(s)?:\/\/.)(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
   return reg.test(url)
 }
 

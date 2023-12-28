@@ -1,4 +1,3 @@
-import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -21,6 +20,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const oAuthToken = await generateDiscordAuthToken(discordCode)
 
       const userInfo = await getDiscordAccountInfo(oAuthToken!)
+
       if (!userInfo) {
         return res.status(301).send('Could not get user info')
       }
@@ -52,4 +52,4 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default withSentry(withSessionRoute(handle))
+export default withSessionRoute(handle)

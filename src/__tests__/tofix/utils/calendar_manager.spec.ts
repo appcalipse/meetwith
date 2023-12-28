@@ -23,7 +23,7 @@ class NoErrorThrownError extends Error {}
 const mockAccount = (internal_pub_key: string, address: string): Account => {
   return {
     id: faker.datatype.uuid(),
-    created: faker.date.past(),
+    created_at: faker.date.past(),
     address: address || faker.finance.bitcoinAddress(),
     internal_pub_key: internal_pub_key || faker.finance.bitcoinAddress(),
     encoded_signature: faker.datatype.string(),

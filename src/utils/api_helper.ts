@@ -1,18 +1,17 @@
 import * as Sentry from '@sentry/nextjs'
+import { DAVCalendar } from 'tsdav'
 
-import { ConditionRelation } from '@/types/common'
-import { DiscordAccount } from '@/types/Discord'
-import { DiscordUserInfo } from '@/types/DiscordUserInfo'
-import { GateConditionObject } from '@/types/TokenGating'
-
-import { Account, MeetingType, SimpleAccountInfo } from '../types/Account'
-import { AccountNotifications } from '../types/AccountNotifications'
+import { Account, MeetingType, SimpleAccountInfo } from '@/types/Account'
+import { AccountNotifications } from '@/types/AccountNotifications'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
   ConnectedCalendarCore,
   ConnectResponse,
-} from '../types/CalendarConnections'
+} from '@/types/CalendarConnections'
+import { ConditionRelation } from '@/types/common'
+import { DiscordAccount } from '@/types/Discord'
+import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -20,13 +19,15 @@ import {
   GroupMeetingRequest,
   MeetingDecrypted,
   TimeSlotSource,
-} from '../types/Meeting'
+} from '@/types/Meeting'
 import {
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
-} from '../types/Requests'
-import { Subscription } from '../types/Subscription'
+} from '@/types/Requests'
+import { Subscription } from '@/types/Subscription'
+import { GateConditionObject } from '@/types/TokenGating'
+
 import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
@@ -39,38 +40,46 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
 } from './errors'
+import QueryKeys from './query_keys'
+import { queryClient } from './react_query'
 import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
 
-export const internalFetch = async (
+export const internalFetch = async <T>(
   path: string,
   method = 'GET',
-  body?: any,
+  body?: unknown,
   options = {},
   headers = {}
-): Promise<object> => {
-  const response = await fetch(`${apiUrl}${path}`, {
-    method,
-    mode: 'cors',
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      ...headers,
-    },
-    ...options,
-    body: (body && JSON.stringify(body)) || null,
-  })
-  if (response.status >= 200 && response.status < 300) {
-    return await response.json()
-  }
+) => {
+  try {
+    const response = await fetch(`${apiUrl}${path}`, {
+      method,
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        ...headers,
+      },
+      ...options,
+      body: (!!body && (JSON.stringify(body) as string)) || null,
+    })
+    if (response.status >= 200 && response.status < 300) {
+      return (await response.json()) as T
+    }
 
-  throw new ApiFetchError(response.status, await response.text())
+    throw new ApiFetchError(response.status, await response.text())
+  } catch (e) {
+    Sentry.captureException(e)
+  }
 }
 
 export const getAccount = async (identifier: string): Promise<Account> => {
   try {
-    return (await internalFetch(`/accounts/${identifier}`)) as Account
+    const account = await internalFetch(`/accounts/${identifier}`)
+    if (!account) throw new AccountNotFoundError(identifier)
+    return account as Account
   } catch (e: any) {
     if (e.status && e.status === 404) {
       throw new AccountNotFoundError(identifier)
@@ -123,7 +132,15 @@ export const getExistingAccounts = async (
 export const saveAccountChanges = async (
   account: Account
 ): Promise<Account> => {
-  return (await internalFetch(`/secure/accounts`, 'POST', account)) as Account
+  const response = (await internalFetch(
+    `/secure/accounts`,
+    'POST',
+    account
+  )) as Account
+  await queryClient.invalidateQueries(
+    QueryKeys.account(account.address?.toLowerCase())
+  )
+  return response
 }
 
 export const scheduleMeetingFromServer = async (
@@ -312,11 +329,23 @@ export const getBusySlots = async (
   limit?: number,
   offset?: number
 ): Promise<Interval[]> => {
-  const response = (await internalFetch(
-    `/meetings/busy/${accountIdentifier}?limit=${limit || undefined}&offset=${
-      offset || 0
-    }&start=${start?.getTime() || undefined}&end=${end?.getTime() || undefined}`
-  )) as Interval[]
+  const response = await queryClient.fetchQuery(
+    QueryKeys.busySlots({
+      id: accountIdentifier?.toLowerCase(),
+      start,
+      end,
+      limit,
+      offset,
+    }),
+    () =>
+      internalFetch(
+        `/meetings/busy/${accountIdentifier}?limit=${
+          limit || undefined
+        }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
+          end?.getTime() || undefined
+        }`
+      ) as Promise<Interval[]>
+  )
   return response.map(slot => ({
     ...slot,
     start: new Date(slot.start),
@@ -359,7 +388,8 @@ export const getMeetingsForDashboard = async (
       limit || undefined
     }&offset=${offset || 0}&end=${end.getTime()}`
   )) as DBSlot[]
-  return response.map(slot => ({
+  console.log(response)
+  return response?.map(slot => ({
     ...slot,
     start: new Date(slot.start),
     end: new Date(slot.end),
@@ -376,9 +406,11 @@ export const subscribeToWaitlist = async (
 }
 
 export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
-  const response = (await internalFetch(
-    `/meetings/meeting/${slot_id}`
-  )) as DBSlotEnhanced
+  const response = await queryClient.fetchQuery(
+    QueryKeys.meeting(slot_id),
+    () =>
+      internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlotEnhanced>
+  )
   return {
     ...response,
     start: new Date(response.start),
@@ -414,28 +446,46 @@ export const fetchContentFromIPFSFromBrowser = async (
   }
 }
 
-export const getGoogleAuthConnectUrl = async (): Promise<ConnectResponse> => {
-  return (await internalFetch(
-    `/secure/calendar_integrations/google/connect`
-  )) as ConnectResponse
+export const getGoogleAuthConnectUrl = async (state?: string | null) => {
+  return await internalFetch<ConnectResponse>(
+    `/secure/calendar_integrations/google/connect${
+      state ? `?state=${state}` : ''
+    }`
+  )
 }
 
-export const getOffice365ConnectUrl = async (): Promise<ConnectResponse> => {
-  return (await internalFetch(
-    `/secure/calendar_integrations/office365/connect`
-  )) as ConnectResponse
+export const getOffice365ConnectUrl = async (state?: string) => {
+  return await internalFetch<ConnectResponse>(
+    `/secure/calendar_integrations/office365/connect${
+      state ? `?state=${state}` : ''
+    }`
+  )
 }
 
-export const addOrUpdateICloud = async (details: any): Promise<any> => {
-  return (await internalFetch(`/secure/calendar_integrations/icloud`, 'POST', {
-    ...details,
-  })) as any
+export const addOrUpdateICloud = async (body: {
+  url: string
+  username: string
+  password: string
+  calendars: CalendarSyncInfo[]
+}) => {
+  return await internalFetch<{ connected: boolean }>(
+    `/secure/calendar_integrations/icloud`,
+    'POST',
+    body
+  )
 }
 
-export const addOrUpdateWebdav = async (details: any): Promise<any> => {
-  return (await internalFetch(`/secure/calendar_integrations/webdav`, 'POST', {
-    ...details,
-  })) as any
+export const addOrUpdateWebdav = async (body: {
+  url: string
+  username: string
+  password: string
+  calendars: CalendarSyncInfo[]
+}) => {
+  return await internalFetch<void>(
+    `/secure/calendar_integrations/webdav`,
+    'POST',
+    body
+  )
 }
 
 export const login = async (accountAddress: string): Promise<Account> => {
@@ -513,27 +563,18 @@ export const validateWebdav = async (
   url: string,
   username: string,
   password: string
-): Promise<any> => {
-  return fetch(`${apiUrl}/secure/calendar_integrations/webdav`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
-    body: JSON.stringify({
-      url,
-      username,
-      password,
-    }),
-  })
-    .then(async res => {
-      if (res.status >= 200 && res.status < 300) {
-        return await res.json()
-      } else {
-        return false
+) => {
+  return await internalFetch<
+    (DAVCalendar & {
+      calendarColor?: {
+        _cdata?: string
       }
-    })
-    .catch(() => false)
+    })[]
+  >('/secure/calendar_integrations/webdav', 'PUT', {
+    url,
+    username,
+    password,
+  })
 }
 
 export const generateDiscordAccount = async (

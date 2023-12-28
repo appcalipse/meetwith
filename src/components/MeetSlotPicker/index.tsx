@@ -100,7 +100,14 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   }, [reset])
 
   useEffect(() => {
-    workDayArrows()
+    if (
+      pickedDay &&
+      differenceInDays(pickedDay, startOfDay(new Date())) === 0
+    ) {
+      setDisablePrev(true)
+    } else {
+      setDisablePrev(false)
+    }
   }, [pickedDay])
 
   const handlePickDay = (day: Date) => {
@@ -143,17 +150,6 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     if (!isSameMonth(day, selectedMonth)) {
       setSelectedMonth(day)
       onMonthChange?.(day)
-    }
-  }
-
-  function workDayArrows() {
-    if (
-      pickedDay &&
-      differenceInDays(pickedDay, startOfDay(new Date())) === 0
-    ) {
-      setDisablePrev(true)
-    } else {
-      setDisablePrev(false)
     }
   }
 
