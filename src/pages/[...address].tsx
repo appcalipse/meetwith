@@ -38,7 +38,6 @@ EnhancedSchedule.getInitialProps = async ctx => {
   }
 
   try {
-    console.log({ address })
     if (
       !address ||
       !address[0] ||
