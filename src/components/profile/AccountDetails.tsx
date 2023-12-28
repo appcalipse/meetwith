@@ -504,10 +504,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           >
             Save details
           </Button>
-          <Spacer />
-          <Spacer />
-          <Spacer />
-          <Spacer />
         </>
       </Block>
 

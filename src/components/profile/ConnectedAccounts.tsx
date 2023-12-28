@@ -1,5 +1,15 @@
-import { Button, Heading, useToast } from '@chakra-ui/react'
-import { set } from 'date-fns'
+import {
+  Box,
+  Button,
+  Flex,
+  Heading,
+  HStack,
+  Icon,
+  Text,
+  useColorModeValue,
+  useToast,
+  VStack,
+} from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 import { FaDiscord } from 'react-icons/fa'
@@ -50,19 +60,57 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
     generateDiscord()
   }, [])
 
+  const bgColor = useColorModeValue('gray.800', 'white')
+  const badgeColor = useColorModeValue('gray.600', 'gray.500')
+  const color = useColorModeValue('white', 'gray.800')
+
   return (
-    <>
+    <HStack>
+      <VStack flex={1} alignItems="flex-start">
+        <HStack>
+          <Flex
+            width="22px"
+            height="22px"
+            bgColor={bgColor}
+            borderRadius="50%"
+            justifyContent="center"
+            alignItems="center"
+          >
+            <Icon as={FaDiscord} color={color} />
+          </Flex>
+          <Text fontSize="lg" fontWeight="bold">
+            Discord
+          </Text>
+          {isDiscordConnected && (
+            <HStack borderRadius={4} px={1} bgColor={badgeColor}>
+              <Box
+                borderRadius="50%"
+                w="8px"
+                h="8px"
+                bgColor="rgba(52, 199, 89, 1)"
+              />
+              <Text color="primary.200" fontSize="xs">
+                Connected
+              </Text>
+            </HStack>
+          )}
+        </HStack>
+        <Text opacity="0.5">
+          Connect to enable notifications and Discord bot commands
+        </Text>
+      </VStack>
+
       {isDiscordConnected ? (
-        <Button variant="outline" leftIcon={<FaDiscord />}>
-          Connected
+        <Button variant="ghost" colorScheme="primary">
+          Disconnect
         </Button>
       ) : (
         <Button
-          leftIcon={<FaDiscord />}
           as="a"
           isLoading={connecting}
           loadingText="Connecting"
           variant="outline"
+          colorScheme="primary"
           onClick={() => setConnecting(true)}
           href={`https://discord.com/api/oauth2/authorize?client_id=${
             process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
@@ -70,10 +118,10 @@ const DiscordConnection: React.FC<ConnectedAccountProps> = ({
             discordRedirectUrl
           )}&response_type=code&scope=identify%20guilds`}
         >
-          Connect Discord
+          Connect
         </Button>
       )}
-    </>
+    </HStack>
   )
 }
 
