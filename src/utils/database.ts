@@ -443,7 +443,6 @@ const getExistingAccountsFromDB = async (
   addresses: string[],
   fullInformation?: boolean
 ): Promise<SimpleAccountInfo[] | Account[]> => {
-  console.log('Hi')
   const { data, error } = await db.supabase
     .from('accounts')
     .select('address, internal_pub_key')
@@ -481,7 +480,6 @@ const getAccountFromDB = async (
         account.address.toLowerCase()
       )) as AccountPreferences
     } catch (e) {
-      console.log('D')
       console.log(e)
       return account
     }
