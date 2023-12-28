@@ -8,12 +8,14 @@ type CopyLinkButtonProps = {
   url: string
   label?: string
   withIcon?: boolean
+  type?: 'button' | 'link'
 } & ButtonProps
 
 export const CopyLinkButton = ({
   url,
   label,
   withIcon,
+  type = 'button',
   ...props
 }: CopyLinkButtonProps) => {
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
@@ -35,11 +37,12 @@ export const CopyLinkButton = ({
     }, 2000)
   }
   return (
-    <Tooltip label="Copied" placement="top" isOpen={copyFeedbackOpen}>
+    <Tooltip label="Link copied" placement="top" isOpen={copyFeedbackOpen}>
       <Button
         flex={1}
         colorScheme="primary"
-        variant="outline"
+        variant={type === 'button' ? 'outline' : 'ghost'}
+        px={type === 'button' ? 4 : 0}
         onClick={copyLink}
         {...(withIcon && { rightIcon: <FaLink /> })}
         {...props}
