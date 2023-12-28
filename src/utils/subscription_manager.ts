@@ -277,17 +277,6 @@ export const subscribeToPlan = async (
   }
 }
 
-export const confirmSubscription = async (
-  result: WriteContractResult,
-  domain: string
-): Promise<Subscription | undefined> => {
-  await waitForTransaction({
-    hash: result.hash,
-  })
-  const subscriptions = await syncSubscriptions()
-  return subscriptions.find(sub => sub.domain === domain)
-}
-
 export const convertBlockchainSubscriptionToSubscription = (
   sub: BlockchainSubscription
 ): Subscription => {

@@ -54,7 +54,6 @@ import {
   changeDomainOnChain,
   isProAccount,
 } from '../../utils/subscription_manager'
-import IPFSLink from '../IPFSLink'
 import Block from './components/Block'
 import HandlePicker, {
   DisplayName,
@@ -115,7 +114,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   )
 
   const updateAccountInfo = () => {
-    console.log('updating account info')
     const socialLinks = currentAccount?.preferences?.socialLinks || []
 
     setTwitter(
