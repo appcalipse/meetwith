@@ -212,7 +212,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 onClick={() => router.push('/dashboard/notifications')}
                 width="100%"
               >
-                Go to Notification Settings
+                Go to Notifications
               </Button>
             ) : (
               <>

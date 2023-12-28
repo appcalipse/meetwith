@@ -451,16 +451,18 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           <Divider my={8} />
 
           <FormControl pb={3}>
-            <FormLabel>Display name (optional)</FormLabel>
+            <FormLabel>
+              Display name
+              <Tooltip
+                text="How do you want to be displayed to others in meetings? Leave empty
+              to use you wallet address"
+              />
+            </FormLabel>
             <HandlePicker
               selected={name}
               setValue={option => setName(option)}
               options={nameOptions}
             />
-            <FormHelperText>
-              How do you want to be displayed to others in meetings? Leave empty
-              to use you wallet address
-            </FormHelperText>
           </FormControl>
 
           <FormControl py={3}>

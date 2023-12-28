@@ -1,6 +1,7 @@
 import {
   Box,
   CloseButton,
+  HStack,
   Slide,
   Text,
   useColorModeValue,
@@ -16,8 +17,8 @@ import {
   FaCalendarDay,
   FaCalendarPlus,
   FaCalendarWeek,
+  FaCog,
   FaDoorClosed,
-  FaInfoCircle,
   FaSignOutAlt,
 } from 'react-icons/fa'
 
@@ -39,11 +40,10 @@ interface LinkItemProps {
 }
 const LinkItems: Array<LinkItemProps> = [
   { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
-  { name: 'Account Details', icon: FaInfoCircle, mode: EditMode.DETAILS },
   { name: 'Availabilities', icon: FaCalendarAlt, mode: EditMode.AVAILABILITY },
   { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
   {
-    name: 'Notifications Settings',
+    name: 'Notifications',
     icon: FaBell,
     mode: EditMode.NOTIFICATIONS,
   },
@@ -57,6 +57,7 @@ const LinkItems: Array<LinkItemProps> = [
     icon: FaCalendarPlus,
     mode: EditMode.CALENDARS,
   },
+  { name: 'Account Settings', icon: FaCog, mode: EditMode.DETAILS },
   {
     name: 'Sign Out',
     icon: FaSignOutAlt,
@@ -128,26 +129,26 @@ export const NavMenu: React.FC<{
           // TO-DO: replace by new dark/light color scheme
           backgroundColor={'transparent'}
         >
-          <VStack width="100%" textAlign="center">
-            <Box width="120px" height="120px" mb={2}>
+          <HStack width="100%" textAlign="center" px={8}>
+            <Box width="64px" height="64px">
               <Avatar account={currentAccount} />
             </Box>
 
-            <Text fontSize="lg" fontWeight={500}>
-              {getAccountDisplayName(currentAccount)}
-            </Text>
-          </VStack>
+            <VStack ml={2} flex={1} alignItems="flex-start">
+              <Text fontSize="lg" fontWeight={500}>
+                {getAccountDisplayName(currentAccount)}
+              </Text>
+              <CopyLinkButton
+                url={accountUrl}
+                size="md"
+                type="link"
+                label="Share my calendar"
+                withIcon
+              />
+            </VStack>
+          </HStack>
 
-          <Box>
-            <CopyLinkButton
-              url={accountUrl}
-              size="md"
-              label="Share my calendar link"
-              withIcon
-            />
-          </Box>
-
-          <VStack py={2} width="100%">
+          <VStack width="100%">
             {LinkItems.map(link => (
               <NavItem
                 selected={currentSection === link.mode}
@@ -190,7 +191,7 @@ export const NavMenu: React.FC<{
               <CopyLinkButton
                 url={accountUrl}
                 size="md"
-                label="Share my calendar link"
+                label="Share my calendar"
                 withIcon
               />
             </Box>
@@ -212,7 +213,7 @@ export const NavMenu: React.FC<{
               <CloseButton
                 onClick={closeMenu}
                 position="fixed"
-                top="0"
+                top="20px"
                 right="20px"
                 size="lg"
               />
