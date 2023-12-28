@@ -19,8 +19,8 @@ import { FaUnlink } from 'react-icons/fa'
 
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
+import { updateConnectedCalendar } from '@/utils/api_helper'
 
-import { updateConnectedCalendar } from '../../../utils/api_helper'
 import DisconnectCalendarDialog from '../DisconnectCalendarDialog'
 import { MultipleCalendarList } from '../MultipleCalendarList'
 

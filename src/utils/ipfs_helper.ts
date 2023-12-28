@@ -32,10 +32,12 @@ class IPFSHelper {
 
   addContentToIPFS = async (content: object): Promise<string> => {
     await this.startIPFS()
+
     try {
       const { path } = await this.ipfs!.add(JSON.stringify(content), {
         pin: isProduction,
       })
+
       return path
     } catch (e) {
       Sentry.captureException(e)

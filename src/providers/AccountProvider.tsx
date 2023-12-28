@@ -4,6 +4,9 @@ import { useCookies } from 'react-cookie'
 import { useDisconnect } from 'wagmi'
 
 import { SESSION_COOKIE_NAME } from '@/middleware'
+import { getAccount } from '@/utils/api_helper'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 import { loginWithAddress } from '@/utils/user_manager'
 
 import { Account } from '../types/Account'
@@ -16,6 +19,7 @@ interface IAccountContext {
   logout: (address?: string) => void
   setLoginIn: (value: boolean) => void
   loginIn: boolean
+  updateUser: () => Promise<void>
 }
 
 const DEFAULT_STATE: IAccountContext = {
@@ -25,6 +29,7 @@ const DEFAULT_STATE: IAccountContext = {
   logout: (address?: string) => null,
   loginIn: false,
   setLoginIn: () => null,
+  updateUser: () => Promise.resolve(),
 }
 
 const AccountContext = React.createContext<IAccountContext>(DEFAULT_STATE)
@@ -90,8 +95,19 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
     }))
   }
 
+  async function updateUser() {
+    if (!currentAccount?.address) return
+    const account = await loginWithAddress(currentAccount.address, setLoginIn)
+    setUserContext(() => ({
+      ...userContext,
+      currentAccount: account,
+      logged: true,
+    }))
+  }
+
   const logout = async (address?: string) => {
     disconnect()
+    queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
     if (address) {
       removeSignature(address)
     } else if (userContext.currentAccount) {
@@ -110,7 +126,14 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
       logged: false,
     }))
   }
-  const context = { ...userContext, loginIn, setLoginIn, login, logout }
+  const context = {
+    ...userContext,
+    loginIn,
+    setLoginIn,
+    login,
+    logout,
+    updateUser,
+  }
   return (
     <AccountContext.Provider value={context}>
       {children}

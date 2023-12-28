@@ -44,6 +44,16 @@ export const useLogin = () => {
         forceRedirect &&
         (router.pathname === '/' || router.pathname.indexOf('/embed') != -1)
       ) {
+        if (account.signedUp) {
+          const state = Buffer.from(
+            JSON.stringify({
+              signedUp: true,
+            })
+          ).toString('base64')
+          await router.push(`/dashboard/details?state=${state}`)
+          return
+        }
+
         await router.push('/dashboard/meetings')
         return
       }

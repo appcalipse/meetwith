@@ -1,9 +1,8 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { getExistingAccountsFromDB } from '../../../utils/database'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     const { addresses, fullInformation } = req.body
 
@@ -14,4 +13,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(200).json(accounts)
   }
   return res.status(404).send('Not found')
-})
+}
+
+export default handler
