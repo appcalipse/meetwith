@@ -46,7 +46,6 @@ EnhancedSchedule.getInitialProps = async ctx => {
       address[0] == '401' ||
       address[0] == 'api'
     ) {
-      // ToDo: Rasoul
       throw new Error('Invalid address')
     }
     const account = await getAccount(address[0])
