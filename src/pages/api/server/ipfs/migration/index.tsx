@@ -7,16 +7,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
-    const username = req.body.username
-    const password = req.body.password
-
-    if (
-      username !== process.env.MIGRATION_API_USERNAME &&
-      password !== process.env.MIGRATION_API_PASSWORD
-    ) {
-      return res.status(403).send('Access Denied')
-    }
-
     try {
       const migrated_data = await migrateFromIpfsToDB()
 
