@@ -249,6 +249,7 @@ const migrateFromIpfsToDB = async (): Promise<object> => {
       .from('accounts')
       .select('address, preferences_path')
       .match({ migrated_from_ipfs: 0 })
+      .order('address', { ascending: true })
       .range(split, split + 10)
 
     for (const account of accounts.data) {
