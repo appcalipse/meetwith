@@ -178,6 +178,15 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         .filter(sub => sub.plan_id === Plan.PRO)
         .map(sub => sub.domain)
       if (domains) {
+        handles = handles.concat(
+          domains.map(domain => {
+            return {
+              label: domain,
+              value: domain,
+              type: ProfileInfoProvider.MWW,
+            }
+          })
+        )
         setProDomain(domains[0])
         setNewProDomain(domains[0])
       }
