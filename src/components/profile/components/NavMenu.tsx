@@ -141,7 +141,7 @@ export const NavMenu: React.FC<{
               <CopyLinkButton
                 url={accountUrl}
                 size="md"
-                type="link"
+                design_type="link"
                 label="Share my calendar"
                 withIcon
               />

@@ -8,14 +8,14 @@ type CopyLinkButtonProps = {
   url: string
   label?: string
   withIcon?: boolean
-  type?: 'button' | 'link'
+  design_type?: 'link' | 'button'
 } & ButtonProps
 
 export const CopyLinkButton = ({
   url,
   label,
   withIcon,
-  type = 'button',
+  design_type = 'button',
   ...props
 }: CopyLinkButtonProps) => {
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
@@ -41,8 +41,8 @@ export const CopyLinkButton = ({
       <Button
         flex={1}
         colorScheme="primary"
-        variant={type === 'button' ? 'outline' : 'ghost'}
-        px={type === 'button' ? 4 : 0}
+        variant={design_type === 'link' ? 'ghost' : 'outline'}
+        px={design_type === 'link' ? 0 : 4}
         onClick={copyLink}
         {...(withIcon && { rightIcon: <FaLink /> })}
         {...props}
