@@ -88,6 +88,18 @@ export const getAccount = async (identifier: string): Promise<Account> => {
   }
 }
 
+export const getOwnAccount = async (identifier: string): Promise<Account> => {
+  try {
+    const account = await internalFetch('/secure/accounts')
+    return account as Account
+  } catch (e: any) {
+    if (e.status && e.status === 404) {
+      throw new AccountNotFoundError(identifier)
+    }
+    throw e
+  }
+}
+
 export const getAccountByDomain = async (
   domain: string
 ): Promise<Subscription | null> => {
@@ -388,7 +400,6 @@ export const getMeetingsForDashboard = async (
       limit || undefined
     }&offset=${offset || 0}&end=${end.getTime()}`
   )) as DBSlot[]
-  console.log(response)
   return response?.map(slot => ({
     ...slot,
     start: new Date(slot.start),
@@ -587,6 +598,10 @@ export const generateDiscordAccount = async (
 
 export const getDiscordInfo = async (): Promise<DiscordUserInfo | null> => {
   return (await internalFetch(`/secure/discord`)) as DiscordUserInfo | null
+}
+
+export const deleteDiscordIntegration = async (): Promise<void> => {
+  return await internalFetch(`/secure/discord`, 'DELETE')
 }
 
 export const getGateCondition = async (

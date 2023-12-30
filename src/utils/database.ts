@@ -983,7 +983,6 @@ const addOrUpdateConnectedCalendar = async (
   email: string,
   provider: TimeSlotSource,
   calendars: CalendarSyncInfo[],
-
   // Unknown as it can be anything
   _payload?: unknown
 ): Promise<ConnectedCalendar> => {

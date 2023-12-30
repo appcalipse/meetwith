@@ -114,7 +114,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (stateObject) {
     stateObject.origin = OnboardingSubject.GoogleCalendarConnected
   }
-  const newState64 = Buffer.from(JSON.stringify(stateObject)).toString('base64')
+
+  const newState64 = stateObject
+    ? Buffer.from(JSON.stringify(stateObject)).toString('base64')
+    : undefined
+
   return res.redirect(
     `/dashboard/calendars?calendarResult=success${
       !!state ? `&state=${newState64}` : ''

@@ -1,10 +1,20 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { initDB, updateAccountPreferences } from '@/utils/database'
+import {
+  getAccountFromDB,
+  initDB,
+  updateAccountPreferences,
+} from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
-  if (req.method === 'POST') {
+  if (req.method === 'GET') {
+    initDB()
+
+    const account_id = req.session.account!.address
+    const account = await getAccountFromDB(account_id, true)
+    return res.status(200).json(account)
+  } else if (req.method === 'POST') {
     initDB()
 
     const account_id = req.session.account!.address
