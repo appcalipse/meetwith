@@ -1165,6 +1165,7 @@ export const updateAccountSubscriptions = async (
       })
       .eq('owner_account', subscription.owner_account)
       .eq('chain', subscription.chain)
+      .eq('plan_id', subscription.plan_id)
 
     if (error && error.length > 0) {
       console.error(error)
