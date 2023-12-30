@@ -130,13 +130,12 @@ const initAccountDBForWallet = async (
   if (created_user_account.error) {
     throw new Error(created_user_account.error)
   }
-  const availabilities = generateDefaultAvailabilities()
   const default_meeting_type = generateDefaultMeetingType()
 
   const preferences: AccountPreferences = {
     availableTypes: [default_meeting_type],
     description: '',
-    availabilities,
+    availabilities: [],
     socialLinks: [],
     timezone,
   }
@@ -146,12 +145,10 @@ const initAccountDBForWallet = async (
   try {
     const responsePrefs = await db.supabase.from('account_preferences').insert({
       ...preferences,
-      owner_account: user_account.address,
-      name: '',
+      owner_account_address: user_account.address,
     })
 
     if (responsePrefs.error) {
-      console.log(responsePrefs.error)
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
@@ -161,7 +158,6 @@ const initAccountDBForWallet = async (
 
     return user_account
   } catch (error) {
-    console.log(error)
     Sentry.captureException(error)
     throw new Error("Account couldn't be created")
   }
@@ -268,7 +264,7 @@ const migrateFromIpfsToDB = async (): Promise<object> => {
           )
 
           await db.supabase.from('account_preferences').insert({
-            owner_account: account.address,
+            owner_account_address: account.address,
             ...ipfs_content,
           })
 
@@ -299,7 +295,7 @@ const migrateFromIpfsToDB = async (): Promise<object> => {
             .from('account_preferences')
             .insert({
               ...preferences,
-              owner_account: account.address.toLowerCase(),
+              owner_account_address: account.address.toLowerCase(),
               name: '',
             })
 
@@ -393,7 +389,12 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       socialLinks: preferences.socialLinks,
       availableTypes: preferences.availableTypes,
     })
-    .match({ owner_account: account.address.toLowerCase() })
+    .match({ owner_account_address: account.address.toLowerCase() })
+
+  if (responsePrefsUpdate.error) {
+    Sentry.captureException(responsePrefsUpdate.error)
+    throw new Error("Account preferences couldn't be updated")
+  }
 
   delete account.preferences
   account['preferences'] = responsePrefsUpdate.data[0]
@@ -421,7 +422,7 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 }
 
 export const getAccountPreferences = async (
-  address: string
+  owner_account_address: string
 ): Promise<AccountPreferences> => {
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
@@ -429,7 +430,7 @@ export const getAccountPreferences = async (
       .select(
         'description, timezone, availabilities, name, socialLinks, availableTypes'
       )
-      .match({ owner_account: address.toLowerCase() })
+      .match({ owner_account_address: owner_account_address.toLowerCase() })
 
   if (account_preferences_error || !account_preferences) {
     Sentry.captureException(account_preferences_error)
@@ -480,8 +481,8 @@ const getAccountFromDB = async (
         account.address.toLowerCase()
       )) as AccountPreferences
     } catch (e) {
-      console.log(e)
-      return account
+      Sentry.captureException(e)
+      throw new Error("Couldn't get account's preferences")
     }
     account.subscriptions = await getSubscriptionFromDBForAccount(
       account.address
@@ -495,7 +496,6 @@ const getAccountFromDB = async (
   } else if (error) {
     throw new Error(error)
   }
-  console.log(error)
   throw new AccountNotFoundError(identifier)
 }
 
