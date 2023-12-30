@@ -1,4 +1,4 @@
-import { Box, Flex, Spacer, Text, VStack } from '@chakra-ui/layout'
+import { Box, Flex, Text, VStack } from '@chakra-ui/layout'
 import {
   Alert,
   AlertIcon,
@@ -237,7 +237,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     updateAccountInfo()
     updateAccountSubs()
     getHandles()
-  }, [currentAccount])
+  }, [currentAccount?.address])
 
   const toast = useToast()
 
@@ -508,7 +508,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       </Block>
 
       <Block mt={8}>
-        <ConnectedAccounts discord_account={currentAccount?.discord_account} />
+        <ConnectedAccounts />
       </Block>
 
       <Block mt={8}>

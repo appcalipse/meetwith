@@ -25,13 +25,21 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     // Force all connected calendars to renew its Tokens
     // if needed for displaying calendars...
     for (const calendar of calendars) {
-      const integration = getConnectedCalendarIntegration(
-        req.session.account!.address,
-        calendar.email,
-        calendar.provider,
-        calendar.payload
-      )
-      await integration.refreshConnection()
+      try {
+        const integration = getConnectedCalendarIntegration(
+          req.session.account!.address,
+          calendar.email,
+          calendar.provider,
+          calendar.payload
+        )
+        await integration.refreshConnection()
+      } catch (e) {
+        await removeConnectedCalendar(
+          req.session.account!.address,
+          calendar.email,
+          calendar.provider
+        )
+      }
     }
 
     return res.status(200).json(
