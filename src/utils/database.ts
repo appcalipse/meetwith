@@ -428,9 +428,7 @@ export const getAccountPreferences = async (
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
       .from('account_preferences')
-      .select(
-        'description, timezone, availabilities, name, socialLinks, availableTypes'
-      )
+      .select()
       .match({ owner_account_address: owner_account_address.toLowerCase() })
 
   if (account_preferences_error || !account_preferences) {
