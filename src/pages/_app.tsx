@@ -66,8 +66,6 @@ function MyApp({
     checkAuthOnClient,
   }
 
-  console.log('here man')
-
   return (
     <QueryClientProvider client={queryClient}>
       {process.env.NODE_ENV === 'development' && (
