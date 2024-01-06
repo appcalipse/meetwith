@@ -257,11 +257,11 @@ const migrateFromIpfsToDB = async (): Promise<object> => {
         `${migrated_data.length} - ${migrated_data_with_error.length}`
       )
 
-      for (let attempts = 1; attempts <= 3; attempts++) {
+      for (let attempts = 1; attempts <= 2; attempts++) {
         try {
           const ipfs_content = await fetchContentFromIPFS(
             account.preferences_path,
-            10000
+            5000
           )
 
           await db.supabase.from('account_preferences').insert({
@@ -280,7 +280,7 @@ const migrateFromIpfsToDB = async (): Promise<object> => {
         } catch (error) {
           console.log({ adress: account.address, attempts })
         }
-        if (attempts == 3) {
+        if (attempts == 2) {
           const availabilities = generateDefaultAvailabilities()
           const default_meeting_type = generateDefaultMeetingType()
 
