@@ -7,6 +7,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
 
+    req.setTimeout(900000) // 15 minutes timeout
+
     try {
       const migrated_data = await migrateFromIpfsToDB()
 
