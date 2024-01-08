@@ -49,7 +49,7 @@ const ConnectedCalendars: React.FC<{
   disabledCalendarConnections: ConnectedCalendarCore[]
   onDelete: () => Promise<void>
 }> = ({ activeCalendarConnections, disabledCalendarConnections, onDelete }) => {
-  if (activeCalendarConnections.length === 0) {
+  if (!activeCalendarConnections || activeCalendarConnections.length === 0) {
     return (
       <VStack>
         <Image

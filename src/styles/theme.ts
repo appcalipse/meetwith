@@ -51,6 +51,12 @@ const newTheme = {
       '*, *::before, &::after': {
         borderColor: mode('gray.300', 'whiteAlpha.300')(props),
       },
+      '.chakra-input__left-addon': {
+        borderColor: 'inherit !important',
+      },
+      '.chakra-input__left-addon.disabled': {
+        opacity: 0.4,
+      },
     }),
   },
   config,
@@ -76,18 +82,6 @@ const newTheme = {
       }),
     },
   },
-}
-
-export enum ButtonType {
-  SOLID = 'solid',
-  OUTLINE = 'outline',
-  GHOST = 'ghost',
-  LINK = 'link',
-}
-
-export enum Color {
-  ORANGE = 'orange',
-  GRAY = 'gray',
 }
 
 // declare a variable for our theme and pass our overrides in the extendTheme method from chakra

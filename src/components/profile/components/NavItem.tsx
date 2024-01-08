@@ -31,7 +31,6 @@ export const NavItem = ({
   ...rest
 }: NavItemProps) => {
   const unlockedColor = useColorModeValue('gray.700', 'gray.200')
-  const textColor = selected ? 'primary.500' : unlockedColor
   const unlockedIconColor = selected ? 'gray.50' : unlockedColor
   const hoverColor = useColorModeValue('gray.200', 'gray.600')
   const lockedColor = useColorModeValue('gray.400', 'gray.100')
@@ -49,7 +48,7 @@ export const NavItem = ({
         align="center"
         width="100%"
         paddingY="3"
-        paddingX="6"
+        paddingX="8"
         borderRadius="lg"
         role="group"
         cursor="pointer"
@@ -80,9 +79,9 @@ export const NavItem = ({
               <Box
                 position={'absolute'}
                 left={0}
+                right={8}
                 top={0}
                 height="100%"
-                width={16}
                 borderRightRadius={999}
                 bgGradient="linear(to-r, primary.400, primary.500)"
               />
@@ -90,7 +89,7 @@ export const NavItem = ({
             <Icon
               as={icon}
               width={6}
-              mr="14"
+              mr="8"
               fontSize="16"
               transition="color 0.3s"
               color={iconColor}
@@ -98,7 +97,7 @@ export const NavItem = ({
             />
           </>
         )}
-        <Text flex={1} color={textColor}>
+        <Text position="relative" flex={1} color={unlockedColor}>
           {text}
         </Text>
         {locked && (
