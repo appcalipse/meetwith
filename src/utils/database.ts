@@ -114,7 +114,7 @@ const initAccountDBForWallet = async (
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
 
-  const { data, error } = await db.supabase.from('accounts').insert([
+  const created_user_account = await db.supabase.from('accounts').insert([
     {
       address: address.toLowerCase(),
       internal_pub_key: is_invited
@@ -127,38 +127,40 @@ const initAccountDBForWallet = async (
     },
   ])
 
-  if (error) {
-    throw new Error(error)
+  if (created_user_account.error) {
+    throw new Error(created_user_account.error)
   }
+  const default_meeting_type = generateDefaultMeetingType()
 
   const preferences: AccountPreferences = {
-    availableTypes: [generateDefaultMeetingType()],
+    availableTypes: [default_meeting_type],
     description: '',
     availabilities: [],
     socialLinks: [],
     timezone,
   }
 
-  const path = await addContentToIPFS(preferences)
-  //TODO handle ipfs error
+  const user_account = created_user_account.data[0]
 
-  const responsePrefs = await db.supabase
-    .from('accounts')
-    .update({
-      preferences_path: path,
+  try {
+    const responsePrefs = await db.supabase.from('account_preferences').insert({
+      ...preferences,
+      owner_account_address: user_account.address,
     })
-    .match({ id: data[0].id })
 
-  if (responsePrefs.error) {
-    Sentry.captureException(responsePrefs.error)
-    //TODO: handle error
+    if (responsePrefs.error) {
+      Sentry.captureException(responsePrefs.error)
+      throw new Error("Account preferences couldn't be created")
+    }
+
+    user_account.preferences = preferences
+    user_account.is_invited = is_invited || false
+
+    return user_account
+  } catch (error) {
+    Sentry.captureException(error)
+    throw new Error("Account couldn't be created")
   }
-
-  const account = responsePrefs.data[0] as Account
-  account.preferences = preferences
-  account.is_invited = is_invited || false
-
-  return account
 }
 
 const updateAccountFromInvite = async (
@@ -236,6 +238,95 @@ const updateAccountFromInvite = async (
   return account
 }
 
+const migrateFromIpfsToDB = async (): Promise<object> => {
+  let split = 0
+  const migrated_data = []
+  const migrated_data_with_error = []
+  let accounts = []
+
+  do {
+    accounts = await db.supabase
+      .from('accounts')
+      .select('address, preferences_path')
+      .match({ migrated_from_ipfs: 0 })
+      .order('address', { ascending: true })
+      .range(split, split + 10)
+
+    for (const account of accounts.data) {
+      console.log(
+        `${migrated_data.length} - ${migrated_data_with_error.length}`
+      )
+
+      for (let attempts = 1; attempts <= 2; attempts++) {
+        try {
+          const ipfs_content = await fetchContentFromIPFS(
+            account.preferences_path,
+            5000
+          )
+
+          await db.supabase.from('account_preferences').insert({
+            owner_account_address: account.address,
+            ...ipfs_content,
+          })
+
+          await db.supabase
+            .from('accounts')
+            .update({ migrated_from_ipfs: 1 })
+            .match({ address: account.address })
+
+          migrated_data.push(account.address)
+
+          break
+        } catch (error) {
+          console.log({ adress: account.address, attempts })
+        }
+        if (attempts == 2) {
+          const availabilities = generateDefaultAvailabilities()
+          const default_meeting_type = generateDefaultMeetingType()
+
+          const preferences: AccountPreferences = {
+            availableTypes: [default_meeting_type],
+            description: '',
+            availabilities,
+            socialLinks: [],
+            timezone: 'UTC',
+          }
+
+          const responsePrefs = await db.supabase
+            .from('account_preferences')
+            .insert({
+              ...preferences,
+              owner_account_address: account.address.toLowerCase(),
+              name: '',
+            })
+
+          if (responsePrefs.error) {
+            console.log(responsePrefs.error)
+            Sentry.captureException(responsePrefs.error)
+            throw new Error("Account preferences couldn't be created")
+          }
+
+          migrated_data_with_error.push(account.address)
+
+          await db.supabase
+            .from('accounts')
+            .update({ migrated_from_ipfs: -1 })
+            .match({ address: account.address.toLowerCase() })
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+    split += 10
+    await new Promise(resolve => setTimeout(resolve, 2000))
+  } while (accounts.data.length != 0)
+
+  return {
+    total_updated: migrated_data.length + migrated_data_with_error.length,
+    migrated_data,
+    migrated_data_with_error,
+  }
+}
+
 const workMeetingTypeGates = async (meetingTypes: MeetingType[]) => {
   const toAdd: GateUsage[] = []
   const toRemove = []
@@ -286,28 +377,32 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     ...link,
     url: link.url?.trim(),
   }))
-  const path = await addContentToIPFS(account.preferences!)
-  //TODO handle ipfs error
 
   await workMeetingTypeGates(account.preferences!.availableTypes || [])
-  const { data, error } = await db.supabase
-    .from('accounts')
-    .update({
-      preferences_path: path,
-    })
-    .match({ id: account.id })
 
-  if (error) {
-    throw new Error(error)
-    //TODO: handle error
+  const responsePrefsUpdate = await db.supabase
+    .from('account_preferences')
+    .update({
+      description: preferences.description,
+      timezone: preferences.timezone,
+      availabilities: preferences.availabilities,
+      name: preferences.name,
+      socialLinks: preferences.socialLinks,
+      availableTypes: preferences.availableTypes,
+    })
+    .match({ owner_account_address: account.address.toLowerCase() })
+
+  if (responsePrefsUpdate.error) {
+    Sentry.captureException(responsePrefsUpdate.error)
+    throw new Error("Account preferences couldn't be updated")
   }
 
-  const _account = { ...data[0], preferences: account.preferences }
-  _account.subscriptions = await getSubscriptionFromDBForAccount(
-    account.address
-  )
+  delete account.preferences
+  account['preferences'] = responsePrefsUpdate.data[0]
 
-  return _account as Account
+  account.subscriptions = await getSubscriptionFromDBForAccount(account.address)
+
+  return account as Account
 }
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
@@ -327,13 +422,30 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
   throw new AccountNotFoundError(identifier)
 }
 
+export const getAccountPreferences = async (
+  owner_account_address: string
+): Promise<AccountPreferences> => {
+  const { data: account_preferences, error: account_preferences_error } =
+    await db.supabase
+      .from('account_preferences')
+      .select()
+      .match({ owner_account_address: owner_account_address.toLowerCase() })
+
+  if (account_preferences_error || !account_preferences) {
+    Sentry.captureException(account_preferences_error)
+    throw new Error("Couldn't get account's preferences")
+  }
+
+  return account_preferences[0]
+}
+
 const getExistingAccountsFromDB = async (
   addresses: string[],
   fullInformation?: boolean
 ): Promise<SimpleAccountInfo[] | Account[]> => {
   const { data, error } = await db.supabase
     .from('accounts')
-    .select('address, internal_pub_key, preferences_path')
+    .select('address, internal_pub_key')
     .in(
       'address',
       addresses.map(address => address.toLowerCase())
@@ -345,8 +457,8 @@ const getExistingAccountsFromDB = async (
 
   if (fullInformation) {
     for (const account of data) {
-      account.preferences = (await fetchContentFromIPFS(
-        account.preferences_path
+      account.preferences = (await getAccountPreferences(
+        account.address.toLowerCase()
       )) as AccountPreferences
     }
   }
@@ -361,13 +473,16 @@ const getAccountFromDB = async (
   const { data, error } = await db.supabase.rpc('fetch_account', {
     identifier: identifier.toLowerCase(),
   })
-
   if (data) {
     const account = data as Account
-    account.preferences = (await fetchContentFromIPFS(
-      account.preferences_path
-    )) as AccountPreferences
-
+    try {
+      account.preferences = (await getAccountPreferences(
+        account.address.toLowerCase()
+      )) as AccountPreferences
+    } catch (e) {
+      Sentry.captureException(e)
+      throw new Error("Couldn't get account's preferences")
+    }
     account.subscriptions = await getSubscriptionFromDBForAccount(
       account.address
     )
@@ -380,7 +495,6 @@ const getAccountFromDB = async (
   } else if (error) {
     throw new Error(error)
   }
-
   throw new AccountNotFoundError(identifier)
 }
 
@@ -948,7 +1062,7 @@ const connectedCalendarExists = async (
 ): Promise<ConnectedCalendar | undefined> => {
   const { data, error } = await db.supabase
     .from('connected_calendars')
-    .select('*')
+    .select()
     .eq('account_address', address.toLowerCase())
     .eq('email', email.toLowerCase())
     .eq('provider', provider)
@@ -1610,6 +1724,7 @@ export {
   initDB,
   insertOfficeEventMapping,
   isSlotFree,
+  migrateFromIpfsToDB,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
   saveEmailToDB,
