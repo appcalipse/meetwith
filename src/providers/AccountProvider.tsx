@@ -4,6 +4,7 @@ import { useCookies } from 'react-cookie'
 import { useDisconnect } from 'wagmi'
 
 import { SESSION_COOKIE_NAME } from '@/middleware'
+import { getOwnAccount } from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { loginWithAddress } from '@/utils/user_manager'
@@ -96,7 +97,13 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
 
   async function updateUser() {
     if (!currentAccount?.address) return
-    const account = await loginWithAddress(currentAccount.address, setLoginIn)
+
+    await queryClient.invalidateQueries(
+      QueryKeys.account(currentAccount?.address?.toLowerCase())
+    )
+
+    const account = await getOwnAccount(currentAccount.address)
+
     setUserContext(() => ({
       ...userContext,
       currentAccount: account,

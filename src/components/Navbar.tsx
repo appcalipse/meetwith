@@ -288,7 +288,7 @@ const MobileNav = ({
               handleSetActiveLink={handleSetActiveLink}
             />
             <Button onClick={doLogout} variant="link">
-              Logout
+              Sign out
             </Button>
             <ThemeSwitcher />
           </Flex>

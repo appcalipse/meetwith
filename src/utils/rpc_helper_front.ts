@@ -8,6 +8,7 @@ import {
   GetWalletClientResult,
   switchNetwork,
 } from '@wagmi/core'
+import { ca } from 'date-fns/locale'
 import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
 
 import { getChainInfo, SupportedChain } from '../types/chains'
@@ -28,30 +29,34 @@ export const resolveExtraInfo = async (
 export const resolveENS = async (
   address: string
 ): Promise<AccountExtraProps | undefined> => {
-  const name = await fetchEnsName({
-    address: address as `0x${string}`,
-    chainId: 1,
-  })
-
-  if (!name) {
-    return undefined
-  }
-
-  const validatedAddress = await fetchEnsAddress({ name, chainId: 1 })
-
-  // Check to be sure the reverse record is correct.
-  if (address.toLowerCase() !== validatedAddress?.toLowerCase()) {
-    return undefined
-  }
-
-  let avatar = undefined
   try {
-    avatar = await fetchEnsAvatar({ name, chainId: 1 })
-  } catch (e) {}
+    const name = await fetchEnsName({
+      address: address as `0x${string}`,
+      chainId: 1,
+    })
 
-  return {
-    name,
-    avatar: avatar || undefined,
+    if (!name) {
+      return undefined
+    }
+
+    const validatedAddress = await fetchEnsAddress({ name, chainId: 1 })
+
+    // Check to be sure the reverse record is correct.
+    if (address.toLowerCase() !== validatedAddress?.toLowerCase()) {
+      return undefined
+    }
+
+    let avatar = undefined
+    try {
+      avatar = await fetchEnsAvatar({ name, chainId: 1 })
+    } catch (e) {}
+
+    return {
+      name,
+      avatar: avatar || undefined,
+    }
+  } catch (e) {
+    return undefined
   }
 }
 
@@ -237,5 +242,20 @@ export const getAddressFromDomain = async (
   } catch (e) {
     Sentry.captureException(e)
     return undefined
+  }
+}
+
+export const checkTransactionError = (error: any) => {
+  if (
+    error['details']?.toLowerCase()?.includes('user rejected') ||
+    error['details']?.toLocaleLowerCase()?.includes('user denied')
+  ) {
+    return 'You rejected the transaction'
+  } else if (error['details']?.toLowerCase()?.includes('insufficient')) {
+    return 'Insufficient funds'
+  } else if ('details' in error) {
+    return error['details']
+  } else {
+    return error.message
   }
 }

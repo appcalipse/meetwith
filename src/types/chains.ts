@@ -90,8 +90,7 @@ export const supportedChains: ChainInfo[] = [
     id: 1,
     name: 'Ethereum',
     fullName: 'Ethereum',
-    rpcUrl:
-      'https://eth-mainnet.nodereal.io/v1/1659dfb40aa24bbb8153a677b98064d7',
+    rpcUrl: 'https://mainnet.infura.io/v3/e9561b79c40044eea932e764d03895df',
     testnet: false,
     nativeTokenSymbol: 'ETH',
     domainContractAddess: '0x444463a3892EA730e43e3B54E8e45005a9Fe1fbd',
