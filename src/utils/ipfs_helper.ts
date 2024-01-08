@@ -11,7 +11,7 @@ class IPFSHelper {
     this.path = path || './ipfs'
   }
 
-  startIPFS = async (): Promise<void> => {
+  startIPFS = async (timeout?: number): Promise<void> => {
     if (!this.ipfs) {
       const options = {
         host: 'ipfs.infura.io',
@@ -24,6 +24,7 @@ class IPFSHelper {
               process.env.NEXT_INFURA_ID + ':' + process.env.NEXT_INFURA_SECRET
             ).toString('base64'),
         },
+        ...(timeout && { timeout }),
       }
 
       this.ipfs = await create(options)
@@ -45,8 +46,11 @@ class IPFSHelper {
     }
   }
 
-  fetchContentFromIPFS = async (path: string): Promise<object> => {
-    await this.startIPFS()
+  fetchContentFromIPFS = async (
+    path: string,
+    timeout?: number
+  ): Promise<object> => {
+    await this.startIPFS(timeout)
     const stream = await this.ipfs!.cat(path)
 
     const data = []
@@ -56,7 +60,7 @@ class IPFSHelper {
       }
     } catch (err) {
       //TODO add error handling
-      console.error(err)
+      throw new Error(`Error in fetching from IPFS: ${err}`)
     }
 
     return JSON.parse(Buffer.concat(data).toString())
@@ -69,6 +73,9 @@ export const addContentToIPFS = async (content: object): Promise<string> => {
   return ipfsInstance.addContentToIPFS(content)
 }
 
-export const fetchContentFromIPFS = async (path: string): Promise<object> => {
-  return ipfsInstance.fetchContentFromIPFS(path)
+export const fetchContentFromIPFS = async (
+  path: string,
+  timeout?: number
+): Promise<object> => {
+  return ipfsInstance.fetchContentFromIPFS(path, timeout)
 }
