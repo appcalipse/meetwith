@@ -239,7 +239,6 @@ const updateAccountFromInvite = async (
 }
 
 const migrateFromIpfsToDB = async (): Promise<object> => {
-  let split = 0
   const migrated_data = []
   const migrated_data_with_error = []
   let accounts = []
@@ -248,9 +247,9 @@ const migrateFromIpfsToDB = async (): Promise<object> => {
     accounts = await db.supabase
       .from('accounts')
       .select('address, preferences_path')
-      .match({ migrated_from_ipfs: 0 })
+      .match({ test: 0 })
       .order('address', { ascending: true })
-      .range(split, split + 10)
+      .limit(20)
 
     for (const account of accounts.data) {
       console.log(
@@ -278,7 +277,7 @@ const migrateFromIpfsToDB = async (): Promise<object> => {
 
           break
         } catch (error) {
-          console.log({ adress: account.address, attempts })
+          console.log({ address: account.address, attempts, error })
         }
         if (attempts == 2) {
           const availabilities = generateDefaultAvailabilities()
@@ -316,9 +315,10 @@ const migrateFromIpfsToDB = async (): Promise<object> => {
       }
       await new Promise(resolve => setTimeout(resolve, 500))
     }
-    split += 10
     await new Promise(resolve => setTimeout(resolve, 2000))
   } while (accounts.data.length != 0)
+
+  console.log('Finished')
 
   return {
     total_updated: migrated_data.length + migrated_data_with_error.length,
