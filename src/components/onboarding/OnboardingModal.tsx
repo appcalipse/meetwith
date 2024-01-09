@@ -377,7 +377,11 @@ const OnboardingModal = forwardRef((props, ref) => {
         <ModalContent padding={20} maxW="45rem">
           <Flex direction="column">
             <Flex justifyContent="flex-end">
-              <Button variant="ghost" onClick={onClose}>
+              <Button
+                variant="ghost"
+                onClick={onClose}
+                isDisabled={loadingSave}
+              >
                 Skip
               </Button>
             </Flex>
@@ -790,7 +794,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                       colorScheme="primary"
                       onClick={goToPreviousStep}
                       flex={1}
-                      disabled={loadingSave}
+                      isDisabled={loadingSave}
                     >
                       Back
                     </Button>
@@ -799,6 +803,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                       colorScheme="primary"
                       onClick={onSave}
                       isLoading={loadingSave}
+                      isDisabled={loadingSave}
                     >
                       Get Started
                     </Button>
