@@ -110,18 +110,11 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   // Modal opening flow
   useEffect(() => {
-    console.log({ stateObject })
     // When something related to user changes, check if we should open the modal
     // If the user is logged in and modal hans't been opened yet
-    if (
-      !!currentAccount?.address &&
-      !didInit
-      // && !skipNextSteps
-    ) {
+    if (!!currentAccount?.address && !didInit && !skipNextSteps) {
       // We check if the user is comming from Discord Onboarding Modal
       // and has its discord account linked
-
-      console.log({ currentAccount })
 
       if (
         origin === OnboardingSubject.DiscordConnectedInModal &&
