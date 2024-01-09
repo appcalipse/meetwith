@@ -36,6 +36,7 @@ const DiscordNotificationConfig: React.FC<Props> = ({
 
       if (discordInfo?.id) {
         setDiscordConnected(true)
+        setCanEnable(true)
       }
 
       if (discordInfo?.isInMWWServer) {

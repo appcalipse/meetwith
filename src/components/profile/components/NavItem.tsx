@@ -93,11 +93,11 @@ export const NavItem = ({
               fontSize="16"
               transition="color 0.3s"
               color={iconColor}
-              zIndex={Number(selected)}
+              zIndex={10}
             />
           </>
         )}
-        <Text position="relative" flex={1} color={unlockedColor}>
+        <Text position="relative" flex={1} color={iconColor}>
           {text}
         </Text>
         {locked && (
