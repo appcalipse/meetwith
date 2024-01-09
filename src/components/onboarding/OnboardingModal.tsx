@@ -99,11 +99,15 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   // User Control
   const { currentAccount, login } = useContext(AccountContext)
-  const [availabilities, setInitialAvailabilities] = useState(
-    currentAccount?.preferences?.availabilities
-      ? [...currentAccount.preferences.availabilities]
-      : []
-  )
+  const [availabilities, setInitialAvailabilities] = useState([
+    { weekday: 0, ranges: [] },
+    { weekday: 1, ranges: [{ start: '09:00', end: '18:00' }] },
+    { weekday: 2, ranges: [{ start: '09:00', end: '18:00' }] },
+    { weekday: 3, ranges: [{ start: '09:00', end: '18:00' }] },
+    { weekday: 4, ranges: [{ start: '09:00', end: '18:00' }] },
+    { weekday: 5, ranges: [{ start: '09:00', end: '18:00' }] },
+    { weekday: 6, ranges: [] },
+  ])
 
   // Modal opening flow
   useEffect(() => {
@@ -374,7 +378,7 @@ const OnboardingModal = forwardRef((props, ref) => {
         size="xl"
       >
         <ModalOverlay />
-        <ModalContent padding={20} maxW="45rem">
+        <ModalContent padding={{ base: 4, sm: 10, md: 20 }} maxW="45rem">
           <Flex direction="column">
             <Flex justifyContent="flex-end">
               <Button variant="ghost" onClick={onClose}>
