@@ -7,6 +7,8 @@ import {
   Divider,
   Flex,
   FormControl,
+  FormErrorMessage,
+  FormHelperText,
   FormLabel,
   Heading,
   Input,
@@ -51,6 +53,7 @@ import {
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import { isValidEmail } from '@/utils/validations'
 
 import { WeekdayConfig } from '../availabilities/weekday-config'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
@@ -107,11 +110,18 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   // Modal opening flow
   useEffect(() => {
+    console.log({ stateObject })
     // When something related to user changes, check if we should open the modal
     // If the user is logged in and modal hans't been opened yet
-    if (!!currentAccount?.address && !didInit && !skipNextSteps) {
+    if (
+      !!currentAccount?.address &&
+      !didInit
+      // && !skipNextSteps
+    ) {
       // We check if the user is comming from Discord Onboarding Modal
       // and has its discord account linked
+
+      console.log({ currentAccount })
 
       if (
         origin === OnboardingSubject.DiscordConnectedInModal &&
@@ -190,6 +200,7 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   function validateFirstStep() {
     if (!name || !timezone) return
+    if (!!email && !isValidEmail(email)) return
     goToNextStep()
   }
 
@@ -407,16 +418,19 @@ const OnboardingModal = forwardRef((props, ref) => {
                   </Text>
 
                   <Flex direction="column" gap={4}>
-                    <FormControl marginTop={6}>
+                    <FormControl marginTop={6} isRequired isInvalid={!name}>
                       <FormLabel>Your name</FormLabel>
                       <Input
                         value={name}
                         placeholder="your name or an identifier"
                         onChange={e => setName(e.target.value)}
                       />
+                      {!name ? (
+                        <FormErrorMessage>Required field.</FormErrorMessage>
+                      ) : null}
                     </FormControl>
 
-                    <FormControl>
+                    <FormControl isInvalid={!!email && !isValidEmail(email)}>
                       <FormLabel>Email (optional)</FormLabel>
                       <Input
                         value={email}
@@ -424,20 +438,29 @@ const OnboardingModal = forwardRef((props, ref) => {
                         type="email"
                         placeholder="your@email.com"
                       />
+                      {!!email && !isValidEmail(email) ? (
+                        <FormErrorMessage>Invalid e-mail.</FormErrorMessage>
+                      ) : null}
                     </FormControl>
 
-                    <FormControl>
+                    <FormControl isRequired isInvalid={!timezone}>
                       <FormLabel>Timezone</FormLabel>
                       <TimezoneSelector
                         value={timezone}
                         onChange={tz => setTimezone(tz)}
                       />
+                      {!timezone ? (
+                        <FormErrorMessage>Required field.</FormErrorMessage>
+                      ) : null}
                     </FormControl>
 
                     <Button
                       colorScheme="primary"
                       marginTop={6}
                       onClick={validateFirstStep}
+                      isDisabled={
+                        !name || !timezone || (!!email && !isValidEmail(email))
+                      }
                     >
                       Next
                     </Button>
