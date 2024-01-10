@@ -796,7 +796,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                       colorScheme="primary"
                       onClick={goToPreviousStep}
                       flex={1}
-                      disabled={loadingSave}
+                      isDisabled={loadingSave}
                     >
                       Back
                     </Button>
