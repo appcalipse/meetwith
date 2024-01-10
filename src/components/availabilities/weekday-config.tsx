@@ -90,12 +90,12 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
             {format(setDay(new Date(), props.dayAvailability.weekday), 'cccc')}
           </strong>
         </Checkbox>
-        <Spacer />
+        <Spacer display={{ base: 'none', sm: 'block' }} />
         {isSelected ? (
           <VStack alignItems="start">
             {times.map((time, index) => (
               <VStack alignItems="start" key={index}>
-                <HStack>
+                <HStack gap={{ base: 2, md: 4 }}>
                   <TimeSelector
                     onChange={handleChangeTime}
                     index={index}
