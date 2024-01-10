@@ -384,7 +384,11 @@ const OnboardingModal = forwardRef((props, ref) => {
         <ModalContent padding={{ base: 4, sm: 10, md: 20 }} maxW="45rem">
           <Flex direction="column">
             <Flex justifyContent="flex-end">
-              <Button variant="ghost" onClick={onClose}>
+              <Button
+                variant="ghost"
+                onClick={onClose}
+                isDisabled={loadingSave}
+              >
                 Skip all
               </Button>
             </Flex>
