@@ -115,20 +115,27 @@ const OnboardingModal = forwardRef((props, ref) => {
       // We check if the user is comming from Discord Onboarding Modal
       // and has its discord account linked
 
+      // 1st Case
+      // Connected Discord in Modal Successfully
       if (
         origin === OnboardingSubject.DiscordConnectedInModal &&
         !!currentAccount.discord_account
       ) {
         onOpenOnboardingModal()
         didInit = true
+
+        // 2nd Case
+        // Connect Google Calendar or Office 365 Calendar in Modal
       } else if (
-        (origin === OnboardingSubject.GoogleCalendarConnected ||
-          origin === OnboardingSubject.Office365CalendarConnected) &&
-        !!currentAccount.discord_account
+        origin === OnboardingSubject.GoogleCalendarConnected ||
+        origin === OnboardingSubject.Office365CalendarConnected
       ) {
         setActiveStep(1)
         onOpenOnboardingModal()
         didInit = true
+
+        // 3rd Case
+        // Don't have any origin, just created Account
       } else if (!origin && signedUp) {
         onOpenOnboardingModal()
         didInit = true
