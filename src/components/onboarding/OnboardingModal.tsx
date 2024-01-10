@@ -194,7 +194,29 @@ const OnboardingModal = forwardRef((props, ref) => {
   const toast = useToast()
 
   function validateFirstStep() {
-    if (!timezone) return
+    if (!timezone) {
+      toast({
+        title: 'Missing timezone',
+        description: 'Please choose a timezone',
+        status: 'error',
+        position: 'top',
+        duration: 5000,
+        isClosable: true,
+      })
+      return
+    }
+
+    if (!name) {
+      toast({
+        title: 'Name is required',
+        description: "Please insert a name. Doesn't need to be your real one",
+        status: 'error',
+        position: 'top',
+        duration: 5000,
+        isClosable: true,
+      })
+      return
+    }
 
     if (email && !isValidEmail(email)) {
       toast({
@@ -419,15 +441,15 @@ const OnboardingModal = forwardRef((props, ref) => {
 
                   <Flex direction="column" gap={4}>
                     <FormControl marginTop={6}>
-                      <FormLabel>Your name (optional)</FormLabel>
+                      <FormLabel>Your name</FormLabel>
                       <Input
                         value={name}
-                        placeholder="your name or an identifier"
+                        placeholder="Your name or an identifier"
                         onChange={e => setName(e.target.value)}
                       />
                     </FormControl>
 
-                    <FormControl>
+                    <FormControl isInvalid={!!email && !isValidEmail(email)}>
                       <FormLabel>Email (optional)</FormLabel>
                       <Input
                         value={email}
@@ -437,7 +459,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                       />
                     </FormControl>
 
-                    <FormControl>
+                    <FormControl isRequired isInvalid={!timezone}>
                       <FormLabel>Timezone</FormLabel>
                       <TimezoneSelector
                         value={timezone}
