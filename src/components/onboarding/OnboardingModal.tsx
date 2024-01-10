@@ -7,8 +7,6 @@ import {
   Divider,
   Flex,
   FormControl,
-  FormErrorMessage,
-  FormHelperText,
   FormLabel,
   Heading,
   Input,
@@ -20,6 +18,7 @@ import {
   useColorModeValue,
   useDisclosure,
   useSteps,
+  useToast,
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useModal } from 'connectkit'
@@ -50,6 +49,7 @@ import {
   setNotificationSubscriptions,
   updateConnectedCalendar,
 } from '@/utils/api_helper'
+import { generateDefaultAvailabilities } from '@/utils/calendar_manager'
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
@@ -101,11 +101,11 @@ const OnboardingModal = forwardRef((props, ref) => {
   }))
 
   // User Control
+
   const { currentAccount, login } = useContext(AccountContext)
+
   const [availabilities, setInitialAvailabilities] = useState(
-    currentAccount?.preferences?.availabilities
-      ? [...currentAccount.preferences.availabilities]
-      : []
+    generateDefaultAvailabilities()
   )
 
   // Modal opening flow
@@ -191,9 +191,44 @@ const OnboardingModal = forwardRef((props, ref) => {
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
 
+  const toast = useToast()
+
   function validateFirstStep() {
-    if (!name || !timezone) return
-    if (!!email && !isValidEmail(email)) return
+    if (!timezone) {
+      toast({
+        title: 'Missing timezone',
+        description: 'Please choose a timezone',
+        status: 'error',
+        position: 'top',
+        duration: 5000,
+        isClosable: true,
+      })
+      return
+    }
+
+    if (!name) {
+      toast({
+        title: 'Name is required',
+        description: "Please insert a name. Doesn't need to be your real one",
+        status: 'error',
+        position: 'top',
+        duration: 5000,
+        isClosable: true,
+      })
+      return
+    }
+
+    if (email && !isValidEmail(email)) {
+      toast({
+        title: 'Invalid email',
+        description: 'Please insert a valid email',
+        status: 'error',
+        position: 'top',
+        duration: 5000,
+        isClosable: true,
+      })
+      return
+    }
     goToNextStep()
   }
 
@@ -308,19 +343,6 @@ const OnboardingModal = forwardRef((props, ref) => {
   useEffect(() => {
     if (!currentAccount?.preferences) return
     setTimezone(currentAccount.preferences.timezone)
-    const availabilities = [...currentAccount.preferences.availabilities]
-    for (let i = 0; i <= 6; i++) {
-      let found = false
-      for (const availability of availabilities) {
-        if (availability.weekday === i) {
-          found = true
-        }
-      }
-      if (!found) {
-        availabilities.push({ weekday: i, ranges: [] })
-      }
-    }
-    setInitialAvailabilities(availabilities)
   }, [currentAccount?.address])
 
   const onChange = (day: number, ranges: TimeRange[] | null) => {
@@ -368,6 +390,9 @@ const OnboardingModal = forwardRef((props, ref) => {
     }
   }
 
+  const activeStepColor = useColorModeValue('neutral.400', 'neutral.50')
+  const stepColor = useColorModeValue('neutral.50', 'neutral.400')
+
   return (
     <>
       <Modal
@@ -378,11 +403,11 @@ const OnboardingModal = forwardRef((props, ref) => {
         size="xl"
       >
         <ModalOverlay />
-        <ModalContent padding={20} maxW="45rem">
+        <ModalContent padding={{ base: 4, sm: 10, md: 20 }} maxW="45rem">
           <Flex direction="column">
             <Flex justifyContent="flex-end">
               <Button variant="ghost" onClick={onClose}>
-                Skip
+                Skip all
               </Button>
             </Flex>
             <Flex direction="column" gap={4}>
@@ -393,7 +418,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                     key={step}
                     flexGrow="1"
                     background={
-                      activeStep >= index ? 'neutral.50' : 'neutral.400'
+                      activeStep >= index ? activeStepColor : stepColor
                     }
                     height="3px"
                     borderRadius="40px"
@@ -411,16 +436,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                   </Text>
 
                   <Flex direction="column" gap={4}>
-                    <FormControl marginTop={6} isRequired isInvalid={!name}>
+                    <FormControl marginTop={6}>
                       <FormLabel>Your name</FormLabel>
                       <Input
                         value={name}
-                        placeholder="your name or an identifier"
+                        placeholder="Your name or an identifier"
                         onChange={e => setName(e.target.value)}
                       />
-                      {!name ? (
-                        <FormErrorMessage>Required field.</FormErrorMessage>
-                      ) : null}
                     </FormControl>
 
                     <FormControl isInvalid={!!email && !isValidEmail(email)}>
@@ -431,9 +453,6 @@ const OnboardingModal = forwardRef((props, ref) => {
                         type="email"
                         placeholder="your@email.com"
                       />
-                      {!!email && !isValidEmail(email) ? (
-                        <FormErrorMessage>Invalid e-mail.</FormErrorMessage>
-                      ) : null}
                     </FormControl>
 
                     <FormControl isRequired isInvalid={!timezone}>
@@ -442,18 +461,12 @@ const OnboardingModal = forwardRef((props, ref) => {
                         value={timezone}
                         onChange={tz => setTimezone(tz)}
                       />
-                      {!timezone ? (
-                        <FormErrorMessage>Required field.</FormErrorMessage>
-                      ) : null}
                     </FormControl>
 
                     <Button
                       colorScheme="primary"
                       marginTop={6}
                       onClick={validateFirstStep}
-                      isDisabled={
-                        !name || !timezone || (!!email && !isValidEmail(email))
-                      }
                     >
                       Next
                     </Button>
@@ -806,7 +819,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                       colorScheme="primary"
                       onClick={goToPreviousStep}
                       flex={1}
-                      disabled={loadingSave}
+                      isDisabled={loadingSave}
                     >
                       Back
                     </Button>
