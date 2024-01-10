@@ -189,7 +189,7 @@ const OnboardingModal = forwardRef((props, ref) => {
   )
 
   function validateFirstStep() {
-    if (!name || !timezone) return
+    if (!timezone) return
     goToNextStep()
   }
 
@@ -364,6 +364,9 @@ const OnboardingModal = forwardRef((props, ref) => {
     }
   }
 
+  const activeStepColor = useColorModeValue('neutral.400', 'neutral.50')
+  const stepColor = useColorModeValue('neutral.50', 'neutral.400')
+
   return (
     <>
       <Modal
@@ -378,7 +381,7 @@ const OnboardingModal = forwardRef((props, ref) => {
           <Flex direction="column">
             <Flex justifyContent="flex-end">
               <Button variant="ghost" onClick={onClose}>
-                Skip
+                Skip all
               </Button>
             </Flex>
             <Flex direction="column" gap={4}>
@@ -389,7 +392,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                     key={step}
                     flexGrow="1"
                     background={
-                      activeStep >= index ? 'neutral.50' : 'neutral.400'
+                      activeStep >= index ? activeStepColor : stepColor
                     }
                     height="3px"
                     borderRadius="40px"
@@ -408,7 +411,7 @@ const OnboardingModal = forwardRef((props, ref) => {
 
                   <Flex direction="column" gap={4}>
                     <FormControl marginTop={6}>
-                      <FormLabel>Your name</FormLabel>
+                      <FormLabel>Your name (optional)</FormLabel>
                       <Input
                         value={name}
                         placeholder="your name or an identifier"
