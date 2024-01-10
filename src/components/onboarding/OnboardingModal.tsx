@@ -18,6 +18,7 @@ import {
   useColorModeValue,
   useDisclosure,
   useSteps,
+  useToast,
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useModal } from 'connectkit'
@@ -48,9 +49,11 @@ import {
   setNotificationSubscriptions,
   updateConnectedCalendar,
 } from '@/utils/api_helper'
+import { generateDefaultAvailabilities } from '@/utils/calendar_manager'
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import { isValidEmail } from '@/utils/validations'
 
 import { WeekdayConfig } from '../availabilities/weekday-config'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
@@ -98,11 +101,10 @@ const OnboardingModal = forwardRef((props, ref) => {
   }))
 
   // User Control
+
   const { currentAccount, login } = useContext(AccountContext)
   const [availabilities, setInitialAvailabilities] = useState(
-    currentAccount?.preferences?.availabilities
-      ? [...currentAccount.preferences.availabilities]
-      : []
+    generateDefaultAvailabilities()
   )
 
   // Modal opening flow
@@ -188,8 +190,22 @@ const OnboardingModal = forwardRef((props, ref) => {
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
 
+  const toast = useToast()
+
   function validateFirstStep() {
-    if (!name || !timezone) return
+    if (!timezone) return
+
+    if (email && !isValidEmail(email)) {
+      toast({
+        title: 'Invalid email',
+        description: 'Please insert a valid email',
+        status: 'error',
+        position: 'top',
+        duration: 5000,
+        isClosable: true,
+      })
+      return
+    }
     goToNextStep()
   }
 
@@ -304,19 +320,6 @@ const OnboardingModal = forwardRef((props, ref) => {
   useEffect(() => {
     if (!currentAccount?.preferences) return
     setTimezone(currentAccount.preferences.timezone)
-    const availabilities = [...currentAccount.preferences.availabilities]
-    for (let i = 0; i <= 6; i++) {
-      let found = false
-      for (const availability of availabilities) {
-        if (availability.weekday === i) {
-          found = true
-        }
-      }
-      if (!found) {
-        availabilities.push({ weekday: i, ranges: [] })
-      }
-    }
-    setInitialAvailabilities(availabilities)
   }, [currentAccount?.address])
 
   const onChange = (day: number, ranges: TimeRange[] | null) => {
@@ -364,6 +367,9 @@ const OnboardingModal = forwardRef((props, ref) => {
     }
   }
 
+  const activeStepColor = useColorModeValue('neutral.400', 'neutral.50')
+  const stepColor = useColorModeValue('neutral.50', 'neutral.400')
+
   return (
     <>
       <Modal
@@ -382,7 +388,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                 onClick={onClose}
                 isDisabled={loadingSave}
               >
-                Skip
+                Skip all
               </Button>
             </Flex>
             <Flex direction="column" gap={4}>
@@ -393,7 +399,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                     key={step}
                     flexGrow="1"
                     background={
-                      activeStep >= index ? 'neutral.50' : 'neutral.400'
+                      activeStep >= index ? activeStepColor : stepColor
                     }
                     height="3px"
                     borderRadius="40px"
@@ -412,7 +418,7 @@ const OnboardingModal = forwardRef((props, ref) => {
 
                   <Flex direction="column" gap={4}>
                     <FormControl marginTop={6}>
-                      <FormLabel>Your name</FormLabel>
+                      <FormLabel>Your name (optional)</FormLabel>
                       <Input
                         value={name}
                         placeholder="your name or an identifier"

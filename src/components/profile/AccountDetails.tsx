@@ -85,10 +85,10 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
 
   const [nameOptions, setNameOptions] = useState<DisplayName[]>([])
   const [proDomain, setProDomain] = useState<string>(
-    currentAccount.subscriptions[0]?.domain || ''
+    currentAccount.subscriptions?.[0]?.domain || ''
   )
   const [newProDomain, setNewProDomain] = useState<string>(
-    currentAccount.subscriptions[0]?.domain || ''
+    currentAccount.subscriptions?.[0]?.domain || ''
   )
 
   const [name, setName] = useState<DisplayName | undefined>(
@@ -140,7 +140,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     setNewProDomain(currentAccount?.subscriptions?.[0]?.domain || '')
   }
 
-  const chainInfo = getChainInfo(currentAccount.subscriptions[0]?.chain)
+  const chainInfo = getChainInfo(currentAccount.subscriptions?.[0]?.chain)
   const { data: walletClient } = useWalletClient({ chainId: chainInfo?.id })
 
   const updateAccountSubs = async () => {
@@ -573,7 +573,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           onDialogClose={() => setIsDialogOpen(false)}
           cancelDialogRef={cancelDialogRef}
           onSuccessPurchase={subsPurchased}
-          currentSubscription={currentAccount?.subscriptions[0]}
+          currentSubscription={currentAccount?.subscriptions?.[0]}
         />
       </Block>
     </VStack>
