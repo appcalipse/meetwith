@@ -18,6 +18,7 @@ import {
   useColorModeValue,
   useDisclosure,
   useSteps,
+  useToast,
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useModal } from 'connectkit'
@@ -51,6 +52,7 @@ import {
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import { isValidEmail } from '@/utils/validations'
 
 import { WeekdayConfig } from '../availabilities/weekday-config'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
@@ -188,8 +190,22 @@ const OnboardingModal = forwardRef((props, ref) => {
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
 
+  const toast = useToast()
+
   function validateFirstStep() {
     if (!timezone) return
+
+    if (email && !isValidEmail(email)) {
+      toast({
+        title: 'Invalid email',
+        description: 'Please insert a valid email',
+        status: 'error',
+        position: 'top',
+        duration: 5000,
+        isClosable: true,
+      })
+      return
+    }
     goToNextStep()
   }
 
