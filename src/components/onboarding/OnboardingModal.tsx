@@ -809,7 +809,6 @@ const OnboardingModal = forwardRef((props, ref) => {
                       colorScheme="primary"
                       onClick={onSave}
                       isLoading={loadingSave}
-                      isDisabled={loadingSave}
                     >
                       Get Started
                     </Button>
