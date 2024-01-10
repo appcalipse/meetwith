@@ -103,6 +103,7 @@ const OnboardingModal = forwardRef((props, ref) => {
   // User Control
 
   const { currentAccount, login } = useContext(AccountContext)
+
   const [availabilities, setInitialAvailabilities] = useState(
     generateDefaultAvailabilities()
   )
@@ -380,7 +381,7 @@ const OnboardingModal = forwardRef((props, ref) => {
         size="xl"
       >
         <ModalOverlay />
-        <ModalContent padding={20} maxW="45rem">
+        <ModalContent padding={{ base: 4, sm: 10, md: 20 }} maxW="45rem">
           <Flex direction="column">
             <Flex justifyContent="flex-end">
               <Button variant="ghost" onClick={onClose}>
