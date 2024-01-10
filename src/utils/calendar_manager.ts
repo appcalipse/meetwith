@@ -773,7 +773,7 @@ const dateToHumanReadable = (
 
 const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
   if (isProAccount(account)) {
-    return account.subscriptions.filter(sub => sub.plan_id === Plan.PRO)[0]
+    return account.subscriptions?.filter(sub => sub.plan_id === Plan.PRO)[0]
       .domain
   }
   return `address/${
