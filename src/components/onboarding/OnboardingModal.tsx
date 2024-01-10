@@ -49,6 +49,7 @@ import {
   setNotificationSubscriptions,
   updateConnectedCalendar,
 } from '@/utils/api_helper'
+import { generateDefaultAvailabilities } from '@/utils/calendar_manager'
 import { OnboardingSubject } from '@/utils/constants'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
@@ -100,11 +101,10 @@ const OnboardingModal = forwardRef((props, ref) => {
   }))
 
   // User Control
+
   const { currentAccount, login } = useContext(AccountContext)
   const [availabilities, setInitialAvailabilities] = useState(
-    currentAccount?.preferences?.availabilities
-      ? [...currentAccount.preferences.availabilities]
-      : []
+    generateDefaultAvailabilities()
   )
 
   // Modal opening flow
@@ -320,19 +320,6 @@ const OnboardingModal = forwardRef((props, ref) => {
   useEffect(() => {
     if (!currentAccount?.preferences) return
     setTimezone(currentAccount.preferences.timezone)
-    const availabilities = [...currentAccount.preferences.availabilities]
-    for (let i = 0; i <= 6; i++) {
-      let found = false
-      for (const availability of availabilities) {
-        if (availability.weekday === i) {
-          found = true
-        }
-      }
-      if (!found) {
-        availabilities.push({ weekday: i, ranges: [] })
-      }
-    }
-    setInitialAvailabilities(availabilities)
   }, [currentAccount?.address])
 
   const onChange = (day: number, ranges: TimeRange[] | null) => {
