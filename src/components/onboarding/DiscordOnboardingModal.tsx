@@ -104,7 +104,21 @@ export default function DiscordOnboardingModal({
               >
                 Connect Discord
               </Button>
-              <Button variant="ghost" onClick={callback}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  onClose()
+                  if (
+                    !!currentAccount?.created_at &&
+                    isSameDay(
+                      parseISO(currentAccount.created_at as unknown as string),
+                      new Date()
+                    )
+                  ) {
+                    callback?.()
+                  }
+                }}
+              >
                 Skip for now
               </Button>
             </Flex>
