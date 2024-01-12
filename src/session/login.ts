@@ -39,11 +39,8 @@ export const useLogin = () => {
 
       logEvent('Signed in')
 
-      // avoid redirecting if person is scheduling on a public calendar of someone else and was not logged. Definitely not the best way to do this
-      if (
-        forceRedirect &&
-        (router.pathname === '/' || router.pathname.indexOf('/embed') != -1)
-      ) {
+      if (forceRedirect) {
+        // redirect new accounts to onboarding
         if (account.signedUp) {
           const state = Buffer.from(
             JSON.stringify({
@@ -54,8 +51,15 @@ export const useLogin = () => {
           return
         }
 
-        await router.push('/dashboard/meetings')
-        return
+        // avoid redirecting if person is scheduling on a public calendar
+        // of someone else and was not logged. Definitely not the best way to do this
+        if (
+          router.pathname === '/' ||
+          router.pathname.indexOf('/embed') != -1
+        ) {
+          await router.push('/dashboard/meetings')
+          return
+        }
       }
     } catch (error: any) {
       if (error instanceof InvalidSessionError) {
