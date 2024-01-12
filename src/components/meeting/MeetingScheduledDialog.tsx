@@ -249,6 +249,18 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
           </VStack>
         ) : (
           <>
+            <HStack
+              borderRadius={6}
+              bg={notificationsAlertIconBackground}
+              width="100%"
+              p={4}
+            >
+              <Icon as={FaBell} color="primary.300" />
+              <Text color="primary.300">
+                Finish setting up your free account for more streamlined web3
+                experience!
+              </Text>
+            </HStack>
             <Button
               colorScheme="primary"
               width="100%"
