@@ -121,7 +121,6 @@ const initAccountDBForWallet = async (
         ? process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
         : newIdentity.publicKey,
       encoded_signature: encryptedPvtKey,
-      preferences_path: '',
       nonce,
       is_invited: is_invited || false,
     },
