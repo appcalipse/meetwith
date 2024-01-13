@@ -39,5 +39,8 @@ const SentryWebpackPluginOptions = {
 // Make sure adding Sentry options is the last code to run before exporting, to
 // ensure that your source maps include changes from all other Webpack plugins
 module.exports = withMDX(
-  withSentryConfig(moduleExports, SentryWebpackPluginOptions)
+  withSentryConfig(moduleExports, SentryWebpackPluginOptions, {
+    hideSourceMaps: true,
+    autoInstrumentServerFunctions: true,
+  })
 )

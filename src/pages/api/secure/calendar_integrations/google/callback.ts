@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { TimeSlotSource } from '@/types/Meeting'
 
-import { apiUrl } from '../../../../../utils/constants'
+import { apiUrl, OnboardingSubject } from '../../../../../utils/constants'
 import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
 
 const credentials = {
@@ -14,12 +14,27 @@ const credentials = {
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { code, error } = req.query
+  const { code, error, state } = req.query
 
-  // if user did not complete the cicle, just log it and go to the dashboard page again
+  const stateObject =
+    typeof state === 'string'
+      ? JSON.parse(Buffer.from(state, 'base64').toString())
+      : undefined
+
+  // if user did not complete the cycle, just log it and go to the dashboard page again
   if (error) {
     Sentry.captureException(error)
-    return res.redirect(`/dashboard/calendars?calendarResult=error`)
+    if (!stateObject)
+      return res.redirect(`/dashboard/calendars?calendarResult=error`)
+    else {
+      stateObject.error = 'Google Calendar integration failed.'
+      const newState64 = Buffer.from(JSON.stringify(stateObject)).toString(
+        'base64'
+      )
+      return res.redirect(
+        `/dashboard/calendars?calendarResult=error&state=${newState64}`
+      )
+    }
   }
 
   if (!req.session.account) {
@@ -95,7 +110,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     calendars,
     key
   )
-  return res.redirect(`/dashboard/calendars?calendarResult=success`)
+
+  if (stateObject) {
+    stateObject.origin = OnboardingSubject.GoogleCalendarConnected
+  }
+
+  const newState64 = stateObject
+    ? Buffer.from(JSON.stringify(stateObject)).toString('base64')
+    : undefined
+
+  return res.redirect(
+    `/dashboard/calendars?calendarResult=success${
+      !!state ? `&state=${newState64}` : ''
+    }`
+  )
 }
 
 export default withSessionRoute(handler)

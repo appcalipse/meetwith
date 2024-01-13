@@ -1,13 +1,11 @@
-import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { initDB } from '@/utils/database'
+import { AccountNotFoundError } from '@/utils/errors'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
-import { initDB } from '../../../../utils/database'
-import { AccountNotFoundError } from '../../../../utils/errors'
-
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     initDB()
     const address = req.query.identifier as string
@@ -48,4 +46,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     }
   }
   return res.status(404).send('Not found')
-})
+}
+
+export default handler

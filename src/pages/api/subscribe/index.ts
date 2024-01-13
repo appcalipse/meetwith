@@ -1,9 +1,8 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { initDB, saveEmailToDB } from '../../../utils/database'
+import { initDB, saveEmailToDB } from '@/utils/database'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
     const email = req.body.email
@@ -16,4 +15,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   return res.status(404).send('Not found')
-})
+}
+
+export default handler

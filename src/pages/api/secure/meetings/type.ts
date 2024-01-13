@@ -1,17 +1,15 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { v4 } from 'uuid'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { isProAccount } from '@/utils/subscription_manager'
-
-import { MeetingType } from '../../../../types/Account'
+import { MeetingType } from '@/types/Account'
 import {
   getAccountFromDB,
   initDB,
   updateAccountPreferences,
   workMeetingTypeGates,
-} from '../../../../utils/database'
+} from '@/utils/database'
+import { isProAccount } from '@/utils/subscription_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -113,4 +111,4 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(404).send('Not found')
 }
 
-export default withSentry(withSessionRoute(handle))
+export default withSessionRoute(handle)

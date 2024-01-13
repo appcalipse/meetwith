@@ -1,8 +1,7 @@
-import { withSentry } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { DEFAULT_MESSAGE } from '../../../../utils/constants'
-import { getAccountFromDB } from '../../../../utils/database'
+import { DEFAULT_MESSAGE } from '@/utils/constants'
+import { getAccountFromDB } from '@/utils/database'
 
 const getDefaultSignature = async (
   req: NextApiRequest,
@@ -24,4 +23,4 @@ const getDefaultSignature = async (
   return res.status(404).send('Not found')
 }
 
-export default withSentry(getDefaultSignature)
+export default getDefaultSignature

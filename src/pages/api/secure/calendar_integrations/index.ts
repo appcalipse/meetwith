@@ -1,13 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
-
 import {
   addOrUpdateConnectedCalendar,
   getConnectedCalendars,
   removeConnectedCalendar,
-} from '../../../../utils/database'
+} from '@/utils/database'
+import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -26,13 +25,21 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     // Force all connected calendars to renew its Tokens
     // if needed for displaying calendars...
     for (const calendar of calendars) {
-      const integration = getConnectedCalendarIntegration(
-        req.session.account!.address,
-        calendar.email,
-        calendar.provider,
-        calendar.payload
-      )
-      await integration.refreshConnection()
+      try {
+        const integration = getConnectedCalendarIntegration(
+          req.session.account!.address,
+          calendar.email,
+          calendar.provider,
+          calendar.payload
+        )
+        await integration.refreshConnection()
+      } catch (e) {
+        await removeConnectedCalendar(
+          req.session.account!.address,
+          calendar.email,
+          calendar.provider
+        )
+      }
     }
 
     return res.status(200).json(

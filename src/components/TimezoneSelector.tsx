@@ -1,10 +1,10 @@
-import { Select } from 'chakra-react-select'
+import { Select, SingleValue } from 'chakra-react-select'
 import { useState } from 'react'
 import timezones from 'timezones-list'
 
 interface TimezoneProps {
-  value: string
-  onChange: (timezone: string) => void
+  value?: string | null
+  onChange: (timezone?: string | null) => void
 }
 
 const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
@@ -15,11 +15,15 @@ const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
     }
   })
 
-  const [tz, setTz] = useState(tzs.filter(tz => tz.value === value)[0])
+  const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
+    tzs.filter(tz => tz.value === value)[0]
+  )
 
-  const _onChange = (timezone: any) => {
+  const _onChange = (
+    timezone: SingleValue<{ label: string; value: string }>
+  ) => {
     setTz(timezone)
-    onChange(timezone.value)
+    onChange(timezone?.value)
   }
 
   return (

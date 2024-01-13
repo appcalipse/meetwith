@@ -9,28 +9,21 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import { DiscordAccount } from '@/types/Discord'
-import {
-  GateConditionObject,
-  GateUsage,
-  GateUsageType,
-} from '@/types/TokenGating'
-
 import {
   Account,
   AccountPreferences,
   MeetingType,
   SimpleAccountInfo,
-} from '../types/Account'
+} from '@/types/Account'
 import {
   AccountNotifications,
-  DiscordNotificationType,
   NotificationChannel,
-} from '../types/AccountNotifications'
+} from '@/types/AccountNotifications'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
-} from '../types/CalendarConnections'
+} from '@/types/CalendarConnections'
+import { DiscordAccount } from '@/types/Discord'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -40,19 +33,24 @@ import {
   MeetingProvider,
   ParticipantMappingType,
   TimeSlotSource,
-} from '../types/Meeting'
+} from '@/types/Meeting'
 import {
   ParticipantBaseInfo,
   ParticipantInfo,
   ParticipantType,
-} from '../types/ParticipantInfo'
+} from '@/types/ParticipantInfo'
 import {
   MeetingCancelSyncRequest,
   MeetingCreationRequest,
   MeetingCreationSyncRequest,
   MeetingUpdateRequest,
-} from '../types/Requests'
-import { Subscription } from '../types/Subscription'
+} from '@/types/Requests'
+import { Subscription } from '@/types/Subscription'
+import {
+  GateConditionObject,
+  GateUsage,
+  GateUsageType,
+} from '@/types/TokenGating'
 import {
   AccountNotFoundError,
   GateConditionNotValidError,
@@ -62,7 +60,8 @@ import {
   MeetingNotFoundError,
   TimeNotAvailableError,
   UnauthorizedError,
-} from '../utils/errors'
+} from '@/utils/errors'
+
 import {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
@@ -115,7 +114,7 @@ const initAccountDBForWallet = async (
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
 
-  const { data, error } = await db.supabase.from('accounts').insert([
+  const created_user_account = await db.supabase.from('accounts').insert([
     {
       address: address.toLowerCase(),
       internal_pub_key: is_invited
@@ -128,41 +127,40 @@ const initAccountDBForWallet = async (
     },
   ])
 
-  if (error) {
-    Sentry.captureException(error)
-    throw new Error("Account couldn't be created")
+  if (created_user_account.error) {
+    throw new Error(created_user_account.error)
   }
-
-  const availabilities = generateDefaultAvailabilities()
+  const default_meeting_type = generateDefaultMeetingType()
 
   const preferences: AccountPreferences = {
-    availableTypes: [generateDefaultMeetingType()],
+    availableTypes: [default_meeting_type],
     description: '',
-    availabilities,
+    availabilities: [],
     socialLinks: [],
     timezone,
   }
 
-  const path = await addContentToIPFS(preferences)
-  //TODO handle ipfs error
+  const user_account = created_user_account.data[0]
 
-  const responsePrefs = await db.supabase
-    .from('accounts')
-    .update({
-      preferences_path: path,
+  try {
+    const responsePrefs = await db.supabase.from('account_preferences').insert({
+      ...preferences,
+      owner_account_address: user_account.address,
     })
-    .match({ id: data[0].id })
 
-  if (responsePrefs.error) {
-    Sentry.captureException(responsePrefs.error)
-    //TODO: handle error
+    if (responsePrefs.error) {
+      Sentry.captureException(responsePrefs.error)
+      throw new Error("Account preferences couldn't be created")
+    }
+
+    user_account.preferences = preferences
+    user_account.is_invited = is_invited || false
+
+    return user_account
+  } catch (error) {
+    Sentry.captureException(error)
+    throw new Error("Account couldn't be created")
   }
-
-  const account = responsePrefs.data[0] as Account
-  account.preferences = preferences
-  account.is_invited = is_invited || false
-
-  return account
 }
 
 const updateAccountFromInvite = async (
@@ -198,8 +196,7 @@ const updateAccountFromInvite = async (
   )
 
   if (error) {
-    Sentry.captureException(error)
-    throw new Error("Account couldn't be updated")
+    throw new Error(error)
   }
 
   const account = await getAccountFromDB(account_address)
@@ -231,7 +228,7 @@ const updateAccountFromInvite = async (
         .match({ id: slot.id })
 
       if (error) {
-        Sentry.captureException(error)
+        throw new Error(error)
       }
     } catch (err) {
       //if any fail, dont fail them all
@@ -239,6 +236,95 @@ const updateAccountFromInvite = async (
   }
 
   return account
+}
+
+const migrateFromIpfsToDB = async (): Promise<object> => {
+  const migrated_data = []
+  const migrated_data_with_error = []
+  let accounts = []
+
+  do {
+    accounts = await db.supabase
+      .from('accounts')
+      .select('address, preferences_path')
+      .match({ test: 0 })
+      .order('address', { ascending: true })
+      .limit(20)
+
+    for (const account of accounts.data) {
+      console.log(
+        `${migrated_data.length} - ${migrated_data_with_error.length}`
+      )
+
+      for (let attempts = 1; attempts <= 2; attempts++) {
+        try {
+          const ipfs_content = await fetchContentFromIPFS(
+            account.preferences_path,
+            5000
+          )
+
+          await db.supabase.from('account_preferences').insert({
+            owner_account_address: account.address,
+            ...ipfs_content,
+          })
+
+          await db.supabase
+            .from('accounts')
+            .update({ migrated_from_ipfs: 1 })
+            .match({ address: account.address })
+
+          migrated_data.push(account.address)
+
+          break
+        } catch (error) {
+          console.log({ address: account.address, attempts, error })
+        }
+        if (attempts == 2) {
+          const availabilities = generateDefaultAvailabilities()
+          const default_meeting_type = generateDefaultMeetingType()
+
+          const preferences: AccountPreferences = {
+            availableTypes: [default_meeting_type],
+            description: '',
+            availabilities,
+            socialLinks: [],
+            timezone: 'UTC',
+          }
+
+          const responsePrefs = await db.supabase
+            .from('account_preferences')
+            .insert({
+              ...preferences,
+              owner_account_address: account.address.toLowerCase(),
+              name: '',
+            })
+
+          if (responsePrefs.error) {
+            console.log(responsePrefs.error)
+            Sentry.captureException(responsePrefs.error)
+            throw new Error("Account preferences couldn't be created")
+          }
+
+          migrated_data_with_error.push(account.address)
+
+          await db.supabase
+            .from('accounts')
+            .update({ migrated_from_ipfs: -1 })
+            .match({ address: account.address.toLowerCase() })
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+    await new Promise(resolve => setTimeout(resolve, 2000))
+  } while (accounts.data.length != 0)
+
+  console.log('Finished')
+
+  return {
+    total_updated: migrated_data.length + migrated_data_with_error.length,
+    migrated_data,
+    migrated_data_with_error,
+  }
 }
 
 const workMeetingTypeGates = async (meetingTypes: MeetingType[]) => {
@@ -291,28 +377,32 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     ...link,
     url: link.url?.trim(),
   }))
-  const path = await addContentToIPFS(account.preferences!)
-  //TODO handle ipfs error
 
   await workMeetingTypeGates(account.preferences!.availableTypes || [])
-  const { data, error } = await db.supabase
-    .from('accounts')
-    .update({
-      preferences_path: path,
-    })
-    .match({ id: account.id })
 
-  if (error) {
-    Sentry.captureException(error)
-    //TODO: handle error
+  const responsePrefsUpdate = await db.supabase
+    .from('account_preferences')
+    .update({
+      description: preferences.description,
+      timezone: preferences.timezone,
+      availabilities: preferences.availabilities,
+      name: preferences.name,
+      socialLinks: preferences.socialLinks,
+      availableTypes: preferences.availableTypes,
+    })
+    .match({ owner_account_address: account.address.toLowerCase() })
+
+  if (responsePrefsUpdate.error) {
+    Sentry.captureException(responsePrefsUpdate.error)
+    throw new Error("Account preferences couldn't be updated")
   }
 
-  const _account = { ...data[0], preferences: account.preferences }
-  _account.subscriptions = await getSubscriptionFromDBForAccount(
-    account.address
-  )
+  delete account.preferences
+  account['preferences'] = responsePrefsUpdate.data[0]
 
-  return _account as Account
+  account.subscriptions = await getSubscriptionFromDBForAccount(account.address)
+
+  return account as Account
 }
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
@@ -332,27 +422,43 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
   throw new AccountNotFoundError(identifier)
 }
 
+export const getAccountPreferences = async (
+  owner_account_address: string
+): Promise<AccountPreferences> => {
+  const { data: account_preferences, error: account_preferences_error } =
+    await db.supabase
+      .from('account_preferences')
+      .select()
+      .match({ owner_account_address: owner_account_address.toLowerCase() })
+
+  if (account_preferences_error || !account_preferences) {
+    Sentry.captureException(account_preferences_error)
+    throw new Error("Couldn't get account's preferences")
+  }
+
+  return account_preferences[0]
+}
+
 const getExistingAccountsFromDB = async (
   addresses: string[],
   fullInformation?: boolean
 ): Promise<SimpleAccountInfo[] | Account[]> => {
   const { data, error } = await db.supabase
     .from('accounts')
-    .select('address, internal_pub_key, preferences_path')
+    .select('address, internal_pub_key')
     .in(
       'address',
       addresses.map(address => address.toLowerCase())
     )
 
   if (error) {
-    Sentry.captureException(error)
-    throw new Error("Couldn't get accounts")
+    throw new Error(error)
   }
 
   if (fullInformation) {
     for (const account of data) {
-      account.preferences = (await fetchContentFromIPFS(
-        account.preferences_path
+      account.preferences = (await getAccountPreferences(
+        account.address.toLowerCase()
       )) as AccountPreferences
     }
   }
@@ -362,31 +468,33 @@ const getExistingAccountsFromDB = async (
 
 const getAccountFromDB = async (
   identifier: string,
-  includPrivateInformation?: boolean
+  includePrivateInformation?: boolean
 ): Promise<Account> => {
   const { data, error } = await db.supabase.rpc('fetch_account', {
     identifier: identifier.toLowerCase(),
   })
-
   if (data) {
     const account = data as Account
-    account.preferences = (await fetchContentFromIPFS(
-      account.preferences_path
-    )) as AccountPreferences
-
+    try {
+      account.preferences = (await getAccountPreferences(
+        account.address.toLowerCase()
+      )) as AccountPreferences
+    } catch (e) {
+      Sentry.captureException(e)
+      throw new Error("Couldn't get account's preferences")
+    }
     account.subscriptions = await getSubscriptionFromDBForAccount(
       account.address
     )
-    if (includPrivateInformation) {
+    if (includePrivateInformation) {
       const discord_account = await getDiscordAccount(account.address)
 
       account.discord_account = discord_account
     }
     return account
   } else if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
-
   throw new AccountNotFoundError(identifier)
 }
 
@@ -413,7 +521,7 @@ const getSlotsForAccount = async (
     .order('start')
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
     // //TODO: handle error
   }
 
@@ -439,7 +547,7 @@ const getSlotsForDashboard = async (
     .order('start')
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
     // //TODO: handle error
   }
 
@@ -479,7 +587,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
     .eq('id', slot_id)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
     // todo handle error
   }
 
@@ -507,7 +615,7 @@ const getConferenceMeetingFromDB = async (
     .eq('id', meetingId)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   if (data.length == 0) {
@@ -527,7 +635,7 @@ const getMeetingsFromDB = async (
     .in('id', slotIds)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
     // todo handle error
   }
 
@@ -570,7 +678,6 @@ const deleteMeetingFromDB = async (
     .in('id', slotIds)
 
   if (error) {
-    Sentry.captureException(error)
     throw new Error(error)
   }
 
@@ -768,7 +875,7 @@ const saveMeeting = async (
 
   //TODO: handle error
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   meetingResponse.id = data[index].id
@@ -808,7 +915,7 @@ const getAccountNotificationSubscriptions = async (
     .eq('account_address', address.toLowerCase())
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   if (data && data[0]) {
@@ -824,7 +931,7 @@ const setAccountNotificationSubscriptions = async (
   const account = await getAccountFromDB(address)
   if (!isProAccount(account)) {
     notifications.notification_types = notifications.notification_types.filter(
-      n => n.channel === NotificationChannel.EMAIL
+      n => n.channel !== NotificationChannel.EPNS
     )
   }
 
@@ -833,7 +940,7 @@ const setAccountNotificationSubscriptions = async (
     .upsert(notifications, { onConflict: 'account_address' })
     .eq('account_address', address.toLowerCase())
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   return notifications
@@ -848,7 +955,7 @@ export const createOrUpdatesDiscordAccount = async (
       .from('discord_accounts')
       .insert([discordAccount])
     if (error) {
-      Sentry.captureException(error)
+      throw new Error(error)
     }
     return data[0]
   } else {
@@ -857,14 +964,24 @@ export const createOrUpdatesDiscordAccount = async (
       .update(discordAccount)
       .eq('discord_id', discordAccount.discord_id)
     if (error) {
-      Sentry.captureException(error)
+      throw new Error(error)
     }
     return data[0]
   }
 }
 
+export const deleteDiscordAccount = async (accountAddress: string) => {
+  const { error } = await db.supabase
+    .from('discord_accounts')
+    .delete()
+    .eq('address', accountAddress)
+  if (error) {
+    throw new Error(error)
+  }
+}
+
 const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
-  const { _, error } = await db.supabase.from('emails').upsert([
+  const { error } = await db.supabase.from('emails').upsert([
     {
       email,
       plan,
@@ -874,9 +991,7 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
   if (!error) {
     return true
   }
-  Sentry.captureException(error)
-
-  return false
+  throw new Error(error)
 }
 
 const saveConferenceMeetingToDB = async (
@@ -892,9 +1007,7 @@ const saveConferenceMeetingToDB = async (
   if (!error) {
     return true
   }
-  Sentry.captureException(error)
-
-  return false
+  throw new Error(error)
 }
 
 const getConnectedCalendars = async (
@@ -919,7 +1032,7 @@ const getConnectedCalendars = async (
   ])
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   if (!data) {
@@ -949,13 +1062,13 @@ const connectedCalendarExists = async (
 ): Promise<ConnectedCalendar | undefined> => {
   const { data, error } = await db.supabase
     .from('connected_calendars')
-    .select('*')
+    .select()
     .eq('account_address', address.toLowerCase())
     .eq('email', email.toLowerCase())
     .eq('provider', provider)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   return data[0]
@@ -975,7 +1088,7 @@ export const updateCalendarPayload = async (
     .eq('provider', provider)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 }
 
@@ -984,7 +1097,8 @@ const addOrUpdateConnectedCalendar = async (
   email: string,
   provider: TimeSlotSource,
   calendars: CalendarSyncInfo[],
-  _payload?: any
+  // Unknown as it can be anything
+  _payload?: unknown
 ): Promise<ConnectedCalendar> => {
   const existingConnection = await connectedCalendarExists(
     address,
@@ -1023,7 +1137,7 @@ const addOrUpdateConnectedCalendar = async (
   const { data, error } = await queryPromise
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   return data[0] as ConnectedCalendar
@@ -1042,7 +1156,7 @@ const removeConnectedCalendar = async (
     .eq('provider', provider)
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   return data as ConnectedCalendar
@@ -1058,8 +1172,7 @@ export const getSubscriptionFromDBForAccount = async (
     .eq('owner_account', accountAddress.toLowerCase())
 
   if (error) {
-    Sentry.captureException(error)
-    return []
+    throw new Error(error)
   }
 
   if (data && data.length > 0) {
@@ -1072,7 +1185,7 @@ export const getSubscriptionFromDBForAccount = async (
       .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
 
     if (collisionExists.error) {
-      Sentry.captureException(error)
+      throw new Error(error)
     }
 
     // If for any reason some smart ass registered a domain manually on the blockchain, but such domain already existed for someone else and is not expired, we remove it here
@@ -1101,12 +1214,54 @@ export const getSubscription = async (
     .order('registered_at', { ascending: true })
 
   if (error) {
+    throw new Error(error)
+  }
+
+  if (data && data?.length > 0) {
+    return data[0] as Subscription
+  }
+  return undefined
+}
+
+export const getExistingSubscriptionsByAddress = async (
+  address: string
+): Promise<Subscription[] | undefined> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select()
+    .ilike('owner_account', address.toLocaleLowerCase())
+    .gt('expiry_time', new Date().toISOString())
+    .order('registered_at', { ascending: true })
+
+  if (error) {
     Sentry.captureException(error)
   }
 
-  if (data) {
-    return data[0] as Subscription
+  if (data && data?.length > 0) {
+    return data as Subscription[]
   }
+
+  return undefined
+}
+
+export const getExistingSubscriptionsByDomain = async (
+  domain: string
+): Promise<Subscription[] | undefined> => {
+  const { data, error } = await db.supabase
+    .from('subscriptions')
+    .select()
+    .ilike('domain', domain.toLocaleLowerCase())
+    .gt('expiry_time', new Date().toISOString())
+    .order('registered_at', { ascending: true })
+
+  if (error) {
+    Sentry.captureException(error)
+  }
+
+  if (data && data?.length > 0) {
+    return data as Subscription[]
+  }
+
   return undefined
 }
 
@@ -1120,14 +1275,15 @@ export const updateAccountSubscriptions = async (
         expiry_time: subscription.expiry_time,
         config_ipfs_hash: subscription.config_ipfs_hash,
         plan_id: subscription.plan_id,
-        owner_account: subscription.owner_account,
+        domain: subscription.domain,
       })
-      .eq('domain', subscription.domain)
+      .eq('owner_account', subscription.owner_account)
       .eq('chain', subscription.chain)
+      .eq('plan_id', subscription.plan_id)
 
     if (error && error.length > 0) {
       console.error(error)
-      Sentry.captureException(error)
+      throw new Error(error)
     }
 
     if (!data || data.length == 0) {
@@ -1136,7 +1292,7 @@ export const updateAccountSubscriptions = async (
         .insert(subscription)
 
       if (error) {
-        Sentry.captureException(error)
+        throw new Error(error)
       }
     }
   }
@@ -1179,9 +1335,7 @@ const upsertGateCondition = async (
   if (!error) {
     return data[0] as GateConditionObject
   }
-  Sentry.captureException(error)
-
-  return null
+  throw new Error(error)
 }
 
 const deleteGateCondition = async (
@@ -1220,9 +1374,7 @@ const deleteGateCondition = async (
   if (!error) {
     return true
   }
-  Sentry.captureException(error)
-
-  return false
+  throw new Error(error)
 }
 
 const getGateCondition = async (
@@ -1236,9 +1388,7 @@ const getGateCondition = async (
   if (!error) {
     return data[0] as GateConditionObject
   }
-  Sentry.captureException(error)
-
-  return null
+  throw new Error(error)
 }
 
 const getGateConditionsForAccount = async (
@@ -1252,9 +1402,7 @@ const getGateConditionsForAccount = async (
   if (!error) {
     return data as GateConditionObject[]
   }
-  Sentry.captureException(error)
-
-  return []
+  throw new Error(error)
 }
 
 const getAppToken = async (tokenType: string): Promise<any | null> => {
@@ -1449,7 +1597,7 @@ const updateMeeting = async (
 
   //TODO: handle error
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 
   meetingResponse.id = data[index].id
@@ -1541,7 +1689,7 @@ const insertOfficeEventMapping = async (
     .insert({ office_id, mww_id })
 
   if (error) {
-    Sentry.captureException(error)
+    throw new Error(error)
   }
 }
 
@@ -1554,8 +1702,7 @@ const getOfficeEventMappingId = async (
     .eq('mww_id', mww_id)
 
   if (error) {
-    Sentry.captureException(error)
-    return null
+    throw new Error(error)
   }
 
   return data[0].office_id
@@ -1570,8 +1717,7 @@ export const getDiscordAccount = async (
     .eq('address', account_address)
 
   if (error) {
-    Sentry.captureException(error)
-    return undefined
+    throw new Error(error)
   }
 
   if (data.length === 0) return undefined
@@ -1588,8 +1734,7 @@ export const getAccountFromDiscordId = async (
     .eq('discord_id', discord_id)
 
   if (error) {
-    Sentry.captureException(error)
-    return null
+    throw new Error(error)
   }
 
   if (data.length === 0) return null
@@ -1621,6 +1766,7 @@ export {
   initDB,
   insertOfficeEventMapping,
   isSlotFree,
+  migrateFromIpfsToDB,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
   saveEmailToDB,
