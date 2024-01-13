@@ -1,7 +1,6 @@
 import '../styles/globals.css'
 import '../styles/swipers.css'
 
-import { ChakraProvider } from '@chakra-ui/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ConnectKitProvider } from 'connectkit'
@@ -10,29 +9,26 @@ import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
 import * as React from 'react'
-import { CookiesProvider } from 'react-cookie'
 import { useDisconnect, WagmiConfig } from 'wagmi'
 
+import { Head } from '@/components/Head'
+import { BaseLayout } from '@/layouts/Base'
+import { AccountProvider } from '@/providers/AccountProvider'
+import { validateAuthenticationApp } from '@/session/core'
 import { useLogin } from '@/session/login'
+import { Account } from '@/types/Account'
+import { initAnalytics, pageView } from '@/utils/analytics'
 import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
 import { wagmiConfig } from '@/utils/user_manager'
-
-import { CookieConsent } from '../components/CookieConsent'
-import { Head } from '../components/Head'
-import { ChakraMDXProvider } from '../components/mdx.provider'
-import { BaseLayout } from '../layouts/Base'
-import { AccountProvider } from '../providers/AccountProvider'
-import { validateAuthenticationApp } from '../session/core'
-import customTheme from '../styles/theme'
-import { Account } from '../types/Account'
-import { initAnalytics, pageView } from '../utils/analytics'
 
 interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
   currentAccount?: Account | null
   checkAuthOnClient?: boolean
 }
+
+let appDidInit = false
 
 function MyApp({
   Component,
@@ -43,12 +39,14 @@ function MyApp({
   checkAuthOnClient,
 }: MyAppProps) {
   React.useEffect(() => {
+    if (appDidInit) return
     const initApp = async () => {
       setDefaultOptions({
         locale: getLocaleForDateFNS(),
       })
       await initAnalytics()
       pageView(router.asPath)
+      appDidInit = true
     }
     initApp()
   }, [])
@@ -73,35 +71,39 @@ function MyApp({
       {process.env.NODE_ENV === 'development' && (
         <ReactQueryDevtools initialIsOpen={true} />
       )}
-      <ChakraProvider theme={customTheme}>
-        <ChakraMDXProvider>
-          <CookiesProvider>
-            <WagmiConfig config={wagmiConfig}>
-              <AccountProvider
-                currentAccount={currentAccount}
-                logged={!!currentAccount}
-              >
-                <Inner>
-                  <Component {...customProps} />
-                </Inner>
-              </AccountProvider>
-              <CookieConsent consentCookie={consentCookie as boolean} />
-            </WagmiConfig>
-          </CookiesProvider>
-        </ChakraMDXProvider>
-      </ChakraProvider>
+      <WagmiConfig config={wagmiConfig}>
+        <AccountProvider
+          currentAccount={currentAccount}
+          logged={!!currentAccount}
+        >
+          <Inner consentCookie={consentCookie ?? false}>
+            <Component {...customProps} />
+          </Inner>
+        </AccountProvider>
+      </WagmiConfig>
     </QueryClientProvider>
   )
 }
 
-const Inner = (props: any) => {
+const Inner = (props: {
+  children: React.ReactNode
+  consentCookie: boolean
+}) => {
   const { handleLogin, logged } = useLogin()
   const { disconnect } = useDisconnect()
+
+  // This protection is to avoid pre-rendering of the modal
+  // that leads to errors
+  const [isClient, setIsClient] = React.useState(false)
 
   React.useEffect(() => {
     if (!logged) {
       //make sure wagmi doesn't stay connect if for any reason we don't have the account
       disconnect()
+    }
+
+    if (!isClient) {
+      setIsClient(true)
     }
   }, [])
 
@@ -113,7 +115,9 @@ const Inner = (props: any) => {
       }}
     >
       <Head />
-      <BaseLayout>{props.children}</BaseLayout>
+      <BaseLayout consentCookie={props.consentCookie}>
+        {props.children}
+      </BaseLayout>
     </ConnectKitProvider>
   )
 }

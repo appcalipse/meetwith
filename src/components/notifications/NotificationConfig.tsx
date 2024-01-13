@@ -236,7 +236,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
   return (
     <VStack alignItems="start" flex={1} mb={8}>
-      <Heading fontSize="2xl">Notification Settings</Heading>
+      <Heading fontSize="2xl">Notifications</Heading>
 
       {loadingInitialInfo ? (
         <HStack>

@@ -14,16 +14,16 @@ import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
 import { Account } from '@/types/Account'
-
 import {
   ConnectedCalendarCore,
   ConnectedCalendarIcons,
-} from '../../types/CalendarConnections'
+} from '@/types/CalendarConnections'
 import {
   deleteConnectedCalendar,
   listConnectedCalendars,
-} from '../../utils/api_helper'
-import { isProAccount } from '../../utils/subscription_manager'
+} from '@/utils/api_helper'
+import { isProAccount } from '@/utils/subscription_manager'
+
 import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
 import { ConnectedCalendarCard } from '../ConnectedCalendars/ConnectedCalendarCard'
 import { DisabledCalendarCard } from '../ConnectedCalendars/DisabledCalendarCard'
@@ -49,7 +49,7 @@ const ConnectedCalendars: React.FC<{
   disabledCalendarConnections: ConnectedCalendarCore[]
   onDelete: () => Promise<void>
 }> = ({ activeCalendarConnections, disabledCalendarConnections, onDelete }) => {
-  if (activeCalendarConnections.length === 0) {
+  if (!activeCalendarConnections || activeCalendarConnections.length === 0) {
     return (
       <VStack>
         <Image
@@ -118,7 +118,7 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
     return listConnectedCalendars()
       .then(data => {
         // for old version without the calendars property
-        const calendars = data.map((calendar: ConnectedCalendarCore) => ({
+        const calendars = data?.map((calendar: ConnectedCalendarCore) => ({
           ...calendar,
           calendars: calendar.calendars,
         }))

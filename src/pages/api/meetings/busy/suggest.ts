@@ -1,4 +1,3 @@
-import { withSentry } from '@sentry/nextjs'
 import { areIntervalsOverlapping, isPast, startOfDay } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import { NextApiRequest, NextApiResponse } from 'next'
@@ -13,7 +12,7 @@ import {
 } from '@/utils/slots.helper'
 import { isValidEVMAddress } from '@/utils/validations'
 
-export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
     const { body } = req
@@ -90,4 +89,6 @@ export default withSentry(async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(200).json(suggestedTimes)
   }
   return res.status(404).send('Not found')
-})
+}
+
+export default handler

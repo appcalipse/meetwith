@@ -1,4 +1,3 @@
-import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -98,4 +97,4 @@ export const handleMeetingSchedule = async (
   return res.status(404).send('Not found')
 }
 
-export default withSentry(withSessionRoute(handle))
+export default withSessionRoute(handle)

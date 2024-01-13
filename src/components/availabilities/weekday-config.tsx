@@ -9,10 +9,11 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { format, setDay } from 'date-fns'
-import { FaPlus, FaTrash } from 'react-icons/fa'
+import { FaPlusCircle, FaTrash } from 'react-icons/fa'
 
-import { DayAvailability, TimeRange } from '../../types/Account'
-import { defaultTimeRange } from '../../utils/calendar_manager'
+import { DayAvailability, TimeRange } from '@/types/Account'
+import { defaultTimeRange } from '@/utils/calendar_manager'
+
 import { TimeSelector } from './time-selector'
 
 type WeekdayConfigProps = {
@@ -89,12 +90,12 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
             {format(setDay(new Date(), props.dayAvailability.weekday), 'cccc')}
           </strong>
         </Checkbox>
-        <Spacer />
+        <Spacer display={{ base: 'none', sm: 'block' }} />
         {isSelected ? (
           <VStack alignItems="start">
             {times.map((time, index) => (
               <VStack alignItems="start" key={index}>
-                <HStack>
+                <HStack gap={{ base: 2, md: 4 }}>
                   <TimeSelector
                     onChange={handleChangeTime}
                     index={index}
@@ -116,20 +117,18 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
             ))}
           </VStack>
         ) : (
-          <Text ml={2} pt={2}>
+          <Text flex={1} ml={2} pt={2}>
             Not available
           </Text>
         )}
-        <Spacer flex={1} />
 
         {isSelected && (
           <IconButton
             margin="0"
             color={iconColor}
             aria-label="add"
-            icon={<FaPlus size={18} />}
+            icon={<FaPlusCircle size={18} />}
             onClick={handleAddSlotClick}
-            isDisabled={times.some(time => time.end === '24:00')}
           />
         )}
       </HStack>

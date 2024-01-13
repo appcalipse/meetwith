@@ -1,10 +1,13 @@
-import { withSentry } from '@sentry/nextjs'
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { DiscordAccount } from '@/types/Discord'
-import { createOrUpdatesDiscordAccount, initDB } from '@/utils/database'
+import {
+  createOrUpdatesDiscordAccount,
+  deleteDiscordAccount,
+  initDB,
+} from '@/utils/database'
 import {
   generateDiscordAuthToken,
   getDiscordAccountInfo,
@@ -21,6 +24,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const oAuthToken = await generateDiscordAuthToken(discordCode)
 
       const userInfo = await getDiscordAccountInfo(oAuthToken!)
+
       if (!userInfo) {
         return res.status(301).send('Could not get user info')
       }
@@ -47,9 +51,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const discordInfo = await getDiscordInfoForAddress(address)
 
     return res.status(200).json(discordInfo)
+  } else if (req.method === 'DELETE') {
+    const account_id = req.session.account!.address
+
+    await deleteDiscordAccount(account_id)
+
+    return res.status(200).json({})
   }
 
   return res.status(404).send('Not found')
 }
 
-export default withSentry(withSessionRoute(handle))
+export default withSessionRoute(handle)

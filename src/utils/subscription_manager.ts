@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import {
   GetWalletClientResult,
   prepareWriteContract,
@@ -6,10 +7,10 @@ import {
   writeContract,
   WriteContractResult,
 } from '@wagmi/core'
-import { parseUnits, zeroAddress } from 'viem'
+import { parseUnits, TransactionReceipt, zeroAddress } from 'viem'
 
 import { ERC20 } from '../abis/erc20'
-import { MWWRegister } from '../abis/mww'
+import { MWWDomain, MWWRegister } from '../abis/mww'
 import { Account } from '../types/Account'
 import { AcceptedToken, getChainInfo, SupportedChain } from '../types/chains'
 import {
@@ -20,7 +21,7 @@ import {
 } from '../types/Subscription'
 import { getSubscriptionByDomain, syncSubscriptions } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
-import { validateChainToActOn } from './rpc_helper_front'
+import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
 
 export const isProAccount = (account?: Account): boolean => {
   return Boolean(getActiveProSubscription(account))
@@ -168,7 +169,7 @@ export const subscribeToPlan = async (
   domain: string,
   token: AcceptedToken,
   walletClient?: GetWalletClientResult
-): Promise<WriteContractResult> => {
+): Promise<TransactionReceipt> => {
   try {
     const subExists = await getSubscriptionByDomain(domain)
     if (subExists && subExists!.owner_account !== accountAddress) {
@@ -240,20 +241,23 @@ export const subscribeToPlan = async (
         ],
       })
 
-      return await writeContract(config)
+      const result = await writeContract(config)
+      return await waitForTransaction({
+        hash: result.hash,
+      })
     } else {
       const planInfo = getPlanInfo(plan)
       if (!planInfo) {
         throw Error('Plan does not exists')
       }
 
-      const result = (await readContract({
+      const readResult = (await readContract({
         ...info,
         functionName: 'getNativeConvertedValue',
         args: [planInfo.usdPrice],
       })) as any
       const value =
-        (result[0] * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
+        (readResult[0] * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
 
       const config = await prepareWriteContract({
         ...info,
@@ -262,23 +266,15 @@ export const subscribeToPlan = async (
         value: BigInt(value),
       })
 
-      return await writeContract(config)
+      const result = await writeContract(config)
+      return await waitForTransaction({
+        hash: result.hash,
+      })
     }
   } catch (error) {
     // TODO handle insufficient funds error
     throw error
   }
-}
-
-export const confirmSubscription = async (
-  result: WriteContractResult,
-  domain: string
-): Promise<Subscription | undefined> => {
-  await waitForTransaction({
-    hash: result.hash,
-  })
-  const subscriptions = await syncSubscriptions()
-  return subscriptions.find(sub => sub.domain === domain)
 }
 
 export const convertBlockchainSubscriptionToSubscription = (
@@ -305,4 +301,66 @@ export const convertBlockchainSubscriptionToSubscription = (
   }
 
   return subscriptionInfo
+}
+
+export const changeDomainOnChain = async (
+  accountAddress: string,
+  domain: string,
+  newDomain: string,
+  walletClient?: GetWalletClientResult
+): Promise<TransactionReceipt> => {
+  try {
+    const subExists = await getSubscriptionByDomain(newDomain)
+    if (subExists) {
+      throw Error('Domain already registered')
+    }
+  } catch (e: any) {
+    if (e.status !== 404) {
+      throw e
+    }
+  }
+
+  let chain: any
+  try {
+    const subExists = await getSubscriptionByDomain(domain)
+    if (subExists && subExists!.owner_account !== accountAddress) {
+      throw Error('You can not change a domain you do not own')
+    } else {
+      chain = subExists!.chain
+    }
+  } catch (e: any) {
+    throw Error('Your current domain is not registered. Please contact us')
+  }
+
+  const chainInfo = getChainInfo(chain!)
+
+  try {
+    await validateChainToActOn(chain!, walletClient)
+  } catch (e) {
+    throw Error(
+      'Please connect to the ${chain} network. (consider you must unlock your wallet and also reload the page after that)'
+    )
+  }
+
+  const info = {
+    address: chainInfo!.domainContractAddess as `0x${string}`,
+    chainId: chainInfo!.id,
+    abi: MWWDomain,
+  }
+
+  try {
+    const config = await prepareWriteContract({
+      ...info,
+      functionName: 'changeDomain',
+      args: [domain, newDomain],
+    })
+
+    const result = await writeContract(config)
+    return await waitForTransaction({
+      hash: result.hash,
+    })
+  } catch (error: any) {
+    Sentry.captureException(error)
+    throw Error(checkTransactionError(error))
+  }
 }
