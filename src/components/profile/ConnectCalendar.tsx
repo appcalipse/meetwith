@@ -13,6 +13,9 @@ import {
 import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
+import ConnectCalendarModal from '@/components/ConnectedCalendars/ConnectCalendarModal'
+import { ConnectedCalendarCard } from '@/components/ConnectedCalendars/ConnectedCalendarCard'
+import { DisabledCalendarCard } from '@/components/ConnectedCalendars/DisabledCalendarCard'
 import { Account } from '@/types/Account'
 import {
   ConnectedCalendarCore,
@@ -23,10 +26,6 @@ import {
   listConnectedCalendars,
 } from '@/utils/api_helper'
 import { isProAccount } from '@/utils/subscription_manager'
-
-import ConnectCalendarModal from '../ConnectedCalendars/ConnectCalendarModal'
-import { ConnectedCalendarCard } from '../ConnectedCalendars/ConnectedCalendarCard'
-import { DisabledCalendarCard } from '../ConnectedCalendars/DisabledCalendarCard'
 
 const GoProCTA = () => (
   <VStack>
