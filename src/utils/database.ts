@@ -63,8 +63,8 @@ import {
 } from '@/utils/errors'
 
 import {
-  generateDefaultAvailabilities,
   generateDefaultMeetingType,
+  generateEmptyAvailabilities,
 } from './calendar_manager'
 import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
@@ -129,12 +129,13 @@ const initAccountDBForWallet = async (
   if (created_user_account.error) {
     throw new Error(created_user_account.error)
   }
-  const default_meeting_type = generateDefaultMeetingType()
+  const defaultMeetingType = generateDefaultMeetingType()
+  const defaultAvailabilities = generateEmptyAvailabilities()
 
   const preferences: AccountPreferences = {
-    availableTypes: [default_meeting_type],
+    availableTypes: [defaultMeetingType],
     description: '',
-    availabilities: [],
+    availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
   }
@@ -342,8 +343,37 @@ export const getAccountPreferences = async (
       .match({ owner_account_address: owner_account_address.toLowerCase() })
 
   if (account_preferences_error || !account_preferences) {
-    Sentry.captureException(account_preferences_error)
+    console.error(account_preferences_error)
     throw new Error("Couldn't get account's preferences")
+  }
+
+  if (!account_preferences[0]) {
+    const default_meeting_type = generateDefaultMeetingType()
+    const default_availabilities = generateEmptyAvailabilities()
+    const preferences: AccountPreferences = {
+      availableTypes: [default_meeting_type],
+      description: '',
+      availabilities: default_availabilities,
+      socialLinks: [],
+      timezone: 'Etc/Universal',
+    }
+
+    const { data: newPreferences, error: newPreferencesError } =
+      await db.supabase
+        .from('account_preferences')
+        .insert({
+          ...preferences,
+          owner_account_address,
+        })
+        .select()
+        .single()
+
+    if (newPreferencesError) {
+      console.error(newPreferences)
+      throw new Error('Error while completign empty preferences')
+    }
+
+    return newPreferences
   }
 
   return account_preferences[0]

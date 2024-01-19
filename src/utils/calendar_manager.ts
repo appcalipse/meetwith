@@ -732,11 +732,22 @@ const decryptMeeting = async (
 }
 
 const generateDefaultAvailabilities = (): DayAvailability[] => {
-  const availabilities = []
+  const availabilities: DayAvailability[] = []
   for (let i = 0; i <= 6; i++) {
     availabilities.push({
       weekday: i,
       ranges: [defaultTimeRange()],
+    })
+  }
+  return availabilities
+}
+
+const generateEmptyAvailabilities = (): DayAvailability[] => {
+  const availabilities: DayAvailability[] = []
+  for (let i = 0; i <= 6; i++) {
+    availabilities.push({
+      weekday: i,
+      ranges: [],
     })
   }
   return availabilities
@@ -855,6 +866,7 @@ export {
   durationToHumanReadable,
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
+  generateEmptyAvailabilities,
   generateIcs,
   getAccountCalendarUrl,
   getAccountDomainUrl,

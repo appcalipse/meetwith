@@ -11,6 +11,7 @@ import { useContext, useEffect, useState } from 'react'
 
 import TimezoneSelector from '@/components/TimezoneSelector'
 import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account, TimeRange } from '@/types/Account'
 import { logEvent } from '@/utils/analytics'
 import { saveAccountChanges } from '@/utils/api_helper'
@@ -21,6 +22,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { login } = useContext(AccountContext)
+  const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
 
   const toast = useToast()
 
@@ -78,9 +80,10 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     } catch (e) {
       //TODO handle error
       console.error(e)
+    } finally {
+      reloadOnboardingInfo()
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   const onChange = (day: number, ranges: TimeRange[] | null) => {

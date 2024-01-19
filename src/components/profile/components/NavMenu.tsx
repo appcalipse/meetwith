@@ -22,12 +22,13 @@ import {
   FaSignOutAlt,
 } from 'react-icons/fa'
 
+import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
+import { AccountContext } from '@/providers/AccountProvider'
+import { EditMode } from '@/types/Dashboard'
+import { logEvent } from '@/utils/analytics'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
-import { AccountContext } from '../../../providers/AccountProvider'
-import { EditMode } from '../../../types/Dashboard'
-import { logEvent } from '../../../utils/analytics'
 import { Avatar } from './Avatar'
 import { CopyLinkButton } from './CopyLinkButton'
 import { NavItem } from './NavItem'
@@ -129,24 +130,28 @@ export const NavMenu: React.FC<{
           // TO-DO: replace by new dark/light color scheme
           backgroundColor={'transparent'}
         >
-          <HStack width="100%" textAlign="center" px={8}>
-            <Box width="64px" height="64px">
-              <Avatar account={currentAccount} />
-            </Box>
+          <VStack width="100%" gap={6} px={8}>
+            <HStack width="100%" textAlign="center">
+              <Box width="64px" height="64px">
+                <Avatar account={currentAccount} />
+              </Box>
 
-            <VStack ml={2} flex={1} alignItems="flex-start">
-              <Text fontSize="lg" fontWeight={500}>
-                {getAccountDisplayName(currentAccount)}
-              </Text>
-              <CopyLinkButton
-                url={accountUrl}
-                size="md"
-                design_type="link"
-                label="Share my calendar"
-                withIcon
-              />
-            </VStack>
-          </HStack>
+              <VStack ml={2} flex={1} alignItems="flex-start">
+                <Text fontSize="lg" fontWeight={500}>
+                  {getAccountDisplayName(currentAccount)}
+                </Text>
+                <CopyLinkButton
+                  url={accountUrl}
+                  size="md"
+                  design_type="link"
+                  label="Share my calendar"
+                  withIcon
+                />
+              </VStack>
+            </HStack>
+
+            <DashboardOnboardingGauge />
+          </VStack>
 
           <VStack width="100%">
             {LinkItems.map(link => (
