@@ -24,6 +24,7 @@ import {
 
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
@@ -72,6 +73,7 @@ export const NavMenu: React.FC<{
   closeMenu?: () => void
 }> = ({ currentSection, isMenuOpen, closeMenu }) => {
   const { currentAccount } = useContext(AccountContext)
+  const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
   const router = useRouter()
   const toast = useToast()
 
@@ -90,6 +92,7 @@ export const NavMenu: React.FC<{
         isClosable: true,
       })
     } else if (calendarResult === 'success') {
+      reloadOnboardingInfo()
       toast({
         title: 'Calendar connected',
         description: "You've just connected a new calendar provider.",

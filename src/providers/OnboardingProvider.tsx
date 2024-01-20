@@ -2,11 +2,7 @@ import { createContext, FC, ReactNode, useCallback, useState } from 'react'
 import { MaybePromise } from 'viem/dist/types/types/utils'
 
 import { Account } from '@/types/Account'
-import { NotificationChannel } from '@/types/AccountNotifications'
-import {
-  getNotificationSubscriptions,
-  listConnectedCalendars,
-} from '@/utils/api_helper'
+import { listConnectedCalendars } from '@/utils/api_helper'
 
 interface IOnboardingContext {
   accountDetailsComplete: () => MaybePromise<boolean>
@@ -51,28 +47,23 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
     setReloadTrigger(reloadTrigger + 1)
   }
 
-  const accountDetailsComplete = useCallback(async () => {
+  const accountDetailsComplete = useCallback(() => {
     setLoadingState(loadingState + 1)
-    const notifications = await getNotificationSubscriptions()
-    const emailNotification = notifications?.notification_types?.find(
-      notification => notification.channel === NotificationChannel.EMAIL
-    )
     setLoadingState(loadingState - 1)
-
-    return (
-      !!currentAccount?.preferences?.name &&
-      !!currentAccount?.preferences?.timezone &&
-      !!emailNotification?.destination
-    )
+    return !!currentAccount?.preferences?.name
   }, [currentAccount, reloadTrigger])
 
   const availabilitiesComplete = useCallback(() => {
-    return currentAccount?.preferences?.availabilities?.length === 7
+    const anyTimes =
+      currentAccount?.preferences?.availabilities?.some(
+        dayAvailability => dayAvailability?.ranges?.length
+      ) || false
+    return anyTimes && !!currentAccount?.preferences?.timezone
   }, [currentAccount, reloadTrigger])
 
   const connectedCalendarsComplete = useCallback(async () => {
     setLoadingState(loadingState + 1)
-    const request = await listConnectedCalendars()
+    const request = await listConnectedCalendars(false)
     setLoadingState(loadingState - 1)
 
     return !!request?.length
@@ -81,9 +72,11 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
   const completeSteps = useCallback(async () => {
     setLoadingState(loadingState + 1)
     let i = 0
-    if (await accountDetailsComplete()) i++
+
+    if (accountDetailsComplete()) i++
     if (availabilitiesComplete()) i++
     if (await connectedCalendarsComplete()) i++
+
     setLoadingState(loadingState - 1)
     return i
   }, [currentAccount, reloadTrigger])
