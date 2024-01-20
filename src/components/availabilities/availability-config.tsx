@@ -30,6 +30,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   const [timezone, setTimezone] = useState<string | null | undefined>(
     currentAccount!.preferences!.timezone
   )
+
   const [initialAvailabilities, setInitialAvailabilities] = useState([
     ...currentAccount!.preferences!.availabilities,
   ])

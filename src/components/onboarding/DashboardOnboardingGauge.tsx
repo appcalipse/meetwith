@@ -7,6 +7,7 @@ import {
   Link,
   Spinner,
   Text,
+  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import NextLink from 'next/link'
@@ -58,20 +59,24 @@ const DashboardOnboardingGauge: FC = () => {
   const links = [
     {
       enabled: accountDetailsComplete,
-      label: 'Account Details',
+      label: 'Add a display name',
       link: '/dashboard/details',
     },
     {
       enabled: calendarsConnected,
-      label: 'Connect Calendars',
+      label: 'Connect a calendar',
       link: '/dashboard/calendars',
     },
     {
       enabled: availabilitiesSet,
-      label: 'Set Availabilities',
+      label: 'Set availabilities',
       link: '/dashboard/availability',
     },
   ]
+
+  const activeColor = useColorModeValue('primary.400', 'primary.2q00')
+  const completeColor = useColorModeValue('neutral.400', 'neutral.400')
+  const borderColor = useColorModeValue('neutral.100', 'neutral.700')
 
   function StepLink({
     enabled,
@@ -86,11 +91,16 @@ const DashboardOnboardingGauge: FC = () => {
       <HStack alignItems="center" width="100%">
         {enabled ? (
           <>
-            <Text color="neutral.600">{label}</Text>
+            <Text
+              color={completeColor}
+              style={{ textDecoration: 'line-through' }}
+            >
+              {label}
+            </Text>
             <Icon as={CheckCircleIcon} color="#34c759" />
           </>
         ) : (
-          <Link as={NextLink} color="primary.200" href={link}>
+          <Link as={NextLink} color={activeColor} href={link}>
             {label}
           </Link>
         )}
@@ -98,48 +108,38 @@ const DashboardOnboardingGauge: FC = () => {
     )
   }
 
-  return onboardingContext.isLoading() ? (
-    <VStack
-      border="1px solid"
-      borderColor="neutral.600"
-      borderRadius={6}
-      width="100%"
-      height={36}
-      p={4}
-      alignItems="center"
-      justifyContent="center"
-    >
-      <Spinner color="primary.400" />
-    </VStack>
-  ) : onboardComplete ? null : (
-    <VStack
-      border="1px solid"
-      borderColor="neutral.600"
-      borderRadius={6}
-      width="100%"
-      p={4}
-      alignItems="flex-start"
-    >
-      <HStack>
-        <CircularProgress value={progress} color="primary.400">
-          <CircularProgressLabel>{progress}%</CircularProgressLabel>
-        </CircularProgress>
-        <VStack alignItems="flex-start">
-          <Text>Almost there!</Text>
-          <Text>Complete your profile</Text>
+  return (
+    !onboardingContext.isLoading() &&
+    !onboardComplete && (
+      <VStack
+        border="1px solid"
+        borderColor={borderColor}
+        borderRadius={6}
+        width="100%"
+        p={4}
+        alignItems="flex-start"
+      >
+        <HStack>
+          <CircularProgress value={progress} color="primary.400">
+            <CircularProgressLabel>{progress}%</CircularProgressLabel>
+          </CircularProgress>
+          <VStack alignItems="flex-start">
+            <Text>Almost there!</Text>
+            <Text>Complete your profile</Text>
+          </VStack>
+        </HStack>
+        <VStack width="100%">
+          {links.map(link => (
+            <StepLink
+              key={link.label}
+              enabled={link.enabled}
+              label={link.label}
+              link={link.link}
+            />
+          ))}
         </VStack>
-      </HStack>
-      <VStack width="100%">
-        {links.map(link => (
-          <StepLink
-            key={link.label}
-            enabled={link.enabled}
-            label={link.label}
-            link={link.link}
-          />
-        ))}
       </VStack>
-    </VStack>
+    )
   )
 }
 
