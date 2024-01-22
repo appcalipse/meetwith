@@ -10,7 +10,7 @@ interface IOnboardingContext {
   availabilitiesComplete: () => MaybePromise<boolean>
   completeSteps: () => MaybePromise<number>
   onboardingComplete: () => MaybePromise<boolean>
-  isLoading: () => boolean
+  isLoaded: boolean
   reload: () => void
 }
 
@@ -20,7 +20,7 @@ const DEFAULT_STATE: IOnboardingContext = {
   connectedCalendarsComplete: () => false,
   completeSteps: () => 0,
   onboardingComplete: () => false,
-  isLoading: () => false,
+  isLoaded: false,
   reload: () => void 0,
 }
 
@@ -37,9 +37,7 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
   currentAccount,
 }) => {
   // Terrible trick to control initial loading state for multiple watchers
-  const [loadingState, setLoadingState] = useState(0)
-  const [firstLoaded, setFirstLoaded] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  const [loadedState, setLoadedState] = useState(false)
 
   const [reloadTrigger, setReloadTrigger] = useState(0)
 
@@ -48,8 +46,6 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
   }
 
   const accountDetailsComplete = useCallback(() => {
-    setLoadingState(loadingState + 1)
-    setLoadingState(loadingState - 1)
     return !!currentAccount?.preferences?.name
   }, [currentAccount, reloadTrigger])
 
@@ -62,36 +58,26 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
   }, [currentAccount, reloadTrigger])
 
   const connectedCalendarsComplete = useCallback(async () => {
-    setLoadingState(loadingState + 1)
     const request = await listConnectedCalendars(false)
-    setLoadingState(loadingState - 1)
 
     return !!request?.length
   }, [currentAccount, reloadTrigger])
 
   const completeSteps = useCallback(async () => {
-    setLoadingState(loadingState + 1)
     let i = 0
 
     if (accountDetailsComplete()) i++
     if (availabilitiesComplete()) i++
     if (await connectedCalendarsComplete()) i++
 
-    setLoadingState(loadingState - 1)
     return i
   }, [currentAccount, reloadTrigger])
 
-  const onboardingComplete = useCallback(
-    async () => (await completeSteps()) === 3,
-    [currentAccount, reloadTrigger]
-  )
-
-  function isLoading() {
-    // Important part of the Multiple Loading Trick
-    if (loadingState > 0 && !firstLoaded) setFirstLoaded(true)
-    if (loadingState === 0 && firstLoaded) setLoaded(true)
-    return !loaded
-  }
+  const onboardingComplete = useCallback(async () => {
+    const stepsCompleted = await completeSteps()
+    setLoadedState(true)
+    return stepsCompleted === 3
+  }, [currentAccount, reloadTrigger])
 
   const onboardingContext = {
     accountDetailsComplete,
@@ -99,7 +85,7 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
     connectedCalendarsComplete,
     completeSteps,
     onboardingComplete,
-    isLoading,
+    isLoaded: loadedState,
     reload,
   }
 
