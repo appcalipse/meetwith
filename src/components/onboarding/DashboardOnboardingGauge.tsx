@@ -5,7 +5,6 @@ import {
   HStack,
   Icon,
   Link,
-  Spinner,
   Text,
   useColorModeValue,
   VStack,
@@ -108,39 +107,36 @@ const DashboardOnboardingGauge: FC = () => {
     )
   }
 
-  return (
-    !onboardingContext.isLoading() &&
-    !onboardComplete && (
-      <VStack
-        border="1px solid"
-        borderColor={borderColor}
-        borderRadius={6}
-        width="100%"
-        p={4}
-        alignItems="flex-start"
-      >
-        <HStack>
-          <CircularProgress value={progress} color="primary.400">
-            <CircularProgressLabel>{progress}%</CircularProgressLabel>
-          </CircularProgress>
-          <VStack alignItems="flex-start">
-            <Text>Almost there!</Text>
-            <Text>Complete your profile</Text>
-          </VStack>
-        </HStack>
-        <VStack width="100%">
-          {links.map(link => (
-            <StepLink
-              key={link.label}
-              enabled={link.enabled}
-              label={link.label}
-              link={link.link}
-            />
-          ))}
+  return onboardingContext.isLoaded && !onboardComplete ? (
+    <VStack
+      border="1px solid"
+      borderColor={borderColor}
+      borderRadius={6}
+      width="100%"
+      p={4}
+      alignItems="flex-start"
+    >
+      <HStack>
+        <CircularProgress value={progress} color="primary.400">
+          <CircularProgressLabel>{progress}%</CircularProgressLabel>
+        </CircularProgress>
+        <VStack alignItems="flex-start">
+          <Text>Almost there!</Text>
+          <Text>Complete your profile</Text>
         </VStack>
+      </HStack>
+      <VStack width="100%">
+        {links.map(link => (
+          <StepLink
+            key={link.label}
+            enabled={link.enabled}
+            label={link.label}
+            link={link.link}
+          />
+        ))}
       </VStack>
-    )
-  )
+    </VStack>
+  ) : null
 }
 
 export default DashboardOnboardingGauge
