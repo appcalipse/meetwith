@@ -1,4 +1,8 @@
 export default class QueryKeys {
+  static connectedCalendars(syncOnly?: boolean) {
+    return ['connectedCalendars', syncOnly]
+  }
+
   static meetingsByAccount(account?: string) {
     return ['meetingsByAccount', account]
   }
