@@ -63,8 +63,8 @@ import {
 } from '@/utils/errors'
 
 import {
-  generateDefaultAvailabilities,
   generateDefaultMeetingType,
+  generateEmptyAvailabilities,
 } from './calendar_manager'
 import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
@@ -114,7 +114,7 @@ const initAccountDBForWallet = async (
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
 
-  const created_user_account = await db.supabase.from('accounts').insert([
+  const createdUserAccount = await db.supabase.from('accounts').insert([
     {
       address: address.toLowerCase(),
       internal_pub_key: is_invited
@@ -126,20 +126,21 @@ const initAccountDBForWallet = async (
     },
   ])
 
-  if (created_user_account.error) {
-    throw new Error(created_user_account.error)
+  if (createdUserAccount.error) {
+    throw new Error(createdUserAccount.error)
   }
-  const default_meeting_type = generateDefaultMeetingType()
+  const defaultMeetingType = generateDefaultMeetingType()
+  const defaultAvailabilities = generateEmptyAvailabilities()
 
   const preferences: AccountPreferences = {
-    availableTypes: [default_meeting_type],
+    availableTypes: [defaultMeetingType],
     description: '',
-    availabilities: [],
+    availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
   }
 
-  const user_account = created_user_account.data[0]
+  const user_account = createdUserAccount.data[0]
 
   try {
     const responsePrefs = await db.supabase.from('account_preferences').insert({
@@ -341,9 +342,32 @@ export const getAccountPreferences = async (
       .select()
       .match({ owner_account_address: owner_account_address.toLowerCase() })
 
-  if (account_preferences_error || !account_preferences) {
-    Sentry.captureException(account_preferences_error)
+  if (
+    account_preferences_error ||
+    !account_preferences ||
+    account_preferences.length === 0
+  ) {
+    console.error(account_preferences_error)
     throw new Error("Couldn't get account's preferences")
+  }
+
+  // fix badly migrated accounts - should be removed at some point in the future
+  if (account_preferences[0].availabilities.length === 0) {
+    const defaultAvailabilities = generateEmptyAvailabilities()
+    const { data: newPreferences, error: newPreferencesError } =
+      await db.supabase
+        .from('account_preferences')
+        .update({
+          availabilities: defaultAvailabilities,
+        })
+        .match({ owner_account_address: owner_account_address.toLowerCase() })
+
+    if (newPreferencesError) {
+      console.error(newPreferences)
+      throw new Error('Error while completign empty preferences')
+    }
+
+    return newPreferences
   }
 
   return account_preferences[0]

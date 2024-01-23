@@ -1,16 +1,17 @@
 import { watchAccount } from '@wagmi/core'
-import React, { useEffect, useState } from 'react'
+import React, { ReactNode, useEffect, useState } from 'react'
 import { useCookies } from 'react-cookie'
 import { useDisconnect } from 'wagmi'
 
 import { SESSION_COOKIE_NAME } from '@/middleware'
+import { Account } from '@/types/Account'
 import { getOwnAccount } from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
+import { removeSignature } from '@/utils/storage'
 import { loginWithAddress } from '@/utils/user_manager'
 
-import { Account } from '../types/Account'
-import { removeSignature } from '../utils/storage'
+import { OnboardingProvider } from './OnboardingProvider'
 
 interface IAccountContext {
   currentAccount?: Account | null
@@ -37,7 +38,7 @@ const AccountContext = React.createContext<IAccountContext>(DEFAULT_STATE)
 interface AccountProviderProps {
   currentAccount?: Account | null
   logged: boolean
-  children: any
+  children: ReactNode
 }
 
 const AccountProvider: React.FC<AccountProviderProps> = ({
@@ -54,7 +55,7 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
   const { disconnect } = useDisconnect()
   const [loginIn, setLoginIn] = useState(false)
   const [newAccount, setNewAccount] = useState(undefined as string | undefined)
-  const [_, setCookie, removeCookie] = useCookies([SESSION_COOKIE_NAME])
+  const [, , removeCookie] = useCookies([SESSION_COOKIE_NAME])
 
   watchAccount(async account => {
     if (
@@ -142,7 +143,9 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
   }
   return (
     <AccountContext.Provider value={context}>
-      {children}
+      <OnboardingProvider currentAccount={context.currentAccount}>
+        {children}
+      </OnboardingProvider>
     </AccountContext.Provider>
   )
 }
