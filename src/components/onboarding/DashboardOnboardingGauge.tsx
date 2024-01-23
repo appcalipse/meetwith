@@ -1,7 +1,9 @@
 import { CheckCircleIcon } from '@chakra-ui/icons'
 import {
+  Box,
   CircularProgress,
   CircularProgressLabel,
+  Collapse,
   HStack,
   Icon,
   Link,
@@ -107,36 +109,42 @@ const DashboardOnboardingGauge: FC = () => {
     )
   }
 
-  return onboardingContext.isLoaded && !onboardComplete ? (
-    <VStack
-      border="1px solid"
-      borderColor={borderColor}
-      borderRadius={6}
-      width="100%"
-      p={4}
-      alignItems="flex-start"
-    >
-      <HStack>
-        <CircularProgress value={progress} color="primary.400">
-          <CircularProgressLabel>{progress}%</CircularProgressLabel>
-        </CircularProgress>
-        <VStack alignItems="flex-start">
-          <Text>Almost there!</Text>
-          <Text>Complete your profile</Text>
+  return (
+    <Box width="100%">
+      <Collapse
+        in={onboardingContext.isLoaded && !onboardComplete}
+        animateOpacity
+      >
+        <VStack
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius={6}
+          p={4}
+          alignItems="flex-start"
+        >
+          <HStack>
+            <CircularProgress value={progress} color="primary.400">
+              <CircularProgressLabel>{progress}%</CircularProgressLabel>
+            </CircularProgress>
+            <VStack alignItems="flex-start" mb={4}>
+              <Text>Almost there!</Text>
+              <Text>Complete your profile</Text>
+            </VStack>
+          </HStack>
+          <VStack width="100%">
+            {links.map(link => (
+              <StepLink
+                key={link.label}
+                enabled={link.enabled}
+                label={link.label}
+                link={link.link}
+              />
+            ))}
+          </VStack>
         </VStack>
-      </HStack>
-      <VStack width="100%">
-        {links.map(link => (
-          <StepLink
-            key={link.label}
-            enabled={link.enabled}
-            label={link.label}
-            link={link.link}
-          />
-        ))}
-      </VStack>
-    </VStack>
-  ) : null
+      </Collapse>
+    </Box>
+  )
 }
 
 export default DashboardOnboardingGauge
