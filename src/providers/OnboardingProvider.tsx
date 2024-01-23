@@ -3,6 +3,8 @@ import { MaybePromise } from 'viem/dist/types/types/utils'
 
 import { Account } from '@/types/Account'
 import { listConnectedCalendars } from '@/utils/api_helper'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 
 interface IOnboardingContext {
   accountDetailsComplete: () => MaybePromise<boolean>
@@ -42,6 +44,7 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
   const [reloadTrigger, setReloadTrigger] = useState(0)
 
   function reload() {
+    queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
     setReloadTrigger(reloadTrigger + 1)
   }
 

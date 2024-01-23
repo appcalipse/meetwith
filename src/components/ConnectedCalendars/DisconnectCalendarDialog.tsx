@@ -10,6 +10,9 @@ import {
 } from '@chakra-ui/react'
 import { useRef, useState } from 'react'
 
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
+
 interface DisconnectCalendarProps {
   isOpen: boolean
   onClose: () => void
@@ -27,6 +30,7 @@ const DisconnectCalendarDialog: React.FC<DisconnectCalendarProps> = ({
   const onDeleteWrapper = async () => {
     setBusy(true)
     await onDelete()
+    await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
     setBusy(false)
     onClose()
   }
