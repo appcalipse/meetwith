@@ -77,8 +77,9 @@ const OnboardingModal = forwardRef((props, ref) => {
   const signedUp = stateObject.signedUp as boolean | undefined
 
   // Color Control
-  const bgColor = useColorModeValue('white', 'gray.600')
+  const bgColor = useColorModeValue('gray.100', 'gray.600')
   const avatarBg = useColorModeValue('gray.700', 'gray.500')
+  const textColor = useColorModeValue('neutral.600', 'neutral.200')
 
   // Onboarding Modal Control
   const { isOpen, onOpen: onOpenOnboardingModal, onClose } = useDisclosure()
@@ -110,7 +111,6 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   // Modal opening flow
   useEffect(() => {
-    onOpenOnboardingModal()
     // When something related to user changes, check if we should open the modal
     // If the user is logged in and modal hans't been opened yet
     if (!!currentAccount?.address && !didInit && !skipNextSteps) {
@@ -509,13 +509,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                       >
                         <Flex gap={4} alignItems="center">
                           <Circle size={14} bg={avatarBg}>
-                            <FaGoogle size={28} />
+                            <FaGoogle size={28} color="white" />
                           </Circle>
                           <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="600">
+                            <Text fontSize={24} fontWeight="500">
                               Google
                             </Text>
-                            <Text textColor="neutral.200" fontSize={24}>
+                            <Text textColor={textColor} fontSize={18}>
                               {getGoogleCalendar()?.email}
                             </Text>
                           </Flex>
@@ -530,6 +530,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                                 alignItems="center"
                               >
                                 <Switch
+                                  colorScheme="primary"
                                   isChecked={calendar.enabled}
                                   onChange={() =>
                                     toggleCalendar(getGoogleCalendar(), index)
@@ -566,13 +567,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                       >
                         <Flex gap={4} alignItems="center">
                           <Circle size={14} bg={avatarBg}>
-                            <FaMicrosoft size={28} />
+                            <FaMicrosoft size={28} color="white" />
                           </Circle>
                           <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="600">
+                            <Text fontSize={24} fontWeight="500">
                               Office 365
                             </Text>
-                            <Text textColor="neutral.200" fontSize={24}>
+                            <Text textColor={textColor} fontSize={18}>
                               {getOfficeCalendar()?.email}
                             </Text>
                           </Flex>
@@ -587,6 +588,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                                 alignItems="center"
                               >
                                 <Switch
+                                  colorScheme="primary"
                                   isChecked={calendar.enabled}
                                   onChange={() =>
                                     toggleCalendar(getOfficeCalendar(), index)
@@ -623,13 +625,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                       >
                         <Flex gap={4} alignItems="center">
                           <Circle size={14} bg={avatarBg}>
-                            <FaApple size={28} />
+                            <FaApple size={28} color="white" />
                           </Circle>
                           <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="600">
+                            <Text fontSize={24} fontWeight="500">
                               iCloud
                             </Text>
-                            <Text textColor="neutral.200" fontSize={24}>
+                            <Text textColor={textColor} fontSize={18}>
                               {getAppleCalendar()?.email}
                             </Text>
                           </Flex>
@@ -644,6 +646,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                                 alignItems="center"
                               >
                                 <Switch
+                                  colorScheme="primary"
                                   isChecked={calendar.enabled}
                                   onChange={() =>
                                     toggleCalendar(getOfficeCalendar(), index)
@@ -711,13 +714,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                       >
                         <Flex gap={4} alignItems="center">
                           <Circle size={14} bg={avatarBg}>
-                            <FaMicrosoft size={28} />
+                            <FaMicrosoft size={28} color="white" />
                           </Circle>
                           <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="600">
+                            <Text fontSize={24} fontWeight="500">
                               Webdav
                             </Text>
-                            <Text textColor="neutral.200" fontSize={24}>
+                            <Text textColor={textColor} fontSize={18}>
                               {getDavCalendar()?.email}
                             </Text>
                           </Flex>
@@ -731,6 +734,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                               alignItems="center"
                             >
                               <Switch
+                                colorScheme="primary"
                                 isChecked={calendar.enabled}
                                 onChange={() =>
                                   toggleCalendar(getDavCalendar(), index)
