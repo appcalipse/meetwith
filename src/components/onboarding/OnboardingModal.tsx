@@ -453,6 +453,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         value={name}
                         placeholder="Your name or an identifier"
                         onChange={e => setName(e.target.value)}
+                        autoFocus={true}
                       />
                     </FormControl>
 
