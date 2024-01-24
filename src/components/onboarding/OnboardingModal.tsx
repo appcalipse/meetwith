@@ -71,10 +71,10 @@ const OnboardingModal = forwardRef((props, ref) => {
   const stateObject =
     typeof state === 'string'
       ? JSON.parse(Buffer.from(state as string, 'base64').toString())
-      : undefined
-  const origin = stateObject?.origin as OnboardingSubject | undefined
-  const skipNextSteps = stateObject?.skipNextSteps as boolean | undefined
-  const signedUp = stateObject?.signedUp as boolean | undefined
+      : {}
+  const origin = stateObject.origin as OnboardingSubject | undefined
+  const skipNextSteps = stateObject.skipNextSteps as boolean | undefined
+  const signedUp = stateObject.signedUp as boolean | undefined
 
   // Color Control
   const bgColor = useColorModeValue('white', 'gray.600')
@@ -110,6 +110,7 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   // Modal opening flow
   useEffect(() => {
+    onOpenOnboardingModal()
     // When something related to user changes, check if we should open the modal
     // If the user is logged in and modal hans't been opened yet
     if (!!currentAccount?.address && !didInit && !skipNextSteps) {
@@ -189,10 +190,10 @@ const OnboardingModal = forwardRef((props, ref) => {
   }, [isOpen])
 
   const [name, setName] = useState<string | undefined>(
-    stateObject?.name || undefined
+    stateObject.name || undefined
   )
   const [email, setEmail] = useState<string | undefined>(
-    stateObject?.email || undefined
+    stateObject.email || undefined
   )
   const [timezone, setTimezone] = useState<string | undefined | null>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -547,7 +548,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={onConnectGoogleCalendar}
-                        disabled={hasCalendar()}
+                        isDisabled={hasCalendar()}
                         isLoading={isFetchingCalendarConnections}
                       >
                         <FaGoogle />
@@ -604,7 +605,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={onConnectOfficeCalendar}
-                        disabled={hasCalendar()}
+                        isDisabled={hasCalendar()}
                         isLoading={isFetchingCalendarConnections}
                       >
                         <FaMicrosoft />
@@ -661,7 +662,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={() => setIsAppleCalDavOpen(!isAppleCalDavOpen)}
-                        disabled={hasCalendar()}
+                        isDisabled={hasCalendar()}
                         isLoading={isFetchingCalendarConnections}
                       >
                         <FaApple />
@@ -747,7 +748,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={() => setIsCalDavOpen(!isCalDavOpen)}
-                        disabled={hasCalendar()}
+                        isDisabled={hasCalendar()}
                         isLoading={isFetchingCalendarConnections}
                       >
                         <FaMicrosoft />
@@ -783,6 +784,12 @@ const OnboardingModal = forwardRef((props, ref) => {
                         <WebDavDetailsPanel isApple={false} />
                       </Flex>
                     )}
+
+                    {hasCalendar() ? (
+                      <Text textAlign="center">
+                        You can connect more calendars on dashboard later.
+                      </Text>
+                    ) : null}
                   </Flex>
 
                   <Flex gap={5}>
