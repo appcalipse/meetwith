@@ -75,7 +75,7 @@ const DashboardOnboardingGauge: FC = () => {
     },
   ]
 
-  const activeColor = useColorModeValue('primary.400', 'primary.2q00')
+  const activeColor = useColorModeValue('primary.400', 'primary.200')
   const completeColor = useColorModeValue('neutral.400', 'neutral.400')
   const borderColor = useColorModeValue('neutral.100', 'neutral.700')
 
