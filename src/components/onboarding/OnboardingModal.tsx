@@ -787,7 +787,7 @@ const OnboardingModal = forwardRef((props, ref) => {
 
                     {hasCalendar() ? (
                       <Text textAlign="center">
-                        You can connect more calendars on dashboard later.
+                        You can connect more calendars later on.
                       </Text>
                     ) : null}
                   </Flex>
