@@ -122,11 +122,11 @@ const DashboardOnboardingGauge: FC = () => {
           p={4}
           alignItems="flex-start"
         >
-          <HStack>
+          <HStack mb={4}>
             <CircularProgress value={progress} color="primary.400">
               <CircularProgressLabel>{progress}%</CircularProgressLabel>
             </CircularProgress>
-            <VStack alignItems="flex-start" mb={4}>
+            <VStack alignItems="flex-start">
               <Text>Almost there!</Text>
               <Text>Complete your profile</Text>
             </VStack>
