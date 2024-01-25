@@ -71,14 +71,15 @@ const OnboardingModal = forwardRef((props, ref) => {
   const stateObject =
     typeof state === 'string'
       ? JSON.parse(Buffer.from(state as string, 'base64').toString())
-      : undefined
-  const origin = stateObject?.origin as OnboardingSubject | undefined
-  const skipNextSteps = stateObject?.skipNextSteps as boolean | undefined
-  const signedUp = stateObject?.signedUp as boolean | undefined
+      : {}
+  const origin = stateObject.origin as OnboardingSubject | undefined
+  const skipNextSteps = stateObject.skipNextSteps as boolean | undefined
+  const signedUp = stateObject.signedUp as boolean | undefined
 
   // Color Control
-  const bgColor = useColorModeValue('white', 'gray.600')
+  const bgColor = useColorModeValue('gray.100', 'gray.600')
   const avatarBg = useColorModeValue('gray.700', 'gray.500')
+  const textColor = useColorModeValue('neutral.600', 'neutral.200')
 
   // Onboarding Modal Control
   const { isOpen, onOpen: onOpenOnboardingModal, onClose } = useDisclosure()
@@ -189,10 +190,10 @@ const OnboardingModal = forwardRef((props, ref) => {
   }, [isOpen])
 
   const [name, setName] = useState<string | undefined>(
-    stateObject?.name || undefined
+    stateObject.name || undefined
   )
   const [email, setEmail] = useState<string | undefined>(
-    stateObject?.email || undefined
+    stateObject.email || undefined
   )
   const [timezone, setTimezone] = useState<string | undefined | null>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -453,6 +454,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         value={name}
                         placeholder="Your name or an identifier"
                         onChange={e => setName(e.target.value)}
+                        autoFocus={true}
                       />
                     </FormControl>
 
@@ -507,13 +509,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                       >
                         <Flex gap={4} alignItems="center">
                           <Circle size={14} bg={avatarBg}>
-                            <FaGoogle size={28} />
+                            <FaGoogle size={28} color="white" />
                           </Circle>
                           <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="600">
+                            <Text fontSize={24} fontWeight="500">
                               Google
                             </Text>
-                            <Text textColor="neutral.200" fontSize={24}>
+                            <Text textColor={textColor} fontSize={18}>
                               {getGoogleCalendar()?.email}
                             </Text>
                           </Flex>
@@ -528,6 +530,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                                 alignItems="center"
                               >
                                 <Switch
+                                  colorScheme="primary"
                                   isChecked={calendar.enabled}
                                   onChange={() =>
                                     toggleCalendar(getGoogleCalendar(), index)
@@ -546,7 +549,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={onConnectGoogleCalendar}
-                        disabled={hasCalendar()}
+                        isDisabled={hasCalendar()}
                         isLoading={isFetchingCalendarConnections}
                       >
                         <FaGoogle />
@@ -564,13 +567,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                       >
                         <Flex gap={4} alignItems="center">
                           <Circle size={14} bg={avatarBg}>
-                            <FaMicrosoft size={28} />
+                            <FaMicrosoft size={28} color="white" />
                           </Circle>
                           <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="600">
+                            <Text fontSize={24} fontWeight="500">
                               Office 365
                             </Text>
-                            <Text textColor="neutral.200" fontSize={24}>
+                            <Text textColor={textColor} fontSize={18}>
                               {getOfficeCalendar()?.email}
                             </Text>
                           </Flex>
@@ -585,6 +588,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                                 alignItems="center"
                               >
                                 <Switch
+                                  colorScheme="primary"
                                   isChecked={calendar.enabled}
                                   onChange={() =>
                                     toggleCalendar(getOfficeCalendar(), index)
@@ -603,7 +607,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={onConnectOfficeCalendar}
-                        disabled={hasCalendar()}
+                        isDisabled={hasCalendar()}
                         isLoading={isFetchingCalendarConnections}
                       >
                         <FaMicrosoft />
@@ -621,13 +625,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                       >
                         <Flex gap={4} alignItems="center">
                           <Circle size={14} bg={avatarBg}>
-                            <FaApple size={28} />
+                            <FaApple size={28} color="white" />
                           </Circle>
                           <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="600">
+                            <Text fontSize={24} fontWeight="500">
                               iCloud
                             </Text>
-                            <Text textColor="neutral.200" fontSize={24}>
+                            <Text textColor={textColor} fontSize={18}>
                               {getAppleCalendar()?.email}
                             </Text>
                           </Flex>
@@ -642,6 +646,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                                 alignItems="center"
                               >
                                 <Switch
+                                  colorScheme="primary"
                                   isChecked={calendar.enabled}
                                   onChange={() =>
                                     toggleCalendar(getOfficeCalendar(), index)
@@ -660,7 +665,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={() => setIsAppleCalDavOpen(!isAppleCalDavOpen)}
-                        disabled={hasCalendar()}
+                        isDisabled={hasCalendar()}
                         isLoading={isFetchingCalendarConnections}
                       >
                         <FaApple />
@@ -709,13 +714,13 @@ const OnboardingModal = forwardRef((props, ref) => {
                       >
                         <Flex gap={4} alignItems="center">
                           <Circle size={14} bg={avatarBg}>
-                            <FaMicrosoft size={28} />
+                            <FaMicrosoft size={28} color="white" />
                           </Circle>
                           <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="600">
+                            <Text fontSize={24} fontWeight="500">
                               Webdav
                             </Text>
-                            <Text textColor="neutral.200" fontSize={24}>
+                            <Text textColor={textColor} fontSize={18}>
                               {getDavCalendar()?.email}
                             </Text>
                           </Flex>
@@ -729,6 +734,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                               alignItems="center"
                             >
                               <Switch
+                                colorScheme="primary"
                                 isChecked={calendar.enabled}
                                 onChange={() =>
                                   toggleCalendar(getDavCalendar(), index)
@@ -746,7 +752,7 @@ const OnboardingModal = forwardRef((props, ref) => {
                         gap={2}
                         alignItems="center"
                         onClick={() => setIsCalDavOpen(!isCalDavOpen)}
-                        disabled={hasCalendar()}
+                        isDisabled={hasCalendar()}
                         isLoading={isFetchingCalendarConnections}
                       >
                         <FaMicrosoft />
@@ -782,6 +788,12 @@ const OnboardingModal = forwardRef((props, ref) => {
                         <WebDavDetailsPanel isApple={false} />
                       </Flex>
                     )}
+
+                    {hasCalendar() ? (
+                      <Text textAlign="center">
+                        You can connect more calendars later on.
+                      </Text>
+                    ) : null}
                   </Flex>
 
                   <Flex gap={5}>
