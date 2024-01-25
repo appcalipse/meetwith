@@ -30,7 +30,6 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
     nonce: faker.datatype.number(),
     is_invited: faker.datatype.boolean(),
     subscriptions: [],
-    preferences_path: faker.datatype.string(),
     preferences: {
       name: faker.name.firstName(),
       timezone: faker.address.timeZone(),

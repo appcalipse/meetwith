@@ -26,6 +26,17 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
 import { useWalletClient } from 'wagmi'
 
+import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingContext } from '@/providers/OnboardingProvider'
+import { Account, SocialLink, SocialLinkType } from '@/types/Account'
+import { getChainInfo } from '@/types/chains'
+import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
+import { logEvent } from '@/utils/analytics'
+import {
+  getUnstoppableDomainsForAddress,
+  saveAccountChanges,
+  syncSubscriptions,
+} from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import lensHelper from '@/utils/lens.helper'
 import {
@@ -33,27 +44,9 @@ import {
   resolveENS,
   resolveFreename,
 } from '@/utils/rpc_helper_front'
+import { changeDomainOnChain, isProAccount } from '@/utils/subscription_manager'
 import { isValidSlug } from '@/utils/validations'
 
-import { AccountContext } from '../../providers/AccountProvider'
-import { Account, SocialLink, SocialLinkType } from '../../types/Account'
-import { getChainInfo } from '../../types/chains'
-import {
-  getPlanInfo,
-  Plan,
-  PlanInfo,
-  Subscription,
-} from '../../types/Subscription'
-import { logEvent } from '../../utils/analytics'
-import {
-  getUnstoppableDomainsForAddress,
-  saveAccountChanges,
-  syncSubscriptions,
-} from '../../utils/api_helper'
-import {
-  changeDomainOnChain,
-  isProAccount,
-} from '../../utils/subscription_manager'
 import Block from './components/Block'
 import HandlePicker, {
   DisplayName,
@@ -67,6 +60,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { login } = useContext(AccountContext)
+  const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
 
   const cancelDialogRef = useRef<any>()
 
@@ -285,9 +279,10 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     } catch (e) {
       //TODO handle error
       console.error(e)
+    } finally {
+      reloadOnboardingInfo()
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   const changeDomain = async () => {

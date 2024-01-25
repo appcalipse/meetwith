@@ -1,11 +1,13 @@
 import { Select, SingleValue } from 'chakra-react-select'
 import { useState } from 'react'
-import timezones from 'timezones-list'
+import _timezones from 'timezones-list'
 
 interface TimezoneProps {
   value?: string | null
   onChange: (timezone?: string | null) => void
 }
+
+const timezones = [..._timezones, { tzCode: 'UTC', name: '(UTC+00:00) UTC' }]
 
 const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
   const tzs = timezones.map(tz => {
