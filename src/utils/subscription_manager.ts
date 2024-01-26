@@ -5,7 +5,6 @@ import {
   readContract,
   waitForTransaction,
   writeContract,
-  WriteContractResult,
 } from '@wagmi/core'
 import { parseUnits, TransactionReceipt, zeroAddress } from 'viem'
 
@@ -19,7 +18,7 @@ import {
   Plan,
   Subscription,
 } from '../types/Subscription'
-import { getSubscriptionByDomain, syncSubscriptions } from './api_helper'
+import { getSubscriptionByDomain } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
 import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
 
