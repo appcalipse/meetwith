@@ -118,7 +118,7 @@ export const Navbar = () => {
                   />
                 </HStack>
               </Link>
-              <Flex display={{ base: 'none', md: 'flex' }} ml={10}>
+              <Flex display={{ base: 'none', lg: 'flex' }} ml={10}>
                 <DesktopNav
                   pathname={pathname}
                   handleSetActiveLink={handleSetActiveLink}
@@ -155,7 +155,7 @@ export const Navbar = () => {
                 onClick={onToggle}
                 width={10}
                 height={10}
-                display={{ base: 'flex', md: 'none' }}
+                display={{ base: 'flex', lg: 'none' }}
                 zIndex="0"
               >
                 <Icon as={BiMenuAltRight} width={6} height={6} />
@@ -359,6 +359,10 @@ const NAV_ITEMS: Array<NavItem> = [
   {
     label: 'Plans',
     href: '/#plans',
+  },
+  {
+    label: 'Discord bot',
+    href: '/features/discord',
   },
   {
     label: 'FAQ',
