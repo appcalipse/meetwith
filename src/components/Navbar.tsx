@@ -162,7 +162,7 @@ export const Navbar = () => {
               >
                 <Icon as={BiMenuAltRight} width={6} height={6} />
               </Button>
-              {shouldEnforceColorOnPath(pathname) && <ThemeSwitcher />}
+              {!shouldEnforceColorOnPath(pathname) && <ThemeSwitcher />}
             </Stack>
           </Flex>
         </Container>
