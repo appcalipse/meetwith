@@ -150,7 +150,7 @@ const loginOrSignup = async (
   }
 
   if (!signedUp) {
-    // now that we have the signature, we need to check login agains the user signature
+    // now that we have the signature, we need to check login against the user signature
     // and only then generate the session
     account = await login(accountAddress.toLowerCase())
   }
