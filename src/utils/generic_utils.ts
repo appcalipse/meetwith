@@ -51,3 +51,7 @@ export const useDebounce = (value: any, delay: number) => {
   )
   return debouncedValue
 }
+
+export const shouldEnforceColorOnPath = (pathname: string): boolean => {
+  return pathname === '/' || pathname.indexOf('/features/') !== -1
+}
