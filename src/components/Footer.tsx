@@ -15,6 +15,8 @@ import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
 
+import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
+
 import { MWW_DISCORD_SERVER } from '../utils/constants'
 
 const Logo = () => {
@@ -65,9 +67,9 @@ export default function SmallWithLogoLeft() {
 
   return (
     <Box
-      bg={router.pathname.split('/')[1] === 'landing' ? 'gray.900' : footerBg}
+      bg={shouldEnforceColorOnPath(router.pathname) ? 'gray.900' : footerBg}
       color={
-        router.pathname.split('/')[1] === 'landing' ? 'gray.200' : footerColor
+        shouldEnforceColorOnPath(router.pathname) ? 'gray.200' : footerColor
       }
       display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
       pb={{ base: '8', md: '0' }}

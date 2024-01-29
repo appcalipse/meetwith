@@ -20,6 +20,8 @@ import { useContext, useEffect, useState } from 'react'
 import { BiMenuAltRight } from 'react-icons/bi'
 import { BiWallet } from 'react-icons/bi'
 
+import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
+
 import { AccountContext } from '../providers/AccountProvider'
 import { useLogin } from '../session/login'
 import ConnectWalletDialog from './ConnectWalletDialog'
@@ -160,7 +162,7 @@ export const Navbar = () => {
               >
                 <Icon as={BiMenuAltRight} width={6} height={6} />
               </Button>
-              {pathname !== '/' && <ThemeSwitcher />}
+              {!shouldEnforceColorOnPath(pathname) && <ThemeSwitcher />}
             </Stack>
           </Flex>
         </Container>
@@ -171,6 +173,7 @@ export const Navbar = () => {
           onToggle={onToggle}
           handleSetActiveLink={handleSetActiveLink}
           isOpen={isOpen}
+          pathname={pathname}
         />
       </Collapse>
       <ConnectWalletDialog isOpen={loginIn} />
@@ -204,7 +207,9 @@ const DesktopNav = ({ pathname, handleSetActiveLink }: DesktopNavProps) => {
               p={2}
               fontSize={'sm'}
               fontWeight={500}
-              color={pathname === '/' ? 'neutral.0' : linkColor}
+              color={
+                shouldEnforceColorOnPath(pathname) ? 'neutral.0' : linkColor
+              }
               _hover={{
                 textDecoration: 'none',
                 color: linkHoverColor,
@@ -223,12 +228,14 @@ interface MobileNavProps {
   onToggle: () => void
   handleSetActiveLink: (id: string) => void
   isOpen: boolean
+  pathname: string
 }
 
 const MobileNav = ({
   onToggle,
   handleSetActiveLink,
   isOpen,
+  pathname,
 }: MobileNavProps) => {
   const { currentAccount, logged, loginIn } = useLogin()
   const { logout } = useContext(AccountContext)
@@ -290,7 +297,7 @@ const MobileNav = ({
             <Button onClick={doLogout} variant="link">
               Sign out
             </Button>
-            <ThemeSwitcher />
+            {!shouldEnforceColorOnPath(pathname) && <ThemeSwitcher />}
           </Flex>
         ) : (
           <Button
