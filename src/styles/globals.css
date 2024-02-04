@@ -21,3 +21,64 @@ a {
 * {
   box-sizing: border-box;
 }
+.tiptap {
+  width: 100%;
+  height: var(--input-height);
+  font-size: var(--input-font-size);
+  -webkit-padding-start: var(--input-padding);
+  padding-inline-start: var(--input-padding);
+  -webkit-padding-end: var(--input-padding);
+  padding-inline-end: var(--input-padding);
+  border-radius: var(--input-border-radius);
+  min-width: 0px;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  position: relative;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  -ms-appearance: none;
+  appearance: none;
+  transition-property: var(--chakra-transition-property-common);
+  transition-duration: var(--chakra-transition-duration-normal);
+  padding-top: var(--chakra-space-2);
+  padding-bottom: var(--chakra-space-2);
+  min-height: var(--chakra-sizes-20);
+  line-height: var(--chakra-lineHeights-short);
+  vertical-align: top;
+  --input-font-size: var(--chakra-fontSizes-md);
+  --input-padding: var(--chakra-space-4);
+  --input-border-radius: var(--chakra-radii-md);
+  --input-height: var(--chakra-sizes-10);
+  border: 1px solid;
+  border-top-color: currentcolor;
+  border-right-color: currentcolor;
+  border-bottom-color: currentcolor;
+  border-left-color: currentcolor;
+  border-color: inherit;
+  background: inherit;
+  max-height: 200px;
+  overflow: scroll;
+  resize: vertical;
+}
+
+.tiptap:hover,
+.tiptap[data-hover] {
+  border-color: var(--chakra-colors-whiteAlpha-400);
+}
+.tiptap:focus {
+  outline: none;
+}
+
+.custom-editor {
+  width: 100%;
+}
+/* For Chrome, Safari and Opera */
+.tiptap::-webkit-scrollbar {
+  background: transparent; /* make scrollbar background transparent */
+}
+
+/* For IE and Edge */
+.tiptap {
+  scrollbar-width: thin;
+  scrollbar-color: currentcolor transparent;
+}
