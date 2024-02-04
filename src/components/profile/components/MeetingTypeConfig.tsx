@@ -39,6 +39,8 @@ import { getAccountCalendarUrl } from '@/utils/calendar_manager'
 import { getSlugFromText } from '@/utils/generic_utils'
 import { isProAccount } from '@/utils/subscription_manager'
 
+import RichTextEditor from './RichTextEditor'
+
 interface IProps {
   children?: ReactNode
   selectedType?: MeetingType
@@ -175,10 +177,10 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
 
       <FormControl pt={2}>
         <FormLabel>Description (optional)</FormLabel>
-        <Textarea
-          value={description}
+        <RichTextEditor
           placeholder="Add an optional description to this meeting type. It will appear on your public calendar"
-          onChange={e => setDescription(e.target.value)}
+          onValueChange={setDescription}
+          value={description}
         />
       </FormControl>
 
