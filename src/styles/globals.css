@@ -21,6 +21,8 @@ a {
 * {
   box-sizing: border-box;
 }
+
+/* Custom styles for the tiptap editor */
 .tiptap {
   width: 100%;
   height: var(--input-height);
@@ -72,6 +74,7 @@ a {
 .custom-editor {
   width: 100%;
 }
+
 /* For Chrome, Safari and Opera */
 .tiptap::-webkit-scrollbar {
   background: transparent; /* make scrollbar background transparent */
@@ -82,3 +85,8 @@ a {
   scrollbar-width: thin;
   scrollbar-color: currentcolor transparent;
 }
+
+.floating-menu {
+  z-index: 100;
+}
+/* Custom styled ends here */
