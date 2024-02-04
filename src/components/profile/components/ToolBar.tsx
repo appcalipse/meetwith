@@ -60,6 +60,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               editor.chain().focus().toggleHeading({ level: 1 }).run()
             }
             pressed={editor.isActive('heading', { level: 1 })}
+            asChild
           >
             <IconButton
               backgroundColor={
@@ -80,7 +81,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               backgroundColor={
                 editor.isActive('bold') ? 'blue.500' : 'whiteAlpha.300'
               }
-              aria-label="Toggle Heading"
+              aria-label="Toggle Bold"
               icon={<BiBold />}
             />
           </Toggle>
@@ -117,6 +118,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
                     onChange={e => setUrl(e.target.value)}
                     type="text"
                     placeholder="Placeholder Url"
+                    aria-label="Url"
                   />
                   <Button
                     variant="text"
@@ -132,6 +134,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
                       onClose()
                       setUrl('')
                     }}
+                    aria-label="Save"
                   >
                     Save
                   </Button>
@@ -174,7 +177,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
             pressed={editor.isActive('bulletList')}
           >
             <IconButton
-              aria-label="Toggle List"
+              aria-label="Toggle Unordered List"
               backgroundColor={
                 editor.isActive('bulletList') ? 'blue.500' : 'whiteAlpha.300'
               }
@@ -189,7 +192,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
             pressed={editor.isActive('orderedList')}
           >
             <IconButton
-              aria-label="Toggle Unordered List"
+              aria-label="Toggle List"
               backgroundColor={
                 editor.isActive('orderedList') ? 'blue.500' : 'whiteAlpha.300'
               }
@@ -201,7 +204,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
       <BubbleMenu
         editor={editor as Editor}
         tippyOptions={{ duration: 100, trigger: 'manual' }}
-        // shouldShow={editor => editor.editor.isActive('link')}
+        shouldShow={editor => editor.editor.isActive('link')}
         className="floating-menu"
       >
         <Flex
