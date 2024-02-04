@@ -1,4 +1,5 @@
 import { VStack } from '@chakra-ui/react'
+import BubbleMenu from '@tiptap/extension-bubble-menu'
 import { Link } from '@tiptap/extension-link'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -23,13 +24,26 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             style: 'margin: 0.5rem',
           },
         },
+        heading: {
+          HTMLAttributes: {
+            style: 'font-size: 1.5rem; font-weight: bold;',
+          },
+        },
         bulletList: {
           HTMLAttributes: {
             style: 'margin: 0.5rem',
           },
         },
       }),
-      Link.configure(),
+      Link.configure({
+        openOnClick: false,
+      }),
+      BubbleMenu.configure({
+        shouldShow: ({ editor, view, state, oldState, from, to }) => {
+          // only show the bubble menu for images and links
+          return editor.isActive('link')
+        },
+      }),
     ],
     content: value,
     onUpdate({ editor }) {
