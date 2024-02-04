@@ -1,22 +1,21 @@
 import {
   Box,
   Button,
-  FormControl,
+  Flex,
   HStack,
   IconButton,
   Input,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
+  Popover,
+  PopoverArrow,
+  PopoverBody,
+  PopoverContent,
+  PopoverTrigger,
   Text,
   useDisclosure,
 } from '@chakra-ui/react'
 import * as TogglePrimitive from '@radix-ui/react-toggle'
-import { type Editor } from '@tiptap/react'
+import { type Editor, BubbleMenu } from '@tiptap/react'
+import Link from 'next/link'
 import * as React from 'react'
 import {
   BiBold,
@@ -39,48 +38,15 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
     /((http|https):\/\/[a-zA-Z0-9\-\.\_]+\.[a-zA-Z]{2,3}(\/\S*)?)/
   )
   const [url, setUrl] = React.useState('')
+  const getSelectedText = React.useCallback(() => {
+    if (!editor) return ''
+    const { from, to, empty } = editor.state.selection
+    if (empty) return ''
+    return editor.state.doc.textBetween(from, to, ' ')
+  }, [editor])
   if (!editor) return null
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} isCentered>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Set Link</ModalHeader>
-          <ModalCloseButton />
-          <FormControl padding={6}>
-            <Text pb={2}>Selected Text URL</Text>
-            <Input
-              value={url}
-              onChange={e => setUrl(e.target.value)}
-              type="text"
-              placeholder="Title"
-            />
-          </FormControl>
-          <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={onClose}>
-              Close
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!urlRegex.test(url)}
-              onClick={() => {
-                editor
-                  .chain()
-                  .focus()
-                  .setLink({
-                    href: url,
-                    target: '_blank',
-                  })
-                  .run()
-                onClose()
-                setUrl('')
-              }}
-            >
-              Set Link
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
       <Box
         width="100%"
         borderWidth="1px"
@@ -118,25 +84,61 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               icon={<BiBold />}
             />
           </Toggle>
-          <Toggle
-            asChild
-            onPressedChange={() => {
-              if (editor.isActive('link')) {
-                editor.chain().focus().unsetLink().run()
-              } else {
-                onOpen()
-              }
-            }}
-            pressed={editor.isActive('link')}
+          <Popover
+            returnFocusOnClose={false}
+            isOpen={isOpen}
+            onClose={onClose}
+            placement="right"
+            closeOnBlur={false}
           >
-            <IconButton
-              backgroundColor={
-                editor.isActive('link') ? 'blue.500' : 'whiteAlpha.300'
-              }
-              aria-label="Toggle Link"
-              icon={<BiLink />}
-            />
-          </Toggle>
+            <PopoverTrigger>
+              <Toggle
+                asChild
+                onPressedChange={() => {
+                  onOpen()
+                }}
+                pressed={editor.isActive('link')}
+              >
+                <IconButton
+                  backgroundColor={
+                    editor.isActive('link') ? 'blue.500' : 'whiteAlpha.300'
+                  }
+                  aria-label="Toggle Link"
+                  icon={<BiLink />}
+                />
+              </Toggle>
+            </PopoverTrigger>
+            <PopoverContent zIndex={99}>
+              <PopoverArrow />
+              <PopoverBody>
+                <Flex>
+                  <Input
+                    value={url}
+                    onChange={e => setUrl(e.target.value)}
+                    type="text"
+                    placeholder="Placeholder Url"
+                  />
+                  <Button
+                    variant="text"
+                    disabled={!urlRegex.test(url)}
+                    onClick={() => {
+                      editor
+                        .chain()
+                        .focus()
+                        .setLink({
+                          href: url,
+                        })
+                        .run()
+                      onClose()
+                      setUrl('')
+                    }}
+                  >
+                    Save
+                  </Button>
+                </Flex>
+              </PopoverBody>
+            </PopoverContent>
+          </Popover>
           <Toggle
             asChild
             onPressedChange={() => editor.chain().focus().toggleItalic().run()}
@@ -196,6 +198,44 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
           </Toggle>
         </HStack>
       </Box>
+      <BubbleMenu
+        editor={editor as Editor}
+        tippyOptions={{ duration: 100, trigger: 'manual' }}
+        // shouldShow={editor => editor.editor.isActive('link')}
+        className="floating-menu"
+      >
+        <Flex
+          backgroundColor="whiteAlpha.300"
+          paddingX={4}
+          paddingY={2}
+          borderRadius={6}
+          gap={10}
+        >
+          <Link href={editor.getAttributes('link').href ?? ''} target="_blank">
+            <Text color="blue.100">{getSelectedText()}</Text>
+          </Link>
+          <Button
+            onClick={() => {
+              onOpen()
+              setUrl(editor.getAttributes('link').href ?? '')
+            }}
+            variant="link"
+            textDecoration="none"
+          >
+            Edit
+          </Button>
+          <Button
+            onClick={() => {
+              editor.chain().focus().unsetLink().run()
+              onClose()
+            }}
+            variant="link"
+            textDecoration="none"
+          >
+            Remove
+          </Button>
+        </Flex>
+      </BubbleMenu>
     </>
   )
 }
