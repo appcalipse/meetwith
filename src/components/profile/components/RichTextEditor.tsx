@@ -1,6 +1,7 @@
 import { VStack } from '@chakra-ui/react'
 import BubbleMenu from '@tiptap/extension-bubble-menu'
 import { Link } from '@tiptap/extension-link'
+import Underline from '@tiptap/extension-underline'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import * as React from 'react'
@@ -24,11 +25,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             style: 'margin: 0.5rem',
           },
         },
-        heading: {
-          HTMLAttributes: {
-            style: 'font-size: 1.5rem; font-weight: bold;',
-          },
-        },
         bulletList: {
           HTMLAttributes: {
             style: 'margin: 0.5rem',
@@ -44,6 +40,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           return editor.isActive('link')
         },
       }),
+      Underline,
     ],
     content: value,
     onUpdate({ editor }) {
