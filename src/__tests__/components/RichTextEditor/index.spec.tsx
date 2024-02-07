@@ -130,15 +130,16 @@ describe('Test ELements', () => {
 
     await userEvent.type(editableElement!, 'RichTextEditor Works!')
   })
-  test('renders heading component', () => {
+  test('renders underline component', async () => {
     const component = render(
-      <RichTextEditor placeholder="Enter Text" value="RichTextEditor Works!" />
+      <RichTextEditor placeholder="Enter Text" value="" />
     )
     expect(component).toBeDefined()
     const editableElement = document.querySelector('.ProseMirror')
-    fireEvent.click(component.getByLabelText('Toggle Heading'))
+    fireEvent.click(component.getByLabelText('Toggle Strikethrough'))
+    await userEvent.type(editableElement!, 'RichTextEditor Works!')
     expect(editableElement!.innerHTML).toBe(
-      '<h1 style="font-size: 1.5rem; font-weight: bold;">RichTextEditor Works!</h1>'
+      '<p><u>RichTextEditor Works!</u></p>'
     )
   })
 
