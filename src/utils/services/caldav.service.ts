@@ -72,6 +72,7 @@ export default class CaldavCalendarService implements CalendarService {
   private url = ''
   private credentials: Record<string, string> = {}
   private headers: Record<string, string> = {}
+  private email: string
 
   constructor(
     address: string,
@@ -93,7 +94,10 @@ export default class CaldavCalendarService implements CalendarService {
       username,
       password: this.credentials.password,
     })
+    this.email = email
   }
+
+  getConnectedEmail = () => this.email
 
   async refreshConnection(): Promise<CalendarSyncInfo[]> {
     const calendars = await this.listCalendars()
@@ -162,7 +166,12 @@ export default class CaldavCalendarService implements CalendarService {
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+          `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
+          false,
+          {
+            accountAddress: calendarOwnerAccountAddress,
+            email: this.getConnectedEmail(),
+          }
         )
 
         if (!ics.value || ics.error)
@@ -279,7 +288,12 @@ export default class CaldavCalendarService implements CalendarService {
         },
         calendarOwnerAccountAddress,
         MeetingChangeType.UPDATE,
-        `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+        `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
+        false,
+        {
+          accountAddress: calendarOwnerAccountAddress,
+          email: this.getConnectedEmail(),
+        }
       )
 
       if (!ics.value || ics.error) throw new Error('Error creating iCalString')

@@ -159,14 +159,6 @@ const workNotifications = async (
 ): Promise<Promise<boolean>[]> => {
   const promises: Promise<boolean>[] = []
 
-  const ownerAddress = participantsInfo.filter(
-    p => p.type === ParticipantType.Owner
-  )[0]?.account_address
-  let ownerDomain = undefined
-  if (ownerAddress) {
-    const account = await getAccountFromDB(ownerAddress)
-    ownerDomain = await getAccountDomainUrl(account)
-  }
   try {
     for (let i = 0; i < participantsInfo.length; i++) {
       const participant = participantsInfo[i]
@@ -182,7 +174,6 @@ const workNotifications = async (
             end,
             created_at,
             participant.timezone,
-            ownerDomain,
             meeting_url,
             title,
             description,
@@ -214,7 +205,6 @@ const workNotifications = async (
                     end,
                     created_at,
                     participant.timezone,
-                    ownerDomain,
                     meeting_url,
                     title,
                     description,
@@ -290,7 +280,6 @@ const getEmailNotification = async (
   end: Date,
   created_at: Date,
   timezone: string,
-  ownerDomain?: string,
   meeting_url?: string,
   title?: string,
   description?: string,
@@ -317,7 +306,6 @@ const getEmailNotification = async (
         new Date(end),
         participant.meeting_id,
         participant.slot_id!,
-        ownerDomain,
         participant.account_address,
         meeting_url,
         title,
@@ -340,7 +328,7 @@ const getEmailNotification = async (
           changes && changes.dateChange ? changes.dateChange?.oldEnd : end
         ),
         participant.meeting_id,
-        '',
+        participant.account_address,
         '',
         created_at
       )
@@ -354,7 +342,6 @@ const getEmailNotification = async (
         new Date(end),
         participant.meeting_id,
         participant.slot_id!,
-        ownerDomain,
         participant.account_address,
         meeting_url,
         title,

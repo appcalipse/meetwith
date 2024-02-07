@@ -34,7 +34,7 @@ export class MWWGoogleAuth extends google.auth.OAuth2 {
 
 export default class GoogleCalendarService implements CalendarService {
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
-
+  private email: string
   constructor(
     address: string,
     email: string,
@@ -45,6 +45,7 @@ export default class GoogleCalendarService implements CalendarService {
       email,
       typeof credential === 'string' ? JSON.parse(credential) : credential
     )
+    this.email = email
   }
 
   private googleAuth = (
@@ -94,6 +95,7 @@ export default class GoogleCalendarService implements CalendarService {
         })
 
     return {
+      email,
       getToken: () =>
         !isExpired() ? Promise.resolve(myGoogleAuth) : refreshAccessToken(),
     }
@@ -135,6 +137,10 @@ export default class GoogleCalendarService implements CalendarService {
         },
       ]
     }
+  }
+
+  getConnectedEmail(): string {
+    return this.email
   }
 
   async createEvent(
@@ -206,11 +212,18 @@ export default class GoogleCalendarService implements CalendarService {
           payload['location'] = meetingDetails.meeting_url
         }
 
+        const calendar = google.calendar({
+          version: 'v3',
+          auth: myGoogleAuth,
+        })
+
         for (const participant of meetingDetails.participants) {
           payload.attendees!.push({
             email:
-              participant.guest_email ||
-              noNoReplyEmailForAccount(participant.account_address!),
+              calendarOwnerAccountAddress === participant.account_address
+                ? this.getConnectedEmail()
+                : participant.guest_email ||
+                  noNoReplyEmailForAccount(participant.account_address!),
             displayName: participant.name || participant.account_address,
             responseStatus:
               participant.status === ParticipationStatus.Accepted
@@ -220,11 +233,6 @@ export default class GoogleCalendarService implements CalendarService {
                 : 'needsAction',
           })
         }
-
-        const calendar = google.calendar({
-          version: 'v3',
-          auth: myGoogleAuth,
-        })
 
         calendar.events.insert(
           {
@@ -326,6 +334,23 @@ export default class GoogleCalendarService implements CalendarService {
           email: guest.guest_email,
           displayName: guest.name,
           responseStatus: 'accepted',
+        })
+      }
+
+      for (const participant of meetingDetails.participants) {
+        payload.attendees!.push({
+          email:
+            calendarOwnerAccountAddress === participant.account_address
+              ? this.getConnectedEmail()
+              : participant.guest_email ||
+                noNoReplyEmailForAccount(participant.account_address!),
+          displayName: participant.name || participant.account_address,
+          responseStatus:
+            participant.status === ParticipationStatus.Accepted
+              ? 'accepted'
+              : participant.status === ParticipationStatus.Rejected
+              ? 'declined'
+              : 'needsAction',
         })
       }
 

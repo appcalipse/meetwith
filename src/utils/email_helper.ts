@@ -29,27 +29,13 @@ export const newMeetingEmail = async (
   end: Date,
   meeting_id: string,
   slot_id: string,
-  ownerDomain?: string,
-  destinationAccountAddress?: string,
+  destinationAccountAddress: string | undefined,
   meetingUrl?: string,
   title?: string,
   description?: string,
   created_at?: Date
 ): Promise<boolean> => {
   const email = new Email()
-
-  const guestUrl = undefined
-  if (
-    !destinationAccountAddress &&
-    (participants.length === 2 ||
-      participants.filter(
-        p => p.type === ParticipantType.Scheduler && p.guest_email
-      ).length === 1)
-  ) {
-    // Allow guest to request change if it is only 2 people in the meeting or it is the scheduler
-    // TODO: need to rethink given update and cancelling requires decrypted info
-    // guestUrl = `${appUrl}/${ownerDomain}?slot=${slot_id}`
-  }
 
   const locals = {
     participantsDisplay: getAllParticipantsDisplayName(
@@ -65,7 +51,7 @@ export const newMeetingEmail = async (
     },
     changeUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
-      : guestUrl,
+      : undefined,
   }
 
   const isScheduler =
@@ -98,7 +84,14 @@ export const newMeetingEmail = async (
     MeetingChangeType.CREATE,
     destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
-      : guestUrl
+      : undefined,
+    false,
+    destinationAccountAddress
+      ? {
+          accountAddress: destinationAccountAddress,
+          email: toEmail,
+        }
+      : undefined
   )
 
   if (icsFile.error) {
@@ -139,8 +132,8 @@ export const cancelledMeetingEmail = async (
   start: Date,
   end: Date,
   meeting_id: string,
+  destinationAccountAddress: string | undefined,
   title?: string,
-  destinationAccountAddress?: string,
   created_at?: Date
 ): Promise<boolean> => {
   const email = new Email()
@@ -167,7 +160,15 @@ export const cancelledMeetingEmail = async (
       related_slot_ids: [],
     },
     destinationAccountAddress || '',
-    MeetingChangeType.DELETE
+    MeetingChangeType.DELETE,
+    '',
+    false,
+    destinationAccountAddress
+      ? {
+          accountAddress: destinationAccountAddress,
+          email: toEmail,
+        }
+      : undefined
   )
 
   if (icsFile.error) {
@@ -215,8 +216,7 @@ export const updateMeetingEmail = async (
   end: Date,
   meeting_id: string,
   slot_id: string,
-  ownerDomain?: string,
-  destinationAccountAddress?: string,
+  destinationAccountAddress: string | undefined,
   meetingUrl?: string,
   title?: string,
   description?: string,
@@ -235,18 +235,6 @@ export const updateMeetingEmail = async (
       )
     : null
 
-  let guestUrl = undefined
-  if (
-    !destinationAccountAddress &&
-    (participants.length === 2 ||
-      participants.filter(
-        p => p.type === ParticipantType.Scheduler && p.guest_email
-      ).length === 1)
-  ) {
-    //Allow guest to request change if it is only 2 people in the meeting or it is the scheduler
-    guestUrl = `${appUrl}/${ownerDomain}?slot=${slot_id}`
-  }
-
   const locals = {
     currentActorDisplayName,
     participantsDisplay: getAllParticipantsDisplayName(
@@ -262,7 +250,7 @@ export const updateMeetingEmail = async (
     },
     changeUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
-      : guestUrl,
+      : undefined,
     changes: {
       oldStart:
         changes?.dateChange?.oldStart &&
@@ -302,7 +290,14 @@ export const updateMeetingEmail = async (
     MeetingChangeType.UPDATE,
     destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
-      : guestUrl
+      : undefined,
+    false,
+    destinationAccountAddress
+      ? {
+          accountAddress: destinationAccountAddress,
+          email: toEmail,
+        }
+      : undefined
   )
 
   if (icsFile.error) {
