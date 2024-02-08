@@ -60,6 +60,7 @@ export type O365AuthCredentials = {
 
 export default class Office365CalendarService implements CalendarService {
   private auth: { getToken: () => Promise<string> }
+  private email: string
 
   constructor(
     address: string,
@@ -71,7 +72,10 @@ export default class Office365CalendarService implements CalendarService {
       email,
       typeof credential === 'string' ? JSON.parse(credential) : credential
     )
+    this.email = email
   }
+
+  getConnectedEmail = () => this.email
 
   private o365Auth = (
     address: string,
@@ -327,8 +331,10 @@ export default class Office365CalendarService implements CalendarService {
         emailAddress: {
           name: participant.name || participant.account_address,
           address:
-            participant.guest_email ||
-            noNoReplyEmailForAccount(participant.account_address!),
+            calendarOwnerAccountAddress === participant.account_address
+              ? this.getConnectedEmail()
+              : participant.guest_email ||
+                noNoReplyEmailForAccount(participant.account_address!),
         },
       })
     }
