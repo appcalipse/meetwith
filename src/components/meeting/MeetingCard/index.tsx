@@ -22,6 +22,7 @@ import {
 import { useContext, useEffect, useState } from 'react'
 import React from 'react'
 import { FaEdit, FaTrash } from 'react-icons/fa'
+import sanitizeHtml from 'sanitize-html'
 
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import {
@@ -290,7 +291,28 @@ const DecodedInfo: React.FC<{
               <Text>
                 <strong>Notes</strong>
               </Text>
-              <Text mb={2}>{decryptedMeeting.content}</Text>
+              <Text
+                mb={2}
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(decryptedMeeting.content, {
+                    allowedTags: [
+                      'b',
+                      'i',
+                      'em',
+                      'strong',
+                      'a',
+                      'u',
+                      'li',
+                      'ul',
+                      'ol',
+                      'p',
+                    ],
+                    allowedAttributes: {
+                      a: ['href'],
+                    },
+                  }),
+                }}
+              />
             </Box>
           )}
           <Button
