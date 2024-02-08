@@ -95,7 +95,6 @@ export interface Database {
           internal_pub_key: string
           is_invited: boolean | null
           nonce: number
-          preferences_path: string | null
         }
         Insert: {
           address: string
@@ -105,7 +104,6 @@ export interface Database {
           internal_pub_key: string
           is_invited?: boolean | null
           nonce: number
-          preferences_path?: string | null
         }
         Update: {
           address?: string
@@ -115,7 +113,6 @@ export interface Database {
           internal_pub_key?: string
           is_invited?: boolean | null
           nonce?: number
-          preferences_path?: string | null
         }
         Relationships: []
       }
