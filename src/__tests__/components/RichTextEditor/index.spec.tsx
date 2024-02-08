@@ -136,7 +136,7 @@ describe('Test ELements', () => {
     )
     expect(component).toBeDefined()
     const editableElement = document.querySelector('.ProseMirror')
-    fireEvent.click(component.getByLabelText('Toggle Strikethrough'))
+    fireEvent.click(component.getByLabelText('Toggle Underline'))
     await userEvent.type(editableElement!, 'RichTextEditor Works!')
     expect(editableElement!.innerHTML).toBe(
       '<p><u>RichTextEditor Works!</u></p>'

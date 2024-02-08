@@ -11,11 +11,13 @@ interface RichTextEditorProps {
   onValueChange?: (content: string) => void
   value?: string
   placeholder?: string
+  id?: string
 }
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onValueChange,
   placeholder,
   value,
+  id,
 }) => {
   const editor = useEditor({
     extensions: [
@@ -55,6 +57,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         className="custom-editor"
         placeholder={placeholder}
         editor={editor}
+        id={id}
       />
     </VStack>
   )
