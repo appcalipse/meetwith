@@ -669,8 +669,10 @@ const generateIcs = (
       const attendee: Attendee = {
         name: participant.name || participant.account_address,
         email:
-          destination?.accountAddress === participant.account_address
-            ? destination!.email
+          participant.account_address &&
+          destination &&
+          destination.accountAddress === participant.account_address
+            ? destination.email
             : participant.guest_email ||
               noNoReplyEmailForAccount(participant.account_address!),
         rsvp: participant.status === ParticipationStatus.Accepted,
