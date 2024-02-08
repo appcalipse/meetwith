@@ -12,12 +12,14 @@ interface RichTextEditorProps {
   value?: string
   placeholder?: string
   id?: string
+  isDisabled?: boolean
 }
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onValueChange,
   placeholder,
   value,
   id,
+  isDisabled,
 }) => {
   const editor = useEditor({
     extensions: [
@@ -46,6 +48,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     ],
     content: value,
     onUpdate({ editor }) {
+      if (isDisabled) return
       onValueChange?.(editor.getHTML())
     },
   })
