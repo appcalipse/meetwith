@@ -8,7 +8,6 @@ import { MeetingCreationRequest } from '@/types/Requests'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
-  initDB,
   saveMeeting,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
@@ -34,8 +33,6 @@ export const handleMeetingSchedule = async (
   res: NextApiResponse
 ) => {
   if (req.method === 'POST') {
-    initDB()
-
     const account = await getAccountFromDB(account_address)
 
     if (

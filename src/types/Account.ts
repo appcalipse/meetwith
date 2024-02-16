@@ -50,6 +50,11 @@ export interface TimeRange {
   end: string
 }
 
+export enum VideoMeeting {
+  None = 'None',
+  GoogleMeet = 'GoogleMeet',
+}
+
 export interface AccountPreferences {
   timezone: string
   availableTypes: MeetingType[]
@@ -58,6 +63,7 @@ export interface AccountPreferences {
   socialLinks: SocialLink[]
   name?: string
   avatar?: string
+  videoMeeting: VideoMeeting
 }
 
 export enum SocialLinkType {

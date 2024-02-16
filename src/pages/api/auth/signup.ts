@@ -2,12 +2,10 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { checkSignature } from '@/utils/cryptography'
-import { initAccountDBForWallet, initDB } from '@/utils/database'
+import { initAccountDBForWallet } from '@/utils/database'
 
 const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    initDB()
-
     // make sure people don't screw up others by sending requests to create accounts
     const recovered = checkSignature(
       req.body.signature,
