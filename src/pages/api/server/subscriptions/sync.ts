@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { BlockchainSubscription, Subscription } from '@/types/Subscription'
-import { initDB, updateAccountSubscriptions } from '@/utils/database'
+import { updateAccountSubscriptions } from '@/utils/database'
 import {
   getBlockchainSubscriptionsForAccount,
   getDomainInfo,
@@ -11,8 +11,6 @@ import { convertBlockchainSubscriptionToSubscription } from '@/utils/subscriptio
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    initDB()
-
     const { domain, address } = req.query
     let subs: BlockchainSubscription[] = []
     if (domain) {

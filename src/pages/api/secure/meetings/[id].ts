@@ -8,7 +8,6 @@ import {
   deleteMeetingFromDB,
   getAccountFromDB,
   getMeetingFromDB,
-  initDB,
   updateMeeting,
 } from '@/utils/database'
 import {
@@ -21,7 +20,6 @@ import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    initDB()
     const slotId = req.query.id as string
     if (!slotId) {
       return res.status(400).send('Required parameter not provided')
@@ -73,7 +71,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
     }
   } else if (req.method === 'DELETE') {
-    initDB()
     const slotId = req.query.id as string
     if (!slotId) {
       return res.status(400).send('Required parameter not provided')

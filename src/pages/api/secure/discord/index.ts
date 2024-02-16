@@ -6,7 +6,6 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   createOrUpdatesDiscordAccount,
   deleteDiscordAccount,
-  initDB,
 } from '@/utils/database'
 import {
   generateDiscordAuthToken,
@@ -16,8 +15,6 @@ import {
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    initDB()
-
     const { discordCode } = req.body
 
     try {
@@ -44,8 +41,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(500).send(e)
     }
   } else if (req.method === 'GET') {
-    initDB()
-
     const { address } = req.session.account!
 
     const discordInfo = await getDiscordInfoForAddress(address)

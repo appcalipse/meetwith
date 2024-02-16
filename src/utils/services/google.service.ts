@@ -198,19 +198,19 @@ export default class GoogleCalendarService implements CalendarService {
           },
           guestsCanModify: false,
           conferenceData: {
-            entryPoints: [
-              {
-                entryPointType: 'video',
-                uri: meetingDetails.meeting_url,
+            createRequest: {
+              requestId: meetingDetails.meeting_id,
+              conferenceSolutionKey: {
+                type: 'hangoutsMeet',
               },
-            ],
+            },
           },
           status: 'confirmed',
         }
 
-        if (meetingDetails.meeting_url) {
-          payload['location'] = meetingDetails.meeting_url
-        }
+        // if (meetingDetails.meeting_url) {
+        //   payload['location'] = meetingDetails.meeting_url
+        // }
 
         const calendar = google.calendar({
           version: 'v3',
