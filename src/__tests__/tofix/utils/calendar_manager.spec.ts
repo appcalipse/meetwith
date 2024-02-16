@@ -1,7 +1,7 @@
 import faker from '@faker-js/faker'
 import { randomUUID } from 'crypto'
 
-import { Account } from '@/types/Account'
+import { Account, VideoMeeting } from '@/types/Account'
 import {
   IPFSMeetingInfo,
   SchedulingType,
@@ -37,6 +37,7 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
       description: faker.datatype.string(),
       availabilities: [],
       socialLinks: [],
+      videoMeeting: VideoMeeting.None,
     },
   }
 }
