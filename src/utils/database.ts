@@ -14,6 +14,7 @@ import {
   AccountPreferences,
   MeetingType,
   SimpleAccountInfo,
+  VideoMeeting,
 } from '@/types/Account'
 import {
   AccountNotifications,
@@ -62,6 +63,7 @@ import {
   UnauthorizedError,
 } from '@/utils/errors'
 
+import { GateCondition } from '../types/TokenGating'
 import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
@@ -74,21 +76,12 @@ import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { isValidEVMAddress } from './validations'
 
-const db: { ready: boolean } & Record<string, any> = { ready: false }
-
-const initDB = () => {
-  if (!db.ready) {
-    db.supabase = createClient(
-      process.env.NEXT_SUPABASE_URL!,
-      process.env.NEXT_SUPABASE_KEY!
-    )
-    db.ready = true
-  }
-
-  return db
+const db = {
+  supabase: createClient(
+    process.env.NEXT_SUPABASE_URL!,
+    process.env.NEXT_SUPABASE_KEY!
+  ),
 }
-
-initDB()
 
 const initAccountDBForWallet = async (
   address: string,
@@ -126,9 +119,8 @@ const initAccountDBForWallet = async (
     },
   ])
 
-  if (createdUserAccount.error) {
-    throw new Error(createdUserAccount.error)
-  }
+  if (createdUserAccount.error) throw createdUserAccount.error
+
   const defaultMeetingType = generateDefaultMeetingType()
   const defaultAvailabilities = generateEmptyAvailabilities()
 
@@ -138,6 +130,7 @@ const initAccountDBForWallet = async (
     availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
+    videoMeeting: VideoMeeting.None,
   }
 
   const user_account = createdUserAccount.data[0]
@@ -182,7 +175,7 @@ const updateAccountFromInvite = async (
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
 
-  const { _, error } = await db.supabase.from('accounts').upsert(
+  const { error } = await db.supabase.from('accounts').upsert(
     [
       {
         address: account_address.toLowerCase(),
@@ -196,7 +189,7 @@ const updateAccountFromInvite = async (
   )
 
   if (error) {
-    throw new Error(error)
+    throw error
   }
 
   const account = await getAccountFromDB(account_address)
@@ -220,7 +213,7 @@ const updateAccountFromInvite = async (
       )
       const newEncryptedPath = await addContentToIPFS(newPvtInfo)
 
-      const { _, error } = await db.supabase
+      const { error } = await db.supabase
         .from('slots')
         .update({
           meeting_info_file_path: newEncryptedPath,
@@ -228,10 +221,10 @@ const updateAccountFromInvite = async (
         .match({ id: slot.id })
 
       if (error) {
-        throw new Error(error)
+        throw error
       }
     } catch (err) {
-      //if any fail, dont fail them all
+      //if any fail, don't fail them all
     }
   }
 
@@ -367,7 +360,7 @@ export const getAccountPreferences = async (
       throw new Error('Error while completign empty preferences')
     }
 
-    return newPreferences
+    return newPreferences as unknown as AccountPreferences
   }
 
   return account_preferences[0]
@@ -386,7 +379,7 @@ const getExistingAccountsFromDB = async (
     )
 
   if (error) {
-    throw new Error(error)
+    throw error
   }
 
   if (fullInformation) {
@@ -408,7 +401,7 @@ const getAccountFromDB = async (
     identifier: identifier.toLowerCase(),
   })
   if (data) {
-    const account = data as Account
+    const account = data as unknown as Account
     try {
       account.preferences = (await getAccountPreferences(
         account.address.toLowerCase()
@@ -427,7 +420,7 @@ const getAccountFromDB = async (
     }
     return account
   } else if (error) {
-    throw new Error(error)
+    throw error
   }
   throw new AccountNotFoundError(identifier)
 }
@@ -455,7 +448,7 @@ const getSlotsForAccount = async (
     .order('start')
 
   if (error) {
-    throw new Error(error)
+    throw error
     // //TODO: handle error
   }
 
@@ -481,7 +474,7 @@ const getSlotsForDashboard = async (
     .order('start')
 
   if (error) {
-    throw new Error(error)
+    throw error
     // //TODO: handle error
   }
 
@@ -521,7 +514,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
     .eq('id', slot_id)
 
   if (error) {
-    throw new Error(error)
+    throw error
     // todo handle error
   }
 
@@ -549,7 +542,7 @@ const getConferenceMeetingFromDB = async (
     .eq('id', meetingId)
 
   if (error) {
-    throw new Error(error)
+    throw error
   }
 
   if (data.length == 0) {
@@ -568,14 +561,10 @@ const getMeetingsFromDB = async (
     .select()
     .in('id', slotIds)
 
-  if (error) {
-    throw new Error(error)
-    // todo handle error
-  }
+  if (error) throw error
+  // todo handle error
 
-  if (data.length == 0) {
-    return []
-  }
+  if (data.length == 0) return []
 
   const meetings = []
   for (const dbMeeting of data) {
@@ -598,22 +587,14 @@ const deleteMeetingFromDB = async (
   meeting_id: string,
   timezone: string
 ) => {
-  if (!slotIds?.length) {
-    throw new Error('No slot ids provided')
-  }
+  if (!slotIds?.length) throw new Error('No slot ids provided')
 
-  const oldSlots: DBSlot[] = (
-    await db.supabase.from('slots').select().in('id', slotIds)
-  ).data
+  const oldSlots = (await db.supabase.from('slots').select().in('id', slotIds))
+    .data as DBSlot[]
 
-  const { data, error } = await db.supabase
-    .from('slots')
-    .delete()
-    .in('id', slotIds)
+  const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   const body: MeetingCancelSyncRequest = {
     participantActing,
@@ -644,10 +625,9 @@ const saveMeeting = async (
     new Set(
       meeting.participants_mapping.map(p => p.account_address || p.guest_email)
     ).size !== meeting.participants_mapping.length
-  ) {
+  )
     //means there are duplicate participants
     throw new MeetingCreationError()
-  }
 
   const slots = []
   let meetingResponse = {} as DBSlotEnhanced
@@ -691,17 +671,14 @@ const saveMeeting = async (
         schedulerAccount.account_address!
       )
 
-      if (!valid) {
-        throw new GateConditionNotValidError()
-      }
+      if (!valid) throw new GateConditionNotValidError()
     }
   }
 
   // TODO: for now
   let meetingProvider = MeetingProvider.CUSTOM
-  if (meeting.meeting_url.includes('huddle')) {
+  if (meeting.meeting_url.includes('huddle'))
     meetingProvider = MeetingProvider.HUDDLE
-  }
 
   // we create here the root meeting data, with enough data
   const createdRootMeeting = await saveConferenceMeetingToDB({
@@ -751,9 +728,8 @@ const saveMeeting = async (
           participantIsOwner &&
           ownerIsNotScheduler &&
           (!isTimeAvailable() || (await slotIsTaken()))
-        ) {
+        )
           throw new TimeNotAvailableError()
-        }
       }
 
       let account: Account
@@ -808,9 +784,7 @@ const saveMeeting = async (
   const { data, error } = await db.supabase.from('slots').insert(slots)
 
   //TODO: handle error
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
@@ -848,13 +822,10 @@ const getAccountNotificationSubscriptions = async (
     .select()
     .eq('account_address', address.toLowerCase())
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
-  if (data && data[0]) {
-    return data[0] as AccountNotifications
-  }
+  if (data && data[0]) return data[0] as AccountNotifications
+
   return { account_address: address, notification_types: [] }
 }
 
@@ -869,13 +840,11 @@ const setAccountNotificationSubscriptions = async (
     )
   }
 
-  const { _, error } = await db.supabase
+  const { error } = await db.supabase
     .from('account_notifications')
     .upsert(notifications, { onConflict: 'account_address' })
     .eq('account_address', address.toLowerCase())
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   return notifications
 }
@@ -888,18 +857,16 @@ export const createOrUpdatesDiscordAccount = async (
     const { data, error } = await db.supabase
       .from('discord_accounts')
       .insert([discordAccount])
-    if (error) {
-      throw new Error(error)
-    }
+    if (error) throw error
+
     return data[0]
   } else {
     const { data, error } = await db.supabase
       .from('discord_accounts')
       .update(discordAccount)
       .eq('discord_id', discordAccount.discord_id)
-    if (error) {
-      throw new Error(error)
-    }
+    if (error) throw error
+
     return data[0]
   }
 }
@@ -909,9 +876,7 @@ export const deleteDiscordAccount = async (accountAddress: string) => {
     .from('discord_accounts')
     .delete()
     .eq('address', accountAddress)
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 }
 
 const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
@@ -922,26 +887,24 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
     },
   ])
 
-  if (!error) {
-    return true
-  }
-  throw new Error(error)
+  if (!error) return true
+
+  throw error
 }
 
 const saveConferenceMeetingToDB = async (
   payload: Omit<ConferenceMeeting, 'created_at'>
 ): Promise<boolean> => {
-  const { _, error } = await db.supabase.from('meetings').upsert([
+  const { error } = await db.supabase.from('meetings').upsert([
     {
       ...payload,
       created_at: new Date(),
     },
   ])
 
-  if (!error) {
-    return true
-  }
-  throw new Error(error)
+  if (!error) return true
+
+  throw error
 }
 
 const getConnectedCalendars = async (
@@ -965,13 +928,9 @@ const getConnectedCalendars = async (
     getAccountFromDB(address),
   ])
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
-  if (!data) {
-    return []
-  }
+  if (!data) return []
 
   const connectedCalendars: ConnectedCalendar[] =
     !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
@@ -1001,9 +960,7 @@ const connectedCalendarExists = async (
     .eq('email', email.toLowerCase())
     .eq('provider', provider)
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   return data[0]
 }
@@ -1014,16 +971,14 @@ export const updateCalendarPayload = async (
   provider: TimeSlotSource,
   payload: any
 ): Promise<void> => {
-  const { data, error } = await db.supabase
+  const { error } = await db.supabase
     .from('connected_calendars')
     .update({ payload, updated: new Date() })
     .eq('account_address', address.toLowerCase())
     .eq('email', email.toLowerCase())
     .eq('provider', provider)
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 }
 
 const addOrUpdateConnectedCalendar = async (
@@ -1070,9 +1025,7 @@ const addOrUpdateConnectedCalendar = async (
 
   const { data, error } = await queryPromise
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   return data[0] as ConnectedCalendar
 }
@@ -1089,11 +1042,9 @@ const removeConnectedCalendar = async (
     .eq('email', email.toLowerCase())
     .eq('provider', provider)
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
-  return data as ConnectedCalendar
+  return data as unknown as ConnectedCalendar
 }
 
 export const getSubscriptionFromDBForAccount = async (
@@ -1105,9 +1056,7 @@ export const getSubscriptionFromDBForAccount = async (
     .gt('expiry_time', new Date().toISOString())
     .eq('owner_account', accountAddress.toLowerCase())
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   if (data && data.length > 0) {
     let subscriptions = data as Subscription[]
@@ -1118,11 +1067,11 @@ export const getSubscriptionFromDBForAccount = async (
       .neq('owner_account', accountAddress.toLowerCase())
       .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
 
-    if (collisionExists.error) {
-      throw new Error(error)
-    }
+    if (collisionExists.error) throw error
 
-    // If for any reason some smart ass registered a domain manually on the blockchain, but such domain already existed for someone else and is not expired, we remove it here
+    // If for any reason some smart ass registered a domain manually
+    // on the blockchain, but such domain already existed for someone
+    // else and is not expired, we remove it here.
     for (const collision of collisionExists.data) {
       if (
         (collision as Subscription).registered_at <
@@ -1147,13 +1096,10 @@ export const getSubscription = async (
     .gt('expiry_time', new Date().toISOString())
     .order('registered_at', { ascending: true })
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
-  if (data && data?.length > 0) {
-    return data[0] as Subscription
-  }
+  if (data && data?.length > 0) return data[0] as Subscription
+
   return undefined
 }
 
@@ -1188,13 +1134,8 @@ export const getExistingSubscriptionsByDomain = async (
     .gt('expiry_time', new Date().toISOString())
     .order('registered_at', { ascending: true })
 
-  if (error) {
-    Sentry.captureException(error)
-  }
-
-  if (data && data?.length > 0) {
-    return data as Subscription[]
-  }
+  if (error) Sentry.captureException(error)
+  if (data && data?.length > 0) return data as Subscription[]
 
   return undefined
 }
@@ -1215,19 +1156,14 @@ export const updateAccountSubscriptions = async (
       .eq('chain', subscription.chain)
       .eq('plan_id', subscription.plan_id)
 
-    if (error && error.length > 0) {
-      console.error(error)
-      throw new Error(error)
-    }
+    if (error) throw error
 
     if (!data || data.length == 0) {
       const { error } = await db.supabase
         .from('subscriptions')
         .insert(subscription)
 
-      if (error) {
-        throw new Error(error)
-      }
+      if (error) throw error
     }
   }
 
@@ -1252,24 +1188,26 @@ const upsertGateCondition = async (
     }
   }
 
-  const toUpsert = {
+  const toUpsert: {
+    id?: string
+    definition: GateCondition
+    title: string
+    owner: string
+  } = {
     definition: gateCondition.definition,
     title: gateCondition.title.trim(),
     owner: ownerAccount.toLowerCase(),
   }
 
-  if (gateCondition.id) {
-    ;(toUpsert as any).id = gateCondition.id
-  }
+  if (gateCondition.id) toUpsert.id = gateCondition.id
 
   const { data, error } = await db.supabase
     .from('gate_definition')
     .upsert([toUpsert])
 
-  if (!error) {
-    return data[0] as GateConditionObject
-  }
-  throw new Error(error)
+  if (!error) return data[0] as GateConditionObject
+
+  throw error
 }
 
 const deleteGateCondition = async (
@@ -1284,7 +1222,7 @@ const deleteGateCondition = async (
   if (usageResponse.error) {
     Sentry.captureException(usageResponse.error)
     return false
-  } else if (usageResponse.count > 0) {
+  } else if (usageResponse.count) {
     throw new GateInUseError()
   }
 
@@ -1300,15 +1238,14 @@ const deleteGateCondition = async (
     throw new UnauthorizedError()
   }
 
-  const { _, error } = await db.supabase
+  const { error } = await db.supabase
     .from('gate_definition')
     .delete()
     .eq('id', idToDelete)
 
-  if (!error) {
-    return true
-  }
-  throw new Error(error)
+  if (!error) return true
+
+  throw error
 }
 
 const getGateCondition = async (
@@ -1319,10 +1256,9 @@ const getGateCondition = async (
     .select()
     .eq('id', conditionId)
 
-  if (!error) {
-    return data[0] as GateConditionObject
-  }
-  throw new Error(error)
+  if (!error) return data[0] as GateConditionObject
+
+  throw error
 }
 
 const getGateConditionsForAccount = async (
@@ -1333,10 +1269,9 @@ const getGateConditionsForAccount = async (
     .select()
     .eq('owner', ownerAccount.toLowerCase())
 
-  if (!error) {
-    return data as GateConditionObject[]
-  }
-  throw new Error(error)
+  if (!error) return data as GateConditionObject[]
+
+  throw error
 }
 
 const getAppToken = async (tokenType: string): Promise<any | null> => {
@@ -1345,9 +1280,7 @@ const getAppToken = async (tokenType: string): Promise<any | null> => {
     .select()
     .eq('type', tokenType)
 
-  if (!error) {
-    return data[0]
-  }
+  if (!error) return data[0]
 
   return null
 }
@@ -1458,9 +1391,8 @@ const updateMeeting = async (
           !isEditingToSameTime &&
           participantActing.account_address !== participant.account_address &&
           (!isTimeAvailable() || (await slotIsTaken()))
-        ) {
+        )
           throw new TimeNotAvailableError()
-        }
       }
 
       let account: Account
@@ -1517,9 +1449,8 @@ const updateMeeting = async (
     .filter(it => it.slot_id)
     .map(it => it.slot_id) as string[]
   const everySlot = await getMeetingsFromDB(everySlotId)
-  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version)) {
+  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
     throw new MeetingChangeConflictError()
-  }
 
   // there is no support from suppabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
@@ -1530,9 +1461,7 @@ const updateMeeting = async (
     .upsert(slots, { onConflict: 'id' })
 
   //TODO: handle error
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
@@ -1553,11 +1482,10 @@ const updateMeeting = async (
     provider: meetingProvider,
   })
 
-  if (!createdRootMeeting) {
+  if (!createdRootMeeting)
     throw new Error(
       'Could not update your meeting right now, get in touch with us if the problem persists'
     )
-  }
 
   const body: MeetingCreationSyncRequest = {
     participantActing,
@@ -1586,7 +1514,7 @@ const updateMeeting = async (
   if (
     meetingUpdateRequest.slotsToRemove.length > 0 ||
     meetingUpdateRequest.guestsToRemove.length > 0
-  ) {
+  )
     await deleteMeetingFromDB(
       participantActing,
       meetingUpdateRequest.slotsToRemove,
@@ -1594,7 +1522,6 @@ const updateMeeting = async (
       meetingUpdateRequest.meeting_id,
       timezone
     )
-  }
 
   return meetingResponse
 }
@@ -1607,9 +1534,7 @@ const selectTeamMeetingRequest = async (
     .select()
     .eq('id', id)
 
-  if (!error) {
-    return data[0] as GroupMeetingRequest
-  }
+  if (!error) return data[0] as GroupMeetingRequest
 
   return null
 }
@@ -1618,13 +1543,11 @@ const insertOfficeEventMapping = async (
   office_id: string,
   mww_id: string
 ): Promise<void> => {
-  const { data, error } = await db.supabase
+  const { error } = await db.supabase
     .from('office_event_mapping')
     .insert({ office_id, mww_id })
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 }
 
 const getOfficeEventMappingId = async (
@@ -1635,9 +1558,7 @@ const getOfficeEventMappingId = async (
     .select()
     .eq('mww_id', mww_id)
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   return data[0].office_id
 }
@@ -1650,9 +1571,7 @@ export const getDiscordAccount = async (
     .select()
     .eq('address', account_address)
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   if (data.length === 0) return undefined
 
@@ -1667,9 +1586,7 @@ export const getAccountFromDiscordId = async (
     .select()
     .eq('discord_id', discord_id)
 
-  if (error) {
-    throw new Error(error)
-  }
+  if (error) throw error
 
   if (data.length === 0) return null
 
@@ -1697,7 +1614,6 @@ export {
   getSlotsForAccount,
   getSlotsForDashboard,
   initAccountDBForWallet,
-  initDB,
   insertOfficeEventMapping,
   isSlotFree,
   removeConnectedCalendar,

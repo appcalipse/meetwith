@@ -1,13 +1,11 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { initDB } from '@/utils/database'
 import { AccountNotFoundError } from '@/utils/errors'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    initDB()
     const address = req.query.identifier as string
     const startDate =
       req.query.start !== 'undefined'

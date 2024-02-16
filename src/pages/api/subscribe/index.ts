@@ -1,10 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { initDB, saveEmailToDB } from '@/utils/database'
+import { saveEmailToDB } from '@/utils/database'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    initDB()
     const email = req.body.email
     const plan = req.body.plan
 
