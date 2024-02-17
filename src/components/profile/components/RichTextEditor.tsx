@@ -1,6 +1,8 @@
 import { VStack } from '@chakra-ui/react'
 import BubbleMenu from '@tiptap/extension-bubble-menu'
 import { Link } from '@tiptap/extension-link'
+import { Placeholder } from '@tiptap/extension-placeholder'
+import { TextAlign } from '@tiptap/extension-text-align'
 import Underline from '@tiptap/extension-underline'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -37,24 +39,46 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       }),
       Link.configure({
         openOnClick: false,
+        HTMLAttributes: {
+          style: 'text-decoration: underline',
+        },
       }),
       BubbleMenu.configure({
-        shouldShow: ({ editor, view, state, oldState, from, to }) => {
+        shouldShow: ({ editor }) => {
           // only show the bubble menu for images and links
           return editor.isActive('link')
         },
       }),
       Underline,
+      Placeholder.configure({
+        emptyEditorClass: 'is-editor-empty',
+        placeholder,
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
     ],
     content: value,
     onUpdate({ editor }) {
       if (isDisabled) return
       onValueChange?.(editor.getHTML())
     },
+    editable: !isDisabled,
   })
 
   return (
-    <VStack justifyItems="stretch">
+    <VStack
+      justifyItems="stretch"
+      gap={0}
+      borderRadius="6px"
+      border="2px solid transparent"
+      _focus={{
+        border: '2px solid #32ADE6',
+      }}
+      _focusWithin={{
+        border: '2px solid #32ADE6',
+      }}
+    >
       <ToolBar editor={editor} />
       <EditorContent
         className="custom-editor"
