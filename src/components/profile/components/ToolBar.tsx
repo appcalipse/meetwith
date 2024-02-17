@@ -2,24 +2,37 @@ import {
   Box,
   Button,
   Flex,
+  FormControl,
+  Heading,
   HStack,
   IconButton,
   Input,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
   Popover,
   PopoverArrow,
   PopoverBody,
-  PopoverCloseButton,
   PopoverContent,
   PopoverTrigger,
   Text,
   Tooltip,
   useDisclosure,
+  VStack,
 } from '@chakra-ui/react'
 import * as TogglePrimitive from '@radix-ui/react-toggle'
 import { type Editor, BubbleMenu } from '@tiptap/react'
 import Link from 'next/link'
 import * as React from 'react'
 import {
+  BiAlignJustify,
+  BiAlignLeft,
+  BiAlignMiddle,
+  BiAlignRight,
   BiBold,
   BiHeading,
   BiItalic,
@@ -28,10 +41,12 @@ import {
   BiListUl,
   BiStrikethrough,
   BiUnderline,
+  BiWindowClose,
   BiX,
 } from 'react-icons/bi'
 
 import { isValidUrl } from '../../../utils/validations'
+import InfoTooltip from './Tooltip'
 const Toggle = TogglePrimitive.Root
 
 interface ToolBarProps {
@@ -41,13 +56,19 @@ interface ToolBarProps {
 const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [url, setUrl] = React.useState('')
-  const getSelectedText = React.useCallback(() => {
-    if (!editor) return ''
-    const { from, to, empty } = editor.state.selection
-    if (empty) return ''
-    return editor.state.doc.textBetween(from, to, ' ')
+  const renderAlignIcon = React.useCallback(() => {
+    switch (true) {
+      case editor!.isActive({ textAlign: 'right' }):
+        return <BiAlignRight size={25} />
+      case editor!.isActive({ textAlign: 'left' }):
+        return <BiAlignLeft size={25} />
+      case editor!.isActive({ textAlign: 'center' }):
+        return <BiAlignMiddle size={25} />
+      default:
+        return <BiAlignJustify size={25} />
+    }
   }, [editor])
-  if (!editor) return null
+  if (!editor) return 'Loading...'
   const handleUrlSave = () => {
     if (!isValidUrl(url)) return
     editor
@@ -60,16 +81,83 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
     onClose()
     setUrl('')
   }
+
   return (
     <>
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            <HStack gap="6px" alignItems="center">
+              <Heading size={'md'}>Edit URL</Heading>
+              <InfoTooltip text="Add a link to the selected text" />
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Input
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              type="text"
+              placeholder="Where should this link go?"
+              _placeholder={{
+                color: '#7B8794',
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  handleUrlSave()
+                }
+              }}
+              onKeyUp={e => {
+                if (e.key === 'Escape') {
+                  onClose()
+                }
+              }}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <HStack gap={2} marginLeft="auto">
+              <Button
+                colorScheme="white"
+                variant="link"
+                mr={3}
+                onClick={onClose}
+              >
+                Cancel
+              </Button>
+              <Button
+                isDisabled={!isValidUrl(url)}
+                _disabled={{
+                  backgroundColor: '#CBD2D9',
+                  color: '#9AA5B1',
+                  cursor: 'not-allowed',
+                  _hover: {
+                    backgroundColor: '#CBD2D9',
+                    color: '#9AA5B1',
+                  },
+                }}
+                onClick={handleUrlSave}
+                colorScheme="primary"
+                padding="8px 36px"
+              >
+                OK
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
       <Box
         width="100%"
         borderWidth="1px"
         borderRadius="lg"
+        borderBottom="0"
+        borderBottomRadius="0"
         overflow="hidden"
-        padding="10px"
+        paddingBlock="5px"
+        paddingInline="12px"
+        className="tiptap-toolbar"
       >
-        <HStack justifyContent="space-between">
+        <HStack gap="5px">
           <Tooltip
             hasArrow
             placement="top"
@@ -83,10 +171,10 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
             >
               <IconButton
                 backgroundColor={
-                  editor.isActive('bold') ? 'primary.400' : 'whiteAlpha.300'
+                  !editor.isActive('bold') ? 'transparent' : 'whiteAlpha.300'
                 }
                 aria-label="Toggle Bold"
-                icon={<BiBold />}
+                icon={<BiBold size={25} />}
               />
             </Toggle>
           </Tooltip>
@@ -105,9 +193,9 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
             >
               <IconButton
                 aria-label="Toggle Italics"
-                icon={<BiItalic />}
+                icon={<BiItalic size={25} />}
                 backgroundColor={
-                  editor.isActive('italic') ? 'primary.400' : 'whiteAlpha.300'
+                  !editor.isActive('italic') ? 'transparent' : 'whiteAlpha.300'
                 }
               />
             </Toggle>
@@ -127,12 +215,12 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
             >
               <IconButton
                 backgroundColor={
-                  editor.isActive('underline')
-                    ? 'primary.400'
+                  !editor.isActive('underline')
+                    ? 'transparent'
                     : 'whiteAlpha.300'
                 }
                 aria-label="Toggle Underline"
-                icon={<BiUnderline />}
+                icon={<BiUnderline size={25} />}
               />
             </Toggle>
           </Tooltip>
@@ -152,104 +240,96 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               <IconButton
                 aria-label="Toggle Strikethrough"
                 backgroundColor={
-                  editor.isActive('strike') ? 'primary.400' : 'whiteAlpha.300'
+                  !editor.isActive('strike') ? 'transparent' : 'whiteAlpha.300'
                 }
-                icon={<BiStrikethrough />}
+                icon={<BiStrikethrough size={25} />}
               />
             </Toggle>
           </Tooltip>
-          <Popover
-            returnFocusOnClose={false}
-            isOpen={isOpen}
-            onClose={onClose}
-            placement="top-start"
-            closeOnBlur={false}
-          >
+
+          <Popover placement="bottom" closeOnBlur>
             <PopoverTrigger>
-              <Tooltip
-                hasArrow
-                placement="top"
-                label="Create A Link"
-                aria-label="A tooltip for the link"
-              >
-                <Toggle
-                  asChild
-                  onPressedChange={() => {
-                    onOpen()
-                  }}
-                  pressed={editor.isActive('link')}
+              <button>
+                <Tooltip
+                  hasArrow
+                  placement="top"
+                  label="Ordered list"
+                  aria-label="A tooltip for the link"
                 >
-                  <IconButton
-                    backgroundColor={
-                      editor.isActive('link') ? 'primary.400' : 'whiteAlpha.300'
-                    }
-                    aria-label="Toggle Link"
-                    icon={<BiLink />}
-                  />
-                </Toggle>
-              </Tooltip>
+                  <Toggle asChild pressed={editor.isActive('orderedList')}>
+                    <IconButton
+                      aria-label="Toggle Align Popover"
+                      backgroundColor={
+                        !(
+                          editor!.isActive({ textAlign: 'right' }) ||
+                          editor!.isActive({ textAlign: 'left' }) ||
+                          editor!.isActive({ textAlign: 'center' }) ||
+                          editor!.isActive({ textAlign: 'justify' })
+                        )
+                          ? 'transparent'
+                          : 'whiteAlpha.300'
+                      }
+                      icon={renderAlignIcon()}
+                    />
+                  </Toggle>
+                </Tooltip>
+              </button>
             </PopoverTrigger>
-            <PopoverContent zIndex={99}>
+            <PopoverContent zIndex={99} width="fit-content">
               <PopoverArrow />
               <PopoverBody>
-                <Flex alignItems="center" gap={4}>
-                  <BiX cursor="pointer" size={'2em'} onClick={onClose} />
-                  <Input
-                    value={url}
-                    onChange={e => setUrl(e.target.value)}
-                    type="text"
-                    placeholder="Placeholder Url"
-                    aria-label="Url"
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        handleUrlSave()
-                      }
-                    }}
-                    onKeyUp={e => {
-                      if (e.key === 'Escape') {
-                        onClose()
-                      }
-                    }}
-                    width="100%"
-                  />
-                  <Button
-                    variant="outline"
-                    disabled={!isValidUrl(url)}
-                    onClick={handleUrlSave}
-                    aria-label="Save"
-                    backgroundColor="primary.400"
-                  >
-                    Save
-                  </Button>
-                </Flex>
+                <IconButton
+                  aria-label="Toggle Align Left"
+                  backgroundColor={
+                    !editor!.isActive({ textAlign: 'left' })
+                      ? 'transparent'
+                      : 'whiteAlpha.300'
+                  }
+                  icon={<BiAlignLeft size={25} />}
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign('left').run()
+                  }
+                />
+                <IconButton
+                  aria-label="Toggle List"
+                  backgroundColor={
+                    !editor!.isActive({ textAlign: 'center' })
+                      ? 'transparent'
+                      : 'whiteAlpha.300'
+                  }
+                  icon={<BiAlignMiddle size={25} />}
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign('center').run()
+                  }
+                />
+                <IconButton
+                  aria-label="Toggle Align Right"
+                  backgroundColor={
+                    !editor!.isActive({ textAlign: 'right' })
+                      ? 'transparent'
+                      : 'whiteAlpha.300'
+                  }
+                  icon={<BiAlignRight size={25} />}
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign('right').run()
+                  }
+                />
+
+                <IconButton
+                  aria-label="Toggle List"
+                  backgroundColor={
+                    !editor!.isActive({ textAlign: 'justify' })
+                      ? 'transparent'
+                      : 'whiteAlpha.300'
+                  }
+                  icon={<BiAlignJustify size={25} />}
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign('justify').run()
+                  }
+                />
               </PopoverBody>
             </PopoverContent>
           </Popover>
-
-          <Tooltip
-            hasArrow
-            placement="top"
-            label="Create an unordered list"
-            aria-label="A tooltip for the link"
-          >
-            <Toggle
-              asChild
-              onPressedChange={() =>
-                editor.chain().focus().toggleBulletList().run()
-              }
-              pressed={editor.isActive('bulletList')}
-            >
-              <IconButton
-                aria-label="Toggle Unordered List"
-                backgroundColor={
-                  editor.isActive('bulletList')
-                    ? 'primary.400'
-                    : 'whiteAlpha.300'
-                }
-                icon={<BiListUl />}
-              />
-            </Toggle>
-          </Tooltip>
           <Tooltip
             hasArrow
             placement="top"
@@ -266,11 +346,58 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               <IconButton
                 aria-label="Toggle List"
                 backgroundColor={
-                  editor.isActive('orderedList')
-                    ? 'primary.400'
+                  !editor.isActive('orderedList')
+                    ? 'transparent'
                     : 'whiteAlpha.300'
                 }
-                icon={<BiListOl />}
+                icon={<BiListOl size={25} />}
+              />
+            </Toggle>
+          </Tooltip>
+          <Tooltip
+            hasArrow
+            placement="top"
+            label="Create an unordered list"
+            aria-label="A tooltip for the link"
+          >
+            <Toggle
+              asChild
+              onPressedChange={() =>
+                editor.chain().focus().toggleBulletList().run()
+              }
+              pressed={editor.isActive('bulletList')}
+            >
+              <IconButton
+                aria-label="Toggle Unordered List"
+                backgroundColor={
+                  !editor.isActive('bulletList')
+                    ? 'transparent'
+                    : 'whiteAlpha.300'
+                }
+                icon={<BiListUl size={25} />}
+              />
+            </Toggle>
+          </Tooltip>
+
+          <Tooltip
+            hasArrow
+            placement="top"
+            label="Create A Link"
+            aria-label="A tooltip for the link"
+          >
+            <Toggle
+              asChild
+              onPressedChange={() => {
+                onOpen()
+              }}
+              pressed={editor.isActive('link')}
+            >
+              <IconButton
+                backgroundColor={
+                  !editor.isActive('link') ? 'transparent' : 'whiteAlpha.300'
+                }
+                aria-label="Toggle Link"
+                icon={<BiLink size={25} />}
               />
             </Toggle>
           </Tooltip>
@@ -280,23 +407,40 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
         editor={editor as Editor}
         tippyOptions={{
           duration: 100,
-          trigger: 'manual',
           theme: 'material',
-          placement: 'top-start',
-          animateFill: true,
+          placement: 'bottom-start',
+          popperOptions: {
+            placement: 'bottom-start',
+          },
         }}
         shouldShow={editor => editor.editor.isActive('link')}
         className="floating-menu"
       >
         <Flex
           backgroundColor="whiteAlpha.300"
+          border="1px solid #7b8794"
           paddingX={4}
           paddingY={2}
-          borderRadius={6}
           gap={10}
+          width="max-content"
+          borderRadius="6px"
         >
           <Link href={editor.getAttributes('link').href ?? ''} target="_blank">
-            <Text color="blue.100">{getSelectedText()}</Text>
+            <Text
+              color="inhereit"
+              maxWidth="300px"
+              width="fit-content"
+              minWidth="100px"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              fontWeight="500"
+            >
+              Link:{' '}
+              <Text display="inline" color="#F35826">
+                {editor.getAttributes('link').href}
+              </Text>
+            </Text>
           </Link>
           <Button
             onClick={() => {

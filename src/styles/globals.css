@@ -65,10 +65,6 @@ a {
   resize: vertical;
 }
 
-.tiptap:hover,
-.tiptap[data-hover] {
-  border-color: var(--chakra-colors-whiteAlpha-400);
-}
 .tiptap:focus {
   outline: none;
 }
