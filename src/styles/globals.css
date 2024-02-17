@@ -32,6 +32,8 @@ a {
   -webkit-padding-end: var(--input-padding);
   padding-inline-end: var(--input-padding);
   border-radius: var(--input-border-radius);
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
   min-width: 0px;
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -90,8 +92,16 @@ a {
   z-index: 100;
 }
 .tippy-box[data-theme~='material'] {
-  background-color: black;
+  background-color: transparent;
   opacity: 1;
-  border-radius: 6px;
+  max-width: none !important;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  color: #7b8794;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }
 /* Custom styled ends here */
