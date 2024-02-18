@@ -44,6 +44,7 @@ import {
   BiWindowClose,
   BiX,
 } from 'react-icons/bi'
+import { FaRemoveFormat } from 'react-icons/fa'
 
 import { isValidUrl } from '../../../utils/validations'
 import InfoTooltip from './Tooltip'
@@ -398,6 +399,25 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
                 }
                 aria-label="Toggle Link"
                 icon={<BiLink size={25} />}
+              />
+            </Toggle>
+          </Tooltip>
+          <Tooltip
+            hasArrow
+            placement="top"
+            label="Clear applied formatting to current selected text"
+            aria-label="A tooltip for the format clear"
+          >
+            <Toggle
+              asChild
+              onPressedChange={() =>
+                editor.chain().focus().unsetAllMarks().clearNodes().run()
+              }
+            >
+              <IconButton
+                aria-label="Clear Formatting"
+                backgroundColor="transparent"
+                icon={<FaRemoveFormat size={25} />}
               />
             </Toggle>
           </Tooltip>
