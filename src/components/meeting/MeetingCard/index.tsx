@@ -248,7 +248,6 @@ const DecodedInfo: React.FC<{
   }
 
   const bgColor = useColorModeValue('gray.50', 'gray.700')
-
   return (
     <Box
       mt={2}
@@ -287,29 +286,17 @@ const DecodedInfo: React.FC<{
             <Text>{getNamesDisplay(decryptedMeeting)}</Text>
           </VStack>
           {decryptedMeeting.content && (
-            <Box>
+            <Box width="100%">
               <Text>
                 <strong>Notes</strong>
               </Text>
               <Text
-                mb={2}
+                width="100%"
+                mb={6}
                 dangerouslySetInnerHTML={{
                   __html: sanitizeHtml(decryptedMeeting.content, {
-                    allowedTags: [
-                      'b',
-                      'i',
-                      'em',
-                      'strong',
-                      'a',
-                      'u',
-                      'li',
-                      'ul',
-                      'ol',
-                      'p',
-                    ],
-                    allowedAttributes: {
-                      a: ['href'],
-                    },
+                    allowedTags: false,
+                    allowedAttributes: false,
                   }),
                 }}
               />
