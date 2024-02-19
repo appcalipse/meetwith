@@ -28,19 +28,19 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       StarterKit.configure({
         orderedList: {
           HTMLAttributes: {
-            style: 'margin: 0.5rem',
+            style: 'margin: 0.5rem 1.5rem',
           },
         },
         bulletList: {
           HTMLAttributes: {
-            style: 'margin: 0.5rem',
+            style: 'margin: 0.5rem 1.5rem',
           },
         },
       }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          style: 'text-decoration: underline',
+          style: 'text-decoration: underline; color: #F35826;',
         },
       }),
       BubbleMenu.configure({
