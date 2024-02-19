@@ -612,7 +612,8 @@ const generateIcs = (
   ownerAddress: string,
   meetingStatus: MeetingChangeType,
   changeUrl?: string,
-  removeAttendess?: boolean
+  removeAttendess?: boolean,
+  destination?: { accountAddress: string; email: string }
 ): ReturnObject => {
   let url = meeting.meeting_url.trim()
   if (!isValidUrl(url)) {
@@ -668,8 +669,12 @@ const generateIcs = (
       const attendee: Attendee = {
         name: participant.name || participant.account_address,
         email:
-          participant.guest_email ||
-          noNoReplyEmailForAccount(participant.account_address!),
+          participant.account_address &&
+          destination &&
+          destination.accountAddress === participant.account_address
+            ? destination.email
+            : participant.guest_email ||
+              noNoReplyEmailForAccount(participant.account_address!),
         rsvp: participant.status === ParticipationStatus.Accepted,
         partstat: participantStatusToICSStatus(participant.status),
         role: 'REQ-PARTICIPANT',

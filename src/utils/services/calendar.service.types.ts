@@ -10,6 +10,8 @@ export type EventBusyDate = Record<'start' | 'end', Date | string>
  * Calendar Service  Contract
  */
 export interface CalendarService {
+  /** which email is the calendar owner */
+  getConnectedEmail: () => string
   /**
    * Refreshes the calendar connection, fetching the external calendar(s) info again
    */
