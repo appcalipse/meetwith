@@ -40,7 +40,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          style: 'text-decoration: underline; color: #F35826;',
+          style: `text-decoration: underline; color: #F46739;`,
         },
       }),
       BubbleMenu.configure({
