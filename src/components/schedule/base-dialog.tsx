@@ -24,7 +24,6 @@ import {
   Select,
   Switch,
   Text,
-  Textarea,
   useColorModeValue,
   useDisclosure,
   useToast,
@@ -80,6 +79,7 @@ import { parseTime } from '@/utils/time.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
+import RichTextEditor from '../profile/components/RichTextEditor'
 import { CancelMeetingDialog } from './cancel-dialog'
 import { MeetingDialogState } from './meeting.dialog.hook'
 
@@ -631,10 +631,10 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           )}
           <FormControl mt={4}>
             <FormLabel htmlFor="info">Information (optional)</FormLabel>
-            <Textarea
+            <RichTextEditor
               id="info"
               value={content}
-              onChange={(e: any) => setContent(e.target.value)}
+              onValueChange={setContent}
               placeholder="Any information you want to share prior to the meeting?"
             />
           </FormControl>

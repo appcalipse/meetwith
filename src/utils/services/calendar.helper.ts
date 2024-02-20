@@ -3,6 +3,17 @@ import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { getAllParticipantsDisplayName } from '../user_manager'
 
 export const CalendarServiceHelper = {
+  convertHtmlToPlainText: (html: string) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    const paragraphs = doc.body.querySelectorAll('p')
+
+    let plainText = ''
+    paragraphs.forEach(paragraph => {
+      plainText += paragraph.textContent + '\n'
+    })
+
+    return plainText.trim()
+  },
   getMeetingTitle: (
     slotOwnerAccountAddress: string,
     participants: ParticipantInfo[]
@@ -15,11 +26,11 @@ export const CalendarServiceHelper = {
     return `Meeting: ${displayNames}`
   },
 
-  getMeetingSummary: (
+  getMeetingSummary: function (
     meetingDescription?: string,
     meeting_url?: string,
     meetingChangeLink?: string
-  ) => {
+  ) {
     let message = `Your meeting will happen at ${
       meeting_url ? meeting_url : 'Meet with Wallet'
     }`
@@ -27,7 +38,7 @@ export const CalendarServiceHelper = {
       message += `\n\nTo reschedule or cancel the meeting, please go to ${meetingChangeLink}`
     }
     if (meetingDescription) {
-      message += `\n\n${meetingDescription}`
+      message += `\n\n${this.convertHtmlToPlainText(meetingDescription)}`
     }
     return message
   },
