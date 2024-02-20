@@ -19,6 +19,7 @@ import { useModal } from 'connectkit'
 import { useContext, useMemo, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
+import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import { ToggleSelector } from '@/components/toggle-selector'
 
 import { AccountContext } from '../../../providers/AccountProvider'
@@ -204,13 +205,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             />
           </FormControl>
 
-          <FormControl>
+          <FormControl textAlign="left">
             <FormLabel>What is this meeting about? (optional)</FormLabel>
-            <Textarea
+            <RichTextEditor
               isDisabled={isScheduling}
               placeholder="Any information you want to share prior to the meeting?"
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onValueChange={setContent}
             />
           </FormControl>
         </>
@@ -231,13 +232,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               mb={4}
             />
           </FormControl>
-          <FormControl>
+          <FormControl textAlign="left">
             <FormLabel>What is this meeting about? (optional)</FormLabel>
-            <Textarea
+            <RichTextEditor
               isDisabled={isScheduling}
               placeholder="Any information you want to share prior to the meeting?"
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onValueChange={setContent}
             />
           </FormControl>
         </>
