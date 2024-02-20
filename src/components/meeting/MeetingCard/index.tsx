@@ -22,6 +22,7 @@ import {
 import { useContext, useEffect, useState } from 'react'
 import React from 'react'
 import { FaEdit, FaTrash } from 'react-icons/fa'
+import sanitizeHtml from 'sanitize-html'
 
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import {
@@ -247,7 +248,6 @@ const DecodedInfo: React.FC<{
   }
 
   const bgColor = useColorModeValue('gray.50', 'gray.700')
-
   return (
     <Box
       mt={2}
@@ -286,11 +286,20 @@ const DecodedInfo: React.FC<{
             <Text>{getNamesDisplay(decryptedMeeting)}</Text>
           </VStack>
           {decryptedMeeting.content && (
-            <Box>
+            <Box width="100%">
               <Text>
                 <strong>Notes</strong>
               </Text>
-              <Text mb={2}>{decryptedMeeting.content}</Text>
+              <Text
+                width="100%"
+                mb={6}
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(decryptedMeeting.content, {
+                    allowedTags: false,
+                    allowedAttributes: false,
+                  }),
+                }}
+              />
             </Box>
           )}
           <Button
