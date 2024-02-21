@@ -141,16 +141,29 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
   }, [editor, isPopOverOpen])
   if (!editor) return 'Loading...'
   const handleUrlSave = () => {
-    if (!isValidUrl(url)) return
+    if (!validateUrl(url)) {
+      setUrl('')
+      return
+    }
     editor
       .chain()
       .focus()
       .setLink({
-        href: url,
+        href: validateUrl(url) as string,
       })
       .run()
     onClose()
     setUrl('')
+  }
+
+  const validateUrl = (url: string): string | undefined => {
+    if (!isValidUrl(url)) {
+      url = `https://${url}`
+      if (!isValidUrl(url)) {
+        return undefined
+      }
+    }
+    return url
   }
 
   return (
@@ -170,7 +183,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               value={url}
               onChange={e => setUrl(e.target.value)}
               type="text"
-              placeholder="Where should this link go?"
+              placeholder="Where should this link go to?"
               _placeholder={{
                 color: '#7B8794',
               }}
@@ -181,6 +194,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               }}
               onKeyUp={e => {
                 if (e.key === 'Escape') {
+                  setUrl('')
                   onClose()
                 }
               }}
@@ -190,14 +204,17 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
             <HStack gap={2} marginLeft="auto">
               <Button
                 colorScheme="white"
-                variant="link"
+                variant="ghost"
                 mr={3}
-                onClick={onClose}
+                onClick={() => {
+                  setUrl('')
+                  onClose()
+                }}
               >
                 Cancel
               </Button>
               <Button
-                isDisabled={!isValidUrl(url)}
+                isDisabled={!validateUrl(url)}
                 _disabled={{
                   backgroundColor: '#7B8B9A',
                   color: '#CBD2D9',
