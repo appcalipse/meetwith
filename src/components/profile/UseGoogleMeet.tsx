@@ -46,6 +46,7 @@ export const UseGoogleMeet: React.FC<{ currentAccount: Account }> = ({
           id="use-google-meet"
           isChecked={useGoogleMeet}
           onChange={onChange}
+          colorScheme="primary"
         />
       </FormControl>
     </Block>
