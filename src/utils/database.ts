@@ -293,6 +293,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       name: preferences.name,
       socialLinks: preferences.socialLinks,
       availableTypes: preferences.availableTypes,
+      videoMeeting: preferences.videoMeeting,
     })
     .match({ owner_account_address: account.address.toLowerCase() })
 
