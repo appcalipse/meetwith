@@ -144,7 +144,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
         )
     }
   }, [editor, isPopOverOpen])
-  if (!editor) return <Spinner color="#F35826" />
+  if (!editor) return <Spinner size="lg" color="#F35826" marginBlock={10} />
   const handleUrlSave = () => {
     if (!validateUrl(url)) {
       setUrl('')
