@@ -18,6 +18,7 @@ import {
   PopoverBody,
   PopoverContent,
   PopoverTrigger,
+  Spinner,
   Text,
   Tooltip,
   useDisclosure,
@@ -52,13 +53,17 @@ interface ToolBarProps {
 }
 
 const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure()
+  const { isOpen, onOpen, onClose: closeModal } = useDisclosure()
   const {
     isOpen: isPopOverOpen,
     onOpen: onPopoverOpen,
     onClose: onPopOverClose,
   } = useDisclosure()
   const [url, setUrl] = React.useState('')
+  const onClose = () => {
+    setUrl('')
+    closeModal()
+  }
   const renderAlignButton = React.useCallback(() => {
     switch (true) {
       case editor!.isActive({ textAlign: 'right' }):
@@ -139,7 +144,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
         )
     }
   }, [editor, isPopOverOpen])
-  if (!editor) return 'Loading...'
+  if (!editor) return <Spinner color="#F35826" />
   const handleUrlSave = () => {
     if (!validateUrl(url)) {
       setUrl('')
