@@ -80,6 +80,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import RichTextEditor from '../profile/components/RichTextEditor'
+import InfoTooltip from '../profile/components/Tooltip'
 import { CancelMeetingDialog } from './cancel-dialog'
 import { MeetingDialogState } from './meeting.dialog.hook'
 
@@ -129,6 +130,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       : parseTime(new Date(), true)
   )
   const [content, setContent] = useState(decryptedMeeting?.content || '')
+  const [title, setTitle] = useState(decryptedMeeting?.title || '')
   const [inputError, setInputError] = useState(
     undefined as ReactNode | undefined
   )
@@ -150,7 +152,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
 
   if (meetingId) {
     if (window.location.search.indexOf(meetingId) === -1) {
-      // not using router API to avoid re-rendinreing components
+      // not using router API to avoid re-rendering components
       const searchParams = new URLSearchParams(window.location.search)
       searchParams.set('slotId', meetingId)
       const newRelativePathQuery =
@@ -372,7 +374,9 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           _participants.valid,
           currentAccount,
           content,
-          meetingUrl
+          meetingUrl,
+          undefined,
+          title
         )
         logEvent('Scheduled a meeting', {
           fromDashboard: true,
@@ -388,7 +392,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           getSignature(currentAccount!.address) || '',
           _participants.valid,
           content,
-          meetingUrl
+          meetingUrl,
+          title
         )
         logEvent('Updated a meeting', {
           fromDashboard: true,
@@ -506,6 +511,59 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         <ModalCloseButton />
         <ModalBody>
           <FormControl>
+            <Flex
+              alignItems="center"
+              marginBottom="8px"
+              marginRight="12px"
+              gap="6px"
+            >
+              <FormLabel
+                htmlFor="title"
+                alignItems="center"
+                height="fit-content"
+                margin={0}
+              >
+                Title
+              </FormLabel>
+              <Tooltip.Provider delayDuration={400}>
+                <Tooltip.Root>
+                  <Tooltip.Trigger>
+                    <Flex
+                      w="16px"
+                      h="16px"
+                      borderRadius="50%"
+                      bgColor={iconColor}
+                      justifyContent="center"
+                      alignItems="center"
+                      ml={1}
+                    >
+                      <Icon w={1} color={bgColor} as={FaInfo} />
+                    </Flex>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content>
+                    <Text
+                      fontSize="sm"
+                      p={4}
+                      maxW="200px"
+                      bgColor={bgColor}
+                      shadow="lg"
+                    >
+                      What should this meeting be called?
+                    </Text>
+                    <Tooltip.Arrow />
+                  </Tooltip.Content>
+                </Tooltip.Root>
+              </Tooltip.Provider>
+            </Flex>
+            <Input
+              id="title"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              type="text"
+              placeholder="What should this meeting be called?"
+            />
+          </FormControl>
+          <FormControl mt={4}>
             <FormLabel htmlFor="participants">Participants</FormLabel>
             <ChipInput
               currentItems={participants}
@@ -540,7 +598,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               <Select
                 id="duration"
                 placeholder="Duration"
-                onChange={(e: any) => setDuration(Number(e.target.value))}
+                onChange={e => setDuration(Number(e.target.value))}
                 value={duration}
               >
                 <option value={15}>15 min</option>
