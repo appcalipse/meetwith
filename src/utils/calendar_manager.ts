@@ -884,7 +884,80 @@ const decodeMeeting = async (
   }
   return null
 }
-
+const googleUrlParsedDate = (date: Date) => format(date, "yyyyMMdd'T'HHmmSS'Z'")
+const outLookUrlParsedDate = (date: Date) =>
+  format(date, "yyyy-MM-dd:HH:mm:SS'Z'")
+const generateGoogleCalendarUrl = (
+  start?: Date | number,
+  end?: Date | number,
+  title?: string,
+  content?: string,
+  meeting_url?: string,
+  timezone?: string,
+  participants?: MeetingDecrypted['participants']
+) => {
+  let baseUrl = 'https://calendar.google.com/calendar/r/eventedit11?sf=true'
+  if (start && end) {
+    baseUrl += `&dates=${googleUrlParsedDate(
+      new Date(start)
+    )}%2F${googleUrlParsedDate(new Date(end))}`
+  }
+  if (title) {
+    baseUrl += `&text=${title}`
+  }
+  if (content || meeting_url) {
+    baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
+      content,
+      meeting_url,
+      `${appUrl}/dashboard/meetings`
+    )}`
+  }
+  if (timezone) {
+    baseUrl += `&ctz=${timezone}`
+  }
+  if (participants) {
+    baseUrl += `&add=${participants
+      ?.map(val => val.guest_email)
+      ?.filter(val => !!val)
+      ?.join(',')}`
+  }
+  return baseUrl
+}
+const generateOffice365CalendarUrl = (
+  start?: Date | number,
+  end?: Date | number,
+  title?: string,
+  content?: string,
+  meeting_url?: string,
+  timezone?: string,
+  participants?: MeetingDecrypted['participants']
+) => {
+  let baseUrl =
+    'https://outlook.office.com/calendar/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&online=true'
+  if (start) {
+    baseUrl += `&startdt=${outLookUrlParsedDate(new Date(start))}`
+  }
+  if (end) {
+    baseUrl += `&enddt=${outLookUrlParsedDate(new Date(end))}`
+  }
+  if (title) {
+    baseUrl += `&subject=${title}`
+  }
+  if (content || meeting_url) {
+    baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
+      content,
+      meeting_url,
+      `${appUrl}/dashboard/meetings`
+    )}`
+  }
+  if (participants) {
+    baseUrl += `&to=${participants
+      ?.map(val => val.guest_email)
+      ?.filter(val => !!val)
+      ?.join(',')}`
+  }
+  return baseUrl
+}
 const allSlots = generateAllSlots()
 
 export {
@@ -899,10 +972,14 @@ export {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
+  generateGoogleCalendarUrl,
   generateIcs,
+  generateOffice365CalendarUrl,
   getAccountCalendarUrl,
   getAccountDomainUrl,
+  googleUrlParsedDate,
   noNoReplyEmailForAccount,
+  outLookUrlParsedDate,
   scheduleMeeting,
   updateMeeting,
 }
