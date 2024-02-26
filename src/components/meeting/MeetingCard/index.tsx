@@ -31,7 +31,9 @@ import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import {
   dateToLocalizedRange,
   decodeMeeting,
+  generateGoogleCalendarUrl,
   generateIcs,
+  generateOffice365CalendarUrl,
 } from '@/utils/calendar_manager'
 import { appUrl, isProduction } from '@/utils/constants'
 import { addUTMParams } from '@/utils/huddle.helper'
@@ -156,8 +158,33 @@ const MeetingCard = ({
       currentAccount!.address
     )
   }
+
   const menuItems = useMemo(
     () => [
+      {
+        label: 'Add to Google Calendar',
+        link: generateGoogleCalendarUrl(
+          decryptedMeeting?.start,
+          decryptedMeeting?.end,
+          decryptedMeeting?.title,
+          decryptedMeeting?.content,
+          decryptedMeeting?.meeting_url,
+          timezone,
+          decryptedMeeting?.participants
+        ),
+      },
+      {
+        label: 'Add to Office 365 Calendar',
+        link: generateOffice365CalendarUrl(
+          decryptedMeeting?.start,
+          decryptedMeeting?.end,
+          decryptedMeeting?.title,
+          decryptedMeeting?.content,
+          decryptedMeeting?.meeting_url,
+          timezone,
+          decryptedMeeting?.participants
+        ),
+      },
       {
         label: 'Download. ics ',
         onClick: () => {
