@@ -2,7 +2,6 @@ import {
   Box,
   Button,
   Flex,
-  FormControl,
   Heading,
   HStack,
   IconButton,
@@ -19,32 +18,31 @@ import {
   PopoverBody,
   PopoverContent,
   PopoverTrigger,
+  Spinner,
   Text,
   Tooltip,
   useDisclosure,
-  VStack,
 } from '@chakra-ui/react'
 import * as TogglePrimitive from '@radix-ui/react-toggle'
 import { type Editor, BubbleMenu } from '@tiptap/react'
 import Link from 'next/link'
 import * as React from 'react'
 import {
-  BiAlignJustify,
-  BiAlignLeft,
-  BiAlignMiddle,
-  BiAlignRight,
   BiBold,
-  BiHeading,
   BiItalic,
   BiLink,
   BiListOl,
   BiListUl,
   BiStrikethrough,
   BiUnderline,
-  BiWindowClose,
-  BiX,
 } from 'react-icons/bi'
-import { FaRemoveFormat } from 'react-icons/fa'
+import {
+  FaAlignCenter,
+  FaAlignJustify,
+  FaAlignLeft,
+  FaAlignRight,
+  FaRemoveFormat,
+} from 'react-icons/fa'
 
 import { isValidUrl } from '../../../utils/validations'
 import InfoTooltip from './Tooltip'
@@ -55,32 +53,122 @@ interface ToolBarProps {
 }
 
 const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure()
+  const { isOpen, onOpen, onClose: closeModal } = useDisclosure()
+  const {
+    isOpen: isPopOverOpen,
+    onOpen: onPopoverOpen,
+    onClose: onPopOverClose,
+  } = useDisclosure()
   const [url, setUrl] = React.useState('')
-  const renderAlignIcon = React.useCallback(() => {
+  const onClose = () => {
+    setUrl('')
+    closeModal()
+  }
+  const renderAlignButton = React.useCallback(() => {
     switch (true) {
       case editor!.isActive({ textAlign: 'right' }):
-        return <BiAlignRight size={25} />
+        return (
+          <Tooltip
+            hasArrow
+            placement="top"
+            label="Align RIght"
+            aria-label="A tooltip for the link"
+          >
+            <Toggle asChild>
+              <IconButton
+                aria-label="Toggle Align Popover"
+                icon={<FaAlignRight size={18} />}
+                backgroundColor={
+                  !isPopOverOpen ? 'transparent' : 'whiteAlpha.300'
+                }
+              />
+            </Toggle>
+          </Tooltip>
+        )
       case editor!.isActive({ textAlign: 'left' }):
-        return <BiAlignLeft size={25} />
+        return (
+          <Tooltip
+            hasArrow
+            placement="top"
+            label="Align Left"
+            aria-label="A tooltip for the link"
+          >
+            <Toggle asChild>
+              <IconButton
+                aria-label="Toggle Align Popover"
+                icon={<FaAlignLeft size={18} />}
+                backgroundColor={
+                  !isPopOverOpen ? 'transparent' : 'whiteAlpha.300'
+                }
+              />
+            </Toggle>
+          </Tooltip>
+        )
       case editor!.isActive({ textAlign: 'center' }):
-        return <BiAlignMiddle size={25} />
+        return (
+          <Tooltip
+            hasArrow
+            placement="top"
+            label="Align Center"
+            aria-label="A tooltip for the link"
+          >
+            <Toggle asChild>
+              <IconButton
+                aria-label="Toggle Align Popover"
+                icon={<FaAlignCenter size={18} />}
+                backgroundColor={
+                  !isPopOverOpen ? 'transparent' : 'whiteAlpha.300'
+                }
+              />
+            </Toggle>
+          </Tooltip>
+        )
       default:
-        return <BiAlignJustify size={25} />
+        return (
+          <Tooltip
+            hasArrow
+            placement="top"
+            label="Justify"
+            aria-label="A tooltip for the link"
+          >
+            <Toggle asChild>
+              <IconButton
+                aria-label="Toggle Align Popover"
+                icon={<FaAlignJustify size={18} />}
+                backgroundColor={
+                  !isPopOverOpen ? 'transparent' : 'whiteAlpha.300'
+                }
+              />
+            </Toggle>
+          </Tooltip>
+        )
     }
-  }, [editor])
-  if (!editor) return 'Loading...'
+  }, [editor, isPopOverOpen])
+  if (!editor) return <Spinner size="lg" color="#F35826" marginBlock={10} />
   const handleUrlSave = () => {
-    if (!isValidUrl(url)) return
+    if (!validateUrl(url)) {
+      setUrl('')
+      return
+    }
     editor
       .chain()
       .focus()
       .setLink({
-        href: url,
+        href: validateUrl(url) as string,
       })
       .run()
     onClose()
     setUrl('')
+  }
+
+  const validateUrl = (url: string): string | undefined => {
+    if (!isValidUrl(url)) {
+      url = `https://${url}`
+      if (!isValidUrl(url)) {
+        return undefined
+      }
+    }
+    return url
   }
 
   return (
@@ -100,7 +188,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               value={url}
               onChange={e => setUrl(e.target.value)}
               type="text"
-              placeholder="Where should this link go?"
+              placeholder="Where should this link go to?"
               _placeholder={{
                 color: '#7B8794',
               }}
@@ -111,6 +199,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               }}
               onKeyUp={e => {
                 if (e.key === 'Escape') {
+                  setUrl('')
                   onClose()
                 }
               }}
@@ -120,21 +209,24 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
             <HStack gap={2} marginLeft="auto">
               <Button
                 colorScheme="white"
-                variant="link"
+                variant="ghost"
                 mr={3}
-                onClick={onClose}
+                onClick={() => {
+                  setUrl('')
+                  onClose()
+                }}
               >
                 Cancel
               </Button>
               <Button
-                isDisabled={!isValidUrl(url)}
+                isDisabled={!validateUrl(url)}
                 _disabled={{
-                  backgroundColor: '#CBD2D9',
-                  color: '#9AA5B1',
+                  backgroundColor: '#7B8B9A',
+                  color: '#CBD2D9',
                   cursor: 'not-allowed',
                   _hover: {
-                    backgroundColor: '#CBD2D9',
-                    color: '#9AA5B1',
+                    backgroundColor: '#7B8B9A',
+                    color: '#CBD2D9',
                   },
                 }}
                 onClick={handleUrlSave}
@@ -248,86 +340,95 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
             </Toggle>
           </Tooltip>
 
-          <Popover placement="bottom" closeOnBlur>
+          <Popover
+            placement="bottom"
+            closeOnBlur
+            isOpen={isPopOverOpen}
+            onOpen={onPopoverOpen}
+            onClose={onPopOverClose}
+          >
             <PopoverTrigger>
-              <button>
+              <button>{renderAlignButton()}</button>
+            </PopoverTrigger>
+            <PopoverContent width="fit-content">
+              <PopoverArrow />
+              <PopoverBody>
                 <Tooltip
                   hasArrow
                   placement="top"
-                  label="Ordered list"
+                  label="Align Left"
                   aria-label="A tooltip for the link"
                 >
-                  <Toggle asChild pressed={editor.isActive('orderedList')}>
-                    <IconButton
-                      aria-label="Toggle Align Popover"
-                      backgroundColor={
-                        !(
-                          editor!.isActive({ textAlign: 'right' }) ||
-                          editor!.isActive({ textAlign: 'left' }) ||
-                          editor!.isActive({ textAlign: 'center' }) ||
-                          editor!.isActive({ textAlign: 'justify' })
-                        )
-                          ? 'transparent'
-                          : 'whiteAlpha.300'
-                      }
-                      icon={renderAlignIcon()}
-                    />
-                  </Toggle>
+                  <IconButton
+                    aria-label="Toggle Align Left"
+                    backgroundColor={
+                      !editor!.isActive({ textAlign: 'left' })
+                        ? 'transparent'
+                        : 'whiteAlpha.300'
+                    }
+                    icon={<FaAlignLeft size={18} />}
+                    onClick={() =>
+                      editor.chain().focus().setTextAlign('left').run()
+                    }
+                  />
                 </Tooltip>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent zIndex={99} width="fit-content">
-              <PopoverArrow />
-              <PopoverBody>
-                <IconButton
-                  aria-label="Toggle Align Left"
-                  backgroundColor={
-                    !editor!.isActive({ textAlign: 'left' })
-                      ? 'transparent'
-                      : 'whiteAlpha.300'
-                  }
-                  icon={<BiAlignLeft size={25} />}
-                  onClick={() =>
-                    editor.chain().focus().setTextAlign('left').run()
-                  }
-                />
-                <IconButton
-                  aria-label="Toggle List"
-                  backgroundColor={
-                    !editor!.isActive({ textAlign: 'center' })
-                      ? 'transparent'
-                      : 'whiteAlpha.300'
-                  }
-                  icon={<BiAlignMiddle size={25} />}
-                  onClick={() =>
-                    editor.chain().focus().setTextAlign('center').run()
-                  }
-                />
-                <IconButton
-                  aria-label="Toggle Align Right"
-                  backgroundColor={
-                    !editor!.isActive({ textAlign: 'right' })
-                      ? 'transparent'
-                      : 'whiteAlpha.300'
-                  }
-                  icon={<BiAlignRight size={25} />}
-                  onClick={() =>
-                    editor.chain().focus().setTextAlign('right').run()
-                  }
-                />
-
-                <IconButton
-                  aria-label="Toggle List"
-                  backgroundColor={
-                    !editor!.isActive({ textAlign: 'justify' })
-                      ? 'transparent'
-                      : 'whiteAlpha.300'
-                  }
-                  icon={<BiAlignJustify size={25} />}
-                  onClick={() =>
-                    editor.chain().focus().setTextAlign('justify').run()
-                  }
-                />
+                <Tooltip
+                  hasArrow
+                  placement="top"
+                  label="Align Center"
+                  aria-label="A tooltip for the link"
+                >
+                  <IconButton
+                    aria-label="Toggle List"
+                    backgroundColor={
+                      !editor!.isActive({ textAlign: 'center' })
+                        ? 'transparent'
+                        : 'whiteAlpha.300'
+                    }
+                    icon={<FaAlignCenter size={18} />}
+                    onClick={() =>
+                      editor.chain().focus().setTextAlign('center').run()
+                    }
+                  />
+                </Tooltip>
+                <Tooltip
+                  hasArrow
+                  placement="top"
+                  label="Align RIght"
+                  aria-label="A tooltip for the link"
+                >
+                  <IconButton
+                    aria-label="Toggle Align Right"
+                    backgroundColor={
+                      !editor!.isActive({ textAlign: 'right' })
+                        ? 'transparent'
+                        : 'whiteAlpha.300'
+                    }
+                    icon={<FaAlignRight size={18} />}
+                    onClick={() =>
+                      editor.chain().focus().setTextAlign('right').run()
+                    }
+                  />
+                </Tooltip>
+                <Tooltip
+                  hasArrow
+                  placement="top"
+                  label="Align Center"
+                  aria-label="A tooltip for the link"
+                >
+                  <IconButton
+                    aria-label="Toggle List"
+                    backgroundColor={
+                      !editor!.isActive({ textAlign: 'justify' })
+                        ? 'transparent'
+                        : 'whiteAlpha.300'
+                    }
+                    icon={<FaAlignJustify size={18} />}
+                    onClick={() =>
+                      editor.chain().focus().setTextAlign('justify').run()
+                    }
+                  />
+                </Tooltip>
               </PopoverBody>
             </PopoverContent>
           </Popover>
@@ -358,7 +459,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
           <Tooltip
             hasArrow
             placement="top"
-            label="Create an unordered list"
+            label="Bulleted list"
             aria-label="A tooltip for the link"
           >
             <Toggle
@@ -405,7 +506,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
           <Tooltip
             hasArrow
             placement="top"
-            label="Clear applied formatting to current selected text"
+            label="Remove Formatting"
             aria-label="A tooltip for the format clear"
           >
             <Toggle
