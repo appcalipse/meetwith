@@ -81,6 +81,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     >
       <ToolBar editor={editor} />
       <EditorContent
+        suppressHydrationWarning
         className="custom-editor"
         placeholder={placeholder}
         editor={editor}
