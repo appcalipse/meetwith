@@ -2,7 +2,6 @@ import {
   Box,
   Button,
   Flex,
-  FormControl,
   Heading,
   HStack,
   IconButton,
@@ -22,7 +21,6 @@ import {
   Text,
   Tooltip,
   useDisclosure,
-  VStack,
 } from '@chakra-ui/react'
 import * as TogglePrimitive from '@radix-ui/react-toggle'
 import { type Editor, BubbleMenu } from '@tiptap/react'
@@ -34,15 +32,12 @@ import {
   BiAlignMiddle,
   BiAlignRight,
   BiBold,
-  BiHeading,
   BiItalic,
   BiLink,
   BiListOl,
   BiListUl,
   BiStrikethrough,
   BiUnderline,
-  BiWindowClose,
-  BiX,
 } from 'react-icons/bi'
 import { FaRemoveFormat } from 'react-icons/fa'
 
@@ -250,7 +245,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
 
           <Popover placement="bottom" closeOnBlur>
             <PopoverTrigger>
-              <button>
+              <Box>
                 <Tooltip
                   hasArrow
                   placement="top"
@@ -274,7 +269,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
                     />
                   </Toggle>
                 </Tooltip>
-              </button>
+              </Box>
             </PopoverTrigger>
             <PopoverContent zIndex={99} width="fit-content">
               <PopoverArrow />
@@ -446,7 +441,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
           borderRadius="6px"
         >
           <Link href={editor.getAttributes('link').href ?? ''} target="_blank">
-            <Text
+            <Box
               color="inhereit"
               maxWidth="300px"
               width="fit-content"
@@ -460,7 +455,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               <Text display="inline" color="#F35826">
                 {editor.getAttributes('link').href}
               </Text>
-            </Text>
+            </Box>
           </Link>
           <Button
             onClick={() => {
