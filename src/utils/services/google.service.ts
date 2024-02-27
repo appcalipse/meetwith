@@ -197,20 +197,21 @@ export default class GoogleCalendarService implements CalendarService {
             email: NO_REPLY_EMAIL,
           },
           guestsCanModify: false,
-          conferenceData: {
-            createRequest: {
-              requestId: meetingDetails.meeting_id,
-              conferenceSolutionKey: {
-                type: 'hangoutsMeet',
-              },
-            },
-          },
+          location: !meetingDetails.googleMeet
+            ? meetingDetails.meeting_url
+            : undefined,
+          conferenceData: meetingDetails.googleMeet
+            ? {
+                createRequest: {
+                  requestId: meetingDetails.meeting_id,
+                  conferenceSolutionKey: {
+                    type: 'hangoutsMeet',
+                  },
+                },
+              }
+            : undefined,
           status: 'confirmed',
         }
-
-        // if (meetingDetails.meeting_url) {
-        //   payload['location'] = meetingDetails.meeting_url
-        // }
 
         const calendar = google.calendar({
           version: 'v3',

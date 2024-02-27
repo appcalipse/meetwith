@@ -99,7 +99,8 @@ export const notifyForOrUpdateNewMeeting = async (
   meeting_url: string,
   title?: string,
   description?: string,
-  changes?: MeetingChange
+  changes?: MeetingChange,
+  googleMeet?: boolean
 ): Promise<void> => {
   const participantsInfo = await setupParticipants(participants)
 
