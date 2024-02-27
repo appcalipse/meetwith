@@ -199,10 +199,11 @@ const buildMeetingData = async (
   },
   currentAccount?: Account | null,
   meetingContent?: string,
-  meetingUrl?: string,
-  meetingId = ''
+  meetingUrl = '',
+  meetingId = '',
+  googleMeet?: boolean
 ): Promise<MeetingCreationRequest> => {
-  if (meetingUrl) {
+  if (!googleMeet && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
       throw new InvalidURL()
     }
@@ -258,7 +259,9 @@ const buildMeetingData = async (
     created_at: new Date(),
     participants: sanitizedParticipants,
     content: meetingContent,
-    meeting_url: meetingUrl || (await createHuddleRoom()).url,
+    meeting_url: googleMeet
+      ? ''
+      : meetingUrl ?? (await createHuddleRoom())?.url,
     change_history_paths: [],
     related_slot_ids: [],
     meeting_id: meetingId,
@@ -318,7 +321,7 @@ const buildMeetingData = async (
     participantsMappings.push(participantMapping)
   }
 
-  const meeting: MeetingCreationRequest = {
+  return {
     type: schedulingType,
     start: startTime,
     end: endTime,
@@ -327,9 +330,8 @@ const buildMeetingData = async (
     meetingTypeId,
     meeting_url: privateInfo['meeting_url'],
     content: privateInfo['content'],
-  }
-
-  return meeting
+    googleMeet,
+  } as MeetingCreationRequest
 }
 
 /**
@@ -520,7 +522,8 @@ const scheduleMeeting = async (
   currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl?: string,
-  emailToSendReminders?: string
+  emailToSendReminders?: string,
+  googleMeet?: boolean
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const meeting = await buildMeetingData(
@@ -533,7 +536,8 @@ const scheduleMeeting = async (
     currentAccount,
     meetingContent,
     meetingUrl,
-    newMeetingId
+    newMeetingId,
+    googleMeet
   )
 
   const owner = meeting.participants_mapping.filter(

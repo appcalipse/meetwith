@@ -32,6 +32,7 @@ export interface MeetingCreationRequest {
   meeting_url: string
   meeting_id: ConferenceMeeting['id']
   emailToSendReminders?: string
+  googleMeet?: boolean
 }
 
 export interface RequestParticipantMapping {
@@ -71,6 +72,7 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   changes?: MeetingChange
   title?: string
   content?: string
+  googleMeet?: boolean
 }
 
 export interface MeetingCancelSyncRequest extends MeetingSyncRequest {

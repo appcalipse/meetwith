@@ -1,4 +1,4 @@
-import { Link } from '@chakra-ui/react'
+import { Image, Link } from '@chakra-ui/react'
 import {
   Button,
   Flex,
@@ -20,6 +20,7 @@ import { useContext, useMemo, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import { ToggleSelector } from '@/components/toggle-selector'
+import { AccountPreferences, VideoMeeting } from '@/types/Account'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { SchedulingType } from '../../../types/Meeting'
@@ -30,6 +31,7 @@ interface ScheduleFormProps {
   isSchedulingExternal: boolean
   willStartScheduling: (isScheduling: boolean) => void
   isGateValid: boolean
+  preferences?: AccountPreferences
   onConfirm: (
     scheduleType: SchedulingType,
     startTime: Date,
@@ -49,6 +51,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   isGateValid,
   onConfirm,
   notificationsSubs,
+  preferences,
 }) => {
   const { currentAccount, logged } = useContext(AccountContext)
 
@@ -76,8 +79,11 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     await handleConfirm()
   }
 
+  const googleMeetUser = () =>
+    preferences?.videoMeeting === VideoMeeting.GoogleMeet
+
   const handleConfirm = async () => {
-    if (customMeeting && !meetingUrl) {
+    if (!googleMeetUser() && customMeeting && !meetingUrl) {
       toast({
         title: 'Missing information',
         description: 'Please provide a meeting link for participants to join',
@@ -245,55 +251,73 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
       {scheduleType !== undefined && (
         <VStack alignItems="start">
-          <HStack alignItems="center">
-            <Switch
-              display="flex"
-              colorScheme="primary"
-              size="md"
-              mr={4}
-              isDisabled={isScheduling}
-              defaultChecked={!customMeeting}
-              onChange={e => setCustomMeeting(!e.target.checked)}
-            />
-            <FormLabel mb="0">
-              <Text>
-                Use{' '}
-                <Link href="https://huddle01.com/?utm_source=mww" isExternal>
-                  Huddle01
-                </Link>{' '}
-                for your meeting
-              </Text>
-            </FormLabel>
-            <Tooltip.Provider delayDuration={400}>
-              <Tooltip.Root>
-                <Tooltip.Trigger>
-                  <Flex
-                    w="16px"
-                    h="16px"
-                    borderRadius="50%"
-                    bgColor={iconColor}
-                    justifyContent="center"
-                    alignItems="center"
-                    ml={1}
-                  >
-                    <Icon w={1} color={bgColor} as={FaInfo} />
-                  </Flex>
-                </Tooltip.Trigger>
-                <Tooltip.Content>
-                  <Text
-                    fontSize="sm"
-                    p={4}
-                    maxW="200px"
-                    bgColor={bgColor}
-                    shadow="lg"
-                  >
-                    Huddle01 is a web3-powered video conferencing tailored for
-                    DAOs and NFT communities.
+          <HStack alignItems="center" mb={googleMeetUser() ? 6 : 0}>
+            {googleMeetUser() ? (
+              <>
+                <Image
+                  boxSize="24px"
+                  src="/assets/google-meet.svg"
+                  alt="Google Meet Logo"
+                />
+                <Text fontSize={14} fontWeight={300}>
+                  For this meeting you will be using Google Meet.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Switch
+                  display="flex"
+                  colorScheme="primary"
+                  size="md"
+                  mr={4}
+                  isDisabled={isScheduling}
+                  defaultChecked={!customMeeting}
+                  onChange={e => setCustomMeeting(!e.target.checked)}
+                />
+                <FormLabel mb="0">
+                  <Text>
+                    Use{' '}
+                    <Link
+                      href="https://huddle01.com/?utm_source=mww"
+                      isExternal
+                    >
+                      Huddle01
+                    </Link>{' '}
+                    for your meeting
                   </Text>
-                  <Tooltip.Arrow />
-                </Tooltip.Content>
-              </Tooltip.Root>
-            </Tooltip.Provider>
+                </FormLabel>
+                <Tooltip.Provider delayDuration={400}>
+                  <Tooltip.Root>
+                    <Tooltip.Trigger>
+                      <Flex
+                        w="16px"
+                        h="16px"
+                        borderRadius="50%"
+                        bgColor={iconColor}
+                        justifyContent="center"
+                        alignItems="center"
+                        ml={1}
+                      >
+                        <Icon w={1} color={bgColor} as={FaInfo} />
+                      </Flex>
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>
+                      <Text
+                        fontSize="sm"
+                        p={4}
+                        maxW="200px"
+                        bgColor={bgColor}
+                        shadow="lg"
+                      >
+                        Huddle01 is a web3-powered video conferencing tailored
+                        for DAOs and NFT communities.
+                      </Text>
+                      <Tooltip.Arrow />
+                    </Tooltip.Content>
+                  </Tooltip.Root>
+                </Tooltip.Provider>
+              </>
+            )}
           </HStack>
           {customMeeting && (
             <Input
