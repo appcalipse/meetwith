@@ -32,7 +32,7 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import { Account, MeetingType } from '@/types/Account'
+import { Account, MeetingType, VideoMeeting } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
@@ -445,7 +445,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         currentAccount,
         content,
         meetingUrl,
-        emailToSendReminders
+        emailToSendReminders,
+        account?.preferences?.videoMeeting === VideoMeeting.GoogleMeet
       )
       await updateSlots()
       currentAccount && saveMeetingsScheduled(currentAccount!.address)

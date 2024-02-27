@@ -52,29 +52,35 @@ export const handleMeetingSchedule = async (
     )
 
     const updateEmailNotifications = async (email: string) => {
-      const subs = await getAccountNotificationSubscriptions(account_address)
+      try {
+        const subs = await getAccountNotificationSubscriptions(account_address)
 
-      subs.notification_types = subs.notification_types.filter(
-        type => type.channel !== NotificationChannel.EMAIL
-      )
+        subs.notification_types = subs.notification_types.filter(
+          type => type.channel !== NotificationChannel.EMAIL
+        )
 
-      if (isValidEmail(email)) {
-        subs.notification_types.push({
-          channel: NotificationChannel.EMAIL,
-          destination: email,
-          disabled: false,
-        })
-        await setAccountNotificationSubscriptions(account_address, subs)
+        if (isValidEmail(email)) {
+          subs.notification_types.push({
+            channel: NotificationChannel.EMAIL,
+            destination: email,
+            disabled: false,
+          })
+          await setAccountNotificationSubscriptions(account_address, subs)
+        }
+      } catch (e) {
+        console.error(e)
       }
     }
-    await (isValidEmail(meeting.emailToSendReminders) &&
-      updateEmailNotifications(meeting.emailToSendReminders!))
+    if (isValidEmail(meeting.emailToSendReminders))
+      await updateEmailNotifications(meeting.emailToSendReminders!)
 
     try {
       const meetingResult: DBSlotEnhanced = await saveMeeting(
         participantActing,
         meeting
       )
+
+      console.log('Step 6 complete')
 
       return res.status(200).json(meetingResult)
     } catch (e) {

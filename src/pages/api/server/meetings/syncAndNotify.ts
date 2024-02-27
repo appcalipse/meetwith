@@ -30,7 +30,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         request.created_at,
         request.meeting_url,
         request.title,
-        request.content
+        request.content,
+        undefined,
+        request.googleMeet
       )
     } catch (error) {
       Sentry.captureException(error)

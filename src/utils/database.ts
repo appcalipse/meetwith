@@ -652,11 +652,10 @@ const saveMeeting = async (
       p => p.type === ParticipantType.Scheduler
     ) || null
 
-  const ownerIsNotScheduler = Boolean(
-    ownerParticipant &&
-      schedulerAccount &&
-      ownerParticipant.account_address !== schedulerAccount.account_address
-  )
+  const ownerIsNotScheduler =
+    !!ownerParticipant &&
+    !!schedulerAccount &&
+    ownerParticipant.account_address !== schedulerAccount.account_address
 
   if (ownerIsNotScheduler && schedulerAccount) {
     const gatesResponse = await db.supabase
@@ -678,8 +677,10 @@ const saveMeeting = async (
 
   // TODO: for now
   let meetingProvider = MeetingProvider.CUSTOM
-  if (meeting.meeting_url.includes('huddle'))
+  if (meeting.meeting_url?.includes('huddle'))
     meetingProvider = MeetingProvider.HUDDLE
+  if (ownerAccount?.preferences?.videoMeeting === VideoMeeting.GoogleMeet)
+    meetingProvider = MeetingProvider.GOOGLE_MEET
 
   // we create here the root meeting data, with enough data
   const createdRootMeeting = await saveConferenceMeetingToDB({
@@ -801,6 +802,7 @@ const saveMeeting = async (
     participants: meeting.participants_mapping,
     title: meeting.title,
     content: meeting.content,
+    googleMeet: meeting.googleMeet,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
