@@ -373,6 +373,7 @@ const MeetingCard = ({
                     <Text>Description:</Text>
                     <Text
                       width="100%"
+                      suppressHydrationWarning
                       dangerouslySetInnerHTML={{
                         __html: sanitizeHtml(decryptedMeeting.content, {
                           allowedTags: false,
