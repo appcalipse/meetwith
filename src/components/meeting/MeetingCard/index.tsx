@@ -291,14 +291,13 @@ const MeetingCard = ({
                         onClick={onOpen}
                       />
                       <Menu>
-                        <MenuButton>
-                          <IconButton
-                            color={iconColor}
-                            aria-label="remove"
-                            icon={<FaEllipsisV size={16} />}
-                            onClick={onOpen}
-                          />
-                        </MenuButton>
+                        <MenuButton
+                          as={IconButton}
+                          color={iconColor}
+                          aria-label="option"
+                          icon={<FaEllipsisV size={16} />}
+                          key={`${meeting?.id}-option`}
+                        />
                         <Portal>
                           <MenuList backgroundColor={menuBgColor}>
                             {menuItems.map((val, index, arr) => (
@@ -376,8 +375,8 @@ const MeetingCard = ({
                       suppressHydrationWarning
                       dangerouslySetInnerHTML={{
                         __html: sanitizeHtml(decryptedMeeting.content, {
-                          allowedTags: false,
                           allowedAttributes: false,
+                          allowVulnerableTags: false,
                         }),
                       }}
                     />
