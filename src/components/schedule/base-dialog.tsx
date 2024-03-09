@@ -407,6 +407,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           end: new Date(meetingResult.end),
           source: TimeSlotSource.MWW,
           version: meetingResult.version,
+          meeting_info_encrypted: meetingResult.meeting_info_encrypted,
         }
       )
       return true
