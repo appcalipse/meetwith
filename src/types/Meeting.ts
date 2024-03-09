@@ -35,9 +35,6 @@ export interface DBSlot extends TimeSlot {
   created_at?: Date
   meeting_info_file_path: string
   version: number
-}
-
-export interface DBSlotEnhanced extends DBSlot {
   meeting_info_encrypted: Encrypted
 }
 
@@ -112,6 +109,7 @@ export interface MeetingDecrypted {
   content?: string
   related_slot_ids: string[]
   version: DBSlot['version']
+  meeting_info_encrypted: Encrypted
 }
 
 export enum GroupMeetingType {
