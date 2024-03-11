@@ -243,7 +243,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                       bgColor={bgColor}
                       shadow="lg"
                     >
-                      What should this meeting be called?
+                      Give a title for your meeting
                     </Text>
                     <Tooltip.Arrow />
                   </Tooltip.Content>
@@ -255,7 +255,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               value={title}
               onChange={e => setTitle(e.target.value)}
               type="text"
-              placeholder="What should this meeting be called?"
+              placeholder="Give a title for your meeting"
             />
           </FormControl>
           <FormControl textAlign="left">
@@ -299,42 +299,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               >
                 Meeting title (optional)
               </FormLabel>
-              <Tooltip.Provider delayDuration={400}>
-                <Tooltip.Root>
-                  <Tooltip.Trigger>
-                    <Flex
-                      w="16px"
-                      h="16px"
-                      borderRadius="50%"
-                      bgColor={iconColor}
-                      justifyContent="center"
-                      alignItems="center"
-                      ml={1}
-                    >
-                      <Icon w={1} color={bgColor} as={FaInfo} />
-                    </Flex>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content>
-                    <Text
-                      fontSize="sm"
-                      p={4}
-                      maxW="200px"
-                      bgColor={bgColor}
-                      shadow="lg"
-                    >
-                      What should this meeting be called?
-                    </Text>
-                    <Tooltip.Arrow />
-                  </Tooltip.Content>
-                </Tooltip.Root>
-              </Tooltip.Provider>
             </Flex>
             <Input
               id="title"
               value={title}
               onChange={e => setTitle(e.target.value)}
               type="text"
-              placeholder="What should this meeting be called?"
+              placeholder="Give a title for your meeting"
             />
           </FormControl>
           <FormControl textAlign="left">
