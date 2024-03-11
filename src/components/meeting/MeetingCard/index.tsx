@@ -166,7 +166,7 @@ const MeetingCard = ({
         link: generateGoogleCalendarUrl(
           decryptedMeeting?.start,
           decryptedMeeting?.end,
-          decryptedMeeting?.title,
+          decryptedMeeting?.title || 'No Title',
           decryptedMeeting?.content,
           decryptedMeeting?.meeting_url,
           timezone,
@@ -178,7 +178,7 @@ const MeetingCard = ({
         link: generateOffice365CalendarUrl(
           decryptedMeeting?.start,
           decryptedMeeting?.end,
-          decryptedMeeting?.title,
+          decryptedMeeting?.title || 'No Title',
           decryptedMeeting?.content,
           decryptedMeeting?.meeting_url,
           timezone,
@@ -190,10 +190,6 @@ const MeetingCard = ({
         onClick: () => {
           downloadIcs(decryptedMeeting!, currentAccount!.address)
         },
-      },
-      {
-        label: 'Open Meeting Private Data',
-        link: `https://mww.infura-ipfs.io/ipfs/${meeting.meeting_info_file_path}`,
       },
     ],
     [meeting]
@@ -241,7 +237,7 @@ const MeetingCard = ({
               <Flex alignItems="center" w="100%" mt={2}>
                 <Flex flex={1} alignItems="center" gap={3}>
                   <Heading size="lg">
-                    <strong>{decryptedMeeting?.title}</strong>
+                    <strong>{decryptedMeeting?.title || 'No Title'}</strong>
                   </Heading>
                   {label && (
                     <Badge
@@ -366,22 +362,6 @@ const MeetingCard = ({
                     <strong>{getNamesDisplay(decryptedMeeting)}</strong>
                   </Text>
                 </HStack>
-
-                {decryptedMeeting.content && (
-                  <HStack alignItems="flex-start">
-                    <Text>Description:</Text>
-                    <Text
-                      width="100%"
-                      suppressHydrationWarning
-                      dangerouslySetInnerHTML={{
-                        __html: sanitizeHtml(decryptedMeeting.content, {
-                          allowedAttributes: false,
-                          allowVulnerableTags: false,
-                        }),
-                      }}
-                    />
-                  </HStack>
-                )}
                 <HStack alignItems="flex-start">
                   <Text>Meeting link:</Text>
                   <HStack alignItems="center">
@@ -405,6 +385,21 @@ const MeetingCard = ({
                     />
                   </HStack>
                 </HStack>
+                {decryptedMeeting.content && (
+                  <HStack alignItems="flex-start">
+                    <Text>Description:</Text>
+                    <Text
+                      width="100%"
+                      suppressHydrationWarning
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(decryptedMeeting.content, {
+                          allowedAttributes: false,
+                          allowVulnerableTags: false,
+                        }),
+                      }}
+                    />
+                  </HStack>
+                )}
               </VStack>
             </VStack>
           </Box>
