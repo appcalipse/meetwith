@@ -41,7 +41,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       await ExternalCalendarSync.create(request)
     } catch (error) {
-      Sentry.captureException(error)
+      console.error(error)
     }
 
     return res.status(200).send(true)
