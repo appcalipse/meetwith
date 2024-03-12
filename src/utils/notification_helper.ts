@@ -85,8 +85,6 @@ export const notifyForMeetingCancellation = async (
       ''
     )
   )
-
-  return
 }
 
 export const notifyForOrUpdateNewMeeting = async (
@@ -118,8 +116,6 @@ export const notifyForOrUpdateNewMeeting = async (
       changes
     )
   )
-
-  return
 }
 
 const setupParticipants = async (
@@ -572,9 +568,9 @@ const getParticipantActingDisplayName = (
 }
 
 const runPromises = async (promises: Promise<boolean>[]) => {
-  const timeout = setTimeout(() => {
-    console.error('timed out on notifications')
-  }, 7000)
+  // const timeout = setTimeout(() => {
+  //   console.error('timed out on notifications')
+  // }, 7000)
 
-  await Promise.race([Promise.all(promises), timeout])
+  await Promise.all(promises)
 }
