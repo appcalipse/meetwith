@@ -80,8 +80,6 @@ export const handleMeetingSchedule = async (
         meeting
       )
 
-      console.log('Step 6 complete')
-
       return res.status(200).json(meetingResult)
     } catch (e) {
       if (e instanceof TimeNotAvailableError) {
