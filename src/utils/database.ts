@@ -215,7 +215,6 @@ const updateAccountFromInvite = async (
         newIdentity.publicKey,
         privateInfo
       )
-      // const newEncryptedPath = await addContentToIPFS(newPvtInfo)
 
       const { _, error } = await db.supabase
         .from('slots')
@@ -818,7 +817,6 @@ const saveMeeting = async (
         start: meeting.start,
         end: meeting.end,
         account_address: account.address,
-        meeting_info_file_path: '',
         version: 0,
         meeting_info_encrypted: participant.privateInfo,
       }
@@ -1523,7 +1521,6 @@ const updateMeeting = async (
         start: new Date(meetingUpdateRequest.start),
         end: new Date(meetingUpdateRequest.end),
         account_address: account.address,
-        meeting_info_file_path: '',
         version: meetingUpdateRequest.version,
         meeting_info_encrypted: participant.privateInfo,
       }
