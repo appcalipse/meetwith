@@ -92,7 +92,6 @@ interface InternalSchedule {
   startTime: Date
   guestEmail: string
   name?: string
-  title?: string
   content?: string
   meetingUrl?: string
 }
@@ -333,8 +332,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           unloggedSchedule.guestEmail,
           unloggedSchedule.name,
           unloggedSchedule.content,
-          unloggedSchedule.meetingUrl,
-          unloggedSchedule.title
+          unloggedSchedule.meetingUrl
         )
       }
     }
@@ -347,8 +345,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     name?: string,
     content?: string,
     meetingUrl?: string,
-    emailToSendReminders?: string,
-    title?: string
+    emailToSendReminders?: string
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
@@ -448,8 +445,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         currentAccount,
         content,
         meetingUrl,
-        emailToSendReminders,
-        title
+        emailToSendReminders
       )
       await updateSlots()
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
