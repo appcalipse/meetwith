@@ -2,10 +2,18 @@ import {
   Badge,
   Box,
   Button,
+  Divider,
   Flex,
+  Heading,
   HStack,
   IconButton,
   Link,
+  Menu,
+  MenuButton,
+  MenuDivider,
+  MenuItem,
+  MenuList,
+  Portal,
   Spinner,
   Text,
   useColorModeValue,
@@ -13,23 +21,19 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import {
-  addHours,
-  differenceInMinutes,
-  isAfter,
-  isWithinInterval,
-} from 'date-fns'
-import { useContext, useEffect, useState } from 'react'
+import { addHours, isAfter, isWithinInterval } from 'date-fns'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import React from 'react'
-import { FaEdit, FaTrash } from 'react-icons/fa'
+import { FaEdit, FaEllipsisV, FaRegCopy, FaTrash } from 'react-icons/fa'
 import sanitizeHtml from 'sanitize-html'
 
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import {
-  dateToHumanReadable,
+  dateToLocalizedRange,
   decodeMeeting,
-  durationToHumanReadable,
+  generateGoogleCalendarUrl,
   generateIcs,
+  generateOffice365CalendarUrl,
 } from '@/utils/calendar_manager'
 import { appUrl, isProduction } from '@/utils/constants'
 import { addUTMParams } from '@/utils/huddle.helper'
@@ -42,7 +46,6 @@ import {
   MeetingDecrypted,
 } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
-import IPFSLink from '../../IPFSLink'
 
 interface MeetingCardProps {
   meeting: DBSlot
@@ -68,8 +71,6 @@ const MeetingCard = ({
   onCancel,
   onClickToOpen,
 }: MeetingCardProps) => {
-  const duration = differenceInMinutes(meeting.end, meeting.start)
-
   const defineLabel = (start: Date, end: Date): Label | null => {
     const now = new Date()
     if (isWithinInterval(now, { start, end })) {
@@ -91,7 +92,7 @@ const MeetingCard = ({
     return null
   }
 
-  const bgColor = useColorModeValue('white', 'gray.900')
+  const bgColor = useColorModeValue('white', '#1F2933')
 
   const label = defineLabel(meeting.start as Date, meeting.end as Date)
   const toast = useToast()
@@ -128,95 +129,6 @@ const MeetingCard = ({
 
   const iconColor = useColorModeValue('gray.500', 'gray.200')
 
-  const showEdit =
-    isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
-    isAfter(meeting.start, new Date())
-
-  return (
-    <>
-      <Box
-        shadow="md"
-        width="100%"
-        borderRadius="lg"
-        overflow="hidden"
-        position="relative"
-        bgColor={bgColor}
-      >
-        {label && (
-          <Badge
-            borderRadius={0}
-            borderBottomRightRadius={4}
-            px={2}
-            py={1}
-            colorScheme={label.color}
-            alignSelf="flex-end"
-            position="absolute"
-            left={0}
-            top={0}
-          >
-            {label.text}
-          </Badge>
-        )}
-        <Box p="6" maxWidth="100%">
-          <VStack alignItems="start" position="relative">
-            <Flex flexDir="row-reverse" alignItems="center" w="100%">
-              {showEdit && (
-                <HStack>
-                  <IconButton
-                    color={iconColor}
-                    aria-label="remove"
-                    icon={<FaEdit size={16} />}
-                    onClick={() => {
-                      decryptedMeeting &&
-                        onClickToOpen(meeting, decryptedMeeting, timezone)
-                    }}
-                  />
-                  <IconButton
-                    color={iconColor}
-                    aria-label="remove"
-                    icon={<FaTrash size={16} />}
-                    onClick={onOpen}
-                  />
-                </HStack>
-              )}
-              <Box flex={1} pt={2}>
-                <strong>When</strong>:{' '}
-                {dateToHumanReadable(meeting.start as Date, timezone, false)}
-              </Box>
-            </Flex>
-
-            <HStack>
-              <strong>Duration:</strong>:{' '}
-              <Text>{durationToHumanReadable(duration)}</Text>
-            </HStack>
-            <IPFSLink
-              title="Meeting private data"
-              ipfsHash={meeting.meeting_info_file_path}
-            />
-            <DecodedInfo
-              loading={loading}
-              decryptedMeeting={decryptedMeeting}
-            />
-          </VStack>
-        </Box>
-      </Box>
-      <CancelMeetingDialog
-        isOpen={isOpen}
-        onClose={onClose}
-        decriptedMeeting={decryptedMeeting}
-        currentAccount={currentAccount}
-        afterCancel={onCancel}
-      />
-    </>
-  )
-}
-
-const DecodedInfo: React.FC<{
-  loading: boolean
-  decryptedMeeting?: MeetingDecrypted
-}> = ({ decryptedMeeting, loading }) => {
-  const { currentAccount } = useContext(AccountContext)
-
   const downloadIcs = (
     info: MeetingDecrypted,
     currentConnectedAccountAddress: string
@@ -247,82 +159,264 @@ const DecodedInfo: React.FC<{
     )
   }
 
-  const bgColor = useColorModeValue('gray.50', 'gray.700')
+  const menuItems = useMemo(
+    () => [
+      {
+        label: 'Add to Google Calendar',
+        link: generateGoogleCalendarUrl(
+          decryptedMeeting?.start,
+          decryptedMeeting?.end,
+          decryptedMeeting?.title || 'No Title',
+          decryptedMeeting?.content,
+          decryptedMeeting?.meeting_url,
+          timezone,
+          decryptedMeeting?.participants
+        ),
+      },
+      {
+        label: 'Add to Office 365 Calendar',
+        link: generateOffice365CalendarUrl(
+          decryptedMeeting?.start,
+          decryptedMeeting?.end,
+          decryptedMeeting?.title || 'No Title',
+          decryptedMeeting?.content,
+          decryptedMeeting?.meeting_url,
+          timezone,
+          decryptedMeeting?.participants
+        ),
+      },
+      {
+        label: 'Download. ics ',
+        onClick: () => {
+          downloadIcs(decryptedMeeting!, currentAccount!.address)
+        },
+      },
+    ],
+    [meeting]
+  )
+  const handleCopy = () => {
+    try {
+      navigator.clipboard.writeText(decryptedMeeting?.meeting_url || '')
+      toast({
+        title: 'Copied to clipboard',
+        status: 'success',
+        duration: 2000,
+        position: 'top',
+      })
+    } catch (e) {
+      toast({
+        title: 'Failed to copy to clipboard',
+        status: 'error',
+        duration: 2000,
+        position: 'top',
+      })
+    }
+  }
+  const showEdit =
+    isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
+    isAfter(meeting.start, new Date())
+  const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   return (
-    <Box
-      mt={2}
-      borderRadius={4}
-      p={4}
-      bgColor={bgColor}
-      width="100%"
-      overflow="hidden"
-    >
+    <>
       {loading ? (
         <HStack>
           <Text>Decoding meeting info...</Text>{' '}
           <Spinner size="sm" colorScheme="gray" />
         </HStack>
       ) : decryptedMeeting ? (
-        <VStack alignItems="flex-start">
-          <Text>
-            <strong>Meeting link</strong>
-          </Text>
-          <Link
-            href={addUTMParams(decryptedMeeting.meeting_url || '')}
-            isExternal
-            onClick={() => logEvent('Clicked to start meeting')}
-            whiteSpace="nowrap"
-            overflow="hidden"
-            textOverflow="ellipsis"
-            maxWidth="100%"
-            flex={1}
-          >
-            {decryptedMeeting.meeting_url}
-          </Link>
-          <VStack alignItems="flex-start">
-            <Text>
-              <strong>Participants</strong>
-            </Text>
-            <Text>{getNamesDisplay(decryptedMeeting)}</Text>
-          </VStack>
-          {decryptedMeeting.content && (
-            <Box width="100%">
-              <Text>
-                <strong>Notes</strong>
-              </Text>
-              <Text
-                width="100%"
-                mb={6}
-                dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(decryptedMeeting.content, {
-                    allowedTags: false,
-                    allowedAttributes: false,
-                  }),
-                }}
-              />
-            </Box>
-          )}
-          <Button
-            colorScheme="primary"
-            variant="outline"
-            onClick={() =>
-              downloadIcs(decryptedMeeting, currentAccount!.address)
-            }
-          >
-            Download .ics
-          </Button>
-          {!isProduction && (
-            <Button onClick={() => console.debug(decryptedMeeting)}>
-              Log info (for debugging)
-            </Button>
-          )}
-        </VStack>
+        <Box
+          shadow="md"
+          width="100%"
+          borderRadius="lg"
+          overflow="hidden"
+          position="relative"
+          bgColor={bgColor}
+        >
+          <Box p="8" maxWidth="100%">
+            <VStack alignItems="start" position="relative" gap={6}>
+              <Flex alignItems="center" w="100%" mt={2}>
+                <Flex flex={1} alignItems="center" gap={3}>
+                  <Heading size="lg">
+                    <strong>{decryptedMeeting?.title || 'No Title'}</strong>
+                  </Heading>
+                  {label && (
+                    <Badge
+                      borderRadius={3}
+                      borderBottomRightRadius={4}
+                      px={2}
+                      height="fit-content"
+                      py={1}
+                      colorScheme={label.color}
+                    >
+                      {label.text}
+                    </Badge>
+                  )}
+                </Flex>
+                <HStack>
+                  <Link
+                    href={addUTMParams(decryptedMeeting?.meeting_url || '')}
+                    isExternal
+                    onClick={() => logEvent('Joined a meeting')}
+                    whiteSpace="nowrap"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                    maxWidth="100%"
+                    textDecoration="none"
+                    flex={1}
+                    _hover={{
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <Button colorScheme="primary">Join meeting</Button>
+                  </Link>
+                  {showEdit && (
+                    <>
+                      <IconButton
+                        color={iconColor}
+                        aria-label="remove"
+                        icon={<FaEdit size={16} />}
+                        onClick={() => {
+                          decryptedMeeting &&
+                            onClickToOpen(meeting, decryptedMeeting, timezone)
+                        }}
+                      />
+                      <IconButton
+                        color={iconColor}
+                        aria-label="remove"
+                        icon={<FaTrash size={16} />}
+                        onClick={onOpen}
+                      />
+                      <Menu>
+                        <MenuButton
+                          as={IconButton}
+                          color={iconColor}
+                          aria-label="option"
+                          icon={<FaEllipsisV size={16} />}
+                          key={`${meeting?.id}-option`}
+                        />
+                        <Portal>
+                          <MenuList backgroundColor={menuBgColor}>
+                            {menuItems.map((val, index, arr) => (
+                              <>
+                                {val.link ? (
+                                  <MenuItem
+                                    as="a"
+                                    href={val.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    key={`${val.label}-${meeting?.id}`}
+                                    backgroundColor={menuBgColor}
+                                  >
+                                    {val.label}
+                                  </MenuItem>
+                                ) : (
+                                  <MenuItem
+                                    onClick={val.onClick}
+                                    backgroundColor={menuBgColor}
+                                    key={`${val.label}-${meeting?.id}`}
+                                  >
+                                    {val.label}
+                                  </MenuItem>
+                                )}
+                                {index !== arr.length - 1 && (
+                                  <MenuDivider borderColor="neutral.600" />
+                                )}
+                              </>
+                            ))}
+                            {!isProduction && (
+                              <>
+                                <MenuDivider borderColor="neutral.600" />
+                                <MenuItem
+                                  backgroundColor={menuBgColor}
+                                  onClick={() =>
+                                    console.debug(decryptedMeeting)
+                                  }
+                                >
+                                  Log info (for debugging)
+                                </MenuItem>
+                              </>
+                            )}
+                          </MenuList>
+                        </Portal>
+                      </Menu>
+                    </>
+                  )}
+                </HStack>
+              </Flex>
+              <Box flex={1} pt={2}>
+                <strong>
+                  {dateToLocalizedRange(
+                    meeting.start as Date,
+                    meeting.end as Date,
+                    timezone,
+                    true
+                  )}
+                </strong>
+              </Box>
+
+              <Divider />
+              <VStack alignItems="start">
+                <HStack alignItems="flex-start">
+                  <Text>Participants:</Text>
+                  <Text>
+                    <strong>{getNamesDisplay(decryptedMeeting)}</strong>
+                  </Text>
+                </HStack>
+                <HStack alignItems="flex-start">
+                  <Text>Meeting link:</Text>
+                  <HStack alignItems="center">
+                    <Link
+                      href={addUTMParams(decryptedMeeting.meeting_url || '')}
+                      isExternal
+                      onClick={() => logEvent('Clicked to start meeting')}
+                      whiteSpace="nowrap"
+                      overflow="hidden"
+                      textOverflow="ellipsis"
+                      maxWidth="100%"
+                      flex={1}
+                    >
+                      <strong>{decryptedMeeting.meeting_url}</strong>
+                    </Link>
+                    <FaRegCopy
+                      size={16}
+                      onClick={handleCopy}
+                      display="block"
+                      cursor="pointer"
+                    />
+                  </HStack>
+                </HStack>
+                {decryptedMeeting.content && (
+                  <HStack alignItems="flex-start">
+                    <Text>Description:</Text>
+                    <Text
+                      width="100%"
+                      suppressHydrationWarning
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(decryptedMeeting.content, {
+                          allowedAttributes: false,
+                          allowVulnerableTags: false,
+                        }),
+                      }}
+                    />
+                  </HStack>
+                )}
+              </VStack>
+            </VStack>
+          </Box>
+        </Box>
       ) : (
         <HStack>
           <Text>Failed to decode information</Text>
         </HStack>
       )}
-    </Box>
+      <CancelMeetingDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        decriptedMeeting={decryptedMeeting}
+        currentAccount={currentAccount}
+        afterCancel={onCancel}
+      />
+    </>
   )
 }
 
