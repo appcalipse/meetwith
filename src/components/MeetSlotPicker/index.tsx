@@ -53,8 +53,7 @@ interface MeetSlotPickerProps {
     name?: string,
     content?: string,
     meetingUrl?: string,
-    emailToSendReminders?: string,
-    title?: string
+    emailToSendReminders?: string
   ) => Promise<boolean>
   preferences?: AccountPreferences
   reset: boolean
