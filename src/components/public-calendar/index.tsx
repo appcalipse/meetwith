@@ -92,6 +92,7 @@ interface InternalSchedule {
   startTime: Date
   guestEmail: string
   name?: string
+  title?: string
   content?: string
   meetingUrl?: string
 }
@@ -332,7 +333,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           unloggedSchedule.guestEmail,
           unloggedSchedule.name,
           unloggedSchedule.content,
-          unloggedSchedule.meetingUrl
+          unloggedSchedule.meetingUrl,
+          unloggedSchedule.title
         )
       }
     }
@@ -345,7 +347,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     name?: string,
     content?: string,
     meetingUrl?: string,
-    emailToSendReminders?: string
+    emailToSendReminders?: string,
+    title?: string
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
@@ -446,6 +449,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         content,
         meetingUrl,
         emailToSendReminders,
+        title,
         account?.preferences?.videoMeeting === VideoMeeting.GoogleMeet
       )
       await updateSlots()

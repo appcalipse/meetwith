@@ -201,6 +201,7 @@ const buildMeetingData = async (
   meetingContent?: string,
   meetingUrl = '',
   meetingId = '',
+  meetingTitle = 'No Title',
   googleMeet?: boolean
 ): Promise<MeetingCreationRequest> => {
   if (!googleMeet && meetingUrl) {
@@ -258,6 +259,7 @@ const buildMeetingData = async (
   const privateInfo: IPFSMeetingInfo = {
     created_at: new Date(),
     participants: sanitizedParticipants,
+    title: meetingTitle,
     content: meetingContent,
     meeting_url: googleMeet
       ? ''
@@ -330,6 +332,7 @@ const buildMeetingData = async (
     meetingTypeId,
     meeting_url: privateInfo['meeting_url'],
     content: privateInfo['content'],
+    title: privateInfo['title'],
     googleMeet,
   } as MeetingCreationRequest
 }
@@ -354,7 +357,8 @@ const updateMeeting = async (
   signature: string,
   participants: ParticipantInfo[],
   content: string,
-  meetingUrl: string
+  meetingUrl: string,
+  meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -440,7 +444,8 @@ const updateMeeting = async (
     currentAccount,
     content,
     meetingUrl,
-    rootMeetingId
+    rootMeetingId,
+    meetingTitle
   )
   const payload = {
     ...meetingData,
@@ -523,6 +528,7 @@ const scheduleMeeting = async (
   meetingContent?: string,
   meetingUrl?: string,
   emailToSendReminders?: string,
+  meetingTitle?: string,
   googleMeet?: boolean
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
@@ -537,6 +543,7 @@ const scheduleMeeting = async (
     meetingContent,
     meetingUrl,
     newMeetingId,
+    meetingTitle,
     googleMeet
   )
 
@@ -595,6 +602,7 @@ const scheduleMeeting = async (
         created_at: meeting.start,
         participants: meeting.participants_mapping,
         content: meeting.content,
+        title: meeting.title,
         meeting_id: newMeetingId,
         meeting_url: meeting.meeting_url,
         start: meeting.start,
@@ -731,6 +739,7 @@ const decryptMeeting = async (
     created_at: meeting.created_at!,
     participants: meetingInfo.participants,
     content: meetingInfo.content,
+    title: meetingInfo.title,
     meeting_url: meetingInfo.meeting_url,
     related_slot_ids: meetingInfo.related_slot_ids,
     start: new Date(meeting.start),
@@ -789,6 +798,23 @@ const dateToHumanReadable = (
     result += ` - ${timezone}`
   }
   return result
+}
+
+const dateToLocalizedRange = (
+  start_date: Date,
+  end_date: Date,
+  timezone: string,
+  includeTimezone: boolean
+): string => {
+  const start = `${format(
+    utcToZonedTime(start_date, timezone),
+    'eeee, LLL d • p - '
+  )}`
+  let end = `${format(utcToZonedTime(end_date, timezone), 'pp')}`
+  if (includeTimezone) {
+    end += ` (${timezone})`
+  }
+  return start + end
 }
 
 const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
@@ -862,13 +888,87 @@ const decodeMeeting = async (
   }
   return null
 }
-
+const googleUrlParsedDate = (date: Date) => format(date, "yyyyMMdd'T'HHmmSS'Z'")
+const outLookUrlParsedDate = (date: Date) =>
+  format(date, "yyyy-MM-dd:HH:mm:SS'Z'")
+const generateGoogleCalendarUrl = (
+  start?: Date | number,
+  end?: Date | number,
+  title?: string,
+  content?: string,
+  meeting_url?: string,
+  timezone?: string,
+  participants?: MeetingDecrypted['participants']
+) => {
+  let baseUrl = 'https://calendar.google.com/calendar/r/eventedit11?sf=true'
+  if (start && end) {
+    baseUrl += `&dates=${googleUrlParsedDate(
+      new Date(start)
+    )}%2F${googleUrlParsedDate(new Date(end))}`
+  }
+  if (title) {
+    baseUrl += `&text=${title}`
+  }
+  if (content || meeting_url) {
+    baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
+      content,
+      meeting_url,
+      `${appUrl}/dashboard/meetings`
+    )}`
+  }
+  if (timezone) {
+    baseUrl += `&ctz=${timezone}`
+  }
+  if (participants) {
+    baseUrl += `&add=${participants
+      ?.map(val => val.guest_email)
+      ?.filter(val => !!val)
+      ?.join(',')}`
+  }
+  return baseUrl
+}
+const generateOffice365CalendarUrl = (
+  start?: Date | number,
+  end?: Date | number,
+  title?: string,
+  content?: string,
+  meeting_url?: string,
+  timezone?: string,
+  participants?: MeetingDecrypted['participants']
+) => {
+  let baseUrl =
+    'https://outlook.office.com/calendar/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&online=true'
+  if (start) {
+    baseUrl += `&startdt=${outLookUrlParsedDate(new Date(start))}`
+  }
+  if (end) {
+    baseUrl += `&enddt=${outLookUrlParsedDate(new Date(end))}`
+  }
+  if (title) {
+    baseUrl += `&subject=${title}`
+  }
+  if (content || meeting_url) {
+    baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
+      content,
+      meeting_url,
+      `${appUrl}/dashboard/meetings`
+    )}`
+  }
+  if (participants) {
+    baseUrl += `&to=${participants
+      ?.map(val => val.guest_email)
+      ?.filter(val => !!val)
+      ?.join(',')}`
+  }
+  return baseUrl
+}
 const allSlots = generateAllSlots()
 
 export {
   allSlots,
   cancelMeeting,
   dateToHumanReadable,
+  dateToLocalizedRange,
   decodeMeeting,
   decryptMeeting,
   defaultTimeRange,
@@ -876,10 +976,14 @@ export {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
+  generateGoogleCalendarUrl,
   generateIcs,
+  generateOffice365CalendarUrl,
   getAccountCalendarUrl,
   getAccountDomainUrl,
+  googleUrlParsedDate,
   noNoReplyEmailForAccount,
+  outLookUrlParsedDate,
   scheduleMeeting,
   updateMeeting,
 }
