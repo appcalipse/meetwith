@@ -1,9 +1,10 @@
 import faker from '@faker-js/faker'
 import { randomUUID } from 'crypto'
 
-import { Account, VideoMeeting } from '@/types/Account'
+import { Account } from '@/types/Account'
 import {
   IPFSMeetingInfo,
+  MeetingProvider,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -37,7 +38,7 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
       description: faker.datatype.string(),
       availabilities: [],
       socialLinks: [],
-      videoMeeting: VideoMeeting.None,
+      meetingProvider: MeetingProvider.CUSTOM,
     },
   }
 }
@@ -96,6 +97,7 @@ describe('calendar manager', () => {
         startTime,
         endTime,
         participants,
+        MeetingProvider.CUSTOM,
         account,
         meetingContent,
         meetingUrl
@@ -151,6 +153,7 @@ describe('calendar manager', () => {
         startTime,
         endTime,
         participants,
+        MeetingProvider.CUSTOM,
         account,
         meetingContent,
         meetingUrl
@@ -243,6 +246,7 @@ describe('calendar manager', () => {
       startTime,
       endTime,
       JSON.parse(JSON.stringify(participants)),
+      MeetingProvider.CUSTOM,
       existingAccounts[1],
       meetingContent,
       meetingUrl
@@ -347,6 +351,7 @@ describe('calendar manager', () => {
       startTime,
       endTime,
       participants,
+      MeetingProvider.CUSTOM,
       null,
       meetingContent,
       meetingUrl

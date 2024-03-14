@@ -2,7 +2,8 @@ import { FormControl, FormLabel, Heading, Switch } from '@chakra-ui/react'
 import { ChangeEvent, useContext, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import { Account, VideoMeeting } from '@/types/Account'
+import { Account } from '@/types/Account'
+import { MeetingProvider } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import { saveAccountChanges } from '@/utils/api_helper'
 
@@ -14,7 +15,7 @@ export const UseGoogleMeet: React.FC<{ currentAccount: Account }> = ({
   const { login } = useContext(AccountContext)
 
   const [useGoogleMeet, setUseGoogleMeet] = useState<boolean>(
-    currentAccount.preferences?.videoMeeting === VideoMeeting.GoogleMeet
+    currentAccount.preferences?.meetingProvider === MeetingProvider.GOOGLE_MEET
   )
 
   async function onChange(event: ChangeEvent<HTMLInputElement>) {
@@ -24,9 +25,9 @@ export const UseGoogleMeet: React.FC<{ currentAccount: Account }> = ({
       ...currentAccount!,
       preferences: {
         ...currentAccount!.preferences!,
-        videoMeeting: event.target.checked
-          ? VideoMeeting.GoogleMeet
-          : VideoMeeting.None,
+        meetingProvider: event.target.checked
+          ? MeetingProvider.GOOGLE_MEET
+          : MeetingProvider.HUDDLE,
       },
     })
     logEvent('use_google_meet_toggled', { value: event.target.checked })

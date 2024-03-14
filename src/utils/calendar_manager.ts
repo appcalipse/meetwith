@@ -18,6 +18,7 @@ import {
   IPFSMeetingInfo,
   MeetingChangeType,
   MeetingDecrypted,
+  MeetingProvider,
   ParticipantMappingType,
   SchedulingType,
 } from '@/types/Meeting'
@@ -33,7 +34,6 @@ import {
 import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
-  createHuddleRoom,
   fetchContentFromIPFSFromBrowser,
   getAccount,
   getExistingAccounts,
@@ -197,14 +197,14 @@ const buildMeetingData = async (
   participantsToKeep: {
     [accountOrEmail: string]: string
   },
+  meetingProvider: MeetingProvider,
   currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl = '',
   meetingId = '',
-  meetingTitle = 'No Title',
-  googleMeet?: boolean
+  meetingTitle = 'No Title'
 ): Promise<MeetingCreationRequest> => {
-  if (!googleMeet && meetingUrl) {
+  if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
       throw new InvalidURL()
     }
@@ -261,9 +261,7 @@ const buildMeetingData = async (
     participants: sanitizedParticipants,
     title: meetingTitle,
     content: meetingContent,
-    meeting_url: googleMeet
-      ? ''
-      : meetingUrl ?? (await createHuddleRoom())?.url,
+    meeting_url: meetingUrl,
     change_history_paths: [],
     related_slot_ids: [],
     meeting_id: meetingId,
@@ -333,8 +331,8 @@ const buildMeetingData = async (
     meeting_url: privateInfo['meeting_url'],
     content: privateInfo['content'],
     title: privateInfo['title'],
-    googleMeet,
-  } as MeetingCreationRequest
+    meetingProvider,
+  }
 }
 
 /**
@@ -358,6 +356,7 @@ const updateMeeting = async (
   participants: ParticipantInfo[],
   content: string,
   meetingUrl: string,
+  meetingProvider: MeetingProvider,
   meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   // Sanity check
@@ -441,6 +440,7 @@ const updateMeeting = async (
       acc[it] = accountSlotMap[it] || it
       return acc
     }, {}),
+    meetingProvider,
     currentAccount,
     content,
     meetingUrl,
@@ -524,12 +524,12 @@ const scheduleMeeting = async (
   startTime: Date,
   endTime: Date,
   participants: ParticipantInfo[],
+  meetingProvider: MeetingProvider,
   currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl?: string,
   emailToSendReminders?: string,
-  meetingTitle?: string,
-  googleMeet?: boolean
+  meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const meeting = await buildMeetingData(
@@ -539,12 +539,12 @@ const scheduleMeeting = async (
     endTime,
     participants,
     {},
+    meetingProvider,
     currentAccount,
     meetingContent,
     meetingUrl,
     newMeetingId,
-    meetingTitle,
-    googleMeet
+    meetingTitle
   )
 
   const owner = meeting.participants_mapping.filter(
