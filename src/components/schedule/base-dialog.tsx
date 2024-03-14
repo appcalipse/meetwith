@@ -49,6 +49,7 @@ import { AccountContext } from '@/providers/AccountProvider'
 import {
   DBSlot,
   MeetingChangeType,
+  MeetingProvider,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -372,6 +373,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           start,
           end,
           _participants.valid,
+          MeetingProvider.HUDDLE,
           currentAccount,
           content,
           meetingUrl,
@@ -393,6 +395,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           _participants.valid,
           content,
           meetingUrl,
+          MeetingProvider.HUDDLE,
           title
         )
         logEvent('Updated a meeting', {

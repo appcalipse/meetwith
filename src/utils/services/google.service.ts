@@ -6,7 +6,7 @@ import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
-import { TimeSlotSource } from '@/types/Meeting'
+import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -199,19 +199,21 @@ export default class GoogleCalendarService implements CalendarService {
               email: NO_REPLY_EMAIL,
             },
             guestsCanModify: false,
-            location: !meetingDetails.googleMeet
-              ? meetingDetails.meeting_url
-              : undefined,
-            conferenceData: meetingDetails.googleMeet
-              ? {
-                  createRequest: {
-                    requestId: meetingDetails.meeting_id,
-                    conferenceSolutionKey: {
-                      type: 'hangoutsMeet',
+            location:
+              meetingDetails.meetingProvider !== MeetingProvider.GOOGLE_MEET
+                ? meetingDetails.meeting_url
+                : undefined,
+            conferenceData:
+              meetingDetails.meetingProvider == MeetingProvider.GOOGLE_MEET
+                ? {
+                    createRequest: {
+                      requestId: meetingDetails.meeting_id,
+                      conferenceSolutionKey: {
+                        type: 'hangoutsMeet',
+                      },
                     },
-                  },
-                }
-              : undefined,
+                  }
+                : undefined,
             status: 'confirmed',
           }
 
