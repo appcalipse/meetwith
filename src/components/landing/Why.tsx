@@ -110,8 +110,8 @@ export function Why() {
               </Heading>
               <Text fontSize="" color="neutral.100">
                 Meet with Wallet automatically notifies you of upcoming meetings
-                over email, push, Discord or Push protocol so that you don’t
-                miss a beat. Only if you want it, of course.
+                over email or Discord, so that you don’t miss a beat. Only if
+                you want it, of course.
               </Text>
             </VStack>
           </SlideFade>
