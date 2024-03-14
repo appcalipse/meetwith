@@ -1,4 +1,5 @@
 import { DiscordAccount } from './Discord'
+import { MeetingProvider } from './Meeting'
 import { Subscription } from './Subscription'
 
 export interface AuthToken {
@@ -50,11 +51,6 @@ export interface TimeRange {
   end: string
 }
 
-export enum VideoMeeting {
-  None = 'None',
-  GoogleMeet = 'GoogleMeet',
-}
-
 export interface AccountPreferences {
   timezone: string
   availableTypes: MeetingType[]
@@ -63,7 +59,7 @@ export interface AccountPreferences {
   socialLinks: SocialLink[]
   name?: string
   avatar?: string
-  videoMeeting: VideoMeeting
+  meetingProvider: MeetingProvider
 }
 
 export enum SocialLinkType {
