@@ -14,7 +14,6 @@ import {
   AccountPreferences,
   MeetingType,
   SimpleAccountInfo,
-  VideoMeeting,
 } from '@/types/Account'
 import {
   AccountNotifications,
@@ -130,7 +129,7 @@ const initAccountDBForWallet = async (
     availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
-    videoMeeting: VideoMeeting.None,
+    meetingProvider: MeetingProvider.HUDDLE,
   }
 
   const user_account = createdUserAccount.data[0]
@@ -293,7 +292,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       name: preferences.name,
       socialLinks: preferences.socialLinks,
       availableTypes: preferences.availableTypes,
-      videoMeeting: preferences.videoMeeting,
+      meetingProvider: preferences.meetingProvider,
     })
     .match({ owner_account_address: account.address.toLowerCase() })
 
@@ -675,13 +674,6 @@ const saveMeeting = async (
     }
   }
 
-  // TODO: for now
-  let meetingProvider = MeetingProvider.CUSTOM
-  if (meeting.meeting_url?.includes('huddle'))
-    meetingProvider = MeetingProvider.HUDDLE
-  if (ownerAccount?.preferences?.videoMeeting === VideoMeeting.GoogleMeet)
-    meetingProvider = MeetingProvider.GOOGLE_MEET
-
   // we create here the root meeting data, with enough data
   const createdRootMeeting = await saveConferenceMeetingToDB({
     id: meeting.meeting_id,
@@ -689,7 +681,7 @@ const saveMeeting = async (
     end: meeting.end,
     meeting_url: meeting.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
-    provider: meetingProvider,
+    provider: meeting.meetingProvider,
   })
 
   if (!createdRootMeeting) {
@@ -802,7 +794,7 @@ const saveMeeting = async (
     participants: meeting.participants_mapping,
     title: meeting.title,
     content: meeting.content,
-    googleMeet: meeting.googleMeet,
+    meetingProvider: meeting.meetingProvider,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -1498,6 +1490,7 @@ const updateMeeting = async (
     created_at: meetingResponse.created_at!,
     timezone,
     meeting_url: meetingUpdateRequest.meeting_url,
+    meetingProvider: meetingUpdateRequest.meetingProvider,
     participants: meetingUpdateRequest.participants_mapping,
     title: meetingUpdateRequest.title,
     content: meetingUpdateRequest.content,

@@ -16,7 +16,6 @@ import { MeetingChange, RequestParticipantMapping } from '../types/Requests'
 import {
   dateToHumanReadable,
   durationToHumanReadable,
-  getAccountDomainUrl,
 } from './calendar_manager'
 import {
   getAccountFromDB,
@@ -97,8 +96,7 @@ export const notifyForOrUpdateNewMeeting = async (
   meeting_url: string,
   title?: string,
   description?: string,
-  changes?: MeetingChange,
-  googleMeet?: boolean
+  changes?: MeetingChange
 ): Promise<void> => {
   const participantsInfo = await setupParticipants(participants)
 

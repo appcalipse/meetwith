@@ -21,10 +21,10 @@ import { FaInfo } from 'react-icons/fa'
 
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import { ToggleSelector } from '@/components/toggle-selector'
-import { AccountPreferences, VideoMeeting } from '@/types/Account'
+import { AccountPreferences } from '@/types/Account'
 
 import { AccountContext } from '../../../providers/AccountProvider'
-import { SchedulingType } from '../../../types/Meeting'
+import { MeetingProvider, SchedulingType } from '../../../types/Meeting'
 import { isEmptyString, isValidEmail } from '../../../utils/validations'
 
 interface ScheduleFormProps {
@@ -83,7 +83,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   }
 
   const googleMeetUser = () =>
-    preferences?.videoMeeting === VideoMeeting.GoogleMeet
+    preferences?.meetingProvider === MeetingProvider.GOOGLE_MEET
 
   const handleConfirm = async () => {
     if (!googleMeetUser() && customMeeting && !meetingUrl) {
