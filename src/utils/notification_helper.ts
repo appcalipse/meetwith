@@ -27,7 +27,6 @@ import {
   newMeetingEmail,
   updateMeetingEmail,
 } from './email_helper'
-import { sendPushNotification } from './push_protocol_helper'
 import { dmAccount } from './services/discord.helper'
 import { isProAccount } from './subscription_manager'
 import { getAllParticipantsDisplayName } from './user_manager'
@@ -235,30 +234,6 @@ const workNotifications = async (
                   )
                 }
                 break
-              case NotificationChannel.EPNS:
-                const accountForEPNS = await getAccountFromDB(
-                  participant.account_address
-                )
-                // Dont DM if you are the person is the one scheduling the meeting
-                if (
-                  isProAccount(accountForEPNS) &&
-                  participantActing.account_address?.toLowerCase() !==
-                    participant.account_address.toLowerCase()
-                ) {
-                  promises.push(
-                    getEPNSNotification(
-                      changeType,
-                      notification_type.destination,
-                      start,
-                      end,
-                      participantActing,
-                      participant,
-                      participantsInfo,
-                      changes
-                    )
-                  )
-                }
-                break
               default:
             }
           }
@@ -453,102 +428,6 @@ const getDiscordNotification = async (
     }
   }
   return Promise.resolve(false)
-}
-
-const getEPNSNotification = async (
-  _changeType: MeetingChangeType,
-  destination: string,
-  start: Date,
-  end: Date,
-  participantActing: ParticipantBaseInfo,
-  participant: ParticipantInfoForNotification,
-  participantsInfo?: ParticipantInfo[],
-  changes?: MeetingChange
-): Promise<boolean> => {
-  const parameters = {
-    destination_address: destination,
-    title: '',
-    message: '',
-  }
-  const changeType =
-    participant.mappingType === ParticipantMappingType.ADD
-      ? MeetingChangeType.CREATE
-      : _changeType
-
-  switch (changeType) {
-    case MeetingChangeType.CREATE:
-      parameters.title = 'New meeting scheduled'
-      parameters.message = `${dateToHumanReadable(
-        start,
-        participant.timezone,
-        true
-      )} - ${getAllParticipantsDisplayName(
-        participantsInfo!,
-        participant.account_address
-      )}`
-      break
-    case MeetingChangeType.DELETE:
-      parameters.title = 'A meeting was canceled'
-      parameters.message = `The meeting at ${dateToHumanReadable(
-        start,
-        participant.timezone,
-        true
-      )} was canceled by ${getParticipantActingDisplayName(
-        participantActing,
-        participant
-      )}`
-      break
-    case MeetingChangeType.UPDATE:
-      parameters.title = 'A meeting has been changed'
-
-      let message = `${getParticipantActingDisplayName(
-        participantActing,
-        participant
-      )} changed the meeting at ${dateToHumanReadable(
-        changes!.dateChange!.oldStart,
-        participant.timezone,
-        true
-      )}. It`
-      let added = false
-      if (
-        new Date(changes!.dateChange!.oldStart).getTime() !== start.getTime()
-      ) {
-        message += ` will be at ${dateToHumanReadable(
-          start,
-          participant.timezone,
-          true
-        )}`
-        added = true
-      }
-
-      const newDuration = differenceInMinutes(end, start)
-      const oldDuration = changes?.dateChange
-        ? differenceInMinutes(
-            new Date(changes?.dateChange?.oldEnd),
-            new Date(changes?.dateChange?.oldStart)
-          )
-        : null
-
-      if (oldDuration && newDuration !== oldDuration) {
-        if (added) {
-          message += ` and will last ${durationToHumanReadable(newDuration)}`
-        } else {
-          message += ` will now last ${durationToHumanReadable(
-            newDuration
-          )} instead of ${durationToHumanReadable(oldDuration)}`
-        }
-      }
-
-      parameters.message = message
-      break
-    default:
-  }
-
-  return sendPushNotification(
-    parameters.destination_address,
-    parameters.title,
-    parameters.message
-  )
 }
 
 const getParticipantActingDisplayName = (
