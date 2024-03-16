@@ -37,18 +37,18 @@ import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import {
-  DBSlotEnhanced,
+  DBSlot,
   MeetingChangeType,
   MeetingDecrypted,
 } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 
 interface MeetingCardProps {
-  meeting: DBSlotEnhanced
+  meeting: DBSlot
   timezone: string
   onCancel: (removed: string[]) => void
   onClickToOpen: (
-    meeting: DBSlotEnhanced,
+    meeting: DBSlot,
     decryptedMeeting: MeetingDecrypted,
     timezone: string
   ) => void

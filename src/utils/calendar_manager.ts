@@ -13,10 +13,10 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import {
-  DBSlotEnhanced,
-  IPFSMeetingInfo,
+  DBSlot,
   MeetingChangeType,
   MeetingDecrypted,
+  MeetingInfo,
   ParticipantMappingType,
   SchedulingType,
 } from '@/types/Meeting'
@@ -33,7 +33,6 @@ import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
   createHuddleRoom,
-  fetchContentFromIPFSFromBrowser,
   getAccount,
   getExistingAccounts,
   getMeeting,
@@ -253,7 +252,7 @@ const buildMeetingData = async (
     throw new MeetingCreationError()
   }
 
-  const privateInfo: IPFSMeetingInfo = {
+  const privateInfo: MeetingInfo = {
     created_at: new Date(),
     participants: sanitizedParticipants,
     content: meetingContent,
@@ -288,7 +287,7 @@ const buildMeetingData = async (
       ...privateInfo,
       // we need to store the other related slots in other to update the meeting later
       related_slot_ids: allSlotIds.filter(id => id !== participant.slot_id),
-    } as IPFSMeetingInfo)
+    } as MeetingInfo)
 
     const participantMapping: RequestParticipantMapping = {
       account_address: participant.account_address || '',
@@ -447,10 +446,7 @@ const updateMeeting = async (
   }
 
   // Fetch the updated data one last time
-  const slot: DBSlotEnhanced = await apiUpdateMeeting(
-    decryptedMeeting.id,
-    payload
-  )
+  const slot: DBSlot = await apiUpdateMeeting(decryptedMeeting.id, payload)
   return (await decryptMeeting(slot, currentAccount))!
 }
 
@@ -551,7 +547,7 @@ const scheduleMeeting = async (
     ).isFree
   ) {
     try {
-      let slot: DBSlotEnhanced
+      let slot: DBSlot
       if (schedulingType === SchedulingType.GUEST) {
         slot = await scheduleMeetingAsGuest(meeting)
       } else if (schedulingType === SchedulingType.DISCORD) {
@@ -596,6 +592,7 @@ const scheduleMeeting = async (
         end: meeting.end,
         related_slot_ids: [],
         version: 0,
+        meeting_info_encrypted: slot.meeting_info_encrypted,
       }
     } catch (error: any) {
       throw error
@@ -705,7 +702,7 @@ const participantStatusToICSStatus = (status: ParticipationStatus) => {
 }
 
 const decryptMeeting = async (
-  meeting: DBSlotEnhanced,
+  meeting: DBSlot,
   account: Account,
   signature?: string
 ): Promise<MeetingDecrypted | null> => {
@@ -717,7 +714,7 @@ const decryptMeeting = async (
 
   if (!content) return null
 
-  const meetingInfo = JSON.parse(content) as IPFSMeetingInfo
+  const meetingInfo = JSON.parse(content) as MeetingInfo
   return {
     id: meeting.id!,
     ...meeting,
@@ -836,7 +833,7 @@ const noNoReplyEmailForAccount = (account_address: string): string => {
 }
 
 const decodeMeeting = async (
-  meeting: DBSlotEnhanced,
+  meeting: DBSlot,
   currentAccount: Account
 ): Promise<MeetingDecrypted | null> => {
   const meetingInfoEncrypted = meeting.meeting_info_encrypted as Encrypted

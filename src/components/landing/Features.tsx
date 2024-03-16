@@ -21,7 +21,7 @@ const slides = [
     price: 'Free',
     title: 'Just like Calendly, but powered by Web3',
     about:
-      'Meet with Wallet is integrated with Web3 technologies: Major L1 and L2 blockchains, IPFS, ENS, Huddle01, Push protocol and much more, providing a highly secure and private scheduling experience. It’s like Calendly, but tailor made to Web3.',
+      'Meet with Wallet is integrated with Web3 technologies: Major L1 and L2 blockchains, ENS, Huddle01, and much more, providing a highly secure and private scheduling experience. It’s like Calendly, but tailor made to Web3.',
   },
   {
     id: 2,

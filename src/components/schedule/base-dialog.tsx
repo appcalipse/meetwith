@@ -63,6 +63,7 @@ import {
   getSuggestedSlots,
 } from '@/utils/api_helper'
 import { scheduleMeeting, updateMeeting } from '@/utils/calendar_manager'
+import { encryptContent } from '@/utils/cryptography'
 import {
   GateConditionNotValidError,
   Huddle01ServiceUnavailable,
@@ -405,6 +406,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           start: new Date(meetingResult.start),
           end: new Date(meetingResult.end),
           source: TimeSlotSource.MWW,
+          meeting_info_encrypted: meetingResult.meeting_info_encrypted,
           version: meetingResult.version,
         }
       )
