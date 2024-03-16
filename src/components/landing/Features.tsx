@@ -47,7 +47,7 @@ const slides = [
   {
     id: 5,
     price: 'Free',
-    title: 'Automated reminders over email, Discord or Push protocol',
+    title: 'Automated reminders over email or Discord',
     about:
       'Receive automated reminders so you don’t miss an important meeting. Meet with Wallet supports a variety of notification options from traditional emails to decentralised alternatives.',
   },
