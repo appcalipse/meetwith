@@ -94,6 +94,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
             <Input
               value={url}
               onChange={e => setUrl(e.target.value)}
+              aria-label="url-input"
               type="text"
               placeholder="Where should this link go?"
               _placeholder={{
@@ -135,6 +136,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
                 onClick={handleUrlSave}
                 colorScheme="primary"
                 padding="8px 36px"
+                aria-label="save-url"
               >
                 OK
               </Button>
@@ -166,10 +168,10 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               pressed={editor.isActive('bold')}
             >
               <IconButton
+                aria-label="Toggle Bold"
                 backgroundColor={
                   !editor.isActive('bold') ? 'transparent' : 'whiteAlpha.300'
                 }
-                aria-label="Toggle Bold"
                 icon={<BiBold size={25} />}
               />
             </Toggle>
@@ -254,7 +256,6 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
                 >
                   <Toggle asChild pressed={editor.isActive('orderedList')}>
                     <IconButton
-                      aria-label="Toggle Align Popover"
                       backgroundColor={
                         !(
                           editor!.isActive({ textAlign: 'right' }) ||
@@ -265,6 +266,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
                           ? 'transparent'
                           : 'whiteAlpha.300'
                       }
+                      aria-label="Toggle Align Popover"
                       icon={renderAlignIcon()}
                     />
                   </Toggle>
@@ -287,7 +289,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
                   }
                 />
                 <IconButton
-                  aria-label="Toggle List"
+                  aria-label="Toggle Center"
                   backgroundColor={
                     !editor!.isActive({ textAlign: 'center' })
                       ? 'transparent'
@@ -312,7 +314,7 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
                 />
 
                 <IconButton
-                  aria-label="Toggle List"
+                  aria-label="Toggle Justify"
                   backgroundColor={
                     !editor!.isActive({ textAlign: 'justify' })
                       ? 'transparent'
@@ -389,10 +391,10 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
               pressed={editor.isActive('link')}
             >
               <IconButton
+                aria-label="Toggle Link"
                 backgroundColor={
                   !editor.isActive('link') ? 'transparent' : 'whiteAlpha.300'
                 }
-                aria-label="Toggle Link"
                 icon={<BiLink size={25} />}
               />
             </Toggle>
