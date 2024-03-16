@@ -223,7 +223,6 @@ describe('calendar manager', () => {
       account_address: targetAccount,
       start: new Date(startTime),
       end: new Date(endTime),
-      meeting_info_file_path: meetingInfoPath,
       meeting_info_encrypted: {
         ciphertext: '',
         ephemPublicKey: '',
@@ -327,7 +326,6 @@ describe('calendar manager', () => {
       account_address: targetAccount,
       start: new Date(startTime),
       end: new Date(endTime),
-      meeting_info_file_path: meetingInfoPath,
       meeting_info_encrypted: {
         ciphertext: '',
         ephemPublicKey: '',

@@ -37,19 +37,18 @@ import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import {
-  DBSlot,
+  DBSlotEnhanced,
   MeetingChangeType,
   MeetingDecrypted,
 } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
-import IPFSLink from '../../IPFSLink'
 
 interface MeetingCardProps {
-  meeting: DBSlot
+  meeting: DBSlotEnhanced
   timezone: string
   onCancel: (removed: string[]) => void
   onClickToOpen: (
-    meeting: DBSlot,
+    meeting: DBSlotEnhanced,
     decryptedMeeting: MeetingDecrypted,
     timezone: string
   ) => void
@@ -189,10 +188,6 @@ const MeetingCard = ({
               <strong>Duration:</strong>:{' '}
               <Text>{durationToHumanReadable(duration)}</Text>
             </HStack>
-            <IPFSLink
-              title="Meeting private data"
-              ipfsHash={meeting.meeting_info_file_path}
-            />
             <DecodedInfo
               loading={loading}
               decryptedMeeting={decryptedMeeting}
