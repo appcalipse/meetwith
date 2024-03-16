@@ -3880,15 +3880,6 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
-"@pushprotocol/restapi@^0.1.1":
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/@pushprotocol/restapi/-/restapi-0.1.1.tgz#c95cf8530a7eadc81d1a4598c83771fb19eb056c"
-  integrity sha512-Am95rcEu6p/7XbvkuiBr8SlQ9/or9q1FN5Zu7LsScBPv6vp6cKF5MeQFebdZcKvvKru9k/HkxtIeNVQxFjQr4Q==
-  dependencies:
-    axios "^0.27.2"
-    tslib "^2.3.0"
-    uuid "^9.0.0"
-
 "@radix-ui/number@1.0.1":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@radix-ui/number/-/number-1.0.1.tgz#644161a3557f46ed38a042acf4a770e826021674"
@@ -7694,7 +7685,7 @@ axe-core@=4.7.0:
   resolved "https://registry.yarnpkg.com/axe-core/-/axe-core-4.7.0.tgz#34ba5a48a8b564f67e103f0aa5768d76e15bbbbf"
   integrity sha512-M0JtH+hlOL5pLQwHOLNYZaXuhqmvS8oExsqB1SBYgA4Dk7u/xx+YdGHXaK5pyUfed5mYXdlYiphWq3G8cRi5JQ==
 
-axios@0.27.2, axios@^0.27.2:
+axios@0.27.2:
   version "0.27.2"
   resolved "https://registry.yarnpkg.com/axios/-/axios-0.27.2.tgz#207658cc8621606e586c85db4b41a750e756d972"
   integrity sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==
