@@ -24,7 +24,7 @@ import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { generateIcs } from '../calendar_manager'
 import { appUrl } from '../constants'
-import { decryptContent } from '../cryptography'
+import { decryptContent, mockEncrypted } from '../cryptography'
 import { CalendarService } from './calendar.service.types'
 
 // ical.js has no ts typing
@@ -162,6 +162,7 @@ export default class CaldavCalendarService implements CalendarService {
             participants: participantsInfo,
             version: 0,
             related_slot_ids: [],
+            meeting_info_encrypted: mockEncrypted,
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
@@ -206,6 +207,7 @@ export default class CaldavCalendarService implements CalendarService {
             participants: participantsInfo,
             version: 0,
             related_slot_ids: [],
+            meeting_info_encrypted: mockEncrypted,
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
@@ -282,6 +284,7 @@ export default class CaldavCalendarService implements CalendarService {
           version: 0,
           related_slot_ids: [],
           meeting_id,
+          meeting_info_encrypted: mockEncrypted,
         },
         calendarOwnerAccountAddress,
         MeetingChangeType.UPDATE,
@@ -319,6 +322,7 @@ export default class CaldavCalendarService implements CalendarService {
             version: 0,
             related_slot_ids: [],
             meeting_id,
+            meeting_info_encrypted: mockEncrypted,
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.UPDATE,

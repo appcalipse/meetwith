@@ -18,7 +18,7 @@ import { FaPlus } from 'react-icons/fa'
 import { Account } from '@/types/Account'
 import { decodeMeeting } from '@/utils/calendar_manager'
 
-import { DBSlotEnhanced, MeetingChangeType } from '../../types/Meeting'
+import { DBSlot, MeetingChangeType } from '../../types/Meeting'
 import { getMeeting, getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
 import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
@@ -26,7 +26,7 @@ import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 const Meetings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
-  const [meetings, setMeetings] = useState<DBSlotEnhanced[]>([])
+  const [meetings, setMeetings] = useState<DBSlot[]>([])
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
@@ -43,7 +43,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
       endToFetch,
       PAGE_SIZE,
       meetings.length
-    )) as DBSlotEnhanced[]
+    )) as DBSlot[]
 
     if (newMeetings.length < PAGE_SIZE) {
       setNoMoreFetch(true)
@@ -125,14 +125,14 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
 
   const afterClose = (
     changeType: MeetingChangeType,
-    meeting?: DBSlotEnhanced,
+    meeting?: DBSlot,
     removedSlots?: string[]
   ) => {
     // not using router API to avoid re-rendinreing component
     history.pushState(null, '', window.location.pathname)
 
     if (meeting || removedSlots) {
-      let newMeetings: DBSlotEnhanced[] = []
+      let newMeetings: DBSlot[] = []
 
       if (meeting) {
         newMeetings = meetings.filter(m => m.id !== meeting.id)
