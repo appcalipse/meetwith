@@ -2,11 +2,7 @@ import faker from '@faker-js/faker'
 import { randomUUID } from 'crypto'
 
 import { Account } from '@/types/Account'
-import {
-  IPFSMeetingInfo,
-  SchedulingType,
-  TimeSlotSource,
-} from '@/types/Meeting'
+import { MeetingInfo, SchedulingType, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { ParticipationStatus } from '@/types/ParticipantInfo'
@@ -200,7 +196,7 @@ describe('calendar manager', () => {
       },
     ]
 
-    const mockedIPFSContent: IPFSMeetingInfo = {
+    const mockedContent: MeetingInfo = {
       created_at: new Date(),
       participants: JSON.parse(JSON.stringify(participants)),
       meeting_url: '',
@@ -211,7 +207,7 @@ describe('calendar manager', () => {
 
     jest
       .spyOn(crypto, 'getContentFromEncrypted')
-      .mockImplementation(async () => JSON.stringify(mockedIPFSContent))
+      .mockImplementation(async () => JSON.stringify(mockedContent))
 
     jest.spyOn(helper, 'isSlotFreeApiCall').mockResolvedValue({ isFree: true })
     jest
@@ -223,15 +219,9 @@ describe('calendar manager', () => {
       account_address: targetAccount,
       start: new Date(startTime),
       end: new Date(endTime),
-      meeting_info_file_path: meetingInfoPath,
-      meeting_info_encrypted: {
-        ciphertext: '',
-        ephemPublicKey: '',
-        iv: '',
-        mac: '',
-      },
+      meeting_info_encrypted: crypto.mockEncrypted,
       version: 0,
-      created_at: mockedIPFSContent.created_at,
+      created_at: mockedContent.created_at,
       source: TimeSlotSource.MWW,
     })
 
@@ -327,13 +317,7 @@ describe('calendar manager', () => {
       account_address: targetAccount,
       start: new Date(startTime),
       end: new Date(endTime),
-      meeting_info_file_path: meetingInfoPath,
-      meeting_info_encrypted: {
-        ciphertext: '',
-        ephemPublicKey: '',
-        iv: '',
-        mac: '',
-      },
+      meeting_info_encrypted: crypto.mockEncrypted,
       version: 0,
       created_at: new Date(),
       source: TimeSlotSource.MWW,
