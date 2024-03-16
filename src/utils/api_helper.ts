@@ -15,6 +15,7 @@ import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
   ConferenceMeeting,
   DBSlot,
+  DBSlotEnhanced,
   GroupMeetingRequest,
   MeetingDecrypted,
   TimeSlotSource,
@@ -157,7 +158,7 @@ export const saveAccountChanges = async (
 export const scheduleMeetingFromServer = async (
   scheduler_address: string,
   meeting: MeetingCreationRequest
-): Promise<DBSlot> => {
+): Promise<DBSlotEnhanced> => {
   try {
     return (await internalFetch(
       `/server/meetings`,
@@ -167,7 +168,7 @@ export const scheduleMeetingFromServer = async (
       {
         'X-Server-Secret': process.env.SERVER_SECRET!,
       }
-    )) as DBSlot
+    )) as DBSlotEnhanced
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
@@ -203,9 +204,13 @@ export const getFullAccountInfo = async (
 
 export const scheduleMeeting = async (
   meeting: MeetingCreationRequest
-): Promise<DBSlot> => {
+): Promise<DBSlotEnhanced> => {
   try {
-    return (await internalFetch(`/secure/meetings`, 'POST', meeting)) as DBSlot
+    return (await internalFetch(
+      `/secure/meetings`,
+      'POST',
+      meeting
+    )) as DBSlotEnhanced
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
@@ -220,9 +225,13 @@ export const scheduleMeeting = async (
 
 export const scheduleMeetingAsGuest = async (
   meeting: MeetingCreationRequest
-): Promise<DBSlot> => {
+): Promise<DBSlotEnhanced> => {
   try {
-    return (await internalFetch(`/meetings/guest`, 'POST', meeting)) as DBSlot
+    return (await internalFetch(
+      `/meetings/guest`,
+      'POST',
+      meeting
+    )) as DBSlotEnhanced
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
@@ -238,13 +247,13 @@ export const scheduleMeetingAsGuest = async (
 export const updateMeeting = async (
   slotId: string,
   meeting: MeetingUpdateRequest
-): Promise<DBSlot> => {
+): Promise<DBSlotEnhanced> => {
   try {
     return (await internalFetch(
       `/secure/meetings/${slotId}`,
       'POST',
       meeting
-    )) as DBSlot
+    )) as DBSlotEnhanced
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
@@ -407,10 +416,11 @@ export const subscribeToWaitlist = async (
   return (result as any).success
 }
 
-export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
+export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
   const response = await queryClient.fetchQuery(
     QueryKeys.meeting(slot_id),
-    () => internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlot>
+    () =>
+      internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlotEnhanced>
   )
   return {
     ...response,
