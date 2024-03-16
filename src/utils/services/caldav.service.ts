@@ -24,7 +24,7 @@ import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { generateIcs } from '../calendar_manager'
 import { appUrl } from '../constants'
-import { decryptContent } from '../cryptography'
+import { decryptContent, mockEncrypted } from '../cryptography'
 import { CalendarService } from './calendar.service.types'
 
 // ical.js has no ts typing
@@ -159,10 +159,10 @@ export default class CaldavCalendarService implements CalendarService {
             id: meetingDetails.meeting_id,
             meeting_id: meetingDetails.meeting_id,
             created_at: new Date(meeting_creation_time),
-            meeting_info_file_path: '',
             participants: participantsInfo,
             version: 0,
             related_slot_ids: [],
+            meeting_info_encrypted: mockEncrypted,
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
@@ -204,10 +204,10 @@ export default class CaldavCalendarService implements CalendarService {
             id: meetingDetails.meeting_id,
             meeting_id: meetingDetails.meeting_id,
             created_at: new Date(meeting_creation_time),
-            meeting_info_file_path: '',
             participants: participantsInfo,
             version: 0,
             related_slot_ids: [],
+            meeting_info_encrypted: mockEncrypted,
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
@@ -280,11 +280,11 @@ export default class CaldavCalendarService implements CalendarService {
           end: new Date(meetingDetails.end),
           id: meeting_id,
           created_at: new Date(),
-          meeting_info_file_path: '',
           participants: participantsInfo,
           version: 0,
           related_slot_ids: [],
           meeting_id,
+          meeting_info_encrypted: mockEncrypted,
         },
         calendarOwnerAccountAddress,
         MeetingChangeType.UPDATE,
@@ -318,11 +318,11 @@ export default class CaldavCalendarService implements CalendarService {
             end: new Date(meetingDetails.end),
             id: meeting_id,
             created_at: new Date(),
-            meeting_info_file_path: '',
             participants: participantsInfo,
             version: 0,
             related_slot_ids: [],
             meeting_id,
+            meeting_info_encrypted: mockEncrypted,
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.UPDATE,
