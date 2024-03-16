@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import {
-  DBSlot,
+  DBSlotEnhanced,
   IPFSMeetingInfo,
   MeetingChangeType,
   MeetingDecrypted,
@@ -447,7 +447,10 @@ const updateMeeting = async (
   }
 
   // Fetch the updated data one last time
-  const slot: DBSlot = await apiUpdateMeeting(decryptedMeeting.id, payload)
+  const slot: DBSlotEnhanced = await apiUpdateMeeting(
+    decryptedMeeting.id,
+    payload
+  )
   return (await decryptMeeting(slot, currentAccount))!
 }
 
@@ -548,7 +551,7 @@ const scheduleMeeting = async (
     ).isFree
   ) {
     try {
-      let slot: DBSlot
+      let slot: DBSlotEnhanced
       if (schedulingType === SchedulingType.GUEST) {
         slot = await scheduleMeetingAsGuest(meeting)
       } else if (schedulingType === SchedulingType.DISCORD) {
@@ -591,10 +594,8 @@ const scheduleMeeting = async (
         meeting_url: meeting.meeting_url,
         start: meeting.start,
         end: meeting.end,
-        meeting_info_file_path: slot.meeting_info_file_path,
         related_slot_ids: [],
         version: 0,
-        meeting_info_encrypted: slot.meeting_info_encrypted,
       }
     } catch (error: any) {
       throw error
@@ -704,7 +705,7 @@ const participantStatusToICSStatus = (status: ParticipationStatus) => {
 }
 
 const decryptMeeting = async (
-  meeting: DBSlot,
+  meeting: DBSlotEnhanced,
   account: Account,
   signature?: string
 ): Promise<MeetingDecrypted | null> => {
@@ -728,7 +729,6 @@ const decryptMeeting = async (
     related_slot_ids: meetingInfo.related_slot_ids,
     start: new Date(meeting.start),
     end: new Date(meeting.end),
-    meeting_info_file_path: meeting.meeting_info_file_path,
     version: meeting.version,
   }
 }
@@ -836,7 +836,7 @@ const noNoReplyEmailForAccount = (account_address: string): string => {
 }
 
 const decodeMeeting = async (
-  meeting: DBSlot,
+  meeting: DBSlotEnhanced,
   currentAccount: Account
 ): Promise<MeetingDecrypted | null> => {
   const meetingInfoEncrypted = meeting.meeting_info_encrypted as Encrypted

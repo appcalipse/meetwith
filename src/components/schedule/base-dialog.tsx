@@ -402,12 +402,10 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           id: meetingResult.id,
           created_at: new Date(meetingResult.created_at),
           account_address: currentAccount!.address,
-          meeting_info_file_path: meetingResult.meeting_info_file_path,
           start: new Date(meetingResult.start),
           end: new Date(meetingResult.end),
           source: TimeSlotSource.MWW,
           version: meetingResult.version,
-          meeting_info_encrypted: meetingResult.meeting_info_encrypted,
         }
       )
       return true
