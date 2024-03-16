@@ -432,7 +432,7 @@ const migrateSlots = async (): Promise<any> => {
   const { data, error: fetchError } = await db.supabase
     .from('slots')
     .select()
-    .not('meeting_info_encrypted', 'is', null)
+    .is('meeting_info_encrypted', null)
 
   if (fetchError) {
     console.error('Failed to fetch slots:', fetchError)
@@ -447,8 +447,10 @@ const migrateSlots = async (): Promise<any> => {
 
   for (const slot of data) {
     try {
+      console.log(`starting slot ${slot.id}`)
       const encrypted = (await fetchContentFromIPFS(
-        slot.meeting_info_file_path
+        slot.meeting_info_file_path,
+        3000
       )) as Encrypted
 
       const { error: updateError } = await db.supabase
