@@ -27,7 +27,6 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   ConferenceMeeting,
   DBSlot,
-  DBSlotEnhanced,
   GroupMeetingRequest,
   MeetingAccessType,
   MeetingProvider,
@@ -486,7 +485,7 @@ const getSlotsForAccount = async (
   end?: Date,
   limit?: number,
   offset?: number
-): Promise<DBSlotEnhanced[]> => {
+): Promise<DBSlot[]> => {
   const account = await getAccountFromDB(account_address)
 
   const _start = start ? start.toISOString() : '1970-01-01'
@@ -676,7 +675,7 @@ const deleteMeetingFromDB = async (
 const saveMeeting = async (
   participantActing: ParticipantBaseInfo,
   meeting: MeetingCreationRequest
-): Promise<DBSlotEnhanced> => {
+): Promise<DBSlot> => {
   if (
     new Set(
       meeting.participants_mapping.map(p => p.account_address || p.guest_email)
@@ -687,7 +686,7 @@ const saveMeeting = async (
   }
 
   const slots = []
-  let meetingResponse = {} as DBSlotEnhanced
+  let meetingResponse = {} as DBSlot
   let index = 0
   let i = 0
 
@@ -813,7 +812,7 @@ const saveMeeting = async (
       }
 
       // Not adding source here given on our database the source is always MWW
-      const dbSlot: DBSlotEnhanced = {
+      const dbSlot: DBSlot = {
         id: participant.slot_id,
         start: meeting.start,
         end: meeting.end,
@@ -1401,7 +1400,7 @@ const updateMeeting = async (
   }
 
   const slots = []
-  let meetingResponse = {} as DBSlotEnhanced
+  let meetingResponse = {} as DBSlot
   let index = 0
   let i = 0
 
@@ -1523,6 +1522,7 @@ const updateMeeting = async (
         end: new Date(meetingUpdateRequest.end),
         account_address: account.address,
         version: meetingUpdateRequest.version,
+        meeting_info_encrypted: participant.privateInfo,
       }
 
       slots.push(dbSlot)
