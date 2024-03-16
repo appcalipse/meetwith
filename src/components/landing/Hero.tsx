@@ -179,22 +179,19 @@ export function Hero() {
           gridAutoFlow={{ base: 'none', md: 'column' }}
         >
           <Link href="https://poap.xyz/">
-            <Image src={'/assets/logo-poap.svg'} />
+            <Image src={'/assets/logo-poap.svg'} alt="POAP Logo" />
           </Link>
           <Link href="http://huddle01.xyz/">
-            <Image src={'/assets/logo-huddle01.svg'} />
+            <Image src={'/assets/logo-huddle01.svg'} alt="Huddle01 Logo" />
           </Link>
           {/* <Link href="">
-            <Image src={'/assets/logo-e.svg'} />
+            <Image src={'/assets/logo-e.svg'} alt="E Logo" />
           </Link> */}
           <Link href="https://unstoppabledomains.com/">
-            <Image src={'/assets/logo-u.svg'} />
-          </Link>
-          <Link href="https://push.org">
-            <Image src={'/assets/logo-push.svg'} />
+            <Image src={'/assets/logo-u.svg'} alt="Unstoppable Domains Logo" />
           </Link>
           <Link href="">
-            <Image src={'/assets/logo-triangle.svg'} />
+            <Image src={'/assets/logo-triangle.svg'} alt="Triangle Logo" />
           </Link>
         </Grid>
       </Box>
