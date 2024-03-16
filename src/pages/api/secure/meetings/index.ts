@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
-import { DBSlotEnhanced } from '@/types/Meeting'
+import { DBSlot } from '@/types/Meeting'
 import { MeetingCreationRequest } from '@/types/Requests'
 import {
   getAccountFromDB,
@@ -47,7 +47,7 @@ export const handleMeetingSchedule = async (
     ) {
       return res
         .status(403)
-        .send('You cant schedule a meeting for someone else')
+        .send("You can't schedule a meeting for someone else")
     }
 
     const participantActing = getParticipantBaseInfoFromAccount(
@@ -74,7 +74,7 @@ export const handleMeetingSchedule = async (
       updateEmailNotifications(meeting.emailToSendReminders!))
 
     try {
-      const meetingResult: DBSlotEnhanced = await saveMeeting(
+      const meetingResult: DBSlot = await saveMeeting(
         participantActing,
         meeting
       )

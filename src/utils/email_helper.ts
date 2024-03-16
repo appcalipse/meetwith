@@ -14,6 +14,7 @@ import {
   generateIcs,
 } from './calendar_manager'
 import { appUrl } from './constants'
+import { mockEncrypted } from './cryptography'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
@@ -75,10 +76,10 @@ export const newMeetingEmail = async (
       id: meeting_id as string,
       meeting_id,
       created_at: new Date(created_at as Date),
-      meeting_info_file_path: '',
       participants,
       version: 0,
       related_slot_ids: [],
+      meeting_info_encrypted: mockEncrypted,
     },
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
@@ -154,10 +155,10 @@ export const cancelledMeetingEmail = async (
       end: new Date(end),
       id: meeting_id,
       created_at: new Date(created_at as Date),
-      meeting_info_file_path: '',
       participants: [],
       version: 0,
       related_slot_ids: [],
+      meeting_info_encrypted: mockEncrypted,
     },
     destinationAccountAddress || '',
     MeetingChangeType.DELETE,
@@ -281,10 +282,10 @@ export const updateMeetingEmail = async (
       id: meeting_id,
       meeting_id,
       created_at: new Date(created_at as Date),
-      meeting_info_file_path: '',
       participants,
       version: 0,
       related_slot_ids: [],
+      meeting_info_encrypted: mockEncrypted,
     },
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
