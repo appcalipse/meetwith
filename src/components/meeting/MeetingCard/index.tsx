@@ -192,7 +192,7 @@ const MeetingCard = ({
         },
       },
     ],
-    [meeting]
+    [decryptedMeeting, currentAccount, timezone]
   )
   const handleCopy = () => {
     try {
@@ -232,26 +232,39 @@ const MeetingCard = ({
           position="relative"
           bgColor={bgColor}
         >
-          <Box p="8" maxWidth="100%">
+          <Box p="24px" maxWidth="100%">
             <VStack alignItems="start" position="relative" gap={6}>
-              <Flex alignItems="center" w="100%" mt={2}>
-                <Flex flex={1} alignItems="center" gap={3}>
-                  <Heading size="lg">
-                    <strong>{decryptedMeeting?.title || 'No Title'}</strong>
-                  </Heading>
-                  {label && (
-                    <Badge
-                      borderRadius={3}
-                      borderBottomRightRadius={4}
-                      px={2}
-                      height="fit-content"
-                      py={1}
-                      colorScheme={label.color}
-                    >
-                      {label.text}
-                    </Badge>
-                  )}
-                </Flex>
+              <Flex alignItems="start" w="100%">
+                <VStack flex={1} alignItems="start">
+                  <Flex flex={1} alignItems="center" gap={3}>
+                    <Heading fontSize="24px">
+                      <strong>{decryptedMeeting?.title || 'No Title'}</strong>
+                    </Heading>
+                    {label && (
+                      <Badge
+                        borderRadius={3}
+                        borderBottomRightRadius={4}
+                        px={2}
+                        height="fit-content"
+                        py={1}
+                        colorScheme={label.color}
+                      >
+                        {label.text}
+                      </Badge>
+                    )}
+                  </Flex>
+                  <Text fontSize="16px" alignItems="start">
+                    <strong>
+                      {dateToLocalizedRange(
+                        meeting.start as Date,
+                        meeting.end as Date,
+                        timezone,
+                        true
+                      )}
+                    </strong>
+                  </Text>
+                </VStack>
+
                 <HStack>
                   <Link
                     href={addUTMParams(decryptedMeeting?.meeting_url || '')}
@@ -343,16 +356,6 @@ const MeetingCard = ({
                   )}
                 </HStack>
               </Flex>
-              <Box flex={1} pt={2}>
-                <strong>
-                  {dateToLocalizedRange(
-                    meeting.start as Date,
-                    meeting.end as Date,
-                    timezone,
-                    true
-                  )}
-                </strong>
-              </Box>
 
               <Divider />
               <VStack alignItems="start">

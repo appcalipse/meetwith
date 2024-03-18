@@ -166,8 +166,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     if (!isProAccount(currentAccount!) && _participants.length > 1) {
       setInputError(
         <Text>
-          <Link href="/dashboard/details#subscriptions">Go PRO</Link>
-          to be able to schedule meetings with more than one invitee
+          <Link href="/dashboard/details#subscriptions">Go PRO</Link> to be able
+          to schedule meetings with more than one invitee
         </Text>
       )
       participants.length == 0 && setParticipants([_participants[0]])
@@ -411,7 +411,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           start: new Date(meetingResult.start),
           end: new Date(meetingResult.end),
           source: TimeSlotSource.MWW,
-          meeting_info_encrypted: meetingResult.meeting_info_encrypted,
+          meeting_info_encrypted: meetingResult?.meeting_info_encrypted,
           version: meetingResult.version,
         }
       )
