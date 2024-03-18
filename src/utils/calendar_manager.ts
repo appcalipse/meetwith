@@ -717,7 +717,7 @@ const decryptMeeting = async (
   const content = await getContentFromEncrypted(
     account!,
     signature || getSignature(account!.address)!,
-    meeting.meeting_info_encrypted
+    meeting?.meeting_info_encrypted
   )
 
   if (!content) return null
