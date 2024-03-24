@@ -38,7 +38,13 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   }
 
   return currentAccount ? (
-    <HStack alignItems="start" width="100%" flexWrap="wrap" maxWidth="100%">
+    <HStack
+      alignItems="start"
+      width="100%"
+      flexWrap="wrap"
+      maxWidth="100%"
+      justifyContent="space-between"
+    >
       <Box flex={{ base: '0', md: '4' }} mr={{ base: 0, md: 18 }}>
         <NavMenu currentSection={currentSection} />
       </Box>
