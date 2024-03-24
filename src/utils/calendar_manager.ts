@@ -794,7 +794,7 @@ const dateToLocalizedRange = (
   start_date: Date,
   end_date: Date,
   timezone: string,
-  includeTimezone: boolean
+  includeTimezone?: boolean
 ): string => {
   const start = `${format(
     utcToZonedTime(start_date, timezone),
