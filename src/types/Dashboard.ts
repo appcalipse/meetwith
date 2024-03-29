@@ -1,6 +1,7 @@
 export enum EditMode {
   MEETINGS = 'meetings',
   AVAILABILITY = 'availability',
+  GROUPS = 'groups',
   DETAILS = 'details',
   TYPES = 'types',
   CALENDARS = 'calendars',
