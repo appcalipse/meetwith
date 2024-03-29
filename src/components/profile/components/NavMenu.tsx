@@ -21,6 +21,7 @@ import {
   FaDoorClosed,
   FaSignOutAlt,
 } from 'react-icons/fa'
+import { FaUserGroup } from 'react-icons/fa6'
 
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import { AccountContext } from '@/providers/AccountProvider'
@@ -42,6 +43,7 @@ interface LinkItemProps {
 }
 const LinkItems: Array<LinkItemProps> = [
   { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
+  { name: 'My Groups', icon: FaUserGroup, mode: EditMode.GROUPS },
   { name: 'Availabilities', icon: FaCalendarAlt, mode: EditMode.AVAILABILITY },
   { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
   {
