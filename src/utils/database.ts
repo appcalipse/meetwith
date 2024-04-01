@@ -1712,6 +1712,50 @@ export const getAccountFromDiscordId = async (
   return getAccountFromDB(address)
 }
 
+export async function isNonAdminMember(
+  userId: string,
+  groupId: string
+): Promise<boolean> {
+  try {
+    const { data, error } = await db.supabase
+      .from('group_members')
+      .select('role')
+      .eq('member_id', userId)
+      .eq('group_id', groupId)
+      .single()
+
+    if (error) {
+      console.error('Error checking group member status:', error)
+      return false
+    }
+
+    return data ? data.role !== 'admin' : false
+  } catch (error) {
+    console.error('Error checking group member status:', error)
+    return false
+  }
+}
+
+export async function leaveGroup(
+  userId: string,
+  groupId: string
+): Promise<void> {
+  try {
+    const { error } = await db.supabase
+      .from('group_members')
+      .delete()
+      .match({ member_id: userId, group_id: groupId })
+
+    if (error) {
+      console.error('Error removing user from group:', error)
+      throw new Error('Failed to leave group')
+    }
+  } catch (error) {
+    console.error('Error removing user from group:', error)
+    throw new Error('Failed to leave group')
+  }
+}
+
 export {
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
