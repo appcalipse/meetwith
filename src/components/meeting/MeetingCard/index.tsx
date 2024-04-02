@@ -83,11 +83,6 @@ const MeetingCard = ({
         color: 'gray',
         text: 'Ended',
       }
-    } else if (isAfter(addHours(now, 6), start)) {
-      return {
-        color: 'green',
-        text: 'Starting Soon',
-      }
     }
     return null
   }
@@ -192,7 +187,7 @@ const MeetingCard = ({
         },
       },
     ],
-    [meeting]
+    [decryptedMeeting, currentAccount, timezone]
   )
   const handleCopy = () => {
     try {
@@ -231,28 +226,60 @@ const MeetingCard = ({
           overflow="hidden"
           position="relative"
           bgColor={bgColor}
+          pt={{
+            base: label ? 3 : 0,
+            md: label ? 1.5 : 0,
+          }}
         >
-          <Box p="8" maxWidth="100%">
+          {label && (
+            <Badge
+              borderRadius={0}
+              borderBottomRightRadius={4}
+              px={2}
+              py={1}
+              colorScheme={label.color}
+              alignSelf="flex-end"
+              position="absolute"
+              left={0}
+              top={0}
+            >
+              {label.text}
+            </Badge>
+          )}
+          <Box p="24px" maxWidth="100%">
             <VStack alignItems="start" position="relative" gap={6}>
-              <Flex alignItems="center" w="100%" mt={2}>
-                <Flex flex={1} alignItems="center" gap={3}>
-                  <Heading size="lg">
-                    <strong>{decryptedMeeting?.title || 'No Title'}</strong>
-                  </Heading>
-                  {label && (
-                    <Badge
-                      borderRadius={3}
-                      borderBottomRightRadius={4}
-                      px={2}
-                      height="fit-content"
-                      py={1}
-                      colorScheme={label.color}
-                    >
-                      {label.text}
-                    </Badge>
-                  )}
-                </Flex>
-                <HStack>
+              <Flex
+                alignItems="start"
+                w="100%"
+                flexDirection={{
+                  base: 'column-reverse',
+                  md: 'row',
+                }}
+                gap={4}
+              >
+                <VStack flex={1} alignItems="start">
+                  <Flex flex={1} alignItems="center" gap={3}>
+                    <Heading fontSize="24px">
+                      <strong>{decryptedMeeting?.title || 'No Title'}</strong>
+                    </Heading>
+                  </Flex>
+                  <Text fontSize="16px" alignItems="start">
+                    <strong>
+                      {dateToLocalizedRange(
+                        meeting.start as Date,
+                        meeting.end as Date,
+                        timezone
+                      )}
+                    </strong>
+                  </Text>
+                </VStack>
+
+                <HStack
+                  ml={{
+                    base: 'auto',
+                    md: 0,
+                  }}
+                >
                   <Link
                     href={addUTMParams(decryptedMeeting?.meeting_url || '')}
                     isExternal
@@ -343,26 +370,21 @@ const MeetingCard = ({
                   )}
                 </HStack>
               </Flex>
-              <Box flex={1} pt={2}>
-                <strong>
-                  {dateToLocalizedRange(
-                    meeting.start as Date,
-                    meeting.end as Date,
-                    timezone,
-                    true
-                  )}
-                </strong>
-              </Box>
 
               <Divider />
               <VStack alignItems="start">
-                <HStack alignItems="flex-start">
+                <HStack alignItems="flex-start" flexWrap="wrap">
                   <Text>Participants:</Text>
-                  <Text>
+                  <Text
+                    textOverflow="ellipsis"
+                    overflow="hidden"
+                    whiteSpace="nowrap"
+                    width={{ base: '300px', md: '100%' }}
+                  >
                     <strong>{getNamesDisplay(decryptedMeeting)}</strong>
                   </Text>
                 </HStack>
-                <HStack alignItems="flex-start">
+                <HStack alignItems="flex-start" flexWrap="wrap">
                   <Text>Meeting link:</Text>
                   <HStack alignItems="center">
                     <Link
@@ -374,6 +396,7 @@ const MeetingCard = ({
                       textOverflow="ellipsis"
                       maxWidth="100%"
                       flex={1}
+                      width={{ base: '300px', md: '100%' }}
                     >
                       <strong>{decryptedMeeting.meeting_url}</strong>
                     </Link>
@@ -386,10 +409,12 @@ const MeetingCard = ({
                   </HStack>
                 </HStack>
                 {decryptedMeeting.content && (
-                  <HStack alignItems="flex-start">
+                  <HStack alignItems="flex-start" flexWrap="wrap">
                     <Text>Description:</Text>
                     <Text
                       width="100%"
+                      wordBreak="break-word"
+                      whiteSpace="pre-wrap"
                       suppressHydrationWarning
                       dangerouslySetInnerHTML={{
                         __html: sanitizeHtml(decryptedMeeting.content, {

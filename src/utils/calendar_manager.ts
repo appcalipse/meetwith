@@ -717,7 +717,7 @@ const decryptMeeting = async (
   const content = await getContentFromEncrypted(
     account!,
     signature || getSignature(account!.address)!,
-    meeting.meeting_info_encrypted
+    meeting?.meeting_info_encrypted
   )
 
   if (!content) return null
@@ -794,7 +794,7 @@ const dateToLocalizedRange = (
   start_date: Date,
   end_date: Date,
   timezone: string,
-  includeTimezone: boolean
+  includeTimezone?: boolean
 ): string => {
   const start = `${format(
     utcToZonedTime(start_date, timezone),
