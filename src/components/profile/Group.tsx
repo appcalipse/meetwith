@@ -1,4 +1,5 @@
 import {
+  Accordion,
   Box,
   Button,
   Flex,
@@ -25,6 +26,7 @@ export interface GroupProps {
 }
 
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
+  const bgColor = useColorModeValue('white', '#1F2933')
   return (
     <Flex direction={'column'} maxWidth="100%">
       <HStack
@@ -90,8 +92,15 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           </Box>
         </Box>
       </HStack>
-      <VStack>
-        <GroupCard />
+      <VStack pt={4}>
+        <Accordion
+          allowMultiple
+          bgColor={bgColor}
+          width="100%"
+          borderRadius="lg"
+        >
+          <GroupCard />
+        </Accordion>
       </VStack>
     </Flex>
   )
