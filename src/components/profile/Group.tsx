@@ -14,6 +14,7 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
 import React from 'react'
 import { FaCaretDown, FaPlus, FaSearch } from 'react-icons/fa'
 
@@ -26,6 +27,8 @@ export interface GroupProps {
 }
 
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
+  const router = useRouter()
+
   const bgColor = useColorModeValue('white', '#1F2933')
   return (
     <Flex direction={'column'} maxWidth="100%">
@@ -44,9 +47,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           </Text>
         </Heading>
         <Button
-          onClick={() => {
-            // Add Creation modal logic here
-          }}
+          onClick={() => router.push('/dashboard/create-group')}
           flexShrink={0}
           colorScheme="primary"
           display={{ base: 'none', md: 'flex' }}
