@@ -14,10 +14,9 @@ import { v4 as uuidv4 } from 'uuid'
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import {
   DBSlot,
-  DBSlotEnhanced,
-  IPFSMeetingInfo,
   MeetingChangeType,
   MeetingDecrypted,
+  MeetingInfo,
   ParticipantMappingType,
   SchedulingType,
 } from '@/types/Meeting'
@@ -34,7 +33,6 @@ import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
   createHuddleRoom,
-  fetchContentFromIPFSFromBrowser,
   getAccount,
   getExistingAccounts,
   getMeeting,
@@ -200,7 +198,8 @@ const buildMeetingData = async (
   currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl?: string,
-  meetingId = ''
+  meetingId = '',
+  meetingTitle = 'No Title'
 ): Promise<MeetingCreationRequest> => {
   if (meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -254,9 +253,10 @@ const buildMeetingData = async (
     throw new MeetingCreationError()
   }
 
-  const privateInfo: IPFSMeetingInfo = {
+  const privateInfo: MeetingInfo = {
     created_at: new Date(),
     participants: sanitizedParticipants,
+    title: meetingTitle,
     content: meetingContent,
     meeting_url: meetingUrl || (await createHuddleRoom()).url,
     change_history_paths: [],
@@ -289,7 +289,7 @@ const buildMeetingData = async (
       ...privateInfo,
       // we need to store the other related slots in other to update the meeting later
       related_slot_ids: allSlotIds.filter(id => id !== participant.slot_id),
-    } as IPFSMeetingInfo)
+    } as MeetingInfo)
 
     const participantMapping: RequestParticipantMapping = {
       account_address: participant.account_address || '',
@@ -327,6 +327,7 @@ const buildMeetingData = async (
     meetingTypeId,
     meeting_url: privateInfo['meeting_url'],
     content: privateInfo['content'],
+    title: privateInfo['title'],
   }
 
   return meeting
@@ -352,7 +353,8 @@ const updateMeeting = async (
   signature: string,
   participants: ParticipantInfo[],
   content: string,
-  meetingUrl: string
+  meetingUrl: string,
+  meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -438,7 +440,8 @@ const updateMeeting = async (
     currentAccount,
     content,
     meetingUrl,
-    rootMeetingId
+    rootMeetingId,
+    meetingTitle
   )
   const payload = {
     ...meetingData,
@@ -448,10 +451,7 @@ const updateMeeting = async (
   }
 
   // Fetch the updated data one last time
-  const slot: DBSlotEnhanced = await apiUpdateMeeting(
-    decryptedMeeting.id,
-    payload
-  )
+  const slot: DBSlot = await apiUpdateMeeting(decryptedMeeting.id, payload)
   return (await decryptMeeting(slot, currentAccount))!
 }
 
@@ -520,7 +520,8 @@ const scheduleMeeting = async (
   currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl?: string,
-  emailToSendReminders?: string
+  emailToSendReminders?: string,
+  meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const meeting = await buildMeetingData(
@@ -533,7 +534,8 @@ const scheduleMeeting = async (
     currentAccount,
     meetingContent,
     meetingUrl,
-    newMeetingId
+    newMeetingId,
+    meetingTitle
   )
 
   const owner = meeting.participants_mapping.filter(
@@ -552,7 +554,7 @@ const scheduleMeeting = async (
     ).isFree
   ) {
     try {
-      let slot: DBSlotEnhanced
+      let slot: DBSlot
       if (schedulingType === SchedulingType.GUEST) {
         slot = await scheduleMeetingAsGuest(meeting)
       } else if (schedulingType === SchedulingType.DISCORD) {
@@ -591,13 +593,14 @@ const scheduleMeeting = async (
         created_at: meeting.start,
         participants: meeting.participants_mapping,
         content: meeting.content,
+        title: meeting.title,
         meeting_id: newMeetingId,
         meeting_url: meeting.meeting_url,
         start: meeting.start,
         end: meeting.end,
-        meeting_info_file_path: slot.meeting_info_file_path,
         related_slot_ids: [],
         version: 0,
+        meeting_info_encrypted: slot.meeting_info_encrypted,
       }
     } catch (error: any) {
       throw error
@@ -707,19 +710,19 @@ const participantStatusToICSStatus = (status: ParticipationStatus) => {
 }
 
 const decryptMeeting = async (
-  meeting: DBSlotEnhanced,
+  meeting: DBSlot,
   account: Account,
   signature?: string
 ): Promise<MeetingDecrypted | null> => {
   const content = await getContentFromEncrypted(
     account!,
     signature || getSignature(account!.address)!,
-    meeting.meeting_info_encrypted
+    meeting?.meeting_info_encrypted
   )
 
   if (!content) return null
 
-  const meetingInfo = JSON.parse(content) as IPFSMeetingInfo
+  const meetingInfo = JSON.parse(content) as MeetingInfo
   return {
     id: meeting.id!,
     ...meeting,
@@ -727,11 +730,11 @@ const decryptMeeting = async (
     created_at: meeting.created_at!,
     participants: meetingInfo.participants,
     content: meetingInfo.content,
+    title: meetingInfo.title,
     meeting_url: meetingInfo.meeting_url,
     related_slot_ids: meetingInfo.related_slot_ids,
     start: new Date(meeting.start),
     end: new Date(meeting.end),
-    meeting_info_file_path: meeting.meeting_info_file_path,
     version: meeting.version,
   }
 }
@@ -785,6 +788,24 @@ const dateToHumanReadable = (
     result += ` - ${timezone}`
   }
   return result
+}
+
+const dateToLocalizedRange = (
+  start_date: Date,
+  end_date: Date,
+  timezone: string,
+  includeTimezone?: boolean
+): string => {
+  const start = `${format(
+    utcToZonedTime(start_date, timezone),
+    'eeee, LLL d • p - '
+  )}`
+  let end = `${format(utcToZonedTime(end_date, timezone), 'p')}`
+  if (includeTimezone) {
+    end += ` (${timezone})`
+  }
+
+  return start + end
 }
 
 const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
@@ -842,9 +863,7 @@ const decodeMeeting = async (
   meeting: DBSlot,
   currentAccount: Account
 ): Promise<MeetingDecrypted | null> => {
-  const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
-    meeting.meeting_info_file_path
-  )) as Encrypted
+  const meetingInfoEncrypted = meeting.meeting_info_encrypted as Encrypted
   if (meetingInfoEncrypted) {
     const decryptedMeeting = await decryptMeeting(
       {
@@ -858,13 +877,87 @@ const decodeMeeting = async (
   }
   return null
 }
-
+const googleUrlParsedDate = (date: Date) => format(date, "yyyyMMdd'T'HHmmSS'Z'")
+const outLookUrlParsedDate = (date: Date) =>
+  format(date, "yyyy-MM-dd:HH:mm:SS'Z'")
+const generateGoogleCalendarUrl = (
+  start?: Date | number,
+  end?: Date | number,
+  title?: string,
+  content?: string,
+  meeting_url?: string,
+  timezone?: string,
+  participants?: MeetingDecrypted['participants']
+) => {
+  let baseUrl = 'https://calendar.google.com/calendar/r/eventedit11?sf=true'
+  if (start && end) {
+    baseUrl += `&dates=${googleUrlParsedDate(
+      new Date(start)
+    )}%2F${googleUrlParsedDate(new Date(end))}`
+  }
+  if (title) {
+    baseUrl += `&text=${title}`
+  }
+  if (content || meeting_url) {
+    baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
+      content,
+      meeting_url,
+      `${appUrl}/dashboard/meetings`
+    )}`
+  }
+  if (timezone) {
+    baseUrl += `&ctz=${timezone}`
+  }
+  if (participants) {
+    baseUrl += `&add=${participants
+      ?.map(val => val.guest_email)
+      ?.filter(val => !!val)
+      ?.join(',')}`
+  }
+  return baseUrl
+}
+const generateOffice365CalendarUrl = (
+  start?: Date | number,
+  end?: Date | number,
+  title?: string,
+  content?: string,
+  meeting_url?: string,
+  timezone?: string,
+  participants?: MeetingDecrypted['participants']
+) => {
+  let baseUrl =
+    'https://outlook.office.com/calendar/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&online=true'
+  if (start) {
+    baseUrl += `&startdt=${outLookUrlParsedDate(new Date(start))}`
+  }
+  if (end) {
+    baseUrl += `&enddt=${outLookUrlParsedDate(new Date(end))}`
+  }
+  if (title) {
+    baseUrl += `&subject=${title}`
+  }
+  if (content || meeting_url) {
+    baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
+      content,
+      meeting_url,
+      `${appUrl}/dashboard/meetings`
+    )}`
+  }
+  if (participants) {
+    baseUrl += `&to=${participants
+      ?.map(val => val.guest_email)
+      ?.filter(val => !!val)
+      ?.join(',')}`
+  }
+  return baseUrl
+}
 const allSlots = generateAllSlots()
 
 export {
   allSlots,
   cancelMeeting,
   dateToHumanReadable,
+  dateToLocalizedRange,
   decodeMeeting,
   decryptMeeting,
   defaultTimeRange,
@@ -872,10 +965,14 @@ export {
   generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
+  generateGoogleCalendarUrl,
   generateIcs,
+  generateOffice365CalendarUrl,
   getAccountCalendarUrl,
   getAccountDomainUrl,
+  googleUrlParsedDate,
   noNoReplyEmailForAccount,
+  outLookUrlParsedDate,
   scheduleMeeting,
   updateMeeting,
 }
