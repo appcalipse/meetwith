@@ -1,3 +1,4 @@
+import { CheckCircleIcon } from '@chakra-ui/icons'
 import {
   Accordion,
   AccordionButton,
@@ -12,18 +13,25 @@ import {
   HStack,
   Icon,
   IconButton,
+  Tag,
+  TagLabel,
+  TagLeftIcon,
   Text,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import React from 'react'
+import { BiExit } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaInfo, FaRegCopy } from 'react-icons/fa'
+import { GoDotFill } from 'react-icons/go'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
+import { MdDelete } from 'react-icons/md'
 
 import { logEvent } from '@/utils/analytics'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
+import GroupMemberCard from './GroupMemberCard'
 
 const GroupCard: React.FC = ({}) => {
   const bgColor = useColorModeValue('white', 'gray.600')
@@ -81,10 +89,10 @@ const GroupCard: React.FC = ({}) => {
               py={3}
               px={1}
             >
-              <Heading size="sm" flexBasis="33%">
+              <Heading size="sm" flexBasis="50%">
                 Contact
               </Heading>
-              <Flex alignItems="center" flexBasis="33%" gap={0.5}>
+              <Flex alignItems="center" flexBasis="15%" gap={0.5}>
                 <Heading size="sm">Role </Heading>
                 <Tooltip.Provider delayDuration={400}>
                   <Tooltip.Root>
@@ -109,14 +117,15 @@ const GroupCard: React.FC = ({}) => {
                         bgColor={bgColor}
                         shadow="lg"
                       >
-                        Tooltips
+                        Admins can add and remove members from the group, change
+                        the group&apos;s name, calendar link, and delete group.
                       </Text>
                       <Tooltip.Arrow />
                     </Tooltip.Content>
                   </Tooltip.Root>
                 </Tooltip.Provider>
               </Flex>
-              <Flex alignItems="center" flexBasis="33%" gap={0.5}>
+              <Flex alignItems="center" flexBasis="35%" gap={0.5}>
                 <Heading size="sm">Callendar connection</Heading>
                 <Tooltip.Provider delayDuration={400}>
                   <Tooltip.Root>
@@ -141,7 +150,8 @@ const GroupCard: React.FC = ({}) => {
                         bgColor={bgColor}
                         shadow="lg"
                       >
-                        Tooltips
+                        At least 1 calendar connected to MeetWithWallet
+                        platform.
                       </Text>
                       <Tooltip.Arrow />
                     </Tooltip.Content>
@@ -149,29 +159,18 @@ const GroupCard: React.FC = ({}) => {
                 </Tooltip.Provider>
               </Flex>
             </HStack>
-            <HStack
-              width="100%"
-              justifyContent="space-between"
-              pb={2}
-              borderBottomWidth={1}
-              borderBottomColor={borderColor}
-              py={3}
-            >
-              <HStack flexBasis="33%">
-                <Avatar name="Dan Abrahmov" src="https://bit.ly/dan-abramov" />
-                <VStack alignItems="start" gap={0}>
-                  <Heading size="sm">Daniel Jackalop (You)</Heading>
-                  <CopyLinkButton
-                    url={'meetwithwallet.xyz/rndaomarketing'}
-                    size="md"
-                    label={'meetwithwallet.xyz/rndaomarketing'}
-                    withIcon
-                    design_type="link"
-                  />
-                </VStack>
-              </HStack>
-            </HStack>
+            <GroupMemberCard />
           </AccordionPanel>
+          <Button
+            variant="ghost"
+            leftIcon={<Icon as={IoMdPersonAdd} h={25} />}
+            color="white"
+            px={1.5}
+            height="fit-content !important"
+            py={1}
+          >
+            Add new member
+          </Button>
         </>
       )}
     </AccordionItem>
