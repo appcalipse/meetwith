@@ -27,7 +27,6 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   ConferenceMeeting,
   DBSlot,
-  DBSlotEnhanced,
   GroupMeetingRequest,
   MeetingAccessType,
   MeetingProvider,
@@ -68,7 +67,7 @@ import {
 } from './calendar_manager'
 import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
-import { addContentToIPFS, fetchContentFromIPFS } from './ipfs_helper'
+import { fetchContentFromIPFS } from './ipfs_helper'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
@@ -206,9 +205,7 @@ const updateAccountFromInvite = async (
 
   for (const slot of currentMeetings) {
     try {
-      const encrypted = (await fetchContentFromIPFS(
-        slot.meeting_info_file_path
-      )) as Encrypted
+      const encrypted = slot.meeting_info_encrypted as Encrypted
 
       const privateInfo = await decryptWithPrivateKey(
         process.env.NEXT_SERVER_PVT_KEY!,
@@ -218,12 +215,11 @@ const updateAccountFromInvite = async (
         newIdentity.publicKey,
         privateInfo
       )
-      const newEncryptedPath = await addContentToIPFS(newPvtInfo)
 
       const { _, error } = await db.supabase
         .from('slots')
         .update({
-          meeting_info_file_path: newEncryptedPath,
+          meeting_info_encrypted: newPvtInfo,
         })
         .match({ id: slot.id })
 
@@ -432,6 +428,59 @@ const getAccountFromDB = async (
   throw new AccountNotFoundError(identifier)
 }
 
+const migrateSlots = async (): Promise<any> => {
+  const { data, error: fetchError } = await db.supabase
+    .from('slots')
+    .select()
+    .is('meeting_info_encrypted', null)
+
+  if (fetchError) {
+    console.error('Failed to fetch slots:', fetchError)
+    return {
+      errors: { fetchError: [{ message: fetchError.message }] },
+      counts: { updateCount: 0, failCount: 0 },
+    }
+  }
+
+  const errors = []
+  const updatedSlots = []
+
+  for (const slot of data) {
+    try {
+      console.log(`starting slot ${slot.id}`)
+      const encrypted = (await fetchContentFromIPFS(
+        slot.meeting_info_file_path,
+        3000
+      )) as Encrypted
+
+      const { error: updateError } = await db.supabase
+        .from('slots')
+        .update({ meeting_info_encrypted: encrypted })
+        .match({ id: slot.id })
+
+      updatedSlots.push(slot.id)
+      console.log(`slot ${slot.id} is updated`)
+
+      if (updateError) {
+        console.error(`Failed to update slot ${slot.id}:`, updateError)
+        return `Update Error for Slot ID ${slot.id}`
+      }
+    } catch (ipfsError) {
+      console.error(`IPFS fetch error for slot ${slot.id}:`, ipfsError)
+      errors.push(slot.id)
+    }
+  }
+
+  return {
+    updatedSlots,
+    errors,
+    counts: {
+      updateCount: updatedSlots.length,
+      failCount: errors.length,
+    },
+  }
+}
+
 const getSlotsForAccount = async (
   account_address: string,
   start?: Date,
@@ -514,7 +563,7 @@ const isSlotFree = async (
   )
 }
 
-const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
+const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
   const { data, error } = await db.supabase
     .from('slots')
     .select()
@@ -530,12 +579,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlotEnhanced> => {
   }
 
   const dbMeeting = data[0] as DBSlot
-  const meeting: DBSlotEnhanced = {
-    ...dbMeeting,
-    meeting_info_encrypted: (await fetchContentFromIPFS(
-      dbMeeting.meeting_info_file_path
-    )) as Encrypted,
-  }
+  const meeting: DBSlot = dbMeeting
 
   return meeting
 }
@@ -560,9 +604,7 @@ const getConferenceMeetingFromDB = async (
   return dbMeeting
 }
 
-const getMeetingsFromDB = async (
-  slotIds: string[]
-): Promise<DBSlotEnhanced[]> => {
+const getMeetingsFromDB = async (slotIds: string[]): Promise<DBSlot[]> => {
   const { data, error } = await db.supabase
     .from('slots')
     .select()
@@ -579,12 +621,8 @@ const getMeetingsFromDB = async (
 
   const meetings = []
   for (const dbMeeting of data) {
-    const meeting: DBSlotEnhanced = {
-      ...dbMeeting,
-      meeting_info_encrypted: (await fetchContentFromIPFS(
-        dbMeeting.meeting_info_file_path
-      )) as Encrypted,
-    }
+    const meeting: DBSlot = dbMeeting
+
     meetings.push(meeting)
   }
 
@@ -639,7 +677,7 @@ const deleteMeetingFromDB = async (
 const saveMeeting = async (
   participantActing: ParticipantBaseInfo,
   meeting: MeetingCreationRequest
-): Promise<DBSlotEnhanced> => {
+): Promise<DBSlot> => {
   if (
     new Set(
       meeting.participants_mapping.map(p => p.account_address || p.guest_email)
@@ -650,7 +688,7 @@ const saveMeeting = async (
   }
 
   const slots = []
-  let meetingResponse = {} as DBSlotEnhanced
+  let meetingResponse = {} as DBSlot
   let index = 0
   let i = 0
 
@@ -775,16 +813,14 @@ const saveMeeting = async (
         )
       }
 
-      const path = await addContentToIPFS(participant.privateInfo)
-
       // Not adding source here given on our database the source is always MWW
       const dbSlot: DBSlot = {
         id: participant.slot_id,
         start: meeting.start,
         end: meeting.end,
         account_address: account.address,
-        meeting_info_file_path: path,
         version: 0,
+        meeting_info_encrypted: participant.privateInfo,
       }
 
       slots.push(dbSlot)
@@ -1355,7 +1391,7 @@ const getAppToken = async (tokenType: string): Promise<any | null> => {
 const updateMeeting = async (
   participantActing: ParticipantBaseInfo,
   meetingUpdateRequest: MeetingUpdateRequest
-): Promise<DBSlotEnhanced> => {
+): Promise<DBSlot> => {
   if (
     new Set(
       meetingUpdateRequest.participants_mapping.map(p => p.account_address)
@@ -1366,7 +1402,7 @@ const updateMeeting = async (
   }
 
   const slots = []
-  let meetingResponse = {} as DBSlotEnhanced
+  let meetingResponse = {} as DBSlot
   let index = 0
   let i = 0
 
@@ -1481,16 +1517,14 @@ const updateMeeting = async (
         )
       }
 
-      const path = await addContentToIPFS(participant.privateInfo)
-
       // Not adding source here given on our database the source is always MWW
       const dbSlot: DBSlot = {
         id: participant.slot_id,
         start: new Date(meetingUpdateRequest.start),
         end: new Date(meetingUpdateRequest.end),
         account_address: account.address,
-        meeting_info_file_path: path,
         version: meetingUpdateRequest.version,
+        meeting_info_encrypted: participant.privateInfo,
       }
 
       slots.push(dbSlot)
@@ -1700,6 +1734,7 @@ export {
   initDB,
   insertOfficeEventMapping,
   isSlotFree,
+  migrateSlots,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
   saveEmailToDB,
