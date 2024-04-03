@@ -21,7 +21,7 @@ const slides = [
     price: 'Free',
     title: 'Just like Calendly, but powered by Web3',
     about:
-      'Meet with Wallet is integrated with Web3 technologies: Major L1 and L2 blockchains, IPFS, ENS, Huddle01, Push protocol and much more, providing a highly secure and private scheduling experience. It’s like Calendly, but tailor made to Web3.',
+      'Meet with Wallet is integrated with Web3 technologies: Major L1 and L2 blockchains, ENS, Huddle01, and much more, providing a highly secure and private scheduling experience. It’s like Calendly, but tailor made to Web3.',
   },
   {
     id: 2,
@@ -47,7 +47,7 @@ const slides = [
   {
     id: 5,
     price: 'Free',
-    title: 'Automated reminders over email, Discord or Push protocol',
+    title: 'Automated reminders over email or Discord',
     about:
       'Receive automated reminders so you don’t miss an important meeting. Meet with Wallet supports a variety of notification options from traditional emails to decentralised alternatives.',
   },

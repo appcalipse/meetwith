@@ -24,7 +24,6 @@ import {
   Select,
   Switch,
   Text,
-  Textarea,
   useColorModeValue,
   useDisclosure,
   useToast,
@@ -64,6 +63,7 @@ import {
   getSuggestedSlots,
 } from '@/utils/api_helper'
 import { scheduleMeeting, updateMeeting } from '@/utils/calendar_manager'
+import { encryptContent } from '@/utils/cryptography'
 import {
   GateConditionNotValidError,
   Huddle01ServiceUnavailable,
@@ -80,6 +80,8 @@ import { parseTime } from '@/utils/time.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
+import RichTextEditor from '../profile/components/RichTextEditor'
+import InfoTooltip from '../profile/components/Tooltip'
 import { CancelMeetingDialog } from './cancel-dialog'
 import { MeetingDialogState } from './meeting.dialog.hook'
 
@@ -129,6 +131,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       : parseTime(new Date(), true)
   )
   const [content, setContent] = useState(decryptedMeeting?.content || '')
+  const [title, setTitle] = useState(decryptedMeeting?.title || '')
   const [inputError, setInputError] = useState(
     undefined as ReactNode | undefined
   )
@@ -150,7 +153,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
 
   if (meetingId) {
     if (window.location.search.indexOf(meetingId) === -1) {
-      // not using router API to avoid re-rendinreing components
+      // not using router API to avoid re-rendering components
       const searchParams = new URLSearchParams(window.location.search)
       searchParams.set('slotId', meetingId)
       const newRelativePathQuery =
@@ -163,8 +166,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     if (!isProAccount(currentAccount!) && _participants.length > 1) {
       setInputError(
         <Text>
-          <Link href="/dashboard/details#subscriptions">Go PRO</Link>
-          to be able to schedule meetings with more than one invitee
+          <Link href="/dashboard/details#subscriptions">Go PRO</Link> to be able
+          to schedule meetings with more than one invitee
         </Text>
       )
       participants.length == 0 && setParticipants([_participants[0]])
@@ -372,7 +375,9 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           _participants.valid,
           currentAccount,
           content,
-          meetingUrl
+          meetingUrl,
+          undefined,
+          title
         )
         logEvent('Scheduled a meeting', {
           fromDashboard: true,
@@ -388,7 +393,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           getSignature(currentAccount!.address) || '',
           _participants.valid,
           content,
-          meetingUrl
+          meetingUrl,
+          title
         )
         logEvent('Updated a meeting', {
           fromDashboard: true,
@@ -402,10 +408,10 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           id: meetingResult.id,
           created_at: new Date(meetingResult.created_at),
           account_address: currentAccount!.address,
-          meeting_info_file_path: meetingResult.meeting_info_file_path,
           start: new Date(meetingResult.start),
           end: new Date(meetingResult.end),
           source: TimeSlotSource.MWW,
+          meeting_info_encrypted: meetingResult?.meeting_info_encrypted,
           version: meetingResult.version,
         }
       )
@@ -506,6 +512,30 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
         <ModalCloseButton />
         <ModalBody>
           <FormControl>
+            <Flex
+              alignItems="center"
+              marginBottom="8px"
+              marginRight="12px"
+              gap="6px"
+            >
+              <FormLabel
+                htmlFor="title"
+                alignItems="center"
+                height="fit-content"
+                margin={0}
+              >
+                Title
+              </FormLabel>
+            </Flex>
+            <Input
+              id="title"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              type="text"
+              placeholder="Give a title for your meeting"
+            />
+          </FormControl>
+          <FormControl mt={4}>
             <FormLabel htmlFor="participants">Participants</FormLabel>
             <ChipInput
               currentItems={participants}
@@ -540,7 +570,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               <Select
                 id="duration"
                 placeholder="Duration"
-                onChange={(e: any) => setDuration(Number(e.target.value))}
+                onChange={e => setDuration(Number(e.target.value))}
                 value={duration}
               >
                 <option value={15}>15 min</option>
@@ -631,10 +661,10 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           )}
           <FormControl mt={4}>
             <FormLabel htmlFor="info">Information (optional)</FormLabel>
-            <Textarea
+            <RichTextEditor
               id="info"
               value={content}
-              onChange={(e: any) => setContent(e.target.value)}
+              onValueChange={setContent}
               placeholder="Any information you want to share prior to the meeting?"
             />
           </FormControl>
