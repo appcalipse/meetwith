@@ -176,9 +176,9 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
       <FormControl pt={2}>
         <FormLabel>Description (optional)</FormLabel>
         <Textarea
-          value={description}
           placeholder="Add an optional description to this meeting type. It will appear on your public calendar"
           onChange={e => setDescription(e.target.value)}
+          value={description}
         />
       </FormControl>
 
