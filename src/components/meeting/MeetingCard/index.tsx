@@ -16,12 +16,13 @@ import {
   Portal,
   Spinner,
   Text,
+  Tooltip,
   useColorModeValue,
   useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { addHours, isAfter, isWithinInterval } from 'date-fns'
+import { isAfter, isWithinInterval } from 'date-fns'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import React from 'react'
 import { FaEdit, FaEllipsisV, FaRegCopy, FaTrash } from 'react-icons/fa'
@@ -87,7 +88,7 @@ const MeetingCard = ({
     return null
   }
 
-  const bgColor = useColorModeValue('white', '#1F2933')
+  const bgColor = useColorModeValue('white', 'gray.800')
 
   const label = defineLabel(meeting.start as Date, meeting.end as Date)
   const toast = useToast()
@@ -98,6 +99,7 @@ const MeetingCard = ({
     undefined as MeetingDecrypted | undefined
   )
   const [loading, setLoading] = useState(true)
+  const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
   const { currentAccount } = useContext(AccountContext)
   const decodeData = async () => {
@@ -189,23 +191,21 @@ const MeetingCard = ({
     ],
     [decryptedMeeting, currentAccount, timezone]
   )
-  const handleCopy = () => {
+  const handleCopy = async () => {
     try {
-      navigator.clipboard.writeText(decryptedMeeting?.meeting_url || '')
-      toast({
-        title: 'Copied to clipboard',
-        status: 'success',
-        duration: 2000,
-        position: 'top',
-      })
-    } catch (e) {
-      toast({
-        title: 'Failed to copy to clipboard',
-        status: 'error',
-        duration: 2000,
-        position: 'top',
-      })
+      if ('clipboard' in navigator) {
+        await navigator.clipboard.writeText(decryptedMeeting?.meeting_url || '')
+      } else {
+        document.execCommand('copy', true, decryptedMeeting?.meeting_url || '')
+      }
+    } catch (err) {
+      document.execCommand('copy', true, decryptedMeeting?.meeting_url || '')
     }
+    logEvent('Copied link', { url: decryptedMeeting?.meeting_url || '' })
+    setCopyFeedbackOpen(true)
+    setTimeout(() => {
+      setCopyFeedbackOpen(false)
+    }, 2000)
   }
   const showEdit =
     isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
@@ -296,101 +296,103 @@ const MeetingCard = ({
                   >
                     <Button colorScheme="primary">Join meeting</Button>
                   </Link>
-                  {showEdit && (
-                    <>
-                      <IconButton
-                        color={iconColor}
-                        aria-label="remove"
-                        icon={<FaEdit size={16} />}
-                        onClick={() => {
-                          decryptedMeeting &&
-                            onClickToOpen(meeting, decryptedMeeting, timezone)
-                        }}
-                      />
-                      <IconButton
-                        color={iconColor}
-                        aria-label="remove"
-                        icon={<FaTrash size={16} />}
-                        onClick={onOpen}
-                      />
-                      <Menu>
-                        <MenuButton
-                          as={IconButton}
+                  <>
+                    {showEdit && (
+                      <>
+                        <IconButton
                           color={iconColor}
-                          aria-label="option"
-                          icon={<FaEllipsisV size={16} />}
-                          key={`${meeting?.id}-option`}
+                          aria-label="edit"
+                          icon={<FaEdit size={16} />}
+                          onClick={() => {
+                            decryptedMeeting &&
+                              onClickToOpen(meeting, decryptedMeeting, timezone)
+                          }}
                         />
-                        <Portal>
-                          <MenuList backgroundColor={menuBgColor}>
-                            {menuItems.map((val, index, arr) => (
-                              <>
-                                {val.link ? (
-                                  <MenuItem
-                                    as="a"
-                                    href={val.link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    key={`${val.label}-${meeting?.id}`}
-                                    backgroundColor={menuBgColor}
-                                  >
-                                    {val.label}
-                                  </MenuItem>
-                                ) : (
-                                  <MenuItem
-                                    onClick={val.onClick}
-                                    backgroundColor={menuBgColor}
-                                    key={`${val.label}-${meeting?.id}`}
-                                  >
-                                    {val.label}
-                                  </MenuItem>
-                                )}
-                                {index !== arr.length - 1 && (
-                                  <MenuDivider borderColor="neutral.600" />
-                                )}
-                              </>
-                            ))}
-                            {!isProduction && (
-                              <>
-                                <MenuDivider borderColor="neutral.600" />
-                                <MenuItem
-                                  backgroundColor={menuBgColor}
-                                  onClick={() =>
-                                    console.debug(decryptedMeeting)
-                                  }
-                                >
-                                  Log info (for debugging)
-                                </MenuItem>
-                              </>
-                            )}
-                          </MenuList>
-                        </Portal>
-                      </Menu>
-                    </>
-                  )}
+                        <IconButton
+                          color={iconColor}
+                          aria-label="remove"
+                          icon={<FaTrash size={16} />}
+                          onClick={onOpen}
+                        />
+                      </>
+                    )}
+                    <Menu>
+                      <MenuButton
+                        as={IconButton}
+                        color={iconColor}
+                        aria-label="option"
+                        icon={<FaEllipsisV size={16} />}
+                        key={`${meeting?.id}-option`}
+                      />
+                      <Portal>
+                        <MenuList backgroundColor={menuBgColor}>
+                          {menuItems.map((val, index, arr) => [
+                            val.link ? (
+                              <MenuItem
+                                as="a"
+                                href={val.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                key={`${val.label}-${meeting?.id}`}
+                                backgroundColor={menuBgColor}
+                              >
+                                {val.label}
+                              </MenuItem>
+                            ) : (
+                              <MenuItem
+                                onClick={val.onClick}
+                                backgroundColor={menuBgColor}
+                                key={`${val.label}-${meeting?.id}`}
+                              >
+                                {val.label}
+                              </MenuItem>
+                            ),
+                            index !== arr.length - 1 && (
+                              <MenuDivider
+                                key="divider"
+                                borderColor="neutral.600"
+                              />
+                            ),
+                          ])}
+                          {!isProduction && (
+                            <>
+                              <MenuDivider
+                                key="divider2"
+                                borderColor="neutral.600"
+                              />
+                              <MenuItem
+                                key="log-info"
+                                backgroundColor={menuBgColor}
+                                onClick={() => console.debug(decryptedMeeting)}
+                              >
+                                Log info (for debugging)
+                              </MenuItem>
+                            </>
+                          )}
+                        </MenuList>
+                      </Portal>
+                    </Menu>
+                  </>
                 </HStack>
               </Flex>
 
               <Divider />
               <VStack alignItems="start">
                 <HStack alignItems="flex-start" flexWrap="wrap">
-                  <Text>Participants:</Text>
                   <Text
+                    display="inline"
                     textOverflow="ellipsis"
                     overflow="hidden"
                     whiteSpace="nowrap"
                     width={{ base: '300px', md: '100%' }}
                   >
-                    <strong>{getNamesDisplay(decryptedMeeting)}</strong>
+                    <strong>Participants: </strong>
+                    {getNamesDisplay(decryptedMeeting)}
                   </Text>
                 </HStack>
                 <HStack alignItems="flex-start" flexWrap="wrap">
-                  <Text>Meeting link:</Text>
                   <HStack alignItems="center">
-                    <Link
-                      href={addUTMParams(decryptedMeeting.meeting_url || '')}
-                      isExternal
-                      onClick={() => logEvent('Clicked to start meeting')}
+                    <Text
                       whiteSpace="nowrap"
                       overflow="hidden"
                       textOverflow="ellipsis"
@@ -398,19 +400,37 @@ const MeetingCard = ({
                       flex={1}
                       width={{ base: '300px', md: '100%' }}
                     >
-                      <strong>{decryptedMeeting.meeting_url}</strong>
-                    </Link>
-                    <FaRegCopy
-                      size={16}
-                      onClick={handleCopy}
-                      display="block"
-                      cursor="pointer"
-                    />
+                      <strong>Meeting link: </strong>
+                      <Link
+                        href={addUTMParams(decryptedMeeting.meeting_url || '')}
+                        isExternal
+                        onClick={() => logEvent('Clicked to start meeting')}
+                      >
+                        {decryptedMeeting.meeting_url}
+                      </Link>
+                    </Text>
+                    <Tooltip
+                      label="Link copied"
+                      placement="top"
+                      isOpen={copyFeedbackOpen}
+                    >
+                      <Button
+                        w={4}
+                        colorScheme="primary"
+                        variant="link"
+                        onClick={handleCopy}
+                        leftIcon={<FaRegCopy />}
+                      />
+
+                      {/* <FaRegCopy size={16} display="block" cursor="pointer" /> */}
+                    </Tooltip>
                   </HStack>
                 </HStack>
                 {decryptedMeeting.content && (
                   <HStack alignItems="flex-start" flexWrap="wrap">
-                    <Text>Description:</Text>
+                    <Text>
+                      <strong>Description:</strong>
+                    </Text>
                     <Text
                       width="100%"
                       wordBreak="break-word"
