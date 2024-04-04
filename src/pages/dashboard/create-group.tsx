@@ -28,8 +28,7 @@ const CreateGroupPage = () => {
 
   return (
     <Flex direction="column" align="center" minH="100vh" pt="160px">
-      <Box maxW="400px" w="full">
-        {' '}
+      <Box maxW="400px" w="full" data-component="create-group-form">
         <VStack
           as="form"
           onSubmit={handleGroupSubmit}
@@ -80,17 +79,19 @@ const CreateGroupPage = () => {
               mt="2"
             />
           </FormControl>
-          <Button
-            type="submit"
-            colorScheme="red" // Adjusted to a color scheme that closely matches #F9B19A, consider defining a custom color scheme in your theme
-            size="md"
-            height="48px" // Fixed height of 48px
-            borderRadius="8px" // Radius of 8px
-            w="full" // Button width to fill the form width
-            _hover={{ bg: '#E68982' }} // Adjust hover color accordingly
-          >
-            Create
-          </Button>
+          <Box>
+            <Button
+              type="submit"
+              colorScheme="red" // Adjusted to a color scheme that closely matches #F9B19A, consider defining a custom color scheme in your theme
+              size="md"
+              height="48px" // Fixed height of 48px
+              borderRadius="8px" // Radius of 8px
+              w="full" // Button width to fill the form width
+              _hover={{ bg: '#E68982' }} // Adjust hover color accordingly
+            >
+              Create
+            </Button>
+          </Box>
         </VStack>
       </Box>
     </Flex>
