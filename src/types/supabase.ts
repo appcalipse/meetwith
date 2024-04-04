@@ -6,6 +6,13 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+interface Group {
+  id: string
+  name: string
+  slug: string
+  created_at?: string
+  updated_at?: string
+}
 export interface Database {
   public: {
     Tables: {
@@ -291,6 +298,12 @@ export interface Database {
           provider?: string
           start?: string
         }
+        Relationships: []
+      }
+      groups: {
+        Row: Group
+        Insert: Group
+        Update: Group
         Relationships: []
       }
       office_event_mapping: {
