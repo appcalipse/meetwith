@@ -24,6 +24,7 @@ import {
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
 import { DiscordAccount } from '@/types/Discord'
+import { GroupUsers, MemberType, UserGroups } from '@/types/Group'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -54,9 +55,11 @@ import {
   AccountNotFoundError,
   GateConditionNotValidError,
   GateInUseError,
+  GroupNotExistsError,
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  NotGroupMemberError,
   TimeNotAvailableError,
   UnauthorizedError,
 } from '@/utils/errors'
@@ -894,6 +897,85 @@ const getAccountNotificationSubscriptions = async (
   return { account_address: address, notification_types: [] }
 }
 
+const getUserGroups = async (
+  address: string,
+  limit: number,
+  offset: number,
+  keyword?: string,
+  filter?: MemberType
+): Promise<Array<UserGroups>> => {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select(
+      `
+      role,
+      invite_pending,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('member_id', address.toLowerCase())
+    .or(`group.name.ilike.${keyword},role.eq.${filter}`)
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+  if (error) {
+    throw new Error(error)
+  }
+  if (data) {
+    return data
+  }
+  return []
+}
+
+const getGroupUsers = async (
+  group_id: string,
+  address: string,
+  limit: number,
+  offset: number
+): Promise<Array<GroupUsers>> => {
+  const { data: groupData, error: groupError } = await db.supabase
+    .from('groups')
+    .eq('id', group_id)
+  if (groupError) {
+    throw new Error(groupError)
+  }
+  if (!groupData) {
+    throw new GroupNotExistsError()
+  }
+  const { data: memberData, error: memberError } = await db.superbase
+    .from('group_members')
+    .eq('group_id', group_id)
+    .eq('member_id', address.toLowerCase())
+  if (memberError) {
+    throw new Error(memberError)
+  }
+  if (!memberData) {
+    throw new NotGroupMemberError()
+  }
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select(
+      `
+      role,
+      invite_pending,
+      address: member_id,
+      preferences:  account_preferences(name),
+      calendars: connected_calendars(
+        calendars,
+        email,
+      )
+      `
+    )
+    .eq('group_id', group_id)
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+  if (error) {
+    throw new Error(error)
+  }
+
+  if (data) {
+    return data
+  }
+  return []
+}
+
 const setAccountNotificationSubscriptions = async (
   address: string,
   notifications: AccountNotifications
@@ -1726,10 +1808,12 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
+  getGroupUsers,
   getMeetingFromDB,
   getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
+  getUserGroups,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
