@@ -17,9 +17,14 @@ import { FaChevronDown } from 'react-icons/fa'
 import { GoDotFill } from 'react-icons/go'
 import { MdDelete } from 'react-icons/md'
 
-import { CopyLinkButton } from '../profile/components/CopyLinkButton'
+import { Account } from '@/types/Account'
+import { GetGroupsResponse, GroupMember } from '@/types/Group'
 
-const GroupMemberCard: React.FC = ({}) => {
+import { CopyLinkButton } from '../profile/components/CopyLinkButton'
+interface IGroupMemberCard extends GroupMember {
+  currentAccount: Account
+}
+const GroupMemberCard: React.FC<IGroupMemberCard> = ({}) => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   return (
     <HStack
@@ -87,10 +92,10 @@ const GroupMemberCard: React.FC = ({}) => {
           // no one can leave an empty group
           true &&
             (false ? (
-              <Icon ml={2} w={25} h={25} as={BiExit} />
+              <Icon ml={2} w={25} h={25} as={BiExit} cursor="pointer" />
             ) : // only admin can remove other users
             true ? (
-              <Icon ml={2} w={25} h={25} as={MdDelete} />
+              <Icon ml={2} w={25} h={25} as={MdDelete} cursor="pointer" />
             ) : null)
         }
       </HStack>
