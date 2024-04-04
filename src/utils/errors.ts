@@ -39,6 +39,18 @@ export class MeetingCreationError extends Error {
     this.name = 'MeetingCreationError'
   }
 }
+export class NotGroupMemberError extends Error {
+  constructor() {
+    super(`Not a group member`)
+    this.name = 'NotGroupMemberError'
+  }
+}
+export class GroupNotExistsError extends Error {
+  constructor() {
+    super(`Group does not exists`)
+    this.name = 'GroupNotExistsError'
+  }
+}
 
 export class UnauthorizedError extends Error {
   constructor() {
