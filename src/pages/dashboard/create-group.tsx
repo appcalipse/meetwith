@@ -82,7 +82,7 @@ const CreateGroupPage = () => {
           <Box>
             <Button
               type="submit"
-              colorScheme="red" // Adjusted to a color scheme that closely matches #F9B19A, consider defining a custom color scheme in your theme
+              colorScheme="primary" // Adjusted to a color scheme that closely matches #F9B19A, consider defining a custom color scheme in your theme
               size="md"
               height="48px" // Fixed height of 48px
               borderRadius="8px" // Radius of 8px

@@ -37,7 +37,7 @@ const GroupMemberCard: React.FC = ({}) => {
           <CopyLinkButton
             url={'meetwithwallet.xyz/rndaomarketing'}
             size="md"
-            width="90%"
+            width="100%"
             label={'meetwithwallet.xyz/rndaomarketing'}
             withIcon
             design_type="link"
