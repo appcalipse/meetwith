@@ -44,6 +44,10 @@ export const CopyLinkButton = ({
         variant={design_type === 'link' ? 'ghost' : 'outline'}
         px={design_type === 'link' ? 0 : 4}
         onClick={copyLink}
+        fontFamily="'DM Sans', sans-serif"
+        fontWeight="500"
+        fontSize="16px"
+        lineHeight="24px"
         {...(withIcon && { rightIcon: <FaLink /> })}
         {...props}
       >
