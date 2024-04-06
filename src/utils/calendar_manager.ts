@@ -800,10 +800,11 @@ const dateToLocalizedRange = (
     utcToZonedTime(start_date, timezone),
     'eeee, LLL d • p - '
   )}`
-  let end = `${format(utcToZonedTime(end_date, timezone), 'pp')}`
+  let end = `${format(utcToZonedTime(end_date, timezone), 'p')}`
   if (includeTimezone) {
     end += ` (${timezone})`
   }
+
   return start + end
 }
 
