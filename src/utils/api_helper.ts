@@ -12,7 +12,11 @@ import {
 import { ConditionRelation } from '@/types/common'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
-import { GetGroupsResponse, GroupMember } from '@/types/Group'
+import {
+  EmptyGroupsResponse,
+  GetGroupsResponse,
+  GroupMember,
+} from '@/types/Group'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -401,12 +405,16 @@ export const getMeetingsForDashboard = async (
 }
 export const getGroups = async (
   limit: number,
-  offset: number,
-  search?: string,
-  role?: string
+  offset: number
 ): Promise<Array<GetGroupsResponse>> => {
   const response = (await internalFetch(
-    `/group/user?limit=${limit}&offset=${offset}&search=${search}&role=${role}`
+    `/group/user?limit=${limit}&offset=${offset}`
+  )) as Array<GetGroupsResponse>
+  return response
+}
+export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
+  const response = (await internalFetch(
+    `/group/empty`
   )) as Array<GetGroupsResponse>
   return response
 }
@@ -416,7 +424,7 @@ export const getGroupsMembers = async (
   offset: number
 ): Promise<Array<GroupMember>> => {
   const response = (await internalFetch(
-    `/group/${group_id}/user?limit=${limit}&offset=${offset}`
+    `/group/${group_id}/users?limit=${limit}&offset=${offset}`
   )) as Array<GroupMember>
   return response
 }
