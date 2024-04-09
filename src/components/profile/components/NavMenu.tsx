@@ -9,7 +9,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { IconType } from 'react-icons'
 import {
   FaBell,
@@ -24,10 +24,12 @@ import {
 import { FaUserGroup } from 'react-icons/fa6'
 
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
+import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
+import { getGroupsEmpty } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -81,7 +83,40 @@ export const NavMenu: React.FC<{
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'gray.800')
-
+  const handleEmptyGroupCheck = async () => {
+    // This component renders only once
+    const emptyGroups = await getGroupsEmpty()
+    emptyGroups?.forEach((data, index) => {
+      if (!toast.isActive(data.id)) {
+        toast({
+          id: data.id,
+          title: 'Calendar connected',
+          containerStyle: {
+            position: 'fixed',
+            insetInline: '0px',
+            marginInline: 'auto',
+            marginTop: `${(index + 1) * 10}px`,
+            transform: `scaleX(${1 - 0.01 * index})`,
+          },
+          render: props => (
+            <ActionToast
+              description={`Your group ${data.name} is feeling like a party with just you - let’s invite your buddies to join the fun!`}
+              action={() => {
+                props.onClose()
+                router.push(`/dashboard/groups?invite=${data.id}`)
+              }}
+              cta="Invite"
+              close={props.onClose}
+            />
+          ),
+          status: 'success',
+          duration: 500000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
+    })
+  }
   useEffect(() => {
     if (calendarResult === 'error') {
       toast({
@@ -104,6 +139,7 @@ export const NavMenu: React.FC<{
         isClosable: true,
       })
     }
+    handleEmptyGroupCheck()
   }, [])
 
   if (!currentAccount) return null
