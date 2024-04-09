@@ -20,6 +20,7 @@ export interface GroupMember {
 export interface EmptyGroupsResponse {
   id: string
   name: string
+  slug: string
 }
 
 export interface UserGroups {
@@ -33,14 +34,23 @@ export interface UserGroups {
   }
 }
 export interface GroupUsers {
+  // an array is returned here because of the one to many relationship
+  group_members: Array<GroupMemberQuery>
+  preferences: { name: string }
+  // an array is returned here because of the one to many relationship
+  calendars: Array<{
+    calendars: Array<CalendarType>
+  }>
+}
+interface GroupMemberQuery {
+  address: string
   role: MemberType
   invite_pending: boolean
-  address: string
-  preferences: {
-    name: string
-  }
-  calendars: {
-    email: string
-    calendars: Array<{ id: string; name: string }>
-  }
+}
+interface CalendarType {
+  name: string
+  sync: boolean
+  color: string
+  enabled: boolean
+  calendarId: string
 }
