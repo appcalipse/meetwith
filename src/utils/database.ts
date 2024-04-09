@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { createClient } from '@supabase/supabase-js'
+import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import { addMinutes, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
@@ -24,7 +24,12 @@ import {
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
 import { DiscordAccount } from '@/types/Discord'
-import { GroupUsers, MemberType, UserGroups } from '@/types/Group'
+import {
+  EmptyGroupsResponse,
+  GroupUsers,
+  MemberType,
+  UserGroups,
+} from '@/types/Group'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -76,7 +81,9 @@ import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { isValidEVMAddress } from './validations'
 
-const db: { ready: boolean } & Record<string, any> = { ready: false }
+const db: { ready: boolean } & Record<string, any> = {
+  ready: false,
+}
 
 const initDB = () => {
   if (!db.ready) {
@@ -900,9 +907,7 @@ const getAccountNotificationSubscriptions = async (
 const getUserGroups = async (
   address: string,
   limit: number,
-  offset: number,
-  keyword?: string,
-  filter?: MemberType
+  offset: number
 ): Promise<Array<UserGroups>> => {
   const { data, error } = await db.supabase
     .from('group_members')
@@ -914,9 +919,9 @@ const getUserGroups = async (
   `
     )
     .eq('member_id', address.toLowerCase())
-    .or(`group.name.ilike.${keyword},role.eq.${filter}`)
     .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
   if (error) {
+    console.log(error)
     throw new Error(error)
   }
   if (data) {
@@ -924,7 +929,53 @@ const getUserGroups = async (
   }
   return []
 }
+async function findGroupsWithSingleMember(
+  groupIDs: string
+): Promise<Array<EmptyGroupsResponse>> {
+  const filteredGroups = []
+  for (const groupID of groupIDs) {
+    const { data: group, error } = await db.supabase
+      .from('group_members')
+      .select('count')
+      .eq('group_id', groupID)
+    if (error) {
+      throw new Error(error)
+    } else if (group.length === 1 && group[0].count === 1) {
+      const { data: groupDetails, error: groupError } = await db.supabase
+        .from('groups')
+        .select('id, name, slug')
+        .eq('id', groupID)
+      if (groupError) {
+        throw new Error(groupError)
+      }
+      filteredGroups.push(groupDetails[0])
+    }
+  }
+  return filteredGroups
+}
 
+const getGroupsEmpty = async (
+  address: string
+): Promise<Array<EmptyGroupsResponse>> => {
+  const { data: memberGroups, error } = await db.supabase
+    .from('group_members')
+    .select('group_id')
+    .eq('member_id', address.toLowerCase())
+
+  if (error) {
+    throw new Error(error)
+  }
+
+  if (memberGroups.length > 0) {
+    const groupIDs = memberGroups.map(
+      (group: { group_id: string }) => group.group_id
+    )
+    return findGroupsWithSingleMember(groupIDs)
+  } else {
+    // user is not part of any group
+    return []
+  }
+}
 const getGroupUsers = async (
   group_id: string,
   address: string,
@@ -933,41 +984,42 @@ const getGroupUsers = async (
 ): Promise<Array<GroupUsers>> => {
   const { data: groupData, error: groupError } = await db.supabase
     .from('groups')
+    .select()
     .eq('id', group_id)
   if (groupError) {
-    throw new Error(groupError)
+    throw new Error(groupError.message)
   }
   if (!groupData) {
     throw new GroupNotExistsError()
   }
-  const { data: memberData, error: memberError } = await db.superbase
+  const { data: memberData, error: memberError } = await db.supabase
     .from('group_members')
+    .select()
     .eq('group_id', group_id)
     .eq('member_id', address.toLowerCase())
   if (memberError) {
-    throw new Error(memberError)
+    throw new Error(memberError.message)
   }
   if (!memberData) {
     throw new NotGroupMemberError()
   }
   const { data, error } = await db.supabase
-    .from('group_members')
+    .from('accounts')
     .select(
       `
-      role,
+      group_members: group_members!inner(role,
       invite_pending,
-      address: member_id,
-      preferences:  account_preferences(name),
+      address: member_id),
+      preferences: account_preferences(name),
       calendars: connected_calendars(
-        calendars,
-        email,
+        calendars
       )
       `
     )
-    .eq('group_id', group_id)
+    .eq('group_members.group_id', group_id)
     .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   if (data) {
@@ -1808,6 +1860,7 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
+  getGroupsEmpty,
   getGroupUsers,
   getMeetingFromDB,
   getOfficeEventMappingId,
