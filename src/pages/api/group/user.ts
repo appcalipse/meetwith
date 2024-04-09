@@ -8,14 +8,16 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
     initDB()
     const account_address = req.session.account!.address
+    if (!account_address) {
+      return res.status(401).send('Unauthorized')
+    }
     try {
       const groups = await getUserGroups(
         account_address,
         Number(req.query.limit as string),
-        Number(req.query.offset as string),
-        req.query.search as string,
-        req.query.role as MemberType
+        Number(req.query.offset as string)
       )
+      // console.log({ groups: JSON.stringify(groups) })
       const responseJson: Array<GetGroupsResponse> = groups.map(group => ({
         id: group.group.id,
         name: group.group.name,
