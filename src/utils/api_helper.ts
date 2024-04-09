@@ -408,13 +408,13 @@ export const getGroups = async (
   offset: number
 ): Promise<Array<GetGroupsResponse>> => {
   const response = (await internalFetch(
-    `/group/user?limit=${limit}&offset=${offset}`
+    `/secure/group/user?limit=${limit}&offset=${offset}`
   )) as Array<GetGroupsResponse>
   return response
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   const response = (await internalFetch(
-    `/group/empty`
+    `/secure/group/empty`
   )) as Array<GetGroupsResponse>
   return response
 }
@@ -424,7 +424,7 @@ export const getGroupsMembers = async (
   offset: number
 ): Promise<Array<GroupMember>> => {
   const response = (await internalFetch(
-    `/group/${group_id}/users?limit=${limit}&offset=${offset}`
+    `/secure/group/${group_id}/users?limit=${limit}&offset=${offset}`
   )) as Array<GroupMember>
   return response
 }
