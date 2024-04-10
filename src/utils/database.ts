@@ -1712,6 +1712,28 @@ export const getAccountFromDiscordId = async (
   return getAccountFromDB(address)
 }
 
+// Authorization helper function
+export async function isUserAdminOfGroup(
+  groupId: string,
+  userAddress: string
+): Promise<boolean> {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select('role')
+    .eq('group_id', groupId)
+    .eq('member_id', userAddress)
+    .eq('role', 'admin')
+    .single()
+
+  if (error) {
+    // Handle potential database errors
+    console.error('Error checking admin status:', error)
+    throw error
+  }
+
+  return !!data
+}
+
 export {
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
