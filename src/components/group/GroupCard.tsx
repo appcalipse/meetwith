@@ -38,27 +38,18 @@ const GroupCard: React.FC = ({}) => {
   const iconColor = useColorModeValue('gray.600', 'white')
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   return (
-    <AccordionItem width="100%" border={0} py={10} px={7}>
+    <AccordionItem width="100%" padding={5} border={0}>
       {({ isExpanded }) => (
         <>
           <HStack justifyContent="space-between" width="100%">
-            <VStack alignItems="start">
-              <Heading
-                as="h2"
-                fontSize="24px" // Sets the font size to 24px
-                lineHeight="28.8px" // Sets the line height to 28.8px
-                fontWeight="700" // Sets the font weight to 700
-                fontFamily="'DM Sans', sans-serif" // Ensure DM Sans is loaded in your project
-              >
-                RnDAO Marketing
-              </Heading>
+            <VStack>
+              <Heading>RnDAO Marketing</Heading>
               <CopyLinkButton
                 url={'meetwithwallet.xyz/rndaomarketing'}
                 size="md"
                 label={'meetwithwallet.xyz/rndaomarketing'}
                 withIcon
                 design_type="link"
-                mt={-1}
               />
             </VStack>
             <HStack gap={3} width="fit-content">
@@ -135,7 +126,7 @@ const GroupCard: React.FC = ({}) => {
                 </Tooltip.Provider>
               </Flex>
               <Flex alignItems="center" flexBasis="35%" gap={0.5}>
-                <Heading size="sm">Calendar connection</Heading>
+                <Heading size="sm">Callendar connection</Heading>
                 <Tooltip.Provider delayDuration={400}>
                   <Tooltip.Root>
                     <Tooltip.Trigger>
@@ -169,24 +160,17 @@ const GroupCard: React.FC = ({}) => {
               </Flex>
             </HStack>
             <GroupMemberCard />
-            {isExpanded && (
-              <Button
-                variant="ghost"
-                leftIcon={<Icon as={IoMdPersonAdd} h={25} />}
-                color="white"
-                px={1.5}
-                height="fit-content !important"
-                py={1}
-                mt={2}
-                fontWeight="700"
-                fontSize="16px"
-                lineHeight="24px"
-                fontFamily="'DM Sans', sans-serif"
-              >
-                Add new member
-              </Button>
-            )}
           </AccordionPanel>
+          <Button
+            variant="ghost"
+            leftIcon={<Icon as={IoMdPersonAdd} h={25} />}
+            color="white"
+            px={1.5}
+            height="fit-content !important"
+            py={1}
+          >
+            Add new member
+          </Button>
         </>
       )}
     </AccordionItem>

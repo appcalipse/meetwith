@@ -10,20 +10,48 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React from 'react'
+import React, { useState } from 'react'
 
 import InfoTooltip from '@/components/profile/components/Tooltip'
 
 const CreateGroupPage = () => {
   const router = useRouter()
+  const [groupName, setGroupName] = useState('')
+  const [groupCalendarName, setGroupCalendarName] = useState('')
 
   const handleGroupSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    // Implementation for creating a group
-    // e.g., post request to your backend
 
-    // On success
-    router.push('/dashboard/groups') // Redirect to the groups listing or relevant page
+    try {
+      const response = await fetch('/api/secure/group', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: groupName,
+          calendarName: groupCalendarName,
+        }),
+      })
+
+      if (response.ok) {
+        console.log('Navigating to invite-users page')
+        const data = await response.json()
+        const newGroupId = data.id // Assuming your API returns the groupId
+
+        router.push({
+          pathname: '/dashboard/invite-users',
+          query: { success: true, groupName: groupName, groupId: newGroupId },
+        })
+      } else {
+        // Handle error case
+        console.error('Error creating group:', response.statusText)
+        // Display an error message to the user or take appropriate action
+      }
+    } catch (error) {
+      console.error('Error creating group:', error)
+      // Display an error message to the user or take appropriate action
+    }
   }
 
   return (
@@ -56,7 +84,12 @@ const CreateGroupPage = () => {
             >
               Group name
             </FormLabel>
-            <Input id="groupName" placeholder="" />
+            <Input
+              id="groupName"
+              placeholder=""
+              value={groupName}
+              onChange={e => setGroupName(e.target.value)}
+            />
           </FormControl>
           <FormControl>
             <HStack spacing={1} alignItems="center">
@@ -77,6 +110,8 @@ const CreateGroupPage = () => {
               id="groupCalendarName"
               placeholder="meetwithwallet.xyz/"
               mt="2"
+              value={groupCalendarName}
+              onChange={e => setGroupCalendarName(e.target.value)}
             />
           </FormControl>
           <Box>

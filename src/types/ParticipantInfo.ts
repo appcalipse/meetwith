@@ -23,3 +23,10 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
   slot_id?: string
   type: ParticipantType
 }
+
+export interface InvitedUser extends ParticipantBaseInfo {
+  account_address: string // Required
+  groupId: string
+  role: 'admin' | 'member'
+  invitePending: boolean
+}
