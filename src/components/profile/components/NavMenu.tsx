@@ -9,7 +9,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect } from 'react'
 import { IconType } from 'react-icons'
 import {
   FaBell,
@@ -33,6 +33,10 @@ import { getGroupsEmpty } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
+import {
+  getNotificationTime,
+  saveNotificationTime,
+} from '../../../utils/storage'
 import { Avatar } from './Avatar'
 import { CopyLinkButton } from './CopyLinkButton'
 import { NavItem } from './NavItem'
@@ -84,7 +88,6 @@ export const NavMenu: React.FC<{
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'gray.800')
   const handleEmptyGroupCheck = async () => {
-    // This component renders only once
     const emptyGroups = await getGroupsEmpty()
     emptyGroups?.forEach((data, index) => {
       if (!toast.isActive(data.id)) {
@@ -110,7 +113,7 @@ export const NavMenu: React.FC<{
             />
           ),
           status: 'success',
-          duration: 500000,
+          duration: 30000,
           position: 'top',
           isClosable: true,
         })
@@ -139,8 +142,15 @@ export const NavMenu: React.FC<{
         isClosable: true,
       })
     }
-    handleEmptyGroupCheck()
   }, [])
+  useEffect(() => {
+    const lastNotificationTime = getNotificationTime(currentAccount?.address)
+    if (lastNotificationTime === null) return
+    if (Date.now() > lastNotificationTime) {
+      handleEmptyGroupCheck()
+      saveNotificationTime(currentAccount?.address)
+    }
+  }, [currentAccount])
 
   if (!currentAccount) return null
 
