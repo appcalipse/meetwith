@@ -36,16 +36,18 @@ export interface UserGroups {
 export interface GroupUsers {
   // an array is returned here because of the one to many relationship
   group_members: Array<GroupMemberQuery>
+  group_invites: Array<GroupMemberQuery>
   preferences: { name: string }
   // an array is returned here because of the one to many relationship
   calendars: Array<{
     calendars: Array<CalendarType>
   }>
 }
-interface GroupMemberQuery {
-  address: string
+export interface GroupMemberQuery {
+  member_id: string
+  user_id: string
   role: MemberType
-  invite_pending: boolean
+  email?: MemberType
 }
 interface CalendarType {
   name: string
