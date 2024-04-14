@@ -22,7 +22,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import React, { ReactNode, useEffect, useMemo, useState } from 'react'
+import React, { ReactNode, useEffect, useId, useMemo, useState } from 'react'
 import { BiExit } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaInfo, FaRegCopy } from 'react-icons/fa'
 import { GoDotFill } from 'react-icons/go'
@@ -50,6 +50,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const [groupMembers, setGroupsMembers] = useState<Array<GroupMember>>([])
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
+  const id = useId()
   const [firstFetch, setFirstFetch] = useState(true)
   const fetchMeetings = async (reset?: boolean) => {
     const PAGE_SIZE = 10
@@ -218,7 +219,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
           {groupMembers.map(member => (
             <GroupMemberCard
               currentAccount={props.currentAccount}
-              key={member.address}
+              key={member?.address}
               isEmpty={groupMembers.length < 2}
               viewerRole={props.role}
               {...member}
@@ -257,6 +258,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   return (
     <AccordionItem
       width="100%"
+      key={`${id}-${props.id}`}
       p={8}
       border={0}
       borderRadius="lg"
@@ -339,19 +341,20 @@ const GroupCard: React.FC<IGroupCard> = props => {
                   </MenuList>
                 </Portal>
               </Menu>
-              <AccordionButton width="fit-content" m={0} p={0}>
-                <IconButton
-                  aria-label="Expand Group"
-                  p={'8px 16px'}
-                  icon={
-                    isExpanded ? (
-                      <FaChevronUp size={20} />
-                    ) : (
-                      <FaChevronDown size={20} />
-                    )
-                  }
-                />
-              </AccordionButton>
+              <AccordionButton
+                as={IconButton}
+                width="fit-content"
+                m={0}
+                aria-label="Expand Group"
+                p={'8px 16px'}
+                icon={
+                  isExpanded ? (
+                    <FaChevronUp size={20} />
+                  ) : (
+                    <FaChevronDown size={20} />
+                  )
+                }
+              />
             </HStack>
           </HStack>
           <AccordionPanel px={0} pb={4}>
