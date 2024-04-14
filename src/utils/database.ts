@@ -26,6 +26,7 @@ import {
 import { DiscordAccount } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
+  GroupMemberQuery,
   GroupUsers,
   MemberType,
   UserGroups,
@@ -81,6 +82,7 @@ import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { isValidEVMAddress } from './validations'
 
+// TODO: better typing
 const db: { ready: boolean } & Record<string, any> = {
   ready: false,
 }
@@ -914,7 +916,6 @@ const getUserGroups = async (
     .select(
       `
       role,
-      invite_pending,
       group: groups( id, name, slug )
   `
     )
@@ -1003,20 +1004,38 @@ const getGroupUsers = async (
   if (!memberData) {
     throw new NotGroupMemberError()
   }
+  const { data: inviteData, error: inviteError } = await db.supabase
+    .from('group_invites')
+    .select()
+    .eq('group_id', group_id)
+  if (inviteError) {
+    throw new Error(inviteError.message)
+  }
+  const { data: membersData, error: membersError } = await db.supabase
+    .from('group_members')
+    .select()
+    .eq('group_id', group_id)
+  if (membersError) {
+    throw new Error(membersError)
+  }
   const { data, error } = await db.supabase
     .from('accounts')
     .select(
       `
-      group_members: group_members!inner(role,
-      invite_pending,
-      address: member_id),
+      group_members: group_members(*),
+      group_invites: group_invites(*),
       preferences: account_preferences(name),
-      calendars: connected_calendars(
-        calendars
-      )
-      `
+      calendars: connected_calendars(calendars)
+    `
     )
-    .eq('group_members.group_id', group_id)
+    .in(
+      'address',
+      membersData
+        .map((member: GroupMemberQuery) => member.member_id)
+        .concat(inviteData.map((val: GroupMemberQuery) => val.user_id))
+    )
+    .filter('group_members.group_id', 'eq', group_id)
+    .filter('group_invites.group_id', 'eq', group_id)
     .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
   if (error) {
     throw new Error(error.message)
