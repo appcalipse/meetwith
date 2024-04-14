@@ -253,6 +253,48 @@ export type Database = {
         }
         Relationships: []
       }
+      group_invites: {
+        Row: {
+          discord_id: string | null
+          email: string | null
+          group_id: string
+          id: string
+          role: Database['public']['Enums']['GroupRole']
+          user_id: string | null
+        }
+        Insert: {
+          discord_id?: string | null
+          email?: string | null
+          group_id: string
+          id?: string
+          role?: Database['public']['Enums']['GroupRole']
+          user_id?: string | null
+        }
+        Update: {
+          discord_id?: string | null
+          email?: string | null
+          group_id?: string
+          id?: string
+          role?: Database['public']['Enums']['GroupRole']
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'public_group_invites_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'public_group_invites_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
       group_meeting_request: {
         Row: {
           duration_in_minutes: number
@@ -295,7 +337,6 @@ export type Database = {
         Row: {
           created_at: string
           group_id: string
-          invite_pending: boolean
           member_id: string
           role: Database['public']['Enums']['GroupRole']
           updated_at: string
@@ -303,7 +344,6 @@ export type Database = {
         Insert: {
           created_at?: string
           group_id: string
-          invite_pending?: boolean
           member_id: string
           role?: Database['public']['Enums']['GroupRole']
           updated_at?: string
@@ -311,7 +351,6 @@ export type Database = {
         Update: {
           created_at?: string
           group_id?: string
-          invite_pending?: boolean
           member_id?: string
           role?: Database['public']['Enums']['GroupRole']
           updated_at?: string
