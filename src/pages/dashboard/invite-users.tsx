@@ -12,49 +12,66 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 import InvitedUsersCard from '@/components/group/InvitedUsersCard'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { InvitedUser } from '@/types/ParticipantInfo'
+import { getAccount } from '@/utils/api_helper'
+import {
+  isEmptyString,
+  isValidEmail,
+  isValidEVMAddress,
+} from '@/utils/validations'
 
 const InviteUsersPage = () => {
   const router = useRouter()
   const toast = useToast()
+  const toastShown = useRef(false)
+
   const { success, groupName } = router.query
+  const { groupId } = router.query
 
   const [contactIdentifier, setContactIdentifier] = useState('')
   const [message, setMessage] = useState(
     'Come join our scheduling group <Insert group name> on Meet With Wallet!'
   )
   const [invitedUsers, setInvitedUsers] = useState<InvitedUser[]>([])
-
-  const { groupId } = router.query
-  const [storedGroupId, setStoredGroupId] = useState<string>('') // Initialize with empty string
+  const [storedGroupId, setStoredGroupId] = useState<string>('')
+  const [contactIdentifierError, setContactIdentifierError] = useState('')
+  const [isFormValid, setIsFormValid] = useState(true)
 
   useEffect(() => {
     if (groupId && typeof groupId === 'string') {
       setStoredGroupId(groupId)
     } else {
       console.error('Invalid groupId format in query parameters', groupId)
-      // Optionally redirect to an error page or display a message
     }
   }, [groupId])
 
   useEffect(() => {
-    if (success && groupName) {
+    if (success && groupName && !toastShown.current) {
       toast({
         title: 'Group created successfully.',
         description: `You have created the "${groupName}" group!`,
         status: 'success',
-        duration: 9000,
+        duration: 3000,
         isClosable: true,
         position: 'top',
+        containerStyle: {
+          margin: '60px',
+        },
       })
+      toastShown.current = true // Mark the toast as shown
     }
   }, [success, groupName, toast])
 
-  const sendInvites = async () => {
+  const handleSubmit = async () => {
+    // Check if the form is valid before proceeding
+    if (!isFormValid) {
+      return
+    }
+
     try {
       const response = await fetch('/api/invite-users', {
         method: 'POST',
@@ -62,27 +79,9 @@ const InviteUsersPage = () => {
         body: JSON.stringify({ invitedUsers, message }),
       })
 
-      if (response.ok) {
-        toast({
-          title: 'Invitations sent successfully.',
-          description: 'Your invitations have been dispatched.',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
-        setInvitedUsers([]) // Clear the list after sending
-      } else {
-        // Handle errors
-        toast({
-          title: 'Failed to send invitations.',
-          description: 'Something went wrong. Please try again.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
-      }
+      // Can add 'if (response.ok){} block here to test endpoint response
+      // setInvitedUsers([])
+      router.push('/dashboard/invite-success')
     } catch (error) {
       console.error('Error sending invitations:', error)
       toast({
@@ -90,36 +89,65 @@ const InviteUsersPage = () => {
         description:
           'Unable to send invitations. Please check your connection and try again.',
         status: 'error',
-        duration: 5000,
+        duration: 3000,
         isClosable: true,
         position: 'top',
+        containerStyle: {
+          margin: '60px',
+        },
       })
+      // For now, redirect even if there is an error
+      router.push('/dashboard/invite-success')
     }
   }
 
-  const addUserToList = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const addUserToList = async (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
     if (event.key === 'Enter') {
       event.preventDefault()
-      if (invitedUsers.length < 10) {
-        const newUser: InvitedUser = {
-          groupId: storedGroupId,
-          account_address: contactIdentifier,
-          role: 'member',
-          invitePending: true,
-        }
-        console.log('New user:', newUser)
-        setInvitedUsers(prev => [...prev, newUser])
-        console.log('New added users:', invitedUsers)
-        setContactIdentifier('')
-      } else {
-        toast({
-          title: 'Invite Limit Reached',
-          description: 'You can only invite up to 10 users at a time.',
-          status: 'warning',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
+
+      const input = event.currentTarget.value.trim()
+      const isValidInput = isValidEmail(input) || isValidEVMAddress(input)
+
+      if (!isValidInput) {
+        setContactIdentifierError(
+          'Please enter a valid email or Ethereum address.'
+        )
+        return
+      }
+
+      // Check for duplicate entries
+      if (invitedUsers.some(user => user.account_address === input)) {
+        setContactIdentifierError('This user has already been invited.')
+        return
+      }
+
+      setContactIdentifierError('') // Clear previous errors if the input passes checks
+
+      if (invitedUsers.length >= 10) {
+        setContactIdentifierError(
+          'Invite limit reached. You can only invite up to 10 users at a time.'
+        )
+        return
+      }
+
+      // Always add the user, but check if they are registered
+      const newUser: InvitedUser = {
+        groupId: storedGroupId,
+        account_address: input,
+        role: 'member',
+        invitePending: true,
+      }
+      setInvitedUsers(prev => [...prev, newUser])
+      setContactIdentifier('') // Clear the input field after adding
+
+      // Check if the user is registered
+      try {
+        const account = await getAccount(input)
+        console.log('Registered Meet With Wallet user:', account)
+      } catch (error) {
+        console.log('Not a registered Meet With Wallet user:', input)
       }
     }
   }
@@ -138,12 +166,34 @@ const InviteUsersPage = () => {
     )
   }
 
+  const handleContactIdentifierChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setContactIdentifier(e.target.value)
+    console.log('Contact identifier:', e.target.value)
+
+    // Perform validation checks
+    if (isEmptyString(e.target.value)) {
+      setContactIdentifierError('Contact identifier is required')
+      setIsFormValid(false)
+    } else if (
+      !isValidEmail(e.target.value) &&
+      !isValidEVMAddress(e.target.value)
+    ) {
+      setContactIdentifierError('Invalid email or EVM address')
+      setIsFormValid(false)
+    } else {
+      setContactIdentifierError('')
+      setIsFormValid(true)
+    }
+  }
+
   return (
     <Flex direction="column" mb="169px">
       <Box pt="160px" flex="1">
         <Flex direction="column" align="center">
           <Box width="500px">
-            <form onSubmit={sendInvites}>
+            <form onSubmit={e => e.preventDefault()}>
               <VStack spacing={6} align="start">
                 <Heading
                   as="h1"
@@ -159,12 +209,8 @@ const InviteUsersPage = () => {
                   group below (wallet address, email, etc) and they will receive
                   invitations.
                 </Text>
-                <FormControl>
-                  <Flex
-                    alignItems="center"
-                    // justifyContent="space-between"
-                    gap="4px"
-                  >
+                <FormControl isInvalid={!!contactIdentifierError}>
+                  <Flex alignItems="center" gap="4px">
                     <FormLabel
                       fontSize="16px"
                       fontWeight="500"
@@ -182,12 +228,14 @@ const InviteUsersPage = () => {
                     id="contactIdentifier"
                     placeholder="Search or enter identifier"
                     value={contactIdentifier}
-                    onChange={e => {
-                      setContactIdentifier(e.target.value)
-                      console.log('Contact identifier:', e.target.value)
-                    }}
-                    onKeyPress={addUserToList}
+                    onChange={e => setContactIdentifier(e.target.value)}
+                    onKeyDown={addUserToList}
                   />
+                  {contactIdentifierError && (
+                    <Text fontSize="sm" color="red.500" mt={2}>
+                      {contactIdentifierError}
+                    </Text>
+                  )}
                   <Text fontSize="sm" color="gray.500" mt={1}>
                     Tap to enter. No need to add yourself.
                   </Text>
@@ -230,7 +278,7 @@ const InviteUsersPage = () => {
                     height="48px"
                     borderRadius="8px"
                     _hover={{ bg: '#E68982' }}
-                    onClick={sendInvites}
+                    onClick={handleSubmit}
                   >
                     Invite users
                   </Button>
