@@ -7,6 +7,7 @@ import {
   Heading,
   HStack,
   Input,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
@@ -16,6 +17,8 @@ import InfoTooltip from '@/components/profile/components/Tooltip'
 
 const CreateGroupPage = () => {
   const router = useRouter()
+  const toast = useToast()
+
   const [groupName, setGroupName] = useState('')
   const [groupCalendarName, setGroupCalendarName] = useState('')
 
@@ -23,7 +26,7 @@ const CreateGroupPage = () => {
     event.preventDefault()
 
     try {
-      const response = await fetch('/api/secure/group', {
+      const response = await fetch('/api/secure/group/create-group', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -44,13 +47,46 @@ const CreateGroupPage = () => {
           query: { success: true, groupName: groupName, groupId: newGroupId },
         })
       } else {
-        // Handle error case
-        console.error('Error creating group:', response.statusText)
-        // Display an error message to the user or take appropriate action
+        const errorData = await response.json()
+        if (errorData.details && errorData.details.code === '23505') {
+          toast({
+            title: 'Duplicate Group Name',
+            description: `A group with the name "${groupName}" already exists. Please choose another name.`,
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+            position: 'top',
+            containerStyle: {
+              margin: '60px',
+            },
+          })
+        } else {
+          toast({
+            title: 'Error creating group',
+            description: 'Unable to create group. Please try again later.',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+            position: 'top',
+            containerStyle: {
+              margin: '60px',
+            },
+          })
+        }
       }
     } catch (error) {
       console.error('Error creating group:', error)
-      // Display an error message to the user or take appropriate action
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+        containerStyle: {
+          margin: '60px',
+        },
+      })
     }
   }
 
