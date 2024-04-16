@@ -97,3 +97,13 @@ export class Huddle01ServiceUnavailable extends Error {
     this.name = 'Huddle01ServiceUnavailable'
   }
 }
+
+export class GroupCreationError extends Error {
+  details: string
+
+  constructor(message: string, details = '') {
+    super(message)
+    this.name = 'GroupCreationError'
+    this.details = details // Additional details about the error
+  }
+}

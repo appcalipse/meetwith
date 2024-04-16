@@ -8,6 +8,7 @@ import EthCrypto, {
   encryptWithPublicKey,
 } from 'eth-crypto'
 import { validate } from 'uuid'
+import { v4 as uuidv4 } from 'uuid'
 
 import {
   Account,
@@ -24,6 +25,7 @@ import {
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
 import { DiscordAccount } from '@/types/Discord'
+import { GetGroupsResponse, MemberType } from '@/types/Group'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -54,6 +56,7 @@ import {
   AccountNotFoundError,
   GateConditionNotValidError,
   GateInUseError,
+  GroupCreationError,
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
@@ -1732,6 +1735,50 @@ export async function isUserAdminOfGroup(
   }
 
   return !!data
+}
+
+export async function createGroupInDB(
+  name: string,
+  slug: string
+): Promise<GetGroupsResponse> {
+  const db = initDB() // Ensure the database is initialized
+  const groupId = uuidv4() // Generate a unique ID for the group
+
+  try {
+    // Attempt to insert the new group into the database
+    const { data, error } = await db.supabase.from('groups').insert([
+      {
+        id: groupId,
+        name: name,
+        slug: slug,
+        // role: MemberType.ADMIN, // Default role for creator
+      },
+    ])
+
+    if (error) {
+      throw new GroupCreationError('Failed to create group', error)
+    }
+
+    // If insertion is successful, return the newly created group
+    const newGroup = data[0]
+    return {
+      id: newGroup.id,
+      name: newGroup.name,
+      slug: newGroup.slug,
+      role: MemberType.ADMIN, // Assuming the creator is the admin
+      invitePending: false,
+    }
+  } catch (error) {
+    if (error instanceof GroupCreationError) {
+      throw error
+    } else if (error instanceof Error) {
+      throw new GroupCreationError('Database operation failed', error.message)
+    } else {
+      // Handle unknown error type
+      console.error('Unknown error type:', error)
+      throw new Error('An unknown error occurred')
+    }
+  }
 }
 
 export {
