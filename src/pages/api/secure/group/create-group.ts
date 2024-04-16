@@ -32,9 +32,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         .status(500)
         .json({ error: error.message, details: error.details })
     } else {
-      return res
-        .status(500)
-        .json({ error: 'Internal server error', details: error.message })
+      return res.status(500).json({
+        error: 'Internal server error',
+        details: (error as Error).message,
+      })
     }
   }
 }
