@@ -41,7 +41,6 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
     <HStack
       alignItems="start"
       width="100%"
-      flexWrap="wrap"
       maxWidth="100%"
       justifyContent="space-between"
     >
