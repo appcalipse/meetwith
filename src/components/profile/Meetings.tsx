@@ -196,7 +196,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
             Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
           </Text>
         </Heading>
-        <Button
+        {/* <Button
           onClick={() =>
             openMeetingDialog(
               null,
@@ -212,7 +212,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
           leftIcon={<FaPlus />}
         >
           New meeting
-        </Button>
+        </Button> */}
       </HStack>
       <Button
         onClick={() =>
