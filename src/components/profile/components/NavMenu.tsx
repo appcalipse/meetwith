@@ -129,7 +129,7 @@ export const NavMenu: React.FC<{
           py={12}
           overflow="hidden"
           borderRadius={16}
-          display={{ base: 'none', md: 'flex' }}
+          display={{ base: 'none', lg: 'flex' }}
           // TO-DO: replace by new dark/light color scheme
           backgroundColor={'transparent'}
         >

@@ -428,59 +428,6 @@ const getAccountFromDB = async (
   throw new AccountNotFoundError(identifier)
 }
 
-const migrateSlots = async (): Promise<any> => {
-  const { data, error: fetchError } = await db.supabase
-    .from('slots')
-    .select()
-    .is('meeting_info_encrypted', null)
-
-  if (fetchError) {
-    console.error('Failed to fetch slots:', fetchError)
-    return {
-      errors: { fetchError: [{ message: fetchError.message }] },
-      counts: { updateCount: 0, failCount: 0 },
-    }
-  }
-
-  const errors = []
-  const updatedSlots = []
-
-  for (const slot of data) {
-    try {
-      console.log(`starting slot ${slot.id}`)
-      const encrypted = (await fetchContentFromIPFS(
-        slot.meeting_info_file_path,
-        3000
-      )) as Encrypted
-
-      const { error: updateError } = await db.supabase
-        .from('slots')
-        .update({ meeting_info_encrypted: encrypted })
-        .match({ id: slot.id })
-
-      updatedSlots.push(slot.id)
-      console.log(`slot ${slot.id} is updated`)
-
-      if (updateError) {
-        console.error(`Failed to update slot ${slot.id}:`, updateError)
-        return `Update Error for Slot ID ${slot.id}`
-      }
-    } catch (ipfsError) {
-      console.error(`IPFS fetch error for slot ${slot.id}:`, ipfsError)
-      errors.push(slot.id)
-    }
-  }
-
-  return {
-    updatedSlots,
-    errors,
-    counts: {
-      updateCount: updatedSlots.length,
-      failCount: errors.length,
-    },
-  }
-}
-
 const getSlotsForAccount = async (
   account_address: string,
   start?: Date,
@@ -1734,7 +1681,6 @@ export {
   initDB,
   insertOfficeEventMapping,
   isSlotFree,
-  migrateSlots,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
   saveEmailToDB,

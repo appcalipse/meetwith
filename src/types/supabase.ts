@@ -314,7 +314,6 @@ export interface Database {
           created_at: string | null
           end: string | null
           id: string
-          meeting_info_file_path: string | null
           start: string | null
           version: number | null
         }
@@ -323,7 +322,6 @@ export interface Database {
           created_at?: string | null
           end?: string | null
           id: string
-          meeting_info_file_path?: string | null
           start?: string | null
           version?: number | null
         }
@@ -332,7 +330,6 @@ export interface Database {
           created_at?: string | null
           end?: string | null
           id?: string
-          meeting_info_file_path?: string | null
           start?: string | null
           version?: number | null
         }
