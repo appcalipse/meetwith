@@ -17,7 +17,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         Number(req.query.limit as string),
         Number(req.query.offset as string)
       )
-      // console.log({ groups: JSON.stringify(groups) })
       const responseJson: Array<GetGroupsResponse> = groups.map(group => ({
         id: group.group.id,
         name: group.group.name,
@@ -31,5 +30,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(500).send(e)
     }
   }
+  return res.status(405).send('Method not allowed')
 }
 export default withSessionRoute(handle)
