@@ -54,5 +54,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(500).send(error.message)
     }
   }
+  return res.status(405).send('Method not allowed')
 }
 export default withSessionRoute(handle)
