@@ -93,7 +93,7 @@ export const NavMenu: React.FC<{
       if (!toast.isActive(data.id)) {
         toast({
           id: data.id,
-          title: 'Calendar connected',
+          title: 'Invite Members',
           containerStyle: {
             position: 'fixed',
             insetInline: '0px',
