@@ -30,7 +30,12 @@ import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 import { MdDelete } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
-import { GetGroupsResponse, GroupMember, MemberType } from '@/types/Group'
+import {
+  GetGroupsResponse,
+  GroupMember,
+  MemberType,
+  MenuOptions,
+} from '@/types/Group'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsMembers } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
@@ -52,7 +57,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const id = useId()
   const [firstFetch, setFirstFetch] = useState(true)
-  const fetchMeetings = async (reset?: boolean) => {
+  const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
     setLoading(true)
     const newGroupMembers = (await getGroupsMembers(
@@ -70,16 +75,18 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const resetState = async () => {
     setFirstFetch(true)
     setNoMoreFetch(false)
-    fetchMeetings(true)
+    fetchMembers(true)
   }
 
   useEffect(() => {
     resetState()
   }, [props.currentAccount])
-  const renderPopOverOptions = (role: MemberType) => {
+  const renderPopOverOptions = (role: MemberType): Array<MenuOptions> => {
+    const defaultOptions: Array<MenuOptions> = []
     switch (role) {
       case MemberType.ADMIN:
         return [
+          ...defaultOptions,
           {
             label: 'Edit group name',
             onClick: () => {
@@ -91,10 +98,6 @@ const GroupCard: React.FC<IGroupCard> = props => {
             link: '',
           },
           {
-            label: 'See meeting history',
-            link: '',
-          },
-          {
             label: 'Delete group',
             important: true,
             link: '',
@@ -102,10 +105,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
         ]
       case MemberType.MEMBER:
         return [
-          {
-            label: 'See meeting history',
-            link: '',
-          },
+          ...defaultOptions,
           {
             label: 'Leave group',
             important: true,
@@ -233,7 +233,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
             variant="outline"
             alignSelf="center"
             my={4}
-            onClick={() => fetchMeetings()}
+            onClick={() => fetchMembers()}
           >
             Load more
           </Button>
