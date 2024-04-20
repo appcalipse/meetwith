@@ -440,6 +440,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
     try {
       const meeting = await scheduleMeeting(
+        false,
         scheduleType,
         'no_type',
         start,

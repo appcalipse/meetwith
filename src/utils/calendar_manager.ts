@@ -345,6 +345,7 @@ const buildMeetingData = async (
  * @returns
  */
 const updateMeeting = async (
+  ignoreAvailabilities: boolean,
   currentAccountAddress: string,
   meetingTypeId: string,
   startTime: Date,
@@ -427,6 +428,35 @@ const updateMeeting = async (
   )
 
   const rootMeetingId = existingMeeting?.meeting_id
+
+  if (!ignoreAvailabilities) {
+    const promises: Promise<void>[] = []
+
+    participants
+      .filter(p => p.account_address !== currentAccount?.address)
+      .forEach(participant => {
+        promises.push(
+          new Promise<void>(async resolve => {
+            if (
+              !participant.account_address ||
+              (
+                await isSlotFreeApiCall(
+                  participant.account_address,
+                  startTime,
+                  endTime,
+                  meetingTypeId
+                )
+              ).isFree
+            ) {
+              resolve()
+            }
+            throw new TimeNotAvailableError()
+          })
+        )
+      })
+    await Promise.all(promises)
+  }
+
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     meetingTypeId,
@@ -512,6 +542,7 @@ const cancelMeeting = async (
 }
 
 const scheduleMeeting = async (
+  ignoreAvailabilities: boolean,
   schedulingType: SchedulingType,
   meetingTypeId: string,
   startTime: Date,
@@ -538,75 +569,88 @@ const scheduleMeeting = async (
     meetingTitle
   )
 
-  const owner = meeting.participants_mapping.filter(
-    p => p.type === ParticipantType.Owner
-  )[0]
+  if (!ignoreAvailabilities) {
+    const promises: Promise<boolean>[] = []
 
-  if (
-    !owner || // scheduling from dashboard
-    (
-      await isSlotFreeApiCall(
-        owner.account_address!,
-        startTime,
-        endTime,
-        meetingTypeId
-      )
-    ).isFree
-  ) {
-    try {
-      let slot: DBSlot
-      if (schedulingType === SchedulingType.GUEST) {
-        slot = await scheduleMeetingAsGuest(meeting)
-      } else if (schedulingType === SchedulingType.DISCORD) {
-        slot = await scheduleMeetingFromServer(currentAccount!.address, meeting)
-      } else {
-        meeting.emailToSendReminders = emailToSendReminders
-        slot = await apiScheduleMeeting(meeting)
-      }
-
-      if (currentAccount && schedulingType !== SchedulingType.DISCORD) {
-        return (await decryptMeeting(slot, currentAccount))!
-      }
-
-      // Invalidate meetings cache and update meetings where required
-      queryClient.invalidateQueries(
-        QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
-      )
-      queryClient.invalidateQueries(
-        QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
-      )
-
-      participants.forEach(p => {
-        queryClient.invalidateQueries(
-          QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
-        )
-        queryClient.invalidateQueries(
-          QueryKeys.busySlots({
-            id: p.account_address?.toLowerCase(),
+    participants
+      .filter(p => p.account_address !== currentAccount?.address)
+      .forEach(participant => {
+        promises.push(
+          new Promise<boolean>(async resolve => {
+            if (
+              !participant.account_address ||
+              (
+                await isSlotFreeApiCall(
+                  participant.account_address,
+                  startTime,
+                  endTime,
+                  meetingTypeId
+                )
+              ).isFree
+            ) {
+              resolve(true)
+            }
+            resolve(false)
           })
         )
       })
-
-      return {
-        id: slot.id!,
-        ...meeting,
-        created_at: meeting.start,
-        participants: meeting.participants_mapping,
-        content: meeting.content,
-        title: meeting.title,
-        meeting_id: newMeetingId,
-        meeting_url: meeting.meeting_url,
-        start: meeting.start,
-        end: meeting.end,
-        related_slot_ids: [],
-        version: 0,
-        meeting_info_encrypted: slot.meeting_info_encrypted,
-      }
-    } catch (error: any) {
-      throw error
+    const results = await Promise.all(promises)
+    if (results.some(r => !r)) {
+      throw new TimeNotAvailableError()
     }
-  } else {
-    throw new TimeNotAvailableError()
+  }
+
+  try {
+    let slot: DBSlot
+    if (schedulingType === SchedulingType.GUEST) {
+      slot = await scheduleMeetingAsGuest(meeting)
+    } else if (schedulingType === SchedulingType.DISCORD) {
+      slot = await scheduleMeetingFromServer(currentAccount!.address, meeting)
+    } else {
+      meeting.emailToSendReminders = emailToSendReminders
+      slot = await apiScheduleMeeting(meeting)
+    }
+
+    if (currentAccount && schedulingType !== SchedulingType.DISCORD) {
+      return (await decryptMeeting(slot, currentAccount))!
+    }
+
+    // Invalidate meetings cache and update meetings where required
+    queryClient.invalidateQueries(
+      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
+    )
+    queryClient.invalidateQueries(
+      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
+    )
+
+    participants.forEach(p => {
+      queryClient.invalidateQueries(
+        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
+      )
+      queryClient.invalidateQueries(
+        QueryKeys.busySlots({
+          id: p.account_address?.toLowerCase(),
+        })
+      )
+    })
+
+    return {
+      id: slot.id!,
+      ...meeting,
+      created_at: meeting.start,
+      participants: meeting.participants_mapping,
+      content: meeting.content,
+      title: meeting.title,
+      meeting_id: newMeetingId,
+      meeting_url: meeting.meeting_url,
+      start: meeting.start,
+      end: meeting.end,
+      related_slot_ids: [],
+      version: 0,
+      meeting_info_encrypted: slot.meeting_info_encrypted,
+    }
+  } catch (error: any) {
+    throw error
   }
 }
 
@@ -800,10 +844,11 @@ const dateToLocalizedRange = (
     utcToZonedTime(start_date, timezone),
     'eeee, LLL d • p - '
   )}`
-  let end = `${format(utcToZonedTime(end_date, timezone), 'pp')}`
+  let end = `${format(utcToZonedTime(end_date, timezone), 'p')}`
   if (includeTimezone) {
     end += ` (${timezone})`
   }
+
   return start + end
 }
 
