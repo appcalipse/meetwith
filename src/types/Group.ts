@@ -56,3 +56,10 @@ interface CalendarType {
   enabled: boolean
   calendarId: string
 }
+
+export interface MenuOptions {
+  label: string
+  important?: boolean
+  link?: string
+  onClick?: () => void
+}
