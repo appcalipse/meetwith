@@ -37,7 +37,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
   const { invite } = useRouter().query
-  const fetchMeetings = async (reset?: boolean) => {
+  const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
     setLoading(true)
     const newGroups = await getGroups(PAGE_SIZE, groups.length)
@@ -51,7 +51,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const resetState = async () => {
     setFirstFetch(true)
     setNoMoreFetch(false)
-    fetchMeetings(true)
+    fetchGroups(true)
   }
 
   useEffect(() => {
@@ -112,7 +112,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             variant="outline"
             alignSelf="center"
             my={4}
-            onClick={() => fetchMeetings()}
+            onClick={() => fetchGroups()}
           >
             Load more
           </Button>
@@ -130,7 +130,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         gap={6}
       >
         <Heading fontSize="2xl">
-          My Meetings
+          My Groups
           <Text fontSize="sm" fontWeight={500} mt={1} lineHeight={1.5}>
             A group allows you to add multiple members and schedule meetings by
             automatically finding a suitable time based on each member’s
