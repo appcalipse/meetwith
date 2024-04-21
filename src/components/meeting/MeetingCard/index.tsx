@@ -379,11 +379,7 @@ const MeetingCard = ({
               <Divider />
               <VStack alignItems="start" maxWidth="100%">
                 <HStack alignItems="flex-start" maxWidth="100%">
-                  <Text
-                    display="inline"
-                    width={{ base: '300px', md: '100%' }}
-                    whiteSpace="balance"
-                  >
+                  <Text display="inline" width="100%" whiteSpace="balance">
                     <strong>Participants: </strong>
                     {getNamesDisplay(decryptedMeeting)}
                   </Text>
@@ -393,13 +389,16 @@ const MeetingCard = ({
                   maxWidth="100%"
                   flexWrap="wrap"
                   gap={2}
-                  width={{ base: '300px', md: '100%' }}
+                  width="100%"
                 >
                   <Text whiteSpace="nowrap" fontWeight={700}>
                     Meeting link:
                   </Text>
-                  <Flex flex={1}>
+                  <Flex flex={1} overflow="hidden">
                     <Link
+                      whiteSpace="nowrap"
+                      textOverflow="ellipsis"
+                      overflow="hidden"
                       href={addUTMParams(decryptedMeeting.meeting_url || '')}
                       isExternal
                       onClick={() => logEvent('Clicked to start meeting')}
