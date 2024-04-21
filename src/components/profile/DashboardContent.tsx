@@ -44,11 +44,12 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       maxWidth="100%"
       justifyContent="space-between"
     >
-      <Box flex={{ base: '0', md: '4' }} mr={{ base: 0, md: 18 }}>
+      <Box flex={{ base: '0', lg: '4' }} mr={{ base: 0, lg: 18 }}>
         <NavMenu currentSection={currentSection} />
       </Box>
       <Box
         maxWidth="100%"
+        overflow="hidden"
         flex={{ base: '1', md: '8' }}
         marginLeft={{ base: '0 !important', md: 2 }}
         marginInlineStart={{ base: '0 !important', md: 2 }}
