@@ -21,15 +21,22 @@ import {
   FaDoorClosed,
   FaSignOutAlt,
 } from 'react-icons/fa'
+import { FaUserGroup } from 'react-icons/fa6'
 
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
+import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
+import { getGroupsEmpty } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
+import {
+  getNotificationTime,
+  saveNotificationTime,
+} from '../../../utils/storage'
 import { Avatar } from './Avatar'
 import { CopyLinkButton } from './CopyLinkButton'
 import { NavItem } from './NavItem'
@@ -42,6 +49,7 @@ interface LinkItemProps {
 }
 const LinkItems: Array<LinkItemProps> = [
   { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
+  { name: 'My Groups', icon: FaUserGroup, mode: EditMode.GROUPS },
   { name: 'Availabilities', icon: FaCalendarAlt, mode: EditMode.AVAILABILITY },
   { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
   {
@@ -79,7 +87,39 @@ export const NavMenu: React.FC<{
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'gray.800')
-
+  const handleEmptyGroupCheck = async () => {
+    const emptyGroups = await getGroupsEmpty()
+    emptyGroups?.forEach((data, index) => {
+      if (!toast.isActive(data.id)) {
+        toast({
+          id: data.id,
+          title: 'Invite Members',
+          containerStyle: {
+            position: 'fixed',
+            insetInline: '0px',
+            marginInline: 'auto',
+            marginTop: `${(index + 1) * 10}px`,
+            transform: `scaleX(${1 - 0.01 * index})`,
+          },
+          render: props => (
+            <ActionToast
+              description={`Your group ${data.name} is feeling like a party with just you - let’s invite your buddies to join the fun!`}
+              action={() => {
+                props.onClose()
+                router.push(`/dashboard/groups?invite=${data.id}`)
+              }}
+              cta="Invite"
+              close={props.onClose}
+            />
+          ),
+          status: 'success',
+          duration: 30000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
+    })
+  }
   useEffect(() => {
     if (calendarResult === 'error') {
       toast({
@@ -103,6 +143,14 @@ export const NavMenu: React.FC<{
       })
     }
   }, [])
+  useEffect(() => {
+    const lastNotificationTime = getNotificationTime(currentAccount?.address)
+    if (lastNotificationTime === null) return
+    if (Date.now() > lastNotificationTime) {
+      handleEmptyGroupCheck()
+      saveNotificationTime(currentAccount?.address)
+    }
+  }, [currentAccount])
 
   if (!currentAccount) return null
 
