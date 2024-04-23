@@ -10,6 +10,7 @@ import { TokenGateConfig } from '../token-gate/TokenGateConfig'
 import AccountDetails from './AccountDetails'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
+import Group from './Group'
 import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
@@ -22,6 +23,8 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
     switch (currentSection) {
       case EditMode.MEETINGS:
         return <Meetings currentAccount={currentAccount!} />
+      case EditMode.GROUPS:
+        return <Group currentAccount={currentAccount!} />
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig currentAccount={currentAccount!} />
       case EditMode.DETAILS:

@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { createClient } from '@supabase/supabase-js'
+import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import { addMinutes, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
@@ -24,6 +24,13 @@ import {
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
 import { DiscordAccount } from '@/types/Discord'
+import {
+  EmptyGroupsResponse,
+  GroupMemberQuery,
+  GroupUsers,
+  MemberType,
+  UserGroups,
+} from '@/types/Group'
 import {
   ConferenceMeeting,
   DBSlot,
@@ -54,9 +61,11 @@ import {
   AccountNotFoundError,
   GateConditionNotValidError,
   GateInUseError,
+  GroupNotExistsError,
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  NotGroupMemberError,
   TimeNotAvailableError,
   UnauthorizedError,
 } from '@/utils/errors'
@@ -73,7 +82,10 @@ import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { isValidEVMAddress } from './validations'
 
-const db: { ready: boolean } & Record<string, any> = { ready: false }
+// TODO: better typing
+const db: { ready: boolean } & Record<string, any> = {
+  ready: false,
+}
 
 const initDB = () => {
   if (!db.ready) {
@@ -839,6 +851,147 @@ const getAccountNotificationSubscriptions = async (
     return data[0] as AccountNotifications
   }
   return { account_address: address, notification_types: [] }
+}
+
+const getUserGroups = async (
+  address: string,
+  limit: number,
+  offset: number
+): Promise<Array<UserGroups>> => {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('member_id', address.toLowerCase())
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+  if (error) {
+    console.log(error)
+    throw new Error(error)
+  }
+  if (data) {
+    return data
+  }
+  return []
+}
+async function findGroupsWithSingleMember(
+  groupIDs: string
+): Promise<Array<EmptyGroupsResponse>> {
+  const filteredGroups = []
+  for (const groupID of groupIDs) {
+    const { data: group, error } = await db.supabase
+      .from('group_members')
+      .select('count')
+      .eq('group_id', groupID)
+    if (error) {
+      throw new Error(error)
+    } else if (group.length === 1 && group[0].count === 1) {
+      const { data: groupDetails, error: groupError } = await db.supabase
+        .from('groups')
+        .select('id, name, slug')
+        .eq('id', groupID)
+      if (groupError) {
+        throw new Error(groupError)
+      }
+      filteredGroups.push(groupDetails[0])
+    }
+  }
+  return filteredGroups
+}
+
+const getGroupsEmpty = async (
+  address: string
+): Promise<Array<EmptyGroupsResponse>> => {
+  const { data: memberGroups, error } = await db.supabase
+    .from('group_members')
+    .select('group_id')
+    .eq('member_id', address.toLowerCase())
+
+  if (error) {
+    throw new Error(error)
+  }
+
+  if (memberGroups.length > 0) {
+    const groupIDs = memberGroups.map(
+      (group: { group_id: string }) => group.group_id
+    )
+    return findGroupsWithSingleMember(groupIDs)
+  } else {
+    // user is not part of any group
+    return []
+  }
+}
+const getGroupUsers = async (
+  group_id: string,
+  address: string,
+  limit: number,
+  offset: number
+): Promise<Array<GroupUsers>> => {
+  const { data: groupData, error: groupError } = await db.supabase
+    .from('groups')
+    .select()
+    .eq('id', group_id)
+  if (groupError) {
+    throw new Error(groupError.message)
+  }
+  if (!groupData) {
+    throw new GroupNotExistsError()
+  }
+  const { data: memberData, error: memberError } = await db.supabase
+    .from('group_members')
+    .select()
+    .eq('group_id', group_id)
+    .eq('member_id', address.toLowerCase())
+  if (memberError) {
+    throw new Error(memberError.message)
+  }
+  if (!memberData) {
+    throw new NotGroupMemberError()
+  }
+  const { data: inviteData, error: inviteError } = await db.supabase
+    .from('group_invites')
+    .select()
+    .eq('group_id', group_id)
+  if (inviteError) {
+    throw new Error(inviteError.message)
+  }
+  const { data: membersData, error: membersError } = await db.supabase
+    .from('group_members')
+    .select()
+    .eq('group_id', group_id)
+  if (membersError) {
+    throw new Error(membersError)
+  }
+  const { data, error } = await db.supabase
+    .from('accounts')
+    .select(
+      `
+      group_members: group_members(*),
+      group_invites: group_invites(*),
+      preferences: account_preferences(name),
+      calendars: connected_calendars(calendars)
+    `
+    )
+    .in(
+      'address',
+      membersData
+        .map((member: GroupMemberQuery) => member.member_id)
+        .concat(inviteData.map((val: GroupMemberQuery) => val.user_id))
+    )
+    .filter('group_members.group_id', 'eq', group_id)
+    .filter('group_invites.group_id', 'eq', group_id)
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (data) {
+    return data
+  }
+  return []
 }
 
 const setAccountNotificationSubscriptions = async (
@@ -1673,10 +1826,13 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
+  getGroupsEmpty,
+  getGroupUsers,
   getMeetingFromDB,
   getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
+  getUserGroups,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,

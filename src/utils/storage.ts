@@ -1,6 +1,7 @@
 const SIGNATURE_KEY = 'current_user_sig'
 const SCHEDULES = 'meetings_scheduled'
-
+const NOTIFICATION = 'group_notification'
+const ONE_DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
 const saveSignature = (account_address: string, signature: string) => {
   window.localStorage.setItem(
     `${SIGNATURE_KEY}:${account_address.toLowerCase()}`,
@@ -54,10 +55,30 @@ const getMeetingsScheduled = (account_address: string) => {
   return currentSchedules
 }
 
+const saveNotificationTime = (account_address?: string) => {
+  if (!account_address) return
+  window.localStorage.setItem(
+    `${NOTIFICATION}:${account_address.toLowerCase()}`,
+    String(Date.now() + ONE_DAY_IN_MILLISECONDS)
+  )
+}
+const getNotificationTime = (account_address?: string): number | null => {
+  if (account_address) {
+    return parseInt(
+      window.localStorage.getItem(
+        `${NOTIFICATION}:${account_address.toLowerCase()}`
+      ) || '0'
+    )
+  } else {
+    return null
+  }
+}
 export {
   getMeetingsScheduled,
+  getNotificationTime,
   getSignature,
   removeSignature,
   saveMeetingsScheduled,
+  saveNotificationTime,
   saveSignature,
 }
