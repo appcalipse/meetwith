@@ -35,6 +35,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
+  const router = useRouter()
   const { invite } = useRouter().query
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
