@@ -38,7 +38,6 @@ const CreateGroupPage = () => {
       })
 
       if (response.ok) {
-        console.log('Navigating to invite-users page')
         const data = await response.json()
         const newGroupId = data.id // Assuming your API returns the groupId
 
@@ -47,32 +46,17 @@ const CreateGroupPage = () => {
           query: { success: true, groupName: groupName, groupId: newGroupId },
         })
       } else {
-        const errorData = await response.json()
-        if (errorData.details && errorData.details.code === '23505') {
-          toast({
-            title: 'Duplicate Group Name',
-            description: `A group with the name "${groupName}" already exists. Please choose another name.`,
-            status: 'error',
-            duration: 3000,
-            isClosable: true,
-            position: 'top',
-            containerStyle: {
-              margin: '60px',
-            },
-          })
-        } else {
-          toast({
-            title: 'Error creating group',
-            description: 'Unable to create group. Please try again later.',
-            status: 'error',
-            duration: 3000,
-            isClosable: true,
-            position: 'top',
-            containerStyle: {
-              margin: '60px',
-            },
-          })
-        }
+        toast({
+          title: 'Error creating group',
+          description: 'Unable to create group. Please try again later.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+          position: 'top',
+          containerStyle: {
+            margin: '60px',
+          },
+        })
       }
     } catch (error) {
       console.error('Error creating group:', error)
@@ -105,7 +89,6 @@ const CreateGroupPage = () => {
             size="xl"
             fontWeight="700"
             lineHeight="1.2"
-            fontFamily="'DM Sans', sans-serif" // Ensure DM Sans is loaded in your project
             textAlign="left"
           >
             Set up your Group
@@ -153,7 +136,7 @@ const CreateGroupPage = () => {
           <Box>
             <Button
               type="submit"
-              colorScheme="primary" // Adjusted to a color scheme that closely matches #F9B19A, consider defining a custom color scheme in your theme
+              colorScheme="primary"
               size="md"
               height="48px" // Fixed height of 48px
               borderRadius="8px" // Radius of 8px
