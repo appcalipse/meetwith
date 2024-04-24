@@ -116,6 +116,6 @@ export class GroupCreationError extends Error {
   constructor(message: string, details = '') {
     super(message)
     this.name = 'GroupCreationError'
-    this.details = details // Additional details about the error
+    this.details = details
   }
 }
