@@ -20,7 +20,7 @@ const InviteSuccessPage = ({ invitedCount = 2 }) => {
           <Image
             src="/assets/create-group-success.svg"
             alt="Success"
-            width="350px" // Width set to 350px
+            width="350px"
             height="188.92px" // Height set to 188.92px
             alignSelf="center"
             m="0" // Margin set to 0 to eliminate any unwanted spacing
@@ -60,7 +60,6 @@ const InviteSuccessPage = ({ invitedCount = 2 }) => {
           height="48px"
           borderRadius="8px"
           w="full"
-          //   _hover={{ bg: '#F9B19A' }}
           mb="8px"
         >
           View Group
@@ -74,7 +73,6 @@ const InviteSuccessPage = ({ invitedCount = 2 }) => {
           borderColor="#F9B19A"
           borderWidth="2px"
           w="full"
-          //   _hover={{ bg: '#F9B19A' }}
           color="#F9B19A"
         >
           Create another Group

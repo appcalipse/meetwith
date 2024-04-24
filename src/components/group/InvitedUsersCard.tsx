@@ -10,11 +10,13 @@ import {
   MenuItem,
   MenuList,
   Text,
+  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import React from 'react'
 
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import customTheme from '@/styles/theme'
 import { InvitedUser } from '@/types/ParticipantInfo'
 
 interface InvitedUserCardProps {
@@ -39,13 +41,18 @@ const InvitedUsersCard: React.FC<InvitedUserCardProps> = ({
 }) => {
   console.log('List of users', users)
 
+  const borderColor = useColorModeValue(
+    customTheme.colors.neutral[200],
+    customTheme.colors.neutral[600]
+  )
+
   return (
     <VStack width="full" align="stretch" spacing={0}>
       <Flex
         justifyContent="space-between"
         alignItems="center"
         p={4}
-        borderBottom="1px solid #5A6E7F"
+        borderBottom={`1px solid ${borderColor}`}
       >
         <Text
           width="316px"
@@ -73,7 +80,6 @@ const InvitedUsersCard: React.FC<InvitedUserCardProps> = ({
       </Flex>
       {users.length > 0 ? (
         users.map((user, index) => {
-          console.log('User memberId:', user.account_address)
           const roleDisplay = user.role
             ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
             : 'Member'
@@ -85,13 +91,12 @@ const InvitedUsersCard: React.FC<InvitedUserCardProps> = ({
               display="flex"
               alignItems="center"
               justifyContent="space-between"
-              borderBottom="1px solid #5A6E7F"
+              borderBottom={`1px solid ${borderColor}`}
             >
               <Text
                 fontSize="16px"
                 fontWeight="700"
                 lineHeight="24px"
-                fontFamily="'DM Sans', sans-serif"
                 textAlign="left"
               >
                 {truncateText(user.account_address, 20)}
@@ -141,8 +146,7 @@ const InvitedUsersCard: React.FC<InvitedUserCardProps> = ({
           display="flex"
           justifyContent="center"
           alignItems="center"
-          // borderTop="1px solid #5A6E7F"
-          borderBottom="1px solid #5A6E7F"
+          borderBottom={`1px solid ${borderColor}`}
         >
           <Text color="gray.500">No contacts added yet.</Text>
         </Box>
