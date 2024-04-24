@@ -25,9 +25,9 @@ import {
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
 import { DiscordAccount } from '@/types/Discord'
-import { GetGroupsResponse, MemberType } from '@/types/Group'
 import {
   EmptyGroupsResponse,
+  GetGroupsResponse,
   GroupMemberQuery,
   GroupUsers,
   MemberType,
@@ -63,6 +63,7 @@ import {
   AccountNotFoundError,
   GateConditionNotValidError,
   GateInUseError,
+  GroupCreationError,
   GroupNotExistsError,
   MeetingChangeConflictError,
   MeetingCreationError,
