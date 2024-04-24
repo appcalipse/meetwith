@@ -86,6 +86,7 @@ describe('calendar manager', () => {
     // when
     const error = await getError(async () =>
       scheduleMeeting(
+        false,
         schedulingType,
         meetingTypeId,
         startTime,
@@ -141,6 +142,7 @@ describe('calendar manager', () => {
     // when
     const error = await getError(async () =>
       scheduleMeeting(
+        false,
         schedulingType,
         meetingTypeId,
         startTime,
@@ -155,6 +157,80 @@ describe('calendar manager', () => {
     expect(error).toBeInstanceOf(TimeNotAvailableError)
   })
 
+  it('should not throw error even though slot is not available', async () => {
+    // given
+    const schedulingType = SchedulingType.REGULAR
+    const sourceAccount = faker.datatype.uuid()
+    const targetAccount = faker.datatype.uuid()
+
+    const account = mockAccount(
+      'd96dd87a62d050242b799888740739bdbaacdd18e57f059803ed41e27b1898448d95a7fac66d17c06309719f6a2729cbdda2646d391385817b6a6ce8dd834fef',
+      sourceAccount
+    )
+
+    const participants: ParticipantInfo[] = [
+      {
+        account_address: sourceAccount,
+        slot_id: 'wathevs1',
+        meeting_id: 'this_one',
+        type: ParticipantType.Scheduler,
+        status: ParticipationStatus.Accepted,
+      },
+      {
+        account_address: targetAccount,
+        slot_id: 'wathevs2',
+        meeting_id: 'this_one',
+        type: ParticipantType.Owner,
+        status: ParticipationStatus.Accepted,
+      },
+    ]
+
+    jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([account])
+
+    const meetingTypeId = faker.datatype.uuid()
+    const startTime = faker.date.past()
+    const endTime = faker.date.future()
+    const meetingContent = faker.random.words(3)
+    const meetingUrl = faker.internet.url()
+
+    jest.spyOn(helper, 'isSlotFreeApiCall').mockResolvedValue({ isFree: false })
+
+    // when
+    const result = scheduleMeeting(
+      true,
+      schedulingType,
+      meetingTypeId,
+      startTime,
+      endTime,
+      participants,
+      account,
+      meetingContent,
+      meetingUrl
+    )
+
+    // then
+    expect(result).toMatchObject({
+      start: startTime,
+      participants: [
+        {
+          account_address: sourceAccount,
+          type: ParticipantType.Scheduler,
+          slot_id: participants[0].slot_id,
+          status: ParticipationStatus.Accepted,
+        },
+        {
+          name: participants[1].name,
+          account_address: targetAccount,
+          type: ParticipantType.Owner,
+          slot_id: participants[1].slot_id,
+          status: ParticipationStatus.Pending,
+        },
+      ],
+      related_slot_ids: [],
+      version: 0,
+    })
+  })
+
   it('should be able to create a regular scheduling', async () => {
     // given
     const schedulingType = SchedulingType.REGULAR
@@ -165,7 +241,6 @@ describe('calendar manager', () => {
     const endTime = faker.date.future()
     const meetingContent = faker.random.words(3)
     const meetingUrl = faker.internet.url()
-    const meetingInfoPath = faker.system.filePath()
 
     const existingAccounts: Account[] = [
       mockAccount(
@@ -227,6 +302,7 @@ describe('calendar manager', () => {
 
     // when
     const result = await scheduleMeeting(
+      false,
       schedulingType,
       meetingTypeId,
       startTime,
@@ -247,7 +323,6 @@ describe('calendar manager', () => {
 
     expect(result).toMatchObject({
       start: startTime,
-      meeting_info_file_path: meetingInfoPath,
       participants: [
         {
           account_address: schedulerAccount,
@@ -280,7 +355,6 @@ describe('calendar manager', () => {
     const endTime = faker.date.future()
     const meetingContent = faker.random.words(3)
     const meetingUrl = faker.internet.url()
-    const meetingInfoPath = faker.system.filePath()
 
     const existingAccounts: Account[] = [
       mockAccount(
@@ -325,6 +399,7 @@ describe('calendar manager', () => {
 
     // when
     const result = await scheduleMeeting(
+      false,
       schedulingType,
       meetingTypeId,
       startTime,
@@ -345,7 +420,6 @@ describe('calendar manager', () => {
 
     expect(result).toMatchObject({
       start: startTime,
-      meeting_info_file_path: meetingInfoPath,
       participants: [
         {
           guest_email: guestEmail,
