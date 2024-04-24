@@ -14,6 +14,7 @@ import { useRouter } from 'next/router'
 import React, { useState } from 'react'
 
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import { createGroup } from '@/utils/api_helper'
 
 const CreateGroupPage = () => {
   const router = useRouter()
@@ -26,38 +27,20 @@ const CreateGroupPage = () => {
     event.preventDefault()
 
     try {
-      const response = await fetch('/api/secure/group/create-group', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await createGroup(groupName, groupCalendarName) // Use the helper method
+
+      // Extract the new group ID from the response
+      const newGroupId = response.groupId
+
+      // Navigate to the invite-users page with relevant query parameters
+      router.push({
+        pathname: '/dashboard/invite-users',
+        query: {
+          success: true,
+          groupName: groupName,
+          groupId: newGroupId,
         },
-        body: JSON.stringify({
-          name: groupName,
-          calendarName: groupCalendarName,
-        }),
       })
-
-      if (response.ok) {
-        const data = await response.json()
-        const newGroupId = data.id // Assuming your API returns the groupId
-
-        router.push({
-          pathname: '/dashboard/invite-users',
-          query: { success: true, groupName: groupName, groupId: newGroupId },
-        })
-      } else {
-        toast({
-          title: 'Error creating group',
-          description: 'Unable to create group. Please try again later.',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-          position: 'top',
-          containerStyle: {
-            margin: '60px',
-          },
-        })
-      }
     } catch (error) {
       console.error('Error creating group:', error)
       toast({
