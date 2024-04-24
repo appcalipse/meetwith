@@ -14,7 +14,6 @@ import {
   Spacer,
   Spinner,
   Text,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
