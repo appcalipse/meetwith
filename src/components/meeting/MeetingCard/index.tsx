@@ -223,7 +223,6 @@ const MeetingCard = ({
           shadow="md"
           width="100%"
           borderRadius="lg"
-          overflow="hidden"
           position="relative"
           bgColor={bgColor}
           pt={{
@@ -256,6 +255,7 @@ const MeetingCard = ({
                   md: 'row',
                 }}
                 gap={4}
+                flexWrap="wrap"
               >
                 <VStack flex={1} alignItems="start">
                   <Flex flex={1} alignItems="center" gap={3}>
@@ -377,38 +377,34 @@ const MeetingCard = ({
               </Flex>
 
               <Divider />
-              <VStack alignItems="start">
-                <HStack alignItems="flex-start" flexWrap="wrap">
-                  <Text
-                    display="inline"
-                    textOverflow="ellipsis"
-                    overflow="hidden"
-                    whiteSpace="nowrap"
-                    width={{ base: '300px', md: '100%' }}
-                  >
+              <VStack alignItems="start" maxWidth="100%">
+                <HStack alignItems="flex-start" maxWidth="100%">
+                  <Text display="inline" width="100%" whiteSpace="balance">
                     <strong>Participants: </strong>
                     {getNamesDisplay(decryptedMeeting)}
                   </Text>
                 </HStack>
-                <HStack alignItems="flex-start" flexWrap="wrap">
-                  <HStack alignItems="center">
-                    <Text
+                <HStack
+                  alignItems="flex-start"
+                  maxWidth="100%"
+                  flexWrap="wrap"
+                  gap={2}
+                  width="100%"
+                >
+                  <Text whiteSpace="nowrap" fontWeight={700}>
+                    Meeting link:
+                  </Text>
+                  <Flex flex={1} overflow="hidden">
+                    <Link
                       whiteSpace="nowrap"
-                      overflow="hidden"
                       textOverflow="ellipsis"
-                      maxWidth="100%"
-                      flex={1}
-                      width={{ base: '300px', md: '100%' }}
+                      overflow="hidden"
+                      href={addUTMParams(decryptedMeeting.meeting_url || '')}
+                      isExternal
+                      onClick={() => logEvent('Clicked to start meeting')}
                     >
-                      <strong>Meeting link: </strong>
-                      <Link
-                        href={addUTMParams(decryptedMeeting.meeting_url || '')}
-                        isExternal
-                        onClick={() => logEvent('Clicked to start meeting')}
-                      >
-                        {decryptedMeeting.meeting_url}
-                      </Link>
-                    </Text>
+                      {decryptedMeeting.meeting_url}
+                    </Link>
                     <Tooltip
                       label="Link copied"
                       placement="top"
@@ -424,7 +420,7 @@ const MeetingCard = ({
 
                       {/* <FaRegCopy size={16} display="block" cursor="pointer" /> */}
                     </Tooltip>
-                  </HStack>
+                  </Flex>
                 </HStack>
                 {decryptedMeeting.content && (
                   <HStack alignItems="flex-start" flexWrap="wrap">
