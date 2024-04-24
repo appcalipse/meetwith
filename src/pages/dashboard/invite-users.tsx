@@ -20,8 +20,8 @@ import { InvitedUser } from '@/types/ParticipantInfo'
 import { getAccount } from '@/utils/api_helper'
 import {
   isEmptyString,
+  isEthereumAddressOrDomain,
   isValidEmail,
-  isValidEVMAddress,
 } from '@/utils/validations'
 
 const InviteUsersPage = () => {
@@ -108,7 +108,8 @@ const InviteUsersPage = () => {
       event.preventDefault()
 
       const input = event.currentTarget.value.trim()
-      const isValidInput = isValidEmail(input) || isValidEVMAddress(input)
+      const isValidInput =
+        isValidEmail(input) || isEthereumAddressOrDomain(input)
 
       if (!isValidInput) {
         setContactIdentifierError(
@@ -178,7 +179,7 @@ const InviteUsersPage = () => {
       setIsFormValid(false)
     } else if (
       !isValidEmail(e.target.value) &&
-      !isValidEVMAddress(e.target.value)
+      !isEthereumAddressOrDomain(e.target.value)
     ) {
       setContactIdentifierError('Invalid email or EVM address')
       setIsFormValid(false)

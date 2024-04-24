@@ -1841,11 +1841,10 @@ export async function createGroupInDB(
   name: string,
   slug: string
 ): Promise<GetGroupsResponse> {
-  const db = initDB() // Ensure the database is initialized
-  const groupId = uuidv4() // Generate a unique ID for the group
+  const db = initDB()
+  const groupId = uuidv4()
 
   try {
-    // Attempt to insert the new group into the database
     const { data, error } = await db.supabase.from('groups').insert([
       {
         id: groupId,
@@ -1859,7 +1858,6 @@ export async function createGroupInDB(
       throw new GroupCreationError('Failed to create group', error)
     }
 
-    // If insertion is successful, return the newly created group
     const newGroup = data[0]
     return {
       id: newGroup.id,
