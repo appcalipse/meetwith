@@ -3,6 +3,7 @@ import {
   Alert,
   AlertDescription,
   AlertIcon,
+  AlertTitle,
   Box,
   Button,
   Flex,
@@ -63,7 +64,6 @@ import {
   getSuggestedSlots,
 } from '@/utils/api_helper'
 import { scheduleMeeting, updateMeeting } from '@/utils/calendar_manager'
-import { encryptContent } from '@/utils/cryptography'
 import {
   GateConditionNotValidError,
   Huddle01ServiceUnavailable,
@@ -81,7 +81,6 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import RichTextEditor from '../profile/components/RichTextEditor'
-import InfoTooltip from '../profile/components/Tooltip'
 import { CancelMeetingDialog } from './cancel-dialog'
 import { MeetingDialogState } from './meeting.dialog.hook'
 
@@ -142,6 +141,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     meeting && meeting.id ? differenceInMinutes(meeting.end, meeting.start) : 30
   )
 
+  const [timeError, setTimeError] = useState(false)
   const [isScheduling, setIsScheduling] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [searchingTimes, setSearchingTimes] = useState(false)
@@ -283,7 +283,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     setSearchingTimes(false)
   }
 
-  const scheduleOrUpdate = async () => {
+  const scheduleOrUpdate = async (ignoreAvailabilities: boolean) => {
     if (!useHuddle && !meetingUrl) {
       toast({
         title: 'Missing information',
@@ -368,6 +368,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           meeting_id: '',
         })
         meetingResult = await scheduleMeeting(
+          ignoreAvailabilities,
           SchedulingType.REGULAR,
           'no_type',
           start,
@@ -383,8 +384,10 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           fromDashboard: true,
           participantsSize: _participants.valid.length,
         })
+        setTimeError(false)
       } else {
         meetingResult = await updateMeeting(
+          true,
           currentAccount!.address,
           'no_type',
           start,
@@ -400,6 +403,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           fromDashboard: true,
           participantsSize: _participants.valid.length,
         })
+        setTimeError(false)
       }
 
       onDialogClose(
@@ -417,6 +421,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       )
       return true
     } catch (e) {
+      setTimeError(false)
       if (e instanceof MeetingWithYourselfError) {
         toast({
           title: "Ops! Can't do that",
@@ -427,14 +432,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           isClosable: true,
         })
       } else if (e instanceof TimeNotAvailableError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description: 'The selected time is not available anymore',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
+        setTimeError(true)
       } else if (e instanceof GateConditionNotValidError) {
         toast({
           title: 'Failed to schedule meeting',
@@ -754,7 +752,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
             </Button>
           )}
           <Button
-            onClick={scheduleOrUpdate}
+            onClick={() => scheduleOrUpdate(false)}
             colorScheme="primary"
             isLoading={isScheduling}
             isDisabled={isCancelling}
@@ -762,6 +760,47 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
             {meeting?.id ? 'Update' : 'Schedule'}
           </Button>
         </ModalFooter>
+        <Box
+          display={timeError ? 'flex' : 'none'}
+          flexDir="column"
+          justifyContent="center"
+          alignItems="center"
+          position="absolute"
+          w="100%"
+          h="100%"
+          bgColor="rgba(0,0,0,0.5)"
+          backdropFilter={`blur(12px)`}
+        >
+          <Alert status="error" mb={8}>
+            <AlertIcon />
+            <AlertDescription>
+              Some of the invitees are not available at the selected time. Do
+              you want to schedule it anyway?
+            </AlertDescription>
+          </Alert>
+          <HStack>
+            <Button
+              onClick={() => {
+                setTimeError(false)
+              }}
+              variant="ghost"
+              mr={4}
+              isDisabled={isScheduling}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                scheduleOrUpdate(true)
+              }}
+              colorScheme="primary"
+              isLoading={isScheduling}
+              isDisabled={isCancelling}
+            >
+              Schedule
+            </Button>
+          </HStack>
+        </Box>
       </ModalContent>
       <CancelMeetingDialog
         isOpen={isOpen}
