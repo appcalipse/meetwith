@@ -428,7 +428,7 @@ const getAccountFromDB = async (
   throw new AccountNotFoundError(identifier)
 }
 
-const migrateSlots = async (): Promise<any> => {
+const migrateSlots = async () => {
   const { data, error: fetchError } = await db.supabase
     .from('slots')
     .select()
