@@ -34,27 +34,13 @@ const { publicClient, chains } = configureChains(
     }),
   ]
 )
-
-// const uauthClient = new UAuthSPA({
-//   clientID: process.env.NEXT_PUBLIC_UD_CLIENT_ID!,
-//   redirectUri: typeof window === 'undefined' ? '' : window.location.origin,
-//   scope: 'openid wallet',
-// })
-
-// const uauthConnector = new UAuthWagmiConnector({
-//   chains,
-//   options: {
-//     uauth: uauthClient,
-//   },
-// })
-
 export const wagmiConfig = createConfig(
   getDefaultConfig({
     walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
     appName: 'Meet with Wallet',
     appDescription: 'Your web3 tailored calendar',
     appUrl: 'https://meetwithwallet.xyz',
-    chains,
+    // chains,
     publicClient,
     // connectors: [uauthConnector],
   })

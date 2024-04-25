@@ -1,23 +1,37 @@
-import { fetchBalance, readContract } from '@wagmi/core'
+import { fetchBalance, mainnet, readContract } from '@wagmi/core'
+import { createPublicClient, http } from 'viem'
+import { goerli } from 'viem/chains'
 
 import { ERC20 } from '@/abis/erc20'
 import { ERC721 } from '@/abis/erc721'
 import { getChainInfo, SupportedChain } from '@/types/chains'
 import { GateInterface, TokenGateElement } from '@/types/TokenGating'
 
+import { wagmiConfig } from './user_manager'
+
+export const publicClient = createPublicClient({
+  chain: goerli,
+  transport: http(),
+})
 export const getTokenBalance = async (
   walletAddress: string,
   tokenAddress: `0x${string}`,
   chain: SupportedChain
 ): Promise<bigint> => {
-  const balance = (await readContract({
-    address: tokenAddress,
-    abi: ERC20,
-    functionName: 'balanceOf',
-    args: [walletAddress],
-    chainId: getChainInfo(chain)!.id,
-  })) as bigint
+  console.log({
+    walletAddress,
+    tokenAddress,
+    chain,
+  })
 
+  const balance = (await wagmiConfig
+    .getPublicClient({ chainId: getChainInfo(chain)!.id })
+    .readContract({
+      address: tokenAddress,
+      abi: ERC20,
+      functionName: 'balanceOf',
+      args: [walletAddress],
+    })) as bigint
   return balance
 }
 

@@ -1,6 +1,8 @@
+import { MockConnector } from '@wagmi/core/connectors/mock'
 import { ethers } from 'ethers'
 
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
+import { wagmiConfig } from '@/utils/user_manager'
 
 import {
   DAI_ELEMENT,
@@ -11,6 +13,8 @@ import {
 
 describe('get balance for tokens', () => {
   beforeAll(() => {
+    // wagmiConfig.connectors = [new MockConnector()]
+
     jest
       .spyOn(ethers, 'Contract')
       .mockImplementation((addressOrName: string) => {
@@ -77,6 +81,7 @@ describe('get balance for tokens', () => {
       USDT_ELEMENT.itemId as `0x${string}`,
       USDT_ELEMENT.chain!
     )
+    console.log({ balance })
     expect(balance).toEqual(0n)
   })
 
