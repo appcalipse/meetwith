@@ -363,7 +363,7 @@ export const getAccountPreferences = async (
       throw new Error('Error while completign empty preferences')
     }
 
-    return newPreferences
+    return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
   }
 
   return account_preferences[0]
@@ -403,7 +403,7 @@ const getAccountFromDB = async (
   const { data, error } = await db.supabase.rpc('fetch_account', {
     identifier: identifier.toLowerCase(),
   })
-  if (data) {
+  if (data && !Array.isArray(data)) {
     const account = data as Account
     try {
       account.preferences = (await getAccountPreferences(
@@ -1129,7 +1129,7 @@ const removeConnectedCalendar = async (
     throw new Error(error)
   }
 
-  return data as ConnectedCalendar
+  return Array.isArray(data) ? data[0] : data
 }
 
 export const getSubscriptionFromDBForAccount = async (
