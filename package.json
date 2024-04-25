@@ -58,7 +58,7 @@
     "amplitude-js": "^8.12.0",
     "arrow-keys-react": "^1.0.6",
     "chakra-react-select": "^4.7.6",
-    "connectkit": "^1.7.3",
+    "connectkit": "^1.5.0",
     "cookie": "^0.4.1",
     "crypto-js": "^4.1.1",
     "date-fns": "^2.29.0",
@@ -107,11 +107,9 @@
     "@babel/core": "^7.22.5",
     "@babel/plugin-proposal-class-properties": "^7.16.0",
     "@babel/plugin-proposal-decorators": "^7.16.4",
-    "@babel/plugin-transform-modules-commonjs": "^7.24.1",
     "@babel/preset-env": "^7.22.5",
     "@babel/preset-typescript": "^7.22.5",
     "@faker-js/faker": "^6.2.0",
-    "@jest/globals": "^29.7.0",
     "@sentry/types": "^7.83.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",
@@ -165,5 +163,5 @@
   "engines": {
     "node": "18.19"
   },
-  "packageManager": "yarn@3.1.0"
+  "packageManager": "yarn@1.22.21"
 }
