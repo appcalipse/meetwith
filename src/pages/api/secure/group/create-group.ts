@@ -6,8 +6,12 @@ import { createGroupInDB } from '@/utils/database'
 import { AccountNotFoundError, GroupCreationError } from '@/utils/errors'
 import { getSlugFromText } from '@/utils/generic_utils'
 
-// Main API handler function named 'handle'
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' })
+    return
+  }
+
   const { name } = req.body
 
   // Check if there is a valid session with an account address
