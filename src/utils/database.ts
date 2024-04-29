@@ -1862,7 +1862,7 @@ export async function createGroupInDB(
     ])
 
     if (error) {
-      throw new GroupCreationError('Failed to create group', error)
+      throw new GroupCreationError('Failed to create group', error.message)
     }
 
     const newGroup = data[0]
