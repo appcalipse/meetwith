@@ -3,8 +3,10 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { getAccountFromDB, initDB, isUserAdminOfGroup } from '@/utils/database'
 
-// Endpoint to invite a user to a group, accessible only to group admins.
-const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+// Note: This is a roughed in version of this endpoint, not a fully fleshed out implementation.
+// Full implementation will be fleshed out here: https://github.com/appcalipse/meet-with-wallet/issues/335
+
+const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -60,4 +62,4 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 }
 
-export default withSessionRoute(handler)
+export default withSessionRoute(handle)
