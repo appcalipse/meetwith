@@ -686,3 +686,6 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof PublicSchema['Enums']
   ? PublicSchema['Enums'][PublicEnumNameOrOptions]
   : never
+
+export type GroupMembersRow =
+  Database['public']['Tables']['group_members']['Row']

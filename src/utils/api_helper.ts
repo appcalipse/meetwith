@@ -44,6 +44,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   TimeNotAvailableError,
+  UserInvitationError,
 } from './errors'
 import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
@@ -825,5 +826,30 @@ export const createGroup = async (
 
     Sentry.captureException(e)
     throw e
+  }
+}
+
+export const inviteUsers = async (
+  invitedUsers: string[],
+  message: string
+): Promise<void> => {
+  try {
+    await internalFetch<void>('/api/invite-users', 'POST', {
+      invitedUsers,
+      message,
+    })
+  } catch (e: any) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 400) {
+        throw new UserInvitationError('Invalid input data', e.status)
+      } else if (e.status === 500) {
+        throw new UserInvitationError('Internal server error', e.status)
+      } else {
+        throw new UserInvitationError(e.message, e.status)
+      }
+    } else {
+      Sentry.captureException(e)
+      throw e
+    }
   }
 }
