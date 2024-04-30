@@ -119,3 +119,13 @@ export class GroupCreationError extends Error {
     this.details = details
   }
 }
+
+export class UserInvitationError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'UserInvitationError'
+    this.status = status
+  }
+}

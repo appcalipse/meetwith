@@ -79,9 +79,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           You will see your Groups here once you created a new Group.
         </Text>
         <Button
-          onClick={() => {
-            // Add Creation modal logic here
-          }}
+          onClick={() => router.push('/dashboard/create-group')}
           flexShrink={0}
           colorScheme="primary"
           display={{ base: 'none', md: 'flex' }}
