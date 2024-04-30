@@ -17,7 +17,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import InvitedUsersCard from '@/components/group/InvitedUsersCard'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { InvitedUser } from '@/types/ParticipantInfo'
-import { getAccount } from '@/utils/api_helper'
+import { getAccount, inviteUsers } from '@/utils/api_helper'
 import {
   isEmptyString,
   isEthereumAddressOrDomain,
@@ -62,25 +62,19 @@ const InviteUsersPage = () => {
           margin: '60px',
         },
       })
-      toastShown.current = true // Mark the toast as shown
+      toastShown.current = true
     }
   }, [success, groupName, toast])
 
   const handleSubmit = async () => {
-    // Check if the form is valid before proceeding
     if (!isFormValid) {
       return
     }
 
-    try {
-      const response = await fetch('/api/invite-users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invitedUsers, message }),
-      })
+    const userIdentifiers = invitedUsers.map(user => user.account_address)
 
-      // Can add 'if (response.ok){} block here to test endpoint response
-      // setInvitedUsers([])
+    try {
+      await inviteUsers(userIdentifiers, message)
       router.push('/dashboard/invite-success')
     } catch (error) {
       console.error('Error sending invitations:', error)
@@ -96,7 +90,6 @@ const InviteUsersPage = () => {
           margin: '60px',
         },
       })
-      // For now, redirect even if there is an error
       router.push('/dashboard/invite-success')
     }
   }
@@ -118,13 +111,12 @@ const InviteUsersPage = () => {
         return
       }
 
-      // Check for duplicate entries
       if (invitedUsers.some(user => user.account_address === input)) {
         setContactIdentifierError('This user has already been invited.')
         return
       }
 
-      setContactIdentifierError('') // Clear previous errors if the input passes checks
+      setContactIdentifierError('')
 
       if (invitedUsers.length >= 10) {
         setContactIdentifierError(
@@ -133,7 +125,6 @@ const InviteUsersPage = () => {
         return
       }
 
-      // Always add the user, but check if they are registered
       const newUser: InvitedUser = {
         groupId: storedGroupId,
         account_address: input,
@@ -141,15 +132,7 @@ const InviteUsersPage = () => {
         invitePending: true,
       }
       setInvitedUsers(prev => [...prev, newUser])
-      setContactIdentifier('') // Clear the input field after adding
-
-      // Check if the user is registered
-      try {
-        const account = await getAccount(input)
-        console.log('Registered Meet With Wallet user:', account)
-      } catch (error) {
-        console.log('Not a registered Meet With Wallet user:', input)
-      }
+      setContactIdentifier('')
     }
   }
 
@@ -173,7 +156,6 @@ const InviteUsersPage = () => {
     setContactIdentifier(e.target.value)
     console.log('Contact identifier:', e.target.value)
 
-    // Perform validation checks
     if (isEmptyString(e.target.value)) {
       setContactIdentifierError('Contact identifier is required')
       setIsFormValid(false)

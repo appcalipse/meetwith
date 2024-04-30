@@ -54,7 +54,12 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { Database } from '@/types/supabase'
+import {
+  Database,
+  GroupMembersRow,
+  Tables,
+  TablesInsert,
+} from '@/types/supabase'
 import {
   GateConditionObject,
   GateUsage,
@@ -1822,13 +1827,12 @@ export const getAccountFromDiscordId = async (
   return getAccountFromDB(address)
 }
 
-// Authorization helper function
 export async function isUserAdminOfGroup(
   groupId: string,
   userAddress: string
 ): Promise<boolean> {
   const { data, error } = await db.supabase
-    .from('group_members')
+    .from<GroupMembersRow>('group_members')
     .select('role')
     .eq('group_id', groupId)
     .eq('member_id', userAddress)
@@ -1836,12 +1840,11 @@ export async function isUserAdminOfGroup(
     .single()
 
   if (error) {
-    // Handle potential database errors
     console.error('Error checking admin status:', error)
     throw error
   }
 
-  return !!data
+  return data?.role === 'admin'
 }
 
 export async function createGroupInDB(
@@ -1852,25 +1855,32 @@ export async function createGroupInDB(
   const groupId = uuidv4()
 
   try {
-    const { data, error } = await db.supabase.from('groups').insert([
-      {
-        id: groupId,
-        name: name,
-        slug: slug,
-        // role: MemberType.ADMIN, // Default role for creator
-      },
-    ])
+    const { data, error } = await db.supabase
+      .from<TablesInsert<'groups'>>('groups')
+      .insert([
+        {
+          id: groupId,
+          name,
+          slug,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
 
     if (error) {
       throw new GroupCreationError('Failed to create group', error.message)
     }
 
     const newGroup = data[0]
+    if (!newGroup || !newGroup.id) {
+      throw new Error('Failed to create group: missing ID')
+    }
+
     return {
       id: newGroup.id,
       name: newGroup.name,
       slug: newGroup.slug,
-      role: MemberType.ADMIN, // Assuming the creator is the admin
+      role: MemberType.ADMIN,
       invitePending: false,
     }
   } catch (error) {
@@ -1879,7 +1889,6 @@ export async function createGroupInDB(
     } else if (error instanceof Error) {
       throw new GroupCreationError('Database operation failed', error.message)
     } else {
-      // Handle unknown error type
       console.error('Unknown error type:', error)
       throw new Error('An unknown error occurred')
     }
