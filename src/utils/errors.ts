@@ -109,3 +109,23 @@ export class Huddle01ServiceUnavailable extends Error {
     this.name = 'Huddle01ServiceUnavailable'
   }
 }
+
+export class GroupCreationError extends Error {
+  details: string
+
+  constructor(message: string, details = '') {
+    super(message)
+    this.name = 'GroupCreationError'
+    this.details = details
+  }
+}
+
+export class UserInvitationError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'UserInvitationError'
+    this.status = status
+  }
+}

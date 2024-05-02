@@ -38,11 +38,13 @@ import {
   ApiFetchError,
   GateConditionNotValidError,
   GateInUseError,
+  GroupCreationError,
   Huddle01ServiceUnavailable,
   InvalidSessionError,
   MeetingChangeConflictError,
   MeetingCreationError,
   TimeNotAvailableError,
+  UserInvitationError,
 } from './errors'
 import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
@@ -791,5 +793,63 @@ export const getConferenceMeeting = async (
     ...response,
     start: new Date(response.start),
     end: new Date(response.end),
+  }
+}
+
+export const createGroup = async (
+  groupName: string,
+  groupCalendarName: string
+): Promise<{ groupId: string }> => {
+  try {
+    const response = await internalFetch<{ id: string }>(
+      '/secure/group/create-group',
+      'POST',
+      {
+        name: groupName,
+        calendarName: groupCalendarName,
+      }
+    )
+
+    if (response && response.id) {
+      return { groupId: response.id }
+    } else {
+      throw new GroupCreationError('Invalid response from server')
+    }
+  } catch (e: any) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 400) {
+        throw new GroupCreationError('Invalid input data')
+      } else if (e.status === 500) {
+        throw new GroupCreationError('Internal server error')
+      }
+    }
+
+    Sentry.captureException(e)
+    throw e
+  }
+}
+
+export const inviteUsers = async (
+  invitedUsers: string[],
+  message: string
+): Promise<void> => {
+  try {
+    await internalFetch<void>('/api/invite-users', 'POST', {
+      invitedUsers,
+      message,
+    })
+  } catch (e: any) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 400) {
+        throw new UserInvitationError('Invalid input data', e.status)
+      } else if (e.status === 500) {
+        throw new UserInvitationError('Internal server error', e.status)
+      } else {
+        throw new UserInvitationError(e.message, e.status)
+      }
+    } else {
+      Sentry.captureException(e)
+      throw e
+    }
   }
 }
