@@ -24,7 +24,7 @@ import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
-import { useWalletClient } from 'wagmi'
+import { useActiveAccount } from 'thirdweb/react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
@@ -47,6 +47,7 @@ import {
 import { changeDomainOnChain, isProAccount } from '@/utils/subscription_manager'
 import { isValidSlug } from '@/utils/validations'
 
+import { thirdWebClient } from '../nav/ConnectModal'
 import Block from './components/Block'
 import HandlePicker, {
   DisplayName,
@@ -133,9 +134,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     )
     setNewProDomain(currentAccount?.subscriptions?.[0]?.domain || '')
   }
-
-  const chainInfo = getChainInfo(currentAccount.subscriptions?.[0]?.chain)
-  const { data: walletClient } = useWalletClient({ chainId: chainInfo?.id })
 
   const updateAccountSubs = async () => {
     setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
@@ -328,12 +326,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     }
 
     try {
-      await changeDomainOnChain(
-        currentAccount.address,
-        proDomain,
-        newProDomain,
-        walletClient!
-      )
       await updateAccountSubs()
       toast({
         title: 'Calendar link updated',

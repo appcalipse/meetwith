@@ -6,7 +6,7 @@ const createJestConfig = nextJest({
   dir: './',
 })
 
-const esModules = ['@wagmi/core', 'connectkit', 'uuid'].join('|')
+const esModules = ['uuid'].join('|')
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {

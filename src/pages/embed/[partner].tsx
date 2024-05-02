@@ -1,9 +1,9 @@
 import { Box, Button, Container, Text } from '@chakra-ui/react'
-import { useModal } from 'connectkit'
 import type { NextPage } from 'next'
-import React from 'react'
+import React, { useContext } from 'react'
 
 import ConnectWalletDialog from '@/components/ConnectWalletDialog'
+import { WalletModalContext } from '@/providers/WalletModalProvider'
 import { useLogin } from '@/session/login'
 import { withDashboardRedirect } from '@/session/requireAuthentication'
 import { Account } from '@/types/Account'
@@ -15,7 +15,7 @@ interface PartnerLoginProps {
 }
 
 const PartnerLogin: NextPage<PartnerLoginProps> = ({ currentAccount }) => {
-  const { setOpen } = useModal()
+  const { open } = useContext(WalletModalContext)
   const { loginIn } = useLogin()
 
   return (
@@ -31,7 +31,7 @@ const PartnerLogin: NextPage<PartnerLoginProps> = ({ currentAccount }) => {
         <Button
           colorScheme="primary"
           onClick={() => {
-            setOpen(true)
+            open()
           }}
         >
           {currentAccount ? 'Sign in' : 'Create an account'}

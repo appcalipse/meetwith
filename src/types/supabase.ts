@@ -47,34 +47,34 @@ export interface Database {
       }
       account_preferences: {
         Row: {
-          availabilities: Json | null
-          availableTypes: Json[] | null
+          availabilities: Json
+          availableTypes: Json[]
           description: string | null
           id: string
           name: string | null
           owner_account_address: string
           socialLinks: Json[] | null
-          timezone: string | null
+          timezone: string
         }
         Insert: {
-          availabilities?: Json | null
-          availableTypes?: Json[] | null
+          availabilities: Json
+          availableTypes: Json[]
           description?: string | null
           id?: string
           name?: string | null
           owner_account_address: string
           socialLinks?: Json[] | null
-          timezone?: string | null
+          timezone: string
         }
         Update: {
-          availabilities?: Json | null
-          availableTypes?: Json[] | null
+          availabilities: Json
+          availableTypes: Json[]
           description?: string | null
           id?: string
           name?: string | null
           owner_account_address?: string
           socialLinks?: Json[] | null
-          timezone?: string | null
+          timezone: string
         }
         Relationships: [
           {
