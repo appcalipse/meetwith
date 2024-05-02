@@ -8,6 +8,7 @@ import EthCrypto, {
   encryptWithPublicKey,
 } from 'eth-crypto'
 import { validate } from 'uuid'
+import { v4 as uuidv4 } from 'uuid'
 
 import {
   Account,
@@ -26,6 +27,7 @@ import {
 import { DiscordAccount } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
+  GetGroupsResponse,
   GroupMemberQuery,
   GroupUsers,
   MemberType,
@@ -52,7 +54,12 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { Database } from '@/types/supabase'
+import {
+  Database,
+  GroupMembersRow,
+  Tables,
+  TablesInsert,
+} from '@/types/supabase'
 import {
   GateConditionObject,
   GateUsage,
@@ -62,6 +69,7 @@ import {
   AccountNotFoundError,
   GateConditionNotValidError,
   GateInUseError,
+  GroupCreationError,
   GroupNotExistsError,
   MeetingChangeConflictError,
   MeetingCreationError,
@@ -1817,6 +1825,74 @@ export const getAccountFromDiscordId = async (
   const address = data[0].address
 
   return getAccountFromDB(address)
+}
+
+export async function isUserAdminOfGroup(
+  groupId: string,
+  userAddress: string
+): Promise<boolean> {
+  const { data, error } = await db.supabase
+    .from<GroupMembersRow>('group_members')
+    .select('role')
+    .eq('group_id', groupId)
+    .eq('member_id', userAddress)
+    .eq('role', 'admin')
+    .single()
+
+  if (error) {
+    console.error('Error checking admin status:', error)
+    throw error
+  }
+
+  return data?.role === 'admin'
+}
+
+export async function createGroupInDB(
+  name: string,
+  slug: string
+): Promise<GetGroupsResponse> {
+  const db = initDB()
+  const groupId = uuidv4()
+
+  try {
+    const { data, error } = await db.supabase
+      .from<TablesInsert<'groups'>>('groups')
+      .insert([
+        {
+          id: groupId,
+          name,
+          slug,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+
+    if (error) {
+      throw new GroupCreationError('Failed to create group', error.message)
+    }
+
+    const newGroup = data[0]
+    if (!newGroup || !newGroup.id) {
+      throw new Error('Failed to create group: missing ID')
+    }
+
+    return {
+      id: newGroup.id,
+      name: newGroup.name,
+      slug: newGroup.slug,
+      role: MemberType.ADMIN,
+      invitePending: false,
+    }
+  } catch (error) {
+    if (error instanceof GroupCreationError) {
+      throw error
+    } else if (error instanceof Error) {
+      throw new GroupCreationError('Database operation failed', error.message)
+    } else {
+      console.error('Unknown error type:', error)
+      throw new Error('An unknown error occurred')
+    }
+  }
 }
 
 export {
