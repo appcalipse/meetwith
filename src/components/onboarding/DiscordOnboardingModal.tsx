@@ -9,13 +9,13 @@ import {
   ModalOverlay,
   useDisclosure,
 } from '@chakra-ui/react'
-import { useModal } from 'connectkit'
 import { isSameDay, parseISO } from 'date-fns'
 import { useSearchParams } from 'next/navigation'
 import { useContext, useEffect, useState } from 'react'
 import { FaDiscord } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { WalletModalContext } from '@/providers/WalletModalProvider'
 import { discordRedirectUrl, OnboardingSubject } from '@/utils/constants'
 
 let didDiscordInit = false
@@ -30,7 +30,7 @@ export default function DiscordOnboardingModal({
   const origin = queryParams.get('origin')
 
   const { isOpen, onOpen: openOnboardingModal, onClose } = useDisclosure()
-  const { setOpen: openLogin } = useModal()
+  const { open } = useContext(WalletModalContext)
 
   const { currentAccount } = useContext(AccountContext)
 
@@ -52,10 +52,10 @@ export default function DiscordOnboardingModal({
       !didOpenConnectWallet &&
       !isOpen
     ) {
-      openLogin(true)
+      open()
       didOpenConnectWallet = true
     }
-  }, [currentAccount, openOnboardingModal, origin, openLogin, subject])
+  }, [currentAccount, openOnboardingModal, origin, open, subject])
 
   return (
     <>
