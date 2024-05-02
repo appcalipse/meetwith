@@ -42,7 +42,6 @@ const CreateGroupPage = () => {
         },
       })
     } catch (error) {
-      console.error('Error creating group:', error)
       toast({
         title: 'Error',
         description: 'An unexpected error occurred. Please try again.',
@@ -121,10 +120,9 @@ const CreateGroupPage = () => {
               type="submit"
               colorScheme="primary"
               size="md"
-              height="48px" // Fixed height of 48px
-              borderRadius="8px" // Radius of 8px
-              w="full" // Button width to fill the form width
-              _hover={{ bg: '#E68982' }} // Adjust hover color accordingly
+              height="48px"
+              borderRadius="8px"
+              w="full"
             >
               Create
             </Button>

@@ -154,7 +154,6 @@ const InviteUsersPage = () => {
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     setContactIdentifier(e.target.value)
-    console.log('Contact identifier:', e.target.value)
 
     if (isEmptyString(e.target.value)) {
       setContactIdentifierError('Contact identifier is required')

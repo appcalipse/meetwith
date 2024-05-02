@@ -11,7 +11,6 @@ import { TokenGateConfig } from '../token-gate/TokenGateConfig'
 import AccountDetails from './AccountDetails'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
-// import Group from './Group'
 import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
 

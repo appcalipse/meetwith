@@ -21,10 +21,9 @@ const InviteSuccessPage = ({ invitedCount = 2 }) => {
             src="/assets/create-group-success.svg"
             alt="Success"
             width="350px"
-            height="188.92px" // Height set to 188.92px
             alignSelf="center"
-            m="0" // Margin set to 0 to eliminate any unwanted spacing
-            p="0" // Padding set to 0 to eliminate any unwanted spacing
+            m="0"
+            p="0"
           />
         </Box>
         <Heading
