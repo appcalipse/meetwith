@@ -12,12 +12,12 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useModal } from 'connectkit'
 import router from 'next/router'
 import { useContext, useState } from 'react'
 import { FaBell } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { WalletModalContext } from '@/providers/WalletModalProvider'
 import {
   AccountNotifications,
   NotificationChannel,
@@ -56,12 +56,12 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
 
   const toast = useToast()
 
-  const { setOpen } = useModal()
+  const { open } = useContext(WalletModalContext)
 
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on WHY section')
-      setOpen(true)
+      open()
     } else {
       await router.push('/dashboard')
     }

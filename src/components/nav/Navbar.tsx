@@ -14,26 +14,26 @@ import {
   useColorModeValue,
   useDisclosure,
 } from '@chakra-ui/react'
-import { useModal } from 'connectkit'
 import router, { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { BiMenuAltRight } from 'react-icons/bi'
 import { BiWallet } from 'react-icons/bi'
+import { useActiveWallet } from 'thirdweb/react'
 
+import { WalletModalContext } from '@/providers/WalletModalProvider'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
-import { AccountContext } from '../providers/AccountProvider'
-import { useLogin } from '../session/login'
-import ConnectWalletDialog from './ConnectWalletDialog'
-import NavBarLoggedProfile from './profile/NavBarLoggedProfile'
-import { ThemeSwitcher } from './ThemeSwitcher'
+import { AccountContext } from '../../providers/AccountProvider'
+import { useLogin } from '../../session/login'
+import ConnectWalletDialog from '../ConnectWalletDialog'
+import NavBarLoggedProfile from '../profile/NavBarLoggedProfile'
+import { ThemeSwitcher } from '../ThemeSwitcher'
 
 export const Navbar = () => {
-  const { pathname, asPath } = useRouter()
-
+  const { open } = useContext(WalletModalContext)
   const { isOpen, onToggle } = useDisclosure()
 
-  const { setOpen } = useModal()
+  const { pathname, asPath } = useRouter()
 
   const { currentAccount, logged, loginIn } = useLogin()
 
@@ -142,7 +142,7 @@ export const Navbar = () => {
               ) : (
                 <Button
                   size="md"
-                  onClick={() => setOpen(true)}
+                  onClick={() => open()}
                   isLoading={loginIn}
                   colorScheme="primary"
                   leftIcon={<BiWallet />}
@@ -170,6 +170,7 @@ export const Navbar = () => {
 
       <Collapse in={isOpen} animateOpacity>
         <MobileNav
+          onOpenModal={open}
           onToggle={onToggle}
           handleSetActiveLink={handleSetActiveLink}
           isOpen={isOpen}
@@ -226,6 +227,7 @@ const DesktopNav = ({ pathname, handleSetActiveLink }: DesktopNavProps) => {
 
 interface MobileNavProps {
   onToggle: () => void
+  onOpenModal: () => void
   handleSetActiveLink: (id: string) => void
   isOpen: boolean
   pathname: string
@@ -233,16 +235,17 @@ interface MobileNavProps {
 
 const MobileNav = ({
   onToggle,
+  onOpenModal,
   handleSetActiveLink,
   isOpen,
   pathname,
 }: MobileNavProps) => {
   const { currentAccount, logged, loginIn } = useLogin()
   const { logout } = useContext(AccountContext)
-  const { setOpen } = useModal()
+  const wallet = useActiveWallet()
 
   const doLogout = async () => {
-    await logout()
+    await logout(wallet!)
     await router.push('/')
     onToggle()
   }
@@ -303,7 +306,7 @@ const MobileNav = ({
           <Button
             colorScheme="primary"
             size="md"
-            onClick={() => setOpen(true)}
+            onClick={() => onOpenModal()}
             isLoading={loginIn}
             leftIcon={<BiWallet />}
           >

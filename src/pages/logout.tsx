@@ -1,6 +1,7 @@
 import { Container, VStack } from '@chakra-ui/react'
 import router from 'next/router'
 import { useContext, useEffect } from 'react'
+import { useActiveWallet } from 'thirdweb/react'
 
 import Loading from '../components/Loading'
 import { AccountContext } from '../providers/AccountProvider'
@@ -12,8 +13,10 @@ export default function LogoutPage() {
     doLogout()
   }, [])
 
+  const wallet = useActiveWallet()
+
   const doLogout = async () => {
-    await logout()
+    await logout(wallet!)
     await router.push('/')
   }
 

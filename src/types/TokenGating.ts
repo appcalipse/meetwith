@@ -44,7 +44,7 @@ export const DummyGateElement: TokenGateElement = {
   itemId: '',
   chain: isProduction
     ? SupportedChain.POLYGON_MATIC
-    : SupportedChain.POLYGON_MUMBAI,
+    : SupportedChain.POLYGON_AMOY,
   minimumBalance: 0n,
 }
 
@@ -61,7 +61,7 @@ export interface GateUsage {
 export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
   switch (chain) {
     case SupportedChain.ETHEREUM:
-    case SupportedChain.GOERLI:
+    case SupportedChain.SEPOLIA:
       return {
         type: GateInterface.NATIVE,
         itemName: 'Ether',
@@ -72,7 +72,7 @@ export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
         decimals: getNativeDecimals(chain),
       }
     case SupportedChain.POLYGON_MATIC:
-    case SupportedChain.POLYGON_MUMBAI:
+    case SupportedChain.POLYGON_AMOY:
       return {
         type: GateInterface.NATIVE,
         itemName: 'Matic',
