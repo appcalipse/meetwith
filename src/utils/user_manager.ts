@@ -9,6 +9,7 @@ import { getSupportedChainFromId } from '@/types/chains'
 
 import { Account } from '../types/Account'
 import {
+  InvitedUser,
   ParticipantBaseInfo,
   ParticipantInfo,
   ParticipantType,
@@ -160,6 +161,16 @@ const loginOrSignup = async (
 
 const getAccountDisplayName = (account: Account): string => {
   return account.preferences?.name || ellipsizeAddress(account.address)
+}
+
+export const getInvitedUserDisplayName = (invitedUser: InvitedUser): string => {
+  if (invitedUser.name) {
+    return invitedUser.name
+  } else if (invitedUser.guest_email) {
+    return invitedUser.guest_email
+  } else {
+    return ellipsizeAddress(invitedUser.account_address)
+  }
 }
 
 const getAddressDisplayForInput = (input: string) => {

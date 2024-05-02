@@ -18,6 +18,10 @@ import React from 'react'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import customTheme from '@/styles/theme'
 import { InvitedUser } from '@/types/ParticipantInfo'
+import {
+  getAccountDisplayName,
+  getInvitedUserDisplayName,
+} from '@/utils/user_manager'
 
 interface InvitedUserCardProps {
   users: InvitedUser[]
@@ -25,22 +29,11 @@ interface InvitedUserCardProps {
   updateRole: (userId: string, role: InvitedUser['role']) => void
 }
 
-const truncateText = (text: string, maxLength: number): string => {
-  if (!text || text.length <= maxLength) return text || ''
-  const startLength = Math.ceil((maxLength - 3) / 2)
-  const endLength = Math.floor((maxLength - 3) / 2)
-  return `${text.substring(0, startLength)}...${text.substring(
-    text.length - endLength
-  )}`
-}
-
 const InvitedUsersCard: React.FC<InvitedUserCardProps> = ({
   users,
   removeUser,
   updateRole,
 }) => {
-  console.log('List of users', users)
-
   const borderColor = useColorModeValue(
     customTheme.colors.neutral[200],
     customTheme.colors.neutral[600]
@@ -99,7 +92,7 @@ const InvitedUsersCard: React.FC<InvitedUserCardProps> = ({
                 lineHeight="24px"
                 textAlign="left"
               >
-                {truncateText(user.account_address, 20)}
+                {getInvitedUserDisplayName(user)}
               </Text>
               <Flex alignItems="center">
                 <Menu>
