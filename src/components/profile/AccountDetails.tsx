@@ -24,12 +24,10 @@ import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
-import { useActiveAccount } from 'thirdweb/react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account, SocialLink, SocialLinkType } from '@/types/Account'
-import { getChainInfo } from '@/types/chains'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
 import {
@@ -38,16 +36,11 @@ import {
   syncSubscriptions,
 } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
-import lensHelper from '@/utils/lens.helper'
-import {
-  checkValidDomain,
-  resolveENS,
-  resolveFreename,
-} from '@/utils/rpc_helper_front'
-import { changeDomainOnChain, isProAccount } from '@/utils/subscription_manager'
+import { getLensHandlesForAddress } from '@/utils/lens.helper'
+import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
+import { isProAccount } from '@/utils/subscription_manager'
 import { isValidSlug } from '@/utils/validations'
 
-import { thirdWebClient } from '../nav/ConnectModal'
 import Block from './components/Block'
 import HandlePicker, {
   DisplayName,
@@ -146,9 +139,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const getHandles = async () => {
     let handles: DisplayName[] = []
     const lensProfiles = async () => {
-      const profiles = await lensHelper.getLensHandlesForAddress(
-        currentAccount!.address
-      )
+      const profiles = await getLensHandlesForAddress(currentAccount!.address)
       if (profiles) {
         handles = handles.concat(
           profiles.map(profile => {
@@ -213,23 +204,11 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       }
     }
 
-    const getFreenameHandles = async () => {
-      const freename = await resolveFreename(currentAccount!.address)
-      if (freename) {
-        handles.push({
-          label: freename.name,
-          value: freename.name,
-          type: ProfileInfoProvider.FREENAME,
-        })
-      }
-    }
-
     await Promise.all([
       getMWWDomains(),
       lensProfiles(),
       getENSHandle(),
       getUNHandles(),
-      getFreenameHandles(),
     ])
     setNameOptions(handles)
   }

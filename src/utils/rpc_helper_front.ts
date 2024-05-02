@@ -6,19 +6,12 @@ import {
   resolveName,
 } from 'thirdweb/extensions/ens'
 import { Wallet } from 'thirdweb/wallets'
-import {
-  ConnectionLibrary,
-  NetworkConnection,
-  NetworkName,
-  ProviderName,
-  Web3Resolver,
-} from 'web3-domain-resolver'
 
 import { thirdWebClient } from '@/components/nav/ConnectModal'
 import { getChainInfo, SupportedChain } from '@/types/chains'
 
 import { getSubscriptionByDomain } from './api_helper'
-import lensHelper from './lens.helper'
+import { getLensHandlesForAddress, getLensProfile } from './lens.helper'
 interface AccountExtraProps {
   name: string
   avatar?: string
@@ -78,24 +71,6 @@ const checkENSBelongsTo = async (domain: string): Promise<string | null> => {
   return validatedAddress
 }
 
-const checkFreenameBelongsTo = async (
-  domain: string
-): Promise<string | null> => {
-  const networkConnection: NetworkConnection = {
-    networkName: NetworkName.ETHEREUM,
-    rpcUrl: `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID}`,
-  }
-  const connectionLibrary: ConnectionLibrary = new ConnectionLibrary([
-    networkConnection,
-  ])
-  const web3resolver = new Web3Resolver(connectionLibrary)
-  web3resolver.setResolversPriority([ProviderName.FREENAME])
-
-  const resolvedDomain = await web3resolver.resolve(domain)
-
-  return resolvedDomain?.ownerAddress || null
-}
-
 const checkDomainBelongsTo = async (domain: string): Promise<string | null> => {
   try {
     return (
@@ -104,27 +79,6 @@ const checkDomainBelongsTo = async (domain: string): Promise<string | null> => {
   } catch (e) {
     return null
   }
-}
-
-export const resolveFreename = async (
-  address: string
-): Promise<AccountExtraProps | null> => {
-  const networkConnection: NetworkConnection = {
-    networkName: NetworkName.ETHEREUM,
-    rpcUrl: `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID}`,
-  }
-  const connectionLibrary: ConnectionLibrary = new ConnectionLibrary([
-    networkConnection,
-  ])
-  const web3resolver = new Web3Resolver(connectionLibrary)
-  const resolvedDomain = await web3resolver.reverseResolve(
-    address,
-    ProviderName.FREENAME
-  )
-
-  return resolvedDomain
-    ? { name: resolvedDomain.fullname!, avatar: resolvedDomain.imageUrl }
-    : null
 }
 
 const checkUnstoppableDomainBelongsTo = async (
@@ -212,17 +166,10 @@ export const getAddressFromDomain = async (
     ) {
       return (await checkUnstoppableDomainBelongsTo(domain))?.toLowerCase()
     } else if (domain.endsWith('.lens')) {
-      const lensProfile = await lensHelper.getLensProfile(domain)
+      const lensProfile = await getLensProfile(domain)
       return lensProfile?.ownedBy.toLowerCase()
     } else {
-      const freename_address = (
-        await checkFreenameBelongsTo(domain)
-      )?.toLowerCase()
-      if (freename_address) {
-        return freename_address
-      } else {
-        return (await checkDomainBelongsTo(domain))?.toLowerCase()
-      }
+      return (await checkDomainBelongsTo(domain))?.toLowerCase()
     }
   } catch (e) {
     Sentry.captureException(e)
