@@ -4,11 +4,12 @@ import { createThirdwebClient } from 'thirdweb'
 import {
   AutoConnect,
   ConnectEmbed,
+  darkTheme,
   useActiveWallet,
   useActiveWalletConnectionStatus,
   useDisconnect,
 } from 'thirdweb/react'
-import { createWallet, embeddedWallet, Wallet } from 'thirdweb/wallets'
+import { createWallet, inAppWallet, Wallet } from 'thirdweb/wallets'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { WalletModalContext } from '@/providers/WalletModalProvider'
@@ -60,10 +61,15 @@ export const ConnectModal: React.FC = ({}) => {
   }, [status, wallet, logged])
 
   const wallets = [
-    embeddedWallet(),
+    inAppWallet({
+      auth: {
+        options: ['email', 'google', 'phone'],
+      },
+    }),
     createWallet('io.metamask'),
     createWallet('com.coinbase.wallet'),
     createWallet('me.rainbow'),
+    createWallet('walletConnect'),
   ]
 
   const doLogin = async (wallet: Wallet) => {
@@ -104,10 +110,19 @@ export const ConnectModal: React.FC = ({}) => {
         <ConnectEmbed
           client={thirdWebClient}
           wallets={wallets}
+          theme={darkTheme({
+            colors: {
+              accentText: '#F35826',
+              accentButtonBg: '#F35826',
+            },
+          })}
           modalSize="wide"
           showThirdwebBranding={false}
           showAllWallets={false}
           onConnect={onConnect}
+          walletConnect={{
+            projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
+          }}
         />
       </Box>
     </Portal>
