@@ -1,4 +1,5 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
+import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
 import { AccountContext } from '../../providers/AccountProvider'
@@ -10,9 +11,10 @@ import { TokenGateConfig } from '../token-gate/TokenGateConfig'
 import AccountDetails from './AccountDetails'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
-import Group from './Group'
 import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
+
+const GroupWithNoSSR = dynamic(() => import('./Group'), { ssr: false })
 
 const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
@@ -24,7 +26,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       case EditMode.MEETINGS:
         return <Meetings currentAccount={currentAccount!} />
       case EditMode.GROUPS:
-        return <Group currentAccount={currentAccount!} />
+        return <GroupWithNoSSR currentAccount={currentAccount!} />
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig currentAccount={currentAccount!} />
       case EditMode.DETAILS:

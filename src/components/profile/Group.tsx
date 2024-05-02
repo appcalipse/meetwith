@@ -14,7 +14,6 @@ import {
   Spacer,
   Spinner,
   Text,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
@@ -36,6 +35,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
+  const router = useRouter()
   const { invite } = useRouter().query
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
@@ -79,9 +79,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           You will see your Groups here once you created a new Group.
         </Text>
         <Button
-          onClick={() => {
-            // Add Creation modal logic here
-          }}
+          onClick={() => router.push('/dashboard/create-group')}
           flexShrink={0}
           colorScheme="primary"
           display={{ base: 'none', md: 'flex' }}
@@ -138,9 +136,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           </Text>
         </Heading>
         <Button
-          onClick={() => {
-            // Add Creation modal logic here
-          }}
+          onClick={() => router.push('/dashboard/create-group')}
           flexShrink={0}
           colorScheme="primary"
           display={{ base: 'none', md: 'flex' }}

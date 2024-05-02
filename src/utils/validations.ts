@@ -10,6 +10,15 @@ export const isValidEVMAddress = (address: string): boolean => {
   return reg.test(address)
 }
 
+export const isValidEthereumDomain = (address: string): boolean => {
+  const reg = /\.eth$/
+  return reg.test(address)
+}
+
+export const isEthereumAddressOrDomain = (address: string): boolean => {
+  return isValidEVMAddress(address) || isValidEthereumDomain(address)
+}
+
 export const isValidUrl = (url: string): boolean => {
   const reg =
     /(http(s)?:\/\/.)(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
