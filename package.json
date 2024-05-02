@@ -17,7 +17,6 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
-    "@apollo/client": "^3.6.9",
     "@chakra-ui/icons": "^2.1.1",
     "@chakra-ui/next-js": "^2.2.0",
     "@chakra-ui/react": "^2.8.2",
@@ -29,6 +28,7 @@
     "@fortawesome/free-solid-svg-icons": "^5.8.2",
     "@fortawesome/react-fontawesome": "^0.1.4",
     "@hapi/iron": "^6.0.0",
+    "@lens-protocol/client": "^2.0.0-alpha.38",
     "@mdx-js/loader": "^2.0.0",
     "@mdx-js/react": "^2.0.0",
     "@metamask/eth-sig-util": "^4.0.0",
@@ -64,6 +64,7 @@
     "date-fns-tz": "^1.2.2",
     "dayzed": "^3.2.2",
     "discord.js": "^12.5.3",
+    "dom-parser": "^1.1.5",
     "email-templates": "^8.0.8",
     "eth-crypto": "^2.1.0",
     "ethereumjs-util": "^7.1.3",

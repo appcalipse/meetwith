@@ -98,7 +98,7 @@ const DashboardOnboardingGauge: FC = () => {
             >
               {label}
             </Text>
-            <Icon as={CheckCircleIcon} color="#34c759" />
+            <Icon as={CheckCircleIcon} color="green.500" />
           </>
         ) : (
           <Link as={NextLink} color={activeColor} href={link}>
