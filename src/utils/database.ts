@@ -199,7 +199,7 @@ const updateAccountFromInvite = async (
   }
 
   const account = await getAccountFromDB(account_address)
-  account.preferences!.timezone = timezone
+  account.preferences.timezone = timezone
 
   await updateAccountPreferences(account)
 
@@ -285,7 +285,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     url: link.url?.trim(),
   }))
 
-  await workMeetingTypeGates(account.preferences!.availableTypes || [])
+  await workMeetingTypeGates(account.preferences.availableTypes || [])
 
   const responsePrefsUpdate = await db.supabase
     .from('account_preferences')
@@ -304,8 +304,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     throw new Error("Account preferences couldn't be updated")
   }
 
-  delete account.preferences
-  account['preferences'] = responsePrefsUpdate.data[0]
+  account.preferences = responsePrefsUpdate.data[0]
 
   account.subscriptions = await getSubscriptionFromDBForAccount(account.address)
 
@@ -426,59 +425,6 @@ const getAccountFromDB = async (
     throw new Error(error)
   }
   throw new AccountNotFoundError(identifier)
-}
-
-const migrateSlots = async (): Promise<any> => {
-  const { data, error: fetchError } = await db.supabase
-    .from('slots')
-    .select()
-    .is('meeting_info_encrypted', null)
-
-  if (fetchError) {
-    console.error('Failed to fetch slots:', fetchError)
-    return {
-      errors: { fetchError: [{ message: fetchError.message }] },
-      counts: { updateCount: 0, failCount: 0 },
-    }
-  }
-
-  const errors = []
-  const updatedSlots = []
-
-  for (const slot of data) {
-    try {
-      console.log(`starting slot ${slot.id}`)
-      const encrypted = (await fetchContentFromIPFS(
-        slot.meeting_info_file_path,
-        3000
-      )) as Encrypted
-
-      const { error: updateError } = await db.supabase
-        .from('slots')
-        .update({ meeting_info_encrypted: encrypted })
-        .match({ id: slot.id })
-
-      updatedSlots.push(slot.id)
-      console.log(`slot ${slot.id} is updated`)
-
-      if (updateError) {
-        console.error(`Failed to update slot ${slot.id}:`, updateError)
-        return `Update Error for Slot ID ${slot.id}`
-      }
-    } catch (ipfsError) {
-      console.error(`IPFS fetch error for slot ${slot.id}:`, ipfsError)
-      errors.push(slot.id)
-    }
-  }
-
-  return {
-    updatedSlots,
-    errors,
-    counts: {
-      updateCount: updatedSlots.length,
-      failCount: errors.length,
-    },
-  }
 }
 
 const getSlotsForAccount = async (
@@ -781,9 +727,9 @@ const saveMeeting = async (
           ))
         const isTimeAvailable = () =>
           isTimeInsideAvailabilities(
-            utcToZonedTime(meeting.start, ownerAccount!.preferences!.timezone!),
-            utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
-            ownerAccount!.preferences!.availabilities
+            utcToZonedTime(meeting.start, ownerAccount!.preferences.timezone),
+            utcToZonedTime(meeting.end, ownerAccount!.preferences.timezone),
+            ownerAccount!.preferences.availabilities
           )
         if (
           participantIsOwner &&
@@ -802,7 +748,7 @@ const saveMeeting = async (
           .includes(participant.account_address!)
       ) {
         account = await getAccountFromDB(participant.account_address!)
-        participant.timeZone = account.preferences!.timezone
+        participant.timeZone = account.preferences.timezone
       } else {
         account = await initAccountDBForWallet(
           participant.account_address!,
@@ -1479,13 +1425,13 @@ const updateMeeting = async (
           isTimeInsideAvailabilities(
             utcToZonedTime(
               meetingUpdateRequest.start,
-              ownerAccount!.preferences!.timezone!
+              ownerAccount!.preferences.timezone
             ),
             utcToZonedTime(
               meetingUpdateRequest.end,
-              ownerAccount!.preferences!.timezone!
+              ownerAccount!.preferences.timezone
             ),
-            ownerAccount!.preferences!.availabilities
+            ownerAccount!.preferences.availabilities
           )
 
         if (
@@ -1734,7 +1680,6 @@ export {
   initDB,
   insertOfficeEventMapping,
   isSlotFree,
-  migrateSlots,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
   saveEmailToDB,

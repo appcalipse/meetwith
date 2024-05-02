@@ -1,20 +1,24 @@
 import * as Sentry from '@sentry/nextjs'
 import { Resolution } from '@unstoppabledomains/resolution'
 import {
-  fetchEnsAddress,
-  fetchEnsAvatar,
-  fetchEnsName,
-  getNetwork,
-  GetWalletClientResult,
-  switchNetwork,
-} from '@wagmi/core'
-import { ca } from 'date-fns/locale'
-import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
+  resolveAddress,
+  resolveAvatar,
+  resolveName,
+} from 'thirdweb/extensions/ens'
+import { Wallet } from 'thirdweb/wallets'
+import {
+  ConnectionLibrary,
+  NetworkConnection,
+  NetworkName,
+  ProviderName,
+  Web3Resolver,
+} from 'web3-domain-resolver'
 
-import { getChainInfo, SupportedChain } from '../types/chains'
+import { thirdWebClient } from '@/components/nav/ConnectModal'
+import { getChainInfo, SupportedChain } from '@/types/chains'
+
 import { getSubscriptionByDomain } from './api_helper'
 import lensHelper from './lens.helper'
-
 interface AccountExtraProps {
   name: string
   avatar?: string
@@ -30,16 +34,19 @@ export const resolveENS = async (
   address: string
 ): Promise<AccountExtraProps | undefined> => {
   try {
-    const name = await fetchEnsName({
-      address: address as `0x${string}`,
-      chainId: 1,
+    const name = await resolveName({
+      address: address,
+      client: thirdWebClient,
     })
 
     if (!name) {
       return undefined
     }
 
-    const validatedAddress = await fetchEnsAddress({ name, chainId: 1 })
+    const validatedAddress = await resolveAddress({
+      name,
+      client: thirdWebClient,
+    })
 
     // Check to be sure the reverse record is correct.
     if (address.toLowerCase() !== validatedAddress?.toLowerCase()) {
@@ -48,7 +55,10 @@ export const resolveENS = async (
 
     let avatar = undefined
     try {
-      avatar = await fetchEnsAvatar({ name, chainId: 1 })
+      avatar = await resolveAvatar({
+        name,
+        client: thirdWebClient,
+      })
     } catch (e) {}
 
     return {
@@ -61,13 +71,24 @@ export const resolveENS = async (
 }
 
 const checkENSBelongsTo = async (domain: string): Promise<string | null> => {
-  return await fetchEnsAddress({ name: domain, chainId: 1 })
+  const validatedAddress = await resolveAddress({
+    name: domain,
+    client: thirdWebClient,
+  })
+  return validatedAddress
 }
 
 const checkFreenameBelongsTo = async (
   domain: string
 ): Promise<string | null> => {
-  const web3resolver = new Web3Resolver()
+  const networkConnection: NetworkConnection = {
+    networkName: NetworkName.ETHEREUM,
+    rpcUrl: `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID}`,
+  }
+  const connectionLibrary: ConnectionLibrary = new ConnectionLibrary([
+    networkConnection,
+  ])
+  const web3resolver = new Web3Resolver(connectionLibrary)
   web3resolver.setResolversPriority([ProviderName.FREENAME])
 
   const resolvedDomain = await web3resolver.resolve(domain)
@@ -88,7 +109,14 @@ const checkDomainBelongsTo = async (domain: string): Promise<string | null> => {
 export const resolveFreename = async (
   address: string
 ): Promise<AccountExtraProps | null> => {
-  const web3resolver = new Web3Resolver()
+  const networkConnection: NetworkConnection = {
+    networkName: NetworkName.ETHEREUM,
+    rpcUrl: `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_RPC_PROJECT_ID}`,
+  }
+  const connectionLibrary: ConnectionLibrary = new ConnectionLibrary([
+    networkConnection,
+  ])
+  const web3resolver = new Web3Resolver(connectionLibrary)
   const resolvedDomain = await web3resolver.reverseResolve(
     address,
     ProviderName.FREENAME
@@ -137,60 +165,17 @@ const checkUnstoppableDomainBelongsTo = async (
 
 export const validateChainToActOn = async (
   desiredChain: SupportedChain,
-  walletClient: GetWalletClientResult | undefined
+  wallet: Wallet
 ): Promise<void> => {
-  const { chain } = getNetwork()
+  const chainId = await wallet.getChain()!.id
 
   const chainInfo = getChainInfo(desiredChain)
-  if (chainInfo && chain?.id !== chainInfo.id) {
-    try {
-      await switchNetwork({
-        chainId: chainInfo.id,
-      })
 
+  if (chainInfo && chainId !== chainInfo.id) {
+    try {
+      await wallet.switchChain(chainInfo.thirdwebChain)
       return
     } catch (switchError: any) {
-      if (switchError.name === 'ChainNotConfiguredForConnectorError') {
-        try {
-          await walletClient?.addChain({
-            chain: {
-              id: chainInfo.id,
-              name: chainInfo.fullName,
-              network: chainInfo.name,
-              nativeCurrency: {
-                name: chainInfo.nativeTokenSymbol,
-                symbol: chainInfo.nativeTokenSymbol,
-                decimals: 18,
-              },
-              rpcUrls: {
-                default: {
-                  http: [chainInfo.rpcUrl],
-                },
-                public: {
-                  http: [chainInfo.rpcUrl],
-                },
-              },
-              /** Collection of block explorers */
-              blockExplorers: {
-                default: {
-                  name: chainInfo.fullName,
-                  url: chainInfo.blockExplorerUrl,
-                },
-              },
-              testnet: chainInfo.testnet,
-            },
-          })
-
-          const connectedChain = await walletClient?.getChainId()
-          //check if user accepted chain switch after adding it
-          if (connectedChain !== chainInfo.id) {
-            throw Error('User did not accept chain switch')
-          }
-          return
-        } catch (addError: any) {
-          throw Error(addError)
-        }
-      }
       throw Error(switchError)
     }
   }

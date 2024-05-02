@@ -263,8 +263,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account!
-        .preferences!.availableTypes.filter(type => !type.deleted)
+      const type = account!.preferences.availableTypes
+        .filter(type => !type.deleted)
         .find(t => t.url === typeOnRoute)
       setPrivateType(!!type?.private)
     }
@@ -279,10 +279,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account!
-        .preferences!.availableTypes.filter(type => !type.deleted)
+      const type = account!.preferences.availableTypes
+        .filter(type => !type.deleted)
         .find(t => t.url === typeOnRoute)
-      setSelectedType(type || account!.preferences!.availableTypes[0])
+      setSelectedType(type || account!.preferences.availableTypes[0])
       updateSlots()
       setRescheduleSlotId(router.query.slot as string | undefined)
     }
@@ -600,8 +600,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }, [currentMonth])
 
   const changeType = (typeId: string) => {
-    const type = account!
-      .preferences!.availableTypes.filter(type => !type.deleted)
+    const type = account!.preferences.availableTypes
+      .filter(type => !type.deleted)
       .find(t => t.id === typeId)!
     if (!type.scheduleGate) {
       setIsGateValid(undefined)
@@ -619,9 +619,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         selectedType.minAdvanceTime,
         slot,
         busySlots,
-        account!.preferences!.availabilities,
+        account!.preferences.availabilities,
         Intl.DateTimeFormat().resolvedOptions().timeZone,
-        account!.preferences!.timezone
+        account!.preferences.timezone
       )
     } else {
       if (
@@ -662,9 +662,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               0,
               slot,
               busySlots,
-              eachAccount.preferences!.availabilities,
+              eachAccount.preferences.availabilities,
               Intl.DateTimeFormat().resolvedOptions().timeZone,
-              eachAccount!.preferences!.timezone
+              eachAccount!.preferences.timezone
             )
           ) {
             return false
@@ -679,9 +679,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               0,
               slot,
               busySlots,
-              eachAccount.preferences!.availabilities,
+              eachAccount.preferences.availabilities,
               Intl.DateTimeFormat().resolvedOptions().timeZone,
-              eachAccount!.preferences!.timezone
+              eachAccount!.preferences.timezone
             )
           ) {
             return true
@@ -726,9 +726,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       minAdvanceTime,
       slot,
       selfBusySlots,
-      currentAccount!.preferences!.availabilities,
+      currentAccount!.preferences.availabilities,
       Intl.DateTimeFormat().resolvedOptions().timeZone,
-      currentAccount!.preferences!.timezone
+      currentAccount!.preferences.timezone
     )
   }
 
@@ -767,8 +767,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                         e.target.value && changeType(e.target.value)
                       }
                     >
-                      {account!
-                        .preferences!.availableTypes.filter(
+                      {account!.preferences.availableTypes
+                        .filter(
                           type =>
                             !type.deleted && (!type.private || isPrivateType)
                         )

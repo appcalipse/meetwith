@@ -1,6 +1,9 @@
 import * as Sentry from '@sentry/nextjs'
-import { readContract } from '@wagmi/core'
+import { Abi } from 'abitype/zod'
+import { getContract, readContract } from 'thirdweb'
 import { createPublicClient, http, PublicClient } from 'viem'
+
+import { thirdWebClient } from '@/components/nav/ConnectModal'
 
 import { MWWDomain } from '../abis/mww'
 import {
@@ -75,18 +78,20 @@ export const getDomainInfo = async (
     : getTestnetChains()
 
   for (const chain of chainsToCheck) {
-    const info = {
-      address: chain.domainContractAddess as `0x${string}`,
-      chainId: chain.id,
-      abi: MWWDomain,
-    }
+    const contract = getContract({
+      client: thirdWebClient,
+      chain: chain!.thirdwebChain,
+      address: chain!.domainContractAddess,
+      abi: Abi.parse(MWWDomain),
+    })
 
     try {
-      const subs = (await readContract({
-        ...info,
-        functionName: 'domains',
-        args: [domain],
-      })) as any[]
+      const subs = await readContract({
+        contract,
+        method:
+          'function domains(string domain) public view returns (address, uint256, uint256, string, string, uint256)',
+        params: [domain],
+      })
 
       subscriptions.push({
         ...subs,

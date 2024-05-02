@@ -1,5 +1,3 @@
-import { MockConnector } from 'wagmi/connectors/mock'
-
 import { SupportedChain } from '@/types/chains'
 import { isConditionValid } from '@/utils/token.gate.service'
 

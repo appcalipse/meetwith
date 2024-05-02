@@ -1,11 +1,4 @@
-import { mainnet, signMessage } from '@wagmi/core'
-import { jsonRpcProvider } from '@wagmi/core/providers/jsonRpc'
-import { getDefaultConfig } from 'connectkit'
-import { goerli, metis, polygon, polygonMumbai } from 'viem/chains'
-import { configureChains, createConfig } from 'wagmi'
-import { publicProvider } from 'wagmi/providers/public'
-
-import { getSupportedChainFromId } from '@/types/chains'
+import { Wallet } from 'thirdweb/wallets'
 
 import { Account } from '../types/Account'
 import {
@@ -22,55 +15,17 @@ import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, saveSignature } from './storage'
 import { isValidEVMAddress } from './validations'
 
-// Add your custom chains to the list of wagmi configured chains
-const { publicClient, chains } = configureChains(
-  [mainnet, goerli, metis, polygon, polygonMumbai],
-  [
-    publicProvider(),
-    jsonRpcProvider({
-      rpc: chain => ({
-        http: getSupportedChainFromId(chain.id)!.rpcUrl,
-      }),
-    }),
-  ]
-)
-
-// const uauthClient = new UAuthSPA({
-//   clientID: process.env.NEXT_PUBLIC_UD_CLIENT_ID!,
-//   redirectUri: typeof window === 'undefined' ? '' : window.location.origin,
-//   scope: 'openid wallet',
-// })
-
-// const uauthConnector = new UAuthWagmiConnector({
-//   chains,
-//   options: {
-//     uauth: uauthClient,
-//   },
-// })
-
-export const wagmiConfig = createConfig(
-  getDefaultConfig({
-    walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
-    appName: 'Meet with Wallet',
-    appDescription: 'Your web3 tailored calendar',
-    appUrl: 'https://meetwithwallet.xyz',
-    chains,
-    publicClient,
-    // connectors: [uauthConnector],
-  })
-)
-
 export const loginWithAddress = async (
-  address: string,
+  wallet: Wallet,
   setLoginIn: (loginIn: boolean) => void
-) => {
+): Promise<Account | undefined> => {
   setLoginIn(true)
   try {
     const account = await queryClient.fetchQuery(
-      QueryKeys.account(address?.toLowerCase()),
+      QueryKeys.account(wallet.getAccount()!.address.toLowerCase()),
       () =>
         loginOrSignup(
-          address,
+          wallet,
           Intl.DateTimeFormat().resolvedOptions().timeZone
         ) ?? null
     )
@@ -85,29 +40,29 @@ export const loginWithAddress = async (
 }
 
 const signDefaultMessage = async (
-  accountAddress: string,
+  wallet: Wallet,
   nonce: number
 ): Promise<string> => {
-  const signature = await signMessage({
+  const signature = await wallet.getAccount()?.signMessage({
     message: DEFAULT_MESSAGE(nonce),
   })
 
-  saveSignature(accountAddress, signature)
-  return signature
+  saveSignature(wallet.getAccount()!.address, signature!.toString())
+  return signature!.toString()
 }
 
 const loginOrSignup = async (
-  accountAddress: string,
+  wallet: Wallet,
   timezone: string
 ): Promise<Account> => {
   let account: Account
+
+  await new Promise(resolve => setTimeout(resolve, 3000))
+
   const generateSignature = async () => {
     const nonce = Number(Math.random().toString(8).substring(2, 10))
 
-    const signature = await signDefaultMessage(
-      accountAddress.toLowerCase(),
-      nonce
-    )
+    const signature = await signDefaultMessage(wallet, nonce)
     return { signature, nonce }
   }
 
@@ -115,13 +70,13 @@ const loginOrSignup = async (
 
   try {
     // preload account data
-    account = await getAccount(accountAddress.toLowerCase())
+    account = await getAccount(wallet.getAccount()!.address.toLowerCase())
 
     if (account.is_invited) {
       const { signature, nonce } = await generateSignature()
 
       account = await signup(
-        accountAddress.toLowerCase(),
+        wallet.getAccount()!.address.toLowerCase(),
         signature,
         timezone,
         nonce
@@ -131,7 +86,7 @@ const loginOrSignup = async (
     if (e instanceof AccountNotFoundError) {
       const { signature, nonce } = await generateSignature()
       account = await signup(
-        accountAddress.toLowerCase(),
+        wallet.getAccount()!.address.toLowerCase(),
         signature,
         timezone,
         nonce
@@ -141,21 +96,24 @@ const loginOrSignup = async (
       throw e
     }
   }
-
   const signature = getSignature(account.address)
   const extraInfo = await resolveExtraInfo(account.address)
 
   if (!signature) {
-    await signDefaultMessage(account.address, account.nonce)
+    await signDefaultMessage(wallet, account.nonce)
   }
 
   if (!signedUp) {
     // now that we have the signature, we need to check login against the user signature
     // and only then generate the session
-    account = await login(accountAddress.toLowerCase())
+    account = await login(wallet.getAccount()!.address.toLowerCase())
   }
 
-  return { ...account, ...extraInfo, signedUp }
+  return {
+    ...account,
+    preferences: { ...account.preferences, ...extraInfo },
+    signedUp,
+  }
 }
 
 const getAccountDisplayName = (account: Account): string => {

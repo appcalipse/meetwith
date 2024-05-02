@@ -9,7 +9,7 @@ export const DAI_ELEMENT: TokenGateElement = {
   itemName: 'Dai Stablecoin',
   itemId: '0xcb7f6c752e00da963038f1bae79aafbca8473a36',
   itemSymbol: 'DAI',
-  chain: SupportedChain.POLYGON_MUMBAI,
+  chain: SupportedChain.POLYGON_AMOY,
   type: GateInterface.ERC20,
   minimumBalance: BigInt(1e18),
 }
@@ -18,7 +18,7 @@ export const USDC_ELEMENT: TokenGateElement = {
   itemName: 'USD Coin',
   itemId: '0xD33572f6DD1bb0D99C8397c8efE640Cf973EaF3B',
   itemSymbol: 'USDC',
-  chain: SupportedChain.POLYGON_MUMBAI,
+  chain: SupportedChain.POLYGON_AMOY,
   type: GateInterface.ERC20,
   minimumBalance: 0n,
 }
@@ -27,7 +27,7 @@ export const USDT_ELEMENT: TokenGateElement = {
   itemName: 'USDT Test Token',
   itemId: '0x36fEe18b265FBf21A89AD63ea158F342a7C64abB',
   itemSymbol: 'USDT',
-  chain: SupportedChain.POLYGON_MUMBAI,
+  chain: SupportedChain.POLYGON_AMOY,
   type: GateInterface.ERC20,
   minimumBalance: 1n,
 }

@@ -124,7 +124,6 @@ export const NavMenu: React.FC<{
         <VStack
           alignItems="center"
           flex={1}
-          maxW={'360px'}
           spacing={8}
           py={12}
           overflow="hidden"
