@@ -14,15 +14,7 @@ import { createWallet, inAppWallet, Wallet } from 'thirdweb/wallets'
 import { AccountContext } from '@/providers/AccountProvider'
 import { WalletModalContext } from '@/providers/WalletModalProvider'
 import { useLogin } from '@/session/login'
-
-export const thirdWebClient = createThirdwebClient({
-  clientId: process.env.NEXT_PUBLIC_THIRDWEB_ID!,
-  config: {
-    storage: {
-      gatewayUrl: 'https://mww.infura-ipfs.io',
-    },
-  },
-})
+import { thirdWebClient } from '@/utils/user_manager'
 
 export const ConnectModal: React.FC = ({}) => {
   const { isOpen, close } = useContext(WalletModalContext)
