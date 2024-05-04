@@ -15,52 +15,11 @@ import {
 } from '../../../testing/mocks'
 
 describe('get balance for tokens', () => {
-  beforeAll(() => {
-    global.fetch = jest.fn().mockImplementation((path: string) => {
-      return Promise.resolve({
-        status: 200,
-        json: () =>
-          Promise.resolve([
-            path.indexOf(POAP_MWW.itemId) === -1
-              ? null
-              : {
-                  event: {},
-                  tokenId: 'string',
-                  chain: SupportedChain.POLYGON_MATIC,
-                  created: 'YYYY-MM-DD HH:mm:ss',
-                },
-          ]),
-      })
-    })
-
-    // jest
-    //   .spyOn(ethers, 'Contract')
-    //   .mockImplementation((addressOrName: string) => {
-    //     return {
-    //       balanceOf: async () => {
-    //         switch (addressOrName) {
-    //           case DAI_ELEMENT.itemId:
-    //             return Promise.resolve(BigInt(2e18))
-    //           case USDT_ELEMENT.itemId:
-    //             return Promise.resolve(0n)
-    //           case USDC_ELEMENT.itemId:
-    //             return Promise.resolve(0n)
-    //           case NFT_ELEMENT.itemId:
-    //             return Promise.resolve(1n)
-    //           default:
-    //             return Promise.resolve(0n)
-    //         }
-    //       },
-    //     } as any
-    //   })
-  })
-
   afterAll(() => {
     jest.unmock('ethers')
   })
 
   const WALLET_ADDRESS = '0x4F834fbb8b10F2cCbCBcA08D183aF3b9bdfCb2be'
-
   it('should be true given wallet holds both DAI and the NFT', async () => {
     const conditionShouldBeMet = await isConditionValid(
       CONDITION_NFT_AND_DAI_OR_USDT,

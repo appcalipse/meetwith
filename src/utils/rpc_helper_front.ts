@@ -7,11 +7,11 @@ import {
 } from 'thirdweb/extensions/ens'
 import { Wallet } from 'thirdweb/wallets'
 
-import { thirdWebClient } from '@/components/nav/ConnectModal'
 import { getChainInfo, SupportedChain } from '@/types/chains'
 
 import { getSubscriptionByDomain } from './api_helper'
 import { getLensHandlesForAddress, getLensProfile } from './lens.helper'
+import { thirdWebClient } from './user_manager'
 interface AccountExtraProps {
   name: string
   avatar?: string

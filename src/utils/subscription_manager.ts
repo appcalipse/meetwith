@@ -11,8 +11,6 @@ import {
 import { TransactionReceipt } from 'thirdweb/dist/types/transaction/types'
 import { Wallet } from 'thirdweb/wallets'
 
-import { thirdWebClient } from '@/components/nav/ConnectModal'
-
 import { MWWDomain, MWWRegister } from '../abis/mww'
 import { Account } from '../types/Account'
 import { AcceptedToken, getChainInfo, SupportedChain } from '../types/chains'
@@ -26,6 +24,7 @@ import { getSubscriptionByDomain } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
 import { parseUnits, zeroAddress } from './generic_utils'
 import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
+import { thirdWebClient } from './user_manager'
 
 export const isProAccount = (account?: Account): boolean => {
   return Boolean(getActiveProSubscription(account))

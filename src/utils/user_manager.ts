@@ -1,3 +1,4 @@
+import { createThirdwebClient } from 'thirdweb'
 import { Wallet } from 'thirdweb/wallets'
 
 import { Account } from '../types/Account'
@@ -15,6 +16,14 @@ import { queryClient } from './react_query'
 import { resolveExtraInfo } from './rpc_helper_front'
 import { getSignature, saveSignature } from './storage'
 import { isValidEVMAddress } from './validations'
+export const thirdWebClient = createThirdwebClient({
+  clientId: process.env.NEXT_PUBLIC_THIRDWEB_ID!,
+  config: {
+    storage: {
+      gatewayUrl: 'https://mww.infura-ipfs.io',
+    },
+  },
+})
 
 export const loginWithAddress = async (
   wallet: Wallet,

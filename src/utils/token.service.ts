@@ -4,9 +4,10 @@ import { getContract, readContract } from 'thirdweb'
 import { viemAdapter } from 'thirdweb/adapters/viem'
 
 import { ERC721 } from '@/abis/erc721'
-import { thirdWebClient } from '@/components/nav/ConnectModal'
 import { getChainInfo, SupportedChain } from '@/types/chains'
 import { GateInterface, TokenGateElement } from '@/types/TokenGating'
+
+import { thirdWebClient } from './user_manager'
 
 export const getTokenBalance = async (
   walletAddress: string,
