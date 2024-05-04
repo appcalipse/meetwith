@@ -3,8 +3,6 @@ import { Abi } from 'abitype/zod'
 import { getContract, readContract } from 'thirdweb'
 import { createPublicClient, http, PublicClient } from 'viem'
 
-import { thirdWebClient } from '@/components/nav/ConnectModal'
-
 import { MWWDomain } from '../abis/mww'
 import {
   ChainInfo,
@@ -15,6 +13,7 @@ import {
 } from '../types/chains'
 import { BlockchainSubscription } from '../types/Subscription'
 import { isProduction } from './constants'
+import { thirdWebClient } from './user_manager'
 
 export const getBlockchainSubscriptionsForAccount = async (
   accountAddress: string
