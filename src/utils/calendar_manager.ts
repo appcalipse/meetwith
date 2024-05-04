@@ -571,7 +571,6 @@ const scheduleMeeting = async (
 
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = []
-
     participants
       .filter(p => p.account_address !== currentAccount?.address)
       .forEach(participant => {
@@ -603,16 +602,21 @@ const scheduleMeeting = async (
   try {
     let slot: DBSlot
     if (schedulingType === SchedulingType.GUEST) {
+      if (ignoreAvailabilities) console.log('ignoreAvailabilities21')
       slot = await scheduleMeetingAsGuest(meeting)
     } else if (schedulingType === SchedulingType.DISCORD) {
+      if (ignoreAvailabilities) console.log('ignoreAvailabilities3')
       slot = await scheduleMeetingFromServer(currentAccount!.address, meeting)
     } else {
+      if (ignoreAvailabilities) console.log('ignoreAvailabilities4')
       meeting.emailToSendReminders = emailToSendReminders
       slot = await apiScheduleMeeting(meeting)
     }
-
     if (currentAccount && schedulingType !== SchedulingType.DISCORD) {
-      return (await decryptMeeting(slot, currentAccount))!
+      const meeting = (await decryptMeeting(slot, currentAccount))!
+      if (ignoreAvailabilities)
+        console.log(meeting, slot, currentAccount, 'meeting')
+      return meeting
     }
 
     // Invalidate meetings cache and update meetings where required
@@ -633,7 +637,6 @@ const scheduleMeeting = async (
         })
       )
     })
-
     return {
       id: slot.id!,
       ...meeting,
@@ -650,6 +653,7 @@ const scheduleMeeting = async (
       meeting_info_encrypted: slot.meeting_info_encrypted,
     }
   } catch (error: any) {
+    console.log('Error!!')
     throw error
   }
 }

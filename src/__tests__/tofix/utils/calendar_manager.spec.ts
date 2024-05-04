@@ -7,6 +7,7 @@ import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { ParticipationStatus } from '@/types/ParticipantInfo'
 import * as helper from '@/utils/api_helper'
+import * as calnedar_manager from '@/utils/calendar_manager'
 import { sanitizeParticipants, scheduleMeeting } from '@/utils/calendar_manager'
 import * as crypto from '@/utils/cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from '@/utils/errors'
@@ -193,10 +194,39 @@ describe('calendar manager', () => {
     const meetingContent = faker.random.words(3)
     const meetingUrl = faker.internet.url()
 
-    jest.spyOn(helper, 'isSlotFreeApiCall').mockResolvedValue({ isFree: false })
-
+    // jest.spyOn(helper, 'scheduleMeeting').mockResolvedValue({
+    //   start: startTime,
+    //   participants: [
+    //     {
+    //       account_address: sourceAccount,
+    //       type: ParticipantType.Scheduler,
+    //       slot_id: participants[0].slot_id,
+    //       status: ParticipationStatus.Accepted,
+    //     },
+    //     {
+    //       name: participants[1].name,
+    //       account_address: targetAccount,
+    //       type: ParticipantType.Owner,
+    //       slot_id: participants[1].slot_id,
+    //       status: ParticipationStatus.Pending,
+    //     },
+    //   ],
+    //   related_slot_ids: [],
+    //   version: 0,
+    // })
+    const data = {
+      id: faker.datatype.uuid(),
+      account_address: targetAccount,
+      start: new Date(startTime),
+      end: new Date(endTime),
+      meeting_info_encrypted: crypto.mockEncrypted,
+      version: 0,
+      created_at: new Date(),
+      source: TimeSlotSource.MWW,
+    }
+    jest.spyOn(helper, 'scheduleMeeting').mockResolvedValue(data)
     // when
-    const result = scheduleMeeting(
+    const result = await scheduleMeeting(
       true,
       schedulingType,
       meetingTypeId,
@@ -208,6 +238,7 @@ describe('calendar manager', () => {
       meetingUrl
     )
 
+    console.log(result)
     // then
     expect(result).toMatchObject({
       start: startTime,
