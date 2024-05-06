@@ -21,7 +21,6 @@ export const getTokenBalance = async (
     address: tokenAddress,
     abi: erc20Abi,
   })
-
   const balance = await readContract({
     contract,
     method: 'balanceOf',
