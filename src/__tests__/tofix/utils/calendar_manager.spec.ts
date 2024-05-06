@@ -1,5 +1,6 @@
 import faker from '@faker-js/faker'
 import { randomUUID } from 'crypto'
+import * as uuid from 'uuid'
 
 import { Account } from '@/types/Account'
 import { MeetingInfo, SchedulingType, TimeSlotSource } from '@/types/Meeting'
@@ -7,13 +8,13 @@ import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { ParticipationStatus } from '@/types/ParticipantInfo'
 import * as helper from '@/utils/api_helper'
-import * as calnedar_manager from '@/utils/calendar_manager'
 import { sanitizeParticipants, scheduleMeeting } from '@/utils/calendar_manager'
 import * as crypto from '@/utils/cryptography'
 import { MeetingWithYourselfError, TimeNotAvailableError } from '@/utils/errors'
 
 jest.mock('@/utils/api_helper')
 jest.mock('@/utils/cryptography')
+jest.mock('uuid')
 
 class NoErrorThrownError extends Error {}
 
@@ -182,10 +183,13 @@ describe('calendar manager', () => {
         slot_id: 'wathevs2',
         meeting_id: 'this_one',
         type: ParticipantType.Owner,
-        status: ParticipationStatus.Accepted,
+        status: ParticipationStatus.Pending,
+        name: 'Mr wathevs',
       },
     ]
 
+    const random_slot_id = randomUUID()
+    jest.spyOn(uuid, 'v4').mockImplementation(() => random_slot_id)
     jest.spyOn(helper, 'getExistingAccounts').mockResolvedValue([account])
 
     const meetingTypeId = faker.datatype.uuid()
@@ -193,27 +197,6 @@ describe('calendar manager', () => {
     const endTime = faker.date.future()
     const meetingContent = faker.random.words(3)
     const meetingUrl = faker.internet.url()
-
-    // jest.spyOn(helper, 'scheduleMeeting').mockResolvedValue({
-    //   start: startTime,
-    //   participants: [
-    //     {
-    //       account_address: sourceAccount,
-    //       type: ParticipantType.Scheduler,
-    //       slot_id: participants[0].slot_id,
-    //       status: ParticipationStatus.Accepted,
-    //     },
-    //     {
-    //       name: participants[1].name,
-    //       account_address: targetAccount,
-    //       type: ParticipantType.Owner,
-    //       slot_id: participants[1].slot_id,
-    //       status: ParticipationStatus.Pending,
-    //     },
-    //   ],
-    //   related_slot_ids: [],
-    //   version: 0,
-    // })
     const data = {
       id: faker.datatype.uuid(),
       account_address: targetAccount,
@@ -225,7 +208,25 @@ describe('calendar manager', () => {
       source: TimeSlotSource.MWW,
     }
     jest.spyOn(helper, 'scheduleMeeting').mockResolvedValue(data)
-    // when
+
+    const mockedContent: MeetingInfo = {
+      created_at: new Date(),
+      participants: participants.map(val =>
+        val.slot_id === 'wathevs1'
+          ? {
+              ...val,
+              slot_id: random_slot_id,
+            }
+          : val
+      ),
+      meeting_url: '',
+      meeting_id: randomUUID(),
+      change_history_paths: [],
+      related_slot_ids: [],
+    }
+    jest
+      .spyOn(crypto, 'getContentFromEncrypted')
+      .mockImplementation(async () => JSON.stringify(mockedContent))
     const result = await scheduleMeeting(
       true,
       schedulingType,
@@ -237,9 +238,6 @@ describe('calendar manager', () => {
       meetingContent,
       meetingUrl
     )
-
-    console.log(result)
-    // then
     expect(result).toMatchObject({
       start: startTime,
       participants: [
@@ -258,7 +256,6 @@ describe('calendar manager', () => {
         },
       ],
       related_slot_ids: [],
-      version: 0,
     })
   })
 
@@ -301,7 +298,6 @@ describe('calendar manager', () => {
         status: ParticipationStatus.Pending,
       },
     ]
-
     const mockedContent: MeetingInfo = {
       created_at: new Date(),
       participants: JSON.parse(JSON.stringify(participants)),
