@@ -1,7 +1,7 @@
 import React, { ReactNode, useState } from 'react'
 import { useCookies } from 'react-cookie'
 import { useDisconnect } from 'thirdweb/react'
-import { Wallet } from 'thirdweb/wallets'
+import { type Wallet } from 'thirdweb/wallets'
 
 import { SESSION_COOKIE_NAME } from '@/middleware'
 import { Account } from '@/types/Account'
