@@ -18,14 +18,15 @@ const customJestConfig = {
   // setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   // if using TypeScript with a baseUrl set to the root directory then you need the below for alias' to work
   moduleDirectories: ['node_modules', __dirname],
+  moduleFileExtensions: ['js', 'jsx', 'tsx', 'ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   collectCoverageFrom: ['./src/**'],
   verbose: true,
   resolver: `./resolver.js`,
-  // transform: {
-  //   '\\.m?[j|t]sx?$': 'jest-esm-transformer',
-
-  // },
+  transform: {
+    '\\.m?[j|t]sx?$': 'jest-esm-transformer',
+    '^.+\\.(ts|tsx)?$': 'ts-jest',
+  },
   moduleNameMapper: {
     '@/(.*)': 'src/$1',
     'swiper/react': 'swiper/react/swiper-react.js',
@@ -37,6 +38,10 @@ const customJestConfig = {
   },
   testTimeout: 30000,
   preset: 'ts-jest/presets/default-esm',
+  globals: {
+    Uint8Array,
+    ArrayBuffer,
+  },
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
