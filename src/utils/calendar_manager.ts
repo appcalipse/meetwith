@@ -598,24 +598,18 @@ const scheduleMeeting = async (
       throw new TimeNotAvailableError()
     }
   }
-
   try {
     let slot: DBSlot
     if (schedulingType === SchedulingType.GUEST) {
-      if (ignoreAvailabilities) console.log('ignoreAvailabilities21')
       slot = await scheduleMeetingAsGuest(meeting)
     } else if (schedulingType === SchedulingType.DISCORD) {
-      if (ignoreAvailabilities) console.log('ignoreAvailabilities3')
       slot = await scheduleMeetingFromServer(currentAccount!.address, meeting)
     } else {
-      if (ignoreAvailabilities) console.log('ignoreAvailabilities4')
       meeting.emailToSendReminders = emailToSendReminders
       slot = await apiScheduleMeeting(meeting)
     }
     if (currentAccount && schedulingType !== SchedulingType.DISCORD) {
       const meeting = (await decryptMeeting(slot, currentAccount))!
-      if (ignoreAvailabilities)
-        console.log(meeting, slot, currentAccount, 'meeting')
       return meeting
     }
 
