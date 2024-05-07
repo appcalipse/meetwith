@@ -5,6 +5,10 @@ import * as react from 'react'
 import Home from '@/pages/index'
 import { ChakraTestWrapper } from '@/testing/chakra-helpers'
 // jest.mock('react')
+jest.mock('thirdweb/react', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}))
 describe('ThemeSwitcher', () => {
   it('should react to theme mode switch', () => {
     // givens
