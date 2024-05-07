@@ -44,7 +44,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         .filter(Boolean)
       return res.status(200).json(responseJson)
     } catch (error: any) {
-      console.log(error)
       if (error instanceof NotGroupMemberError) {
         return res.status(403).json({ error: error.message })
       }

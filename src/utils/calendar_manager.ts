@@ -647,7 +647,6 @@ const scheduleMeeting = async (
       meeting_info_encrypted: slot.meeting_info_encrypted,
     }
   } catch (error: any) {
-    console.log('Error!!')
     throw error
   }
 }
