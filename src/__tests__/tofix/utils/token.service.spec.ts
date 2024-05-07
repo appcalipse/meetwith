@@ -11,61 +11,6 @@ import {
 } from '../../../testing/mocks'
 jest.mock('thirdweb')
 describe('get balance for tokens', () => {
-  // beforeAll(() => {
-  //   jest.spyOn(thirdWeb, 'readContract').mockImplementation(({ params }) => {
-  //     const addressOrName = params?.[0]
-  //     console.log(addressOrName)
-  //     return {
-  //       name: async () => {
-  //         switch (addressOrName) {
-  //           case USDT_ELEMENT.itemId:
-  //             return Promise.resolve(USDT_ELEMENT.itemName)
-  //           case NFT_ELEMENT.itemId:
-  //             return Promise.resolve(NFT_ELEMENT.itemName)
-  //         }
-  //       },
-  //       symbol: async () => {
-  //         switch (addressOrName) {
-  //           case USDT_ELEMENT.itemId:
-  //             return Promise.resolve(USDT_ELEMENT.itemSymbol)
-  //           case NFT_ELEMENT.itemId:
-  //             return Promise.resolve(NFT_ELEMENT.itemSymbol)
-  //         }
-  //       },
-  //       decimals: async () => {
-  //         switch (addressOrName) {
-  //           case USDT_ELEMENT.itemId:
-  //             return Promise.resolve(18n)
-  //           case NFT_ELEMENT.itemId:
-  //             return Promise.resolve(0)
-  //         }
-  //       },
-  //       baseURI: async () => {
-  //         switch (addressOrName) {
-  //           case USDT_ELEMENT.itemId:
-  //             throw new Error('Not a NFT')
-  //           case NFT_ELEMENT.itemId:
-  //             return Promise.resolve('fakeBaseURi')
-  //         }
-  //       },
-  //       balanceOf: async () => {
-  //         switch (addressOrName) {
-  //           case DAI_ELEMENT.itemId:
-  //             return Promise.resolve(BigInt(1e18))
-  //           case USDT_ELEMENT.itemId:
-  //             return Promise.resolve(0n)
-  //           case USDC_ELEMENT.itemId:
-  //             return Promise.resolve(0n)
-  //           case NFT_ELEMENT.itemId:
-  //             return Promise.resolve(1n)
-  //           default:
-  //             return Promise.resolve(0n)
-  //         }
-  //       },
-  //     } as any
-  //   })
-  // })
-
   afterAll(() => {
     jest.unmock('thirdweb')
   })
