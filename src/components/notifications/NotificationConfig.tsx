@@ -1,5 +1,3 @@
-import { Link } from '@chakra-ui/next-js'
-import { Link as ChakraLink } from '@chakra-ui/react'
 import {
   Button,
   FormControl,
@@ -15,15 +13,10 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { ethers } from 'ethers'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useEffect } from 'react'
-import { useWalletClient, WalletClient } from 'wagmi'
 
 import { Account } from '@/types/Account'
-import { SupportedChain } from '@/types/chains'
-import { isProduction } from '@/utils/constants'
-import { validateChainToActOn } from '@/utils/rpc_helper_front'
 
 import {
   AccountNotifications,
@@ -35,15 +28,12 @@ import {
   getNotificationSubscriptions,
   setNotificationSubscriptions,
 } from '../../utils/api_helper'
-import { isProAccount } from '../../utils/subscription_manager'
 import { isValidEmail } from '../../utils/validations'
 import DiscordNotificationConfig from './DiscordNotificationConfig'
 
 const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
-  const { data: walletClient } = useWalletClient()
-
   const [loading, setLoading] = useState(false)
   const [loadingInitialInfo, setLoadingInitialInfo] = useState(true)
   const [email, setEmail] = useState('')
@@ -127,31 +117,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
     setLoading(false)
   }
-
-  const isPro = isProAccount(currentAccount!)
-
-  const walletClientToSigner = (walletClient: WalletClient) => {
-    const { account, chain, transport } = walletClient
-    const network = {
-      chainId: chain.id,
-      name: chain.name,
-      ensAddress: chain.contracts?.ensRegistry?.address,
-    }
-    const provider = new ethers.providers.Web3Provider(transport, network)
-    const signer = provider.getSigner(account.address)
-    return signer
-  }
-
-  /** Hook to convert a viem Wallet Client to an ethers.js Signer. */
-  const useEthersSigner = ({ chainId }: { chainId?: number } = {}) => {
-    const { data: walletClient } = useWalletClient({ chainId })
-    return useMemo(
-      () => (walletClient ? walletClientToSigner(walletClient) : undefined),
-      [walletClient]
-    )
-  }
-
-  const signer = useEthersSigner()
 
   return (
     <VStack alignItems="start" flex={1} mb={8}>

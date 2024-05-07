@@ -224,7 +224,7 @@ const updateAccountFromInvite = async (
   }
 
   const account = await getAccountFromDB(account_address)
-  account.preferences!.timezone = timezone
+  account.preferences.timezone = timezone
 
   await updateAccountPreferences(account)
 
@@ -310,7 +310,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     url: link.url?.trim(),
   }))
 
-  await workMeetingTypeGates(account.preferences!.availableTypes || [])
+  await workMeetingTypeGates(account.preferences.availableTypes || [])
 
   const responsePrefsUpdate = await db.supabase
     .from('account_preferences')
@@ -329,8 +329,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     throw new Error("Account preferences couldn't be updated")
   }
 
-  delete account.preferences
-  account['preferences'] = responsePrefsUpdate.data[0]
+  account.preferences = responsePrefsUpdate.data[0]
 
   account.subscriptions = await getSubscriptionFromDBForAccount(account.address)
 
@@ -753,9 +752,9 @@ const saveMeeting = async (
           ))
         const isTimeAvailable = () =>
           isTimeInsideAvailabilities(
-            utcToZonedTime(meeting.start, ownerAccount!.preferences!.timezone!),
-            utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
-            ownerAccount!.preferences!.availabilities
+            utcToZonedTime(meeting.start, ownerAccount!.preferences.timezone),
+            utcToZonedTime(meeting.end, ownerAccount!.preferences.timezone),
+            ownerAccount!.preferences.availabilities
           )
         if (
           participantIsOwner &&
@@ -774,7 +773,7 @@ const saveMeeting = async (
           .includes(participant.account_address!)
       ) {
         account = await getAccountFromDB(participant.account_address!)
-        participant.timeZone = account.preferences!.timezone
+        participant.timeZone = account.preferences.timezone
       } else {
         account = await initAccountDBForWallet(
           participant.account_address!,
@@ -882,7 +881,6 @@ const getUserGroups = async (
     .eq('member_id', address.toLowerCase())
     .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
   if (error) {
-    console.log(error)
     throw new Error(error.message)
   }
   if (data) {
@@ -1594,13 +1592,13 @@ const updateMeeting = async (
           isTimeInsideAvailabilities(
             utcToZonedTime(
               meetingUpdateRequest.start,
-              ownerAccount!.preferences!.timezone!
+              ownerAccount!.preferences.timezone
             ),
             utcToZonedTime(
               meetingUpdateRequest.end,
-              ownerAccount!.preferences!.timezone!
+              ownerAccount!.preferences.timezone
             ),
-            ownerAccount!.preferences!.availabilities
+            ownerAccount!.preferences.availabilities
           )
 
         if (

@@ -571,7 +571,6 @@ const scheduleMeeting = async (
 
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = []
-
     participants
       .filter(p => p.account_address !== currentAccount?.address)
       .forEach(participant => {
@@ -599,7 +598,6 @@ const scheduleMeeting = async (
       throw new TimeNotAvailableError()
     }
   }
-
   try {
     let slot: DBSlot
     if (schedulingType === SchedulingType.GUEST) {
@@ -610,9 +608,9 @@ const scheduleMeeting = async (
       meeting.emailToSendReminders = emailToSendReminders
       slot = await apiScheduleMeeting(meeting)
     }
-
     if (currentAccount && schedulingType !== SchedulingType.DISCORD) {
-      return (await decryptMeeting(slot, currentAccount))!
+      const meeting = (await decryptMeeting(slot, currentAccount))!
+      return meeting
     }
 
     // Invalidate meetings cache and update meetings where required
@@ -633,7 +631,6 @@ const scheduleMeeting = async (
         })
       )
     })
-
     return {
       id: slot.id!,
       ...meeting,
