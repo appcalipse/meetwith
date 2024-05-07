@@ -1,6 +1,8 @@
-import { MockConnector } from 'wagmi/connectors/mock'
+import * as thirdWeb from 'thirdweb'
+import { base } from 'thirdweb/chains'
 
 import { SupportedChain } from '@/types/chains'
+import * as helper from '@/utils/api_helper'
 import { isConditionValid } from '@/utils/token.gate.service'
 
 import {
@@ -15,55 +17,18 @@ import {
   USDC_ELEMENT,
   USDT_ELEMENT,
 } from '../../../testing/mocks'
-
+jest.mock('@/utils/api_helper')
+jest.mock('thirdweb')
 describe('get balance for tokens', () => {
-  beforeAll(() => {
-    global.fetch = jest.fn().mockImplementation((path: string) => {
-      return Promise.resolve({
-        status: 200,
-        json: () =>
-          Promise.resolve([
-            path.indexOf(POAP_MWW.itemId) === -1
-              ? null
-              : {
-                  event: {},
-                  tokenId: 'string',
-                  chain: SupportedChain.POLYGON_MATIC,
-                  created: 'YYYY-MM-DD HH:mm:ss',
-                },
-          ]),
-      })
-    })
-
-    // jest
-    //   .spyOn(ethers, 'Contract')
-    //   .mockImplementation((addressOrName: string) => {
-    //     return {
-    //       balanceOf: async () => {
-    //         switch (addressOrName) {
-    //           case DAI_ELEMENT.itemId:
-    //             return Promise.resolve(BigInt(2e18))
-    //           case USDT_ELEMENT.itemId:
-    //             return Promise.resolve(0n)
-    //           case USDC_ELEMENT.itemId:
-    //             return Promise.resolve(0n)
-    //           case NFT_ELEMENT.itemId:
-    //             return Promise.resolve(1n)
-    //           default:
-    //             return Promise.resolve(0n)
-    //         }
-    //       },
-    //     } as any
-    //   })
-  })
-
   afterAll(() => {
     jest.unmock('ethers')
   })
 
   const WALLET_ADDRESS = '0x4F834fbb8b10F2cCbCBcA08D183aF3b9bdfCb2be'
-
   it('should be true given wallet holds both DAI and the NFT', async () => {
+    jest
+      .spyOn(thirdWeb, 'readContract')
+      .mockResolvedValue(Promise.resolve(BigInt(1e18) as unknown as unknown[]))
     const conditionShouldBeMet = await isConditionValid(
       CONDITION_NFT_AND_DAI_OR_USDT,
       WALLET_ADDRESS
@@ -72,6 +37,9 @@ describe('get balance for tokens', () => {
   })
 
   it("should be false given wallet doesn't have any USDC even if minBalance condition is Zero", async () => {
+    jest
+      .spyOn(thirdWeb, 'readContract')
+      .mockResolvedValue(Promise.resolve(BigInt(0n) as unknown as unknown[]))
     const conditionShouldNotBeMet = await isConditionValid(
       CONDITION_USDC,
       WALLET_ADDRESS
@@ -88,6 +56,27 @@ describe('get balance for tokens', () => {
   })
 
   it('should be true given wallet have POAP', async () => {
+    jest.spyOn(helper, 'getWalletPOAP').mockResolvedValue({
+      chain: 'Test Chain',
+      created: new Date().toString(),
+      event: {
+        city: 'value',
+        country: 'w',
+        description: '',
+        end_date: '',
+        event_url: '',
+        expiry_date: '',
+        fancy_id: '',
+        id: 1,
+        image_url: '',
+        start_date: new Date().toString(),
+        name: '',
+        supply: 4,
+        year: 1000,
+      },
+      owner: 'eee',
+      tokenId: 'eejje',
+    })
     const conditionShouldBeMet = await isConditionValid(
       CONDITION_MWW_POAP,
       WALLET_ADDRESS

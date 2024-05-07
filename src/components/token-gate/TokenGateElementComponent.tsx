@@ -22,7 +22,6 @@ import {
   useColorModeValue,
 } from '@chakra-ui/react'
 import { useEffect, useRef, useState } from 'react'
-import { formatUnits } from 'viem'
 
 import {
   getMainnetChains,
@@ -36,7 +35,7 @@ import {
 } from '@/types/TokenGating'
 import { getPOAPEvent } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
-import { useDebounce } from '@/utils/generic_utils'
+import { formatUnits, useDebounce } from '@/utils/generic_utils'
 import { getTokenInfo } from '@/utils/token.service'
 import { isValidEVMAddress } from '@/utils/validations'
 

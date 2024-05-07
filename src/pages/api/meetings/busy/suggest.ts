@@ -58,8 +58,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         break
       }
       for (const account of accounts) {
-        const availabilities = account.preferences!.availabilities
-        const tz = account.preferences!.timezone
+        const availabilities = account.preferences.availabilities
+        const tz = account.preferences.timezone
         if (
           !isTimeInsideAvailabilities(
             utcToZonedTime(slot.start as Date, tz),
