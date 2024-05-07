@@ -65,7 +65,7 @@ export const notifyForMeetingCancellation = async (
       account_address: address,
       name: account.preferences?.name,
       notifications: await getAccountNotificationSubscriptions(address),
-      timezone: account.preferences!.timezone,
+      timezone: account.preferences.timezone,
       type: ParticipantType.Invitee,
       meeting_id,
       status: ParticipationStatus.Rejected,

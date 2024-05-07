@@ -21,7 +21,6 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
-import { useModal } from 'connectkit'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/router'
 import {
@@ -34,6 +33,7 @@ import {
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { WalletModalContext } from '@/providers/WalletModalProvider'
 import { TimeRange } from '@/types/Account'
 import { NotificationChannel } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
@@ -84,7 +84,7 @@ const OnboardingModal = forwardRef((props, ref) => {
   // Onboarding Modal Control
   const { isOpen, onOpen: onOpenOnboardingModal, onClose } = useDisclosure()
   // Wallet Modal Control
-  const { setOpen: setWalletModalOpen } = useModal()
+  const { open } = useContext(WalletModalContext)
   const {
     activeStep,
     goToNext: goToNextStep,
@@ -153,17 +153,10 @@ const OnboardingModal = forwardRef((props, ref) => {
       !isOpen
     ) {
       // We open the connection modal and avoid it being opened again
-      setWalletModalOpen(true)
+      open()
       didOpenConnectWallet = true
     }
-  }, [
-    currentAccount,
-    onOpenOnboardingModal,
-    origin,
-    setWalletModalOpen,
-    isOpen,
-    signedUp,
-  ])
+  }, [currentAccount, onOpenOnboardingModal, origin, open, isOpen, signedUp])
 
   // Discord Step
   async function fillDiscordUserInfo() {
