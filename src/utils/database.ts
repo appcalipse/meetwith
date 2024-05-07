@@ -881,7 +881,6 @@ const getUserGroups = async (
     .eq('member_id', address.toLowerCase())
     .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
   if (error) {
-    console.log(error)
     throw new Error(error.message)
   }
   if (data) {
