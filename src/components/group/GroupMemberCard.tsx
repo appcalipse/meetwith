@@ -4,6 +4,7 @@ import {
   Heading,
   HStack,
   Icon,
+  Select,
   Spinner,
   Tag,
   TagLabel,
@@ -54,18 +55,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             {props.displayName}{' '}
             {props.currentAccount.address === props.address && '(You)'}
           </Heading>
-          {!props.invitePending ? (
-            <CopyLinkButton
-              url={'meetwithwallet.xyz/rndaomarketing'}
-              size="md"
-              width="90%"
-              label={'meetwithwallet.xyz/rndaomarketing'}
-              withIcon
-              design_type="link"
-              noOfLines={1}
-              pl={0}
-            />
-          ) : (
+          {props.invitePending ? (
             <HStack alignItems="center">
               <Box
                 h={5}
@@ -83,18 +73,28 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 Send reminder
               </Button>
             </HStack>
+          ) : (
+            <CopyLinkButton
+              url={'meetwithwallet.xyz/rndaomarketing'}
+              size="md"
+              label={'meetwithwallet.xyz/rndaomarketing'}
+              withIcon
+              design_type="link"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              maxWidth="100%"
+              textDecoration="none"
+              pl={0}
+            />
           )}
         </VStack>
       </HStack>
       <HStack flexBasis="15%" overflow="hidden">
-        <Button
-          rightIcon={<FaChevronDown />}
-          variant="ghost"
-          p={0}
-          textTransform="capitalize"
-        >
-          {props.role}
-        </Button>
+        <Select defaultValue={props.role} onChange={e => {}}>
+          <option value={MemberType.ADMIN}>{MemberType.ADMIN}</option>
+          <option value={MemberType.MEMBER}>{MemberType.MEMBER}</option>
+        </Select>
       </HStack>
       <HStack flexBasis="35%" display="flex" justifyContent="space-between">
         {props?.calendarConnected ? (
