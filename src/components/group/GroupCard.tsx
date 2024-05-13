@@ -277,7 +277,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 withIcon
                 design_type="link"
                 noOfLines={1}
-                width="95%"
+                width="100%"
               />
             </VStack>
             <HStack gap={3} width="fit-content">
