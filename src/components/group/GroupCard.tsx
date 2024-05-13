@@ -22,7 +22,14 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import React, { ReactNode, useEffect, useId, useMemo, useState } from 'react'
+import React, {
+  Fragment,
+  ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from 'react'
 import { BiExit } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaInfo, FaRegCopy } from 'react-icons/fa'
 import { GoDotFill } from 'react-icons/go'
@@ -57,18 +64,22 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const id = useId()
   const [firstFetch, setFirstFetch] = useState(true)
+  const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
     setLoading(true)
     const newGroupMembers = (await getGroupsMembers(
       props.id,
       PAGE_SIZE,
-      groupMembers?.length
+      reset ? 0 : groupMembers?.length
     )) as Array<GroupMember>
     if (newGroupMembers?.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
     setGroupsMembers(prev => (reset ? [] : [...prev]).concat(newGroupMembers))
+    setGroupRoles(prev =>
+      (reset ? [] : [...prev]).concat(newGroupMembers.map(val => val.role))
+    )
     setLoading(false)
     setFirstFetch(false)
   }
@@ -222,6 +233,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
               key={member?.address}
               isEmpty={groupMembers.length < 2}
               viewerRole={props.role}
+              groupRoles={groupRoles}
+              refetch={() => resetState()}
               {...member}
             />
           ))}
@@ -300,14 +313,13 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 <Portal>
                   <MenuList backgroundColor={menuBgColor}>
                     {menuItems.map((val, index, arr) => (
-                      <>
+                      <Fragment key={`${val.label}-${props?.id}`}>
                         {val.link ? (
                           <MenuItem
                             as="a"
                             href={val.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            key={`${val.label}-${props?.id}`}
                             backgroundColor={menuBgColor}
                           >
                             {val.label}
@@ -325,7 +337,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                         {index !== arr.length - 1 && (
                           <MenuDivider borderColor="neutral.600" />
                         )}
-                      </>
+                      </Fragment>
                     ))}
                     {!isProduction && (
                       <>
