@@ -1,10 +1,14 @@
+import { ChevronDownIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
   Heading,
   HStack,
   Icon,
-  Select,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   Spinner,
   Tag,
   TagLabel,
@@ -35,6 +39,8 @@ interface IGroupMemberCard extends GroupMember {
   currentAccount: Account
   isEmpty?: boolean
   viewerRole: MemberType
+  groupRoles: Array<MemberType>
+  refetch: () => void
 }
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
@@ -91,10 +97,60 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
         </VStack>
       </HStack>
       <HStack flexBasis="15%" overflow="hidden">
-        <Select defaultValue={props.role} onChange={e => {}}>
-          <option value={MemberType.ADMIN}>{MemberType.ADMIN}</option>
-          <option value={MemberType.MEMBER}>{MemberType.MEMBER}</option>
-        </Select>
+        <Menu>
+          <MenuButton
+            as={Button}
+            rightIcon={
+              <FaChevronDown
+                style={{
+                  marginLeft: props.role === MemberType.ADMIN ? '0px' : '15px',
+                }}
+              />
+            }
+            variant="ghost"
+            gap={12}
+            // p={0}
+            px={4}
+            textTransform="capitalize"
+          >
+            {props.role}
+          </MenuButton>
+          <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
+            <MenuItem
+              onClick={() => {
+                if (props.role === MemberType.ADMIN) {
+                  props.refetch()
+                }
+              }}
+              textTransform="capitalize"
+              borderBottom="2px solid #323F4B"
+              backgroundColor={
+                props.role === MemberType.ADMIN ? '#323F4B' : undefined
+              }
+            >
+              {MemberType.ADMIN}
+            </MenuItem>
+            <MenuItem
+              width="100px"
+              textTransform="capitalize"
+              backgroundColor={
+                props.role === MemberType.MEMBER ? '#323F4B' : undefined
+              }
+              disabled={
+                props.role === MemberType.ADMIN &&
+                props.groupRoles.filter(role => role === MemberType.ADMIN)
+                  .length === 1
+              }
+              onClick={() => {
+                if (props.role === MemberType.MEMBER) {
+                  props.refetch()
+                }
+              }}
+            >
+              {MemberType.MEMBER}
+            </MenuItem>
+          </MenuList>
+        </Menu>
       </HStack>
       <HStack flexBasis="35%" display="flex" justifyContent="space-between">
         {props?.calendarConnected ? (
