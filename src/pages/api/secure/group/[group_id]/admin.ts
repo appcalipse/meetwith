@@ -1,9 +1,20 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { GroupMember } from '@/types/Group'
-import { getGroupUsers, initDB } from '@/utils/database'
-import { GroupNotExistsError, NotGroupMemberError } from '@/utils/errors'
+import { GroupMember, MemberType } from '@/types/Group'
+import { ChangeGroupAdminRequest } from '@/types/Requests'
+import {
+  changeGroupRole,
+  getGroupUsers,
+  initDB,
+  isGroupAdmin,
+} from '@/utils/database'
+import {
+  AdminBelowOneError,
+  GroupNotExistsError,
+  NotGroupAdminError,
+  NotGroupMemberError,
+} from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'PATCH') {
@@ -13,16 +24,40 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(401).send('Unauthorized')
     }
     const group_id = req.query.group_id as string
+    const { role, address, userId, invitee } =
+      req.body as ChangeGroupAdminRequest
+    const userIdentifier = address || userId
+    if (!(Object.values(MemberType).includes(role) && userIdentifier)) {
+      return res.status(400).send('Invalid request')
+    }
     try {
-      // add logic for group patch here
-    } catch (error: any) {
-      if (error instanceof NotGroupMemberError) {
+      if (await isGroupAdmin(group_id, account_address)) {
+        const isUpdated = await changeGroupRole(
+          group_id,
+          userIdentifier,
+          role,
+          invitee
+        )
+        if (isUpdated) {
+          res.status(200).json({ success: true })
+        }
+      } else {
+        throw new NotGroupAdminError()
+      }
+    } catch (error: unknown) {
+      if (error instanceof NotGroupAdminError) {
         return res.status(403).json({ error: error.message })
       }
       if (error instanceof GroupNotExistsError) {
         return res.status(404).json({ error: error.message })
       }
-      return res.status(500).send(error.message)
+      if (error instanceof AdminBelowOneError) {
+        return res.status(405).json({ error: error.message })
+      }
+      if (error instanceof Error) {
+        return res.status(500).send(error.message)
+      }
+      return res.status(500).send('Something went wrong')
     }
   }
   return res.status(405).send('Method not allowed')
