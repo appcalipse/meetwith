@@ -1,4 +1,3 @@
-import { CheckCircleIcon } from '@chakra-ui/icons'
 import {
   AccordionButton,
   AccordionItem,
@@ -30,11 +29,8 @@ import React, {
   useMemo,
   useState,
 } from 'react'
-import { BiExit } from 'react-icons/bi'
-import { FaChevronDown, FaChevronUp, FaInfo, FaRegCopy } from 'react-icons/fa'
-import { GoDotFill } from 'react-icons/go'
+import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
-import { MdDelete } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
 import {
@@ -44,7 +40,6 @@ import {
   MenuOptions,
 } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
-import { logEvent } from '@/utils/analytics'
 import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
 
