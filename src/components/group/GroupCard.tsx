@@ -43,8 +43,9 @@ import {
   MemberType,
   MenuOptions,
 } from '@/types/Group'
+import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { logEvent } from '@/utils/analytics'
-import { getGroupsMembers } from '@/utils/api_helper'
+import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
@@ -78,7 +79,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
     }
     setGroupsMembers(prev => (reset ? [] : [...prev]).concat(newGroupMembers))
     setGroupRoles(prev =>
-      (reset ? [] : [...prev]).concat(newGroupMembers.map(val => val.role))
+      (reset ? [] : [...prev]).concat(newGroupMembers?.map(val => val.role))
     )
     setLoading(false)
     setFirstFetch(false)
@@ -126,6 +127,9 @@ const GroupCard: React.FC<IGroupCard> = props => {
       default:
         return []
     }
+  }
+  const updateRole = async (data: ChangeGroupAdminRequest) => {
+    return await updateGroupRole(props.id, data)
   }
   let content: ReactNode
   const menuItems = useMemo(
@@ -234,7 +238,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
               isEmpty={groupMembers.length < 2}
               viewerRole={props.role}
               groupRoles={groupRoles}
-              refetch={() => resetState()}
+              setGroupRoles={setGroupRoles}
+              updateRole={updateRole}
               {...member}
             />
           ))}
