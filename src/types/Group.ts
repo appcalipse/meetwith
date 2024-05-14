@@ -47,7 +47,7 @@ export interface GroupMemberQuery {
   member_id: string
   user_id: string
   role: MemberType
-  email?: MemberType
+  email?: string
 }
 interface CalendarType {
   name: string
