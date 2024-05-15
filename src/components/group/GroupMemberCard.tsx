@@ -42,9 +42,11 @@ interface IGroupMemberCard extends GroupMember {
   groupRoles: Array<MemberType>
   setGroupRoles: React.Dispatch<React.SetStateAction<MemberType[]>>
   updateRole: (data: ChangeGroupAdminRequest) => Promise<boolean>
+  groupSlug: string
 }
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
+  const activeMenuColor = useColorModeValue('neutral.800', 'neutral.200')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
   const handleRoleChange = (
@@ -59,7 +61,6 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           const isSuccessful = await props.updateRole({
             address: props.address,
             role: newRole,
-            invitee: props.invitePending,
           })
           setLoading(false)
           if (!isSuccessful) return
@@ -112,9 +113,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             </HStack>
           ) : (
             <CopyLinkButton
-              url={'meetwithwallet.xyz/rndaomarketing'}
+              url={`meetwithwallet.xyz/${props.groupSlug}`}
               size="md"
-              label={'meetwithwallet.xyz/rndaomarketing'}
+              label={`meetwithwallet.xyz/${props.groupSlug}`}
               withIcon
               design_type="link"
               whiteSpace="nowrap"
@@ -144,7 +145,6 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               }
               variant="ghost"
               gap={12}
-              // p={0}
               px={4}
               textTransform="capitalize"
             >
@@ -153,9 +153,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
               <MenuItem
                 textTransform="capitalize"
-                borderBottom="2px solid #323F4B"
+                borderBottom={`2px solid ${activeMenuColor}`}
                 backgroundColor={
-                  currentRole === MemberType.ADMIN ? '#323F4B' : undefined
+                  currentRole === MemberType.ADMIN ? activeMenuColor : undefined
                 }
                 onClick={handleRoleChange(MemberType.MEMBER, MemberType.ADMIN)}
                 disabled={currentRole === MemberType.ADMIN}
@@ -166,7 +166,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 width="100px"
                 textTransform="capitalize"
                 backgroundColor={
-                  currentRole === MemberType.MEMBER ? '#323F4B' : undefined
+                  currentRole === MemberType.MEMBER
+                    ? activeMenuColor
+                    : undefined
                 }
                 disabled={
                   (currentRole === MemberType.ADMIN &&
