@@ -26,7 +26,7 @@ export interface EmptyGroupsResponse {
 export interface UserGroups {
   id: string
   role: MemberType
-  invite_pending: boolean
+  invitePending: boolean
   group: {
     id: string
     name: string
