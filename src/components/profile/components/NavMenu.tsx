@@ -31,6 +31,7 @@ import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
+import { isProduction } from '@/utils/constants'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import {
@@ -49,7 +50,6 @@ interface LinkItemProps {
 }
 const LinkItems: Array<LinkItemProps> = [
   { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
-  // { name: 'My Groups', icon: FaUserGroup, mode: EditMode.GROUPS },
   { name: 'Availabilities', icon: FaCalendarAlt, mode: EditMode.AVAILABILITY },
   { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
   {
@@ -74,7 +74,14 @@ const LinkItems: Array<LinkItemProps> = [
     mode: EditMode.SIGNOUT,
   },
 ]
-
+// add this to the LinkItems array after prod
+if (!isProduction) {
+  LinkItems.splice(1, 0, {
+    name: 'My Groups',
+    icon: FaUserGroup,
+    mode: EditMode.GROUPS,
+  })
+}
 export const NavMenu: React.FC<{
   currentSection?: EditMode
   isMenuOpen?: boolean
