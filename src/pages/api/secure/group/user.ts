@@ -22,7 +22,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         name: group.group.name,
         slug: group.group.slug,
         role: group.role,
-        invitePending: false,
+        invitePending: group.invitePending,
       }))
 
       return res.status(200).json(responseJson)
