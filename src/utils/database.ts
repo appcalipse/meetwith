@@ -889,6 +889,7 @@ const getUserGroups = async (
   }
   return []
 }
+
 async function findGroupsWithSingleMember(
   groupIDs: string
 ): Promise<Array<EmptyGroupsResponse>> {
@@ -938,17 +939,19 @@ const getGroupsEmpty = async (
     return []
   }
 }
-const getGroupUsersInternal = async (group_id: string) => {
+const getGroupUsersInternal = async (
+  group_id: string
+): Promise<Array<GroupMemberQuery>> => {
   if (await isGroupExists(group_id)) {
     const { data: inviteData, error: inviteError } = await db.supabase
-      .from('group_invites')
+      .from<GroupMemberQuery>('group_invites')
       .select()
       .eq('group_id', group_id)
     if (inviteError) {
       throw new Error(inviteError.message)
     }
     const { data: membersData, error: membersError } = await db.supabase
-      .from('group_members')
+      .from<GroupMemberQuery>('group_members')
       .select()
       .eq('group_id', group_id)
     if (membersError) {
@@ -1043,11 +1046,15 @@ const isGroupAdmin = async (groupId: string, userIdentifier?: string) => {
 const changeGroupRole = async (
   groupId: string,
   userIdentifier: string,
-  newRole: string,
-  invitee: boolean
+  newRole: MemberType
 ) => {
-  if (newRole === 'member') {
-    const groupUsers = await getGroupUsersInternal(groupId)
+  const groupUsers = await getGroupUsersInternal(groupId)
+  const isInvitee =
+    'user_id' in
+    (groupUsers.find(
+      val => (val?.member_id || val?.user_id) === userIdentifier
+    ) || {})
+  if (newRole === MemberType.MEMBER) {
     const adminCount = groupUsers.filter(
       val => val.role === MemberType.ADMIN
     ).length
@@ -1056,10 +1063,10 @@ const changeGroupRole = async (
     }
   }
   const { error } = await db.supabase
-    .from(invitee ? 'group_invites' : 'group_members')
+    .from(isInvitee ? 'group_invites' : 'group_members')
     .update({ role: newRole })
     .eq('group_id', groupId)
-    .eq(invitee ? 'user_id' : 'member_id', userIdentifier)
+    .eq(isInvitee ? 'user_id' : 'member_id', userIdentifier)
   if (error) {
     throw new Error(error.message)
   }
