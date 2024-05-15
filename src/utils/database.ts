@@ -870,6 +870,16 @@ const getUserGroups = async (
   limit: number,
   offset: number
 ): Promise<Array<UserGroups>> => {
+  const { data: invites, error: invitesError } = await db.supabase
+    .from('group_invites')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('user_id', address.toLowerCase())
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
   const { data, error } = await db.supabase
     .from('group_members')
     .select(
@@ -879,15 +889,24 @@ const getUserGroups = async (
   `
     )
     .eq('member_id', address.toLowerCase())
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .range(
+      offset || 0,
+      (offset || 0) +
+        (limit ? limit - 1 - (invites?.length || 0) : 999999999999999)
+    )
+
+  if (invitesError) {
+    throw new Error(invitesError.message)
+  }
   if (error) {
     throw new Error(error.message)
   }
-  if (data) {
-    return data
+  if (data || invites) {
+    return invites.map(val => ({ ...val, invitePending: true })).concat(data)
   }
   return []
 }
+
 async function findGroupsWithSingleMember(
   groupIDs: string
 ): Promise<Array<EmptyGroupsResponse>> {
