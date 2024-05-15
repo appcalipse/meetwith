@@ -87,7 +87,7 @@ export const Navbar = () => {
       >
         <Container maxW={'7xl'}>
           <Flex alignItems="center">
-            <Flex ml={{ base: -2 }} display={{ base: 'flex', md: 'none' }}>
+            <Flex ml={{ base: -2 }} display={{ base: 'flex', lg: 'none' }}>
               <Flex
                 alignItems="center"
                 onClick={() => {
@@ -106,7 +106,7 @@ export const Navbar = () => {
             <Flex flex={{ base: 1 }}>
               <Link
                 href={'/'}
-                display={{ base: 'none', md: 'flex' }}
+                display={{ base: 'none', lg: 'flex' }}
                 onClick={() => {
                   handleSetActiveLink('/')
                 }}
@@ -129,7 +129,7 @@ export const Navbar = () => {
             </Flex>
 
             <Stack
-              flex={{ base: 1, md: 0 }}
+              flex={{ base: 1, lg: 0 }}
               justify={'flex-end'}
               direction={'row'}
               spacing={4}

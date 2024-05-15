@@ -76,6 +76,13 @@ const OnboardingModal = forwardRef((props, ref) => {
   const skipNextSteps = stateObject.skipNextSteps as boolean | undefined
   const signedUp = stateObject.signedUp as boolean | undefined
 
+  const [name, setName] = useState<string>(stateObject.name || '')
+  const [email, setEmail] = useState<string>(stateObject.email || '')
+
+  const [timezone, setTimezone] = useState<string | undefined | null>(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
+
   // Color Control
   const bgColor = useColorModeValue('gray.100', 'gray.600')
   const avatarBg = useColorModeValue('gray.700', 'gray.500')
@@ -158,6 +165,15 @@ const OnboardingModal = forwardRef((props, ref) => {
     }
   }, [currentAccount, onOpenOnboardingModal, origin, open, isOpen, signedUp])
 
+  useEffect(() => {
+    if (stateObject.name && !name) {
+      setName(stateObject.name)
+    }
+    if (stateObject.email && !email) {
+      setEmail(stateObject.email)
+    }
+  }, [stateObject.toString()])
+
   // Discord Step
   async function fillDiscordUserInfo() {
     if (!!currentAccount?.preferences?.name) {
@@ -165,32 +181,24 @@ const OnboardingModal = forwardRef((props, ref) => {
       return
     }
 
-    const discordUserInfo = await queryClient.fetchQuery(
-      QueryKeys.discordUserInfo(currentAccount?.address),
-      async () => {
-        const data = (await internalFetch('/secure/discord/info')) as
-          | DiscordUserInfo
-          | undefined
-        return data ?? null
-      }
-    )
+    if (currentAccount) {
+      const discordUserInfo = await queryClient.fetchQuery(
+        QueryKeys.discordUserInfo(currentAccount?.address),
+        async () => {
+          const data = (await internalFetch('/secure/discord/info')) as
+            | DiscordUserInfo
+            | undefined
+          return data ?? null
+        }
+      )
 
-    if (discordUserInfo?.global_name) setName(discordUserInfo.global_name)
+      if (discordUserInfo?.global_name) setName(discordUserInfo.global_name)
+    }
   }
 
   useEffect(() => {
     if (isOpen === true) fillDiscordUserInfo()
   }, [isOpen])
-
-  const [name, setName] = useState<string | undefined>(
-    stateObject.name || undefined
-  )
-  const [email, setEmail] = useState<string | undefined>(
-    stateObject.email || undefined
-  )
-  const [timezone, setTimezone] = useState<string | undefined | null>(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  )
 
   const toast = useToast()
 
