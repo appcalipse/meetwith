@@ -1,19 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { GroupMember, MemberType } from '@/types/Group'
+import { MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
-import {
-  changeGroupRole,
-  getGroupUsers,
-  initDB,
-  isGroupAdmin,
-} from '@/utils/database'
+import { changeGroupRole, initDB, isGroupAdmin } from '@/utils/database'
 import {
   AdminBelowOneError,
   GroupNotExistsError,
   NotGroupAdminError,
-  NotGroupMemberError,
 } from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -24,20 +18,14 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(401).send('Unauthorized')
     }
     const group_id = req.query.group_id as string
-    const { role, address, userId, invitee } =
-      req.body as ChangeGroupAdminRequest
+    const { role, address, userId } = req.body as ChangeGroupAdminRequest
     const userIdentifier = address || userId
     if (!(Object.values(MemberType).includes(role) && userIdentifier)) {
       return res.status(400).send('Invalid request')
     }
     try {
       if (await isGroupAdmin(group_id, account_address)) {
-        const isUpdated = await changeGroupRole(
-          group_id,
-          userIdentifier,
-          role,
-          invitee
-        )
+        const isUpdated = await changeGroupRole(group_id, userIdentifier, role)
         if (isUpdated) {
           res.status(200).json({ success: true })
         }
