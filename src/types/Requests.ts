@@ -103,5 +103,4 @@ export interface ChangeGroupAdminRequest {
   address?: string
   userId?: string
   role: MemberType
-  invitee: boolean
 }
