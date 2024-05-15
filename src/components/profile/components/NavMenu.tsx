@@ -49,7 +49,7 @@ interface LinkItemProps {
 }
 const LinkItems: Array<LinkItemProps> = [
   { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
-  { name: 'My Groups', icon: FaUserGroup, mode: EditMode.GROUPS },
+  // { name: 'My Groups', icon: FaUserGroup, mode: EditMode.GROUPS },
   { name: 'Availabilities', icon: FaCalendarAlt, mode: EditMode.AVAILABILITY },
   { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
   {
@@ -224,7 +224,7 @@ export const NavMenu: React.FC<{
             alignItems="center"
             spacing={8}
             py={12}
-            display={{ base: 'flex', md: 'none' }}
+            display={{ base: 'flex', lg: 'none' }}
             position={'fixed'}
             top={'0'}
             left={'0'}

@@ -1,6 +1,5 @@
 import { Box, Portal } from '@chakra-ui/react'
 import { useContext, useEffect, useState } from 'react'
-import { createThirdwebClient } from 'thirdweb'
 import {
   AutoConnect,
   ConnectEmbed,
@@ -55,7 +54,7 @@ export const ConnectModal: React.FC = ({}) => {
   const wallets = [
     inAppWallet({
       auth: {
-        options: ['email', 'google', 'phone'],
+        options: ['email', 'google', 'phone', 'passkey'],
       },
     }),
     createWallet('io.metamask'),
