@@ -23,11 +23,8 @@ import {
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import React, { ReactNode, useEffect, useId, useMemo, useState } from 'react'
-import { BiExit } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaInfo, FaRegCopy } from 'react-icons/fa'
-import { GoDotFill } from 'react-icons/go'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
-import { MdDelete } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
 import {
@@ -264,6 +261,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
       borderRadius="lg"
       mt={6}
       bgColor={bgColor}
+      id={props.id}
     >
       {({ isExpanded }) => (
         <>

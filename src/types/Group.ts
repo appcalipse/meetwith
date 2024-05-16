@@ -2,6 +2,7 @@ export enum MemberType {
   ADMIN = 'admin',
   MEMBER = 'member',
 }
+
 export interface GetGroupsResponse {
   id: string
   name: string
@@ -9,6 +10,7 @@ export interface GetGroupsResponse {
   role: MemberType
   invitePending: boolean
 }
+
 export interface GroupMember {
   displayName: string
   address: string
@@ -23,6 +25,8 @@ export interface EmptyGroupsResponse {
   slug: string
 }
 
+export type InvitedGroupsResponse = EmptyGroupsResponse
+
 export interface UserGroups {
   id: string
   role: MemberType
@@ -33,6 +37,7 @@ export interface UserGroups {
     slug: string
   }
 }
+
 export interface GroupUsers {
   // an array is returned here because of the one to many relationship
   group_members: Array<GroupMemberQuery>
@@ -43,12 +48,14 @@ export interface GroupUsers {
     calendars: Array<CalendarType>
   }>
 }
+
 export interface GroupMemberQuery {
   member_id: string
   user_id: string
   role: MemberType
   email?: MemberType
 }
+
 interface CalendarType {
   name: string
   sync: boolean
