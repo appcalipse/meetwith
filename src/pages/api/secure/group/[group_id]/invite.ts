@@ -49,7 +49,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       console.error('Error inserting group invitation:', error)
       return res.status(500).json({ error: 'Failed to send invitation' })
     }
-
     // Optional: Send email notification to the invited user.
     // Implement email notification logic here if required.
 

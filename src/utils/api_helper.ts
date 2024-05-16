@@ -15,6 +15,7 @@ import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
   EmptyGroupsResponse,
   GetGroupsResponse,
+  GroupInvitePayload,
   GroupMember,
 } from '@/types/Group'
 import {
@@ -405,6 +406,7 @@ export const getMeetingsForDashboard = async (
     created_at: slot.created_at ? new Date(slot.created_at) : undefined,
   }))
 }
+
 export const getGroups = async (
   limit: number,
   offset: number
@@ -420,16 +422,29 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   )) as Array<GetGroupsResponse>
   return response
 }
+
 export const getGroupsMembers = async (
   group_id: string,
   limit: number,
   offset: number
 ): Promise<Array<GroupMember>> => {
-  const response = (await internalFetch(
-    `/secure/group/${group_id}/users?limit=${limit}&offset=${offset}`
-  )) as Array<GroupMember>
-  return response
+  try {
+    const response = await internalFetch<Array<GroupMember>>(
+      `/secure/group/${group_id}/users?limit=${limit}&offset=${offset}`
+    )
+    console.log(`Fetched group members for group_id=${group_id}:`, response)
+
+    if (!Array.isArray(response)) {
+      throw new Error('API response is not an array')
+    }
+
+    return response
+  } catch (error) {
+    console.error('Error in getGroupsMembers:', error)
+    throw error
+  }
 }
+
 export const subscribeToWaitlist = async (
   email: string,
   plan?: string
@@ -830,14 +845,16 @@ export const createGroup = async (
 }
 
 export const inviteUsers = async (
-  invitedUsers: string[],
-  message: string
+  groupId: string,
+  payload: GroupInvitePayload
 ): Promise<void> => {
   try {
-    await internalFetch<void>('/api/invite-users', 'POST', {
-      invitedUsers,
-      message,
-    })
+    console.log('Inviting users. Payload:', payload)
+    await internalFetch<void>(
+      `/api/secure/group/${groupId}/invite`,
+      'POST',
+      payload
+    )
   } catch (e: any) {
     if (e instanceof ApiFetchError) {
       if (e.status === 400) {

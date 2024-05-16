@@ -63,3 +63,12 @@ export interface MenuOptions {
   link?: string
   onClick?: () => void
 }
+
+export interface GroupInvitePayload {
+  invitees: Array<{
+    email: string
+    role: MemberType
+    address?: string
+    userId?: string
+  }>
+}

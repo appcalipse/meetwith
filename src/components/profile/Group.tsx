@@ -14,6 +14,7 @@ import {
   Spacer,
   Spinner,
   Text,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
@@ -25,6 +26,7 @@ import { GetGroupsResponse } from '@/types/Group'
 import { getGroups, getGroupsEmpty } from '@/utils/api_helper'
 
 import GroupCard from '../group/GroupCard'
+import InviteModal from '../group/InviteModal'
 
 export interface GroupProps {
   prop?: string
@@ -37,6 +39,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [firstFetch, setFirstFetch] = useState(true)
   const router = useRouter()
   const { invite } = useRouter().query
+
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [selectedGroupName, setSelectedGroupName] = useState<string>('')
+
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
     setLoading(true)
@@ -57,9 +64,19 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   useEffect(() => {
     resetState()
   }, [currentAccount?.address])
+
   useEffect(() => {
-    // Add modal logic here
-  }, [invite])
+    if (invite) {
+      onOpen()
+    }
+  }, [invite, onOpen])
+
+  const handleAddNewMember = (groupId: string, groupName: string) => {
+    setSelectedGroupId(groupId)
+    setSelectedGroupName(groupName)
+    onOpen()
+  }
+
   let content: ReactNode
   if (firstFetch) {
     content = (
@@ -100,6 +117,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               key={group.id}
               currentAccount={currentAccount}
               {...group}
+              onAddNewMember={handleAddNewMember}
             />
           ))}
         </Accordion>
@@ -148,6 +166,12 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         </Button>
       </HStack>
       {content}
+      <InviteModal
+        groupName={selectedGroupName}
+        isOpen={isOpen}
+        onClose={onClose}
+        groupId={selectedGroupId ?? ''}
+      />
     </Flex>
   )
 }

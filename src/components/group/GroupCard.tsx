@@ -45,7 +45,9 @@ import GroupMemberCard from './GroupMemberCard'
 
 export interface IGroupCard extends GetGroupsResponse {
   currentAccount: Account
+  onAddNewMember: (groupId: string, groupName: string) => void
 }
+
 const GroupCard: React.FC<IGroupCard> = props => {
   const bgColor = useColorModeValue('white', '#1F2933')
   const itemsBgColor = useColorModeValue('white', 'gray.600')
@@ -249,6 +251,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
           height="fit-content !important"
           mr="auto"
           py={1}
+          onClick={() => props.onAddNewMember(props.id)}
         >
           Add new member
         </Button>

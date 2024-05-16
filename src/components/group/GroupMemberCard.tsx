@@ -13,7 +13,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import dynamic from 'next/dynamic'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BiExit } from 'react-icons/bi'
 import { FaChevronDown } from 'react-icons/fa'
 import { GoDotFill } from 'react-icons/go'
@@ -36,6 +36,10 @@ interface IGroupMemberCard extends GroupMember {
   viewerRole: MemberType
 }
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
+  useEffect(() => {
+    console.log('GroupMemberCard props:', props)
+  }, [props])
+
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   return (
     <HStack
