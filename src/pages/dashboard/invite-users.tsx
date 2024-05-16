@@ -16,6 +16,7 @@ import React, { useEffect, useRef, useState } from 'react'
 
 import InvitedUsersCard from '@/components/group/InvitedUsersCard'
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import { GroupInvitePayload } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
 import { getAccount, inviteUsers } from '@/utils/api_helper'
 import {
@@ -71,10 +72,16 @@ const InviteUsersPage = () => {
       return
     }
 
-    const userIdentifiers = invitedUsers.map(user => user.account_address)
+    const invitees = invitedUsers.map(user => ({
+      address: user.account_address,
+      email: user.guest_email,
+      role: user.role,
+    }))
+
+    const payload: GroupInvitePayload = { invitees, message }
 
     try {
-      await inviteUsers(userIdentifiers, message)
+      await inviteUsers(storedGroupId, payload)
       router.push('/dashboard/invite-success')
     } catch (error) {
       console.error('Error sending invitations:', error)

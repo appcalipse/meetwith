@@ -2,6 +2,7 @@ export enum MemberType {
   ADMIN = 'admin',
   MEMBER = 'member',
 }
+
 export interface GetGroupsResponse {
   id: string
   name: string
@@ -65,10 +66,11 @@ export interface MenuOptions {
 }
 
 export interface GroupInvitePayload {
-  invitees: Array<{
-    email: string
-    role: MemberType
-    address?: string
+  invitees: {
+    address: string
+    email?: string
     userId?: string
-  }>
+    role: string
+  }[]
+  message: string
 }

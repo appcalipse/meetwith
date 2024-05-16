@@ -251,7 +251,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
           height="fit-content !important"
           mr="auto"
           py={1}
-          onClick={() => props.onAddNewMember(props.id)}
+          onClick={() => props.onAddNewMember(props.id, props.name)}
         >
           Add new member
         </Button>

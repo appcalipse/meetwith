@@ -106,12 +106,16 @@ const InvitedUsersCardModal: React.FC<InvitedUserCardModalProps> = ({
                   </MenuButton>
                   <MenuList>
                     <MenuItem
-                      onClick={() => updateRole(user.account_address, 'admin')}
+                      onClick={() =>
+                        updateRole(user.account_address, MemberType.ADMIN)
+                      }
                     >
                       Admin
                     </MenuItem>
                     <MenuItem
-                      onClick={() => updateRole(user.account_address, 'member')}
+                      onClick={() =>
+                        updateRole(user.account_address, MemberType.MEMBER)
+                      }
                     >
                       Member
                     </MenuItem>

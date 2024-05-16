@@ -42,6 +42,9 @@ const InviteModal: FC<InviteModalProps> = ({
 }) => {
   const toast = useToast()
   const [invitedUsers, setInvitedUsers] = useState<InvitedUser[]>([])
+  const [message, setMessage] = useState<string>(
+    `Come join our scheduling group ${groupName} on Meet With Wallet!`
+  )
 
   const handleInviteSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -56,7 +59,7 @@ const InviteModal: FC<InviteModalProps> = ({
       },
     ]
 
-    const payload: GroupInvitePayload = { invitees }
+    const payload: GroupInvitePayload = { invitees, message }
 
     console.log('Payload:', payload)
 
