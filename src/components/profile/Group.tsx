@@ -41,7 +41,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     const PAGE_SIZE = 5
     setLoading(true)
     const newGroups = await getGroups(PAGE_SIZE, groups.length)
-    if (newGroups.length < PAGE_SIZE) {
+    if (newGroups?.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
     setGroups(prev => (reset ? [] : [...prev]).concat(newGroups))
