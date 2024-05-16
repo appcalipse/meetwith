@@ -420,6 +420,12 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   )) as Array<GetGroupsResponse>
   return response
 }
+export const getGroupsInvites = async (address: string) => {
+  const response = await internalFetch<Array<EmptyGroupsResponse>>(
+    `/secure/group/user/${address}`
+  )
+  return response
+}
 export const getGroupsMembers = async (
   group_id: string,
   limit: number,

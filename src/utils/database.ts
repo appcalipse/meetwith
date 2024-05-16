@@ -908,7 +908,7 @@ const getUserGroups = async (
 }
 
 async function findGroupsWithSingleMember(
-  groupIDs: string
+  groupIDs: Array<string>
 ): Promise<Array<EmptyGroupsResponse>> {
   const filteredGroups = []
   for (const groupID of groupIDs) {
@@ -943,18 +943,40 @@ const getGroupsEmpty = async (
   if (error) {
     throw new Error(error.message)
   }
-
   if (memberGroups.length > 0) {
     const groupIDs = memberGroups.map(
       (group: { group_id: string }) => group.group_id
     )
-    return findGroupsWithSingleMember(
-      Array.isArray(groupIDs) ? groupIDs[0] : groupIDs
-    )
+    return findGroupsWithSingleMember(groupIDs)
   } else {
     // user is not part of any group
     return []
   }
+}
+const getGroupInvites = async (
+  address: string,
+  limit?: number,
+  offset?: number
+): Promise<Array<UserGroups>> => {
+  const { data, error } = await db.supabase
+    .from('group_invites')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('user_id', address.toLowerCase())
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (data) {
+    return data
+  }
+  return []
 }
 const getGroupUsers = async (
   group_id: string,
@@ -1926,6 +1948,7 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
+  getGroupInvites,
   getGroupsEmpty,
   getGroupUsers,
   getMeetingFromDB,
