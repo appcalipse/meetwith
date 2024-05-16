@@ -3,7 +3,6 @@ import {
   Button,
   FormControl,
   FormLabel,
-  Icon,
   Input,
   Modal,
   ModalBody,
@@ -24,6 +23,8 @@ import InvitedUsersCardModal from '@/components/group/InvitedUsersCardModal'
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
 import { inviteUsers } from '@/utils/api_helper'
+
+import InfoTooltip from '../profile/components/Tooltip'
 
 interface InviteModalProps {
   isOpen: boolean
@@ -136,7 +137,7 @@ const InviteModal: FC<InviteModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalOverlay />
-      <ModalContent width="500px">
+      <ModalContent maxWidth="500px" width="500px">
         <ModalHeader pt={6} fontSize="24px">
           Invite Group Members
         </ModalHeader>
@@ -147,7 +148,7 @@ const InviteModal: FC<InviteModalProps> = ({
               <FormControl>
                 <FormLabel display="flex" alignItems="center">
                   Contact
-                  <Icon as={InfoIcon} w={4} h={4} ml={2} />
+                  <InfoTooltip text="Add your contacts by entering their wallet address, email or other identifier." />
                 </FormLabel>
                 <Input
                   name="identifier"

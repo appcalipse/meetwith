@@ -101,6 +101,7 @@ const InvitedUsersCardModal: React.FC<InvitedUserCardModalProps> = ({
                     bg=""
                     textAlign="left"
                     flex="1"
+                    ml="-14px"
                   >
                     {roleDisplay}
                   </MenuButton>

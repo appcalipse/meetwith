@@ -145,28 +145,26 @@ export const getInvitedUserDisplayNameModal = (
 ): string => {
   const { account_address, guest_email } = invitedUser
 
-  const truncateMiddle = (
-    str: string,
-    startLength: number,
-    endLength: number
-  ) => {
-    if (str.length <= startLength + endLength) return str
-    return `${str.slice(0, startLength)}...${str.slice(-endLength)}`
-  }
-
-  if (invitedUser.name) {
-    return invitedUser.name
-  } else if (guest_email) {
-    const [username, domain] = guest_email.split('@')
-    if (username.length > 12) {
-      return `${username.slice(0, 12)}...@${domain}`
+  if (guest_email) {
+    const emailParts = guest_email.split('@')
+    if (emailParts.length === 2) {
+      return `${emailParts[0].substring(0, 12)}...@${emailParts[1]}`
     }
     return guest_email
-  } else if (account_address.endsWith('.eth')) {
-    return truncateMiddle(account_address, 12, 0)
-  } else {
-    return truncateMiddle(account_address, 12, 4)
   }
+
+  if (account_address) {
+    if (account_address.includes('.eth')) {
+      const [name, domain] = account_address.split('.')
+      return `${name.substring(0, 12)}...${domain}`
+    } else {
+      return `${account_address.substring(0, 12)}...${account_address.slice(
+        -4
+      )}`
+    }
+  }
+
+  return 'Unknown User'
 }
 
 const getAddressDisplayForInput = (input: string) => {
