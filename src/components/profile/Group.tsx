@@ -1,16 +1,10 @@
 import {
   Accordion,
-  Box,
   Button,
   Flex,
   Heading,
   HStack,
   Image,
-  Input,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
   Spacer,
   Spinner,
   Text,
@@ -18,17 +12,14 @@ import {
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { ReactNode, useEffect, useState } from 'react'
-import { FaCaretDown, FaPlus, FaSearch } from 'react-icons/fa'
+import { FaPlus } from 'react-icons/fa'
 
+import GroupInviteCard from '@/components/group/GroupInviteCard'
 import { Account } from '@/types/Account'
 import { GetGroupsResponse } from '@/types/Group'
-import { getGroups, getGroupsEmpty } from '@/utils/api_helper'
+import { getGroups } from '@/utils/api_helper'
 
 import GroupCard from '../group/GroupCard'
-
-export interface GroupProps {
-  prop?: string
-}
 
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [groups, setGroups] = useState<Array<GetGroupsResponse>>([])
@@ -40,7 +31,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
     setLoading(true)
-    const newGroups = await getGroups(PAGE_SIZE, groups.length)
+    const newGroups = await getGroups(PAGE_SIZE, reset ? 0 : groups.length)
     if (newGroups?.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
@@ -95,13 +86,21 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     content = (
       <VStack my={6}>
         <Accordion allowMultiple width="100%">
-          {groups.map(group => (
-            <GroupCard
-              key={group.id}
-              currentAccount={currentAccount}
-              {...group}
-            />
-          ))}
+          {groups.map(group =>
+            group?.invitePending ? (
+              <GroupInviteCard
+                key={group.id}
+                {...group}
+                resetState={resetState}
+              />
+            ) : (
+              <GroupCard
+                key={group.id}
+                currentAccount={currentAccount}
+                {...group}
+              />
+            )
+          )}
         </Accordion>
         {!noMoreFetch && !firstFetch && (
           <Button
