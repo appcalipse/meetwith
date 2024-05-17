@@ -436,6 +436,20 @@ export const getGroupsMembers = async (
   )) as Array<GroupMember>
   return response
 }
+export const joinGroup = async (group_id: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/join`,
+    'POST'
+  )
+  return response?.success
+}
+export const rejectGroup = async (group_id: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/reject`,
+    'POST'
+  )
+  return response?.success
+}
 export const subscribeToWaitlist = async (
   email: string,
   plan?: string
