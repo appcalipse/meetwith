@@ -28,6 +28,7 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsResponse,
+  GroupInvites,
   GroupMemberQuery,
   GroupUsers,
   MemberType,
@@ -977,6 +978,37 @@ const getGroupInvites = async (
     return data
   }
   return []
+}
+const acceptGroupInvite = async (
+  group_id: string,
+  address: string,
+  reject?: boolean
+): Promise<void> => {
+  const { error, data } = await db.supabase
+    .from<GroupInvites>('group_invites')
+    .delete()
+    .eq('user_id', address.toLowerCase())
+    .eq('group_id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (reject) {
+    return
+  }
+  const { error: memberError } = await db.supabase
+    .from('group_members')
+    .insert([
+      { group_id, member_id: address.toLowerCase(), role: data[0].role },
+    ])
+  if (memberError) {
+    throw new Error(memberError.message)
+  }
+}
+const rejectGroupInvite = async (
+  group_id: string,
+  address: string
+): Promise<void> => {
+  return acceptGroupInvite(group_id, address, true)
 }
 const getGroupUsers = async (
   group_id: string,
@@ -1935,6 +1967,7 @@ export async function createGroupInDB(
 }
 
 export {
+  acceptGroupInvite,
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
   deleteGateCondition,
@@ -1960,6 +1993,7 @@ export {
   initDB,
   insertOfficeEventMapping,
   isSlotFree,
+  rejectGroupInvite,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
   saveEmailToDB,
