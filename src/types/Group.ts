@@ -70,3 +70,8 @@ export interface MenuOptions {
   link?: string
   onClick?: () => void
 }
+export interface GroupInvites {
+  user_id: string
+  group_id: string
+  role: MemberType
+}
