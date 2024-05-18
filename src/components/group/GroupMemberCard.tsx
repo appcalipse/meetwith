@@ -20,7 +20,7 @@ import { GoDotFill } from 'react-icons/go'
 import { MdDelete } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
-import { GetGroupsResponse, GroupMember, MemberType } from '@/types/Group'
+import { GroupMember, MemberType } from '@/types/Group'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 const Avatar = dynamic(
@@ -47,7 +47,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     >
       <HStack flexBasis="57%" overflow="hidden">
         <Box width="64px" height="64px" display="block" flexBasis={'64px'}>
-          <Avatar address={props.address} />
+          <Avatar address={props.address || ''} />
         </Box>
         <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
           <Heading size="sm">
