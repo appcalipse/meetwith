@@ -10,7 +10,11 @@ export interface GetGroupsResponse {
   role: MemberType
   invitePending: boolean
 }
-
+export interface Group {
+  id: string
+  name: string
+  slug: string
+}
 export interface GroupMember {
   displayName: string
   address: string
@@ -19,11 +23,7 @@ export interface GroupMember {
   calendarConnected: boolean
 }
 
-export interface EmptyGroupsResponse {
-  id: string
-  name: string
-  slug: string
-}
+export type EmptyGroupsResponse = Group
 
 export type InvitedGroupsResponse = EmptyGroupsResponse
 
@@ -31,11 +31,7 @@ export interface UserGroups {
   id: string
   role: MemberType
   invitePending: boolean
-  group: {
-    id: string
-    name: string
-    slug: string
-  }
+  group: Group
 }
 
 export interface GroupUsers {
