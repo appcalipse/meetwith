@@ -5,30 +5,26 @@ import {
   HStack,
   Spinner,
   useColorModeValue,
+  useDisclosure,
 } from '@chakra-ui/react'
 import React from 'react'
 
+import GroupInviteCardModal from '@/components/group/GroupInviteCardModal'
 import { GetGroupsResponse } from '@/types/Group'
-import { joinGroup, rejectGroup } from '@/utils/api_helper'
+import { joinGroup } from '@/utils/api_helper'
 
 export interface IGroupInviteCard extends GetGroupsResponse {
   resetState: () => void
 }
 
 const GroupInviteCard: React.FC<IGroupInviteCard> = props => {
-  const bgColor = useColorModeValue('white', '#1F2933')
+  const bgColor = useColorModeValue('white', 'neutral.900')
   const [accepting, setAccepting] = React.useState(false)
-  const [declining, setDeclining] = React.useState(false)
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const handleAccept = async () => {
     setAccepting(true)
     await joinGroup(props.id)
     setAccepting(false)
-    props.resetState()
-  }
-  const handleDecline = async () => {
-    setDeclining(true)
-    await rejectGroup(props.id)
-    setDeclining(false)
     props.resetState()
   }
   return (
@@ -59,18 +55,17 @@ const GroupInviteCard: React.FC<IGroupInviteCard> = props => {
             Join Group
           </Button>
         )}
-        {declining ? (
-          <Spinner marginX={4} />
-        ) : (
-          <Button
-            colorScheme="primary"
-            variant="outline"
-            onClick={handleDecline}
-          >
-            Decline
-          </Button>
-        )}
+
+        <Button colorScheme="primary" variant="outline" onClick={onOpen}>
+          Decline
+        </Button>
       </HStack>
+      <GroupInviteCardModal
+        group_id={props.id}
+        isOpen={isOpen}
+        onClose={onClose}
+        resetState={props.resetState}
+      />
     </HStack>
   )
 }
