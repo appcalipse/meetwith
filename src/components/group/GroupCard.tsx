@@ -1,4 +1,3 @@
-import { CheckCircleIcon } from '@chakra-ui/icons'
 import {
   AccordionButton,
   AccordionItem,
@@ -23,7 +22,7 @@ import {
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import React, { ReactNode, useEffect, useId, useMemo, useState } from 'react'
-import { FaChevronDown, FaChevronUp, FaInfo, FaRegCopy } from 'react-icons/fa'
+import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 
 import { Account } from '@/types/Account'
@@ -33,7 +32,6 @@ import {
   MemberType,
   MenuOptions,
 } from '@/types/Group'
-import { logEvent } from '@/utils/analytics'
 import { getGroupsMembers } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
 
@@ -43,6 +41,7 @@ import GroupMemberCard from './GroupMemberCard'
 export interface IGroupCard extends GetGroupsResponse {
   currentAccount: Account
 }
+
 const GroupCard: React.FC<IGroupCard> = props => {
   const bgColor = useColorModeValue('white', '#1F2933')
   const itemsBgColor = useColorModeValue('white', 'gray.600')
@@ -60,7 +59,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
     const newGroupMembers = (await getGroupsMembers(
       props.id,
       PAGE_SIZE,
-      groupMembers?.length
+      reset ? 0 : groupMembers?.length
     )) as Array<GroupMember>
     if (newGroupMembers?.length < PAGE_SIZE) {
       setNoMoreFetch(true)
