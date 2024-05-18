@@ -4,8 +4,10 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
+import { Group } from '@/types/Group'
 import { MeetingChangeType } from '@/types/Meeting'
 import { MeetingChange } from '@/types/Requests'
+import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
 
 import { ParticipantInfo, ParticipantType } from '../types/ParticipantInfo'
 import {
@@ -20,7 +22,70 @@ import { getAllParticipantsDisplayName } from './user_manager'
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
+export const newGroupInviteEmail = async (
+  toEmail: string,
+  participant: ParticipantInfoForInviteNotification,
+  group: Group
+): Promise<boolean> => {
+  const email = new Email()
+  const displayName = participant.name || participant.account_address
+  const locals = {
+    displayName,
+    group,
+    joinUrl: `${appUrl}/dashboard/group/${group.id}`,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'group_invite')}`,
+    locals
+  )
 
+  const msg: sgMail.MailDataRequired = {
+    to: toEmail,
+    from: FROM,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+  }
+  try {
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+export const newGroupRejectEmail = async (
+  toEmail: string,
+  participant: ParticipantInfoForInviteNotification,
+  group: Group
+): Promise<boolean> => {
+  const email = new Email()
+  const displayName = participant.name || participant.account_address
+  const locals = {
+    displayName,
+    group,
+    joinUrl: `${appUrl}/dashboard/groups?invite=${group.id}`,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'reject_group_invite')}`,
+    locals
+  )
+
+  const msg: sgMail.MailDataRequired = {
+    to: toEmail,
+    from: FROM,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+  }
+  try {
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
 export const newMeetingEmail = async (
   toEmail: string,
   participantType: ParticipantType,
