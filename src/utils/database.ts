@@ -28,6 +28,7 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsResponse,
+  Group,
   GroupInvites,
   GroupMemberQuery,
   GroupUsers,
@@ -38,6 +39,7 @@ import {
   ConferenceMeeting,
   DBSlot,
   GroupMeetingRequest,
+  GroupNotificationType,
   MeetingAccessType,
   MeetingProvider,
   ParticipantMappingType,
@@ -49,6 +51,7 @@ import {
   ParticipantType,
 } from '@/types/ParticipantInfo'
 import {
+  GroupInviteNotifyRequest,
   MeetingCancelSyncRequest,
   MeetingCreationRequest,
   MeetingCreationSyncRequest,
@@ -997,18 +1000,43 @@ const acceptGroupInvite = async (
   }
   const { error: memberError } = await db.supabase
     .from('group_members')
-    .insert([
-      { group_id, member_id: address.toLowerCase(), role: data[0].role },
-    ])
+    .insert({ group_id, member_id: address.toLowerCase(), role: data[0].role })
   if (memberError) {
     throw new Error(memberError.message)
   }
+}
+const getGroupAdminsFromDb = async (
+  group_id: string
+): Promise<Array<GroupMembersRow>> => {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select('member_id')
+    .eq('group_id', group_id)
+    .eq('role', MemberType.ADMIN)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
 }
 const rejectGroupInvite = async (
   group_id: string,
   address: string
 ): Promise<void> => {
-  return acceptGroupInvite(group_id, address, true)
+  await acceptGroupInvite(group_id, address, true)
+  const admins = await getGroupAdminsFromDb(group_id)
+  const body: GroupInviteNotifyRequest = {
+    group_id: group_id,
+    accountsToNotify: admins.map(val => val.member_id),
+    notifyType: GroupNotificationType.REJECT,
+  }
+  fetch(`${apiUrl}/server/groups/syncAndNotify`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
+    },
+  })
 }
 const getGroupUsers = async (
   group_id: string,
@@ -1078,6 +1106,19 @@ const getGroupUsers = async (
     return data
   }
   return []
+}
+const getGroupFromDB = async (group_id: string): Promise<Group> => {
+  const { data, error } = await db.supabase
+    .from('groups')
+    .select()
+    .eq('id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (data) {
+    return data[0]
+  }
+  throw new GroupNotExistsError()
 }
 
 const setAccountNotificationSubscriptions = async (
@@ -1981,6 +2022,7 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
+  getGroupFromDB,
   getGroupInvites,
   getGroupsEmpty,
   getGroupUsers,
