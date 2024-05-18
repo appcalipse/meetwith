@@ -3,6 +3,7 @@ import { Encrypted } from 'eth-crypto'
 import { Account } from './Account'
 import {
   ConferenceMeeting,
+  GroupNotificationType,
   MeetingDecrypted,
   NotBefore,
   ParticipantMappingType,
@@ -72,7 +73,11 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   title?: string
   content?: string
 }
-
+export interface GroupInviteNotifyRequest {
+  group_id: string
+  accountsToNotify: string[]
+  notifyType: GroupNotificationType
+}
 export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   addressesToRemove: string[]
   guestsToRemove: ParticipantInfo[]
