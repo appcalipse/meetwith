@@ -43,7 +43,7 @@ export interface IGroupCard extends GetGroupsResponse {
 }
 
 const GroupCard: React.FC<IGroupCard> = props => {
-  const bgColor = useColorModeValue('white', '#1F2933')
+  const bgColor = useColorModeValue('white', 'neutral.900')
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
