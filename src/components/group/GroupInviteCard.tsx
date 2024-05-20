@@ -3,7 +3,6 @@ import {
   Button,
   Heading,
   HStack,
-  Spinner,
   useColorModeValue,
   useDisclosure,
 } from '@chakra-ui/react'
@@ -48,14 +47,13 @@ const GroupInviteCard: React.FC<IGroupInviteCard> = props => {
       />
       <Heading size={'lg'}>{props.name}</Heading>
       <HStack gap="16px">
-        {accepting ? (
-          <Spinner marginX={4} />
-        ) : (
-          <Button colorScheme="primary" onClick={handleAccept}>
-            Join Group
-          </Button>
-        )}
-
+        <Button
+          isLoading={accepting}
+          colorScheme="primary"
+          onClick={handleAccept}
+        >
+          Join Group
+        </Button>
         <Button colorScheme="primary" variant="outline" onClick={onOpen}>
           Decline
         </Button>
