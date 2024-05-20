@@ -18,7 +18,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     return res.status(200).send(true)
   }
-
   return res.status(404).send('Not found')
 }
 

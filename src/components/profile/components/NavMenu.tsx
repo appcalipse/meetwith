@@ -31,7 +31,8 @@ import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
-import { getNotificationTime } from '@/utils/storage'
+import { isProduction } from '@/utils/constants'
+import { getNotificationTime, saveNotificationTime } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 import { Avatar } from './Avatar'
@@ -59,15 +60,9 @@ export const NavMenu: React.FC<{
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'gray.800')
-  const LinkItems: Array<LinkItemProps> = useMemo(
-    () => [
+  const LinkItems: Array<LinkItemProps> = useMemo(() => {
+    const items: Array<LinkItemProps> = [
       { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
-      {
-        name: 'My Groups',
-        icon: FaUserGroup,
-        mode: EditMode.GROUPS,
-        badge: noOfInvitedGroups,
-      },
       {
         name: 'Availabilities',
         icon: FaCalendarAlt,
@@ -95,9 +90,19 @@ export const NavMenu: React.FC<{
         icon: FaSignOutAlt,
         mode: EditMode.SIGNOUT,
       },
-    ],
-    [noOfInvitedGroups]
-  )
+    ]
+
+    if (!isProduction) {
+      items.splice(1, 0, {
+        name: 'My Groups',
+        icon: FaUserGroup,
+        mode: EditMode.GROUPS,
+        badge: noOfInvitedGroups,
+      })
+    }
+
+    return items
+  }, [noOfInvitedGroups])
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
     emptyGroups?.forEach((data, index) => {
@@ -190,12 +195,12 @@ export const NavMenu: React.FC<{
     }
   }, [])
   useEffect(() => {
-    handleGroupInvites()
+    void handleGroupInvites()
     const lastNotificationTime = getNotificationTime(currentAccount?.address)
     if (lastNotificationTime === null) return
     if (Date.now() > lastNotificationTime) {
-      handleEmptyGroupCheck()
-      // saveNotificationTime(currentAccount?.address)
+      void handleEmptyGroupCheck()
+      saveNotificationTime(currentAccount?.address)
     }
   }, [currentAccount])
 
