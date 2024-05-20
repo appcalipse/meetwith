@@ -60,13 +60,13 @@ const GroupInviteCardModal: React.FC<IGroupInviteCardModal> = props => {
             <Button onClick={props.onClose} colorScheme="grayButton">
               Nervermind
             </Button>
-            {declining ? (
-              <Spinner marginX={4} />
-            ) : (
-              <Button colorScheme="primary" onClick={handleDecline}>
-                Confirm
-              </Button>
-            )}
+            <Button
+              isLoading={declining}
+              colorScheme="primary"
+              onClick={handleDecline}
+            >
+              Confirm
+            </Button>
           </HStack>
         </ModalBody>
       </ModalContent>
