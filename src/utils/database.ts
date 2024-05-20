@@ -982,7 +982,7 @@ const getGroupInvites = async (
   }
   return []
 }
-const acceptGroupInvite = async (
+const manageGroupInvite = async (
   group_id: string,
   address: string,
   reject?: boolean
@@ -1022,7 +1022,7 @@ const rejectGroupInvite = async (
   group_id: string,
   address: string
 ): Promise<void> => {
-  await acceptGroupInvite(group_id, address, true)
+  await manageGroupInvite(group_id, address, true)
   const admins = await getGroupAdminsFromDb(group_id)
   const body: GroupInviteNotifyRequest = {
     group_id: group_id,
@@ -2008,7 +2008,6 @@ export async function createGroupInDB(
 }
 
 export {
-  acceptGroupInvite,
   addOrUpdateConnectedCalendar,
   connectedCalendarExists,
   deleteGateCondition,
@@ -2035,6 +2034,7 @@ export {
   initDB,
   insertOfficeEventMapping,
   isSlotFree,
+  manageGroupInvite,
   rejectGroupInvite,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
