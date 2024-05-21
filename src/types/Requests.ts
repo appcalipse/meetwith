@@ -1,6 +1,7 @@
 import { Encrypted } from 'eth-crypto'
 
 import { Account } from './Account'
+import { MemberType } from './Group'
 import {
   ConferenceMeeting,
   MeetingDecrypted,
@@ -96,4 +97,10 @@ export interface DiscordMeetingRequest {
   interval: number
   description: string
   notBefore?: NotBefore
+}
+
+export interface ChangeGroupAdminRequest {
+  address?: string
+  userId?: string
+  role: MemberType
 }

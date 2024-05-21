@@ -9,7 +9,7 @@ import {
   ConnectedCalendarCore,
   ConnectResponse,
 } from '@/types/CalendarConnections'
-import { ConditionRelation } from '@/types/common'
+import { ConditionRelation, SuccessResponse } from '@/types/common'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
@@ -25,6 +25,7 @@ import {
   TimeSlotSource,
 } from '@/types/Meeting'
 import {
+  ChangeGroupAdminRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
@@ -425,17 +426,31 @@ export const getGroupsMembers = async (
   limit: number,
   offset: number
 ): Promise<Array<GroupMember>> => {
-  const response = (await internalFetch(
+  const response = await internalFetch<Array<GroupMember>>(
     `/secure/group/${group_id}/users?limit=${limit}&offset=${offset}`
-  )) as Array<GroupMember>
-  return response
+  )
+  return response || []
+}
+export const updateGroupRole = async (
+  group_id: string,
+  data: ChangeGroupAdminRequest
+) => {
+  const response = await internalFetch<SuccessResponse>(
+    `/secure/group/${group_id}/admin`,
+    'PATCH',
+    data
+  )
+  return !!response?.success
 }
 export const subscribeToWaitlist = async (
   email: string,
   plan?: string
 ): Promise<boolean> => {
-  const result = await internalFetch(`/subscribe`, 'POST', { email, plan })
-  return (result as any).success
+  const result = await internalFetch<SuccessResponse>(`/subscribe`, 'POST', {
+    email,
+    plan,
+  })
+  return !!result?.success
 }
 
 export const getMeeting = async (slot_id: string): Promise<DBSlot> => {

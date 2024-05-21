@@ -45,6 +45,24 @@ export class NotGroupMemberError extends Error {
     this.name = 'NotGroupMemberError'
   }
 }
+export class AdminBelowOneError extends Error {
+  constructor() {
+    super(`Cannot have less than one admin`)
+    this.name = 'AdminBelowOneError'
+  }
+}
+export class NotGroupAdminError extends Error {
+  constructor() {
+    super(`Not a group admin`)
+    this.name = 'NotGroupAdminError'
+  }
+}
+export class BadRequestError extends Error {
+  constructor() {
+    super(`Bad request`)
+    this.name = 'BadRequestError'
+  }
+}
 export class GroupNotExistsError extends Error {
   constructor() {
     super(`Group does not exists`)
