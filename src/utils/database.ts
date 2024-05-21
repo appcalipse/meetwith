@@ -67,6 +67,7 @@ import {
 } from '@/types/TokenGating'
 import {
   AccountNotFoundError,
+  AdminBelowOneError,
   GateConditionNotValidError,
   GateInUseError,
   GroupCreationError,
@@ -329,7 +330,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     throw new Error("Account preferences couldn't be updated")
   }
 
-  account.preferences = responsePrefsUpdate.data[0]
+  account.preferences = responsePrefsUpdate.data?.[0] as AccountPreferences
 
   account.subscriptions = await getSubscriptionFromDBForAccount(account.address)
 
@@ -888,6 +889,7 @@ const getUserGroups = async (
   }
   return []
 }
+
 async function findGroupsWithSingleMember(
   groupIDs: string
 ): Promise<Array<EmptyGroupsResponse>> {
@@ -937,12 +939,30 @@ const getGroupsEmpty = async (
     return []
   }
 }
-const getGroupUsers = async (
-  group_id: string,
-  address: string,
-  limit: number,
-  offset: number
-): Promise<Array<GroupUsers>> => {
+const getGroupUsersInternal = async (
+  group_id: string
+): Promise<Array<GroupMemberQuery>> => {
+  if (await isGroupExists(group_id)) {
+    const { data: inviteData, error: inviteError } = await db.supabase
+      .from<GroupMemberQuery>('group_invites')
+      .select()
+      .eq('group_id', group_id)
+    if (inviteError) {
+      throw new Error(inviteError.message)
+    }
+    const { data: membersData, error: membersError } = await db.supabase
+      .from<GroupMemberQuery>('group_members')
+      .select()
+      .eq('group_id', group_id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    const members = membersData.concat(inviteData)
+    return members
+  }
+  return []
+}
+const isGroupExists = async (group_id: string) => {
   const { data: groupData, error: groupError } = await db.supabase
     .from('groups')
     .select()
@@ -953,60 +973,105 @@ const getGroupUsers = async (
   if (!groupData) {
     throw new GroupNotExistsError()
   }
-  const { data: memberData, error: memberError } = await db.supabase
-    .from('group_members')
-    .select()
-    .eq('group_id', group_id)
-    .eq('member_id', address.toLowerCase())
-  if (memberError) {
-    throw new Error(memberError.message)
-  }
-  if (!memberData) {
-    throw new NotGroupMemberError()
-  }
-  const { data: inviteData, error: inviteError } = await db.supabase
-    .from('group_invites')
-    .select()
-    .eq('group_id', group_id)
-  if (inviteError) {
-    throw new Error(inviteError.message)
-  }
-  const { data: membersData, error: membersError } = await db.supabase
-    .from('group_members')
-    .select()
-    .eq('group_id', group_id)
-  if (membersError) {
-    throw new Error(membersError.message)
-  }
-  const { data, error } = await db.supabase
-    .from('accounts')
-    .select(
-      `
+  return true
+}
+const getGroupUsers = async (
+  group_id: string,
+  address: string,
+  limit: number,
+  offset: number
+): Promise<Array<GroupUsers>> => {
+  if (await isGroupExists(group_id)) {
+    const { data: inviteData, error: inviteError } = await db.supabase
+      .from('group_invites')
+      .select()
+      .eq('group_id', group_id)
+    if (inviteError) {
+      throw new Error(inviteError.message)
+    }
+    const { data: membersData, error: membersError } = await db.supabase
+      .from('group_members')
+      .select()
+      .eq('group_id', group_id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    const addresses = membersData
+      .map((member: GroupMemberQuery) => member.member_id)
+      .concat(inviteData.map((val: GroupMemberQuery) => val.user_id))
+    if (!addresses.includes(address)) {
+      throw new NotGroupMemberError()
+    }
+    const { data, error } = await db.supabase
+      .from('accounts')
+      .select(
+        `
       group_members: group_members(*),
       group_invites: group_invites(*),
       preferences: account_preferences(name),
       calendars: connected_calendars(calendars)
     `
-    )
-    .in(
-      'address',
-      membersData
-        .map((member: GroupMemberQuery) => member.member_id)
-        .concat(inviteData.map((val: GroupMemberQuery) => val.user_id))
-    )
-    .filter('group_members.group_id', 'eq', group_id)
-    .filter('group_invites.group_id', 'eq', group_id)
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
-  if (error) {
-    throw new Error(error.message)
-  }
+      )
+      .in('address', addresses)
+      .filter('group_members.group_id', 'eq', group_id)
+      .filter('group_invites.group_id', 'eq', group_id)
+      .range(
+        offset || 0,
+        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+      )
+    if (error) {
+      throw new Error(error.message)
+    }
 
-  if (data) {
-    return data
+    if (data) {
+      return data
+    }
   }
   return []
 }
-
+const isGroupAdmin = async (groupId: string, userIdentifier?: string) => {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select('role')
+    .eq('group_id', groupId)
+    .eq('member_id', userIdentifier)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new NotGroupMemberError()
+  }
+  return data[0].role === MemberType.ADMIN
+}
+const changeGroupRole = async (
+  groupId: string,
+  userIdentifier: string,
+  newRole: MemberType
+) => {
+  const groupUsers = await getGroupUsersInternal(groupId)
+  const isInvitee =
+    'user_id' in
+    (groupUsers.find(
+      val => (val?.member_id || val?.user_id) === userIdentifier
+    ) || {})
+  if (newRole === MemberType.MEMBER) {
+    const adminCount = groupUsers.filter(
+      val => val.role === MemberType.ADMIN
+    ).length
+    if (adminCount < 2) {
+      throw new AdminBelowOneError()
+    }
+  }
+  const { error } = await db.supabase
+    .from(isInvitee ? 'group_invites' : 'group_members')
+    .update({ role: newRole })
+    .eq('group_id', groupId)
+    .eq(isInvitee ? 'user_id' : 'member_id', userIdentifier)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return true
+}
 const setAccountNotificationSubscriptions = async (
   address: string,
   notifications: AccountNotifications
@@ -1895,6 +1960,7 @@ export async function createGroupInDB(
 
 export {
   addOrUpdateConnectedCalendar,
+  changeGroupRole,
   connectedCalendarExists,
   deleteGateCondition,
   deleteMeetingFromDB,
@@ -1917,6 +1983,7 @@ export {
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
+  isGroupAdmin,
   isSlotFree,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
