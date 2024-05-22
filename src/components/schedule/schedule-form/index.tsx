@@ -19,7 +19,7 @@ import { FaInfo } from 'react-icons/fa'
 
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import { ToggleSelector } from '@/components/toggle-selector'
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { SchedulingType } from '../../../types/Meeting'
@@ -140,12 +140,12 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     willStartScheduling(!success)
   }
 
-  const { open } = useContext(WalletModalContext)
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleScheduleType = async (type: SchedulingType) => {
     setScheduleType(type)
     if (type === SchedulingType.REGULAR && !logged) {
-      open()
+      openConnection()
     }
   }
 

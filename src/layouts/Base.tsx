@@ -14,8 +14,6 @@ export const BaseLayout: React.FC<{
   children: ReactNode
   consentCookie: boolean
 }> = ({ children, consentCookie }) => {
-  const onboardingModalRef = React.useRef<{ onOpen: () => void }>(null)
-
   return (
     <ChakraProvider theme={customTheme}>
       <ChakraMDXProvider>
@@ -26,10 +24,8 @@ export const BaseLayout: React.FC<{
             {children}
             <Footer />
           </Box>
-          <OnboardingModal ref={onboardingModalRef} />
-          <DiscordOnboardingModal
-            callback={onboardingModalRef.current?.onOpen}
-          />
+          <OnboardingModal />
+          <DiscordOnboardingModal />
         </CookiesProvider>
       </ChakraMDXProvider>
     </ChakraProvider>
