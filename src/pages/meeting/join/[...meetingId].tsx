@@ -16,7 +16,7 @@ import { useContext, useEffect, useState } from 'react'
 import { BiWallet } from 'react-icons/bi'
 
 import Loading from '@/components/Loading'
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useLogin } from '@/session/login'
 import { ConferenceMeeting, MeetingAccessType } from '@/types/Meeting'
 import { getConferenceMeeting } from '@/utils/api_helper'
@@ -27,8 +27,8 @@ const JoinMeetingPage: NextPage = () => {
   const [loading, setLoading] = useState(true)
   const [conference, setConference] = useState<ConferenceMeeting>()
 
-  const { open } = useContext(WalletModalContext)
-  const { handleLogin, currentAccount, loginIn } = useLogin()
+  const { openConnection } = useContext(OnboardingModalContext)
+  const { currentAccount, loginIn } = useLogin()
 
   useEffect(() => {
     if (meetingId) {
@@ -122,7 +122,7 @@ const JoinMeetingPage: NextPage = () => {
               <Button
                 colorScheme="primary"
                 size="lg"
-                onClick={() => open()}
+                onClick={() => openConnection()}
                 isLoading={loginIn}
                 leftIcon={<BiWallet />}
               >

@@ -3,7 +3,7 @@ import type { NextPage } from 'next'
 import React, { useContext } from 'react'
 
 import ConnectWalletDialog from '@/components/ConnectWalletDialog'
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useLogin } from '@/session/login'
 import { withDashboardRedirect } from '@/session/requireAuthentication'
 import { Account } from '@/types/Account'
@@ -15,7 +15,7 @@ interface PartnerLoginProps {
 }
 
 const PartnerLogin: NextPage<PartnerLoginProps> = ({ currentAccount }) => {
-  const { open } = useContext(WalletModalContext)
+  const { openConnection } = useContext(OnboardingModalContext)
   const { loginIn } = useLogin()
 
   return (
@@ -31,7 +31,7 @@ const PartnerLogin: NextPage<PartnerLoginProps> = ({ currentAccount }) => {
         <Button
           colorScheme="primary"
           onClick={() => {
-            open()
+            openConnection()
           }}
         >
           {currentAccount ? 'Sign in' : 'Create an account'}
