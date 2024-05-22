@@ -20,7 +20,7 @@ import { BiMenuAltRight } from 'react-icons/bi'
 import { BiWallet } from 'react-icons/bi'
 import { useActiveWallet } from 'thirdweb/react'
 
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
 import { AccountContext } from '../../providers/AccountProvider'
@@ -30,7 +30,7 @@ import NavBarLoggedProfile from '../profile/NavBarLoggedProfile'
 import { ThemeSwitcher } from '../ThemeSwitcher'
 
 export const Navbar = () => {
-  const { open } = useContext(WalletModalContext)
+  const { openConnection } = useContext(OnboardingModalContext)
   const { isOpen, onToggle } = useDisclosure()
 
   const { pathname, asPath } = useRouter()
@@ -142,7 +142,7 @@ export const Navbar = () => {
               ) : (
                 <Button
                   size="md"
-                  onClick={() => open()}
+                  onClick={() => openConnection()}
                   isLoading={loginIn}
                   colorScheme="primary"
                   leftIcon={<BiWallet />}
@@ -170,7 +170,7 @@ export const Navbar = () => {
 
       <Collapse in={isOpen} animateOpacity>
         <MobileNav
-          onOpenModal={open}
+          onOpenModal={openConnection}
           onToggle={onToggle}
           handleSetActiveLink={handleSetActiveLink}
           isOpen={isOpen}

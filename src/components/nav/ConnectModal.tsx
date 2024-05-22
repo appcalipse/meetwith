@@ -11,12 +11,14 @@ import {
 import { createWallet, inAppWallet, Wallet } from 'thirdweb/wallets'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useLogin } from '@/session/login'
 import { thirdWebClient } from '@/utils/user_manager'
 
 export const ConnectModal: React.FC = ({}) => {
-  const { isOpen, close } = useContext(WalletModalContext)
+  const { isConnectionOpened, closeConnection } = useContext(
+    OnboardingModalContext
+  )
   const { handleLogin } = useLogin()
 
   const { currentAccount, logged, logout } = useContext(AccountContext)
@@ -74,11 +76,11 @@ export const ConnectModal: React.FC = ({}) => {
   }
 
   const onConnect = async (wallet: Wallet) => {
-    close()
+    closeConnection()
     await doLogin(wallet)
   }
 
-  return isOpen && !logged ? (
+  return isConnectionOpened && !logged ? (
     <Portal>
       <Box
         display="flex"
@@ -96,7 +98,7 @@ export const ConnectModal: React.FC = ({}) => {
           top={0}
           position="absolute"
           bgColor="rgba(0, 0, 0, 0.5)"
-          onClick={close}
+          onClick={closeConnection}
         />
         <ConnectEmbed
           client={thirdWebClient}
@@ -111,6 +113,13 @@ export const ConnectModal: React.FC = ({}) => {
           showThirdwebBranding={false}
           showAllWallets={false}
           onConnect={onConnect}
+          appMetadata={{
+            name: 'Meet with Wallet',
+            url: 'https://meetwithwallet.xyz',
+            description:
+              'Meet with Wallet is the web3 tailored scheduling tool.',
+            logoUrl: 'https://meetwithwallet.xyz/assets/logo.svg',
+          }}
           walletConnect={{
             projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
           }}
@@ -118,6 +127,15 @@ export const ConnectModal: React.FC = ({}) => {
       </Box>
     </Portal>
   ) : (
-    <AutoConnect wallets={wallets} client={thirdWebClient} />
+    <AutoConnect
+      appMetadata={{
+        name: 'Meet with Wallet',
+        url: 'https://meetwithwallet.xyz',
+        description: 'Meet with Wallet is the web3 tailored scheduling tool.',
+        logoUrl: 'https://meetwithwallet.xyz/assets/logo.svg',
+      }}
+      wallets={wallets}
+      client={thirdWebClient}
+    />
   )
 }
