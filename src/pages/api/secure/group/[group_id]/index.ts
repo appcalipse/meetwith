@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { getGroupFromDB, initDB } from '@/utils/database'
+import { getGroup, initDB } from '@/utils/database'
 import { GroupNotExistsError, NotGroupMemberError } from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -13,7 +13,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     try {
       const group_id = req.query.group_id as string
-      const group = await getGroupFromDB(group_id, account_address)
+      const group = await getGroup(group_id, account_address)
       return res.status(200).json(group)
     } catch (error) {
       console.log(error)
