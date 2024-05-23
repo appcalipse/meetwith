@@ -157,7 +157,7 @@ export const NavMenu: React.FC<{
               description={`You have been invited to join ${data.name}!`}
               action={() => {
                 props.onClose()
-                router.push(`/dashboard/groups#${data.id}`)
+                router.push(`/dashboard/groups?join=${data.id}`)
               }}
               cta="Join Group"
               close={props.onClose}
