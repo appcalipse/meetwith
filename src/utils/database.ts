@@ -1107,10 +1107,64 @@ const getGroupUsers = async (
   }
   return []
 }
-const getGroupFromDB = async (group_id: string): Promise<Group> => {
-  const { data, error } = await db.supabase
+const getGroupUsersInternal = async (
+  group_id: string
+): Promise<Array<GroupMemberQuery>> => {
+  if (await isGroupExists(group_id)) {
+    const { data: inviteData, error: inviteError } = await db.supabase
+      .from<GroupMemberQuery>('group_invites')
+      .select()
+      .eq('group_id', group_id)
+    if (inviteError) {
+      throw new Error(inviteError.message)
+    }
+    const { data: membersData, error: membersError } = await db.supabase
+      .from<GroupMemberQuery>('group_members')
+      .select()
+      .eq('group_id', group_id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    const members = membersData.concat(inviteData)
+    return members
+  }
+  return []
+}
+const isGroupExists = async (group_id: string) => {
+  const { data: groupData, error: groupError } = await db.supabase
     .from('groups')
     .select()
+    .eq('id', group_id)
+  if (groupError) {
+    throw new Error(groupError.message)
+  }
+  if (!groupData) {
+    throw new GroupNotExistsError()
+  }
+  return true
+}
+const getGroupFromDB = async (
+  group_id: string,
+  address: string
+): Promise<Group> => {
+  const groupUsers = await getGroupUsersInternal(group_id)
+  const isGroupMember = groupUsers.some(
+    user =>
+      user.member_id?.toLowerCase() === address.toLowerCase() ||
+      user.user_id?.toLowerCase() === address.toLowerCase()
+  )
+  if (!isGroupMember) {
+    throw new NotGroupMemberError()
+  }
+  const { data, error } = await db.supabase
+    .from('groups')
+    .select(
+      `
+    name,
+    id,
+    slug
+    `
+    )
     .eq('id', group_id)
   if (error) {
     throw new Error(error.message)
