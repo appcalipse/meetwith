@@ -15,9 +15,10 @@ import React, { ReactNode, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
 import GroupInviteCard from '@/components/group/GroupInviteCard'
+import GroupJoinModal from '@/components/group/GroupJoinModal'
 import { Account } from '@/types/Account'
-import { GetGroupsResponse } from '@/types/Group'
-import { getGroups } from '@/utils/api_helper'
+import { GetGroupsResponse, Group as GroupResponse } from '@/types/Group'
+import { getGroup, getGroups } from '@/utils/api_helper'
 
 import GroupCard from '../group/GroupCard'
 
@@ -26,8 +27,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
+  const [groupData, setGroupData] = useState<GroupResponse | undefined>(
+    undefined
+  )
   const router = useRouter()
-  const { invite } = useRouter().query
+  const { join } = useRouter().query
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
     setLoading(true)
@@ -44,13 +48,18 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setNoMoreFetch(false)
     fetchGroups(true)
   }
-
+  const fetchGroup = async (group_id: string) => {
+    const group = await getGroup(group_id)
+    setGroupData(group)
+  }
   useEffect(() => {
     resetState()
   }, [currentAccount?.address])
   useEffect(() => {
-    // Add modal logic here
-  }, [invite])
+    if (join) {
+      void fetchGroup(join as string)
+    }
+  }, [join])
   let content: ReactNode
   if (firstFetch) {
     content = (
@@ -85,6 +94,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   } else {
     content = (
       <VStack my={6}>
+        <GroupJoinModal
+          group={groupData}
+          onClose={() => setGroupData(undefined)}
+          resetState={resetState}
+        />
         <Accordion allowMultiple width="100%">
           {groups.map(group =>
             group?.invitePending ? (
