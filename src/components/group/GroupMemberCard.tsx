@@ -21,6 +21,7 @@ import { MdDelete } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
+import { baseURL } from '@/utils/constants'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 const Avatar = dynamic(
@@ -56,14 +57,20 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           </Heading>
           {!props.invitePending ? (
             <CopyLinkButton
-              url={'meetwithwallet.xyz/rndaomarketing'}
+              url={`${baseURL}/${props.address}`}
               size="md"
-              width="90%"
-              label={'meetwithwallet.xyz/rndaomarketing'}
+              label={`${baseURL}/${props.address}`}
               withIcon
               design_type="link"
-              noOfLines={1}
               pl={0}
+              childStyle={{
+                style: {
+                  width: '150px', // Set the maximum width you want here
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                },
+              }}
             />
           ) : (
             <HStack alignItems="center">
