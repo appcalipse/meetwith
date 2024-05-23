@@ -15,6 +15,7 @@ import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
   EmptyGroupsResponse,
   GetGroupsResponse,
+  Group,
   GroupMember,
 } from '@/types/Group'
 import {
@@ -449,6 +450,10 @@ export const rejectGroup = async (group_id: string) => {
     'POST'
   )
   return response?.success
+}
+export const getGroup = async (group_id: string) => {
+  const response = await internalFetch<Group>(`/secure/group/${group_id}`)
+  return response
 }
 export const subscribeToWaitlist = async (
   email: string,
