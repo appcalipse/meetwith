@@ -1143,10 +1143,7 @@ const isGroupExists = async (group_id: string) => {
   }
   return true
 }
-const getGroupFromDB = async (
-  group_id: string,
-  address: string
-): Promise<Group> => {
+const getGroup = async (group_id: string, address: string): Promise<Group> => {
   const groupUsers = await getGroupUsersInternal(group_id)
   const isGroupMember = groupUsers.some(
     user =>
@@ -1156,6 +1153,25 @@ const getGroupFromDB = async (
   if (!isGroupMember) {
     throw new NotGroupMemberError()
   }
+  const { data, error } = await db.supabase
+    .from('groups')
+    .select(
+      `
+    name,
+    id,
+    slug
+    `
+    )
+    .eq('id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (data) {
+    return data[0]
+  }
+  throw new GroupNotExistsError()
+}
+const getGroupFromDB = async (group_id: string): Promise<Group> => {
   const { data, error } = await db.supabase
     .from('groups')
     .select(
@@ -2075,6 +2091,7 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
+  getGroup,
   getGroupFromDB,
   getGroupInvites,
   getGroupsEmpty,
