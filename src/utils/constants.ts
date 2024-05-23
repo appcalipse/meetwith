@@ -1,4 +1,4 @@
-const baseURL =
+export const baseURL =
   typeof window === 'undefined'
     ? process.env.NEXT_PUBLIC_HOSTED_AT!.replace(/\/$/, '')
     : window.location.origin
