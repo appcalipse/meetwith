@@ -331,3 +331,53 @@ export const updateMeetingEmail = async (
 
   return true
 }
+
+export const sendInvitationEmail = async (
+  toEmail: string,
+  inviterName: string,
+  groupName: string,
+  message: string,
+  groupId: string
+): Promise<void> => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const invitationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/invite-accept?groupId=${groupId}&email=${toEmail}`
+
+  const locals = {
+    inviterName,
+    groupName,
+    message,
+    invitationLink,
+  }
+
+  try {
+    const rendered = await email.render('invitation_email_template', locals)
+
+    const msg = {
+      to: toEmail,
+      from: FROM,
+      subject: 'You are invited to join a group on Meet With Wallet',
+      html: rendered,
+      text: `${inviterName} invited you to join ${groupName}. Accept your invite here: ${invitationLink}`,
+    }
+
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}

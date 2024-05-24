@@ -112,12 +112,13 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     content = (
       <VStack my={6}>
         <Accordion allowMultiple width="100%">
-          {groups.map(group => (
+          {groups.map((group, index) => (
             <GroupCard
               key={group.id}
               currentAccount={currentAccount}
               {...group}
               onAddNewMember={handleAddNewMember}
+              mt={index === 0 ? 0 : 2}
             />
           ))}
         </Accordion>

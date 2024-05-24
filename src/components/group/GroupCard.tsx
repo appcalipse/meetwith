@@ -46,6 +46,7 @@ import GroupMemberCard from './GroupMemberCard'
 export interface IGroupCard extends GetGroupsResponse {
   currentAccount: Account
   onAddNewMember: (groupId: string, groupName: string) => void
+  mt: number
 }
 
 const GroupCard: React.FC<IGroupCard> = props => {
@@ -184,7 +185,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
           </Flex>
           <Flex alignItems="center" flexBasis="35%" gap={0.5}>
             <Heading size="sm" fontWeight={800}>
-              Calendar connection
+              Calendar Connection
             </Heading>
             <Tooltip.Provider delayDuration={400}>
               <Tooltip.Root>
@@ -265,7 +266,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
       p={8}
       border={0}
       borderRadius="lg"
-      mt={6}
+      mt={props.mt}
       bgColor={bgColor}
     >
       {({ isExpanded }) => (
@@ -280,7 +281,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 withIcon
                 design_type="link"
                 noOfLines={1}
-                width="95%"
+                width="100%"
               />
             </VStack>
             <HStack gap={3} width="fit-content">

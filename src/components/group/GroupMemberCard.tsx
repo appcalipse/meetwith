@@ -59,16 +59,22 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             {props.currentAccount.address === props.address && '(You)'}
           </Heading>
           {!props.invitePending ? (
-            <CopyLinkButton
-              url={'meetwithwallet.xyz/rndaomarketing'}
-              size="md"
-              width="90%"
-              label={'meetwithwallet.xyz/rndaomarketing'}
-              withIcon
-              design_type="link"
-              noOfLines={1}
-              pl={0}
-            />
+            <Box
+              maxW="100%"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+            >
+              <CopyLinkButton
+                url={'meetwithwallet.xyz/rndaomarketing'}
+                size="md"
+                width="100%"
+                label={'meetwithwallet.xyz/rndaomarketing'}
+                withIcon
+                design_type="link"
+                pl={0}
+              />
+            </Box>
           ) : (
             <HStack alignItems="center">
               <Box

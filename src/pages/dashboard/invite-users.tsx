@@ -81,7 +81,7 @@ const InviteUsersPage = () => {
     const payload: GroupInvitePayload = { invitees, message }
 
     try {
-      await inviteUsers(storedGroupId, payload)
+      await inviteUsers(groupId, payload, message)
       router.push('/dashboard/invite-success')
     } catch (error) {
       console.error('Error sending invitations:', error)

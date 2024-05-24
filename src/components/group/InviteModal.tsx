@@ -1,4 +1,3 @@
-import { InfoIcon } from '@chakra-ui/icons'
 import {
   Button,
   FormControl,
@@ -22,7 +21,7 @@ import React, { FC, FormEvent, useState } from 'react'
 import InvitedUsersCardModal from '@/components/group/InvitedUsersCardModal'
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
-import { inviteUsers } from '@/utils/api_helper'
+import { inviteUsersToGroup } from '@/utils/api_helper'
 
 import InfoTooltip from '../profile/components/Tooltip'
 
@@ -47,25 +46,28 @@ const InviteModal: FC<InviteModalProps> = ({
     `Come join our scheduling group ${groupName} on Meet With Wallet!`
   )
 
+  const [isMessageFocused, setIsMessageFocused] = useState<boolean>(false)
+
   const handleInviteSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const formData = new FormData(event.currentTarget)
-    const invitees = [
-      {
-        address: formData.get('address') as string,
-        email: formData.get('email') as string,
-        userId: formData.get('userId') as string,
-        role: formData.get('role') as MemberType,
-      },
-    ]
+    console.log('Invited Users before mapping:', invitedUsers)
 
-    const payload: GroupInvitePayload = { invitees, message }
+    const invitees = invitedUsers.map(user => ({
+      address: user.account_address,
+      email: user.email,
+      userId: user.userId,
+      role: user.role as 'admin' | 'member',
+    }))
 
-    console.log('Payload:', payload)
+    console.log('Invitees after mapping:', invitees)
+
+    const payload: GroupInvitePayload = { invitees }
+
+    console.log('Payload:', payload, 'Message:', message)
 
     try {
-      await inviteUsers(groupId, payload)
+      await inviteUsersToGroup(groupId, payload.invitees, message)
 
       toast({
         title: 'Invitation sent successfully',
@@ -96,7 +98,11 @@ const InviteModal: FC<InviteModalProps> = ({
       const input = event.currentTarget.value.trim()
       if (!input) return
 
-      if (invitedUsers.some(user => user.account_address === input)) {
+      if (
+        invitedUsers.some(
+          user => user.account_address === input || user.email === input
+        )
+      ) {
         toast({
           title: 'User already added',
           description: 'This user has already been added to the invite list.',
@@ -107,14 +113,19 @@ const InviteModal: FC<InviteModalProps> = ({
         return
       }
 
+      const isEmail = input.includes('@')
       const newUser: InvitedUser = {
-        account_address: input,
+        account_address: isEmail ? '' : input,
+        email: isEmail ? input : '',
         role: 'member',
         groupId,
+        userId: '',
+        name: isEmail ? input.split('@')[0] : input,
         invitePending: true,
-        name: '',
-        guest_email: '',
       }
+
+      console.log('New User Added:', newUser)
+
       setInvitedUsers(prev => [...prev, newUser])
       event.currentTarget.value = ''
     }
@@ -172,13 +183,15 @@ const InviteModal: FC<InviteModalProps> = ({
                 <FormLabel>Message</FormLabel>
                 <Textarea
                   name="message"
-                  defaultValue={`Come join our scheduling group ${groupName} on Meet With Wallet!`}
+                  defaultValue={`Come join our scheduling group "${groupName}" on Meet With Wallet!`}
                   bg="gray.700"
                   border="1px solid"
                   borderColor="neutral.400"
                   fontSize="16px"
                   fontWeight="500"
-                  color="neutral.400"
+                  color={isMessageFocused ? 'white' : 'neutral.400'}
+                  onFocus={() => setIsMessageFocused(true)}
+                  onBlur={() => setIsMessageFocused(false)}
                 />
               </FormControl>
             </VStack>

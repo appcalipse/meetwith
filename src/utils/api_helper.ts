@@ -844,29 +844,27 @@ export const createGroup = async (
   }
 }
 
-export const inviteUsers = async (
+export const inviteUsersToGroup = async (
   groupId: string,
-  payload: GroupInvitePayload
+  invitees: GroupInvitePayload['invitees'],
+  message: string
 ): Promise<void> => {
   try {
-    console.log('Inviting users. Payload:', payload)
-    await internalFetch<void>(
-      `/api/secure/group/${groupId}/invite`,
-      'POST',
-      payload
-    )
-  } catch (e: any) {
-    if (e instanceof ApiFetchError) {
-      if (e.status === 400) {
-        throw new UserInvitationError('Invalid input data', e.status)
-      } else if (e.status === 500) {
-        throw new UserInvitationError('Internal server error', e.status)
-      } else {
-        throw new UserInvitationError(e.message, e.status)
-      }
-    } else {
-      Sentry.captureException(e)
-      throw e
-    }
+    await internalFetch<void>(`/secure/group/${groupId}/invite`, 'POST', {
+      invitees,
+      message,
+    })
+  } catch (error) {
+    console.error('Error sending invitation emails:', error)
+    throw error
   }
+}
+
+export const acceptGroupInvite = async (
+  groupId: string,
+  email: string
+): Promise<void> => {
+  await internalFetch<void>(`/secure/group/${groupId}/accept-invite`, 'POST', {
+    email,
+  })
 }

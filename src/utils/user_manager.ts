@@ -1,6 +1,8 @@
 import { createThirdwebClient } from 'thirdweb'
 import { Wallet } from 'thirdweb/wallets'
 
+import { GroupInvite } from '@/types/Group'
+
 import { Account } from '../types/Account'
 import {
   InvitedUser,
@@ -143,25 +145,41 @@ export const getInvitedUserDisplayName = (invitedUser: InvitedUser): string => {
 export const getInvitedUserDisplayNameModal = (
   invitedUser: InvitedUser
 ): string => {
-  const { account_address, guest_email } = invitedUser
+  const { account_address, email, name } = invitedUser
 
-  if (guest_email) {
-    const emailParts = guest_email.split('@')
-    if (emailParts.length === 2) {
-      return `${emailParts[0].substring(0, 12)}...@${emailParts[1]}`
+  console.log('Invited User:', invitedUser)
+
+  if (email) {
+    const maxLength = 16
+    if (email.length > maxLength) {
+      console.log('Truncated Email:', `${email.substring(0, maxLength - 3)}...`)
+      return `${email.substring(0, maxLength - 3)}...`
     }
-    return guest_email
+    console.log('Full Email:', email)
+    return email
   }
 
   if (account_address) {
     if (account_address.includes('.eth')) {
       const [name, domain] = account_address.split('.')
+      console.log(
+        'Truncated Address (.eth):',
+        `${name.substring(0, 12)}...${domain}`
+      )
       return `${name.substring(0, 12)}...${domain}`
     } else {
+      console.log(
+        'Truncated Address:',
+        `${account_address.substring(0, 12)}...${account_address.slice(-4)}`
+      )
       return `${account_address.substring(0, 12)}...${account_address.slice(
         -4
       )}`
     }
+  }
+
+  if (name) {
+    return name
   }
 
   return 'Unknown User'
@@ -240,6 +258,42 @@ const getAllParticipantsDisplayName = (
   const element = displayNames.splice(youIndex, 1)[0]
   displayNames.splice(0, 0, element)
   return displayNames.join(', ')
+}
+
+export const validateUserPermissions = (
+  user: Account,
+  params: {
+    group_id?: string
+    user_id?: string
+    email?: string
+    discord_id?: string
+  },
+  groupInvites: GroupInvite[]
+) => {
+  const { group_id, user_id, email, discord_id } = params
+
+  if (user_id && user_id !== user.id) {
+    return false
+  }
+
+  if (email) {
+    const invite = groupInvites.find(invite => invite.email === email)
+    if (!invite || invite.user_id !== user.id) {
+      return false
+    }
+  }
+
+  if (discord_id) {
+    const invite = groupInvites.find(invite => invite.discord_id === discord_id)
+    if (!invite || invite.user_id !== user.id) {
+      return false
+    }
+  }
+
+  // Add additional checks for group_id if necessary
+  // For example, you may want to check if the user is a member of the group
+
+  return true
 }
 
 export {

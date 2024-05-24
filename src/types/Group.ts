@@ -10,6 +10,7 @@ export interface GetGroupsResponse {
   role: MemberType
   invitePending: boolean
 }
+
 export interface GroupMember {
   displayName: string
   address: string
@@ -67,10 +68,18 @@ export interface MenuOptions {
 
 export interface GroupInvitePayload {
   invitees: {
-    address: string
+    address?: string
     email?: string
     userId?: string
-    role: string
+    role: 'admin' | 'member'
   }[]
-  message: string
+  message?: string
+}
+
+export interface GroupInvite {
+  id: string
+  email?: string
+  discord_id?: string
+  user_id?: string
+  group_id: string
 }
