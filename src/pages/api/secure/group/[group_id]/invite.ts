@@ -1,60 +1,133 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { getAccountFromDB, initDB, isUserAdminOfGroup } from '@/utils/database'
-
-// Note: This is a roughed in version of this endpoint, not a fully fleshed out implementation.
-// Full implementation will be fleshed out here: https://github.com/appcalipse/meet-with-wallet/issues/335
+import { GroupInvite, GroupInvitePayload } from '@/types/Group'
+import { inviteUsersToGroup } from '@/utils/api_helper'
+import {
+  addUserToGroupInvites,
+  createGroupInvite,
+  getAccountFromDB,
+  getAccountNotificationSubscriptions,
+  getGroupById,
+  getGroupInviteByDiscordId,
+  getGroupInviteByEmail,
+  isUserAdminOfGroup,
+  updateGroupInviteUserId,
+} from '@/utils/database'
+import { sendInvitationEmail } from '@/utils/email_helper'
+import { getAccountDisplayName } from '@/utils/user_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  // 'email' is passed in from form input from create-group form, or independently
-  // from 'Add new member' form
-  const { userAddress, email } = req.body
-  const groupId = req.query.group_id as string
+  const { invitees, message = '' } = req.body as GroupInvitePayload
+  const groupId = req.query.group_id as string | undefined
   const session = req.session
 
-  // Ensure the session and group ID are present.
   if (!session || !session.account || !groupId) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
   try {
-    const db = initDB()
+    console.log('Received payload:', invitees, 'Message:', message)
+
     const currentUserAddress = session.account.address
 
-    // Check if the current user is an admin of the group.
     const isAdmin = await isUserAdminOfGroup(groupId, currentUserAddress)
     if (!isAdmin) {
       return res.status(403).json({ error: 'User is not a group admin' })
     }
+    const inviterName = getAccountDisplayName(session.account)
+    const group = await getGroupById(groupId)
 
-    // Check if the invited user exists.
-    const invitedUser = await getAccountFromDB(userAddress)
-    if (!invitedUser) {
-      return res.status(404).json({ error: 'User not found' })
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' })
     }
 
-    // Add the user to the group as a member.
-    const { error } = await db.supabase.from('group_members').insert({
-      member_id: userAddress,
-      group_id: groupId,
-      role: 'member',
-    })
+    const groupName = group.name
 
-    if (error) {
-      console.error('Error inserting group invitation:', error)
-      return res.status(500).json({ error: 'Failed to send invitation' })
+    for (const invitee of invitees) {
+      if (!invitee.email && !invitee.address) {
+        console.error('Invitee email or address is undefined')
+        continue
+      }
+
+      let account = null
+      try {
+        if (invitee.email) {
+          account = await getAccountFromDB(invitee.email)
+        } else if (invitee.address) {
+          account = await getAccountFromDB(invitee.address)
+        }
+        if (!account) {
+          console.error(
+            `Account with identifier ${
+              invitee.email || invitee.address
+            } not found`
+          )
+        }
+      } catch (error) {
+        console.error(
+          `Account with identifier ${
+            invitee.email || invitee.address
+          } not found`,
+          error
+        )
+      }
+
+      let groupInvite: GroupInvite | null = null
+      if (invitee.email) {
+        groupInvite = await getGroupInviteByEmail(invitee.email)
+      } else if (invitee.userId) {
+        groupInvite = await getGroupInviteByDiscordId(invitee.userId)
+      }
+
+      if (groupInvite) {
+        if (invitee.userId) {
+          try {
+            await updateGroupInviteUserId(groupInvite.id, invitee.userId)
+          } catch (error) {
+            console.error('Error updating group invite user ID:', error)
+          }
+        } else {
+          console.warn(
+            'Invitee userId is undefined, continuing with the invite'
+          )
+        }
+      } else {
+        try {
+          await addUserToGroupInvites(
+            groupId,
+            invitee.email,
+            invitee.address,
+            account?.id || invitee.userId
+          )
+        } catch (error) {
+          console.error('Error creating group invite:', error)
+        }
+      }
+
+      if (invitee.email) {
+        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/invite-accept?groupId=${groupId}&email=${invitee.email}`
+        try {
+          await sendInvitationEmail(
+            invitee.email,
+            inviterName,
+            groupName,
+            `${message} Click here to join: ${inviteLink}`,
+            groupId
+          )
+        } catch (error) {
+          console.error('Error sending invitation email:', error)
+        }
+      }
     }
-    // Optional: Send email notification to the invited user.
-    // Implement email notification logic here if required.
 
     return res
       .status(200)
-      .json({ success: true, message: 'Invitation sent successfully.' })
+      .json({ success: true, message: 'Invitations sent successfully.' })
   } catch (error) {
     console.error('An error occurred during invitation:', error)
     return res.status(500).json({ error: 'Failed to send invitation' })

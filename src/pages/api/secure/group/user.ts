@@ -13,10 +13,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     try {
       const groups = await getUserGroups(
-        account_address,
-        Number(req.query.limit as string),
-        Number(req.query.offset as string)
+        account_address
+        // Number(req.query.limit as string),
+        // Number(req.query.offset as string)
       )
+      console.log('Fetched groups:', groups)
+
       const responseJson: Array<GetGroupsResponse> = groups.map(group => ({
         id: group.group.id,
         name: group.group.name,
@@ -25,8 +27,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         invitePending: false,
       }))
 
+      console.log('Formatted groups response:', responseJson)
+
       return res.status(200).json(responseJson)
     } catch (e) {
+      console.error('Error in fetching groups:', e)
       return res.status(500).send(e)
     }
   }
