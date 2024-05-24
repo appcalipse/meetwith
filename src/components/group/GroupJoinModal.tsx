@@ -64,14 +64,11 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
           justifyContent="space-between"
           alignItems="center"
         >
-          <Heading size={'md'}>Accept invite to {props.group?.name}</Heading>
+          <Heading size={'md'}>Accept invite</Heading>
           <ModalCloseButton />
         </ModalHeader>
         <ModalBody p={'0'} mt={'6'}>
-          <Text size={'sm'}>
-            Are you sure? You cannot undo this action afterwards. However, you
-            can always get invited back by an admin.
-          </Text>
+          <Text size={'sm'}>Would you like to join {props.group?.name}?</Text>
           <HStack ml={'auto'} w={'fit-content'} mt={'6'} gap={'4'}>
             <Button
               isLoading={accepting}
