@@ -33,7 +33,7 @@ import {
   MenuOptions,
 } from '@/types/Group'
 import { getGroupsMembers } from '@/utils/api_helper'
-import { baseURL, isProduction } from '@/utils/constants'
+import { appUrl, isProduction } from '@/utils/constants'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 import GroupMemberCard from './GroupMemberCard'
@@ -268,16 +268,16 @@ const GroupCard: React.FC<IGroupCard> = props => {
             <VStack gap={0} alignItems="flex-start">
               <Heading size={'lg'}>{props.name}</Heading>
               <CopyLinkButton
-                url={`${baseURL}/${props.slug}`}
+                url={`${appUrl}/${props.slug}`}
                 size="md"
-                label={`${baseURL}/${props.slug}`}
+                label={`${appUrl}/${props.slug}`}
                 withIcon
                 design_type="link"
                 noOfLines={1}
                 width="100%"
                 childStyle={{
                   style: {
-                    width: '150px', // Set the maximum width you want here
+                    width: '150px',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
