@@ -16,6 +16,7 @@ import { FaPlus } from 'react-icons/fa'
 
 import GroupInviteCard from '@/components/group/GroupInviteCard'
 import GroupJoinModal from '@/components/group/GroupJoinModal'
+import ModalLoading from '@/components/Loading/ModalLoading'
 import { Account } from '@/types/Account'
 import { GetGroupsResponse, Group as GroupResponse } from '@/types/Group'
 import { getGroup, getGroups } from '@/utils/api_helper'
@@ -27,9 +28,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
-  const [groupData, setGroupData] = useState<GroupResponse | undefined>(
-    undefined
-  )
+  const [inviteGroupData, setInviteGroupData] = useState<
+    GroupResponse | undefined
+  >(undefined)
+  const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
   const { join } = useRouter().query
   const fetchGroups = async (reset?: boolean) => {
@@ -46,14 +48,16 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const resetState = async () => {
     setFirstFetch(true)
     setNoMoreFetch(false)
-    fetchGroups(true)
+    void fetchGroups(true)
   }
   const fetchGroup = async (group_id: string) => {
+    setInviteDataIsLoading(true)
     const group = await getGroup(group_id)
-    setGroupData(group)
+    setInviteGroupData(group)
+    setInviteDataIsLoading(false)
   }
   useEffect(() => {
-    resetState()
+    void resetState()
   }, [currentAccount?.address])
   useEffect(() => {
     if (join) {
@@ -94,9 +98,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   } else {
     content = (
       <VStack my={6}>
+        <ModalLoading isOpen={inviteDataIsLoading} />
         <GroupJoinModal
-          group={groupData}
-          onClose={() => setGroupData(undefined)}
+          group={inviteGroupData}
+          onClose={() => setInviteGroupData(undefined)}
           resetState={resetState}
         />
         <Accordion allowMultiple width="100%">
