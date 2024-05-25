@@ -1,11 +1,18 @@
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 
+import { Group, MemberType } from '@/types/Group'
+import { appUrl } from '@/utils/constants'
+
 import {
   AccountNotifications,
   NotificationChannel,
 } from '../types/AccountNotifications'
-import { MeetingChangeType, ParticipantMappingType } from '../types/Meeting'
+import {
+  GroupNotificationType,
+  MeetingChangeType,
+  ParticipantMappingType,
+} from '../types/Meeting'
 import {
   ParticipantBaseInfo,
   ParticipantInfo,
@@ -21,9 +28,12 @@ import {
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
+  getGroupFromDB,
 } from './database'
 import {
   cancelledMeetingEmail,
+  newGroupInviteEmail,
+  newGroupRejectEmail,
   newMeetingEmail,
   updateMeetingEmail,
 } from './email_helper'
@@ -37,7 +47,35 @@ export interface ParticipantInfoForNotification extends ParticipantInfo {
   notifications?: AccountNotifications
   mappingType: ParticipantMappingType
 }
+export interface ParticipantInfoForInviteNotification
+  extends ParticipantBaseInfo {
+  timezone: string
+  notifications?: AccountNotifications
+}
 
+export const notifyForGroupInviteJoinOrReject = async (
+  accountsToNotify: string[],
+  group_id: string,
+  notifyType: GroupNotificationType
+): Promise<void> => {
+  const participantsInfo: ParticipantInfoForInviteNotification[] = []
+  const group = await getGroupFromDB(group_id)
+
+  for (const address of accountsToNotify) {
+    const account = await getAccountFromDB(address)
+    participantsInfo.push({
+      account_address: address,
+      name: account.preferences?.name,
+      notifications: await getAccountNotificationSubscriptions(address),
+      timezone: account.preferences.timezone,
+    })
+  }
+  await runPromises(
+    await workGroupNotifications(participantsInfo, group, notifyType)
+  )
+
+  return
+}
 export const notifyForMeetingCancellation = async (
   participantActing: ParticipantBaseInfo,
   guestsToRemove: ParticipantInfo[],
@@ -245,7 +283,67 @@ const workNotifications = async (
   }
   return promises
 }
+const workGroupNotifications = async (
+  participantsInfo: ParticipantInfoForInviteNotification[],
+  group: Group,
+  notifyType: GroupNotificationType
+): Promise<Promise<boolean>[]> => {
+  const promises: Promise<boolean>[] = []
 
+  try {
+    for (const participant of participantsInfo) {
+      if (
+        participant.account_address &&
+        participant.notifications &&
+        participant.notifications?.notification_types.length > 0
+      ) {
+        for (const notification_type of participant.notifications
+          .notification_types) {
+          if (!notification_type.disabled) {
+            switch (notification_type.channel) {
+              case NotificationChannel.EMAIL:
+                promises.push(
+                  getGroupEmailNotification(participant, group, notifyType)
+                )
+                break
+              case NotificationChannel.DISCORD:
+                const accountForDiscord = await getAccountFromDB(
+                  participant.account_address
+                )
+                // Dont DM if you are the person is the one scheduling the meeting
+                if (isProAccount(accountForDiscord)) {
+                }
+                break
+              default:
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    Sentry.captureException(error)
+  }
+  return promises
+}
+const getGroupEmailNotification = async (
+  participant: ParticipantInfoForInviteNotification,
+  group: Group,
+  notifyType?: GroupNotificationType
+) => {
+  const toEmail =
+    participant.guest_email ||
+    participant.notifications!.notification_types.filter(
+      t => t.channel === NotificationChannel.EMAIL
+    )[0]!.destination
+  switch (notifyType) {
+    case GroupNotificationType.INVITE:
+      return newGroupInviteEmail(toEmail, participant, group)
+    case GroupNotificationType.REJECT:
+      return newGroupRejectEmail(toEmail, participant, group)
+    default:
+  }
+  return Promise.resolve(false)
+}
 const getEmailNotification = async (
   _changeType: MeetingChangeType,
   participantActing: ParticipantBaseInfo,
