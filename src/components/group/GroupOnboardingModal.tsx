@@ -61,7 +61,7 @@ const GroupOnboardingModal = ({
     // Logic to accept the invite and join the group
     // After accepting, you might want to redirect the user
     // For example:
-    await acceptGroupInvite(groupId, currentAccount?.address)
+    // await acceptGroupInvite(groupId, currentAccount?.address)
     router.push('/dashboard/groups')
   }
 

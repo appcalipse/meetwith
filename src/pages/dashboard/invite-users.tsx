@@ -132,13 +132,13 @@ const InviteUsersPage = () => {
         return
       }
 
-      const newUser: InvitedUser = {
-        groupId: storedGroupId,
-        account_address: input,
-        role: 'member',
-        invitePending: true,
-      }
-      setInvitedUsers(prev => [...prev, newUser])
+      // const newUser: InvitedUser = {
+      //   groupId: storedGroupId,
+      //   account_address: input,
+      //   role: 'member',
+      //   invitePending: true,
+      // }
+      // setInvitedUsers(prev => [...prev, newUser])
       setContactIdentifier('')
     }
   }
