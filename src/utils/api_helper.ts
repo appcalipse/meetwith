@@ -15,6 +15,7 @@ import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
   EmptyGroupsResponse,
   GetGroupsResponse,
+  Group,
   GroupMember,
 } from '@/types/Group'
 import {
@@ -421,6 +422,12 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   )) as Array<GetGroupsResponse>
   return response
 }
+export const getGroupsInvites = async (address: string) => {
+  const response = await internalFetch<Array<EmptyGroupsResponse>>(
+    `/secure/group/user/${address}`
+  )
+  return response
+}
 export const getGroupsMembers = async (
   group_id: string,
   limit: number,
@@ -441,6 +448,24 @@ export const updateGroupRole = async (
     data
   )
   return !!response?.success
+}
+export const joinGroup = async (group_id: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/join`,
+    'POST'
+  )
+  return response?.success
+}
+export const rejectGroup = async (group_id: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/reject`,
+    'POST'
+  )
+  return response?.success
+}
+export const getGroup = async (group_id: string) => {
+  const response = await internalFetch<Group>(`/secure/group/${group_id}`)
+  return response
 }
 export const subscribeToWaitlist = async (
   email: string,

@@ -28,6 +28,8 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
   GetGroupsResponse,
+  Group,
+  GroupInvites,
   GroupMemberQuery,
   GroupUsers,
   MemberType,
@@ -37,6 +39,7 @@ import {
   ConferenceMeeting,
   DBSlot,
   GroupMeetingRequest,
+  GroupNotificationType,
   MeetingAccessType,
   MeetingProvider,
   ParticipantMappingType,
@@ -48,6 +51,7 @@ import {
   ParticipantType,
 } from '@/types/ParticipantInfo'
 import {
+  GroupInviteNotifyRequest,
   MeetingCancelSyncRequest,
   MeetingCreationRequest,
   MeetingCreationSyncRequest,
@@ -871,6 +875,16 @@ const getUserGroups = async (
   limit: number,
   offset: number
 ): Promise<Array<UserGroups>> => {
+  const { data: invites, error: invitesError } = await db.supabase
+    .from('group_invites')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('user_id', address.toLowerCase())
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
   const { data, error } = await db.supabase
     .from('group_members')
     .select(
@@ -880,18 +894,26 @@ const getUserGroups = async (
   `
     )
     .eq('member_id', address.toLowerCase())
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .range(
+      offset || 0,
+      (offset || 0) +
+        (limit ? limit - 1 - (invites?.length || 0) : 999999999999999)
+    )
+
+  if (invitesError) {
+    throw new Error(invitesError.message)
+  }
   if (error) {
     throw new Error(error.message)
   }
-  if (data) {
-    return data
+  if (data || invites) {
+    return invites.map(val => ({ ...val, invitePending: true })).concat(data)
   }
   return []
 }
 
 async function findGroupsWithSingleMember(
-  groupIDs: string
+  groupIDs: Array<string>
 ): Promise<Array<EmptyGroupsResponse>> {
   const filteredGroups = []
   for (const groupID of groupIDs) {
@@ -926,55 +948,98 @@ const getGroupsEmpty = async (
   if (error) {
     throw new Error(error.message)
   }
-
   if (memberGroups.length > 0) {
     const groupIDs = memberGroups.map(
       (group: { group_id: string }) => group.group_id
     )
-    return findGroupsWithSingleMember(
-      Array.isArray(groupIDs) ? groupIDs[0] : groupIDs
-    )
+    return findGroupsWithSingleMember(groupIDs)
   } else {
     // user is not part of any group
     return []
   }
 }
-const getGroupUsersInternal = async (
-  group_id: string
-): Promise<Array<GroupMemberQuery>> => {
-  if (await isGroupExists(group_id)) {
-    const { data: inviteData, error: inviteError } = await db.supabase
-      .from<GroupMemberQuery>('group_invites')
-      .select()
-      .eq('group_id', group_id)
-    if (inviteError) {
-      throw new Error(inviteError.message)
-    }
-    const { data: membersData, error: membersError } = await db.supabase
-      .from<GroupMemberQuery>('group_members')
-      .select()
-      .eq('group_id', group_id)
-    if (membersError) {
-      throw new Error(membersError.message)
-    }
-    const members = membersData.concat(inviteData)
-    return members
+const getGroupInvites = async (
+  address: string,
+  limit?: number,
+  offset?: number
+): Promise<Array<UserGroups>> => {
+  const { data, error } = await db.supabase
+    .from('group_invites')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('user_id', address.toLowerCase())
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (data) {
+    return data
   }
   return []
 }
-const isGroupExists = async (group_id: string) => {
-  const { data: groupData, error: groupError } = await db.supabase
-    .from('groups')
-    .select()
-    .eq('id', group_id)
-  if (groupError) {
-    throw new Error(groupError.message)
+const manageGroupInvite = async (
+  group_id: string,
+  address: string,
+  reject?: boolean
+): Promise<void> => {
+  const { error, data } = await db.supabase
+    .from<GroupInvites>('group_invites')
+    .delete()
+    .eq('user_id', address.toLowerCase())
+    .eq('group_id', group_id)
+  if (error) {
+    throw new Error(error.message)
   }
-  if (!groupData) {
-    throw new GroupNotExistsError()
+  if (reject) {
+    return
   }
-  return true
+  const { error: memberError } = await db.supabase
+    .from('group_members')
+    .insert({ group_id, member_id: address.toLowerCase(), role: data[0].role })
+  if (memberError) {
+    throw new Error(memberError.message)
+  }
 }
+const getGroupAdminsFromDb = async (
+  group_id: string
+): Promise<Array<GroupMembersRow>> => {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select('member_id')
+    .eq('group_id', group_id)
+    .eq('role', MemberType.ADMIN)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const rejectGroupInvite = async (
+  group_id: string,
+  address: string
+): Promise<void> => {
+  await manageGroupInvite(group_id, address, true)
+  const admins = await getGroupAdminsFromDb(group_id)
+  const body: GroupInviteNotifyRequest = {
+    group_id: group_id,
+    accountsToNotify: admins.map(val => val.member_id),
+    notifyType: GroupNotificationType.REJECT,
+  }
+  fetch(`${apiUrl}/server/groups/syncAndNotify`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
+    },
+  })
+}
+
 const getGroupUsers = async (
   group_id: string,
   address: string,
@@ -1072,6 +1137,90 @@ const changeGroupRole = async (
   }
   return true
 }
+const getGroupUsersInternal = async (
+  group_id: string
+): Promise<Array<GroupMemberQuery>> => {
+  if (await isGroupExists(group_id)) {
+    const { data: inviteData, error: inviteError } = await db.supabase
+      .from<GroupMemberQuery>('group_invites')
+      .select()
+      .eq('group_id', group_id)
+    if (inviteError) {
+      throw new Error(inviteError.message)
+    }
+    const { data: membersData, error: membersError } = await db.supabase
+      .from<GroupMemberQuery>('group_members')
+      .select()
+      .eq('group_id', group_id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    const members = membersData.concat(inviteData)
+    return members
+  }
+  return []
+}
+const isGroupExists = async (group_id: string) => {
+  const { data: groupData, error: groupError } = await db.supabase
+    .from('groups')
+    .select()
+    .eq('id', group_id)
+  if (groupError) {
+    throw new Error(groupError.message)
+  }
+  if (!groupData) {
+    throw new GroupNotExistsError()
+  }
+  return true
+}
+const getGroup = async (group_id: string, address: string): Promise<Group> => {
+  const groupUsers = await getGroupUsersInternal(group_id)
+  const isGroupMember = groupUsers.some(
+    user =>
+      user.member_id?.toLowerCase() === address.toLowerCase() ||
+      user.user_id?.toLowerCase() === address.toLowerCase()
+  )
+  if (!isGroupMember) {
+    throw new NotGroupMemberError()
+  }
+  const { data, error } = await db.supabase
+    .from('groups')
+    .select(
+      `
+    name,
+    id,
+    slug
+    `
+    )
+    .eq('id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (data) {
+    return data[0]
+  }
+  throw new GroupNotExistsError()
+}
+const getGroupFromDB = async (group_id: string): Promise<Group> => {
+  const { data, error } = await db.supabase
+    .from('groups')
+    .select(
+      `
+    name,
+    id,
+    slug
+    `
+    )
+    .eq('id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (data) {
+    return data[0]
+  }
+  throw new GroupNotExistsError()
+}
+
 const setAccountNotificationSubscriptions = async (
   address: string,
   notifications: AccountNotifications
@@ -1973,6 +2122,9 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
+  getGroup,
+  getGroupFromDB,
+  getGroupInvites,
   getGroupsEmpty,
   getGroupUsers,
   getMeetingFromDB,
@@ -1985,6 +2137,8 @@ export {
   insertOfficeEventMapping,
   isGroupAdmin,
   isSlotFree,
+  manageGroupInvite,
+  rejectGroupInvite,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
   saveEmailToDB,
