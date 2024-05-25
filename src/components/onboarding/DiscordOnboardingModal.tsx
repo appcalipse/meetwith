@@ -15,22 +15,18 @@ import { useContext, useEffect, useState } from 'react'
 import { FaDiscord } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { discordRedirectUrl, OnboardingSubject } from '@/utils/constants'
 
 let didDiscordInit = false
 let didOpenConnectWallet = false
 
-export default function DiscordOnboardingModal({
-  callback,
-}: {
-  callback?: () => void
-}) {
+export default function DiscordOnboardingModal() {
   const queryParams = useSearchParams()
   const origin = queryParams.get('origin')
 
-  const { isOpen, onOpen: openOnboardingModal, onClose } = useDisclosure()
-  const { open } = useContext(WalletModalContext)
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const { openOnboarding } = useContext(OnboardingModalContext)
 
   const { currentAccount } = useContext(AccountContext)
 
@@ -43,7 +39,7 @@ export default function DiscordOnboardingModal({
         !currentAccount.discord_account
       ) {
         setSubject(OnboardingSubject.Discord)
-        openOnboardingModal()
+        onOpen()
         didDiscordInit = true
       }
     } else if (
@@ -52,10 +48,10 @@ export default function DiscordOnboardingModal({
       !didOpenConnectWallet &&
       !isOpen
     ) {
-      open()
+      openOnboarding()
       didOpenConnectWallet = true
     }
-  }, [currentAccount, openOnboardingModal, origin, open, subject])
+  }, [currentAccount, onOpen, origin, openOnboarding, subject])
 
   return (
     <>
@@ -115,7 +111,7 @@ export default function DiscordOnboardingModal({
                       new Date()
                     )
                   ) {
-                    callback?.()
+                    openOnboarding()
                   }
                 }}
               >

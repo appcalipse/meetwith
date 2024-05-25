@@ -21,7 +21,7 @@ import { IoMdClose } from 'react-icons/io'
 import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { Plan } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
 
@@ -161,12 +161,12 @@ export function Plans() {
     undefined as string | undefined
   )
 
-  const { open } = useContext(WalletModalContext)
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleLogin = async (selectedPlan?: Plan) => {
     if (!currentAccount) {
       logEvent(`Clicked to start on ${selectedPlan} plan`)
-      open()
+      openConnection()
     } else {
       if (selectedPlan && selectedPlan === Plan.PRO) {
         await router.push('/dashboard/details')
