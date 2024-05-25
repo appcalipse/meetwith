@@ -1039,42 +1039,7 @@ const rejectGroupInvite = async (
     },
   })
 }
-const getGroupUsersInternal = async (
-  group_id: string
-): Promise<Array<GroupMemberQuery>> => {
-  if (await isGroupExists(group_id)) {
-    const { data: inviteData, error: inviteError } = await db.supabase
-      .from<GroupMemberQuery>('group_invites')
-      .select()
-      .eq('group_id', group_id)
-    if (inviteError) {
-      throw new Error(inviteError.message)
-    }
-    const { data: membersData, error: membersError } = await db.supabase
-      .from<GroupMemberQuery>('group_members')
-      .select()
-      .eq('group_id', group_id)
-    if (membersError) {
-      throw new Error(membersError.message)
-    }
-    const members = membersData.concat(inviteData)
-    return members
-  }
-  return []
-}
-const isGroupExists = async (group_id: string) => {
-  const { data: groupData, error: groupError } = await db.supabase
-    .from('groups')
-    .select()
-    .eq('id', group_id)
-  if (groupError) {
-    throw new Error(groupError.message)
-  }
-  if (!groupData) {
-    throw new GroupNotExistsError()
-  }
-  return true
-}
+
 const getGroupUsers = async (
   group_id: string,
   address: string,
