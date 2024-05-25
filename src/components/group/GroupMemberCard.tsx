@@ -25,6 +25,7 @@ import { MdDelete } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
+import { appUrl } from '@/utils/constants'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
@@ -86,14 +87,31 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     >
       <HStack flexBasis="57%" overflow="hidden">
         <Box width="64px" height="64px" display="block" flexBasis={'64px'}>
-          <Avatar address={props.address} />
+          <Avatar address={props.address || ''} />
         </Box>
         <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
           <Heading size="sm">
             {props.displayName}{' '}
             {props.currentAccount.address === props.address && '(You)'}
           </Heading>
-          {props.invitePending ? (
+          {!props.invitePending ? (
+            <CopyLinkButton
+              url={`${appUrl}/${props.address}`}
+              size="md"
+              label={`${appUrl}/${props.address}`}
+              withIcon
+              design_type="link"
+              pl={0}
+              childStyle={{
+                style: {
+                  width: '150px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                },
+              }}
+            />
+          ) : (
             <HStack alignItems="center">
               <Box
                 h={5}
@@ -111,20 +129,6 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 Send reminder
               </Button>
             </HStack>
-          ) : (
-            <CopyLinkButton
-              url={`meetwithwallet.xyz/${props.groupSlug}`}
-              size="md"
-              label={`meetwithwallet.xyz/${props.groupSlug}`}
-              withIcon
-              design_type="link"
-              whiteSpace="nowrap"
-              overflow="hidden"
-              textOverflow="ellipsis"
-              maxWidth="100%"
-              textDecoration="none"
-              pl={0}
-            />
           )}
         </VStack>
       </HStack>

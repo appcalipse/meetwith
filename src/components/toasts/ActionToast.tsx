@@ -1,18 +1,21 @@
 import { CloseIcon, InfoIcon } from '@chakra-ui/icons'
 import {
   Button,
+  Heading,
   HStack,
   Text,
   Tooltip,
   useColorModeValue,
+  VStack,
 } from '@chakra-ui/react'
 
 const ActionToast: React.FC<{
   description: string
+  title: string
   cta: string
   action: () => void
   close: () => void
-}> = ({ description, cta, close, action }) => {
+}> = ({ description, title, cta, close, action }) => {
   const color = useColorModeValue('gray.800', 'white')
   const bgColor = useColorModeValue('white', '#1F2933')
   return (
@@ -30,7 +33,12 @@ const ActionToast: React.FC<{
       borderStyle="inset"
     >
       <InfoIcon cursor="pointer" color={color} ml={2} />
-      <Text>{description}</Text>
+      <VStack alignItems="flex-start" gap={0}>
+        <Heading size="base" fontWeight="700">
+          {title}
+        </Heading>
+        <Text>{description}</Text>
+      </VStack>
       <HStack gap={2.5}>
         <Button variant="text" color="primary.200" onClick={action}>
           {cta}
