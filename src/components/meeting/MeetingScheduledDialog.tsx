@@ -17,7 +17,7 @@ import { useContext, useState } from 'react'
 import { FaBell } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import {
   AccountNotifications,
   NotificationChannel,
@@ -56,12 +56,12 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
 
   const toast = useToast()
 
-  const { open } = useContext(WalletModalContext)
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on WHY section')
-      open()
+      openConnection()
     } else {
       await router.push('/dashboard')
     }
