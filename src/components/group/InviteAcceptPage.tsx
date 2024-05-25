@@ -34,7 +34,7 @@ const InviteAcceptPage = () => {
       } catch (error) {
         toast({
           title: 'Failed to verify invite',
-          description: error.message,
+          // description: error.message,
           status: 'error',
           duration: 5000,
           isClosable: true,
