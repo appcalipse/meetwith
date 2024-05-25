@@ -16,18 +16,18 @@ import { FaRegCalendarCheck, FaRegHandshake } from 'react-icons/fa'
 import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
 
 export function Why() {
   const { currentAccount, loginIn } = useContext(AccountContext)
 
-  const { open } = useContext(WalletModalContext)
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on WHY section')
-      open()
+      openConnection()
     } else {
       await router.push('/dashboard')
     }

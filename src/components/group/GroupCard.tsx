@@ -21,7 +21,14 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import React, { ReactNode, useEffect, useId, useMemo, useState } from 'react'
+import React, {
+  Fragment,
+  ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from 'react'
 import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 
@@ -32,8 +39,9 @@ import {
   MemberType,
   MenuOptions,
 } from '@/types/Group'
-import { getGroupsMembers } from '@/utils/api_helper'
-import { appUrl, isProduction } from '@/utils/constants'
+import { ChangeGroupAdminRequest } from '@/types/Requests'
+import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
+import { appUrl, isProduction } from '@/utils/constants'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 import GroupMemberCard from './GroupMemberCard'
@@ -53,6 +61,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const id = useId()
   const [firstFetch, setFirstFetch] = useState(true)
+  const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
     setLoading(true)
@@ -65,6 +74,9 @@ const GroupCard: React.FC<IGroupCard> = props => {
       setNoMoreFetch(true)
     }
     setGroupsMembers(prev => (reset ? [] : [...prev]).concat(newGroupMembers))
+    setGroupRoles(prev =>
+      (reset ? [] : [...prev]).concat(newGroupMembers?.map(val => val.role))
+    )
     setLoading(false)
     setFirstFetch(false)
   }
@@ -111,6 +123,9 @@ const GroupCard: React.FC<IGroupCard> = props => {
       default:
         return []
     }
+  }
+  const updateRole = async (data: ChangeGroupAdminRequest) => {
+    return await updateGroupRole(props.id, data)
   }
   let content: ReactNode
   const menuItems = useMemo(
@@ -218,6 +233,10 @@ const GroupCard: React.FC<IGroupCard> = props => {
               key={member?.address}
               isEmpty={groupMembers.length < 2}
               viewerRole={props.role}
+              groupRoles={groupRoles}
+              setGroupRoles={setGroupRoles}
+              updateRole={updateRole}
+              groupSlug={props.slug}
               {...member}
             />
           ))}
@@ -274,7 +293,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 withIcon
                 design_type="link"
                 noOfLines={1}
-                width="100%"
+                width="100%" 
                 childStyle={{
                   style: {
                     width: '150px',
@@ -305,14 +324,13 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 <Portal>
                   <MenuList backgroundColor={menuBgColor}>
                     {menuItems.map((val, index, arr) => (
-                      <>
+                      <Fragment key={`${val.label}-${props?.id}`}>
                         {val.link ? (
                           <MenuItem
                             as="a"
                             href={val.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            key={`${val.label}-${props?.id}`}
                             backgroundColor={menuBgColor}
                           >
                             {val.label}
@@ -330,7 +348,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                         {index !== arr.length - 1 && (
                           <MenuDivider borderColor="neutral.600" />
                         )}
-                      </>
+                      </Fragment>
                     ))}
                     {!isProduction && (
                       <>

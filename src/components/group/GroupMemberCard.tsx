@@ -4,6 +4,10 @@ import {
   Heading,
   HStack,
   Icon,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   Spinner,
   Tag,
   TagLabel,
@@ -22,6 +26,7 @@ import { MdDelete } from 'react-icons/md'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { appUrl } from '@/utils/constants'
+import { ChangeGroupAdminRequest } from '@/types/Requests'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 const Avatar = dynamic(
@@ -35,9 +40,43 @@ interface IGroupMemberCard extends GroupMember {
   currentAccount: Account
   isEmpty?: boolean
   viewerRole: MemberType
+  groupRoles: Array<MemberType>
+  setGroupRoles: React.Dispatch<React.SetStateAction<MemberType[]>>
+  updateRole: (data: ChangeGroupAdminRequest) => Promise<boolean>
+  groupSlug: string
 }
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
+  const activeMenuColor = useColorModeValue('neutral.800', 'neutral.200')
+  const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
+  const [loading, setLoading] = React.useState(false)
+  const handleRoleChange = (
+    oldRole: MemberType,
+    newRole: MemberType,
+    condition?: boolean
+  ) => {
+    return async () => {
+      try {
+        if (currentRole === oldRole && !condition) {
+          setLoading(true)
+          const isSuccessful = await props.updateRole({
+            address: props.address,
+            role: newRole,
+          })
+          setLoading(false)
+          if (!isSuccessful) return
+          props.setGroupRoles(prev => {
+            const rolesArr = [...prev]
+            const index = prev.indexOf(oldRole)
+            rolesArr[index] = newRole
+            return rolesArr
+          })
+          setCurrentRole(newRole)
+        }
+      } catch (e) {}
+    }
+  }
+
   return (
     <HStack
       width="100%"
@@ -94,14 +133,66 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
         </VStack>
       </HStack>
       <HStack flexBasis="15%" overflow="hidden">
-        <Button
-          rightIcon={<FaChevronDown />}
-          variant="ghost"
-          p={0}
-          textTransform="capitalize"
-        >
-          {props.role}
-        </Button>
+        {loading ? (
+          <Spinner marginInline="auto" />
+        ) : (
+          <Menu>
+            <MenuButton
+              as={Button}
+              rightIcon={
+                <FaChevronDown
+                  style={{
+                    marginLeft:
+                      currentRole === MemberType.ADMIN ? '0px' : '15px',
+                  }}
+                />
+              }
+              variant="ghost"
+              gap={12}
+              px={4}
+              textTransform="capitalize"
+            >
+              {currentRole}
+            </MenuButton>
+            <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
+              <MenuItem
+                textTransform="capitalize"
+                borderBottom={`2px solid ${activeMenuColor}`}
+                backgroundColor={
+                  currentRole === MemberType.ADMIN ? activeMenuColor : undefined
+                }
+                onClick={handleRoleChange(MemberType.MEMBER, MemberType.ADMIN)}
+                disabled={currentRole === MemberType.ADMIN}
+              >
+                {MemberType.ADMIN}
+              </MenuItem>
+              <MenuItem
+                width="100px"
+                textTransform="capitalize"
+                backgroundColor={
+                  currentRole === MemberType.MEMBER
+                    ? activeMenuColor
+                    : undefined
+                }
+                disabled={
+                  (currentRole === MemberType.ADMIN &&
+                    props.groupRoles.filter(role => role === MemberType.ADMIN)
+                      .length === 1) ||
+                  currentRole === MemberType.MEMBER
+                }
+                onClick={handleRoleChange(
+                  MemberType.ADMIN,
+                  MemberType.MEMBER,
+                  currentRole === MemberType.ADMIN &&
+                    props.groupRoles.filter(role => role === MemberType.ADMIN)
+                      .length === 1
+                )}
+              >
+                {MemberType.MEMBER}
+              </MenuItem>
+            </MenuList>
+          </Menu>
+        )}
       </HStack>
       <HStack flexBasis="35%" display="flex" justifyContent="space-between">
         {props?.calendarConnected ? (
