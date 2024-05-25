@@ -14,7 +14,7 @@ import { Head } from '@/components/Head'
 import { ConnectModal } from '@/components/nav/ConnectModal'
 import { BaseLayout } from '@/layouts/Base'
 import { AccountProvider } from '@/providers/AccountProvider'
-import { WalletModalProvider } from '@/providers/WalletModalProvider'
+import { OnboardingModalProvider } from '@/providers/OnboardingModalProvider'
 import { validateAuthenticationApp } from '@/session/core'
 import { Account } from '@/types/Account'
 import { initAnalytics, pageView } from '@/utils/analytics'
@@ -71,18 +71,18 @@ function MyApp({
         <ReactQueryDevtools initialIsOpen={true} />
       )}
       <ThirdwebProvider>
-        <AccountProvider
-          currentAccount={currentAccount}
-          logged={!!currentAccount}
-        >
-          <WalletModalProvider>
+        <OnboardingModalProvider>
+          <AccountProvider
+            currentAccount={currentAccount}
+            logged={!!currentAccount}
+          >
             <Head />
             <BaseLayout consentCookie={consentCookie ?? false}>
               <Component {...customProps} />
             </BaseLayout>
             <ConnectModal />
-          </WalletModalProvider>
-        </AccountProvider>
+          </AccountProvider>
+        </OnboardingModalProvider>
       </ThirdwebProvider>
     </QueryClientProvider>
   )

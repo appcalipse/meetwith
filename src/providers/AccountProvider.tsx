@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from 'react'
+import React, { ReactNode, useContext, useState } from 'react'
 import { useCookies } from 'react-cookie'
 import { useDisconnect } from 'thirdweb/react'
 import { type Wallet } from 'thirdweb/wallets'
@@ -10,6 +10,7 @@ import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { removeSignature } from '@/utils/storage'
 
+import { OnboardingModalContext } from './OnboardingModalProvider'
 import { OnboardingProvider } from './OnboardingProvider'
 
 interface IAccountContext {
@@ -50,6 +51,8 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
     currentAccount,
     logged,
   })
+
+  const { resetOnboarding } = useContext(OnboardingModalContext)
 
   const { disconnect } = useDisconnect()
   const [loginIn, setLoginIn] = useState(false)
@@ -100,6 +103,7 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
       currentAccount: null,
       logged: false,
     }))
+    resetOnboarding()
   }
   const context = {
     ...userContext,

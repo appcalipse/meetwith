@@ -16,18 +16,18 @@ import { useContext } from 'react'
 import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import { WalletModalContext } from '@/providers/WalletModalProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
 
 export function Hero() {
   const { currentAccount, loginIn } = useContext(AccountContext)
 
-  const { open } = useContext(WalletModalContext)
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on FREE plan')
-      open()
+      openConnection()
     } else {
       await router.push('/dashboard')
     }
