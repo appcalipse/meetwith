@@ -18,7 +18,10 @@ import InvitedUsersCard from '@/components/group/InvitedUsersCard'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { GroupInvitePayload } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
-import { getAccount, inviteUsers } from '@/utils/api_helper'
+import {
+  getAccount,
+  //  inviteUsers
+} from '@/utils/api_helper'
 import {
   isEmptyString,
   isEthereumAddressOrDomain,
@@ -81,7 +84,7 @@ const InviteUsersPage = () => {
     const payload: GroupInvitePayload = { invitees, message }
 
     try {
-      await inviteUsers(groupId, payload, message)
+      // await inviteUsers(groupId, payload, message)
       router.push('/dashboard/invite-success')
     } catch (error) {
       console.error('Error sending invitations:', error)
@@ -132,13 +135,13 @@ const InviteUsersPage = () => {
         return
       }
 
-      const newUser: InvitedUser = {
-        groupId: storedGroupId,
-        account_address: input,
-        role: 'member',
-        invitePending: true,
-      }
-      setInvitedUsers(prev => [...prev, newUser])
+      // const newUser: InvitedUser = {
+      //   groupId: storedGroupId,
+      //   account_address: input,
+      //   role: 'member',
+      //   invitePending: true,
+      // }
+      // setInvitedUsers(prev => [...prev, newUser])
       setContactIdentifier('')
     }
   }

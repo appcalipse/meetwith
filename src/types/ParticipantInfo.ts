@@ -30,6 +30,6 @@ export interface InvitedUser extends ParticipantBaseInfo {
   groupId: string
   role: 'admin' | 'member'
   invitePending: boolean
-  email: string
+  email?: string
   userId?: string
 }

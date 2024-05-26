@@ -1,7 +1,7 @@
 import { createThirdwebClient } from 'thirdweb'
 import { Wallet } from 'thirdweb/wallets'
 
-import { GroupInvite } from '@/types/Group'
+import { GroupInvitesResponse } from '@/types/Group'
 
 import { Account } from '../types/Account'
 import {
@@ -268,7 +268,7 @@ export const validateUserPermissions = (
     email?: string
     discord_id?: string
   },
-  groupInvites: GroupInvite[]
+  groupInvites: GroupInvitesResponse[]
 ) => {
   const { group_id, user_id, email, discord_id } = params
 
@@ -278,14 +278,14 @@ export const validateUserPermissions = (
 
   if (email) {
     const invite = groupInvites.find(invite => invite.email === email)
-    if (!invite || invite.user_id !== user.id) {
+    if (!invite || invite.userId !== user.id) {
       return false
     }
   }
 
   if (discord_id) {
-    const invite = groupInvites.find(invite => invite.discord_id === discord_id)
-    if (!invite || invite.user_id !== user.id) {
+    const invite = groupInvites.find(invite => invite.discordId === discord_id)
+    if (!invite || invite.userId !== user.id) {
       return false
     }
   }
