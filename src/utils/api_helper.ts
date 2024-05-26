@@ -860,6 +860,7 @@ export const inviteUsersToGroup = async (
   }
 }
 
+// This will be replaced by fetch call to /join endpoint
 export const acceptGroupInvite = async (
   groupId: string,
   email: string

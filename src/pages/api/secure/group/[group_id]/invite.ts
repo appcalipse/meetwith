@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { GroupInvite, GroupInvitePayload } from '@/types/Group'
+import { GroupInvitePayload, GroupInvitesResponse } from '@/types/Group'
 import { inviteUsersToGroup } from '@/utils/api_helper'
 import {
   addUserToGroupInvites,
@@ -77,7 +77,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         )
       }
 
-      let groupInvite: GroupInvite | null = null
+      let groupInvite: GroupInvitesResponse | null = null
       if (invitee.email) {
         groupInvite = await getGroupInviteByEmail(invitee.email)
       } else if (invitee.userId) {

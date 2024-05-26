@@ -27,8 +27,10 @@ import {
 import { DiscordAccount } from '@/types/Discord'
 import {
   EmptyGroupsResponse,
+  GetGroupInvitesPayload,
   GetGroupsResponse,
-  GroupInvite,
+  GroupInvitePayload,
+  GroupInvitesResponse,
   GroupMemberQuery,
   GroupUsers,
   MemberType,
@@ -1968,7 +1970,7 @@ export const addUserToGroupInvites = async (
 
 export const getGroupInviteByEmail = async (
   email: string
-): Promise<GroupInvite | null> => {
+): Promise<GroupInvitesResponse | null> => {
   const { data, error } = await db.supabase
     .from('group_invites')
     .select()
@@ -1981,12 +1983,12 @@ export const getGroupInviteByEmail = async (
 
   if (data.length === 0) return null
 
-  return data[0] as GroupInvite
+  return data[0] as GroupInvitesResponse
 }
 
 export const getGroupInviteByDiscordId = async (
   discordId: string
-): Promise<GroupInvite | null> => {
+): Promise<GroupInvitesResponse | null> => {
   const { data, error } = await db.supabase
     .from('group_invites')
     .select()
@@ -1999,7 +2001,7 @@ export const getGroupInviteByDiscordId = async (
 
   if (data.length === 0) return null
 
-  return data[0] as GroupInvite
+  return data[0] as GroupInvitesResponse
 }
 
 export const updateGroupInviteUserId = async (
@@ -2017,12 +2019,9 @@ export const updateGroupInviteUserId = async (
   }
 }
 
-export const getGroupInvitesFromDB = async (params: {
-  group_id?: string
-  user_id?: string
-  email?: string
-  discord_id?: string
-}) => {
+export const getGroupInvitesFromDB = async (
+  params: GetGroupInvitesPayload
+): Promise<GroupInvitesResponse[]> => {
   const { group_id, user_id, email, discord_id } = params
 
   let query = db.supabase.from('group_invites').select('*')
@@ -2030,7 +2029,6 @@ export const getGroupInvitesFromDB = async (params: {
   if (group_id) {
     query = query.eq('group_id', group_id)
   }
-
   if (user_id) {
     query = query.eq('user_id', user_id)
   } else if (email) {
@@ -2045,7 +2043,13 @@ export const getGroupInvitesFromDB = async (params: {
     throw new Error(error.message)
   }
 
-  return data
+  return data.map((invite: GroupInvitesResponse) => ({
+    id: invite.id,
+    email: invite.email || undefined,
+    discordId: invite.discordId || undefined,
+    userId: invite.userId || undefined,
+    groupId: invite.groupId,
+  }))
 }
 
 export const getGroupById = async (
@@ -2065,6 +2069,28 @@ export const getGroupById = async (
   }
 
   return data
+}
+
+export const getEmailByAccountId = async (
+  accountId: string
+): Promise<string | null> => {
+  try {
+    const { data, error } = await db.supabase
+      .from('emails')
+      .select('email')
+      .eq('id', accountId)
+      .single()
+
+    if (error) {
+      console.error('Error fetching email from emails table:', error)
+      return null
+    }
+
+    return data?.email || null
+  } catch (error) {
+    console.error('Error fetching email by account ID:', error)
+    return null
+  }
 }
 
 export {

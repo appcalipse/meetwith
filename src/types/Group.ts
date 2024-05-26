@@ -76,10 +76,17 @@ export interface GroupInvitePayload {
   message?: string
 }
 
-export interface GroupInvite {
+export interface GroupInvitesResponse {
   id: string
   email?: string
-  discord_id?: string
+  discordId?: string
+  userId?: string
+  groupId: string
+}
+
+export interface GetGroupInvitesPayload {
+  group_id?: string
   user_id?: string
-  group_id: string
+  email?: string
+  discord_id?: string
 }
