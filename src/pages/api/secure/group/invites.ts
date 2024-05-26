@@ -20,8 +20,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  // Extract email from preferences if available
-  const accountEmail = session.account.preferences?.email
+  // Extract email from preferences if available - fix
+  // const accountEmail = session.account.preferences?.email
 
   // Extract discord_id from discord_account if available
   const accountDiscordId = session.account.discord_account?.discord_id
