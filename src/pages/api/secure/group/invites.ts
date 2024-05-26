@@ -31,9 +31,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
-  if (email && email !== accountEmail) {
-    return res.status(403).json({ error: 'Forbidden' })
-  }
+  //   if (email && email !== accountEmail) {
+  //     return res.status(403).json({ error: 'Forbidden' })
+  //   }
 
   if (discord_id && discord_id !== accountDiscordId) {
     return res.status(403).json({ error: 'Forbidden' })
