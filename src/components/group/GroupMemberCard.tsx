@@ -25,8 +25,8 @@ import { MdDelete } from 'react-icons/md'
 
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
-import { appUrl } from '@/utils/constants'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
+import { appUrl } from '@/utils/constants'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 const Avatar = dynamic(
