@@ -76,7 +76,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     currentAccount.subscriptions?.[0]?.domain || ''
   )
   const [newProDomain, setNewProDomain] = useState<string>(
-    currentAccount.subscriptions?.[0]?.domain || ''
+    currentAccount.subscriptions?.[0]?.domain ?? ''
   )
 
   const [name, setName] = useState<DisplayName | undefined>(
@@ -125,7 +125,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           }
         : undefined
     )
-    setNewProDomain(currentAccount?.subscriptions?.[0]?.domain || '')
+    setNewProDomain(currentAccount?.subscriptions?.[0]?.domain ?? '')
   }
 
   const updateAccountSubs = async () => {
@@ -171,7 +171,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           })
         )
         setProDomain(domains[0])
-        setNewProDomain(domains[0])
+        setNewProDomain(domains[0] ?? '')
       }
     }
 
@@ -362,7 +362,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const subscription = currentAccount?.subscriptions?.filter(
     sub => sub.plan_id === Plan.PRO
   )?.[0]
-
   return (
     <VStack mb={8} alignItems="start" flex={1}>
       <Block>
