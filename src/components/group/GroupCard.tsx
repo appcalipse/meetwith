@@ -41,7 +41,7 @@ import {
 } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
-import { appUrl, isProduction } from '@/utils/constants'
+import { appUrl, isProduction } from '@/utils/constants'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 import GroupMemberCard from './GroupMemberCard'
@@ -293,7 +293,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 withIcon
                 design_type="link"
                 noOfLines={1}
-                width="100%" 
+                width="100%"
                 childStyle={{
                   style: {
                     width: '150px',
