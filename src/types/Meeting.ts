@@ -137,7 +137,12 @@ export enum MeetingChangeType {
   UPDATE,
   DELETE,
 }
-
+export enum GroupNotificationType {
+  INVITE,
+  JOIN,
+  REJECT,
+  LEAVE,
+}
 export enum NotBefore {
   OneHour = 1,
   TwoHours = 2,

@@ -13,7 +13,6 @@ import {
   SlideFade,
   Text,
 } from '@chakra-ui/react'
-import { useModal } from 'connectkit'
 import router from 'next/router'
 import { useContext, useState } from 'react'
 import { IconType } from 'react-icons'
@@ -22,6 +21,7 @@ import { IoMdClose } from 'react-icons/io'
 import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { Plan } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
 
@@ -161,12 +161,12 @@ export function Plans() {
     undefined as string | undefined
   )
 
-  const { setOpen } = useModal()
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleLogin = async (selectedPlan?: Plan) => {
     if (!currentAccount) {
       logEvent(`Clicked to start on ${selectedPlan} plan`)
-      setOpen(true)
+      openConnection()
     } else {
       if (selectedPlan && selectedPlan === Plan.PRO) {
         await router.push('/dashboard/details')

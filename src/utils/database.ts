@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { createClient } from '@supabase/supabase-js'
+import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import { addMinutes, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
@@ -8,6 +8,7 @@ import EthCrypto, {
   encryptWithPublicKey,
 } from 'eth-crypto'
 import { validate } from 'uuid'
+import { v4 as uuidv4 } from 'uuid'
 
 import {
   Account,
@@ -25,9 +26,20 @@ import {
 } from '@/types/CalendarConnections'
 import { DiscordAccount } from '@/types/Discord'
 import {
+  EmptyGroupsResponse,
+  GetGroupsResponse,
+  Group,
+  GroupInvites,
+  GroupMemberQuery,
+  GroupUsers,
+  MemberType,
+  UserGroups,
+} from '@/types/Group'
+import {
   ConferenceMeeting,
   DBSlot,
   GroupMeetingRequest,
+  GroupNotificationType,
   MeetingAccessType,
   MeetingProvider,
   ParticipantMappingType,
@@ -39,6 +51,7 @@ import {
   ParticipantType,
 } from '@/types/ParticipantInfo'
 import {
+  GroupInviteNotifyRequest,
   MeetingCancelSyncRequest,
   MeetingCreationRequest,
   MeetingCreationSyncRequest,
@@ -46,17 +59,27 @@ import {
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
 import {
+  Database,
+  GroupMembersRow,
+  Tables,
+  TablesInsert,
+} from '@/types/supabase'
+import {
   GateConditionObject,
   GateUsage,
   GateUsageType,
 } from '@/types/TokenGating'
 import {
   AccountNotFoundError,
+  AdminBelowOneError,
   GateConditionNotValidError,
   GateInUseError,
+  GroupCreationError,
+  GroupNotExistsError,
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  NotGroupMemberError,
   TimeNotAvailableError,
   UnauthorizedError,
 } from '@/utils/errors'
@@ -73,7 +96,11 @@ import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { isValidEVMAddress } from './validations'
 
-const db: { ready: boolean } & Record<string, any> = { ready: false }
+// TODO: better typing
+type SupabaseRecords = { ready: boolean } & Record<string, SupabaseClient>
+const db: SupabaseRecords = {
+  ready: false,
+} as SupabaseRecords
 
 const initDB = () => {
   if (!db.ready) {
@@ -126,7 +153,7 @@ const initAccountDBForWallet = async (
   ])
 
   if (createdUserAccount.error) {
-    throw new Error(createdUserAccount.error)
+    throw new Error(createdUserAccount.error.message)
   }
   const defaultMeetingType = generateDefaultMeetingType()
   const defaultAvailabilities = generateEmptyAvailabilities()
@@ -139,6 +166,9 @@ const initAccountDBForWallet = async (
     timezone,
   }
 
+  if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
+    throw new Error('User account not created')
+  }
   const user_account = createdUserAccount.data[0]
 
   try {
@@ -181,7 +211,7 @@ const updateAccountFromInvite = async (
 
   const encryptedPvtKey = encryptContent(signature, newIdentity.privateKey)
 
-  const { _, error } = await db.supabase.from('accounts').upsert(
+  const { error } = await db.supabase.from<Account>('accounts').upsert(
     [
       {
         address: account_address.toLowerCase(),
@@ -195,11 +225,11 @@ const updateAccountFromInvite = async (
   )
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   const account = await getAccountFromDB(account_address)
-  account.preferences!.timezone = timezone
+  account.preferences.timezone = timezone
 
   await updateAccountPreferences(account)
 
@@ -216,7 +246,7 @@ const updateAccountFromInvite = async (
         privateInfo
       )
 
-      const { _, error } = await db.supabase
+      const { error } = await db.supabase
         .from('slots')
         .update({
           meeting_info_encrypted: newPvtInfo,
@@ -224,7 +254,7 @@ const updateAccountFromInvite = async (
         .match({ id: slot.id })
 
       if (error) {
-        throw new Error(error)
+        throw new Error(error.message)
       }
     } catch (err) {
       //if any fail, dont fail them all
@@ -285,7 +315,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     url: link.url?.trim(),
   }))
 
-  await workMeetingTypeGates(account.preferences!.availableTypes || [])
+  await workMeetingTypeGates(account.preferences.availableTypes || [])
 
   const responsePrefsUpdate = await db.supabase
     .from('account_preferences')
@@ -304,12 +334,11 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
     throw new Error("Account preferences couldn't be updated")
   }
 
-  delete account.preferences
-  account['preferences'] = responsePrefsUpdate.data[0]
+  account.preferences = responsePrefsUpdate.data?.[0] as AccountPreferences
 
   account.subscriptions = await getSubscriptionFromDBForAccount(account.address)
 
-  return account as Account
+  return account
 }
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
@@ -323,7 +352,7 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
     .or(query)
 
   if (!error && data.length > 0) {
-    return data[0].nonce as number
+    return data[0].nonce
   }
 
   throw new AccountNotFoundError(identifier)
@@ -334,7 +363,7 @@ export const getAccountPreferences = async (
 ): Promise<AccountPreferences> => {
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
-      .from('account_preferences')
+      .from<AccountPreferences>('account_preferences')
       .select()
       .match({ owner_account_address: owner_account_address.toLowerCase() })
 
@@ -352,7 +381,7 @@ export const getAccountPreferences = async (
     const defaultAvailabilities = generateEmptyAvailabilities()
     const { data: newPreferences, error: newPreferencesError } =
       await db.supabase
-        .from('account_preferences')
+        .from<AccountPreferences>('account_preferences')
         .update({
           availabilities: defaultAvailabilities,
         })
@@ -363,7 +392,7 @@ export const getAccountPreferences = async (
       throw new Error('Error while completign empty preferences')
     }
 
-    return newPreferences
+    return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
   }
 
   return account_preferences[0]
@@ -382,14 +411,14 @@ const getExistingAccountsFromDB = async (
     )
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   if (fullInformation) {
     for (const account of data) {
-      account.preferences = (await getAccountPreferences(
+      account.preferences = await getAccountPreferences(
         account.address.toLowerCase()
-      )) as AccountPreferences
+      )
     }
   }
 
@@ -400,15 +429,15 @@ const getAccountFromDB = async (
   identifier: string,
   includePrivateInformation?: boolean
 ): Promise<Account> => {
-  const { data, error } = await db.supabase.rpc('fetch_account', {
+  const { data, error } = await db.supabase.rpc<Account>('fetch_account', {
     identifier: identifier.toLowerCase(),
   })
   if (data) {
-    const account = data as Account
+    const account = Array.isArray(data) ? data[0] : data
     try {
-      account.preferences = (await getAccountPreferences(
+      account.preferences = await getAccountPreferences(
         account.address.toLowerCase()
-      )) as AccountPreferences
+      )
     } catch (e) {
       Sentry.captureException(e)
       throw new Error("Couldn't get account's preferences")
@@ -423,7 +452,7 @@ const getAccountFromDB = async (
     }
     return account
   } else if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
   throw new AccountNotFoundError(identifier)
 }
@@ -451,7 +480,7 @@ const getSlotsForAccount = async (
     .order('start')
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
     // //TODO: handle error
   }
 
@@ -477,7 +506,7 @@ const getSlotsForDashboard = async (
     .order('start')
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
     // //TODO: handle error
   }
 
@@ -512,12 +541,12 @@ const isSlotFree = async (
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
   const { data, error } = await db.supabase
-    .from('slots')
+    .from<DBSlot>('slots')
     .select()
     .eq('id', slot_id)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
     // todo handle error
   }
 
@@ -525,7 +554,7 @@ const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
     throw new MeetingNotFoundError(slot_id)
   }
 
-  const dbMeeting = data[0] as DBSlot
+  const dbMeeting = data[0]
   const meeting: DBSlot = dbMeeting
 
   return meeting
@@ -535,19 +564,19 @@ const getConferenceMeetingFromDB = async (
   meetingId: string
 ): Promise<ConferenceMeeting> => {
   const { data, error } = await db.supabase
-    .from('meetings')
+    .from<ConferenceMeeting>('meetings')
     .select()
     .eq('id', meetingId)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   if (data.length == 0) {
     throw new MeetingNotFoundError(meetingId)
   }
 
-  const dbMeeting = data[0] as ConferenceMeeting
+  const dbMeeting = data[0]
   return dbMeeting
 }
 
@@ -558,7 +587,7 @@ const getMeetingsFromDB = async (slotIds: string[]): Promise<DBSlot[]> => {
     .in('id', slotIds)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
     // todo handle error
   }
 
@@ -587,9 +616,9 @@ const deleteMeetingFromDB = async (
     throw new Error('No slot ids provided')
   }
 
-  const oldSlots: DBSlot[] = (
-    await db.supabase.from('slots').select().in('id', slotIds)
-  ).data
+  const oldSlots: DBSlot[] =
+    (await db.supabase.from<DBSlot>('slots').select().in('id', slotIds)).data ||
+    []
 
   const { data, error } = await db.supabase
     .from('slots')
@@ -597,7 +626,7 @@ const deleteMeetingFromDB = async (
     .in('id', slotIds)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   const body: MeetingCancelSyncRequest = {
@@ -635,7 +664,7 @@ const saveMeeting = async (
   }
 
   const slots = []
-  let meetingResponse = {} as DBSlot
+  let meetingResponse: Partial<DBSlot> = {}
   let index = 0
   let i = 0
 
@@ -728,9 +757,9 @@ const saveMeeting = async (
           ))
         const isTimeAvailable = () =>
           isTimeInsideAvailabilities(
-            utcToZonedTime(meeting.start, ownerAccount!.preferences!.timezone!),
-            utcToZonedTime(meeting.end, ownerAccount!.preferences!.timezone!),
-            ownerAccount!.preferences!.availabilities
+            utcToZonedTime(meeting.start, ownerAccount!.preferences.timezone),
+            utcToZonedTime(meeting.end, ownerAccount!.preferences.timezone),
+            ownerAccount!.preferences.availabilities
           )
         if (
           participantIsOwner &&
@@ -749,7 +778,7 @@ const saveMeeting = async (
           .includes(participant.account_address!)
       ) {
         account = await getAccountFromDB(participant.account_address!)
-        participant.timeZone = account.preferences!.timezone
+        participant.timeZone = account.preferences.timezone
       } else {
         account = await initAccountDBForWallet(
           participant.account_address!,
@@ -792,7 +821,7 @@ const saveMeeting = async (
 
   //TODO: handle error
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   meetingResponse.id = data[index].id
@@ -820,7 +849,7 @@ const saveMeeting = async (
     },
   })
 
-  return meetingResponse
+  return meetingResponse as DBSlot
 }
 
 const getAccountNotificationSubscriptions = async (
@@ -832,13 +861,364 @@ const getAccountNotificationSubscriptions = async (
     .eq('account_address', address.toLowerCase())
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   if (data && data[0]) {
     return data[0] as AccountNotifications
   }
   return { account_address: address, notification_types: [] }
+}
+
+const getUserGroups = async (
+  address: string,
+  limit: number,
+  offset: number
+): Promise<Array<UserGroups>> => {
+  const { data: invites, error: invitesError } = await db.supabase
+    .from('group_invites')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('user_id', address.toLowerCase())
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('member_id', address.toLowerCase())
+    .range(
+      offset || 0,
+      (offset || 0) +
+        (limit ? limit - 1 - (invites?.length || 0) : 999999999999999)
+    )
+
+  if (invitesError) {
+    throw new Error(invitesError.message)
+  }
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (data || invites) {
+    return invites.map(val => ({ ...val, invitePending: true })).concat(data)
+  }
+  return []
+}
+
+async function findGroupsWithSingleMember(
+  groupIDs: Array<string>
+): Promise<Array<EmptyGroupsResponse>> {
+  const filteredGroups = []
+  for (const groupID of groupIDs) {
+    const { data: group, error } = await db.supabase
+      .from('group_members')
+      .select('count')
+      .eq('group_id', groupID)
+    if (error) {
+      throw new Error(error.message)
+    } else if (group.length === 1 && group[0].count === 1) {
+      const { data: groupDetails, error: groupError } = await db.supabase
+        .from('groups')
+        .select('id, name, slug')
+        .eq('id', groupID)
+      if (groupError) {
+        throw new Error(groupError.message)
+      }
+      filteredGroups.push(groupDetails[0])
+    }
+  }
+  return filteredGroups
+}
+
+const getGroupsEmpty = async (
+  address: string
+): Promise<Array<EmptyGroupsResponse>> => {
+  const { data: memberGroups, error } = await db.supabase
+    .from('group_members')
+    .select('group_id')
+    .eq('member_id', address.toLowerCase())
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (memberGroups.length > 0) {
+    const groupIDs = memberGroups.map(
+      (group: { group_id: string }) => group.group_id
+    )
+    return findGroupsWithSingleMember(groupIDs)
+  } else {
+    // user is not part of any group
+    return []
+  }
+}
+const getGroupInvites = async (
+  address: string,
+  limit?: number,
+  offset?: number
+): Promise<Array<UserGroups>> => {
+  const { data, error } = await db.supabase
+    .from('group_invites')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('user_id', address.toLowerCase())
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (data) {
+    return data
+  }
+  return []
+}
+const manageGroupInvite = async (
+  group_id: string,
+  address: string,
+  reject?: boolean
+): Promise<void> => {
+  const { error, data } = await db.supabase
+    .from<GroupInvites>('group_invites')
+    .delete()
+    .eq('user_id', address.toLowerCase())
+    .eq('group_id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (reject) {
+    return
+  }
+  const { error: memberError } = await db.supabase
+    .from('group_members')
+    .insert({ group_id, member_id: address.toLowerCase(), role: data[0].role })
+  if (memberError) {
+    throw new Error(memberError.message)
+  }
+}
+const getGroupAdminsFromDb = async (
+  group_id: string
+): Promise<Array<GroupMembersRow>> => {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select('member_id')
+    .eq('group_id', group_id)
+    .eq('role', MemberType.ADMIN)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const rejectGroupInvite = async (
+  group_id: string,
+  address: string
+): Promise<void> => {
+  await manageGroupInvite(group_id, address, true)
+  const admins = await getGroupAdminsFromDb(group_id)
+  const body: GroupInviteNotifyRequest = {
+    group_id: group_id,
+    accountsToNotify: admins.map(val => val.member_id),
+    notifyType: GroupNotificationType.REJECT,
+  }
+  fetch(`${apiUrl}/server/groups/syncAndNotify`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
+    },
+  })
+}
+
+const getGroupUsers = async (
+  group_id: string,
+  address: string,
+  limit: number,
+  offset: number
+): Promise<Array<GroupUsers>> => {
+  if (await isGroupExists(group_id)) {
+    const { data: inviteData, error: inviteError } = await db.supabase
+      .from('group_invites')
+      .select()
+      .eq('group_id', group_id)
+    if (inviteError) {
+      throw new Error(inviteError.message)
+    }
+    const { data: membersData, error: membersError } = await db.supabase
+      .from('group_members')
+      .select()
+      .eq('group_id', group_id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    const addresses = membersData
+      .map((member: GroupMemberQuery) => member.member_id)
+      .concat(inviteData.map((val: GroupMemberQuery) => val.user_id))
+    if (!addresses.includes(address)) {
+      throw new NotGroupMemberError()
+    }
+    const { data, error } = await db.supabase
+      .from('accounts')
+      .select(
+        `
+      group_members: group_members(*),
+      group_invites: group_invites(*),
+      preferences: account_preferences(name),
+      calendars: connected_calendars(calendars)
+    `
+      )
+      .in('address', addresses)
+      .filter('group_members.group_id', 'eq', group_id)
+      .filter('group_invites.group_id', 'eq', group_id)
+      .range(
+        offset || 0,
+        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+      )
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (data) {
+      return data
+    }
+  }
+  return []
+}
+const isGroupAdmin = async (groupId: string, userIdentifier?: string) => {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select('role')
+    .eq('group_id', groupId)
+    .eq('member_id', userIdentifier)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new NotGroupMemberError()
+  }
+  return data[0].role === MemberType.ADMIN
+}
+const changeGroupRole = async (
+  groupId: string,
+  userIdentifier: string,
+  newRole: MemberType
+) => {
+  const groupUsers = await getGroupUsersInternal(groupId)
+  const isInvitee =
+    'user_id' in
+    (groupUsers.find(
+      val => (val?.member_id || val?.user_id) === userIdentifier
+    ) || {})
+  if (newRole === MemberType.MEMBER) {
+    const adminCount = groupUsers.filter(
+      val => val.role === MemberType.ADMIN
+    ).length
+    if (adminCount < 2) {
+      throw new AdminBelowOneError()
+    }
+  }
+  const { error } = await db.supabase
+    .from(isInvitee ? 'group_invites' : 'group_members')
+    .update({ role: newRole })
+    .eq('group_id', groupId)
+    .eq(isInvitee ? 'user_id' : 'member_id', userIdentifier)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return true
+}
+const getGroupUsersInternal = async (
+  group_id: string
+): Promise<Array<GroupMemberQuery>> => {
+  if (await isGroupExists(group_id)) {
+    const { data: inviteData, error: inviteError } = await db.supabase
+      .from<GroupMemberQuery>('group_invites')
+      .select()
+      .eq('group_id', group_id)
+    if (inviteError) {
+      throw new Error(inviteError.message)
+    }
+    const { data: membersData, error: membersError } = await db.supabase
+      .from<GroupMemberQuery>('group_members')
+      .select()
+      .eq('group_id', group_id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    const members = membersData.concat(inviteData)
+    return members
+  }
+  return []
+}
+const isGroupExists = async (group_id: string) => {
+  const { data: groupData, error: groupError } = await db.supabase
+    .from('groups')
+    .select()
+    .eq('id', group_id)
+  if (groupError) {
+    throw new Error(groupError.message)
+  }
+  if (!groupData) {
+    throw new GroupNotExistsError()
+  }
+  return true
+}
+const getGroup = async (group_id: string, address: string): Promise<Group> => {
+  const groupUsers = await getGroupUsersInternal(group_id)
+  const isGroupMember = groupUsers.some(
+    user =>
+      user.member_id?.toLowerCase() === address.toLowerCase() ||
+      user.user_id?.toLowerCase() === address.toLowerCase()
+  )
+  if (!isGroupMember) {
+    throw new NotGroupMemberError()
+  }
+  const { data, error } = await db.supabase
+    .from('groups')
+    .select(
+      `
+    name,
+    id,
+    slug
+    `
+    )
+    .eq('id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (data) {
+    return data[0]
+  }
+  throw new GroupNotExistsError()
+}
+const getGroupFromDB = async (group_id: string): Promise<Group> => {
+  const { data, error } = await db.supabase
+    .from('groups')
+    .select(
+      `
+    name,
+    id,
+    slug
+    `
+    )
+    .eq('id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (data) {
+    return data[0]
+  }
+  throw new GroupNotExistsError()
 }
 
 const setAccountNotificationSubscriptions = async (
@@ -852,12 +1232,12 @@ const setAccountNotificationSubscriptions = async (
     )
   }
 
-  const { _, error } = await db.supabase
+  const { error } = await db.supabase
     .from('account_notifications')
     .upsert(notifications, { onConflict: 'account_address' })
     .eq('account_address', address.toLowerCase())
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   return notifications
@@ -872,7 +1252,7 @@ export const createOrUpdatesDiscordAccount = async (
       .from('discord_accounts')
       .insert([discordAccount])
     if (error) {
-      throw new Error(error)
+      throw new Error(error.message)
     }
     return data[0]
   } else {
@@ -881,7 +1261,7 @@ export const createOrUpdatesDiscordAccount = async (
       .update(discordAccount)
       .eq('discord_id', discordAccount.discord_id)
     if (error) {
-      throw new Error(error)
+      throw new Error(error.message)
     }
     return data[0]
   }
@@ -893,7 +1273,7 @@ export const deleteDiscordAccount = async (accountAddress: string) => {
     .delete()
     .eq('address', accountAddress)
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 }
 
@@ -908,13 +1288,13 @@ const saveEmailToDB = async (email: string, plan: string): Promise<boolean> => {
   if (!error) {
     return true
   }
-  throw new Error(error)
+  throw new Error(error.message)
 }
 
 const saveConferenceMeetingToDB = async (
   payload: Omit<ConferenceMeeting, 'created_at'>
 ): Promise<boolean> => {
-  const { _, error } = await db.supabase.from('meetings').upsert([
+  const { error } = await db.supabase.from('meetings').upsert([
     {
       ...payload,
       created_at: new Date(),
@@ -924,7 +1304,7 @@ const saveConferenceMeetingToDB = async (
   if (!error) {
     return true
   }
-  throw new Error(error)
+  throw new Error(error.message)
 }
 
 const getConnectedCalendars = async (
@@ -949,7 +1329,7 @@ const getConnectedCalendars = async (
   ])
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   if (!data) {
@@ -985,7 +1365,7 @@ const connectedCalendarExists = async (
     .eq('provider', provider)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   return data[0]
@@ -1005,7 +1385,7 @@ export const updateCalendarPayload = async (
     .eq('provider', provider)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 }
 
@@ -1054,7 +1434,7 @@ const addOrUpdateConnectedCalendar = async (
   const { data, error } = await queryPromise
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   return data[0] as ConnectedCalendar
@@ -1066,30 +1446,30 @@ const removeConnectedCalendar = async (
   provider: TimeSlotSource
 ): Promise<ConnectedCalendar> => {
   const { data, error } = await db.supabase
-    .from('connected_calendars')
+    .from<ConnectedCalendar>('connected_calendars')
     .delete()
     .eq('account_address', address.toLowerCase())
     .eq('email', email.toLowerCase())
     .eq('provider', provider)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
-  return data as ConnectedCalendar
+  return Array.isArray(data) ? data[0] : data
 }
 
 export const getSubscriptionFromDBForAccount = async (
   accountAddress: string
 ): Promise<Subscription[]> => {
   const { data, error } = await db.supabase
-    .from('subscriptions')
+    .from<Subscription>('subscriptions')
     .select()
     .gt('expiry_time', new Date().toISOString())
     .eq('owner_account', accountAddress.toLowerCase())
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   if (data && data.length > 0) {
@@ -1102,7 +1482,7 @@ export const getSubscriptionFromDBForAccount = async (
       .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
 
     if (collisionExists.error) {
-      throw new Error(error)
+      throw new Error(collisionExists.error.message)
     }
 
     // If for any reason some smart ass registered a domain manually on the blockchain, but such domain already existed for someone else and is not expired, we remove it here
@@ -1131,7 +1511,7 @@ export const getSubscription = async (
     .order('registered_at', { ascending: true })
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   if (data && data?.length > 0) {
@@ -1187,7 +1567,7 @@ export const updateAccountSubscriptions = async (
 ): Promise<Subscription[]> => {
   for (const subscription of subscriptions) {
     const { data, error } = await db.supabase
-      .from('subscriptions')
+      .from<Subscription>('subscriptions')
       .update({
         expiry_time: subscription.expiry_time,
         config_ipfs_hash: subscription.config_ipfs_hash,
@@ -1198,18 +1578,18 @@ export const updateAccountSubscriptions = async (
       .eq('chain', subscription.chain)
       .eq('plan_id', subscription.plan_id)
 
-    if (error && error.length > 0) {
+    if (error) {
       console.error(error)
-      throw new Error(error)
+      throw new Error(error.message)
     }
 
     if (!data || data.length == 0) {
       const { error } = await db.supabase
-        .from('subscriptions')
+        .from<Subscription>('subscriptions')
         .insert(subscription)
 
       if (error) {
-        throw new Error(error)
+        throw new Error(error.message)
       }
     }
   }
@@ -1235,14 +1615,14 @@ const upsertGateCondition = async (
     }
   }
 
-  const toUpsert = {
+  const toUpsert: GateConditionObject & { owner: string } = {
     definition: gateCondition.definition,
     title: gateCondition.title.trim(),
     owner: ownerAccount.toLowerCase(),
   }
 
   if (gateCondition.id) {
-    ;(toUpsert as any).id = gateCondition.id
+    toUpsert.id = gateCondition.id
   }
 
   const { data, error } = await db.supabase
@@ -1252,7 +1632,7 @@ const upsertGateCondition = async (
   if (!error) {
     return data[0] as GateConditionObject
   }
-  throw new Error(error)
+  throw new Error(error.message)
 }
 
 const deleteGateCondition = async (
@@ -1267,7 +1647,7 @@ const deleteGateCondition = async (
   if (usageResponse.error) {
     Sentry.captureException(usageResponse.error)
     return false
-  } else if (usageResponse.count > 0) {
+  } else if ((usageResponse.count || 0) > 0) {
     throw new GateInUseError()
   }
 
@@ -1283,7 +1663,7 @@ const deleteGateCondition = async (
     throw new UnauthorizedError()
   }
 
-  const { _, error } = await db.supabase
+  const { error } = await db.supabase
     .from('gate_definition')
     .delete()
     .eq('id', idToDelete)
@@ -1291,7 +1671,7 @@ const deleteGateCondition = async (
   if (!error) {
     return true
   }
-  throw new Error(error)
+  throw new Error(error.message)
 }
 
 const getGateCondition = async (
@@ -1305,7 +1685,7 @@ const getGateCondition = async (
   if (!error) {
     return data[0] as GateConditionObject
   }
-  throw new Error(error)
+  throw new Error(error.message)
 }
 
 const getGateConditionsForAccount = async (
@@ -1319,7 +1699,7 @@ const getGateConditionsForAccount = async (
   if (!error) {
     return data as GateConditionObject[]
   }
-  throw new Error(error)
+  throw new Error(error.message)
 }
 
 const getAppToken = async (tokenType: string): Promise<any | null> => {
@@ -1426,13 +1806,13 @@ const updateMeeting = async (
           isTimeInsideAvailabilities(
             utcToZonedTime(
               meetingUpdateRequest.start,
-              ownerAccount!.preferences!.timezone!
+              ownerAccount!.preferences.timezone
             ),
             utcToZonedTime(
               meetingUpdateRequest.end,
-              ownerAccount!.preferences!.timezone!
+              ownerAccount!.preferences.timezone
             ),
-            ownerAccount!.preferences!.availabilities
+            ownerAccount!.preferences.availabilities
           )
 
         if (
@@ -1512,7 +1892,7 @@ const updateMeeting = async (
 
   //TODO: handle error
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   meetingResponse.id = data[index].id
@@ -1604,7 +1984,7 @@ const insertOfficeEventMapping = async (
     .insert({ office_id, mww_id })
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 }
 
@@ -1617,7 +1997,7 @@ const getOfficeEventMappingId = async (
     .eq('mww_id', mww_id)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   return data[0].office_id
@@ -1632,7 +2012,7 @@ export const getDiscordAccount = async (
     .eq('address', account_address)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   if (data.length === 0) return undefined
@@ -1649,7 +2029,7 @@ export const getAccountFromDiscordId = async (
     .eq('discord_id', discord_id)
 
   if (error) {
-    throw new Error(error)
+    throw new Error(error.message)
   }
 
   if (data.length === 0) return null
@@ -1659,8 +2039,77 @@ export const getAccountFromDiscordId = async (
   return getAccountFromDB(address)
 }
 
+export async function isUserAdminOfGroup(
+  groupId: string,
+  userAddress: string
+): Promise<boolean> {
+  const { data, error } = await db.supabase
+    .from<GroupMembersRow>('group_members')
+    .select('role')
+    .eq('group_id', groupId)
+    .eq('member_id', userAddress)
+    .eq('role', 'admin')
+    .single()
+
+  if (error) {
+    console.error('Error checking admin status:', error)
+    throw error
+  }
+
+  return data?.role === 'admin'
+}
+
+export async function createGroupInDB(
+  name: string,
+  slug: string
+): Promise<GetGroupsResponse> {
+  const db = initDB()
+  const groupId = uuidv4()
+
+  try {
+    const { data, error } = await db.supabase
+      .from<TablesInsert<'groups'>>('groups')
+      .insert([
+        {
+          id: groupId,
+          name,
+          slug,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+
+    if (error) {
+      throw new GroupCreationError('Failed to create group', error.message)
+    }
+
+    const newGroup = data[0]
+    if (!newGroup || !newGroup.id) {
+      throw new Error('Failed to create group: missing ID')
+    }
+
+    return {
+      id: newGroup.id,
+      name: newGroup.name,
+      slug: newGroup.slug,
+      role: MemberType.ADMIN,
+      invitePending: false,
+    }
+  } catch (error) {
+    if (error instanceof GroupCreationError) {
+      throw error
+    } else if (error instanceof Error) {
+      throw new GroupCreationError('Database operation failed', error.message)
+    } else {
+      console.error('Unknown error type:', error)
+      throw new Error('An unknown error occurred')
+    }
+  }
+}
+
 export {
   addOrUpdateConnectedCalendar,
+  changeGroupRole,
   connectedCalendarExists,
   deleteGateCondition,
   deleteMeetingFromDB,
@@ -1673,14 +2122,23 @@ export {
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
+  getGroup,
+  getGroupFromDB,
+  getGroupInvites,
+  getGroupsEmpty,
+  getGroupUsers,
   getMeetingFromDB,
   getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
+  getUserGroups,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
+  isGroupAdmin,
   isSlotFree,
+  manageGroupInvite,
+  rejectGroupInvite,
   removeConnectedCalendar,
   saveConferenceMeetingToDB,
   saveEmailToDB,

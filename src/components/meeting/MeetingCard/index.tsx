@@ -304,7 +304,7 @@ const MeetingCard = ({
                           aria-label="edit"
                           icon={<FaEdit size={16} />}
                           onClick={() => {
-                            decryptedMeeting &&
+                            if (decryptedMeeting)
                               onClickToOpen(meeting, decryptedMeeting, timezone)
                           }}
                         />

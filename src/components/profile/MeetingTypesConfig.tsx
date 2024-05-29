@@ -87,8 +87,8 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
             spacingX="20px"
             spacingY="16px"
           >
-            {currentAccount!
-              .preferences!.availableTypes.filter(type => !type.deleted)
+            {currentAccount.preferences.availableTypes
+              .filter(type => !type.deleted)
               .map((type, index) => {
                 const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
                   type.url
@@ -103,7 +103,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
                       typeId={type.id!}
                       removeType={removeType}
                       showRemoval={
-                        currentAccount!.preferences!.availableTypes.filter(
+                        currentAccount!.preferences.availableTypes!.filter(
                           type => !type.deleted
                         ).length > 1
                       }
@@ -231,7 +231,7 @@ interface TypeConfigProps {
 const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
   const color = useColorModeValue('primary.500', 'primary.400')
 
-  const typeConfig = account.preferences!.availableTypes.find(
+  const typeConfig = account.preferences.availableTypes!.find(
     type => type.id === typeId
   )
   if (!typeConfig) {
