@@ -39,6 +39,36 @@ export class MeetingCreationError extends Error {
     this.name = 'MeetingCreationError'
   }
 }
+export class NotGroupMemberError extends Error {
+  constructor() {
+    super(`Not a group member`)
+    this.name = 'NotGroupMemberError'
+  }
+}
+export class AdminBelowOneError extends Error {
+  constructor() {
+    super(`Cannot have less than one admin`)
+    this.name = 'AdminBelowOneError'
+  }
+}
+export class NotGroupAdminError extends Error {
+  constructor() {
+    super(`Not a group admin`)
+    this.name = 'NotGroupAdminError'
+  }
+}
+export class BadRequestError extends Error {
+  constructor() {
+    super(`Bad request`)
+    this.name = 'BadRequestError'
+  }
+}
+export class GroupNotExistsError extends Error {
+  constructor() {
+    super(`Group does not exists`)
+    this.name = 'GroupNotExistsError'
+  }
+}
 
 export class UnauthorizedError extends Error {
   constructor() {
@@ -95,5 +125,25 @@ export class Huddle01ServiceUnavailable extends Error {
   constructor() {
     super(`Huddle API is broken`)
     this.name = 'Huddle01ServiceUnavailable'
+  }
+}
+
+export class GroupCreationError extends Error {
+  details: string
+
+  constructor(message: string, details = '') {
+    super(message)
+    this.name = 'GroupCreationError'
+    this.details = details
+  }
+}
+
+export class UserInvitationError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'UserInvitationError'
+    this.status = status
   }
 }

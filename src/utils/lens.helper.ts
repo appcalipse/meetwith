@@ -1,78 +1,36 @@
-import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client'
-import { gql } from '@apollo/client'
+import { LensClient, production } from '@lens-protocol/client'
 
-const initAppolloClient = () => {
-  return new ApolloClient({
-    link: new HttpLink({ uri: 'https://api.lens.dev/' }),
-    cache: new InMemoryCache(),
-  })
-}
+import handle from '@/pages/api/server/meetings'
 
-const GET_PROFILE = `
-  query($request: SingleProfileQueryRequest!) {
-    profile(request: $request) {
-        id
-        name
-        picture {
-          ... on NftImage {
-            contractAddress
-            tokenId
-            uri
-            verified
-          }
-          ... on MediaSet {
-            original {
-              url
-              mimeType
-            }
-          }
-          __typename
-        }
-        handle
-        ownedBy
-    }
-  }
-`
-
-const GET_PROFILES = `
-query($request: ProfileQueryRequest!) {
-  profiles(request: $request) {
-    items {
-      id
-      handle
-      ownedBy
-    }
-  }
-}
-`
+const lensClient = new LensClient({
+  environment: production,
+})
 
 export interface LensProfile {
   handle: string
-  name: string
+  name?: string
   ownedBy: string
-  id: string
-  picture: {
-    original: {
-      url: string
-    }
+  picture?: string
+}
+
+const convertLensProfile = (profile: any): LensProfile => {
+  return {
+    handle: `${profile.handle.localName}.${profile.handle.namespace}`,
+    name: profile.metadata?.displayName,
+    ownedBy: profile.handle.ownedBy,
+    picture: profile.metadata?.coverPicture?.optimized?.url,
   }
 }
 
-const getLensHandlesForAddress = async (
+export const getLensHandlesForAddress = async (
   address: string
 ): Promise<LensProfile[] | undefined> => {
   try {
-    const result = await initAppolloClient().query({
-      query: gql(GET_PROFILES),
-      variables: {
-        request: {
-          ownedBy: [address],
-        },
-      },
+    const profiles = await lensClient.profile.fetchAll({
+      where: { ownedBy: [address] },
     })
-    if (result.data?.profiles) {
-      return result.data.profiles.items as LensProfile[]
-    }
+
+    return profiles.items.map(convertLensProfile)
   } catch (e) {
     console.error(e)
   }
@@ -80,28 +38,18 @@ const getLensHandlesForAddress = async (
   return undefined
 }
 
-const getLensProfile = async (
+export const getLensProfile = async (
   handle: string
 ): Promise<LensProfile | undefined> => {
   try {
-    const response = await initAppolloClient().query({
-      query: gql(GET_PROFILE),
-      variables: {
-        request: { handle },
-      },
+    const profiles = await lensClient.profile.fetchAll({
+      where: { handles: [handle] },
     })
 
-    if (response.data?.profile) {
-      return response.data.profile as LensProfile
-    }
+    return profiles.items.map(convertLensProfile)[0]
   } catch (e) {
     console.error(e)
   }
 
   return undefined
-}
-
-export default {
-  getLensHandlesForAddress,
-  getLensProfile,
 }

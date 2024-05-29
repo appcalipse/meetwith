@@ -11,23 +11,23 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { useModal } from 'connectkit'
 import router from 'next/router'
 import { useContext } from 'react'
 import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
 
 export function Hero() {
   const { currentAccount, loginIn } = useContext(AccountContext)
 
-  const { setOpen } = useModal()
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on FREE plan')
-      setOpen(true)
+      openConnection()
     } else {
       await router.push('/dashboard')
     }

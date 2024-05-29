@@ -1,8 +1,10 @@
 import { Encrypted } from 'eth-crypto'
 
 import { Account } from './Account'
+import { MemberType } from './Group'
 import {
   ConferenceMeeting,
+  GroupNotificationType,
   MeetingDecrypted,
   NotBefore,
   ParticipantMappingType,
@@ -72,7 +74,11 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   title?: string
   content?: string
 }
-
+export interface GroupInviteNotifyRequest {
+  group_id: string
+  accountsToNotify: string[]
+  notifyType: GroupNotificationType
+}
 export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   addressesToRemove: string[]
   guestsToRemove: ParticipantInfo[]
@@ -96,4 +102,10 @@ export interface DiscordMeetingRequest {
   interval: number
   description: string
   notBefore?: NotBefore
+}
+
+export interface ChangeGroupAdminRequest {
+  address?: string
+  userId?: string
+  role: MemberType
 }
