@@ -9,11 +9,11 @@ const InviteAcceptPage = () => {
   const router = useRouter()
   const toast = useToast()
   const { handleLogin, logged, currentAccount, loginIn } = useLogin()
-  const { groupId, email } = router.query
+  const { groupId, email, inviteId } = router.query
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!groupId || !email) {
+    if (!groupId || !email || !inviteId) {
       toast({
         title: 'Invalid invite',
         description: 'The invite link is invalid.',
