@@ -22,7 +22,7 @@ function Root({
   showSelfAvailability,
 }) {
   const { currentAccount } = useContext(AccountContext)
-  const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes)
+  const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes, false)
   const filtered = timeSlots.filter(slot => {
     return validator ? validator(slot.start) : true
   })
