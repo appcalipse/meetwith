@@ -65,6 +65,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
       ? currentSubscription
       : undefined
     : undefined
+
   const { currentAccount } = useContext(AccountContext)
   const [domain, setDomain] = useState<string>('')
   const [currentChain, setCurrentChain] = useState<ChainInfo | undefined>(
@@ -269,8 +270,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   useEffect(() => {
-    if (_currentSubscription && !domain) {
-      updateDomain()
+    if (_currentSubscription) {
+      !domain && updateDomain()
+      setCurrentChain(getChainInfo(_currentSubscription.chain))
     }
   }, [_currentSubscription])
 
