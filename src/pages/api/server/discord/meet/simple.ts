@@ -23,7 +23,6 @@ export default async function simpleDiscordMeet(
       notBefore,
     } = req.body as DiscordMeetingRequest
 
-    console.log('notBefore', notBefore)
     const scheduler = await getAccountFromDiscordId(schedulerDiscordId)
 
     if (!scheduler) {
@@ -35,7 +34,6 @@ export default async function simpleDiscordMeet(
     }
 
     let startDate = new Date()
-    console.log('startDate', startDate)
     if (notBefore) {
       startDate = findStartDateForNotBefore(
         startDate,
@@ -43,7 +41,6 @@ export default async function simpleDiscordMeet(
         scheduler.preferences?.timezone || 'UTC'
       )
     }
-    console.log('startDate after', startDate)
 
     const suggestions = await getSuggestedSlots(
       accounts.map(p => p.address),

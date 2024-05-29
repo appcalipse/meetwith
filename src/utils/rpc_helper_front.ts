@@ -10,7 +10,7 @@ import { Wallet } from 'thirdweb/wallets'
 import { getChainInfo, SupportedChain } from '@/types/chains'
 
 import { getSubscriptionByDomain } from './api_helper'
-import { getLensHandlesForAddress, getLensProfile } from './lens.helper'
+import { getLensProfile } from './lens.helper'
 import { thirdWebClient } from './user_manager'
 interface AccountExtraProps {
   name: string
@@ -53,7 +53,6 @@ export const resolveENS = async (
         client: thirdWebClient,
       })
     } catch (e) {}
-
     return {
       name,
       avatar: avatar || undefined,
