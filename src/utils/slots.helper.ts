@@ -17,14 +17,15 @@ import { DayAvailability } from '@/types/Account'
 export const generateTimeSlots = (
   selectedDate: Date,
   slotSizeMinutes: number,
+  fromStartDate: boolean,
   endDate?: Date
 ): Interval[] => {
   const _isToday = isToday(selectedDate)
 
   let start = new Date(selectedDate)
-  start.setHours(0, 0, 0, 0)
 
-  if (_isToday) {
+  if (!fromStartDate && _isToday) {
+    start.setHours(0, 0, 0, 0)
     const now = new Date()
     const offsetHours = getHours(now)
 
@@ -38,6 +39,10 @@ export const generateTimeSlots = (
     while (start <= now) {
       start = addMinutes(start, slotSizeMinutes)
     }
+  } else if (fromStartDate) {
+    start.setMinutes(0)
+    start.setSeconds(0)
+    start.setMilliseconds(0)
   }
 
   const end = endDate || addDays(selectedDate, 1)
