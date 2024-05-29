@@ -41,7 +41,7 @@ import {
 } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
-import { isProduction } from '@/utils/constants'
+import { appUrl, isProduction } from '@/utils/constants'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 import GroupMemberCard from './GroupMemberCard'
@@ -49,8 +49,9 @@ import GroupMemberCard from './GroupMemberCard'
 export interface IGroupCard extends GetGroupsResponse {
   currentAccount: Account
 }
+
 const GroupCard: React.FC<IGroupCard> = props => {
-  const bgColor = useColorModeValue('white', '#1F2933')
+  const bgColor = useColorModeValue('white', 'neutral.900')
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
@@ -278,6 +279,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
       borderRadius="lg"
       mt={6}
       bgColor={bgColor}
+      id={props.id}
     >
       {({ isExpanded }) => (
         <>
@@ -285,13 +287,21 @@ const GroupCard: React.FC<IGroupCard> = props => {
             <VStack gap={0} alignItems="flex-start">
               <Heading size={'lg'}>{props.name}</Heading>
               <CopyLinkButton
-                url={`https://meetwithwallet.xyz/${props.slug}`}
+                url={`${appUrl}/${props.slug}`}
                 size="md"
-                label={`meetwithwallet.xyz/${props.slug}`}
+                label={`${appUrl}/${props.slug}`}
                 withIcon
                 design_type="link"
                 noOfLines={1}
                 width="100%"
+                childStyle={{
+                  style: {
+                    width: '150px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  },
+                }}
               />
             </VStack>
             <HStack gap={3} width="fit-content">

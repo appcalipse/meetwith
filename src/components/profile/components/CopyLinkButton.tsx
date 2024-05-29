@@ -1,4 +1,4 @@
-import { Button, ButtonProps, Tooltip } from '@chakra-ui/react'
+import { Box, BoxProps, Button, ButtonProps, Tooltip } from '@chakra-ui/react'
 import { useState } from 'react'
 import { FaLink } from 'react-icons/fa'
 
@@ -9,6 +9,7 @@ type CopyLinkButtonProps = {
   label?: string
   withIcon?: boolean
   design_type?: 'link' | 'button'
+  childStyle?: BoxProps
 } & ButtonProps
 
 export const CopyLinkButton = ({
@@ -16,6 +17,7 @@ export const CopyLinkButton = ({
   label,
   withIcon,
   design_type = 'button',
+  childStyle,
   ...props
 }: CopyLinkButtonProps) => {
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
@@ -44,10 +46,13 @@ export const CopyLinkButton = ({
         variant={design_type === 'link' ? 'ghost' : 'outline'}
         px={design_type === 'link' ? 0 : 4}
         onClick={copyLink}
+        style={{
+          display: 'flex',
+        }}
         {...(withIcon && { rightIcon: <FaLink /> })}
         {...props}
       >
-        {label || 'Copy link'}
+        <Box {...childStyle}>{label || 'Copy link'}</Box>
       </Button>
     </Tooltip>
   )
