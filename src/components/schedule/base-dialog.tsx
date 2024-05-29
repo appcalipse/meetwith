@@ -38,6 +38,7 @@ import {
   format,
   Interval,
   parse,
+  startOfDay,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { ReactNode, useContext, useState } from 'react'
@@ -270,7 +271,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
             .filter(p => p.account_address)
             .map(p => p.account_address!),
         ],
-        startDate,
+        startOfDay(startDate),
         addDays(startDate, 14),
         duration
       )
