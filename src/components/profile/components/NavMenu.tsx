@@ -9,7 +9,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect } from 'react'
+import React, { useContext, useEffect, useMemo } from 'react'
 import { IconType } from 'react-icons'
 import {
   FaBell,
@@ -29,14 +29,12 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
-import { getGroupsEmpty } from '@/utils/api_helper'
+import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
+import { isProduction } from '@/utils/constants'
+import { getNotificationTime, saveNotificationTime } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
-import {
-  getNotificationTime,
-  saveNotificationTime,
-} from '../../../utils/storage'
 import { Avatar } from './Avatar'
 import { CopyLinkButton } from './CopyLinkButton'
 import { NavItem } from './NavItem'
@@ -46,34 +44,8 @@ interface LinkItemProps {
   icon: IconType
   mode: EditMode
   locked?: boolean
+  badge?: number
 }
-const LinkItems: Array<LinkItemProps> = [
-  { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
-  // { name: 'My Groups', icon: FaUserGroup, mode: EditMode.GROUPS },
-  { name: 'Availabilities', icon: FaCalendarAlt, mode: EditMode.AVAILABILITY },
-  { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
-  {
-    name: 'Notifications',
-    icon: FaBell,
-    mode: EditMode.NOTIFICATIONS,
-  },
-  {
-    name: 'Token Gates',
-    icon: FaDoorClosed,
-    mode: EditMode.GATES,
-  },
-  {
-    name: 'Connected Calendars',
-    icon: FaCalendarPlus,
-    mode: EditMode.CALENDARS,
-  },
-  { name: 'Account Settings', icon: FaCog, mode: EditMode.DETAILS },
-  {
-    name: 'Sign Out',
-    icon: FaSignOutAlt,
-    mode: EditMode.SIGNOUT,
-  },
-]
 
 export const NavMenu: React.FC<{
   currentSection?: EditMode
@@ -84,16 +56,59 @@ export const NavMenu: React.FC<{
   const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
   const router = useRouter()
   const toast = useToast()
+  const [noOfInvitedGroups, setNoOfInvitedGroups] = React.useState<number>(0)
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'gray.800')
+  const LinkItems: Array<LinkItemProps> = useMemo(() => {
+    const items: Array<LinkItemProps> = [
+      { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
+      {
+        name: 'Availabilities',
+        icon: FaCalendarAlt,
+        mode: EditMode.AVAILABILITY,
+      },
+      { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
+      {
+        name: 'Notifications',
+        icon: FaBell,
+        mode: EditMode.NOTIFICATIONS,
+      },
+      {
+        name: 'Token Gates',
+        icon: FaDoorClosed,
+        mode: EditMode.GATES,
+      },
+      {
+        name: 'Connected Calendars',
+        icon: FaCalendarPlus,
+        mode: EditMode.CALENDARS,
+      },
+      { name: 'Account Settings', icon: FaCog, mode: EditMode.DETAILS },
+      {
+        name: 'Sign Out',
+        icon: FaSignOutAlt,
+        mode: EditMode.SIGNOUT,
+      },
+    ]
+
+    if (!isProduction) {
+      items.splice(1, 0, {
+        name: 'My Groups',
+        icon: FaUserGroup,
+        mode: EditMode.GROUPS,
+        badge: noOfInvitedGroups,
+      })
+    }
+
+    return items
+  }, [noOfInvitedGroups])
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
     emptyGroups?.forEach((data, index) => {
       if (!toast.isActive(data.id)) {
         toast({
           id: data.id,
-          title: 'Invite Members',
           containerStyle: {
             position: 'fixed',
             insetInline: '0px',
@@ -103,12 +118,48 @@ export const NavMenu: React.FC<{
           },
           render: props => (
             <ActionToast
+              title="Invite Members"
               description={`Your group ${data.name} is feeling like a party with just you - let’s invite your buddies to join the fun!`}
               action={() => {
                 props.onClose()
                 router.push(`/dashboard/groups?invite=${data.id}`)
               }}
               cta="Invite"
+              close={props.onClose}
+            />
+          ),
+          status: 'success',
+          duration: 30000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
+    })
+  }
+  const handleGroupInvites = async () => {
+    if (!currentAccount?.address) return
+    const invitedGroups = await getGroupsInvites(currentAccount?.address)
+    setNoOfInvitedGroups(invitedGroups?.length || 0)
+    invitedGroups?.forEach((data, index) => {
+      if (!toast.isActive(data.id)) {
+        toast({
+          id: data.id,
+          containerStyle: {
+            position: 'fixed',
+            insetInline: '0px',
+            marginInline: 'auto',
+            marginTop: `${(index + 1) * 10}px`,
+            transform: `scaleX(${1 - 0.01 * index})`,
+          },
+          render: props => (
+            <ActionToast
+              title="Group invite received"
+              description={`You have been invited to join ${data.name}!`}
+              action={() => {
+                props.onClose()
+                router.push(`/dashboard/groups?join=${data.id}`)
+              }}
+              cta="Join Group"
               close={props.onClose}
             />
           ),
@@ -144,10 +195,11 @@ export const NavMenu: React.FC<{
     }
   }, [])
   useEffect(() => {
+    void handleGroupInvites()
     const lastNotificationTime = getNotificationTime(currentAccount?.address)
     if (lastNotificationTime === null) return
     if (Date.now() > lastNotificationTime) {
-      handleEmptyGroupCheck()
+      void handleEmptyGroupCheck()
       saveNotificationTime(currentAccount?.address)
     }
   }, [currentAccount])
@@ -161,7 +213,7 @@ export const NavMenu: React.FC<{
     if (mode === EditMode.SIGNOUT) {
       await router.push(`/logout`)
     } else {
-      router.push(`/dashboard/${mode}`)
+      await router.push(`/dashboard/${mode}`)
       isMenuOpen && closeMenu!()
     }
   }
@@ -211,6 +263,7 @@ export const NavMenu: React.FC<{
                 text={link.name}
                 icon={link.icon}
                 mode={link.mode}
+                badge={link.badge}
                 locked={link.locked || false}
                 changeMode={menuClicked}
               ></NavItem>

@@ -1,16 +1,10 @@
 import {
   Accordion,
-  Box,
   Button,
   Flex,
   Heading,
   HStack,
   Image,
-  Input,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
   Spacer,
   Spinner,
   Text,
@@ -18,30 +12,33 @@ import {
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { ReactNode, useEffect, useState } from 'react'
-import { FaCaretDown, FaPlus, FaSearch } from 'react-icons/fa'
+import { FaPlus } from 'react-icons/fa'
 
+import GroupInviteCard from '@/components/group/GroupInviteCard'
+import GroupJoinModal from '@/components/group/GroupJoinModal'
+import ModalLoading from '@/components/Loading/ModalLoading'
 import { Account } from '@/types/Account'
-import { GetGroupsResponse } from '@/types/Group'
-import { getGroups, getGroupsEmpty } from '@/utils/api_helper'
+import { GetGroupsResponse, Group as GroupResponse } from '@/types/Group'
+import { getGroup, getGroups } from '@/utils/api_helper'
 
 import GroupCard from '../group/GroupCard'
-
-export interface GroupProps {
-  prop?: string
-}
 
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [groups, setGroups] = useState<Array<GetGroupsResponse>>([])
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
+  const [inviteGroupData, setInviteGroupData] = useState<
+    GroupResponse | undefined
+  >(undefined)
+  const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
-  const { invite } = useRouter().query
+  const { join } = useRouter().query
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
     setLoading(true)
-    const newGroups = await getGroups(PAGE_SIZE, groups.length)
-    if (newGroups.length < PAGE_SIZE) {
+    const newGroups = await getGroups(PAGE_SIZE, reset ? 0 : groups.length)
+    if (newGroups?.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
     setGroups(prev => (reset ? [] : [...prev]).concat(newGroups))
@@ -51,15 +48,22 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const resetState = async () => {
     setFirstFetch(true)
     setNoMoreFetch(false)
-    fetchGroups(true)
+    void fetchGroups(true)
   }
-
+  const fetchGroup = async (group_id: string) => {
+    setInviteDataIsLoading(true)
+    const group = await getGroup(group_id)
+    setInviteGroupData(group)
+    setInviteDataIsLoading(false)
+  }
   useEffect(() => {
-    resetState()
+    void resetState()
   }, [currentAccount?.address])
   useEffect(() => {
-    // Add modal logic here
-  }, [invite])
+    if (join) {
+      void fetchGroup(join as string)
+    }
+  }, [join])
   let content: ReactNode
   if (firstFetch) {
     content = (
@@ -94,14 +98,28 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   } else {
     content = (
       <VStack my={6}>
+        <ModalLoading isOpen={inviteDataIsLoading} />
+        <GroupJoinModal
+          group={inviteGroupData}
+          onClose={() => setInviteGroupData(undefined)}
+          resetState={resetState}
+        />
         <Accordion allowMultiple width="100%">
-          {groups.map(group => (
-            <GroupCard
-              key={group.id}
-              currentAccount={currentAccount}
-              {...group}
-            />
-          ))}
+          {groups.map(group =>
+            group?.invitePending ? (
+              <GroupInviteCard
+                key={group.id}
+                {...group}
+                resetState={resetState}
+              />
+            ) : (
+              <GroupCard
+                key={group.id}
+                currentAccount={currentAccount}
+                {...group}
+              />
+            )
+          )}
         </Accordion>
         {!noMoreFetch && !firstFetch && (
           <Button
