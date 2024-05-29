@@ -18,7 +18,6 @@ export enum ProfileInfoProvider {
   LENS = 'lens',
   UNSTOPPABLE_DOAMINS = 'ud',
   MWW = 'mww',
-  FREENAME = 'freename',
   CUSTOM = 'custom',
 }
 
@@ -87,9 +86,6 @@ const HandlePicker: React.FC<{
   const noUD = !options.some(
     option => option.type === ProfileInfoProvider.UNSTOPPABLE_DOAMINS
   )
-  const noFreename = !options.some(
-    option => option.type === ProfileInfoProvider.FREENAME
-  )
 
   const _options = [
     {
@@ -121,14 +117,6 @@ const HandlePicker: React.FC<{
       label: 'No name found on Unstoppable Domains',
       value: '',
       type: ProfileInfoProvider.UNSTOPPABLE_DOAMINS,
-    })
-  }
-
-  if (noFreename) {
-    _options.push({
-      label: 'No name found on Freename',
-      value: '',
-      type: ProfileInfoProvider.FREENAME,
     })
   }
 
@@ -209,9 +197,6 @@ const HandlePicker: React.FC<{
                         break
                       case ProfileInfoProvider.UNSTOPPABLE_DOAMINS:
                         extraText = ' (from Unstoppable Domains)'
-                      case ProfileInfoProvider.FREENAME:
-                        extraText = ' (from Freename)'
-                        break
                       case ProfileInfoProvider.MWW:
                         extraText = ' (from your PRO plan)'
                         break

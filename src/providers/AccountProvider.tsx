@@ -1,7 +1,7 @@
-import { watchAccount } from '@wagmi/core'
-import React, { ReactNode, useEffect, useState } from 'react'
+import React, { ReactNode, useContext, useState } from 'react'
 import { useCookies } from 'react-cookie'
-import { useDisconnect } from 'wagmi'
+import { useDisconnect } from 'thirdweb/react'
+import { type Wallet } from 'thirdweb/wallets'
 
 import { SESSION_COOKIE_NAME } from '@/middleware'
 import { Account } from '@/types/Account'
@@ -9,15 +9,15 @@ import { getOwnAccount } from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { removeSignature } from '@/utils/storage'
-import { loginWithAddress } from '@/utils/user_manager'
 
+import { OnboardingModalContext } from './OnboardingModalProvider'
 import { OnboardingProvider } from './OnboardingProvider'
 
 interface IAccountContext {
   currentAccount?: Account | null
   logged: boolean
-  login: (user: Account) => void
-  logout: (address?: string) => void
+  login: (account: Account) => void
+  logout: (wallet?: Wallet) => void
   setLoginIn: (value: boolean) => void
   loginIn: boolean
   updateUser: () => Promise<void>
@@ -27,7 +27,7 @@ const DEFAULT_STATE: IAccountContext = {
   logged: false,
   login: () => null,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  logout: (address?: string) => null,
+  logout: (wallet?: Wallet) => null,
   loginIn: false,
   setLoginIn: () => null,
   updateUser: () => Promise.resolve(),
@@ -52,46 +52,16 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
     logged,
   })
 
+  const { resetOnboarding } = useContext(OnboardingModalContext)
+
   const { disconnect } = useDisconnect()
   const [loginIn, setLoginIn] = useState(false)
-  const [newAccount, setNewAccount] = useState(undefined as string | undefined)
   const [, , removeCookie] = useCookies([SESSION_COOKIE_NAME])
 
-  watchAccount(async account => {
-    if (
-      !account ||
-      !account.address ||
-      !context.currentAccount ||
-      !context.logged
-    ) {
-      return
-    } else if (
-      account.address.toLowerCase() !==
-      context.currentAccount.address.toLowerCase()
-    ) {
-      setNewAccount(account.address)
-    }
-  })
-
-  const changeAccount = async (accountAddress: string) => {
-    const newAccount = await loginWithAddress(accountAddress, setLoginIn)
-    if (newAccount) {
-      login(newAccount)
-    }
-  }
-
-  useEffect(() => {
-    if (newAccount && context.logged) {
-      const accountAddress = newAccount
-      setNewAccount(undefined)
-      changeAccount(accountAddress)
-    }
-  }, [newAccount])
-
-  function login(account: Account) {
+  function login(currentAccount: Account) {
     setUserContext(() => ({
       ...userContext,
-      currentAccount: account,
+      currentAccount,
       logged: true,
     }))
   }
@@ -112,10 +82,11 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
     }))
   }
 
-  const logout = async (address?: string) => {
-    disconnect()
-    queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
+  const logout = async (wallet?: Wallet) => {
+    wallet && disconnect(wallet)
+    const address = wallet?.getAccount()?.address?.toLowerCase()
     if (address) {
+      queryClient.invalidateQueries(QueryKeys.account(address))
       removeSignature(address)
     } else if (userContext.currentAccount) {
       removeSignature(userContext.currentAccount!.address)
@@ -132,6 +103,7 @@ const AccountProvider: React.FC<AccountProviderProps> = ({
       currentAccount: null,
       logged: false,
     }))
+    resetOnboarding()
   }
   const context = {
     ...userContext,
