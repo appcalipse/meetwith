@@ -51,7 +51,11 @@ const InviteAcceptPage = () => {
   }
 
   return (
-    <GroupOnboardingModal groupId={groupId as string} email={email as string} />
+    <GroupOnboardingModal
+      groupId={groupId as string}
+      email={email as string}
+      inviteId={inviteId as string}
+    />
   )
 }
 
