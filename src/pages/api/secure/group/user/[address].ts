@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { GetGroupsResponse } from '@/types/Group'
-import { getUserGroups, initDB } from '@/utils/database'
+import { InvitedGroupsResponse } from '@/types/Group'
+import { getGroupInvites, initDB } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -11,18 +11,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (!account_address) {
       return res.status(401).send('Unauthorized')
     }
+    const address = req.query.address as string
     try {
-      const groups = await getUserGroups(
-        account_address,
-        Number(req.query.limit as string),
-        Number(req.query.offset as string)
-      )
-      const responseJson: Array<GetGroupsResponse> = groups.map(group => ({
+      const groups = await getGroupInvites(address)
+      const responseJson: Array<InvitedGroupsResponse> = groups.map(group => ({
         id: group.group.id,
         name: group.group.name,
         slug: group.group.slug,
-        role: group.role,
-        invitePending: group.invitePending,
       }))
 
       return res.status(200).json(responseJson)
