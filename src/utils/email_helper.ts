@@ -341,7 +341,7 @@ export const sendInvitationEmail = async (
 ): Promise<void> => {
   const email = new Email({
     views: {
-      root: path.resolve('src', 'emails'),
+      root: path.resolve('src', 'emails', 'new_group_invite'),
       options: {
         extension: 'pug',
       },
@@ -365,12 +365,13 @@ export const sendInvitationEmail = async (
   }
 
   try {
-    const rendered = await email.render('invitation_email_template', locals)
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
 
     const msg = {
       to: toEmail,
       from: FROM,
-      subject: 'You are invited to join a group on Meet With Wallet',
+      subject: subject,
       html: rendered,
       text: `${inviterName} invited you to join ${groupName}. Accept your invite here: ${invitationLink}`,
     }

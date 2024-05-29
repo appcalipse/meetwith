@@ -1947,6 +1947,7 @@ export const createGroupInvite = async (
 
 export const addUserToGroupInvites = async (
   groupId: string,
+  role: MemberType,
   email?: string,
   discordId?: string,
   userId?: string
@@ -1955,8 +1956,9 @@ export const addUserToGroupInvites = async (
     const { error } = await db.supabase.from('group_invites').insert({
       email,
       discord_id: discordId,
-      user_id: userId,
+      user_id: userId || null,
       group_id: groupId,
+      role,
     })
 
     if (error) {
@@ -1965,6 +1967,47 @@ export const addUserToGroupInvites = async (
   } catch (error) {
     console.error('Error creating group invite:', error)
     throw error
+  }
+}
+
+export const acceptGroupInvite = async (
+  inviteId: string,
+  userId: string,
+  groupId: string,
+  role: string
+): Promise<void> => {
+  const client = db.supabase
+  const { error: insertError } = await client.from('group_members').insert({
+    member_id: userId,
+    group_id: groupId,
+    role,
+  })
+
+  if (insertError) {
+    console.error('Error adding user to group_members:', insertError)
+    throw new Error(insertError.message)
+  }
+
+  const { error: deleteError } = await client
+    .from('group_invites')
+    .delete()
+    .eq('id', inviteId)
+
+  if (deleteError) {
+    console.error('Error deleting invite from group_invites:', deleteError)
+    throw new Error(deleteError.message)
+  }
+}
+
+export const declineGroupInvite = async (inviteId: string): Promise<void> => {
+  const { error } = await db.supabase
+    .from('group_invites')
+    .delete()
+    .eq('id', inviteId)
+
+  if (error) {
+    console.error('Error deleting invite from group_invites:', error)
+    throw new Error(error.message)
   }
 }
 
@@ -2057,7 +2100,7 @@ export const getGroupById = async (
 ): Promise<GetGroupsResponse | null> => {
   const query = db.supabase
     .from('groups')
-    .select('id, name, slug, role, invitePending')
+    .select('id, name, slug')
     .eq('id', groupId)
     .single()
 
@@ -2068,7 +2111,11 @@ export const getGroupById = async (
     return null
   }
 
-  return data
+  return {
+    ...data,
+    role: MemberType.MEMBER,
+    invitePending: false,
+  } as GetGroupsResponse
 }
 
 export const getEmailByAccountId = async (

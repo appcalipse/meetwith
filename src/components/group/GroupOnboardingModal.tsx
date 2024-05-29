@@ -10,11 +10,12 @@ import {
 import { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { useActiveWallet, useConnect } from 'thirdweb/react'
-import { createWallet } from 'thirdweb/wallets' // Import createWallet
+import { createWallet } from 'thirdweb/wallets'
 
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { WalletModalContext } from '@/providers/WalletModalProvider'
 import { useLogin } from '@/session/login'
+import { acceptGroupInvite } from '@/utils/database'
 import { loginWithAddress, thirdWebClient } from '@/utils/user_manager'
 
 import { ConnectModal } from '../nav/ConnectModal'
@@ -22,9 +23,11 @@ import { ConnectModal } from '../nav/ConnectModal'
 const GroupOnboardingModal = ({
   groupId,
   email,
+  inviteId,
 }: {
   groupId: string
   email: string
+  inviteId: string
 }) => {
   const { handleLogin, logged, currentAccount, loginIn, setLoginIn } =
     useLogin()
@@ -58,11 +61,19 @@ const GroupOnboardingModal = ({
   }
 
   const handleAcceptInvite = async () => {
-    // Logic to accept the invite and join the group
-    // After accepting, you might want to redirect the user
-    // For example:
-    // await acceptGroupInvite(groupId, currentAccount?.address)
-    router.push('/dashboard/groups')
+    if (currentAccount) {
+      try {
+        await acceptGroupInvite(
+          inviteId,
+          currentAccount.address,
+          groupId,
+          'member'
+        )
+        router.push('/dashboard/groups')
+      } catch (error) {
+        console.error('Error accepting invite:', error)
+      }
+    }
   }
 
   return (

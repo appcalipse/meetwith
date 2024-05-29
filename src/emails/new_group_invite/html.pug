@@ -1,53 +1,107 @@
 doctype html
 html
   head
-    meta(charset='UTF-8')
-    meta(name='viewport', content='width=device-width, initial-scale=1.0')
-    title Invitation to join a group on Meet With Wallet
-    style.
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title Invitation Email
+    link(rel="stylesheet", href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700&display=swap")
+    style(type='text/css').
+      body, table, td, a {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+      }
+      table, td {
+        mso-table-rspace: 0pt;
+        mso-table-lspace: 0pt;
+      }
+      img {
+        -ms-interpolation-mode: bicubic;
+      }
+      a[x-apple-data-detectors] {
+        font-family: inherit !important;
+        font-size: inherit !important;
+        font-weight: inherit !important;
+        line-height: inherit !important;
+        color: inherit !important;
+        text-decoration: none !important;
+      }
       body {
         margin: 0;
         padding: 0;
-        font-family: Arial, sans-serif;
+        background: 
+          linear-gradient(rgba(45, 55, 72, 0.85), rgba(45, 55, 72, 0.85)), 
+          url('https://mww-public.s3.eu-west-1.amazonaws.com/email/twist_orange.png') no-repeat center center;        background-size: cover;
+        background-size: cover;
+        font-family: 'DM Sans', sans-serif;
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .outer-container {
+        width: 1097px;
+        height: 452px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        text-align: center;
       }
       .container {
-        max-width: 640px;
-        margin: 0 auto;
-        padding: 20px;
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
+        width: 452px;
+        height: auto;
+        padding: 24px;
+        background-color: #323F4B;
+        border-radius: 6px;
+        border: 1px solid #52606D;
+        text-align: center;
+      }
+      .logo {
+        width: 70px;
+        height: 33px;
+        margin-bottom: 30px;
+      }
+      .header, .message {
+        width: 100%;
+        margin: 0 auto 24px auto;
+        text-align: center;
       }
       .header {
-        text-align: center;
-        padding: 20px 0;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 28.8px;
+        color: #FFFFFF;
       }
-      .header img {
-        max-width: 120px;
+      .message {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 16px;
+        font-weight: 500;
+        line-height: 24px;
+        color: #CBD2D9;
       }
-      .content {
-        text-align: center;
-      }
-      .content h1 {
-        color: #333333;
-      }
-      .content p {
-        color: #666666;
-      }
-      .content a {
+      .button {
         display: inline-block;
-        padding: 10px 20px;
-        background-color: #d93f0c;
-        color: #ffffff;
+        width: 166px;
+        height: 48px;
+        line-height: 48px; /* Ensures vertical centering of text */
+        padding: 0 16px; /* Padding on left and right */
+        font-family: 'DM Sans', sans-serif;
+        font-size: 16px;
+        font-weight: 700;
+        text-align: center;
+        color: #1F2933;
+        background-color: #F7A892;
+        border: none;
+        border-radius: 6px;
         text-decoration: none;
-        border-radius: 4px;
-        margin-top: 20px;
       }
   body
-    .container
-      .header
-        img(src='https://meetwithwalletstatic.s3.us-west-2.amazonaws.com/email/logo_mail.png', alt='Meet with Wallet')
-      .content
-        h1 #{inviterName} invited you to join #{groupName}
-        p Come join our scheduling group #{groupName} on Meet With Wallet!
-        a(href=invitationLink) Accept invitation
+    .outer-container
+      img.logo(src="https://meetwithwalletstatic.s3.us-west-2.amazonaws.com/email/logo_mail.png", alt="Logo")
+      .container
+        .header #{inviterName} invited you to join #{groupName}
+        .message Come join our scheduling group <strong>#{groupName}</strong> on Meet With Wallet!
+        a.button(href=invitationLink) Accept Invitation

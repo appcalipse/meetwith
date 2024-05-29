@@ -1,7 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { GroupInvitePayload, GroupInvitesResponse } from '@/types/Group'
+import {
+  GroupInvitePayload,
+  GroupInvitesResponse,
+  MemberType,
+} from '@/types/Group'
 import { inviteUsersToGroup } from '@/utils/api_helper'
 import {
   addUserToGroupInvites,
@@ -39,6 +43,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (!isAdmin) {
       return res.status(403).json({ error: 'User is not a group admin' })
     }
+
     const inviterName = getAccountDisplayName(session.account)
     const group = await getGroupById(groupId)
 
@@ -55,26 +60,22 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       let account = null
-      try {
-        if (invitee.email) {
+      if (invitee.email) {
+        try {
           account = await getAccountFromDB(invitee.email)
-        } else if (invitee.address) {
-          account = await getAccountFromDB(invitee.address)
-        }
-        if (!account) {
-          console.error(
-            `Account with identifier ${
-              invitee.email || invitee.address
-            } not found`
+        } catch (error) {
+          console.warn(
+            `Account with email ${invitee.email} not found. Proceeding with invite creation.`
           )
         }
-      } catch (error) {
-        console.error(
-          `Account with identifier ${
-            invitee.email || invitee.address
-          } not found`,
-          error
-        )
+      } else if (invitee.address) {
+        try {
+          account = await getAccountFromDB(invitee.address)
+        } catch (error) {
+          console.warn(
+            `Account with address ${invitee.address} not found. Proceeding with invite creation.`
+          )
+        }
       }
 
       let groupInvite: GroupInvitesResponse | null = null
@@ -100,6 +101,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         try {
           await addUserToGroupInvites(
             groupId,
+            invitee.role as MemberType,
             invitee.email,
             invitee.address,
             account?.id || invitee.userId
