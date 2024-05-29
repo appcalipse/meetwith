@@ -2,33 +2,35 @@ import { useToast } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
 import router from 'next/router'
 import { useContext } from 'react'
+import { Wallet } from 'thirdweb/wallets'
+import { getUserEmail } from 'thirdweb/wallets/in-app'
 
-import { AccountContext } from '../providers/AccountProvider'
-import { logEvent } from '../utils/analytics'
-import { InvalidSessionError } from '../utils/errors'
-import { loginWithAddress } from '../utils/user_manager'
+import { AccountContext } from '@/providers/AccountProvider'
+import { logEvent } from '@/utils/analytics'
+import { InvalidSessionError } from '@/utils/errors'
+import { loginWithAddress, thirdWebClient } from '@/utils/user_manager'
 
 export const useLogin = () => {
-  const { currentAccount, logged, login, loginIn, setLoginIn, logout } =
+  const { logged, currentAccount, login, loginIn, setLoginIn, logout } =
     useContext(AccountContext)
   const toast = useToast()
 
   const handleLogin = async (
-    address: string | undefined,
+    wallet: Wallet | undefined,
     useWaiting = true,
     forceRedirect = true
   ) => {
     !forceRedirect && logEvent('Clicked to connect wallet')
-    if (!address) return
+    if (!wallet?.getAccount()) return
     try {
       const account = await loginWithAddress(
-        address,
+        wallet,
         useWaiting ? setLoginIn : () => null
       )
 
       // user could revoke wallet authorization any moment
       if (!account) {
-        await logout(address)
+        await logout(wallet)
         if (logged && forceRedirect) {
           await router.push('/')
         }
@@ -42,11 +44,17 @@ export const useLogin = () => {
       if (forceRedirect) {
         // redirect new accounts to onboarding
         if (account.signedUp) {
-          const state = Buffer.from(
-            JSON.stringify({
-              signedUp: true,
-            })
-          ).toString('base64')
+          const stateObj: any = { signedUp: true }
+
+          if (wallet.id === 'inApp') {
+            //needed due bug in the SDK that returns last email even if a new EOA signs in
+            const email = await getUserEmail({ client: thirdWebClient })
+            if (email) {
+              stateObj.email = email
+            }
+          }
+
+          const state = Buffer.from(JSON.stringify(stateObj)).toString('base64')
           await router.push(`/dashboard/details?state=${state}`)
           return
         }
