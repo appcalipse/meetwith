@@ -1,5 +1,5 @@
 doctype html
-html
+html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:office:office', xmlns:v='urn:schemas-microsoft-com:vml')
   head
     meta(charset="UTF-8")
     meta(name="viewport" content="width=device-width, initial-scale=1.0")
@@ -22,41 +22,46 @@ html
         font-size: inherit !important;
         font-weight: inherit !important;
         line-height: inherit !important;
-        color: inherit !important;
         text-decoration: none !important;
       }
-      body {
+      html, body {
         margin: 0;
         padding: 0;
-        background: 
-          linear-gradient(rgba(45, 55, 72, 0.85), rgba(45, 55, 72, 0.85)), 
-          url('https://mww-public.s3.eu-west-1.amazonaws.com/email/twist_orange.png') no-repeat center center;        background-size: cover;
+        height: 100%;
+        width: 100%;
+        background-color: transparent !important;
+      }
+      body {
+        background: linear-gradient(rgba(45, 55, 72, 0.85), rgba(45, 55, 72, 0.85)), url('https://mww-public.s3.eu-west-1.amazonaws.com/email/twist_orange.png') no-repeat center center;
         background-size: cover;
         font-family: 'DM Sans', sans-serif;
-        width: 100%;
-        height: 100vh;
         display: flex;
         justify-content: center;
-        align-items: center;
+        align-items: flex-start;
+        padding-top: 112px;
       }
       .outer-container {
-        width: 1097px;
-        height: 452px;
+        width: 100%;
+        max-width: 1097px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         box-sizing: border-box;
         text-align: center;
+        padding: 24px;
+        background-color: transparent !important;
       }
       .container {
-        width: 452px;
+        width: 100%;
+        max-width: 452px;
         height: auto;
         padding: 24px;
         background-color: #323F4B;
         border-radius: 6px;
         border: 1px solid #52606D;
         text-align: center;
+        box-sizing: border-box;
       }
       .logo {
         width: 70px;
@@ -67,6 +72,7 @@ html
         width: 100%;
         margin: 0 auto 24px auto;
         text-align: center;
+        box-sizing: border-box;
       }
       .header {
         font-family: 'DM Sans', sans-serif;
@@ -84,10 +90,11 @@ html
       }
       .button {
         display: inline-block;
-        width: 166px;
+        width: auto;
+        min-width: 166px;
         height: 48px;
-        line-height: 48px; /* Ensures vertical centering of text */
-        padding: 0 16px; /* Padding on left and right */
+        line-height: 48px;
+        padding: 0 16px;
         font-family: 'DM Sans', sans-serif;
         font-size: 16px;
         font-weight: 700;
@@ -97,11 +104,53 @@ html
         border: none;
         border-radius: 6px;
         text-decoration: none;
+        box-sizing: border-box;
+      }
+      @media only screen and (max-width: 660px) and (min-width: 480px) and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+        .outer-container {
+          padding: 0 !important;
+        }
+      }
+      @media (max-width: 660px) {
+        html {
+          background-color: transparent !important;
+        }
+        body {
+          background-position: center center;
+          background-repeat: no-repeat;
+          background-size: cover;
+          padding-top: 0;
+          background-color: none !important;
+        }
+        .outer-container {
+          width: 100% !important;
+          max-width: 100% !important;
+          display: block !important;
+          padding: 20px !important;
+          justify-content: flex-start !important;
+        }
+        .container {
+          padding: 20px !important;
+          background-color: #323F4B !important;
+        }
+        .logo {
+          margin-bottom: 20px !important;
+        }
+        .header, .message, .button {
+          width: auto !important;
+          max-width: 100% !important;
+          margin: 0 0 24px 0;
+        }
+        .button {
+          display: block !important;
+          width: 100% !important;
+          margin-top: 10px !important;
+        }
       }
   body
     .outer-container
       img.logo(src="https://meetwithwalletstatic.s3.us-west-2.amazonaws.com/email/logo_mail.png", alt="Logo")
       .container
         .header #{inviterName} invited you to join #{groupName}
-        .message Come join our scheduling group <strong>#{groupName}</strong> on Meet With Wallet!
+        .message Come join our scheduling group <strong>#{groupName}</strong><br>on Meet With Wallet!
         a.button(href=invitationLink) Accept Invitation
