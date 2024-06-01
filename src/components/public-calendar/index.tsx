@@ -108,6 +108,7 @@ enum CalendarType {
   REGULAR,
   TEAM,
 }
+
 const PublicCalendar: React.FC<PublicCalendarProps> = ({
   url,
   account,
@@ -811,7 +812,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 )}
               </Box>
               {isSSR ? null : (
-                <Box flex="2" p={8}>
+                <Box flex="2" p={{ md: 8 }}>
                   <MeetSlotPicker
                     reset={reset}
                     onMonthChange={(day: Date) => setCurrentMonth(day)}
