@@ -154,6 +154,8 @@ const ToolBar: React.FC<ToolBarProps> = ({ editor }) => {
         paddingBlock="5px"
         paddingInline="12px"
         className="tiptap-toolbar"
+        overflowX="scroll"
+        maxWidth="90vw"
       >
         <HStack gap="5px">
           <Tooltip
