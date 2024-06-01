@@ -71,6 +71,7 @@ a {
 
 .custom-editor {
   width: 100%;
+  max-width: 90vw;
 }
 
 /* For Chrome, Safari and Opera */
