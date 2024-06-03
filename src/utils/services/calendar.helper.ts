@@ -17,8 +17,12 @@ export const CalendarServiceHelper = {
   },
   getMeetingTitle: (
     slotOwnerAccountAddress: string,
-    participants: ParticipantInfo[]
+    participants: ParticipantInfo[],
+    title?: string
   ) => {
+    if (title) {
+      return title
+    }
     const displayNames = getAllParticipantsDisplayName(
       participants,
       slotOwnerAccountAddress
