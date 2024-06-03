@@ -171,7 +171,8 @@ export default class GoogleCalendarService implements CalendarService {
           id: meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
           summary: CalendarServiceHelper.getMeetingTitle(
             calendarOwnerAccountAddress,
-            participantsInfo
+            participantsInfo,
+            meetingDetails.title
           ),
           description: CalendarServiceHelper.getMeetingSummary(
             meetingDetails.content,
@@ -296,7 +297,8 @@ export default class GoogleCalendarService implements CalendarService {
         id: meeting_id.replaceAll('-', ''), // required to edit events later
         summary: CalendarServiceHelper.getMeetingTitle(
           calendarOwnerAccountAddress,
-          participantsInfo
+          participantsInfo,
+          meetingDetails.title
         ),
         description: CalendarServiceHelper.getMeetingSummary(
           meetingDetails.content,
