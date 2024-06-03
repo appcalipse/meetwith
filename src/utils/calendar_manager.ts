@@ -681,7 +681,8 @@ const generateIcs = (
     ],
     title: CalendarServiceHelper.getMeetingTitle(
       ownerAddress,
-      meeting.participants
+      meeting.participants,
+      meeting.title
     ),
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
