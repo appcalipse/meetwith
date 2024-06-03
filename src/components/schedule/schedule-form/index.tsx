@@ -168,7 +168,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           v !== undefined && setScheduleType(v)
         }}
         options={[
-          { label: 'Schedule with wallet', value: SchedulingType.REGULAR },
+          { label: 'Sign in to schedule', value: SchedulingType.REGULAR },
           { label: 'Schedule as guest', value: SchedulingType.GUEST },
         ]}
       />
