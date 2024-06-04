@@ -25,8 +25,10 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
 }
 
 export interface InvitedUser extends ParticipantBaseInfo {
-  account_address: string // Required
+  account_address: string
   groupId: string
   role: 'admin' | 'member'
   invitePending: boolean
+  email?: string
+  userId?: string
 }
