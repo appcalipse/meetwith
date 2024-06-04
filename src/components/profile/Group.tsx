@@ -8,6 +8,7 @@ import {
   Spacer,
   Spinner,
   Text,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
@@ -22,6 +23,7 @@ import { GetGroupsResponse, Group as GroupResponse } from '@/types/Group'
 import { getGroup, getGroups } from '@/utils/api_helper'
 
 import GroupCard from '../group/GroupCard'
+import InviteModal from '../group/InviteModal'
 
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [groups, setGroups] = useState<Array<GetGroupsResponse>>([])
@@ -34,6 +36,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
   const { join } = useRouter().query
+
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [selectedGroupName, setSelectedGroupName] = useState<string>('')
+
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
     setLoading(true)
@@ -45,25 +52,36 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setLoading(false)
     setFirstFetch(false)
   }
+
   const resetState = async () => {
     setFirstFetch(true)
     setNoMoreFetch(false)
     void fetchGroups(true)
   }
+
   const fetchGroup = async (group_id: string) => {
     setInviteDataIsLoading(true)
     const group = await getGroup(group_id)
     setInviteGroupData(group)
     setInviteDataIsLoading(false)
   }
+
   useEffect(() => {
     void resetState()
   }, [currentAccount?.address])
+
   useEffect(() => {
     if (join) {
       void fetchGroup(join as string)
     }
   }, [join])
+
+  const handleAddNewMember = (groupId: string, groupName: string) => {
+    setSelectedGroupId(groupId)
+    setSelectedGroupName(groupName)
+    onOpen()
+  }
+
   let content: ReactNode
   if (firstFetch) {
     content = (
@@ -117,6 +135,8 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                 key={group.id}
                 currentAccount={currentAccount}
                 {...group}
+                onAddNewMember={handleAddNewMember}
+                mt={0}
               />
             )
           )}
@@ -166,6 +186,12 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         </Button>
       </HStack>
       {content}
+      <InviteModal
+        groupName={selectedGroupName}
+        isOpen={isOpen}
+        onClose={onClose}
+        groupId={selectedGroupId ?? ''}
+      />
     </Flex>
   )
 }
