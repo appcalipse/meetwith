@@ -72,3 +72,13 @@ export interface GroupInvites {
   group_id: string
   role: MemberType
 }
+
+export interface GroupInvitePayload {
+  invitees: {
+    address?: string
+    email?: string
+    userId?: string
+    role: 'admin' | 'member'
+  }[]
+  message?: string
+}
