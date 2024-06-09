@@ -13,7 +13,7 @@ const timezonesKeys = Object.keys(timezonesObj) as Array<
 const _timezones = timezonesKeys
   .map(key => {
     return {
-      name: `${key} (GMT${timezonesObj[key].utcOffsetStr})`,
+      name: `${key} (GMT${timezonesObj[key].dstOffsetStr})`,
       tzCode: key,
       offset: timezonesObj[key].utcOffset,
     }
