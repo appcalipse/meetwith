@@ -16,6 +16,7 @@ import {
   EmptyGroupsResponse,
   GetGroupsResponse,
   Group,
+  GroupInvitePayload,
   GroupMember,
 } from '@/types/Group'
 import {
@@ -870,13 +871,12 @@ export const createGroup = async (
 }
 
 export const inviteUsers = async (
-  invitedUsers: string[],
-  message: string
+  groupId: string,
+  payload: GroupInvitePayload
 ): Promise<void> => {
   try {
-    await internalFetch<void>('/api/invite-users', 'POST', {
-      invitedUsers,
-      message,
+    await internalFetch<void>(`/secure/group/${groupId}/invite`, 'POST', {
+      payload,
     })
   } catch (e: any) {
     if (e instanceof ApiFetchError) {
