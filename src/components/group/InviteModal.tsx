@@ -18,12 +18,12 @@ import {
 } from '@chakra-ui/react'
 import React, { FC, FormEvent, useState } from 'react'
 
-import GroupInviteCardModal from '@/components/group/GroupInviteCardModal'
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
 import { inviteUsers } from '@/utils/api_helper'
 
 import InfoTooltip from '../profile/components/Tooltip'
+import InvitedUsersList from './InvitedUsersList'
 
 interface InviteModalProps {
   isOpen: boolean
@@ -62,12 +62,12 @@ const InviteModal: FC<InviteModalProps> = ({
 
     console.log('Invitees after mapping:', invitees)
 
-    const payload: GroupInvitePayload = { invitees }
+    const payload: GroupInvitePayload = { invitees, message }
 
     console.log('Payload:', payload, 'Message:', message)
 
     try {
-      await inviteUsers(groupId, message)
+      await inviteUsers(groupId, payload)
 
       toast({
         title: 'Invitation sent successfully',
@@ -173,7 +173,7 @@ const InviteModal: FC<InviteModalProps> = ({
                 </Text>
               </FormControl>
 
-              <GroupInviteCardModal
+              <InvitedUsersList
                 users={invitedUsers}
                 removeUser={removeUser}
                 updateRole={updateRole}
