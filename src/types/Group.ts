@@ -82,3 +82,11 @@ export interface GroupInvitePayload {
   }[]
   message?: string
 }
+
+export interface GroupInvitesResponse {
+  id: string
+  email?: string
+  discordId?: string
+  userId?: string
+  groupId: string
+}
