@@ -7,11 +7,18 @@ import { notifyForGroupInviteJoinOrReject } from '@/utils/notification_helper'
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     const request = req.body as GroupInviteNotifyRequest
+
+    const address = req.session.account!.address
+    if (!address) {
+      return res.status(401).send('Unauthorized')
+    }
+
     try {
       await notifyForGroupInviteJoinOrReject(
         request.accountsToNotify,
         request.group_id,
-        request.notifyType
+        request.notifyType,
+        address
       )
     } catch (error) {
       Sentry.captureException(error)

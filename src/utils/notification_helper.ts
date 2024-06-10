@@ -77,6 +77,7 @@ export const notifyForGroupInviteJoinOrReject = async (
 
   return
 }
+
 export const notifyForMeetingCancellation = async (
   participantActing: ParticipantBaseInfo,
   guestsToRemove: ParticipantInfo[],
