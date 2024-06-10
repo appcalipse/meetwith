@@ -21,6 +21,7 @@ import { BiWallet } from 'react-icons/bi'
 import { useActiveWallet } from 'thirdweb/react'
 
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { getGroupsInvites } from '@/utils/api_helper'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
 import { AccountContext } from '../../providers/AccountProvider'
@@ -65,6 +66,19 @@ export const Navbar = () => {
     window.addEventListener('scroll', changeNavbarBackground)
     changeNavbarBackground()
   }, [])
+
+  useEffect(() => {
+    if (currentAccount) {
+      getGroupsInvites(currentAccount.address)
+        .then(invites => {
+          // handle the invites
+          console.log(invites)
+        })
+        .catch(error => {
+          console.error('Error fetching group invites:', error)
+        })
+    }
+  }, [currentAccount])
 
   return (
     <Box
