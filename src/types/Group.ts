@@ -90,3 +90,13 @@ export interface GroupInvitesResponse {
   userId?: string
   groupId: string
 }
+
+export interface GroupInviteFilters {
+  address?: string
+  group_id?: string
+  user_id?: string
+  email?: string
+  discord_id?: string
+  limit?: number
+  offset?: number
+}

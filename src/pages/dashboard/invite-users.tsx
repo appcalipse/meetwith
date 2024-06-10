@@ -71,10 +71,23 @@ const InviteUsersPage = () => {
       return
     }
 
-    const userIdentifiers = invitedUsers.map(user => user.account_address)
+    const userIdentifiers = invitedUsers.map(user => ({
+      address: isEthereumAddressOrDomain(user.account_address)
+        ? user.account_address
+        : undefined,
+      email: isValidEmail(user.account_address)
+        ? user.account_address
+        : undefined,
+      role: 'member' as 'admin' | 'member',
+    }))
+
+    const payload = {
+      invitees: userIdentifiers,
+      message,
+    }
 
     try {
-      await inviteUsers(userIdentifiers, message)
+      await inviteUsers(storedGroupId, payload)
       router.push('/dashboard/invite-success')
     } catch (error) {
       console.error('Error sending invitations:', error)

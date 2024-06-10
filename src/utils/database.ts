@@ -29,6 +29,7 @@ import {
   EmptyGroupsResponse,
   GetGroupsResponse,
   Group,
+  GroupInviteFilters,
   GroupInvites,
   GroupInvitesResponse,
   GroupMemberQuery,
@@ -996,15 +997,7 @@ const getGroupInvites = async ({
   discord_id,
   limit,
   offset,
-}: {
-  address?: string
-  group_id?: string
-  user_id?: string
-  email?: string
-  discord_id?: string
-  limit?: number
-  offset?: number
-}): Promise<Array<UserGroups>> => {
+}: GroupInviteFilters): Promise<Array<UserGroups>> => {
   let query = db.supabase.from('group_invites').select(`
     id,
     role,
