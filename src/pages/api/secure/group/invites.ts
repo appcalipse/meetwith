@@ -1,18 +1,21 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { getGroupInvites } from '@/utils/database'
+import { GroupInviteFilters } from '@/types/Group'
+import { getGroupInvites, getUserGroups } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { group_id, user_id, email, discord_id } = req.query as {
+  const { group_id, user_id, email, discord_id, limit, offset } = req.query as {
     group_id?: string
     user_id?: string
     email?: string
     discord_id?: string
+    limit?: string
+    offset?: string
   }
   const session = req.session
 
@@ -20,36 +23,48 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  // Extract email from preferences if available - fix
-  // const accountEmail = session.account.preferences?.email
-
-  // Extract discord_id from discord_account if available
+  const accountAddress = session.account.address
   const accountDiscordId = session.account.discord_account?.discord_id
 
-  // Verify the user can only search for their own invites
   if (user_id && user_id !== session.account.id) {
     return res.status(403).json({ error: 'Forbidden' })
   }
-
-  //   if (email && email !== accountEmail) {
-  //     return res.status(403).json({ error: 'Forbidden' })
-  //   }
 
   if (discord_id && discord_id !== accountDiscordId) {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
   try {
-    const invites = await getGroupInvites({
+    const filters: GroupInviteFilters = {
+      address: accountAddress,
       group_id,
       user_id,
       email,
       discord_id,
-    })
-    return res.status(200).json(invites)
+    }
+    console.log('Fetching invites with filters:', filters)
+
+    const invites = await getGroupInvites(filters)
+    const groups = await getUserGroups(
+      accountAddress,
+      Number(limit || 10),
+      Number(offset || 0)
+    )
+
+    console.log('Fetched invites:', invites)
+    console.log('Fetched groups:', groups)
+
+    const responseJson = [...invites, ...groups]
+
+    console.log('Fetched invites:', invites)
+    return res.status(200).json(responseJson)
   } catch (error) {
     console.error('Error fetching group invites:', error)
-    return res.status(500).json({ error: 'Failed to fetch group invites' })
+    if (error instanceof Error) {
+      return res.status(500).json({ error: error.message })
+    } else {
+      return res.status(500).json({ error: 'An unexpected error occurred' })
+    }
   }
 }
 

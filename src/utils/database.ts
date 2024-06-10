@@ -353,6 +353,9 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
     .select('nonce')
     .or(query)
 
+  console.log('Database query:', query)
+  console.log('Database response:', { data, error })
+
   if (!error && data.length > 0) {
     return data[0].nonce
   }
@@ -909,7 +912,9 @@ const getUserGroups = async (
     throw new Error(error.message)
   }
   if (data || invites) {
-    return invites.map(val => ({ ...val, invitePending: true })).concat(data)
+    return invites
+      .map(val => ({ ...val, invitePending: true }))
+      .concat(data.map(val => ({ ...val, invitePending: false })))
   }
   return []
 }
@@ -1001,7 +1006,6 @@ const getGroupInvites = async ({
   let query = db.supabase.from('group_invites').select(`
     id,
     role,
-    invitePending,
     group: groups(id, name, slug)
   `)
 
@@ -1026,13 +1030,37 @@ const getGroupInvites = async ({
     (offset || 0) + (limit ? limit - 1 : 999999999999999)
   )
 
-  const { data, error } = await query
+  try {
+    console.log('Executing query with parameters:', {
+      address,
+      group_id,
+      user_id,
+      email,
+      discord_id,
+      limit,
+      offset,
+    })
+    const { data, error } = await query
+    if (error) {
+      console.error('Error executing query:', error)
+      throw new Error(error.message)
+    }
 
-  if (error) {
-    throw new Error(error.message)
+    console.log('Query result:', data)
+    const result = data.map((item: any) => ({
+      ...item,
+      invitePending: true, // Since this is from group_invites, set invitePending to true
+    }))
+    return result
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error in getGroupInvites function:', error.message)
+      throw new Error(error.message)
+    } else {
+      console.error('Unexpected error in getGroupInvites function:', error)
+      throw new Error('An unexpected error occurred')
+    }
   }
-
-  return data ? data : []
 }
 
 const manageGroupInvite = async (
