@@ -28,7 +28,7 @@ import {
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
-  getGroupFromDB,
+  getGroup,
 } from './database'
 import {
   cancelledMeetingEmail,
@@ -56,10 +56,11 @@ export interface ParticipantInfoForInviteNotification
 export const notifyForGroupInviteJoinOrReject = async (
   accountsToNotify: string[],
   group_id: string,
-  notifyType: GroupNotificationType
+  notifyType: GroupNotificationType,
+  address: string
 ): Promise<void> => {
   const participantsInfo: ParticipantInfoForInviteNotification[] = []
-  const group = await getGroupFromDB(group_id)
+  const group = await getGroup(group_id, address)
 
   for (const address of accountsToNotify) {
     const account = await getAccountFromDB(address)
