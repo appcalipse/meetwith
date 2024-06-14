@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { Box, Container, Flex, Text } from '@chakra-ui/layout'
-import { Button, Spinner } from '@chakra-ui/react'
+import { Button, Spinner, useColorModeValue } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
@@ -146,7 +146,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
     undefined as MeetingDecrypted | undefined
   )
-
+  const bgColor = useColorModeValue('white', 'neutral.900')
   const [notificationsSubs, setNotificationSubs] = useState(0)
   const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
   const [rescheduleSlotId, setRescheduleSlotId] = useState<string | undefined>(
@@ -743,10 +743,19 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         teamMeetingRequest={teamMeetingRequest}
         url={url}
       />
-      <Container maxW="7xl" mt={32} mb={8} flex={1}>
+      <Container
+        bg={bgColor}
+        maxW="100%"
+        mt={32}
+        mb={8}
+        flex={1}
+        width="90%"
+        marginX="auto"
+        borderRadius="lg"
+      >
         {!lastScheduledMeeting ? (
           <Box>
-            <Flex wrap="wrap" justifyContent="center">
+            <Flex wrap="wrap">
               <Box
                 flex="1"
                 minW={{ base: '300px', md: '500px' }}

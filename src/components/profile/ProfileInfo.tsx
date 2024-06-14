@@ -1,6 +1,6 @@
 import { Image } from '@chakra-ui/image'
 import { Box, Flex, HStack, Spacer, Text } from '@chakra-ui/layout'
-import { Link } from '@chakra-ui/react'
+import { Heading, Link, VStack } from '@chakra-ui/react'
 import { Tooltip, useColorModeValue } from '@chakra-ui/react'
 import { useState } from 'react'
 import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
@@ -16,6 +16,7 @@ import { Avatar } from './components/Avatar'
 interface ProfileInfoProps {
   account: Account
 }
+
 const ProfileInfo: React.FC<ProfileInfoProps> = props => {
   let [twitter, telegram, discord] = ['', '', '']
 
@@ -44,12 +45,16 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
   }
 
   return (
-    <Flex direction="column" alignItems="center">
-      <Box width="100px" height="100px" mb={4}>
-        <Avatar account={props.account} />
-      </Box>
-      <Text fontSize="lg">{getAccountDisplayName(props.account)}</Text>
-      <HStack my={6}>
+    <Flex direction="column" w="fit-content">
+      <HStack gap={4} alignItems="center">
+        <Box width={55} height={55} mb={4}>
+          <Avatar account={props.account} />
+        </Box>
+        <Text fontSize="lg" fontWeight="500" mb={5}>
+          {getAccountDisplayName(props.account)}
+        </Text>
+      </HStack>
+      <HStack my={6} display={'none'}>
         {telegram && (
           <>
             <Link
@@ -87,17 +92,12 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
         )}
       </HStack>
       {props.account.preferences?.description && (
-        <Box position="relative">
-          <Image
-            src="/assets/quotes.svg"
-            position="absolute"
-            top="-6px"
-            left="-24px"
-          />
-          <Text position="relative" textAlign="justify">
-            <em>{props.account.preferences.description}</em>
+        <VStack position="relative" alignItems="flex-start">
+          <Heading size="md">Description</Heading>
+          <Text position="relative" textAlign="justify" mx={4} fontWeight="500">
+            {props.account.preferences.description}
           </Text>
-        </Box>
+        </VStack>
       )}
     </Flex>
   )
