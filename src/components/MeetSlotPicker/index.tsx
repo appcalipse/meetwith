@@ -83,7 +83,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   timeSlotAvailability,
   willStartScheduling,
 }) => {
-  const [pickedDay, setPickedDay] = useState(null as Date | null)
+  const [pickedDay, setPickedDay] = useState(new Date() as Date | null)
   const [pickedTime, setPickedTime] = useState(null as Date | null)
   const [showPickTime, setShowPickTime] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -319,7 +319,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 
   return (
     <PopupWrapper>
-      {!showPickTime && !showConfirm && (
+      <HStack>
         <Calendar
           loading={checkingSlots}
           validator={validator}
@@ -328,9 +328,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
           selectedMonth={selectedMonth}
           setSelectedMonth={setSelectedMonth}
         />
-      )}
 
-      {showPickTime && (
         <Popup>
           <PopupHeader>
             <HStack mb={4} cursor="pointer" onClick={handleClosePickTime}>
@@ -375,38 +373,38 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             />
           )}
         </Popup>
-      )}
 
-      {showConfirm && (
-        <Popup>
-          <PopupHeader>
-            <HStack mb={4} cursor="pointer" onClick={handleCloseConfirm}>
-              <Icon as={FaArrowLeft} size="1.5em" color={color} />
-              <Text ml={3} color={color}>
-                Back
-              </Text>
-            </HStack>
-            <HStack>
-              <FaCalendar />
-              <Text>{format(pickedDay!, 'PPPP')}</Text>
-            </HStack>
+        {showConfirm && (
+          <Popup>
+            <PopupHeader>
+              <HStack mb={4} cursor="pointer" onClick={handleCloseConfirm}>
+                <Icon as={FaArrowLeft} size="1.5em" color={color} />
+                <Text ml={3} color={color}>
+                  Back
+                </Text>
+              </HStack>
+              <HStack>
+                <FaCalendar />
+                <Text>{format(pickedDay!, 'PPPP')}</Text>
+              </HStack>
 
-            <HStack>
-              <FaClock />
-              <Text>{format(pickedTime!, 'p')}</Text>
-            </HStack>
-          </PopupHeader>
+              <HStack>
+                <FaClock />
+                <Text>{format(pickedTime!, 'p')}</Text>
+              </HStack>
+            </PopupHeader>
 
-          <ScheduleForm
-            onConfirm={onSchedule}
-            willStartScheduling={willStartScheduling}
-            pickedTime={pickedTime!}
-            isSchedulingExternal={isSchedulingExternal}
-            isGateValid={isGateValid}
-            notificationsSubs={notificationsSubs}
-          />
-        </Popup>
-      )}
+            <ScheduleForm
+              onConfirm={onSchedule}
+              willStartScheduling={willStartScheduling}
+              pickedTime={pickedTime!}
+              isSchedulingExternal={isSchedulingExternal}
+              isGateValid={isGateValid}
+              notificationsSubs={notificationsSubs}
+            />
+          </Popup>
+        )}
+      </HStack>
     </PopupWrapper>
   )
 }
