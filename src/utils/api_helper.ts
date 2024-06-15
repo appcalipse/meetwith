@@ -470,6 +470,10 @@ export const getGroup = async (group_id: string) => {
   const response = await internalFetch<Group>(`/secure/group/${group_id}`)
   return response
 }
+export const getGroupExternal = async (group_id: string) => {
+  const response = await internalFetch<Group>(`/group/${group_id}`)
+  return response
+}
 export const subscribeToWaitlist = async (
   email: string,
   plan?: string
