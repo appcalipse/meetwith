@@ -30,6 +30,7 @@ import {
   GetGroupsResponse,
   Group,
   GroupInviteFilters,
+  GroupInvites,
   GroupInvitesResponse,
   GroupMemberQuery,
   GroupUsers,
@@ -351,6 +352,9 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
     .from('accounts')
     .select('nonce')
     .or(query)
+
+  console.log('Database query:', query)
+  console.log('Database response:', { data, error })
 
   if (!error && data.length > 0) {
     return data[0].nonce
@@ -908,7 +912,9 @@ const getUserGroups = async (
     throw new Error(error.message)
   }
   if (data || invites) {
-    return invites.map(val => ({ ...val, invitePending: true })).concat(data)
+    return invites
+      .map(val => ({ ...val, invitePending: true }))
+      .concat(data.map(val => ({ ...val, invitePending: false })))
   }
   return []
 }
@@ -960,135 +966,141 @@ const getGroupsEmpty = async (
   }
 }
 
-export const createGroupInvite = async (
-  groupId: string,
-  inviteeEmail: string,
-  role: MemberType
-) => {
-  const { data, error } = await db.supabase
-    .from('group_invites')
-    .insert([{ group_id: groupId, email: inviteeEmail.toLowerCase(), role }])
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return data
-}
-
-export const updateGroupInviteUserId = async (
-  inviteId: string,
-  userId: string
-) => {
-  const { data, error } = await db.supabase
-    .from('group_invites')
-    .update({ user_id: userId })
-    .eq('id', inviteId)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return data
-}
-
-export const addUserToGroupInvites = async (
-  groupId: string,
-  role: MemberType,
-  email?: string,
-  address?: string,
-  userId?: string
-): Promise<void> => {
-  const { error } = await db.supabase.from('group_invites').insert([
-    {
-      group_id: groupId,
-      role,
-      email: email?.toLowerCase(),
-      address: address?.toLowerCase(),
-      user_id: userId,
-    },
-  ])
-
-  if (error) {
-    throw new Error(error.message)
-  }
-}
-
-const getGroupInvite = async ({
-  email,
-  discordId,
-}: {
+export const getGroupInvite = async (identifier: {
   email?: string
   discordId?: string
 }): Promise<GroupInvitesResponse | null> => {
-  let query = db.supabase.from('group_invites').select('*')
+  const { email, discordId } = identifier
+  let query = db.supabase.from('group_invites').select()
 
   if (email) {
-    query = query.eq('email', email.toLowerCase())
+    query = query.eq('email', email)
   } else if (discordId) {
     query = query.eq('discord_id', discordId)
   } else {
-    throw new Error('Either email or discordId must be provided')
+    console.error('No identifier provided')
+    return null
   }
 
-  const { data, error } = await query.single()
+  const { data, error } = await query
 
-  if (error && error.code !== 'PGRST116') {
-    throw new Error(error.message)
+  if (error) {
+    console.error('Error fetching group invite:', error)
+    return null
   }
 
-  return data ?? null
+  if (data.length === 0) return null
+
+  return data[0] as GroupInvitesResponse
 }
-
-const getGroupInvites = async (
-  filters: GroupInviteFilters
-): Promise<Array<UserGroups>> => {
-  let query = db.supabase.from('group_invites').select(`
-    role,
-    group: groups( id, name, slug )
-  `)
-
-  if (filters.address) {
-    query = query.eq('user_id', filters.address.toLowerCase())
-  }
-  if (filters.group_id) {
-    query = query.eq('group_id', filters.group_id)
-  }
-  if (filters.email) {
-    query = query.eq('email', filters.email.toLowerCase())
-  }
-  if (filters.discord_id) {
-    query = query.eq('discord_id', filters.discord_id)
-  }
-  if (filters.user_id) {
-    query = query.eq('user_id', filters.user_id)
-  }
-
-  const { data, error } = await query.range(
-    filters.offset || 0,
-    (filters.offset || 0) +
-      (filters.limit ? filters.limit - 1 : 999999999999999)
-  )
-
+const getGroupName = async (group_id: string): Promise<Group> => {
+  const { data, error } = await db.supabase
+    .from('groups')
+    .select(
+      `
+    name
+    `
+    )
+    .eq('id', group_id)
   if (error) {
     throw new Error(error.message)
   }
-
   if (data) {
-    return data
+    return data[0]
   }
-  return []
+  throw new GroupNotExistsError()
+}
+
+const getGroupInvites = async ({
+  address,
+  group_id,
+  user_id,
+  email,
+  discord_id,
+  limit,
+  offset,
+}: GroupInviteFilters): Promise<Array<UserGroups>> => {
+  let query = db.supabase.from('group_invites').select(`
+    id,
+    role,
+    group: groups(id, name, slug)
+  `)
+
+  if (address) {
+    query = query.eq('user_id', address.toLowerCase())
+  }
+  if (group_id) {
+    query = query.eq('group_id', group_id)
+  }
+  if (user_id) {
+    query = query.eq('user_id', user_id.toLowerCase())
+  }
+  if (email) {
+    query = query.eq('email', email.toLowerCase())
+  }
+  if (discord_id) {
+    query = query.eq('discord_id', discord_id.toLowerCase())
+  }
+
+  query = query.range(
+    offset || 0,
+    (offset || 0) + (limit ? limit - 1 : 999999999999999)
+  )
+
+  try {
+    console.log('Executing query with parameters:', {
+      address,
+      group_id,
+      user_id,
+      email,
+      discord_id,
+      limit,
+      offset,
+    })
+    const { data, error } = await query
+    if (error) {
+      console.error('Error executing query:', error)
+      throw new Error(error.message)
+    }
+
+    console.log('Query result:', data)
+    const result = data.map((item: any) => ({
+      ...item,
+      invitePending: true, // Since this is from group_invites, set invitePending to true
+    }))
+    return result
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error in getGroupInvites function:', error.message)
+      throw new Error(error.message)
+    } else {
+      console.error('Unexpected error in getGroupInvites function:', error)
+      throw new Error('An unexpected error occurred')
+    }
+  }
 }
 
 const manageGroupInvite = async (
   group_id: string,
   address: string,
-  reject = false
+  reject?: boolean
 ): Promise<void> => {
+  const { error, data } = await db.supabase
+    .from<GroupInvites>('group_invites')
+    .delete()
+    .eq('user_id', address.toLowerCase())
+    .eq('group_id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
   if (reject) {
-    await rejectGroupInvite(group_id, address)
-  } else {
-    await acceptGroupInvite(address, group_id)
+    return
+  }
+  const { error: memberError } = await db.supabase
+    .from('group_members')
+    .insert({ group_id, member_id: address.toLowerCase(), role: data[0].role })
+  if (memberError) {
+    throw new Error(memberError.message)
   }
 }
 
@@ -1106,61 +1118,18 @@ const getGroupAdminsFromDb = async (
   return data
 }
 
-const acceptGroupInvite = async (address: string, group_id: string) => {
-  const { data: invite, error } = await db.supabase
-    .from('group_invites')
-    .select('*')
-    .eq('user_id', address.toLowerCase())
-    .eq('group_id', group_id)
-    .single()
-
-  if (error || !invite) {
-    throw new Error('Group invite not found')
-  }
-
-  // Add the user to the group_members table
-  const { error: insertError } = await db.supabase
-    .from('group_members')
-    .insert([{ group_id, member_id: address.toLowerCase(), role: invite.role }])
-
-  if (insertError) {
-    throw new Error('Failed to add user to group members')
-  }
-
-  // Remove the invite from the group_invites table
-  const { error: deleteError } = await db.supabase
-    .from('group_invites')
-    .delete()
-    .eq('user_id', address.toLowerCase())
-    .eq('group_id', group_id)
-
-  if (deleteError) {
-    throw new Error('Failed to remove group invite')
-  }
-}
-
 const rejectGroupInvite = async (
   group_id: string,
   address: string
 ): Promise<void> => {
-  // Remove the invite from the group_invites table
-  const { error } = await db.supabase
-    .from('group_invites')
-    .delete()
-    .eq('user_id', address.toLowerCase())
-    .eq('group_id', group_id)
-
-  if (error) {
-    throw new Error('Failed to remove group invite')
-  }
-
+  await manageGroupInvite(group_id, address, true)
   const admins = await getGroupAdminsFromDb(group_id)
   const body: GroupInviteNotifyRequest = {
     group_id: group_id,
     accountsToNotify: admins.map(val => val.member_id),
     notifyType: GroupNotificationType.REJECT,
   }
-  await fetch(`${apiUrl}/server/groups/syncAndNotify`, {
+  fetch(`${apiUrl}/server/groups/syncAndNotify`, {
     method: 'POST',
     body: JSON.stringify(body),
     headers: {
@@ -1239,6 +1208,7 @@ const isGroupAdmin = async (groupId: string, userIdentifier?: string) => {
   }
   return data[0].role === MemberType.ADMIN
 }
+
 const changeGroupRole = async (
   groupId: string,
   userIdentifier: string,
@@ -1306,6 +1276,7 @@ const isGroupExists = async (group_id: string) => {
   }
   return true
 }
+
 const getGroup = async (group_id: string, address: string): Promise<Group> => {
   const groupUsers = await getGroupUsersInternal(group_id)
   const isGroupMember = groupUsers.some(
@@ -1335,41 +1306,67 @@ const getGroup = async (group_id: string, address: string): Promise<Group> => {
   throw new GroupNotExistsError()
 }
 
-const getGroupName = async (group_id: string): Promise<Group> => {
-  const { data, error } = await db.supabase
-    .from('groups')
-    .select(
-      `
-    name
-    `
-    )
-    .eq('id', group_id)
-  if (error) {
-    throw new Error(error.message)
+export const createGroupInvite = async (
+  groupId: string,
+  email?: string,
+  discordId?: string,
+  userId?: string
+): Promise<void> => {
+  try {
+    const { error } = await db.supabase.from('group_invites').insert({
+      email,
+      discord_id: discordId,
+      user_id: userId || null,
+      group_id: groupId,
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  } catch (error) {
+    console.error('Error creating group invite:', error)
+    throw error
   }
-  if (data) {
-    return data[0]
-  }
-  throw new GroupNotExistsError()
 }
-const getGroupFromDB = async (group_id: string): Promise<Group> => {
-  const { data, error } = await db.supabase
-    .from('groups')
-    .select(
-      `
-    name,
-    id,
-    slug
-    `
-    )
-    .eq('id', group_id)
+
+export const addUserToGroupInvites = async (
+  groupId: string,
+  role: MemberType,
+  email?: string,
+  discordId?: string,
+  userId?: string
+): Promise<void> => {
+  try {
+    const { error } = await db.supabase.from('group_invites').insert({
+      email,
+      discord_id: discordId,
+      user_id: userId || null,
+      group_id: groupId,
+      role,
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  } catch (error) {
+    console.error('Error creating group invite:', error)
+    throw error
+  }
+}
+
+export const updateGroupInviteUserId = async (
+  inviteId: string,
+  userId: string
+): Promise<void> => {
+  const { error } = await db.supabase
+    .from('group_invites')
+    .update({ user_id: userId })
+    .eq('id', inviteId)
+
   if (error) {
+    console.error('Error updating group invite user ID:', error)
     throw new Error(error.message)
   }
-  if (data) {
-    return data[0]
-  }
-  throw new GroupNotExistsError()
 }
 
 const setAccountNotificationSubscriptions = async (
@@ -2259,7 +2256,6 @@ export async function createGroupInDB(
 }
 
 export {
-  acceptGroupInvite,
   addOrUpdateConnectedCalendar,
   changeGroupRole,
   connectedCalendarExists,
@@ -2275,8 +2271,6 @@ export {
   getGateCondition,
   getGateConditionsForAccount,
   getGroup,
-  getGroupFromDB,
-  getGroupInvite,
   getGroupInvites,
   getGroupName,
   getGroupsEmpty,
