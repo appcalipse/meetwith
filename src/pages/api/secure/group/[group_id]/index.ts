@@ -16,7 +16,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const group = await getGroup(group_id, account_address)
       return res.status(200).json(group)
     } catch (error) {
-      console.log(error)
       if (error instanceof NotGroupMemberError) {
         return res.status(403).json({ error: error.message })
       }
