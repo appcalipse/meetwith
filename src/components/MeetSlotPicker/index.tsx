@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Flex,
+  Heading,
   HStack,
   Icon,
   Text,
@@ -25,7 +26,8 @@ import {
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import React, { useEffect, useState } from 'react'
-import { FaArrowLeft, FaArrowRight, FaCalendar, FaClock } from 'react-icons/fa'
+import { FaArrowRight, FaCalendar, FaClock, FaGlobe } from 'react-icons/fa'
+import { FaArrowLeft } from 'react-icons/fa6'
 
 import { AccountPreferences } from '@/types/Account'
 
@@ -201,7 +203,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     handlePickDay(nextDay)
   }
 
-  const color = useColorModeValue('primary.500', 'primary.400')
+  const color = useColorModeValue('primary.500', 'white')
 
   const timeZone =
     preferences?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -319,69 +321,58 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 
   return (
     <PopupWrapper>
-      <HStack>
-        <Calendar
-          loading={checkingSlots}
-          validator={validator}
-          monthChanged={onMonthChange}
-          pickDay={handlePickDay}
-          selectedMonth={selectedMonth}
-          setSelectedMonth={setSelectedMonth}
-        />
-
-        <Popup>
-          <PopupHeader>
-            <HStack mb={4} cursor="pointer" onClick={handleClosePickTime}>
-              <Icon as={FaArrowLeft} size="1.5em" color={color} />
-              <Text ml={3} color={color}>
-                Back
-              </Text>
-            </HStack>
-            <HStack gap={4} mb={4}>
-              <Button onClick={onPreviousDay} isDisabled={disablePrev}>
-                <Icon as={FaArrowLeft} size="1.5em" color={color} />
-              </Button>
-              <HStack alignItems="flex-start" flex={1}>
-                <Box mt="4px">
-                  <FaCalendar />
-                </Box>
-                <VStack alignItems="flex-start">
-                  <Text>{format(pickedDay!, 'PPPP')}</Text>
-                </VStack>
+      <HStack
+        width="100%"
+        justifyContent="space-between"
+        alignItems="flex-start"
+        gap={120}
+      >
+        {!showConfirm && (
+          <Calendar
+            loading={checkingSlots}
+            validator={validator}
+            monthChanged={onMonthChange}
+            pickDay={handlePickDay}
+            selectedMonth={selectedMonth}
+            setSelectedMonth={setSelectedMonth}
+          />
+        )}
+        {!showConfirm && (
+          <VStack flex={1} alignItems="flex-start">
+            <VStack alignItems="start">
+              <Heading size="md">Select Time</Heading>
+              <HStack alignItems="center" mt={10} mb={3}>
+                <FaGlobe size={24} />
+                <Text align="center" fontSize="base" fontWeight="500">
+                  {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                </Text>
               </HStack>
-              <Button onClick={onNextDay}>
-                <Icon as={FaArrowRight} size="1.5em" color={color} />
-              </Button>
-            </HStack>
-            <Text align="center" fontSize="sm">
-              Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
-            </Text>
-          </PopupHeader>
-
-          {checkingSlots ? (
-            <Flex m={8} justifyContent="center">
-              <Loading label="Checking availability" />
-            </Flex>
-          ) : (
-            <TimeSlots
-              pickedDay={pickedDay}
-              slotSizeMinutes={slotDurationInMinutes}
-              validator={timeSlotAvailability}
-              selfAvailabilityCheck={selfAvailabilityCheck}
-              pickTime={handlePickTime}
-              showSelfAvailability={showSelfAvailability}
-            />
-          )}
-        </Popup>
+            </VStack>
+            {checkingSlots ? (
+              <Flex m={8} justifyContent="center">
+                <Loading label="Checking availability" />
+              </Flex>
+            ) : (
+              <TimeSlots
+                pickedDay={pickedDay}
+                slotSizeMinutes={slotDurationInMinutes}
+                validator={timeSlotAvailability}
+                selfAvailabilityCheck={selfAvailabilityCheck}
+                pickTime={handlePickTime}
+                showSelfAvailability={showSelfAvailability}
+              />
+            )}
+          </VStack>
+        )}
 
         {showConfirm && (
           <Popup>
             <PopupHeader>
               <HStack mb={4} cursor="pointer" onClick={handleCloseConfirm}>
                 <Icon as={FaArrowLeft} size="1.5em" color={color} />
-                <Text ml={3} color={color}>
-                  Back
-                </Text>
+                <Heading size="md" color={color}>
+                  Meeting Information
+                </Heading>
               </HStack>
               <HStack>
                 <FaCalendar />
