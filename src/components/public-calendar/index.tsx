@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+import { ChevronDownIcon } from '@chakra-ui/icons'
 import { Box, Container, Flex, Text } from '@chakra-ui/layout'
-import { Button, Spinner, useColorModeValue } from '@chakra-ui/react'
+import { Button, Spinner, useColorModeValue, VStack } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
@@ -30,6 +31,7 @@ import {
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
+import { BiChevronDown } from 'react-icons/bi'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account, MeetingType } from '@/types/Account'
@@ -104,7 +106,7 @@ interface PublicCalendarProps {
   serverSideRender: boolean
 }
 
-enum CalendarType {
+export enum CalendarType {
   REGULAR,
   TEAM,
 }
@@ -759,41 +761,21 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               <Box
                 flex="1"
                 minW={{ base: '300px', md: '500px' }}
-                maxW="600px"
+                maxW="250px"
                 p={8}
               >
                 {calendarType === CalendarType.REGULAR ? (
-                  <ProfileInfo account={account!} />
+                  <ProfileInfo
+                    calendarType={calendarType}
+                    isPrivateType={isPrivateType}
+                    account={account!}
+                    changeType={changeType}
+                    selectedType={selectedType}
+                    rescheduleSlotId={rescheduleSlotId}
+                    readyToSchedule={readyToSchedule}
+                  />
                 ) : (
                   <GroupScheduleCalendarProfile teamAccounts={groupAccounts} />
-                )}
-                {calendarType === CalendarType.REGULAR && !rescheduleSlotId && (
-                  <>
-                    <Select
-                      isDisabled={readyToSchedule}
-                      placeholder="Select option"
-                      mt={8}
-                      value={selectedType.id}
-                      onChange={e =>
-                        e.target.value && changeType(e.target.value)
-                      }
-                    >
-                      {account!.preferences.availableTypes
-                        .filter(
-                          type =>
-                            !type.deleted && (!type.private || isPrivateType)
-                        )
-                        .map(type => (
-                          <option key={type.id} value={type.id}>
-                            {type.title ? `${type.title} - ` : ''}
-                            {durationToHumanReadable(type.duration)}
-                          </option>
-                        ))}
-                    </Select>
-                    {selectedType.description && (
-                      <Text p={2}>{selectedType.description}</Text>
-                    )}
-                  </>
                 )}
 
                 {CalendarType.REGULAR === calendarType &&
@@ -820,8 +802,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   />
                 )}
               </Box>
+
               {isSSR ? null : (
-                <Box flex="2" p={{ md: 8 }}>
+                <Box flex="1" width="100%" p={{ md: 8 }}>
                   <MeetSlotPicker
                     reset={reset}
                     onMonthChange={(day: Date) => setCurrentMonth(day)}
