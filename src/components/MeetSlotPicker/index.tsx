@@ -48,6 +48,7 @@ interface MeetSlotPickerProps {
   notificationsSubs?: number
   onDayChange?: (day: Date) => void
   onMonthChange?: (day: Date) => void
+  onTimeChange?: (time?: Date) => void
   onSchedule: (
     scheduleType: SchedulingType,
     startTime: Date,
@@ -75,6 +76,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   isSchedulingExternal,
   notificationsSubs,
   onDayChange,
+  onTimeChange,
   onMonthChange,
   onSchedule,
   preferences,
@@ -121,10 +123,10 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     setPickedDay(day)
     setShowPickTime(true)
   }
-
   const handlePickTime = (time: Date) => {
     logEvent('Selected time')
     setPickedTime(time)
+    onTimeChange?.(time)
     setShowPickTime(false)
     setShowConfirm(true)
     willStartScheduling(true)
@@ -136,6 +138,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 
   const handleCloseConfirm = () => {
     willStartScheduling(false)
+    onTimeChange?.(undefined)
     setShowConfirm(false)
     setShowPickTime(true)
   }
@@ -333,6 +336,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             validator={validator}
             monthChanged={onMonthChange}
             pickDay={handlePickDay}
+            pickedDay={pickedDay}
             selectedMonth={selectedMonth}
             setSelectedMonth={setSelectedMonth}
           />
@@ -368,20 +372,11 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
         {showConfirm && (
           <Popup>
             <PopupHeader>
-              <HStack mb={4} cursor="pointer" onClick={handleCloseConfirm}>
+              <HStack mb={0} cursor="pointer" onClick={handleCloseConfirm}>
                 <Icon as={FaArrowLeft} size="1.5em" color={color} />
                 <Heading size="md" color={color}>
                   Meeting Information
                 </Heading>
-              </HStack>
-              <HStack>
-                <FaCalendar />
-                <Text>{format(pickedDay!, 'PPPP')}</Text>
-              </HStack>
-
-              <HStack>
-                <FaClock />
-                <Text>{format(pickedTime!, 'p')}</Text>
               </HStack>
             </PopupHeader>
 
