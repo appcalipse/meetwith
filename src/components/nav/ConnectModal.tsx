@@ -16,7 +16,7 @@ import { useLogin } from '@/session/login'
 import { thirdWebClient } from '@/utils/user_manager'
 
 export const ConnectModal: React.FC = ({}) => {
-  const { isConnectionOpened, closeConnection } = useContext(
+  const { isConnectionOpened, closeConnection, shouldRedirect } = useContext(
     OnboardingModalContext
   )
   const { handleLogin } = useLogin()
@@ -71,7 +71,7 @@ export const ConnectModal: React.FC = ({}) => {
       wallet.getAccount()!.address.toLowerCase() !==
         currentAccount?.address.toLowerCase()
     ) {
-      await handleLogin(wallet)
+      await handleLogin(wallet, shouldRedirect)
     }
   }
 
