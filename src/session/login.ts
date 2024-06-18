@@ -18,7 +18,8 @@ export const useLogin = () => {
   const handleLogin = async (
     wallet: Wallet | undefined,
     useWaiting = true,
-    forceRedirect = true
+    forceRedirect = true,
+    shouldRedirect = true
   ) => {
     !forceRedirect && logEvent('Clicked to connect wallet')
     if (!wallet?.getAccount()) return
@@ -32,7 +33,7 @@ export const useLogin = () => {
       if (!account) {
         await logout(wallet)
         if (logged && forceRedirect) {
-          await router.push('/')
+          shouldRedirect && (await router.push('/'))
         }
         return
       }
@@ -55,7 +56,9 @@ export const useLogin = () => {
           }
 
           const state = Buffer.from(JSON.stringify(stateObj)).toString('base64')
-          await router.push(`/dashboard/details?state=${state}`)
+
+          shouldRedirect &&
+            (await router.push(`/dashboard/details?state=${state}`))
           return
         }
 
@@ -65,7 +68,7 @@ export const useLogin = () => {
           router.pathname === '/' ||
           router.pathname.indexOf('/embed') != -1
         ) {
-          await router.push('/dashboard/meetings')
+          shouldRedirect && (await router.push('/dashboard/meetings'))
           return
         }
       }
