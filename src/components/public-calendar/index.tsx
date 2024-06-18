@@ -137,6 +137,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   )
   const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [selectedTime, setSelectedTime] = useState<Date | undefined>(undefined)
   const [busySlots, setBusyslots] = useState([] as Interval[])
   const [selfBusySlots, setSelfBusyslots] = useState([] as Interval[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
@@ -747,13 +748,17 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       />
       <Container
         bg={bgColor}
-        maxW="100%"
-        mt={32}
-        mb={8}
+        maxW="95%"
+        my={48}
         flex={1}
-        width="90%"
+        width={readyToSchedule ? 'fit-content' : '90%'}
+        pb={6}
         marginX="auto"
         borderRadius="lg"
+        transitionProperty="width"
+        transitionDuration="2s"
+        transitionTimingFunction="ease-in-out"
+        position={'relative'}
       >
         {!lastScheduledMeeting ? (
           <Box>
@@ -773,6 +778,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                     selectedType={selectedType}
                     rescheduleSlotId={rescheduleSlotId}
                     readyToSchedule={readyToSchedule}
+                    selectedTime={selectedTime}
                   />
                 ) : (
                   <GroupScheduleCalendarProfile teamAccounts={groupAccounts} />
@@ -808,6 +814,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   <MeetSlotPicker
                     reset={reset}
                     onMonthChange={(day: Date) => setCurrentMonth(day)}
+                    onTimeChange={(time?: Date) => setSelectedTime(time)}
                     availabilityInterval={
                       teamMeetingRequest
                         ? {
