@@ -28,7 +28,7 @@ function Root({
   })
   const borderColor = useColorModeValue('neutral.200', 'neutral.500')
   const circleColor = useColorModeValue('primary.500', 'primary.500')
-  const textColor = useColorModeValue('primary.500', 'white')
+  const textColor = useColorModeValue('primary.500', 'neutral.100')
   return (
     <>
       {!currentAccount && (
@@ -96,7 +96,11 @@ function Root({
                 transitionDuration="300ms"
                 transitionTimingFunction="ease-in-out"
               >
-                {<Text flex={1}>{format(slot.start, 'p')}</Text>}
+                {
+                  <Text flex={1} fontWeight="bold">
+                    {format(slot.start, 'p')}
+                  </Text>
+                }
                 {showSelfAvailability && selfAvailabilityCheck(slot.start) ? (
                   <Flex
                     borderRadius="50%"
