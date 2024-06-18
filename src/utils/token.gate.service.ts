@@ -3,11 +3,18 @@ import { GateCondition, GateInterface } from '@/types/TokenGating'
 
 import { getWalletPOAP } from './api_helper'
 import { getNativeBalance, getTokenBalance } from './token.service'
-
+export interface ConditionValidation {
+  tokens: Array<{
+    balance: bigint
+    symbol: string
+    relation: ConditionRelation
+  }>
+  isValid: boolean
+}
 export const isConditionValid = async (
   gateCondition: GateCondition,
   targetAddress: string
-): Promise<boolean> => {
+): Promise<ConditionValidation> => {
   if (gateCondition.elements.length > 0) {
     const isValid = []
     for (const element of gateCondition.elements) {
@@ -37,12 +44,30 @@ export const isConditionValid = async (
         )
       }
 
-      isValid.push(balance > 0 && element.minimumBalance <= balance)
+      isValid.push({
+        valid: balance > 0 && element.minimumBalance <= balance,
+        balance,
+        symbol: element.itemSymbol,
+      })
     }
     if (gateCondition.relation === ConditionRelation.AND) {
-      return isValid.every(valid => valid === true)
+      return {
+        isValid: isValid.every(valid => valid.valid === true),
+        tokens: isValid.map(val => ({
+          balance: val.balance,
+          symbol: val.symbol,
+          relation: gateCondition.relation,
+        })),
+      }
     } else {
-      return isValid.some(valid => valid === true)
+      return {
+        isValid: isValid.some(valid => valid.valid === true),
+        tokens: isValid.map(val => ({
+          balance: val.balance,
+          symbol: val.symbol,
+          relation: gateCondition.relation,
+        })),
+      }
     }
   } else {
     const isValid = []
@@ -50,9 +75,15 @@ export const isConditionValid = async (
       isValid.push(await isConditionValid(condition, targetAddress))
     }
     if (gateCondition.relation === ConditionRelation.AND) {
-      return isValid.every(valid => valid === true)
+      return {
+        isValid: isValid.every(valid => valid.isValid === true),
+        tokens: isValid.map(val => val.tokens).flat(),
+      }
     } else {
-      return isValid.some(valid => valid === true)
+      return {
+        isValid: isValid.some(valid => valid.isValid === true),
+        tokens: isValid.map(val => val.tokens).flat(),
+      }
     }
   }
 }
