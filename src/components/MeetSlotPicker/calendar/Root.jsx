@@ -33,6 +33,7 @@ function Root({
   selectedMonth,
   setSelectedMonth,
   loading,
+  pickedDay,
 }) {
   const [fakeMonth, setFakeMonth] = useState(selectedMonth)
   const [animation, setAnimation] = useState('')
@@ -140,9 +141,10 @@ function Root({
                     if (!_isSameMonth) {
                       return <MonthDay key={day} />
                     }
-
                     const formatted = format(day, 'd')
-                    const _isToday = isToday(day)
+                    const _isToday = pickedDay
+                      ? pickedDay.getDate() === day.getDate()
+                      : isToday(day)
                     const _isWeekend = [0, 6].includes(day.getDay())
                     const isValid = validator ? validator(day) : true
                     return (
@@ -206,6 +208,7 @@ Root.propTypes = {
   validator: PropTypes.func,
   pickDay: PropTypes.func.isRequired,
   monthChanged: PropTypes.func,
+  pickedDay: PropTypes.instanceOf(Date),
 }
 
 export default Root
