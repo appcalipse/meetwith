@@ -3,9 +3,17 @@ import { Box, Flex, HStack, Spacer, Text } from '@chakra-ui/layout'
 import { Heading, Link, VStack } from '@chakra-ui/react'
 import { Tooltip, useColorModeValue } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
+import { addMinutes, format } from 'date-fns'
 import React, { useState } from 'react'
 import { BiChevronDown } from 'react-icons/bi'
-import { FaDiscord, FaTelegram, FaTwitter } from 'react-icons/fa'
+import {
+  FaCalendar,
+  FaClock,
+  FaDiscord,
+  FaGlobe,
+  FaTelegram,
+  FaTwitter,
+} from 'react-icons/fa'
 
 import { CalendarType } from '@/components/public-calendar'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
@@ -26,6 +34,7 @@ interface ProfileInfoProps {
   changeType: (val: string) => void
   selectedType: MeetingType
   rescheduleSlotId?: string
+  selectedTime?: Date
 }
 
 const ProfileInfo: React.FC<ProfileInfoProps> = props => {
@@ -64,7 +73,22 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
       setCopyFeedbackOpen(false)
     }, 2000)
   }
+  console.log(props.selectedType)
+  const startTime = props.selectedTime || new Date()
+  const endTime = addMinutes(startTime, props.selectedType.duration)
+  const formattedStartTime = startTime.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+  })
+  const formattedEndTime = endTime.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+  })
 
+  const formattedDate = format(startTime, 'PPPP')
+  const timeDuration = `${formattedStartTime} - ${formattedEndTime}`
   return (
     <VStack gap={8} w="fit-content" alignItems="flex-start">
       <Box>
@@ -76,82 +100,120 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
             {getAccountDisplayName(props.account)}
           </Text>
         </HStack>
-        <HStack mt={6} gap={6} justifyContent="flex-start">
-          {telegram && (
-            <>
-              <Link
-                color={iconColor}
-                isExternal
-                href={generateTelegramUrl(telegram)}
-              >
-                <FaTelegram size={24} />
-              </Link>
-            </>
-          )}
-          {twitter && (
-            <>
-              <Link
-                color={iconColor}
-                isExternal
-                href={generateTwitterUrl(twitter)}
-              >
-                <FaTwitter size={24} />
-              </Link>
-            </>
-          )}
-          {discord && (
-            <Tooltip
-              label="Discord username copied"
-              placement="top"
-              isOpen={copyFeedbackOpen}
-            >
-              <Box color={iconColor} onClick={copyDiscord} cursor="pointer">
-                <FaDiscord size={24} />
-              </Box>
-            </Tooltip>
-          )}
-        </HStack>
       </Box>
-      {props.calendarType === CalendarType.REGULAR &&
-        !props.rescheduleSlotId && (
-          <VStack position="relative" alignItems="flex-start">
-            <Heading size="md">Meeting Type</Heading>
-            <Select
-              isDisabled={props.readyToSchedule}
-              placeholder="Select option"
-              border={0}
-              icon={<BiChevronDown size={24} />}
-              cursor="pointer"
-              iconSize="25"
-              _focusVisible={{ borderWidth: 0, boxShadow: 'none' }}
-              value={props.selectedType.id}
-              maxW="350px"
-              onChange={e => e.target.value && props.changeType(e.target.value)}
-            >
-              {props
-                .account!.preferences.availableTypes.filter(
-                  type =>
-                    !type.deleted && (!type.private || props.isPrivateType)
-                )
-                .map(type => (
-                  <option key={type.id} value={type.id}>
-                    {type.title ? `${type.title} - ` : ''}
-                    {durationToHumanReadable(type.duration)}
-                  </option>
-                ))}
-            </Select>
-            {props.selectedType.description && (
-              <Text p={2}>{props.selectedType.description}</Text>
+      {props.readyToSchedule ? (
+        <>
+          <Heading size={'lg'}>{props.selectedType.title}</Heading>
+          <HStack>
+            <FaCalendar size={24} />
+            <Text>{`${formattedDate}, ${timeDuration}`}</Text>
+          </HStack>
+          <HStack>
+            <FaClock size={24} />
+            <Text>{props.selectedType.duration} minutes</Text>
+          </HStack>
+          <HStack>
+            <FaGlobe size={24} />
+            <Text align="center" fontSize="base" fontWeight="500">
+              {Intl.DateTimeFormat().resolvedOptions().timeZone}
+            </Text>
+          </HStack>
+        </>
+      ) : (
+        <>
+          {props.account.preferences?.socialLinks?.length && (
+            <VStack alignItems="flex-start">
+              <Heading size="md">Socials</Heading>
+              <HStack mx={4} mt={2} gap={6} justifyContent="flex-start">
+                {telegram && (
+                  <>
+                    <Link
+                      color={iconColor}
+                      isExternal
+                      href={generateTelegramUrl(telegram)}
+                    >
+                      <FaTelegram size={24} />
+                    </Link>
+                  </>
+                )}
+                {twitter && (
+                  <>
+                    <Link
+                      color={iconColor}
+                      isExternal
+                      href={generateTwitterUrl(twitter)}
+                    >
+                      <FaTwitter size={24} />
+                    </Link>
+                  </>
+                )}
+                {discord && (
+                  <Tooltip
+                    label="Discord username copied"
+                    placement="top"
+                    isOpen={copyFeedbackOpen}
+                  >
+                    <Box
+                      color={iconColor}
+                      onClick={copyDiscord}
+                      cursor="pointer"
+                    >
+                      <FaDiscord size={24} />
+                    </Box>
+                  </Tooltip>
+                )}
+              </HStack>
+            </VStack>
+          )}
+          {props.account.preferences?.description && (
+            <VStack alignItems="flex-start">
+              <Heading size="md">Profile Description</Heading>
+              <Text
+                position="relative"
+                textAlign="justify"
+                mx={4}
+                fontWeight="500"
+              >
+                {props.account.preferences.description}
+              </Text>
+            </VStack>
+          )}
+          {props.calendarType === CalendarType.REGULAR &&
+            !props.rescheduleSlotId && (
+              <VStack position="relative" alignItems="flex-start">
+                <Heading size="md">Meeting Type</Heading>
+                <Select
+                  isDisabled={props.readyToSchedule}
+                  placeholder="Select option"
+                  border={0}
+                  icon={<BiChevronDown size={24} />}
+                  cursor="pointer"
+                  iconSize="25"
+                  _focusVisible={{ borderWidth: 0, boxShadow: 'none' }}
+                  value={props.selectedType.id}
+                  maxW="350px"
+                  onChange={e =>
+                    e.target.value && props.changeType(e.target.value)
+                  }
+                >
+                  {props
+                    .account!.preferences.availableTypes.filter(
+                      type =>
+                        !type.deleted && (!type.private || props.isPrivateType)
+                    )
+                    .map(type => (
+                      <option key={type.id} value={type.id}>
+                        {type.title ? `${type.title} - ` : ''}
+                        {durationToHumanReadable(type.duration)}
+                      </option>
+                    ))}
+                </Select>
+                {props.selectedType.description && (
+                  <Text p={2}>{props.selectedType.description}</Text>
+                )}
+              </VStack>
             )}
-          </VStack>
-        )}
-      {props.account.preferences?.description && (
-        <VStack alignItems="flex-start">
-          <Heading size="md">Description</Heading>
-          <Text position="relative" textAlign="justify" mx={4} fontWeight="500">
-            {props.account.preferences.description}
-          </Text>
-        </VStack>
+        </>
       )}
     </VStack>
   )
