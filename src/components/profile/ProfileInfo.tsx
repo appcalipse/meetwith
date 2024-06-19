@@ -73,7 +73,6 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
       setCopyFeedbackOpen(false)
     }, 2000)
   }
-  console.log(props.selectedType)
   const startTime = props.selectedTime || new Date()
   const endTime = addMinutes(startTime, props.selectedType.duration)
   const formattedStartTime = startTime.toLocaleTimeString(undefined, {
@@ -121,7 +120,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
         </>
       ) : (
         <>
-          {props.account.preferences?.socialLinks?.length && (
+          {!!props.account.preferences?.socialLinks?.length && (
             <VStack alignItems="flex-start">
               <Heading size="md">Socials</Heading>
               <HStack mx={4} mt={2} gap={6} justifyContent="flex-start">
