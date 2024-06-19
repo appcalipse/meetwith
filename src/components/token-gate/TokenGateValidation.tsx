@@ -80,10 +80,11 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
     <Box
       mt={10}
       position="absolute"
-      top={-48}
+      top={-44}
       mx={'auto'}
       w={'fit-content'}
       insetX={'0'}
+      transform={'scale(0.9)'}
     >
       <Loading />
     </Box>
