@@ -329,6 +329,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
         justifyContent="space-between"
         alignItems="flex-start"
         gap={120}
+        flexWrap="wrap"
       >
         {!showConfirm && (
           <Calendar
