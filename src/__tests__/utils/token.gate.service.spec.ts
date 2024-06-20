@@ -16,7 +16,7 @@ import {
   POAP_MWW,
   USDC_ELEMENT,
   USDT_ELEMENT,
-} from '../../../testing/mocks'
+} from '../../testing/mocks'
 jest.mock('@/utils/api_helper')
 jest.mock('thirdweb')
 describe('get balance for tokens', () => {
