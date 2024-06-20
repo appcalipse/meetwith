@@ -100,7 +100,7 @@ function Root({
               </CurrentMonth>
 
               <FakeCurrentMonth animation={animation}>
-                {format(fakeMonth, 'MMMM yyy')}
+                {format(fakeMonth, 'MMMM yyyy')}
               </FakeCurrentMonth>
             </Wrapper>
 
