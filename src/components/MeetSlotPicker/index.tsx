@@ -11,9 +11,7 @@ import {
 } from '@chakra-ui/react'
 import {
   chakraComponents,
-  components,
   MultiValue,
-  Props,
   Select,
   SingleValue,
 } from 'chakra-react-select'
@@ -136,9 +134,15 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   )
 
   const _onChange = (
-    timezone: SingleValue<{ label: string; value: string }>,
+    newValue:
+      | SingleValue<{ label: string; value: string }>
+      | MultiValue<{ label: string; value: string }>,
     actionMeta: ActionMeta<any>
   ) => {
+    if (Array.isArray(newValue)) {
+      return
+    }
+    const timezone = newValue as SingleValue<{ label: string; value: string }>
     setTz(timezone)
     setTimezone(
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
