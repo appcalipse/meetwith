@@ -105,12 +105,14 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
     >
       {!props.userAccount && firstToken && (
         <HStack gap={4} color="neutral.900">
-          <Image
-            src={getTokenIcon(firstToken.itemSymbol as AcceptedToken)}
-            alt={firstToken.itemSymbol}
-            w={30}
-            h={30}
-          />
+          {getTokenIcon(firstToken.itemSymbol as AcceptedToken) && (
+            <Image
+              src={getTokenIcon(firstToken.itemSymbol as AcceptedToken)}
+              alt={firstToken.itemSymbol}
+              w={30}
+              h={30}
+            />
+          )}
           <Text>
             You need to hold{' '}
             {formatUnits(firstToken.minimumBalance, firstToken.decimals || 0)}{' '}
@@ -130,12 +132,14 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
       )}
       {props.isGateValid && props.userAccount && firstToken && (
         <HStack gap={4}>
-          <Image
-            src={getTokenIcon(firstToken.itemSymbol as AcceptedToken)}
-            alt={firstToken.itemSymbol}
-            w={30}
-            h={30}
-          />
+          {getTokenIcon(firstToken.itemSymbol as AcceptedToken) && (
+            <Image
+              src={getTokenIcon(firstToken.itemSymbol as AcceptedToken)}
+              alt={firstToken.itemSymbol}
+              w={30}
+              h={30}
+            />
+          )}
           <Text>
             Congratulations. You are eligible to schedule this meeting because
             you hold{' '}
@@ -146,12 +150,14 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
       )}
       {!props.isGateValid && props.userAccount && firstToken && (
         <HStack gap={4}>
-          <Image
-            src={getTokenIcon(firstToken.itemSymbol as AcceptedToken)}
-            alt={firstToken.itemSymbol}
-            w={30}
-            h={30}
-          />
+          {getTokenIcon(firstToken.itemSymbol as AcceptedToken) && (
+            <Image
+              src={getTokenIcon(firstToken.itemSymbol as AcceptedToken)}
+              alt={firstToken.itemSymbol}
+              w={30}
+              h={30}
+            />
+          )}
           <Text color="neutral.900">
             You need to hold{' '}
             {formatUnits(firstToken.minimumBalance, firstToken.decimals || 0)}{' '}
