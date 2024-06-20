@@ -80,7 +80,7 @@ export const getTokenIcon = (token: AcceptedToken) => {
     case AcceptedToken.ETHER:
       return '/assets/chains/ethereum.svg'
     default:
-      return '/assets/chains/Default.svg'
+      return
   }
 }
 

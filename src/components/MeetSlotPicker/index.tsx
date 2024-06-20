@@ -10,6 +10,15 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import {
+  chakraComponents,
+  components,
+  MultiValue,
+  Props,
+  Select,
+  SingleValue,
+} from 'chakra-react-select'
+import ct from 'countries-and-timezones'
+import {
   addDays,
   addMinutes,
   areIntervalsOverlapping,
@@ -26,8 +35,18 @@ import {
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import React, { useEffect, useState } from 'react'
-import { FaArrowRight, FaCalendar, FaClock, FaGlobe } from 'react-icons/fa'
+import { AiFillCaretDown } from 'react-icons/ai'
+import {
+  FaArrowRight,
+  FaCalendar,
+  FaChevronDown,
+  FaClock,
+  FaGlobe,
+} from 'react-icons/fa'
 import { FaArrowLeft } from 'react-icons/fa6'
+import { IoMdCloseCircleOutline } from 'react-icons/io'
+import { SelectComponentsGeneric } from 'react-select/dist/declarations/src/components'
+import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
 import { AccountPreferences } from '@/types/Account'
 
@@ -68,6 +87,20 @@ interface MeetSlotPickerProps {
   willStartScheduling: (isScheduling: boolean) => void
 }
 
+const timezonesObj = ct.getAllTimezones()
+const timezonesKeys = Object.keys(timezonesObj) as Array<
+  keyof typeof timezonesObj
+>
+const _timezones = timezonesKeys
+  .map(key => {
+    return {
+      name: `${key} (GMT${timezonesObj[key].dstOffsetStr})`,
+      tzCode: key,
+      offset: timezonesObj[key].utcOffset,
+    }
+  })
+  .sort((a, b) => a.offset - b.offset)
+const timezones = [..._timezones, { tzCode: 'UTC', name: '(UTC+00:00) UTC' }]
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   availabilityInterval,
   blockedDates,
@@ -87,6 +120,31 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   timeSlotAvailability,
   willStartScheduling,
 }) => {
+  const tzs = timezones.map(tz => {
+    return {
+      value: tz.tzCode,
+      label: tz.name,
+    }
+  })
+  const [timezone, setTimezone] = useState<string | null>(
+    preferences?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
+  const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
+    tzs.filter(
+      val => val.value === Intl.DateTimeFormat().resolvedOptions().timeZone
+    )[0] || tzs[0]
+  )
+
+  const _onChange = (
+    timezone: SingleValue<{ label: string; value: string }>,
+    actionMeta: ActionMeta<any>
+  ) => {
+    setTz(timezone)
+    setTimezone(
+      timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
+    )
+  }
+
   const [pickedDay, setPickedDay] = useState(new Date() as Date | null)
   const [pickedTime, setPickedTime] = useState(null as Date | null)
   const [showPickTime, setShowPickTime] = useState(false)
@@ -321,7 +379,23 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       )
     }
   }
-
+  const customComponents: Partial<SelectComponentsGeneric> = {
+    Control: props => (
+      <chakraComponents.Control {...props}>
+        <FaGlobe size={24} /> {props.children}
+      </chakraComponents.Control>
+    ),
+    ClearIndicator: props => (
+      <chakraComponents.ClearIndicator className="noBg" {...props}>
+        <Icon as={FaChevronDown} w={4} h={4} />
+      </chakraComponents.ClearIndicator>
+    ),
+    DropdownIndicator: props => (
+      <chakraComponents.DropdownIndicator className="noBg" {...props}>
+        <Icon as={FaChevronDown} />
+      </chakraComponents.DropdownIndicator>
+    ),
+  }
   return (
     <PopupWrapper>
       <HStack
@@ -346,12 +420,14 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
           <VStack flex={1} alignItems="flex-start">
             <VStack alignItems="start">
               <Heading size="md">Select Time</Heading>
-              <HStack alignItems="center" mt={10} mb={3}>
-                <FaGlobe size={24} />
-                <Text align="center" fontSize="base" fontWeight="500">
-                  {Intl.DateTimeFormat().resolvedOptions().timeZone}
-                </Text>
-              </HStack>
+              <Select
+                value={tz}
+                colorScheme="primary"
+                onChange={_onChange}
+                className="hideBorder"
+                options={tzs}
+                components={customComponents}
+              />
             </VStack>
             {checkingSlots ? (
               <Flex m={8} justifyContent="center">
