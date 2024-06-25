@@ -38,7 +38,9 @@ import {
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
   internalFetch,
+  joinGroup,
   listConnectedCalendars,
+  rejectGroup,
   saveAccountChanges,
   setNotificationSubscriptions,
   updateConnectedCalendar,
@@ -77,6 +79,10 @@ const OnboardingModal = () => {
   )
 
   const [didOpenConnectWallet, setDidOpenConnectWallet] = useState(false)
+  // const [groupInviteHandled, setGroupInviteHandled] = useState(false) // State to track invite handling
+  const [groupInviteAccepted, setGroupInviteAccepted] = useState(false)
+  const [groupInviteRejected, setGroupInviteRejected] = useState(false)
+  const [loadingSave, setLoadingSave] = useState(false)
 
   // Color Control
   const bgColor = useColorModeValue('gray.100', 'gray.600')
@@ -102,13 +108,11 @@ const OnboardingModal = () => {
     setActiveStep,
   } = useSteps({
     index: 0,
-    count: 2,
+    count: 3,
   })
 
   // User Control
-
   const { currentAccount, login } = useContext(AccountContext)
-
   const [availabilities, setInitialAvailabilities] = useState(
     generateDefaultAvailabilities()
   )
@@ -116,14 +120,24 @@ const OnboardingModal = () => {
   // Modal opening flow
   useEffect(() => {
     // When something related to user changes, check if we should open the modal
-    // If the user is logged in and modal hans't been opened yet
+    // If the user is logged in and modal hasn't been opened yet
     if (!!currentAccount?.address && !onboardingInit && !skipNextSteps) {
-      // We check if the user is comming from Discord Onboarding Modal
-      // and has its discord account linked
-
-      // 1st Case
-      // Connected Discord in Modal Successfully
+      // Check if there's a group invite and handle it
       if (
+        stateObject.group_id &&
+        !groupInviteAccepted &&
+        !groupInviteRejected
+      ) {
+        openOnboarding()
+        onboardingStarted()
+        setActiveStep(1)
+
+        // We check if the user is coming from Discord Onboarding Modal
+        // and has its discord account linked
+
+        // 1st Case
+        // Connected Discord in Modal Successfully
+      } else if (
         origin === OnboardingSubject.DiscordConnectedInModal &&
         !!currentAccount.discord_account
       ) {
@@ -136,7 +150,7 @@ const OnboardingModal = () => {
         origin === OnboardingSubject.GoogleCalendarConnected ||
         origin === OnboardingSubject.Office365CalendarConnected
       ) {
-        setActiveStep(1)
+        setActiveStep(2)
         openOnboarding()
         onboardingStarted()
 
@@ -167,6 +181,9 @@ const OnboardingModal = () => {
     openConnection,
     isOnboardingOpened,
     signedUp,
+    stateObject.group_id,
+    groupInviteAccepted,
+    groupInviteRejected,
   ])
 
   useEffect(() => {
@@ -367,8 +384,6 @@ const OnboardingModal = () => {
     setInitialAvailabilities(newAvailabilities)
   }
 
-  const [loadingSave, setLoadingSave] = useState(false)
-
   async function onSave() {
     if (!currentAccount?.preferences || !timezone) return
 
@@ -499,7 +514,87 @@ const OnboardingModal = () => {
                 </Flex>
               )}
 
-              {activeStep === 1 && (
+              {activeStep === 1 &&
+                stateObject.group_id &&
+                !groupInviteAccepted &&
+                !groupInviteRejected && (
+                  <Flex marginTop={6} direction="column" gap={10}>
+                    <Flex direction="column" gap={4}>
+                      <Heading>Group Invite</Heading>
+                      <Text>
+                        You have been invited to join a group. Would you like to
+                        accept or reject the invite?
+                      </Text>
+                    </Flex>
+
+                    <Flex gap={5}>
+                      <Button
+                        colorScheme="green"
+                        onClick={async () => {
+                          try {
+                            const success = await joinGroup(
+                              stateObject.group_id
+                            )
+                            if (!success) {
+                              throw new Error('Failed to accept group invite')
+                            }
+                            setGroupInviteAccepted(true)
+                            goToNextStep()
+                          } catch (error) {
+                            console.error(
+                              'Error accepting group invite:',
+                              error
+                            )
+                            toast({
+                              title: 'Error',
+                              description:
+                                'Failed to accept group invite. Please try again later.',
+                              status: 'error',
+                              duration: 5000,
+                              isClosable: true,
+                            })
+                          }
+                        }}
+                        isDisabled={groupInviteAccepted || groupInviteRejected}
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        colorScheme="red"
+                        onClick={async () => {
+                          try {
+                            const success = await rejectGroup(
+                              stateObject.group_id
+                            )
+                            if (!success) {
+                              throw new Error('Failed to reject group invite')
+                            }
+                            setGroupInviteRejected(true)
+                            closeOnboarding()
+                          } catch (error) {
+                            console.error(
+                              'Error rejecting group invite:',
+                              error
+                            )
+                            toast({
+                              title: 'Error',
+                              description:
+                                'Failed to reject group invite. Please try again later.',
+                              status: 'error',
+                              duration: 5000,
+                              isClosable: true,
+                            })
+                          }
+                        }}
+                        isDisabled={groupInviteAccepted || groupInviteRejected}
+                      >
+                        Reject
+                      </Button>
+                    </Flex>
+                  </Flex>
+                )}
+
+              {activeStep === 2 && (
                 <Flex marginTop={6} direction="column" gap={10}>
                   <Flex direction="column" gap={4}>
                     <Heading>Connect your calendar</Heading>
@@ -828,7 +923,7 @@ const OnboardingModal = () => {
                 </Flex>
               )}
 
-              {activeStep === 2 && (
+              {activeStep === 3 && (
                 <Flex marginTop={6} direction="column" gap={10}>
                   <Flex direction="column" gap={4}>
                     <Heading>Set your availabilities</Heading>
