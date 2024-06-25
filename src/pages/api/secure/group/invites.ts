@@ -41,6 +41,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       user_id,
       email,
       discord_id,
+      limit: Number(limit),
+      offset: Number(offset),
     }
     console.log('Fetching invites with filters:', filters)
 
