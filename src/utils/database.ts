@@ -29,7 +29,7 @@ import {
   EmptyGroupsResponse,
   GetGroupsResponse,
   Group,
-  GroupInvites,
+  GroupInvitesResponse,
   GroupMemberQuery,
   GroupUsers,
   MemberType,
@@ -958,6 +958,39 @@ const getGroupsEmpty = async (
     return []
   }
 }
+
+export const createGroupInvite = async (
+  groupId: string,
+  inviteeEmail: string,
+  role: MemberType
+) => {
+  const { data, error } = await db.supabase
+    .from('group_invites')
+    .insert([{ group_id: groupId, email: inviteeEmail.toLowerCase(), role }])
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+export const updateGroupInviteUserId = async (
+  inviteId: string,
+  userId: string
+) => {
+  const { data, error } = await db.supabase
+    .from('group_invites')
+    .update({ user_id: userId })
+    .eq('id', inviteId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
 export const addUserToGroupInvites = async (
   groupId: string,
   role: MemberType,
@@ -986,8 +1019,8 @@ const getGroupInvite = async ({
 }: {
   email?: string
   discordId?: string
-}): Promise<GroupInvites | null> => {
-  let query = db.supabase.from('group_invites').select('*').single()
+}): Promise<GroupInvitesResponse | null> => {
+  let query = db.supabase.from('group_invites').select('*')
 
   if (email) {
     query = query.eq('email', email.toLowerCase())
@@ -997,7 +1030,7 @@ const getGroupInvite = async ({
     throw new Error('Either email or discordId must be provided')
   }
 
-  const { data, error } = await query
+  const { data, error } = await query.single()
 
   if (error && error.code !== 'PGRST116') {
     throw new Error(error.message)
