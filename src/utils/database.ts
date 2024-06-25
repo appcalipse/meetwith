@@ -29,6 +29,7 @@ import {
   EmptyGroupsResponse,
   GetGroupsResponse,
   Group,
+  GroupInviteFilters,
   GroupInvitesResponse,
   GroupMemberQuery,
   GroupUsers,
@@ -1040,20 +1041,34 @@ const getGroupInvite = async ({
 }
 
 const getGroupInvites = async (
-  address: string,
-  limit?: number,
-  offset?: number
+  filters: GroupInviteFilters
 ): Promise<Array<UserGroups>> => {
-  const { data, error } = await db.supabase
-    .from('group_invites')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .eq('user_id', address.toLowerCase())
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+  let query = db.supabase.from('group_invites').select(`
+    role,
+    group: groups( id, name, slug )
+  `)
+
+  if (filters.address) {
+    query = query.eq('user_id', filters.address.toLowerCase())
+  }
+  if (filters.group_id) {
+    query = query.eq('group_id', filters.group_id)
+  }
+  if (filters.email) {
+    query = query.eq('email', filters.email.toLowerCase())
+  }
+  if (filters.discord_id) {
+    query = query.eq('discord_id', filters.discord_id)
+  }
+  if (filters.user_id) {
+    query = query.eq('user_id', filters.user_id)
+  }
+
+  const { data, error } = await query.range(
+    filters.offset || 0,
+    (filters.offset || 0) +
+      (filters.limit ? filters.limit - 1 : 999999999999999)
+  )
 
   if (error) {
     throw new Error(error.message)
