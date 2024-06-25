@@ -408,6 +408,7 @@ export const getMeetingsForDashboard = async (
     created_at: slot.created_at ? new Date(slot.created_at) : undefined,
   }))
 }
+
 export const getGroups = async (
   limit: number,
   offset: number
@@ -452,6 +453,7 @@ export const updateGroupRole = async (
   )
   return !!response?.success
 }
+
 export const joinGroup = async (group_id: string) => {
   const response = await internalFetch<{ success: true }>(
     `/secure/group/${group_id}/join`,
@@ -459,6 +461,7 @@ export const joinGroup = async (group_id: string) => {
   )
   return response?.success
 }
+
 export const rejectGroup = async (group_id: string) => {
   const response = await internalFetch<{ success: true }>(
     `/secure/group/${group_id}/reject`,
@@ -466,14 +469,17 @@ export const rejectGroup = async (group_id: string) => {
   )
   return response?.success
 }
+
 export const getGroup = async (group_id: string) => {
   const response = await internalFetch<Group>(`/secure/group/${group_id}`)
   return response
 }
+
 export const getGroupExternal = async (group_id: string) => {
   const response = await internalFetch<Group>(`/group/${group_id}`)
   return response
 }
+
 export const subscribeToWaitlist = async (
   email: string,
   plan?: string
