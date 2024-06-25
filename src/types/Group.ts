@@ -10,6 +10,15 @@ export interface GetGroupsResponse {
   role: MemberType
   invitePending: boolean
 }
+
+export interface GroupInvitesResponse {
+  id: string
+  userId?: string
+  email?: string
+  discordId?: string
+  groupId: string
+}
+
 export interface Group {
   id: string
   name: string
