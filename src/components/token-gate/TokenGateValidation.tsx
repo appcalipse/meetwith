@@ -7,7 +7,7 @@ import { getTokenIcon } from '@/components/profile/SubscriptionDialog'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useLogin } from '@/session/login'
 import { Account } from '@/types/Account'
-import { AcceptedToken } from '@/types/chains'
+import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
 import { GateCondition } from '@/types/TokenGating'
 import { getGateCondition } from '@/utils/api_helper'
 import { formatUnits } from '@/utils/generic_utils'
@@ -15,6 +15,7 @@ import {
   ConditionValidation,
   isConditionValid,
 } from '@/utils/token.gate.service'
+import { getTokenMeta } from '@/utils/token.service'
 
 import HumanReadableGate from './HumanReadableGate'
 
@@ -32,11 +33,14 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
     []
   )
   const [firstToken, setFirstToken] = useState<
-    GateCondition['elements'][number] | undefined
+    (GateCondition['elements'][number] & { image?: string }) | undefined
   >(undefined)
   const [loading, setLoading] = useState<boolean>(true)
   const { openConnection } = useContext(OnboardingModalContext)
   const { currentAccount } = useLogin()
+  const getChainImage = (chain: SupportedChain) => {
+    return supportedChains.find(val => val.chain === chain)?.image
+  }
   const handleGateValidation = async (gateId: string) => {
     if (!gateId || gateId === 'No gate') return
     setLoading(true)
@@ -47,21 +51,43 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
         chosenGate!.definition!,
         props.userAccount.address!
       )
+      console.log(valid)
       props.setIsGateValid(valid.isValid)
       const userTokens = valid.tokens
       const token = chosenGate?.definition?.elements.find(val => {
         const userToken = userTokens.find(
           userToken => userToken.symbol === val.itemSymbol
         )
+        console.log({ userToken })
         if (valid.isValid) {
           return val.minimumBalance <= (userToken?.balance || 0)
         } else {
-          return val.minimumBalance > (userToken?.balance || 0)
+          return val.minimumBalance >= (userToken?.balance || 0)
         }
       })
-      setFirstToken(token)
+      const tokenImage =
+        token?.type === 'native'
+          ? getChainImage(token.chain as SupportedChain)
+          : (
+              await getTokenMeta(
+                token?.chain?.toLowerCase() || '',
+                token?.itemId || ''
+              )
+            )?.image?.large
+      console.log({ tokenImage, token })
+      setFirstToken(token ? { ...token, image: tokenImage } : undefined)
     } else {
-      setFirstToken(chosenGate?.definition?.elements[0])
+      const token = chosenGate?.definition?.elements[0]
+      const tokenImage =
+        token?.type === 'native'
+          ? getChainImage(token.chain as SupportedChain)
+          : (
+              await getTokenMeta(
+                token?.chain?.toLowerCase() || '',
+                token?.itemId || ''
+              )
+            )?.image?.large
+      setFirstToken(token ? { ...token, image: tokenImage } : undefined)
       props.setIsGateValid(false)
     }
 
@@ -105,12 +131,13 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
     >
       {!props.userAccount && firstToken && (
         <HStack gap={4} color="neutral.900">
-          {getTokenIcon(firstToken.itemSymbol as AcceptedToken) && (
+          {firstToken.image && (
             <Image
-              src={getTokenIcon(firstToken.itemSymbol as AcceptedToken)}
+              src={firstToken.image}
               alt={firstToken.itemSymbol}
-              w={30}
-              h={30}
+              w="34px"
+              h="34px"
+              borderRadius={999}
             />
           )}
           <Text>
@@ -132,12 +159,13 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
       )}
       {props.isGateValid && props.userAccount && firstToken && (
         <HStack gap={4}>
-          {getTokenIcon(firstToken.itemSymbol as AcceptedToken) && (
+          {firstToken.image && (
             <Image
-              src={getTokenIcon(firstToken.itemSymbol as AcceptedToken)}
+              src={firstToken.image}
               alt={firstToken.itemSymbol}
-              w={30}
-              h={30}
+              w="34px"
+              h="34px"
+              borderRadius={999}
             />
           )}
           <Text>
@@ -150,12 +178,13 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
       )}
       {!props.isGateValid && props.userAccount && firstToken && (
         <HStack gap={4}>
-          {getTokenIcon(firstToken.itemSymbol as AcceptedToken) && (
+          {firstToken.image && (
             <Image
-              src={getTokenIcon(firstToken.itemSymbol as AcceptedToken)}
+              src={firstToken.image}
               alt={firstToken.itemSymbol}
-              w={30}
-              h={30}
+              w="34px"
+              h="34px"
+              borderRadius={999}
             />
           )}
           <Text color="neutral.900">
