@@ -85,7 +85,7 @@ function Root({
   return (
     <VStack flex={1.5} alignItems="flex-start" minW="300px">
       <Heading size="md" mr="auto">
-        Select Time
+        Select Date
       </Heading>
       <Grid>
         <MonthYear>
