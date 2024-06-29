@@ -20,7 +20,12 @@ import React, { FC, FormEvent, useState } from 'react'
 
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
-import { inviteUsers } from '@/utils/api_helper'
+import {
+  getExistingAccounts,
+  getExistingAccountsSimple,
+  inviteUsers,
+} from '@/utils/api_helper'
+import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import InfoTooltip from '../profile/components/Tooltip'
 import InvitedUsersList from './InvitedUsersList'
@@ -42,6 +47,9 @@ const InviteModal: FC<InviteModalProps> = ({
 }) => {
   const toast = useToast()
   const [invitedUsers, setInvitedUsers] = useState<InvitedUser[]>([])
+  const [enteredIdentifier, setEnteredIdentifier] = useState<string>('')
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [isSaving, setIsSaving] = useState<boolean>(false)
   const [message, setMessage] = useState<string>(
     `Come join our scheduling group ${groupName} on Meet With Wallet!`
   )
@@ -50,14 +58,15 @@ const InviteModal: FC<InviteModalProps> = ({
 
   const handleInviteSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setIsSaving(true)
 
     console.log('Invited Users before mapping:', invitedUsers)
 
     const invitees = invitedUsers.map(user => ({
-      address: user.account_address,
-      email: user.email,
-      userId: user.userId,
-      role: user.role as 'admin' | 'member',
+      address: user.account_address?.toLowerCase(),
+      email: user.email?.toLowerCase(),
+      userId: user.userId?.toLowerCase(),
+      role: user.role,
     }))
 
     console.log('Invitees after mapping:', invitees)
@@ -78,6 +87,7 @@ const InviteModal: FC<InviteModalProps> = ({
       })
 
       onClose()
+      setInvitedUsers([])
       onInviteSuccess?.()
     } catch (error) {
       const err = error as Error
@@ -89,18 +99,22 @@ const InviteModal: FC<InviteModalProps> = ({
         isClosable: true,
       })
     }
+    setIsSaving(false)
   }
 
-  const addUserToList = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const addUserToList = async (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
     if (event.key === 'Enter') {
+      setIsLoading(true)
       event.preventDefault()
-
-      const input = event.currentTarget.value.trim()
-      if (!input) return
+      if (!enteredIdentifier) return
 
       if (
         invitedUsers.some(
-          user => user.account_address === input || user.email === input
+          user =>
+            user.account_address === enteredIdentifier ||
+            user.email === enteredIdentifier
         )
       ) {
         toast({
@@ -113,42 +127,52 @@ const InviteModal: FC<InviteModalProps> = ({
         return
       }
 
-      const isEmail = input.includes('@')
+      const isEmail = isValidEmail(enteredIdentifier)
       const newUser: InvitedUser = {
-        account_address: isEmail ? '' : input,
-        email: isEmail ? input : '',
-        role: 'member',
+        id: invitedUsers.length,
+        account_address: !isEmail ? enteredIdentifier : '',
+        email: isEmail ? enteredIdentifier : '',
+        role: MemberType.MEMBER,
         groupId,
         userId: '',
-        name: isEmail ? input.split('@')[0] : input,
+        name: enteredIdentifier,
         invitePending: true,
       }
-
-      console.log('New User Added:', newUser)
-
+      if (isValidEVMAddress(enteredIdentifier)) {
+        const info = await getExistingAccounts([enteredIdentifier])
+        const userDetails = info[0]
+        if (userDetails) {
+          newUser.userId = userDetails.preferences.id
+          newUser.name = userDetails.preferences.name
+        }
+      }
       setInvitedUsers(prev => [...prev, newUser])
-      event.currentTarget.value = ''
+      setEnteredIdentifier('')
+      setIsLoading(false)
     }
   }
 
-  const removeUser = (userAddress: string) => {
+  const removeUser = (inviteeId: number) => {
     setInvitedUsers(prevUsers =>
-      prevUsers.filter(user => user.account_address !== userAddress)
+      prevUsers.filter(user => user.id !== inviteeId)
     )
   }
 
-  const updateRole = (userAddress: string, role: MemberType) => {
+  const updateRole = (inviteeId: number, role: MemberType) => {
     setInvitedUsers(prevUsers =>
-      prevUsers.map(user =>
-        user.account_address === userAddress ? { ...user, role } : user
-      )
+      prevUsers.map(user => (user.id === inviteeId ? { ...user, role } : user))
     )
   }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalOverlay />
-      <ModalContent maxWidth="500px" width="500px">
+      <ModalContent
+        maxWidth="500px"
+        width="500px"
+        border={1}
+        borderColor="neutral.600"
+      >
         <ModalHeader pt={6} fontSize="24px">
           Invite Group Members
         </ModalHeader>
@@ -165,7 +189,13 @@ const InviteModal: FC<InviteModalProps> = ({
                   name="identifier"
                   placeholder="Search or enter identifier"
                   bg="neutral.900"
+                  _placeholder={{
+                    color: 'neutral.400',
+                  }}
                   border="none"
+                  disabled={isLoading}
+                  value={enteredIdentifier}
+                  onChange={e => setEnteredIdentifier(e.target.value)}
                   onKeyDown={addUserToList}
                 />
                 <Text mt={2} fontSize="12px" color="gray.400">
@@ -177,6 +207,7 @@ const InviteModal: FC<InviteModalProps> = ({
                 users={invitedUsers}
                 removeUser={removeUser}
                 updateRole={updateRole}
+                isLoading={isLoading}
               />
 
               <FormControl>
@@ -197,7 +228,12 @@ const InviteModal: FC<InviteModalProps> = ({
             </VStack>
           </ModalBody>
           <ModalFooter pb={6}>
-            <Button colorScheme="primary" type="submit">
+            <Button
+              colorScheme="primary"
+              type="submit"
+              isLoading={isSaving}
+              disabled={invitedUsers.length < 1}
+            >
               Invite
             </Button>
           </ModalFooter>

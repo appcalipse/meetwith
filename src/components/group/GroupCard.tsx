@@ -317,6 +317,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                   aria-label="Add Contact"
                   p={'8px 16px'}
                   icon={<IoMdPersonAdd size={20} />}
+                  onClick={() => props.onAddNewMember(props.id, props.name)}
                 />
               )}
               <Menu>
