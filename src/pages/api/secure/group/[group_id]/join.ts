@@ -1,22 +1,18 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { acceptGroupInvite, initDB } from '@/utils/database'
+import { initDB, manageGroupInvite } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     initDB()
-
     const account_address = req.session.account!.address
-
     if (!account_address) {
       return res.status(401).send('Unauthorized')
     }
-
-    const group_id = req.query.group_id as string
-
     try {
-      await acceptGroupInvite(account_address, group_id)
+      const group_id = req.query.group_id as string
+      await manageGroupInvite(group_id, account_address)
       return res.status(200).json({
         success: true,
       })
