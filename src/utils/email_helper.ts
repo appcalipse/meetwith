@@ -421,7 +421,7 @@ export const sendInvitationEmail = async (
     },
   })
 
-  const invitationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/invite-accept?groupId=${groupId}&email=${toEmail}`
+  const invitationLink = `${appUrl}/invite-accept?groupId=${groupId}&email=${toEmail}`
 
   const locals = {
     inviterName,
