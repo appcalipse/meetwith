@@ -1,3 +1,5 @@
+import { MemberType } from '@/types/Group'
+
 import { ConferenceMeeting } from './Meeting'
 
 export enum ParticipationStatus {
@@ -25,9 +27,10 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
 }
 
 export interface InvitedUser extends ParticipantBaseInfo {
+  id: number
   account_address: string
   groupId: string
-  role: 'admin' | 'member'
+  role: MemberType
   invitePending: boolean
   email?: string
   userId?: string
