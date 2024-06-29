@@ -402,6 +402,6 @@ const NAV_ITEMS: Array<NavItem> = [
 ]
 const REDIRECT_PATHS: Record<string, undefined | ((query: string) => string)> =
   {
-    '/join': (query: string) =>
+    '/invite-accept': (query: string) =>
       `/dashboard/${EditMode.GROUPS}?${query}&intent=join`,
   }
