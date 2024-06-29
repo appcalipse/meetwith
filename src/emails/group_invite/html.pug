@@ -38,17 +38,12 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        padding-top: 112px;
+        padding: 112px 0;
       }
       .outer-container {
         width: 100%;
         max-width: 1097px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        box-sizing: border-box;
-        text-align: center;
+        display: block;
         padding: 24px;
         background-color: transparent !important;
       }
@@ -120,14 +115,13 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
           background-repeat: no-repeat;
           background-size: cover;
           padding-top: 0;
-          background-color: none !important;
+          background-color: transparent !important;
         }
         .outer-container {
           width: 100% !important;
           max-width: 100% !important;
           display: block !important;
           padding: 20px !important;
-          justify-content: flex-start !important;
         }
         .container {
           padding: 20px !important;
@@ -149,8 +143,8 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
       }
   body
     .outer-container
-      img.logo(src="https://meetwithwalletstatic.s3.us-west-2.amazonaws.com/email/logo_mail.png", alt="Logo")
-      .container
+      img.logo(src="https://meetwithwalletstatic.s3.us-west-2.amazonaws.com/email/logo_mail.png", alt="Logo", style="display: block;margin: 20px auto;")
+      .container(style='margin: 0 auto;')
         .header #{inviterName} invited you to join #{groupName}
         .message Come join our scheduling group <strong>#{groupName}</strong><br>on Meet With Wallet!
         a.button(href=invitationLink) Accept Invitation
