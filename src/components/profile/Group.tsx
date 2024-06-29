@@ -19,7 +19,11 @@ import GroupInviteCard from '@/components/group/GroupInviteCard'
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
 import { Account } from '@/types/Account'
-import { GetGroupsResponse, Group as GroupResponse } from '@/types/Group'
+import {
+  GetGroupsResponse,
+  Group as GroupResponse,
+  MemberType,
+} from '@/types/Group'
 import { getGroup, getGroups } from '@/utils/api_helper'
 
 import GroupCard from '../group/GroupCard'
@@ -135,7 +139,10 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                 key={group.id}
                 currentAccount={currentAccount}
                 {...group}
-                onAddNewMember={handleAddNewMember}
+                onAddNewMember={(...args) => {
+                  if (group.role !== MemberType.ADMIN) return
+                  handleAddNewMember(...args)
+                }}
                 mt={0}
               />
             )
