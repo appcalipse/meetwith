@@ -7,6 +7,7 @@ import {
   MemberType,
 } from '@/types/Group'
 import { inviteUsers } from '@/utils/api_helper'
+import { appUrl } from '@/utils/constants'
 import {
   addUserToGroupInvites,
   createGroupInvite,
@@ -26,7 +27,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { invitees, message = '' } = req.body.payload as GroupInvitePayload
+  const { invitees, message = '' } = req.body as GroupInvitePayload
   const groupId = req.query.group_id as string | undefined
   const session = req.session
 
@@ -43,7 +44,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (!isAdmin) {
       return res.status(403).json({ error: 'User is not a group admin' })
     }
-
     const inviterName = getAccountDisplayName(session.account)
     const group = await getGroup(groupId, currentUserAddress)
 
@@ -103,8 +103,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             groupId,
             invitee.role as MemberType,
             invitee.email,
-            invitee.address,
-            account?.id || invitee.userId
+            invitee.address
           )
         } catch (error) {
           console.error('Error creating group invite:', error)
@@ -112,7 +111,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       if (invitee.email) {
-        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/invite-accept?groupId=${groupId}&email=${invitee.email}`
+        const inviteLink = `${appUrl}/invite-accept?groupId=${groupId}&email=${invitee.email}`
         try {
           await sendInvitationEmail(
             invitee.email,

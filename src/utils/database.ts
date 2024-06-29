@@ -1333,14 +1333,12 @@ export const addUserToGroupInvites = async (
   groupId: string,
   role: MemberType,
   email?: string,
-  discordId?: string,
-  userId?: string
+  accountAddress?: string
 ): Promise<void> => {
   try {
     const { error } = await db.supabase.from('group_invites').insert({
       email,
-      discord_id: discordId,
-      user_id: userId || null,
+      user_id: accountAddress || null,
       group_id: groupId,
       role,
     })
