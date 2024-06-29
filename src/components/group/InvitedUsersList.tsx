@@ -9,6 +9,7 @@ import {
   MenuButton,
   MenuItem,
   MenuList,
+  Spinner,
   Text,
   useColorModeValue,
   VStack,
@@ -26,14 +27,16 @@ import {
 
 interface InvitedUsersList {
   users: InvitedUser[]
-  removeUser: (user: string) => void
-  updateRole: (userId: string, role: MemberType) => void
+  removeUser: (inviteeId: number) => void
+  updateRole: (inviteeId: number, role: MemberType) => void
+  isLoading: boolean
 }
 
 const InvitedUsersList: React.FC<InvitedUsersList> = ({
   users,
   removeUser,
   updateRole,
+  isLoading,
 }) => {
   const borderColor = useColorModeValue(
     customTheme.colors.neutral[200],
@@ -49,10 +52,16 @@ const InvitedUsersList: React.FC<InvitedUsersList> = ({
         px={4}
         borderBottom={`1px solid ${borderColor}`}
       >
-        <Text width="226px" fontSize="16px" fontWeight="700" lineHeight="24px">
+        <Text
+          width="226px"
+          fontSize="16px"
+          fontWeight="700"
+          lineHeight="24px"
+          flexBasis="70%"
+        >
           Contact
         </Text>
-        <HStack alignItems="center" flex="1">
+        <HStack alignItems="center" flexBasis="30%">
           <Text
             fontSize="16px"
             fontWeight="700"
@@ -66,74 +75,91 @@ const InvitedUsersList: React.FC<InvitedUsersList> = ({
         </HStack>
         <Box width="45px" />
       </Flex>
-      {users.length > 0 ? (
-        users.map((user, index) => {
-          const roleDisplay = user.role
-            ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
-            : 'Member'
-
-          return (
+      {users.length > 0 || isLoading ? (
+        <>
+          {users.map((user, index) => {
+            return (
+              <Flex
+                key={index}
+                p={4}
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+                borderBottom={`1px solid ${borderColor}`}
+              >
+                <Text
+                  width="226px"
+                  fontSize="16px"
+                  fontWeight="700"
+                  lineHeight="24px"
+                  textAlign="left"
+                  flexBasis="70%"
+                >
+                  {getInvitedUserDisplayName(user)}
+                </Text>
+                <Flex alignItems="flex-start" flexBasis="30%">
+                  <Menu>
+                    <MenuButton
+                      as={Button}
+                      rightIcon={<ChevronDownIcon />}
+                      fontSize="16px"
+                      fontWeight="500"
+                      lineHeight="24px"
+                      bg="transparent"
+                      textAlign="left"
+                      textTransform="capitalize"
+                    >
+                      {user.role}
+                    </MenuButton>
+                    <MenuList>
+                      <MenuItem
+                        onClick={() => updateRole(user.id, MemberType.ADMIN)}
+                      >
+                        Admin
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => updateRole(user.id, MemberType.MEMBER)}
+                      >
+                        Member
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
+                  <IconButton
+                    aria-label="Remove user"
+                    icon={<DeleteIcon />}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => removeUser(user.id)}
+                    ml={2}
+                  />
+                </Flex>
+              </Flex>
+            )
+          })}
+          {isLoading && (
             <Flex
-              key={index}
               p={4}
               display="flex"
               alignItems="center"
               justifyContent="space-between"
               borderBottom={`1px solid ${borderColor}`}
             >
-              <Text
-                width="226px"
-                fontSize="16px"
-                fontWeight="700"
-                lineHeight="24px"
-                textAlign="left"
-              >
-                {getInvitedUserDisplayName(user)}
-              </Text>
-              <Flex alignItems="center" flex="1">
-                <Menu>
-                  <MenuButton
-                    as={Button}
-                    rightIcon={<ChevronDownIcon />}
-                    fontSize="16px"
-                    fontWeight="500"
-                    lineHeight="24px"
-                    bg=""
-                    textAlign="left"
-                    flex="1"
-                    ml="-14px"
-                  >
-                    {roleDisplay}
-                  </MenuButton>
-                  <MenuList>
-                    <MenuItem
-                      onClick={() =>
-                        updateRole(user.account_address, MemberType.ADMIN)
-                      }
-                    >
-                      Admin
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() =>
-                        updateRole(user.account_address, MemberType.MEMBER)
-                      }
-                    >
-                      Member
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
-                <IconButton
-                  aria-label="Remove user"
-                  icon={<DeleteIcon />}
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => removeUser(user.account_address)}
-                  ml={2}
-                />
+              <Spinner />
+              <Flex alignItems="flex-start" flexBasis="30%">
+                <Button
+                  fontSize="16px"
+                  fontWeight="500"
+                  lineHeight="24px"
+                  bg="transparent"
+                  textAlign="left"
+                  textTransform="capitalize"
+                >
+                  <Spinner />
+                </Button>
               </Flex>
             </Flex>
-          )
-        })
+          )}
+        </>
       ) : (
         <Box
           width="full"
