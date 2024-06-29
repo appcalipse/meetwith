@@ -887,9 +887,11 @@ export const inviteUsers = async (
   payload: GroupInvitePayload
 ): Promise<void> => {
   try {
-    await internalFetch<void>(`/secure/group/${groupId}/invite`, 'POST', {
-      payload,
-    })
+    await internalFetch<void>(
+      `/secure/group/${groupId}/invite`,
+      'POST',
+      payload
+    )
   } catch (e: any) {
     if (e instanceof ApiFetchError) {
       if (e.status === 400) {
