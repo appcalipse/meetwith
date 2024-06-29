@@ -67,7 +67,7 @@ export const useLogin = () => {
 
         // avoid redirecting if person is scheduling on a public calendar
         // of someone else and was not logged. Definitely not the best way to do this
-        if (router.pathname === '/join' && redirectPath) {
+        if (router.pathname === '/invite-accept' && redirectPath) {
           await router.push(redirectPath)
         }
         if (
