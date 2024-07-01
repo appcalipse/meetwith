@@ -18,13 +18,20 @@ import { FaPlus } from 'react-icons/fa'
 import GroupInviteCard from '@/components/group/GroupInviteCard'
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
+import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
 import { Account } from '@/types/Account'
+import { Intents } from '@/types/Dashboard'
 import {
   GetGroupsResponse,
   Group as GroupResponse,
   MemberType,
 } from '@/types/Group'
-import { getGroup, getGroups } from '@/utils/api_helper'
+import {
+  getGroup,
+  getGroupExternal,
+  getGroups,
+  listConnectedCalendars,
+} from '@/utils/api_helper'
 
 import GroupCard from '../group/GroupCard'
 import InviteModal from '../group/InviteModal'
@@ -39,9 +46,13 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   >(undefined)
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
-  const { join } = useRouter().query
-
+  const { join, intent, groupId, email } = useRouter().query
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const {
+    isOpen: isOnboardingOpened,
+    onOpen: onboardingOnOpen,
+    onClose: onboardingOnClose,
+  } = useDisclosure()
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [selectedGroupName, setSelectedGroupName] = useState<string>('')
 
@@ -65,11 +76,48 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
 
   const fetchGroup = async (group_id: string) => {
     setInviteDataIsLoading(true)
-    const group = await getGroup(group_id)
+    const group = await getGroupExternal(group_id)
     setInviteGroupData(group)
     setInviteDataIsLoading(false)
   }
+  const checkAccount = async () => {
+    setInviteDataIsLoading(true)
+    const connectedCalendars = await listConnectedCalendars()
+    const nameExists = currentAccount.preferences?.name
+    const group_id = Array.isArray(groupId) ? groupId[0] : groupId
+    if (!group_id) {
+      setInviteDataIsLoading(false)
+      return
+    }
+    const group = await getGroupExternal(group_id)
+    if (group) {
+      setSelectedGroupId(group_id)
+      setSelectedGroupName(group.name)
+    }
 
+    if (!nameExists || connectedCalendars.length === 0) {
+      onboardingOnOpen()
+    } else {
+      setInviteGroupData(group)
+    }
+    setInviteDataIsLoading(false)
+  }
+  const handleOnboardingModalClose = async () => {
+    onboardingOnClose()
+    setInviteDataIsLoading(true)
+    const group_id = Array.isArray(groupId) ? groupId[0] : groupId
+    if (!group_id) {
+      setInviteDataIsLoading(false)
+      return
+    }
+    const group = await getGroupExternal(group_id)
+    if (group) {
+      setSelectedGroupId(group_id)
+      setSelectedGroupName(group.name)
+    }
+    setInviteGroupData(group)
+    setInviteDataIsLoading(false)
+  }
   useEffect(() => {
     void resetState()
   }, [currentAccount?.address])
@@ -79,7 +127,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
       void fetchGroup(join as string)
     }
   }, [join])
-
+  useEffect(() => {
+    if (intent === Intents.JOIN) {
+      checkAccount()
+    }
+  }, [intent, currentAccount, groupId])
   const handleAddNewMember = (groupId: string, groupName: string) => {
     setSelectedGroupId(groupId)
     setSelectedGroupName(groupName)
@@ -120,12 +172,6 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   } else {
     content = (
       <VStack my={6}>
-        <ModalLoading isOpen={inviteDataIsLoading} />
-        <GroupJoinModal
-          group={inviteGroupData}
-          onClose={() => setInviteGroupData(undefined)}
-          resetState={resetState}
-        />
         <Accordion allowMultiple width="100%">
           {groups.map(group =>
             group?.invitePending ? (
@@ -166,6 +212,18 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   }
   return (
     <Flex direction={'column'} maxWidth="100%">
+      <ModalLoading isOpen={inviteDataIsLoading} />
+      <GroupJoinModal
+        group={inviteGroupData}
+        onClose={() => setInviteGroupData(undefined)}
+        resetState={resetState}
+        inviteEmail={email as string}
+      />
+      <GroupOnBoardingModal
+        isOnboardingOpened={isOnboardingOpened}
+        handleClose={() => handleOnboardingModalClose()}
+        groupName={selectedGroupName}
+      />
       <HStack
         justifyContent="space-between"
         alignItems="flex-start"

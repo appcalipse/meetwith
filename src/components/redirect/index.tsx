@@ -4,7 +4,6 @@ import React, { FC, useEffect } from 'react'
 const RedirectHandler: FC = () => {
   const { query, push, prefetch } = useRouter()
   const { state, redirect, intent } = query
-  console.log(redirect)
   useEffect(() => {
     if (state) {
       return
