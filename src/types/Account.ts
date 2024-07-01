@@ -51,6 +51,7 @@ export interface TimeRange {
 }
 
 export interface AccountPreferences {
+  id?: string
   timezone: string
   availableTypes: MeetingType[]
   description?: string

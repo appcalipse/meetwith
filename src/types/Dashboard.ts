@@ -9,3 +9,7 @@ export enum EditMode {
   GATES = 'gates',
   SIGNOUT = 'signout',
 }
+
+export enum Intents {
+  JOIN = 'join',
+}
