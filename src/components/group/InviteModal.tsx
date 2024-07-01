@@ -16,7 +16,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, FormEvent, useState } from 'react'
+import React, { FC, FormEvent, useEffect, useState } from 'react'
 
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
@@ -51,16 +51,18 @@ const InviteModal: FC<InviteModalProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [message, setMessage] = useState<string>(
-    `Come join our scheduling group ${groupName} on Meet With Wallet!`
+    `Come join our scheduling group "${groupName}" on Meet With Wallet!`
   )
-
+  useEffect(() => {
+    setMessage(
+      `Come join our scheduling group "${groupName}" on Meet With Wallet!`
+    )
+  }, [groupName])
   const [isMessageFocused, setIsMessageFocused] = useState<boolean>(false)
 
   const handleInviteSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsSaving(true)
-
-    console.log('Invited Users before mapping:', invitedUsers)
 
     const invitees = invitedUsers.map(user => ({
       address: user.account_address?.toLowerCase(),
@@ -69,11 +71,7 @@ const InviteModal: FC<InviteModalProps> = ({
       role: user.role,
     }))
 
-    console.log('Invitees after mapping:', invitees)
-
     const payload: GroupInvitePayload = { invitees, message }
-
-    console.log('Payload:', payload, 'Message:', message)
 
     try {
       await inviteUsers(groupId, payload)
@@ -214,7 +212,8 @@ const InviteModal: FC<InviteModalProps> = ({
                 <FormLabel>Message</FormLabel>
                 <Textarea
                   name="message"
-                  defaultValue={`Come join our scheduling group "${groupName}" on Meet With Wallet!`}
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
                   bg="gray.700"
                   border="1px solid"
                   borderColor="neutral.400"
@@ -232,7 +231,7 @@ const InviteModal: FC<InviteModalProps> = ({
               colorScheme="primary"
               type="submit"
               isLoading={isSaving}
-              disabled={invitedUsers.length < 1}
+              isDisabled={invitedUsers.length < 1}
             >
               Invite
             </Button>
