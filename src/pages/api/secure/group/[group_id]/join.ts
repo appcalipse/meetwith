@@ -11,8 +11,16 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(401).send('Unauthorized')
     }
     try {
-      const group_id = req.query.group_id as string
-      await manageGroupInvite(group_id, account_address)
+      const { group_id, email_address } = req.query as {
+        group_id: string
+        email_address?: string
+      }
+      await manageGroupInvite(
+        group_id,
+        account_address,
+        undefined,
+        email_address
+      )
       return res.status(200).json({
         success: true,
       })

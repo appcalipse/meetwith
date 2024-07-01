@@ -28,7 +28,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
                 address: group.group_members?.[0]?.member_id as string,
                 role: group.group_members?.[0].role,
                 invitePending: false,
-                calendarConnected: group.calendars[0].calendars.length > 0,
+                calendarConnected: !!group.calendars[0]?.calendars?.length,
               }
             : {
                 displayName: group.preferences?.name,
@@ -36,7 +36,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
                   group.group_invites?.[0]?.email) as string,
                 role: group.group_invites?.[0].role,
                 invitePending: true,
-                calendarConnected: group.calendars[0].calendars.length > 0,
+                calendarConnected: !!group.calendars[0]?.calendars?.length,
               }
         })
         .filter(Boolean)
