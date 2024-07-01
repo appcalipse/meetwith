@@ -21,6 +21,7 @@ export interface IGroupInviteCardModal {
   group: Group | undefined
   resetState: () => void
   onClose: () => void
+  inviteEmail?: string
 }
 
 const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
@@ -30,7 +31,7 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
   const handleDecline = async () => {
     if (!props.group?.id) return
     setDeclining(true)
-    await rejectGroup(props.group.id)
+    await rejectGroup(props.group.id, props.inviteEmail)
     setDeclining(false)
     props.onClose()
     push('/dashboard/groups')
@@ -39,7 +40,7 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
   const handleAccept = async () => {
     if (!props.group?.id) return
     setAccepting(true)
-    await joinGroup(props.group.id)
+    await joinGroup(props.group.id, props.inviteEmail)
     setAccepting(false)
     props.onClose()
     push('/dashboard/groups')

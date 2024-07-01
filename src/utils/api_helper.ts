@@ -16,6 +16,7 @@ import {
   EmptyGroupsResponse,
   GetGroupsResponse,
   Group,
+  GroupInvitePayload,
   GroupMember,
 } from '@/types/Group'
 import {
@@ -407,6 +408,7 @@ export const getMeetingsForDashboard = async (
     created_at: slot.created_at ? new Date(slot.created_at) : undefined,
   }))
 }
+
 export const getGroups = async (
   limit: number,
   offset: number
@@ -422,12 +424,14 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   )) as Array<GetGroupsResponse>
   return response
 }
+
 export const getGroupsInvites = async (address: string) => {
   const response = await internalFetch<Array<EmptyGroupsResponse>>(
     `/secure/group/user/${address}`
   )
   return response
 }
+
 export const getGroupsMembers = async (
   group_id: string,
   limit: number,
@@ -449,24 +453,37 @@ export const updateGroupRole = async (
   )
   return !!response?.success
 }
-export const joinGroup = async (group_id: string) => {
+
+export const joinGroup = async (group_id: string, email_address?: string) => {
   const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/join`,
+    `/secure/group/${group_id}/join${
+      email_address ? `?email_address=${email_address}` : ''
+    }`,
     'POST'
   )
   return response?.success
 }
-export const rejectGroup = async (group_id: string) => {
+
+export const rejectGroup = async (group_id: string, email_address?: string) => {
   const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/reject`,
+    `/secure/group/${group_id}/reject${
+      email_address ? `?email_address=${email_address}` : ''
+    }`,
     'POST'
   )
   return response?.success
 }
+
 export const getGroup = async (group_id: string) => {
   const response = await internalFetch<Group>(`/secure/group/${group_id}`)
   return response
 }
+
+export const getGroupExternal = async (group_id: string) => {
+  const response = await internalFetch<Group>(`/group/${group_id}`)
+  return response
+}
+
 export const subscribeToWaitlist = async (
   email: string,
   plan?: string
@@ -870,14 +887,15 @@ export const createGroup = async (
 }
 
 export const inviteUsers = async (
-  invitedUsers: string[],
-  message: string
+  groupId: string,
+  payload: GroupInvitePayload
 ): Promise<void> => {
   try {
-    await internalFetch<void>('/api/invite-users', 'POST', {
-      invitedUsers,
-      message,
-    })
+    await internalFetch<void>(
+      `/secure/group/${groupId}/invite`,
+      'POST',
+      payload
+    )
   } catch (e: any) {
     if (e instanceof ApiFetchError) {
       if (e.status === 400) {

@@ -1,3 +1,4 @@
+import { CheckCircleIcon } from '@chakra-ui/icons'
 import {
   AccordionButton,
   AccordionItem,
@@ -29,7 +30,8 @@ import React, {
   useMemo,
   useState,
 } from 'react'
-import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
+import { BiExit } from 'react-icons/bi'
+import { FaChevronDown, FaChevronUp, FaInfo, FaRegCopy } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 
 import { Account } from '@/types/Account'
@@ -40,6 +42,7 @@ import {
   MenuOptions,
 } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
+import { logEvent } from '@/utils/analytics'
 import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
 import { appUrl, isProduction } from '@/utils/constants'
 
@@ -48,6 +51,8 @@ import GroupMemberCard from './GroupMemberCard'
 
 export interface IGroupCard extends GetGroupsResponse {
   currentAccount: Account
+  onAddNewMember: (groupId: string, groupName: string) => void
+  mt: number
 }
 
 const GroupCard: React.FC<IGroupCard> = props => {
@@ -264,6 +269,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
           height="fit-content !important"
           mr="auto"
           py={1}
+          onClick={() => props.onAddNewMember(props.id, props.name)}
         >
           Add new member
         </Button>
@@ -311,6 +317,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                   aria-label="Add Contact"
                   p={'8px 16px'}
                   icon={<IoMdPersonAdd size={20} />}
+                  onClick={() => props.onAddNewMember(props.id, props.name)}
                 />
               )}
               <Menu>

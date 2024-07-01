@@ -1,15 +1,17 @@
+import { useRouter } from 'next/router'
 import React, { ReactNode, useState } from 'react'
 
 interface IOnboardingModalContext {
   isConnectionOpened: boolean
-  openConnection: () => void
+  openConnection: (redirectPath?: string) => void
   closeConnection: () => void
   isOnboardingOpened: boolean
   openOnboarding: () => void
-  closeOnboarding: () => void
+  closeOnboarding: (redirectPath?: string) => void
   resetOnboarding: () => void
   onboardingStarted: () => void
   onboardingInit: boolean
+  redirectPath: string
 }
 
 const OnboardingModalContext = React.createContext<IOnboardingModalContext>({
@@ -22,6 +24,7 @@ const OnboardingModalContext = React.createContext<IOnboardingModalContext>({
   resetOnboarding: () => {},
   onboardingStarted: () => {},
   onboardingInit: false,
+  redirectPath: '',
 })
 
 interface WalletModalProviderProps {
@@ -34,9 +37,13 @@ const OnboardingModalProvider: React.FC<WalletModalProviderProps> = ({
   const [onboardingInit, setOnboardingInit] = useState(false)
   const [connectionOpened, setConnectionOpened] = useState(false)
   const [onboardingOpened, setOnboardingOpened] = useState(false)
-
-  function openConnection() {
+  const [redirectPath, setRedirectPath] = useState('')
+  const { push } = useRouter()
+  function openConnection(redirectPath?: string) {
     setConnectionOpened(true)
+    if (redirectPath) {
+      setRedirectPath(redirectPath)
+    }
   }
 
   function closeConnection() {
@@ -47,8 +54,11 @@ const OnboardingModalProvider: React.FC<WalletModalProviderProps> = ({
     setOnboardingOpened(true)
   }
 
-  function closeOnboarding() {
+  function closeOnboarding(redirectPath?: string) {
     setOnboardingOpened(false)
+    if (redirectPath) {
+      push(redirectPath)
+    }
   }
 
   function resetOnboarding() {
@@ -69,6 +79,7 @@ const OnboardingModalProvider: React.FC<WalletModalProviderProps> = ({
     resetOnboarding,
     onboardingStarted,
     onboardingInit,
+    redirectPath,
   }
   return (
     <OnboardingModalContext.Provider value={context}>
