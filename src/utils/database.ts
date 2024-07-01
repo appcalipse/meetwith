@@ -352,10 +352,6 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
     .from('accounts')
     .select('nonce')
     .or(query)
-
-  console.log('Database query:', query)
-  console.log('Database response:', { data, error })
-
   if (!error && data.length > 0) {
     return data[0].nonce
   }
@@ -998,6 +994,7 @@ const getGroupName = async (group_id: string): Promise<Group> => {
     .from('groups')
     .select(
       `
+      id,
     name
     `
     )
@@ -1048,22 +1045,12 @@ const getGroupInvites = async ({
   )
 
   try {
-    console.log('Executing query with parameters:', {
-      address,
-      group_id,
-      user_id,
-      email,
-      discord_id,
-      limit,
-      offset,
-    })
     const { data, error } = await query
     if (error) {
       console.error('Error executing query:', error)
       throw new Error(error.message)
     }
 
-    console.log('Query result:', data)
     const result = data.map((item: any) => ({
       ...item,
       invitePending: true, // Since this is from group_invites, set invitePending to true
@@ -1083,15 +1070,19 @@ const getGroupInvites = async ({
 const manageGroupInvite = async (
   group_id: string,
   address: string,
-  reject?: boolean
+  reject?: boolean,
+  email_address?: string
 ): Promise<void> => {
   const { error, data } = await db.supabase
     .from<GroupInvites>('group_invites')
     .delete()
-    .eq('user_id', address.toLowerCase())
     .eq('group_id', group_id)
+    .or(`email.eq.${email_address},user_id.eq.${address.toLowerCase()}`)
   if (error) {
     throw new Error(error.message)
+  }
+  if (!data) {
+    throw new Error('No invites found')
   }
   if (reject) {
     return
@@ -1120,9 +1111,10 @@ const getGroupAdminsFromDb = async (
 
 const rejectGroupInvite = async (
   group_id: string,
-  address: string
+  address: string,
+  email_address?: string
 ): Promise<void> => {
-  await manageGroupInvite(group_id, address, true)
+  await manageGroupInvite(group_id, address, true, email_address)
   const admins = await getGroupAdminsFromDb(group_id)
   const body: GroupInviteNotifyRequest = {
     group_id: group_id,
@@ -1276,17 +1268,7 @@ const isGroupExists = async (group_id: string) => {
   }
   return true
 }
-
-const getGroup = async (group_id: string, address: string): Promise<Group> => {
-  const groupUsers = await getGroupUsersInternal(group_id)
-  const isGroupMember = groupUsers.some(
-    user =>
-      user.member_id?.toLowerCase() === address.toLowerCase() ||
-      user.user_id?.toLowerCase() === address.toLowerCase()
-  )
-  if (!isGroupMember) {
-    throw new NotGroupMemberError()
-  }
+const getGroupInternal = async (group_id: string) => {
   const { data, error } = await db.supabase
     .from('groups')
     .select(
@@ -1304,6 +1286,18 @@ const getGroup = async (group_id: string, address: string): Promise<Group> => {
     return data[0]
   }
   throw new GroupNotExistsError()
+}
+const getGroup = async (group_id: string, address: string): Promise<Group> => {
+  const groupUsers = await getGroupUsersInternal(group_id)
+  const isGroupMember = groupUsers.some(
+    user =>
+      user.member_id?.toLowerCase() === address.toLowerCase() ||
+      user.user_id?.toLowerCase() === address.toLowerCase()
+  )
+  if (!isGroupMember) {
+    throw new NotGroupMemberError()
+  }
+  return getGroupInternal(group_id)
 }
 
 export const createGroupInvite = async (
@@ -2269,6 +2263,7 @@ export {
   getGateCondition,
   getGateConditionsForAccount,
   getGroup,
+  getGroupInternal,
   getGroupInvites,
   getGroupName,
   getGroupsEmpty,

@@ -400,7 +400,6 @@ export const updateMeetingEmail = async (
 export const sendInvitationEmail = async (
   toEmail: string,
   inviterName: string,
-  groupName: string,
   message: string,
   groupId: string,
   group: Group
@@ -425,7 +424,7 @@ export const sendInvitationEmail = async (
 
   const locals = {
     inviterName,
-    groupName,
+    groupName: group.name,
     message,
     invitationLink,
     group,
@@ -440,7 +439,7 @@ export const sendInvitationEmail = async (
       from: FROM,
       subject: subject,
       html: rendered,
-      text: `${inviterName} invited you to join ${groupName}. Accept your invite here: ${invitationLink}`,
+      text: `${inviterName} invited you to join ${group.name}. Accept your invite here: ${invitationLink}`,
     }
 
     await sgMail.send(msg)

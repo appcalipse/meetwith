@@ -454,17 +454,21 @@ export const updateGroupRole = async (
   return !!response?.success
 }
 
-export const joinGroup = async (group_id: string) => {
+export const joinGroup = async (group_id: string, email_address?: string) => {
   const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/join`,
+    `/secure/group/${group_id}/join${
+      email_address ? `?email_address=${email_address}` : ''
+    }`,
     'POST'
   )
   return response?.success
 }
 
-export const rejectGroup = async (group_id: string) => {
+export const rejectGroup = async (group_id: string, email_address?: string) => {
   const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/reject`,
+    `/secure/group/${group_id}/reject${
+      email_address ? `?email_address=${email_address}` : ''
+    }`,
     'POST'
   )
   return response?.success
