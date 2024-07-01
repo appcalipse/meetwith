@@ -80,6 +80,7 @@ export interface GroupInvites {
   user_id: string
   group_id: string
   role: MemberType
+  email?: string
 }
 
 export interface GroupInvitePayload {
