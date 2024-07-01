@@ -21,7 +21,7 @@ import { BiWallet } from 'react-icons/bi'
 import { useActiveWallet } from 'thirdweb/react'
 
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { EditMode } from '@/types/Dashboard'
+import { EditMode, Intents } from '@/types/Dashboard'
 import { getGroupsInvites } from '@/utils/api_helper'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
@@ -70,18 +70,6 @@ export const Navbar = () => {
   const params = new URLSearchParams(query as Record<string, string>)
 
   const queryString = params.toString()
-  useEffect(() => {
-    if (currentAccount) {
-      getGroupsInvites(currentAccount.address)
-        .then(invites => {
-          // handle the invites
-          console.log(invites)
-        })
-        .catch(error => {
-          console.error('Error fetching group invites:', error)
-        })
-    }
-  }, [currentAccount])
 
   return (
     <Box
@@ -403,5 +391,5 @@ const NAV_ITEMS: Array<NavItem> = [
 const REDIRECT_PATHS: Record<string, undefined | ((query: string) => string)> =
   {
     '/invite-accept': (query: string) =>
-      `/dashboard/${EditMode.GROUPS}?${query}&intent=join`,
+      `/dashboard/${EditMode.GROUPS}?${query}&intent=${Intents.JOIN}`,
   }
