@@ -11,8 +11,9 @@ import {
 import { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 
+import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { EditMode } from '@/types/Dashboard'
+import { EditMode, Intents } from '@/types/Dashboard'
 import { getGroupExternal, getGroups } from '@/utils/api_helper'
 
 import Loading from '../components/Loading'
@@ -22,9 +23,10 @@ export default function LogoutPage() {
   const [group, setGroup] = useState<any>()
   const [loading, setLoading] = useState(true)
   const { openConnection } = useContext(OnboardingModalContext)
-  const { query } = useRouter()
+  const { query, push } = useRouter()
   const groupId = query.groupId
   const params = new URLSearchParams(query as Record<string, string>)
+  const { currentAccount, logged } = useContext(AccountContext)
   const queryString = params.toString()
   const fetchGroup = async (groupId: string) => {
     const groupData = await getGroupExternal(groupId)
@@ -73,11 +75,17 @@ export default function LogoutPage() {
             Hey there! You’ve been invited to join {group.name}!
           </Heading>
           <Button
-            onClick={() =>
-              openConnection(
-                `/dashboard/${EditMode.GROUPS}?${queryString}&intent=join`
-              )
-            }
+            onClick={() => {
+              if (logged) {
+                push(
+                  `/dashboard/${EditMode.GROUPS}?${queryString}&intent=${Intents.JOIN}`
+                )
+              } else {
+                openConnection(
+                  `/dashboard/${EditMode.GROUPS}?${queryString}&intent=${Intents.JOIN}`
+                )
+              }
+            }}
             colorScheme="primary"
             w="100%"
           >
