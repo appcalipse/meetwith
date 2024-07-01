@@ -118,7 +118,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const newState64 = stateObject
     ? Buffer.from(JSON.stringify(stateObject)).toString('base64')
     : undefined
-
+  if (stateObject.redirectTo) {
+    const containParams = stateObject.redirectTo.includes('?')
+    const redirect_url =
+      stateObject.redirectTo +
+      (newState64 ? `${containParams ? '&' : '?'}calState=${newState64}` : '')
+    return res.redirect(redirect_url)
+  }
   return res.redirect(
     `/dashboard/calendars?calendarResult=success${
       !!state ? `&state=${newState64}` : ''
