@@ -21,6 +21,8 @@ import { BiWallet } from 'react-icons/bi'
 import { useActiveWallet } from 'thirdweb/react'
 
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { EditMode, Intents } from '@/types/Dashboard'
+import { getGroupsInvites } from '@/utils/api_helper'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
 import { AccountContext } from '../../providers/AccountProvider'
@@ -33,7 +35,7 @@ export const Navbar = () => {
   const { openConnection } = useContext(OnboardingModalContext)
   const { isOpen, onToggle } = useDisclosure()
 
-  const { pathname, asPath } = useRouter()
+  const { pathname, asPath, query } = useRouter()
 
   const { currentAccount, logged, loginIn } = useLogin()
 
@@ -65,6 +67,9 @@ export const Navbar = () => {
     window.addEventListener('scroll', changeNavbarBackground)
     changeNavbarBackground()
   }, [])
+  const params = new URLSearchParams(query as Record<string, string>)
+
+  const queryString = params.toString()
 
   return (
     <Box
@@ -142,7 +147,9 @@ export const Navbar = () => {
               ) : (
                 <Button
                   size="md"
-                  onClick={() => openConnection()}
+                  onClick={() =>
+                    openConnection(REDIRECT_PATHS[pathname]?.(queryString))
+                  }
                   isLoading={loginIn}
                   colorScheme="primary"
                   leftIcon={<BiWallet />}
@@ -170,7 +177,9 @@ export const Navbar = () => {
 
       <Collapse in={isOpen} animateOpacity>
         <MobileNav
-          onOpenModal={openConnection}
+          onOpenModal={() =>
+            openConnection(REDIRECT_PATHS[pathname]?.(queryString))
+          }
           onToggle={onToggle}
           handleSetActiveLink={handleSetActiveLink}
           isOpen={isOpen}
@@ -379,3 +388,8 @@ const NAV_ITEMS: Array<NavItem> = [
     href: '/#faq',
   },
 ]
+const REDIRECT_PATHS: Record<string, undefined | ((query: string) => string)> =
+  {
+    '/invite-accept': (query: string) =>
+      `/dashboard/${EditMode.GROUPS}?${query}&intent=${Intents.JOIN}`,
+  }
