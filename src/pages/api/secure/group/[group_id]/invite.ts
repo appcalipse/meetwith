@@ -36,8 +36,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    console.log('Received payload:', invitees, 'Message:', message)
-
     const currentUserAddress = session.account.address
 
     const isAdmin = await isUserAdminOfGroup(groupId, currentUserAddress)
@@ -50,8 +48,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (!group) {
       return res.status(404).json({ error: 'Group not found' })
     }
-
-    const groupName = group.name
 
     for (const invitee of invitees) {
       if (!invitee.email && !invitee.address) {
@@ -116,8 +112,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           await sendInvitationEmail(
             invitee.email,
             inviterName,
-            groupName,
-            `${message} Click here to join: ${inviteLink}`,
+            message ||
+              `Come join our scheduling group "${group.name}" on Meet With Wallet!`,
             groupId,
             group
           )

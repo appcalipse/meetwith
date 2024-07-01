@@ -44,24 +44,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       limit: Number(limit),
       offset: Number(offset),
     }
-    console.log('Fetching invites with filters:', filters)
 
     const invites = await getGroupInvites(filters)
-    const groups = await getUserGroups(
-      accountAddress,
-      Number(limit || 10),
-      Number(offset || 0)
-    )
-
-    console.log('Fetched invites:', invites)
-    console.log('Fetched groups:', groups)
-
-    const responseJson = [...invites, ...groups]
-
-    console.log('Fetched invites:', invites)
-    return res.status(200).json(responseJson)
+    return res.status(200).json(invites)
   } catch (error) {
-    console.error('Error fetching group invites:', error)
     if (error instanceof Error) {
       return res.status(500).json({ error: error.message })
     } else {
