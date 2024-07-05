@@ -7,6 +7,7 @@ import {
   Icon,
   Text,
   useColorModeValue,
+  useMediaQuery,
   VStack,
 } from '@chakra-ui/react'
 import {
@@ -149,18 +150,19 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     )
   }
 
-  const [pickedDay, setPickedDay] = useState(new Date() as Date | null)
-  const [pickedTime, setPickedTime] = useState(null as Date | null)
-  const [showPickTime, setShowPickTime] = useState(false)
+  const [pickedDay, setPickedDay] = useState<Date | null>(null)
+  const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [disablePrev, setDisablePrev] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState(new Date())
-
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
+  const [isSmallerThan800] = useMediaQuery('(max-width: 800px)', {
+    ssr: true,
+    fallback: false, // return false on the server, and re-evaluate on the client side
+  })
   useEffect(() => {
     if (reset) {
       setPickedDay(null)
       setPickedTime(null)
-      setShowPickTime(false)
       setShowConfirm(false)
       setDisablePrev(false)
     }
@@ -183,26 +185,23 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     }
     logEvent('Selected day')
     setPickedDay(day)
-    setShowPickTime(true)
   }
   const handlePickTime = (time: Date) => {
     logEvent('Selected time')
     setPickedTime(time)
     onTimeChange?.(time)
-    setShowPickTime(false)
     setShowConfirm(true)
     willStartScheduling(true)
   }
 
-  const handleClosePickTime = () => {
-    setShowPickTime(false)
+  const handleClosePickDay = () => {
+    setPickedDay(null)
   }
 
   const handleCloseConfirm = () => {
     willStartScheduling(false)
     onTimeChange?.(undefined)
     setShowConfirm(false)
-    setShowPickTime(true)
   }
 
   function findNextDay(currentDay: Date, next: number) {
@@ -409,7 +408,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
         gap={120}
         flexWrap="wrap"
       >
-        {!showConfirm && (
+        {!showConfirm && (!isSmallerThan800 || !pickedDay) && (
           <Calendar
             loading={checkingSlots}
             validator={validator}
@@ -420,10 +419,31 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             setSelectedMonth={setSelectedMonth}
           />
         )}
-        {!showConfirm && (
-          <VStack flex={1} alignItems="flex-start">
-            <VStack alignItems="start">
-              <Heading size="md">Select Time</Heading>
+        {/* isSmallerThan800 isSmallerThan800
+        /* true and true == true
+        /* true and false == false
+        /* false and true == true
+        /* false and false = true
+
+
+        */}
+        {!showConfirm && (!isSmallerThan800 || !!pickedDay) && (
+          <VStack flex={1} alignItems={{ md: 'flex-start', base: 'center' }}>
+            <VStack
+              alignItems={{ md: 'flex-start', base: 'center' }}
+              width={'100%'}
+            >
+              <HStack mb={0}>
+                {isSmallerThan800 && !!pickedDay && (
+                  <Icon
+                    as={FaArrowLeft}
+                    onClick={handleClosePickDay}
+                    size="1.5em"
+                    color={color}
+                  />
+                )}
+                <Heading size="md">Select Time</Heading>
+              </HStack>
               <Select
                 value={tz}
                 colorScheme="primary"
