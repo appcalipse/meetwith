@@ -119,7 +119,7 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
       textAlign="left"
       mt={10}
       position="absolute"
-      top={-36}
+      top={{ md: -36, base: !props.userAccount ? -44 : -40 }}
       mx={'auto'}
       w={'fit-content'}
       insetX={'0'}

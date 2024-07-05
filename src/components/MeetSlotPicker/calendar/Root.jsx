@@ -83,10 +83,12 @@ function Root({
   }
 
   return (
-    <VStack flex={1.5} alignItems="flex-start" minW="300px">
-      <Heading size="md" mr="auto">
-        Select Date
-      </Heading>
+    <VStack
+      flex={1.5}
+      alignItems={{ md: 'flex-start', base: 'center' }}
+      minW="300px"
+    >
+      <Heading size="md">Select Date</Heading>
       <Grid>
         <MonthYear>
           <HStack>
@@ -209,6 +211,7 @@ Root.propTypes = {
   pickDay: PropTypes.func.isRequired,
   monthChanged: PropTypes.func,
   pickedDay: PropTypes.instanceOf(Date),
+  selectedMonth: PropTypes.instanceOf(Date).isRequired,
 }
 
 export default Root

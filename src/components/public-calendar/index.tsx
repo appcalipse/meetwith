@@ -756,7 +756,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         <Container
           bg={lastScheduledMeeting ? 'transparent' : bgColor}
           maxW="95%"
-          mt={48}
+          mt={{ md: 48, base: 60 }}
           flex={1}
           width={
             readyToSchedule || lastScheduledMeeting ? 'fit-content' : '90%'
@@ -774,8 +774,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               <Flex wrap="wrap">
                 <Box
                   flex="1"
-                  minW={{ base: '300px', md: '500px' }}
-                  maxW="250px"
+                  minW={{ base: '100%', md: '500px' }}
+                  maxW={{ md: '250px', base: '100%' }}
                   p={8}
                 >
                   {calendarType === CalendarType.REGULAR ? (
