@@ -1,6 +1,6 @@
 import { Image } from '@chakra-ui/image'
 import { Box, Flex, HStack, Spacer, Text } from '@chakra-ui/layout'
-import { Heading, Link, VStack } from '@chakra-ui/react'
+import { Heading, Icon, IconButton, Link, VStack } from '@chakra-ui/react'
 import { Tooltip, useColorModeValue } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
 import { addMinutes, format } from 'date-fns'
@@ -89,19 +89,29 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
   const formattedDate = format(startTime, 'PPPP')
   const timeDuration = `${formattedStartTime} - ${formattedEndTime}`
   return (
-    <VStack gap={8} w="fit-content" alignItems="flex-start">
+    <VStack
+      gap={{ md: 8, base: 6 }}
+      w={{ base: '100%', md: 'fit-content' }}
+      alignItems={{ md: 'flex-start', base: 'center' }}
+      marginX={{ base: 'auto', md: 0 }}
+    >
       <Box>
-        <HStack gap={4} alignItems="center">
-          <Box width={55} height={55} mb={4}>
+        <HStack gap={{ md: 4, base: 2 }} alignItems="center">
+          <Box w={{ md: 55, base: 10 }} h={{ md: 55, base: 10 }} mb={4}>
             <Avatar account={props.account} />
           </Box>
-          <Text fontSize="lg" fontWeight="500" mb={5}>
+          <Text fontSize={{ md: 'lg', base: 'medium' }} fontWeight="500" mb={5}>
             {getAccountDisplayName(props.account)}
           </Text>
         </HStack>
       </Box>
       {props.readyToSchedule ? (
-        <>
+        <VStack
+          gap={{ md: 8, base: 6 }}
+          w="fit-content"
+          alignItems="flex-start"
+          mt={{ base: -6, md: 0 }}
+        >
           <Heading size={'lg'}>{props.selectedType.title}</Heading>
           <HStack>
             <FaCalendar size={24} />
@@ -117,13 +127,23 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
               {Intl.DateTimeFormat().resolvedOptions().timeZone}
             </Text>
           </HStack>
-        </>
+        </VStack>
       ) : (
         <>
           {!!props.account.preferences?.socialLinks?.length && (
-            <VStack alignItems="flex-start">
-              <Heading size="md">Socials</Heading>
-              <HStack mx={4} mt={2} gap={6} justifyContent="flex-start">
+            <VStack
+              alignItems={{ md: 'flex-start', base: 'center' }}
+              mt={{ base: -6, md: 0 }}
+            >
+              <Heading size="md" display={{ md: 'block', base: 'none' }}>
+                Socials
+              </Heading>
+              <HStack
+                mx={4}
+                mt={{ md: 2, base: 0 }}
+                gap={6}
+                justifyContent="flex-start"
+              >
                 {telegram && (
                   <>
                     <Link
@@ -131,7 +151,11 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
                       isExternal
                       href={generateTelegramUrl(telegram)}
                     >
-                      <FaTelegram size={24} />
+                      <IconButton
+                        aria-label="Telegram icon"
+                        icon={<FaTelegram size={24} />}
+                        size={'lg'}
+                      />
                     </Link>
                   </>
                 )}
@@ -142,7 +166,11 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
                       isExternal
                       href={generateTwitterUrl(twitter)}
                     >
-                      <FaTwitter size={24} />
+                      <IconButton
+                        aria-label="Twitter icon"
+                        icon={<FaTwitter size={24} />}
+                        size={'lg'}
+                      />
                     </Link>
                   </>
                 )}
@@ -165,8 +193,8 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
             </VStack>
           )}
           {props.account.preferences?.description && (
-            <VStack alignItems="flex-start">
-              <Heading size="md">Profile Description</Heading>
+            <VStack alignItems={{ md: 'flex-start', base: 'center' }}>
+              <Heading size="md">Description</Heading>
               <Text
                 position="relative"
                 textAlign="justify"
@@ -179,7 +207,10 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
           )}
           {props.calendarType === CalendarType.REGULAR &&
             !props.rescheduleSlotId && (
-              <VStack position="relative" alignItems="flex-start">
+              <VStack
+                position="relative"
+                alignItems={{ md: 'flex-start', base: 'center' }}
+              >
                 <Heading size="md">Meeting Type</Heading>
                 <Select
                   isDisabled={props.readyToSchedule}
@@ -214,6 +245,13 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
             )}
         </>
       )}
+      <Box
+        w={'100%'}
+        bg={'neutral.400'}
+        h={'1px'}
+        mt={4}
+        display={{ md: 'none', base: 'block' }}
+      />
     </VStack>
   )
 }
