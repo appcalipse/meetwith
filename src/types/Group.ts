@@ -7,8 +7,6 @@ export interface GetGroupsResponse {
   id: string
   name: string
   slug: string
-  role: MemberType
-  invitePending: boolean
 }
 
 export interface GroupInvitesResponse {
