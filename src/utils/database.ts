@@ -25,6 +25,7 @@ import {
 } from '@/types/CalendarConnections'
 import { DiscordAccount } from '@/types/Discord'
 import {
+  CreateGroupsResponse,
   EmptyGroupsResponse,
   GetGroupsResponse,
   Group,
@@ -2204,7 +2205,7 @@ export async function createGroupInDB(
   name: string,
   slug: string,
   account_address: string
-): Promise<GetGroupsResponse> {
+): Promise<CreateGroupsResponse> {
   const { data, error } = await db.supabase
     .from<TablesInsert<'groups'>>('groups')
     .insert([
