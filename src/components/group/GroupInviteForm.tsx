@@ -64,7 +64,6 @@ const GroupInviteForm: FC<InviteModalProps> = ({
     }))
 
     const payload: GroupInvitePayload = { invitees, message }
-
     try {
       const resp = await inviteUsers(groupId, payload)
 
