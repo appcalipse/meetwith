@@ -13,7 +13,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     const address = req.query.address as string
     try {
-      const groups = await getGroupInvites(address)
+      const groups = await getGroupInvites({ address })
       const responseJson: Array<InvitedGroupsResponse> = groups.map(group => ({
         id: group.group.id,
         name: group.group.name,

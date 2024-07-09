@@ -1,4 +1,4 @@
-import { CheckCircleIcon, ChevronDownIcon, DeleteIcon } from '@chakra-ui/icons'
+import { ChevronDownIcon, DeleteIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
@@ -17,16 +17,14 @@ import React from 'react'
 
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import customTheme from '@/styles/theme'
+import { MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
-import {
-  getAccountDisplayName,
-  getInvitedUserDisplayName,
-} from '@/utils/user_manager'
+import { getInvitedUserDisplayName } from '@/utils/user_manager'
 
 interface InvitedUserCardProps {
   users: InvitedUser[]
-  removeUser: (user: string) => void
-  updateRole: (userId: string, role: InvitedUser['role']) => void
+  removeUser: (user: number) => void
+  updateRole: (userId: number, role: InvitedUser['role']) => void
 }
 
 const InvitedUsersCard: React.FC<InvitedUserCardProps> = ({
@@ -109,12 +107,12 @@ const InvitedUsersCard: React.FC<InvitedUserCardProps> = ({
                   </MenuButton>
                   <MenuList>
                     <MenuItem
-                      onClick={() => updateRole(user.account_address, 'admin')}
+                      onClick={() => updateRole(user.id, MemberType.ADMIN)}
                     >
                       Admin
                     </MenuItem>
                     <MenuItem
-                      onClick={() => updateRole(user.account_address, 'member')}
+                      onClick={() => updateRole(user.id, MemberType.MEMBER)}
                     >
                       Member
                     </MenuItem>
@@ -125,7 +123,7 @@ const InvitedUsersCard: React.FC<InvitedUserCardProps> = ({
                   icon={<DeleteIcon />}
                   size="sm"
                   variant="ghost"
-                  onClick={() => removeUser(user.account_address)}
+                  onClick={() => removeUser(user.id)}
                   ml={2}
                 />
               </Flex>
