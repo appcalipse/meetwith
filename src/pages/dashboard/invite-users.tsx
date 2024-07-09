@@ -16,8 +16,9 @@ import React, { useEffect, useRef, useState } from 'react'
 
 import InvitedUsersCard from '@/components/group/InvitedUsersCard'
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import { MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
-import { getAccount, inviteUsers } from '@/utils/api_helper'
+import { inviteUsers } from '@/utils/api_helper'
 import {
   isEmptyString,
   isEthereumAddressOrDomain,
@@ -71,10 +72,23 @@ const InviteUsersPage = () => {
       return
     }
 
-    const userIdentifiers = invitedUsers.map(user => user.account_address)
+    const userIdentifiers = invitedUsers.map(user => ({
+      address: isEthereumAddressOrDomain(user.account_address)
+        ? user.account_address
+        : undefined,
+      email: isValidEmail(user.account_address)
+        ? user.account_address
+        : undefined,
+      role: 'member' as 'admin' | 'member',
+    }))
+
+    const payload = {
+      invitees: userIdentifiers,
+      message,
+    }
 
     try {
-      await inviteUsers(userIdentifiers, message)
+      await inviteUsers(storedGroupId, payload)
       router.push('/dashboard/invite-success')
     } catch (error) {
       console.error('Error sending invitations:', error)
@@ -126,9 +140,10 @@ const InviteUsersPage = () => {
       }
 
       const newUser: InvitedUser = {
+        id: invitedUsers.length,
         groupId: storedGroupId,
         account_address: input,
-        role: 'member',
+        role: MemberType.MEMBER,
         invitePending: true,
       }
       setInvitedUsers(prev => [...prev, newUser])
@@ -136,17 +151,13 @@ const InviteUsersPage = () => {
     }
   }
 
-  const removeUser = (userId: string) => {
-    setInvitedUsers(prevUsers =>
-      prevUsers.filter(user => user.account_address !== userId)
-    )
+  const removeUser = (id: number) => {
+    setInvitedUsers(prevUsers => prevUsers.filter(user => user.id !== id))
   }
 
-  const updateRole = (userId: string, role: InvitedUser['role']) => {
+  const updateRole = (id: number, role: InvitedUser['role']) => {
     setInvitedUsers(prevUsers =>
-      prevUsers.map(user =>
-        user.account_address === userId ? { ...user, role } : user
-      )
+      prevUsers.map(user => (user.id === id ? { ...user, role } : user))
     )
   }
 

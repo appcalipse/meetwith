@@ -14,12 +14,12 @@ export const useLogin = () => {
   const { logged, currentAccount, login, loginIn, setLoginIn, logout } =
     useContext(AccountContext)
   const toast = useToast()
-
   const handleLogin = async (
     wallet: Wallet | undefined,
     useWaiting = true,
     forceRedirect = true,
     shouldRedirect = true
+    redirectPath?: string
   ) => {
     !forceRedirect && logEvent('Clicked to connect wallet')
     if (!wallet?.getAccount()) return
@@ -54,21 +54,33 @@ export const useLogin = () => {
               stateObj.email = email
             }
           }
-
+          if (redirectPath) {
+            stateObj.redirect = redirectPath
+          }
           const state = Buffer.from(JSON.stringify(stateObj)).toString('base64')
 
-          shouldRedirect &&
-            (await router.push(`/dashboard/details?state=${state}`))
+          shouldRedirect && await router.push(
+            redirectPath
+              ? `${redirectPath}&authstate=${state}`
+              : `/dashboard/details?state=${state}`
+          )
           return
         }
 
         // avoid redirecting if person is scheduling on a public calendar
         // of someone else and was not logged. Definitely not the best way to do this
+        if (router.pathname === '/invite-accept' && redirectPath) {
+          await router.push(redirectPath)
+        }
         if (
           router.pathname === '/' ||
           router.pathname.indexOf('/embed') != -1
         ) {
-          shouldRedirect && (await router.push('/dashboard/meetings'))
+          shouldRedirect && await router.push(
+            `/dashboard/meetings?${
+              redirectPath ? `redirect=${redirectPath}` : ''
+            }`
+          )
           return
         }
       }
