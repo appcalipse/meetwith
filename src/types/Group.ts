@@ -10,6 +10,15 @@ export interface GetGroupsResponse {
   role: MemberType
   invitePending: boolean
 }
+
+export interface GroupInvitesResponse {
+  id: string
+  userId?: string
+  email?: string
+  discordId?: string
+  groupId: string
+}
+
 export interface Group {
   id: string
   name: string
@@ -71,4 +80,33 @@ export interface GroupInvites {
   user_id: string
   group_id: string
   role: MemberType
+  email?: string
+}
+
+export interface GroupInvitePayload {
+  invitees: {
+    address?: string
+    email?: string
+    userId?: string
+    role: 'admin' | 'member'
+  }[]
+  message?: string
+}
+
+export interface GroupInvitesResponse {
+  id: string
+  email?: string
+  discordId?: string
+  userId?: string
+  groupId: string
+}
+
+export interface GroupInviteFilters {
+  address?: string
+  group_id?: string
+  user_id?: string
+  email?: string
+  discord_id?: string
+  limit?: number
+  offset?: number
 }

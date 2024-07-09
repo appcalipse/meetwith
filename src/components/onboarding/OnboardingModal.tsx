@@ -30,6 +30,7 @@ import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { TimeRange } from '@/types/Account'
 import { NotificationChannel } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
+import { EditMode } from '@/types/Dashboard'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import { TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
@@ -397,7 +398,11 @@ const OnboardingModal = () => {
       logEvent('Updated account details')
       login(updatedAccount)
 
-      await router.push('/dashboard')
+      await router.push(
+        !!stateObject.redirect
+          ? `/dashboard/${EditMode.MEETINGS}?redirect=${stateObject.redirect}`
+          : `/dashboard/${EditMode.MEETINGS}`
+      )
       closeOnboarding()
     } catch (e) {
       console.error(e)
@@ -407,12 +412,12 @@ const OnboardingModal = () => {
 
   const activeStepColor = useColorModeValue('neutral.400', 'neutral.50')
   const stepColor = useColorModeValue('neutral.50', 'neutral.400')
-
+  const handleClose = () => closeOnboarding(stateObject.redirect)
   return (
     <>
       <Modal
         isOpen={isOnboardingOpened}
-        onClose={closeOnboarding}
+        onClose={handleClose}
         closeOnOverlayClick={false}
         closeOnEsc={false}
         size="xl"
@@ -423,7 +428,7 @@ const OnboardingModal = () => {
             <Flex justifyContent="flex-end">
               <Button
                 variant="ghost"
-                onClick={closeOnboarding}
+                onClick={handleClose}
                 isDisabled={loadingSave}
               >
                 Skip all
