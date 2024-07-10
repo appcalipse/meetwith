@@ -1,13 +1,11 @@
 import { Box, HStack, Image, Text } from '@chakra-ui/react'
-import { bg } from 'date-fns/locale'
 import React, { useContext, useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
-import { getTokenIcon } from '@/components/profile/SubscriptionDialog'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useLogin } from '@/session/login'
 import { Account } from '@/types/Account'
-import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
+import { SupportedChain, supportedChains } from '@/types/chains'
 import { GateCondition } from '@/types/TokenGating'
 import { getGateCondition } from '@/utils/api_helper'
 import { formatUnits } from '@/utils/generic_utils'
@@ -16,8 +14,6 @@ import {
   isConditionValid,
 } from '@/utils/token.gate.service'
 import { getTokenMeta } from '@/utils/token.service'
-
-import HumanReadableGate from './HumanReadableGate'
 
 interface TokenGateValidationProps {
   gate: string
@@ -147,7 +143,7 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
             cursor="pointer"
             whiteSpace="nowrap"
             onClick={() => {
-              openConnection(false)
+              openConnection(undefined, false)
             }}
           >
             Sign In
