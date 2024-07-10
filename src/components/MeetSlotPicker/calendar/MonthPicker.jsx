@@ -111,12 +111,12 @@ export const CurrentMonth = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  font-weight: 500;
+  font-weight: 700;
   animation: ${animation};
 `
 
 export const FakeCurrentMonth = styled.div`
-  font-weight: 500;
+  font-weight: 700;
   animation: ${fakeAnimation};
   visibility: ${props => (props.animation ? 'visible' : 'hidden')};
 `
