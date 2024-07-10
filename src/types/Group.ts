@@ -11,6 +11,12 @@ export interface GetGroupsResponse {
   invitePending: boolean
 }
 
+export interface CreateGroupsResponse {
+  id: string
+  name: string
+  slug: string
+}
+
 export interface GroupInvitesResponse {
   id: string
   userId?: string
