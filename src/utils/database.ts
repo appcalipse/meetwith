@@ -700,7 +700,7 @@ const saveMeeting = async (
         schedulerAccount.account_address!
       )
 
-      if (!valid) {
+      if (!valid.isValid) {
         throw new GateConditionNotValidError()
       }
     }

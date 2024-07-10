@@ -3,7 +3,7 @@ import React, { ReactNode, useState } from 'react'
 
 interface IOnboardingModalContext {
   isConnectionOpened: boolean
-  openConnection: (redirectPath?: string) => void
+  openConnection: (redirectPath?: string, redirection?: boolean) => void
   closeConnection: () => void
   isOnboardingOpened: boolean
   openOnboarding: () => void
@@ -11,6 +11,7 @@ interface IOnboardingModalContext {
   resetOnboarding: () => void
   onboardingStarted: () => void
   onboardingInit: boolean
+  shouldRedirect: boolean
   redirectPath: string
 }
 
@@ -24,6 +25,7 @@ const OnboardingModalContext = React.createContext<IOnboardingModalContext>({
   resetOnboarding: () => {},
   onboardingStarted: () => {},
   onboardingInit: false,
+  shouldRedirect: true,
   redirectPath: '',
 })
 
@@ -37,9 +39,13 @@ const OnboardingModalProvider: React.FC<WalletModalProviderProps> = ({
   const [onboardingInit, setOnboardingInit] = useState(false)
   const [connectionOpened, setConnectionOpened] = useState(false)
   const [onboardingOpened, setOnboardingOpened] = useState(false)
+  const [shouldRedirect, setShouldRedirect] = useState(true)
+
   const [redirectPath, setRedirectPath] = useState('')
   const { push } = useRouter()
-  function openConnection(redirectPath?: string) {
+
+  function openConnection(redirectPath?: string, redirection = true) {
+    setShouldRedirect(redirection)
     setConnectionOpened(true)
     if (redirectPath) {
       setRedirectPath(redirectPath)
@@ -79,6 +85,7 @@ const OnboardingModalProvider: React.FC<WalletModalProviderProps> = ({
     resetOnboarding,
     onboardingStarted,
     onboardingInit,
+    shouldRedirect,
     redirectPath,
   }
   return (
