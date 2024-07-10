@@ -931,7 +931,7 @@ const generateGoogleCalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
-  let baseUrl = 'https://calendar.google.com/calendar/r/eventedit11?sf=true'
+  let baseUrl = 'https://calendar.google.com/calendar/r/eventedit?sf=true'
   if (start && end) {
     baseUrl += `&dates=${googleUrlParsedDate(
       new Date(start)
