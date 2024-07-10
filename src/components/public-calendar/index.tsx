@@ -1,5 +1,4 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { ChevronDownIcon } from '@chakra-ui/icons'
 import { Box, Container, Flex, Text } from '@chakra-ui/layout'
 import {
   Button,
@@ -8,7 +7,6 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { Select } from '@chakra-ui/select'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
 import {
@@ -37,7 +35,6 @@ import {
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
-import { BiChevronDown } from 'react-icons/bi'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
@@ -69,7 +66,6 @@ import {
 } from '@/utils/api_helper'
 import {
   dateToHumanReadable,
-  durationToHumanReadable,
   getAccountDomainUrl,
   scheduleMeeting,
 } from '@/utils/calendar_manager'
@@ -84,8 +80,8 @@ import {
 import {
   getAvailabilitiesForWeekDay,
   getBlockedAvailabilities,
+  isSlotAvailable,
 } from '@/utils/slots.helper'
-import { isSlotAvailable } from '@/utils/slots.helper'
 import { saveMeetingsScheduled } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -890,7 +886,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 color={'primary.400'}
                 textDecoration="underline"
                 textUnderlineOffset={2}
-                onClick={() => openConnection(false)}
+                onClick={() => openConnection(undefined, false)}
                 cursor={'pointer'}
               >
                 Sign in
