@@ -1282,7 +1282,6 @@ const getGroupInternal = async (group_id: string) => {
   throw new GroupNotExistsError()
 }
 const getGroup = async (group_id: string, address: string): Promise<Group> => {
-  console.log({ group_id })
   const groupUsers = await getGroupUsersInternal(group_id)
   const isGroupMember = groupUsers.some(
     user =>
@@ -1324,12 +1323,6 @@ export const addUserToGroupInvites = async (
   email?: string,
   accountAddress?: string
 ): Promise<void> => {
-  console.log({
-    email,
-    user_id: accountAddress || null,
-    group_id: groupId,
-    role,
-  })
   try {
     const { error } = await db.supabase.from('group_invites').insert({
       email,
@@ -2184,7 +2177,6 @@ export async function isUserAdminOfGroup(
   groupId: string,
   userAddress: string
 ): Promise<boolean> {
-  console.log({ groupId, userAddress })
   const { data, error } = await db.supabase
     .from<GroupMembersRow>('group_members')
     .select('role')
