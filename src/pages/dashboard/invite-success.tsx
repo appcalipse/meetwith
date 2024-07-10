@@ -61,7 +61,7 @@ const InviteSuccessPage = ({ invitedCount = 2 }) => {
           w="full"
           mb="8px"
         >
-          View Group
+          View Groups
         </Button>
         <Button
           onClick={() => router.push('/dashboard/create-group')}
