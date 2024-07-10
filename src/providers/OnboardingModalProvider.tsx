@@ -3,8 +3,7 @@ import React, { ReactNode, useState } from 'react'
 
 interface IOnboardingModalContext {
   isConnectionOpened: boolean
-  openConnection: (shouldRedirect?: boolean) => void
-  openConnection: (redirectPath?: string) => void
+  openConnection: (redirectPath?: string, redirection?: boolean) => void
   closeConnection: () => void
   isOnboardingOpened: boolean
   openOnboarding: () => void
@@ -42,11 +41,11 @@ const OnboardingModalProvider: React.FC<WalletModalProviderProps> = ({
   const [onboardingOpened, setOnboardingOpened] = useState(false)
   const [shouldRedirect, setShouldRedirect] = useState(true)
 
-  function openConnection(redirection = true) {
-    setShouldRedirect(redirection)
   const [redirectPath, setRedirectPath] = useState('')
   const { push } = useRouter()
-  function openConnection(redirectPath?: string) {
+
+  function openConnection(redirectPath?: string, redirection = true) {
+    setShouldRedirect(redirection)
     setConnectionOpened(true)
     if (redirectPath) {
       setRedirectPath(redirectPath)
