@@ -37,7 +37,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
   try {
     const currentUserAddress = session.account.address
-
     const isAdmin = await isUserAdminOfGroup(groupId, currentUserAddress)
     if (!isAdmin) {
       return res.status(403).json({ error: 'User is not a group admin' })

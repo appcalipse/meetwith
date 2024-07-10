@@ -79,8 +79,9 @@ export const internalFetch = async <T>(
     }
 
     throw new ApiFetchError(response.status, await response.text())
-  } catch (e) {
+  } catch (e: any) {
     Sentry.captureException(e)
+    throw e
   }
 }
 
@@ -855,29 +856,25 @@ export const getConferenceMeeting = async (
 
 export const createGroup = async (
   groupName: string,
-  groupCalendarName: string
-): Promise<{ groupId: string }> => {
+  groupSlug: string
+): Promise<GetGroupsResponse> => {
   try {
-    const response = await internalFetch<{ id: string }>(
-      '/secure/group/create-group',
+    const response = await internalFetch<GetGroupsResponse>(
+      '/secure/group',
       'POST',
       {
         name: groupName,
-        calendarName: groupCalendarName,
+        slug: groupSlug,
       }
     )
 
-    if (response && response.id) {
-      return { groupId: response.id }
-    } else {
-      throw new GroupCreationError('Invalid response from server')
-    }
+    return response
   } catch (e: any) {
     if (e instanceof ApiFetchError) {
       if (e.status === 400) {
         throw new GroupCreationError('Invalid input data')
       } else if (e.status === 500) {
-        throw new GroupCreationError('Internal server error')
+        throw new GroupCreationError(e.message)
       }
     }
 

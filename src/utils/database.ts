@@ -8,7 +8,6 @@ import EthCrypto, {
   encryptWithPublicKey,
 } from 'eth-crypto'
 import { validate } from 'uuid'
-import { v4 as uuidv4 } from 'uuid'
 
 import {
   Account,
@@ -26,6 +25,7 @@ import {
 } from '@/types/CalendarConnections'
 import { DiscordAccount } from '@/types/Discord'
 import {
+  CreateGroupsResponse,
   EmptyGroupsResponse,
   GetGroupsResponse,
   Group,
@@ -60,12 +60,7 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import {
-  Database,
-  GroupMembersRow,
-  Tables,
-  TablesInsert,
-} from '@/types/supabase'
+import { GroupMembersRow, TablesInsert } from '@/types/supabase'
 import {
   GateConditionObject,
   GateUsage,
@@ -92,7 +87,6 @@ import {
 } from './calendar_manager'
 import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
-import { fetchContentFromIPFS } from './ipfs_helper'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
@@ -2201,49 +2195,49 @@ export async function isUserAdminOfGroup(
 
 export async function createGroupInDB(
   name: string,
-  slug: string
-): Promise<GetGroupsResponse> {
-  const db = initDB()
-  const groupId = uuidv4()
+  slug: string,
+  account_address: string
+): Promise<CreateGroupsResponse> {
+  const { data, error } = await db.supabase
+    .from<TablesInsert<'groups'>>('groups')
+    .insert([
+      {
+        name,
+        slug,
+      },
+    ])
 
-  try {
-    const { data, error } = await db.supabase
-      .from<TablesInsert<'groups'>>('groups')
-      .insert([
-        {
-          id: groupId,
-          name,
-          slug,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ])
+  if (error) {
+    throw new GroupCreationError(
+      'Group with name/slug already exists',
+      error.message
+    )
+  }
 
-    if (error) {
-      throw new GroupCreationError('Failed to create group', error.message)
-    }
+  const newGroup = data[0]
+  if (!newGroup || !newGroup.id) {
+    throw new Error('Failed to create group: missing ID')
+  }
 
-    const newGroup = data[0]
-    if (!newGroup || !newGroup.id) {
-      throw new Error('Failed to create group: missing ID')
-    }
-
-    return {
-      id: newGroup.id,
-      name: newGroup.name,
-      slug: newGroup.slug,
-      role: MemberType.ADMIN,
-      invitePending: false,
-    }
-  } catch (error) {
-    if (error instanceof GroupCreationError) {
-      throw error
-    } else if (error instanceof Error) {
-      throw new GroupCreationError('Database operation failed', error.message)
-    } else {
-      console.error('Unknown error type:', error)
-      throw new Error('An unknown error occurred')
-    }
+  const admin = {
+    group_id: newGroup.id,
+    member_id: account_address,
+    role: MemberType.ADMIN,
+  }
+  const members = [admin]
+  const { data: memberData, error: memberError } = await db.supabase
+    .from('group_members')
+    .insert(members)
+  if (memberError) {
+    throw new GroupCreationError(
+      'Error adding group admin to group',
+      memberError.message
+    )
+  }
+  return {
+    id: newGroup.id,
+    name: newGroup.name,
+    slug: newGroup.slug,
   }
 }
 
