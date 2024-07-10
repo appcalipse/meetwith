@@ -51,14 +51,12 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
         chosenGate!.definition!,
         props.userAccount.address!
       )
-      console.log(valid)
       props.setIsGateValid(valid.isValid)
       const userTokens = valid.tokens
       const token = chosenGate?.definition?.elements.find(val => {
         const userToken = userTokens.find(
           userToken => userToken.symbol === val.itemSymbol
         )
-        console.log({ userToken })
         if (valid.isValid) {
           return val.minimumBalance <= (userToken?.balance || 0)
         } else {
@@ -74,7 +72,6 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
                 token?.itemId || ''
               )
             )?.image?.large
-      console.log({ tokenImage, token })
       setFirstToken(token ? { ...token, image: tokenImage } : undefined)
     } else {
       const token = chosenGate?.definition?.elements[0]
