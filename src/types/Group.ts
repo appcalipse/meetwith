@@ -32,8 +32,9 @@ export interface Group {
 }
 export interface GroupMember {
   displayName: string
-  address: string
+  address?: string
   role: MemberType
+  userId?: string
   invitePending: boolean
   calendarConnected: boolean
 }
@@ -52,14 +53,13 @@ export interface UserGroups {
 export interface GroupUsers {
   // an array is returned here because of the one-to-many relationship
   group_members: Array<GroupMemberQuery>
-  group_invites: Array<GroupMemberQuery>
+  group_invites: Array<GroupInvites>
   preferences: { name: string }
   // an array is returned here because of the one-to-many relationship
   calendars: Array<{
     calendars?: Array<CalendarType>
   }>
 }
-
 export interface GroupMemberQuery {
   member_id: string
   user_id: string
@@ -83,10 +83,12 @@ export interface MenuOptions {
   onClick?: () => void
 }
 export interface GroupInvites {
-  user_id: string
+  id: string
+  email: string | null
+  discord_id: string | null
+  user_id: string | null
   group_id: string
   role: MemberType
-  email?: string
 }
 
 export interface GroupInvitePayload {
