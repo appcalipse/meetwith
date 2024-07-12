@@ -92,10 +92,7 @@ export default function SmallWithLogoLeft() {
               <Link href="/#pricing">Pricing</Link>
             </Text>
             <Text textAlign="justify">
-              <Link
-                href="https://app.dework.xyz/meet-with-wallet/mww-roadmap/board"
-                target="_blank"
-              >
+              <Link href="mailto:contact@meetwithwallet.xyz" isExternal>
                 Roadmap
               </Link>
             </Text>
@@ -116,10 +113,7 @@ export default function SmallWithLogoLeft() {
               <Link href="mailto:support@meetwithwallet.xyz">Need Help</Link>
             </Text>
             <Text textAlign="justify">
-              <Link
-                href="https://app.dework.xyz/meet-with-wallet/mww-roadmap/community"
-                target="_blank"
-              >
+              <Link href="mailto:contact@meetwithwallet.xyz" isExternal>
                 Feature Requests
               </Link>
             </Text>
@@ -155,7 +149,7 @@ export default function SmallWithLogoLeft() {
         <Stack direction={'row'} spacing={6}>
           <SocialButton
             label={'Eamil'}
-            href={'mailto:it_people@meetwithwallet.xyz'}
+            href={'mailto:contact@meetwithwallet.xyz'}
           >
             <FaEnvelope />
           </SocialButton>

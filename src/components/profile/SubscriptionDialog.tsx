@@ -52,6 +52,37 @@ interface IProps {
   onDialogClose: () => void
   onSuccessPurchase?: (sub: Subscription) => void
 }
+export const getChainIcon = (chain: SupportedChain) => {
+  switch (chain) {
+    case SupportedChain.POLYGON_MATIC:
+    case SupportedChain.POLYGON_AMOY:
+      return '/assets/chains/Polygon.svg'
+    case SupportedChain.METIS_ANDROMEDA:
+      return '/assets/chains/Metis.svg'
+    case SupportedChain.ETHEREUM:
+    case SupportedChain.SEPOLIA:
+      return '/assets/chains/ethereum.svg'
+    default:
+      break
+  }
+}
+
+export const getTokenIcon = (token: AcceptedToken) => {
+  switch (token) {
+    case AcceptedToken.DAI:
+      return '/assets/chains/DAI.svg'
+    case AcceptedToken.USDC:
+      return '/assets/chains/USDC.svg'
+    case AcceptedToken.METIS:
+      return '/assets/chains/Metis.svg'
+    case AcceptedToken.MATIC:
+      return '/assets/chains/Polygon.svg'
+    case AcceptedToken.ETHER:
+      return '/assets/chains/ethereum.svg'
+    default:
+      return
+  }
+}
 
 const SubscriptionDialog: React.FC<IProps> = ({
   currentSubscription,
@@ -74,7 +105,6 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const [currentToken, setCurrentToken] = useState<
     AcceptedTokenInfo | undefined
   >(undefined)
-
   const [checkingCanSubscribe, setCheckingCanSubscribe] = useState(false)
   const [needsApproval, setNeedsAproval] = useState(false)
   const [waitingConfirmation, setWaitingConfirmation] = useState(false)
@@ -84,38 +114,6 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const toast = useToast()
 
   const wallet = useActiveWallet()
-
-  const getChainIcon = (chain: SupportedChain) => {
-    switch (chain) {
-      case SupportedChain.POLYGON_MATIC:
-      case SupportedChain.POLYGON_AMOY:
-        return '/assets/chains/Polygon.svg'
-      case SupportedChain.METIS_ANDROMEDA:
-        return '/assets/chains/Metis.svg'
-      case SupportedChain.ETHEREUM:
-      case SupportedChain.SEPOLIA:
-        return '/assets/chains/ethereum.svg'
-      default:
-        break
-    }
-  }
-
-  const getTokenIcon = (token: AcceptedToken) => {
-    switch (token) {
-      case AcceptedToken.DAI:
-        return '/assets/chains/DAI.svg'
-      case AcceptedToken.USDC:
-        return '/assets/chains/USDC.svg'
-      case AcceptedToken.METIS:
-        return '/assets/chains/Metis.svg'
-      case AcceptedToken.MATIC:
-        return '/assets/chains/Polygon.svg'
-      case AcceptedToken.ETHER:
-        return '/assets/chains/ethereum.svg'
-      default:
-        break
-    }
-  }
 
   const changeDuration = (duration: number) => {
     setDuration(duration)
