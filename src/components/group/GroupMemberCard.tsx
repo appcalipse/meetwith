@@ -96,10 +96,14 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           })
           setCurrentRole(newRole)
         }
-      } catch (err: any) {
+      } catch (error: any) {
+        const isJsonErr = isJson(error.message)
+        const errorMessage = isJsonErr
+          ? JSON.parse(error.message)?.error
+          : error.message
         toast({
           title: 'Error changing roles',
-          description: err.message,
+          description: errorMessage,
           status: 'error',
           duration: 5000,
           isClosable: true,
