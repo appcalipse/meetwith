@@ -80,7 +80,6 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       setInvitedUsers([])
       onInviteSuccess?.()
     } catch (error) {
-      console.log(error)
       const err = error as Error
       toast({
         title: 'Error inviting member',
