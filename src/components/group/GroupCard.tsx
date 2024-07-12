@@ -55,6 +55,7 @@ export interface IGroupCard extends GetGroupsResponse {
   mt: number
   setToggleAdminChange: React.Dispatch<React.SetStateAction<boolean>>
   setToggleAdminLeave: React.Dispatch<React.SetStateAction<boolean>>
+  resetState: () => void
 }
 
 const GroupCard: React.FC<IGroupCard> = props => {
@@ -245,8 +246,10 @@ const GroupCard: React.FC<IGroupCard> = props => {
               setGroupRoles={setGroupRoles}
               updateRole={updateRole}
               groupSlug={props.slug}
+              groupID={props.id}
               toggleAdminChange={() => props.setToggleAdminChange(true)}
               toggleAdminLeave={() => props.setToggleAdminLeave(true)}
+              resetState={props.resetState}
               {...member}
             />
           ))}
