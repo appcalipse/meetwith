@@ -4,7 +4,7 @@ import { getContract, readContract } from 'thirdweb'
 import { viemAdapter } from 'thirdweb/adapters/viem'
 
 import { ERC721 } from '@/abis/erc721'
-import { getChainInfo, SupportedChain } from '@/types/chains'
+import { getChainInfo, SupportedChain, TokenMeta } from '@/types/chains'
 import { GateInterface, TokenGateElement } from '@/types/TokenGating'
 
 import { thirdWebClient } from './user_manager'
@@ -46,6 +46,22 @@ export const getNativeBalance = async (
   })
 
   return balance
+}
+export const getTokenMeta = async (
+  chain: string,
+  tokenAddress: string
+): Promise<Partial<TokenMeta>> => {
+  const url = `https://api.coingecko.com/api/v3/coins/${chain}/contract/${tokenAddress}`
+  const options = {
+    method: 'GET',
+    headers: {
+      accept: 'application/json',
+      'x-cg-demo-api-key': process.env.NEXT_PUBLIC_COINGECKO_API_KEY || '',
+    },
+  }
+  const data = await fetch(url, options)
+  const dataJson = await data.json()
+  return dataJson
 }
 
 export const getTokenInfo = async (
