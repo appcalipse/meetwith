@@ -475,6 +475,13 @@ export const rejectGroup = async (group_id: string, email_address?: string) => {
   return response?.success
 }
 
+export const leaveGroup = async (group_id: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/leave`,
+    'POST'
+  )
+  return response?.success
+}
 export const getGroup = async (group_id: string) => {
   const response = await internalFetch<Group>(`/secure/group/${group_id}`)
   return response
