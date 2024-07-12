@@ -22,7 +22,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       const responseJson: Array<GroupMember> = groups
         .map(group => {
-          return group.group_members.length > 0
+          return group.email
+            ? {
+                userId: group.id,
+                role: group.role,
+                invitePending: true,
+                calendarConnected: false,
+                displayName: group.email,
+              }
+            : group.group_members.length > 0
             ? {
                 displayName: group.preferences?.name,
                 address: group.group_members?.[0]?.member_id as string,
@@ -34,6 +42,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
                 displayName: group.preferences?.name,
                 address: (group.group_invites?.[0]?.user_id ||
                   group.group_invites?.[0]?.email) as string,
+                userId: group.group_invites?.[0]?.id,
                 role: group.group_invites?.[0].role,
                 invitePending: true,
                 calendarConnected: !!group.calendars[0]?.calendars?.length,
