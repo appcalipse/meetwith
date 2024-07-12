@@ -20,6 +20,7 @@ export interface ChainInfo {
   testnet: boolean
   nativeTokenSymbol: string
   domainContractAddess: string
+  image: string
   registarContractAddress: string
   acceptableTokens: AcceptedTokenInfo[]
   blockExplorerUrl: string
@@ -46,6 +47,21 @@ export interface AcceptedTokenInfo {
   contractAddress: string
 }
 
+export interface TokenMeta {
+  id: string
+  symbol: string
+  name: string
+  web_slug: string
+  asset_platform_id: string
+  image: {
+    thumb: string
+    small: string
+    large: string
+  }
+  contract_address: string
+  last_updated: string
+}
+
 export const getNativeDecimals = (chain: SupportedChain): number => {
   // all supported tokens for now have 18 decimals
   return 18
@@ -64,6 +80,7 @@ export const supportedChains: ChainInfo[] = [
     domainContractAddess: '0x2809e5Cf4776640D0Da184605B0c82F803e97EFc',
     registarContractAddress: '0x2B1a67268BD808781bf5Eb761f1c43987dfa8E33',
     blockExplorerUrl: 'https://sepolia.etherscan.com',
+    image: '/assets/chains/ethereum.svg',
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
@@ -87,6 +104,7 @@ export const supportedChains: ChainInfo[] = [
     domainContractAddess: '0x579846cFDe1d332b4Fd8E28Ce8cb880c81e9b302',
     registarContractAddress: '0x2Fa75727De367844b948172a94B5F752c2af8237',
     blockExplorerUrl: 'https://amoy.polygonscan.com/',
+    image: '/assets/chains/Polygon.svg',
     acceptableTokens: [
       {
         token: AcceptedToken.MATIC,
@@ -110,6 +128,7 @@ export const supportedChains: ChainInfo[] = [
     domainContractAddess: '0x444463a3892EA730e43e3B54E8e45005a9Fe1fbd',
     registarContractAddress: '0x7721a7C1472A565534A80511734Bc84fB27eb0a2',
     blockExplorerUrl: 'https://etherscan.com',
+    image: '/assets/chains/ethereum.svg',
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
@@ -137,6 +156,7 @@ export const supportedChains: ChainInfo[] = [
     domainContractAddess: '0xB054ef071881a35a276dc434D95BF087a957736b',
     registarContractAddress: '0xf652014545758Bae52A019CAf671a29A6B117759',
     blockExplorerUrl: 'https://polygonscan.com',
+    image: '/assets/chains/Polygon.svg',
     acceptableTokens: [
       {
         token: AcceptedToken.MATIC,
@@ -164,6 +184,7 @@ export const supportedChains: ChainInfo[] = [
     domainContractAddess: '0xECfd0052945e235a1E4aE78C02F05F802282cb74',
     registarContractAddress: '0x13B5065B2586f0D457641b4C4FA09C2550843F42',
     blockExplorerUrl: 'https://andromeda-explorer.metis.io',
+    image: '/assets/chains/Metis.svg',
     acceptableTokens: [
       {
         token: AcceptedToken.METIS,

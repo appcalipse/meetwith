@@ -20,9 +20,10 @@ export const MonthDay = styled.li`
   padding: 1em 0;
   border-radius: 50%;
   transition: all 0.25s ease;
-  font-weight: ${props => (props.isToday ? 'bold' : 'inherit')};
-  color: ${props => (props.isToday ? '#F46739' : 'inherit')};
-  opacity: ${props => (props.isValid ? 1 : 0.3)};
+  font-weight: ${props => (props.isToday ? 'bold' : '500')};
+  color: ${props =>
+    props.isToday ? '#F46739' : props.isWeekend ? '#9AA5B1' : '#E4E7EB'};
+  opacity: 1;
 
   :hover {
     cursor: ${props => (props.isValid ? 'pointer' : 'inherit')};
