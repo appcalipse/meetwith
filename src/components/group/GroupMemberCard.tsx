@@ -14,6 +14,7 @@ import {
   TagLeftIcon,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import dynamic from 'next/dynamic'
@@ -26,7 +27,9 @@ import { MdDelete } from 'react-icons/md'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
+import { leaveGroup } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
+import { isJson } from '@/utils/generic_utils'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 
@@ -48,6 +51,8 @@ interface IGroupMemberCard extends GroupMember {
   groupSlug: string
   toggleAdminChange: () => void
   toggleAdminLeave: () => void
+  resetState: () => void
+  groupID: string
 }
 
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
@@ -55,6 +60,8 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const activeMenuColor = useColorModeValue('neutral.800', 'neutral.200')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
+  const [isLeaving, setIsLeaving] = React.useState(false)
+  const toast = useToast()
   const handleRoleChange = (
     oldRole: MemberType,
     newRole: MemberType,
@@ -74,8 +81,10 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
         if (currentRole === oldRole && !condition) {
           setLoading(true)
           const isSuccessful = await props.updateRole({
-            address: props.address,
+            address: props.invitePending ? undefined : props.address,
+            userId: props.invitePending ? props.userId : undefined,
             role: newRole,
+            invitePending: props.invitePending,
           })
           setLoading(false)
           if (!isSuccessful) return
@@ -87,8 +96,41 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           })
           setCurrentRole(newRole)
         }
-      } catch (e) {}
+      } catch (err: any) {
+        toast({
+          title: 'Error changing roles',
+          description: err.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      }
+      setLoading(false)
     }
+  }
+  const handleLeaveGroup = async () => {
+    setIsLeaving(true)
+    try {
+      const isSuccessful = await leaveGroup(props.groupID)
+      if (!isSuccessful) return
+      setIsLeaving(false)
+      props.resetState()
+    } catch (error: any) {
+      const isJsonErr = isJson(error.message)
+      const errorMessage = isJsonErr
+        ? JSON.parse(error.message)?.error
+        : error.message
+      toast({
+        title: 'Error leaving group',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
+    }
+    setIsLeaving(false)
   }
 
   return (
@@ -226,11 +268,20 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
         {
           // no one can leave an empty group
           !props?.isEmpty &&
-            props.viewerRole === MemberType.ADMIN &&
             (props.address === props.currentAccount.address ? (
-              <Icon ml={2} w={25} h={25} as={BiExit} cursor="pointer" />
-            ) : // only admin can remove other users
-            props.viewerRole === MemberType.ADMIN ? (
+              isLeaving ? (
+                <Spinner ml={2} />
+              ) : (
+                <Icon
+                  ml={2}
+                  w={25}
+                  h={25}
+                  as={BiExit}
+                  cursor="pointer"
+                  onClick={handleLeaveGroup}
+                />
+              ) // only admin can remove other users
+            ) : props.viewerRole === MemberType.ADMIN ? (
               <Icon ml={2} w={25} h={25} as={MdDelete} cursor="pointer" />
             ) : null)
         }
