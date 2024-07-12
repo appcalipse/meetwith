@@ -50,7 +50,7 @@ export interface GroupUsers {
   preferences: { name: string }
   // an array is returned here because of the one-to-many relationship
   calendars: Array<{
-    calendars: Array<CalendarType>
+    calendars?: Array<CalendarType>
   }>
 }
 

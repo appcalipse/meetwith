@@ -29,6 +29,7 @@ import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { appUrl } from '@/utils/constants'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
+
 const Avatar = dynamic(
   async () => (await import('@ukstv/jazzicon-react')).Jazzicon,
   {
@@ -36,6 +37,7 @@ const Avatar = dynamic(
     loading: () => <Spinner />,
   }
 )
+
 interface IGroupMemberCard extends GroupMember {
   currentAccount: Account
   isEmpty?: boolean
@@ -44,7 +46,10 @@ interface IGroupMemberCard extends GroupMember {
   setGroupRoles: React.Dispatch<React.SetStateAction<MemberType[]>>
   updateRole: (data: ChangeGroupAdminRequest) => Promise<boolean>
   groupSlug: string
+  toggleAdminChange: () => void
+  toggleAdminLeave: () => void
 }
+
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const activeMenuColor = useColorModeValue('neutral.800', 'neutral.200')
@@ -55,6 +60,15 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     newRole: MemberType,
     condition?: boolean
   ) => {
+    if (
+      oldRole === MemberType.ADMIN &&
+      currentRole === MemberType.ADMIN &&
+      props.groupRoles.filter(role => role === MemberType.ADMIN).length === 1
+    ) {
+      return () => {
+        props.toggleAdminChange()
+      }
+    }
     return async () => {
       try {
         if (currentRole === oldRole && !condition) {
@@ -149,7 +163,8 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               }
               variant="ghost"
               gap={12}
-              px={4}
+              pr={4}
+              pl={0}
               textTransform="capitalize"
             >
               {currentRole}
@@ -174,12 +189,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                     ? activeMenuColor
                     : undefined
                 }
-                disabled={
-                  (currentRole === MemberType.ADMIN &&
-                    props.groupRoles.filter(role => role === MemberType.ADMIN)
-                      .length === 1) ||
-                  currentRole === MemberType.MEMBER
-                }
+                disabled={currentRole === MemberType.MEMBER}
                 onClick={handleRoleChange(
                   MemberType.ADMIN,
                   MemberType.MEMBER,
@@ -209,7 +219,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             </TagLabel>
           </Tag>
         ) : (
-          <Button rightIcon={<FaChevronDown />} variant="ghost" p={0}>
+          <Button variant="text" p={0}>
             Not connected
           </Button>
         )}

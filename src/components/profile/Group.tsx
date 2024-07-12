@@ -15,6 +15,8 @@ import { useRouter } from 'next/router'
 import React, { ReactNode, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
+import GroupAdminChangeModal from '@/components/group/GroupAdminChangeModal'
+import GroupAdminLeaveModal from '@/components/group/GroupAdminLeaveModal'
 import GroupInviteCard from '@/components/group/GroupInviteCard'
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
@@ -55,6 +57,8 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   } = useDisclosure()
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [selectedGroupName, setSelectedGroupName] = useState<string>('')
+  const [toggleAdminChange, setToggleAdminChange] = useState(false)
+  const [toggleAdminLeave, setToggleAdminLeave] = useState(false)
 
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
@@ -172,6 +176,21 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   } else {
     content = (
       <VStack my={6}>
+        <ModalLoading isOpen={inviteDataIsLoading} />
+        <GroupJoinModal
+          group={inviteGroupData}
+          onClose={() => setInviteGroupData(undefined)}
+          resetState={resetState}
+        />
+        <GroupAdminLeaveModal
+          isOpen={toggleAdminLeave}
+          onClose={() => setToggleAdminLeave(false)}
+        />
+        <GroupAdminChangeModal
+          isOpen={toggleAdminChange}
+          onClose={() => setToggleAdminChange(false)}
+        />
+
         <Accordion allowMultiple width="100%">
           {groups.map(group =>
             group?.invitePending ? (
@@ -189,6 +208,8 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                   if (group.role !== MemberType.ADMIN) return
                   handleAddNewMember(...args)
                 }}
+                setToggleAdminChange={setToggleAdminChange}
+                setToggleAdminLeave={setToggleAdminLeave}
                 mt={0}
               />
             )
