@@ -77,7 +77,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (invitee.email) {
         groupInvite = await getGroupInvite({ email: invitee.email })
       } else if (invitee.userId) {
-        groupInvite = await getGroupInvite({ discordId: invitee.userId })
+        groupInvite = await getGroupInvite({ user_id: invitee.userId })
       }
 
       if (groupInvite) {
