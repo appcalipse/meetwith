@@ -18,12 +18,13 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import dynamic from 'next/dynamic'
-import React from 'react'
+import React, { useContext } from 'react'
 import { BiExit } from 'react-icons/bi'
 import { FaChevronDown } from 'react-icons/fa'
 import { GoDotFill } from 'react-icons/go'
 import { MdDelete } from 'react-icons/md'
 
+import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
@@ -49,8 +50,6 @@ interface IGroupMemberCard extends GroupMember {
   setGroupRoles: React.Dispatch<React.SetStateAction<MemberType[]>>
   updateRole: (data: ChangeGroupAdminRequest) => Promise<boolean>
   groupSlug: string
-  toggleAdminChange: () => void
-  toggleAdminLeave: () => void
   resetState: () => void
   groupID: string
 }
@@ -61,6 +60,12 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
   const [isLeaving, setIsLeaving] = React.useState(false)
+  const {
+    openLeaveModal,
+    setToggleAdminChange,
+    setToggleAdminLeave,
+    pickLeavingGroup,
+  } = useContext(GroupContext)
   const toast = useToast()
   const handleRoleChange = (
     oldRole: MemberType,
@@ -73,7 +78,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       props.groupRoles.filter(role => role === MemberType.ADMIN).length === 1
     ) {
       return () => {
-        props.toggleAdminChange()
+        setToggleAdminChange(true)
       }
     }
     return async () => {
@@ -114,27 +119,8 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     }
   }
   const handleLeaveGroup = async () => {
-    setIsLeaving(true)
-    try {
-      const isSuccessful = await leaveGroup(props.groupID)
-      if (!isSuccessful) return
-      setIsLeaving(false)
-      props.resetState()
-    } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-      toast({
-        title: 'Error leaving group',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
-    }
-    setIsLeaving(false)
+    pickLeavingGroup(props.groupID)
+    openLeaveModal()
   }
 
   return (
