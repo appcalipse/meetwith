@@ -8,29 +8,30 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const { title } = req.body
 
     try {
-      const huddleResponse = await fetch(`${HUDDLE_API_URL}/createroom`, {
-        method: 'POST',
-        headers: {
-          Accept: '*/*',
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.HUDDLE_API_KEY!,
-        },
-        body: JSON.stringify({
-          title: title || 'Meet with Wallet Meeting',
-          roomLock: false,
-        }),
-      })
-
-      if (huddleResponse.status !== 200) {
+      const huddleResponse = await fetch(
+        `${HUDDLE_API_URL}/v2/platform/rooms/create-room`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: '*/*',
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.HUDDLE_API_KEY!,
+          },
+          body: JSON.stringify({
+            title: title || 'Meet with Wallet Meeting',
+            roomLocked: false,
+            hostDetails: [],
+          }),
+        }
+      )
+      if (![200, 201].includes(huddleResponse.status)) {
         Sentry.captureException(huddleResponse.statusText)
         return res.status(503).send('Huddle01 Unavailable')
       }
-
       const huddleMeeting = await huddleResponse.json()
-
       if (huddleMeeting) {
         return res.json({
-          url: huddleMeeting.roomUrl,
+          url: huddleMeeting.meetingLink,
         })
       }
     } catch (e) {
