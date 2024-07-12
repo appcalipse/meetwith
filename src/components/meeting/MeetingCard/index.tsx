@@ -88,7 +88,7 @@ const MeetingCard = ({
     return null
   }
 
-  const bgColor = useColorModeValue('white', 'gray.800')
+  const bgColor = useColorModeValue('white', 'neutral.900')
 
   const label = defineLabel(meeting.start as Date, meeting.end as Date)
   const toast = useToast()
