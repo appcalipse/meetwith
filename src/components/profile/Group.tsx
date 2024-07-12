@@ -211,6 +211,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                 setToggleAdminChange={setToggleAdminChange}
                 setToggleAdminLeave={setToggleAdminLeave}
                 mt={0}
+                resetState={resetState}
               />
             )
           )}
