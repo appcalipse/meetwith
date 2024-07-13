@@ -64,7 +64,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     openLeaveModal,
     setToggleAdminChange,
     setToggleAdminLeave,
-    pickLeavingGroup,
+    pickGroupId,
   } = useContext(GroupContext)
   const toast = useToast()
   const handleRoleChange = (
@@ -119,7 +119,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     }
   }
   const handleLeaveGroup = async () => {
-    pickLeavingGroup(props.groupID)
+    pickGroupId(props.groupID)
     openLeaveModal()
   }
 
