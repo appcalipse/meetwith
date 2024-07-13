@@ -28,7 +28,7 @@ import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
-import { leaveGroup } from '@/utils/api_helper'
+import { removeGroupMember } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { isJson } from '@/utils/generic_utils'
 
@@ -59,7 +59,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const activeMenuColor = useColorModeValue('neutral.800', 'neutral.200')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
-  const [isLeaving, setIsLeaving] = React.useState(false)
+  const [isRemoving, setIsRemoving] = React.useState(false)
   const {
     openLeaveModal,
     setToggleAdminChange,
@@ -121,6 +121,34 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const handleLeaveGroup = async () => {
     pickGroupId(props.groupID)
     openLeaveModal()
+  }
+  const handleRemoveGroupMember = async () => {
+    if (!props.groupID) return
+    setIsRemoving(true)
+    try {
+      const isSuccessful = await removeGroupMember(
+        props.groupID,
+        (props.invitePending ? props.userId : props.address) as string,
+        props.invitePending
+      )
+      setIsRemoving(false)
+      if (!isSuccessful) return
+      props.resetState()
+    } catch (error: any) {
+      const isJsonErr = isJson(error.message)
+      const errorMessage = isJsonErr
+        ? JSON.parse(error.message)?.error
+        : error.message
+      toast({
+        title: 'Error removing member',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
+    }
+    setIsRemoving(false)
   }
 
   return (
@@ -259,20 +287,28 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           // no one can leave an empty group
           !props?.isEmpty &&
             (props.address === props.currentAccount.address ? (
-              isLeaving ? (
+              <Icon
+                ml={2}
+                w={25}
+                h={25}
+                as={BiExit}
+                cursor="pointer"
+                onClick={handleLeaveGroup}
+              />
+            ) : // only admin can remove other users
+            props.viewerRole === MemberType.ADMIN ? (
+              isRemoving ? (
                 <Spinner ml={2} />
               ) : (
                 <Icon
                   ml={2}
                   w={25}
                   h={25}
-                  as={BiExit}
+                  as={MdDelete}
+                  onClick={handleRemoveGroupMember}
                   cursor="pointer"
-                  onClick={handleLeaveGroup}
                 />
-              ) // only admin can remove other users
-            ) : props.viewerRole === MemberType.ADMIN ? (
-              <Icon ml={2} w={25} h={25} as={MdDelete} cursor="pointer" />
+              )
             ) : null)
         }
       </HStack>
