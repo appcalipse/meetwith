@@ -53,7 +53,12 @@ export class AdminBelowOneError extends Error {
     this.name = 'AdminBelowOneError'
   }
 }
-
+export class IsGroupMemberError extends Error {
+  constructor() {
+    super(`Group member cannot perform action`)
+    this.name = 'IsGroupMemberError'
+  }
+}
 export class NotGroupAdminError extends Error {
   constructor() {
     super(`Not a group admin`)
