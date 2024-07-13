@@ -1145,8 +1145,7 @@ const leaveGroup = async (
     .select('role')
     .eq('group_id', group_id)
   if (invite_pending) {
-    query.eq('user_id', userIdentifier)
-    query.eq('email', userIdentifier)
+    query.eq('id', userIdentifier)
   } else {
     query.eq('member_id', userIdentifier)
   }
@@ -1154,7 +1153,7 @@ const leaveGroup = async (
   if (groupMemberError) {
     throw new Error(groupMemberError.message)
   }
-  if (!data) {
+  if (!data || data.length === 0) {
     throw new NotGroupMemberError()
   }
   const groupAdmins = await getGroupAdminsFromDb(group_id)
@@ -1169,8 +1168,7 @@ const leaveGroup = async (
     .delete()
     .eq('group_id', group_id)
   if (invite_pending) {
-    deleteQuery.eq('user_id', userIdentifier)
-    deleteQuery.eq('email', userIdentifier)
+    query.eq('id', userIdentifier)
   } else {
     deleteQuery.eq('member_id', userIdentifier.toLowerCase())
   }
