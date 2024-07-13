@@ -17,6 +17,7 @@ import { FaPlus } from 'react-icons/fa'
 
 import DeleteGroupModal from '@/components/group/DeleteGroupModal'
 import EditGroupNameModal from '@/components/group/EditGroupNameModal'
+import EditGroupSlugModal from '@/components/group/EditGroupSlugModal'
 import GroupAdminChangeModal from '@/components/group/GroupAdminChangeModal'
 import GroupAdminLeaveModal from '@/components/group/GroupAdminLeaveModal'
 import GroupInviteCard from '@/components/group/GroupInviteCard'
@@ -42,28 +43,26 @@ import InviteModal from '../group/InviteModal'
 
 interface IGroupModal {
   openLeaveModal: () => void
-  closeLeaveModal: () => void
   pickGroupId: (groupId: string) => void
+  pickGroupSlug: (groupSlug: string) => void
   setToggleAdminLeave: (value: boolean) => void
   setToggleAdminChange: (value: boolean) => void
   openDeleteModal: () => void
-  closeDeleteModal: () => void
   setGroupName: (groupName: string) => void
   openNameEditModal: () => void
-  closeNameEditModal: () => void
+  openSlugEditModal: () => void
 }
 
 const DEFAULT_STATE: IGroupModal = {
   openLeaveModal: () => {},
-  closeLeaveModal: () => {},
   pickGroupId: () => {},
+  pickGroupSlug: () => {},
   setToggleAdminLeave: () => {},
   setToggleAdminChange: () => {},
   openDeleteModal: () => {},
-  closeDeleteModal: () => {},
   setGroupName: () => {},
   openNameEditModal: () => {},
-  closeNameEditModal: () => {},
+  openSlugEditModal: () => {},
 }
 export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
@@ -98,21 +97,26 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     onOpen: openNameEditModal,
     onClose: closeNameEditModal,
   } = useDisclosure()
+  const {
+    isOpen: isSlugEditModalOpen,
+    onOpen: openSlugEditModal,
+    onClose: closeSlugEditModal,
+  } = useDisclosure()
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [selectedGroupName, setSelectedGroupName] = useState<string>('')
+  const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('')
   const [toggleAdminChange, setToggleAdminChange] = useState(false)
   const [toggleAdminLeave, setToggleAdminLeave] = useState(false)
   const context = {
     openLeaveModal,
-    closeLeaveModal,
     pickGroupId: setSelectedGroupId,
+    pickGroupSlug: setSelectedGroupSlug,
     setToggleAdminLeave,
     setToggleAdminChange,
     openDeleteModal,
-    closeDeleteModal,
     setGroupName: setSelectedGroupName,
     openNameEditModal,
-    closeNameEditModal,
+    openSlugEditModal,
   }
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
@@ -264,7 +268,13 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           groupName={selectedGroupName}
           groupID={selectedGroupId}
         />
-
+        <EditGroupSlugModal
+          isOpen={isSlugEditModalOpen}
+          onClose={closeSlugEditModal}
+          resetState={resetState}
+          groupSlug={selectedGroupSlug}
+          groupID={selectedGroupId}
+        />
         <Accordion allowMultiple width="100%">
           {groups.map(group =>
             group?.invitePending ? (
