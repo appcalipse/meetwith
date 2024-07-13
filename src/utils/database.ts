@@ -34,6 +34,7 @@ import {
   GroupMemberQuery,
   GroupUsers,
   MemberType,
+  UpdateGroupPayload,
   UserGroups,
 } from '@/types/Group'
 import {
@@ -1255,7 +1256,7 @@ const isGroupAdmin = async (groupId: string, userIdentifier?: string) => {
   if (error) {
     throw new Error(error.message)
   }
-  if (!data) {
+  if (!data[0]) {
     throw new NotGroupMemberError()
   }
   return data[0].role === MemberType.ADMIN
@@ -1359,6 +1360,32 @@ const getGroup = async (group_id: string, address: string): Promise<Group> => {
     throw new NotGroupMemberError()
   }
   return getGroupInternal(group_id)
+}
+const editGroup = async (
+  group_id: string,
+  address: string,
+  name?: string,
+  slug?: string
+): Promise<void> => {
+  await isGroupExists(group_id)
+  const checkAdmin = await isGroupAdmin(group_id, address)
+  if (!checkAdmin) {
+    throw new NotGroupAdminError()
+  }
+  const data: UpdateGroupPayload = {}
+  if (name) {
+    data.name = name
+  }
+  if (slug) {
+    data.slug = slug
+  }
+  const { error } = await db.supabase
+    .from('groups')
+    .update(data)
+    .eq('id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
 }
 const deleteGroup = async (group_id: string, address: string) => {
   await isGroupExists(group_id)
@@ -2309,7 +2336,7 @@ export async function createGroupInDB(
 
   if (error) {
     throw new GroupCreationError(
-      'Group with name/slug already exists',
+      'Group with slug already exists',
       error.message
     )
   }
@@ -2348,6 +2375,7 @@ export {
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
+  editGroup,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptions,
