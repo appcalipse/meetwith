@@ -54,7 +54,7 @@ const EditGroupNameModal: React.FC<IEditGroupNameModal> = props => {
         ? JSON.parse(error.message)?.error
         : error.message
       toast({
-        title: 'Error deleting group',
+        title: 'Error changing name',
         description: errorMessage,
         status: 'error',
         duration: 5000,
