@@ -241,7 +241,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         <DeleteGroupModal
           groupName={selectedGroupName}
           resetState={resetState}
-          onClose={closeLeaveModal}
+          onClose={closeDeleteModal}
           isOpen={isDeleteModalOpen}
           groupID={selectedGroupId}
         />
