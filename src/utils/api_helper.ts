@@ -489,7 +489,7 @@ export const removeGroupMember = async (
 ) => {
   const response = await internalFetch<{ success: true }>(
     `/secure/group/${group_id}/remove`,
-    'POST',
+    'DELETE',
     { member_id, invite_pending }
   )
   return response?.success
