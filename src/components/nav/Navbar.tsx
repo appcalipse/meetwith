@@ -71,7 +71,7 @@ export const Navbar = () => {
   const handleConnectionOpen = () => {
     openConnection(
       REDIRECT_PATHS[pathname]?.(queryString),
-      pathname === '/[...address]'
+      pathname !== '/[...address]'
     )
   }
 
