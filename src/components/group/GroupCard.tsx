@@ -312,9 +312,10 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 design_type="link"
                 noOfLines={1}
                 width="100%"
+                mr="auto"
                 childStyle={{
                   style: {
-                    width: '150px',
+                    maxWidth: '300px',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
