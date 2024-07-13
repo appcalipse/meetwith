@@ -25,6 +25,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import React, {
   Fragment,
   ReactNode,
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -34,6 +35,7 @@ import { BiExit } from 'react-icons/bi'
 import { FaChevronDown, FaChevronUp, FaInfo, FaRegCopy } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 
+import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
 import {
   GetGroupsResponse,
@@ -68,6 +70,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const id = useId()
   const [firstFetch, setFirstFetch] = useState(true)
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
+  const { openDeleteModal, setGroupName, pickGroupId } =
+    useContext(GroupContext)
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
     setLoading(true)
@@ -114,7 +118,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
           {
             label: 'Delete group',
             important: true,
-            link: '',
+            onClick: () => {
+              setGroupName(props.name)
+              openDeleteModal()
+              pickGroupId(props.id)
+            },
           },
         ]
       case MemberType.MEMBER:
