@@ -34,7 +34,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         success: true,
       })
     }
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof NotGroupMemberError) {
       return res.status(403).json({ error: error.message })
     }
@@ -44,7 +44,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (error instanceof GroupNotExistsError) {
       return res.status(404).json({ error: error.message })
     }
-    return res.status(500).send(error)
+    return res
+      .status(500)
+      .json({ error: error.message, details: error.details })
   }
   return res.status(405).send('Method not allowed')
 }
