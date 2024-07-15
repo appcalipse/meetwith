@@ -482,6 +482,13 @@ export const leaveGroup = async (group_id: string) => {
   )
   return response?.success
 }
+export const deleteGroup = async (group_id: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}`,
+    'DELETE'
+  )
+  return response?.success
+}
 export const getGroup = async (group_id: string) => {
   const response = await internalFetch<Group>(`/secure/group/${group_id}`)
   return response
