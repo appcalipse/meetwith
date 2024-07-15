@@ -70,7 +70,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const id = useId()
   const [firstFetch, setFirstFetch] = useState(true)
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
-  const { openDeleteModal, setGroupName, pickGroupId } =
+  const { openDeleteModal, setGroupName, pickGroupId, openNameEditModal } =
     useContext(GroupContext)
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
@@ -108,7 +108,9 @@ const GroupCard: React.FC<IGroupCard> = props => {
           {
             label: 'Edit group name',
             onClick: () => {
-              // Logic to open edit group popup
+              openNameEditModal()
+              setGroupName(props.name)
+              pickGroupId(props.id)
             },
           },
           {
@@ -119,8 +121,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
             label: 'Delete group',
             important: true,
             onClick: () => {
-              setGroupName(props.name)
               openDeleteModal()
+              setGroupName(props.name)
               pickGroupId(props.id)
             },
           },

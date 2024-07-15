@@ -38,6 +38,12 @@ export interface GroupMember {
   invitePending: boolean
   calendarConnected: boolean
 }
+
+export interface UpdateGroupPayload {
+  name?: string
+  slug?: string
+}
+
 export interface RemoveGroupMemberPayload {
   member_id: string
   invite_pending: boolean
