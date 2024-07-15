@@ -16,6 +16,7 @@ import React, { ReactNode, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
 import DeleteGroupModal from '@/components/group/DeleteGroupModal'
+import EditGroupNameModal from '@/components/group/EditGroupNameModal'
 import GroupAdminChangeModal from '@/components/group/GroupAdminChangeModal'
 import GroupAdminLeaveModal from '@/components/group/GroupAdminLeaveModal'
 import GroupInviteCard from '@/components/group/GroupInviteCard'
@@ -48,6 +49,8 @@ interface IGroupModal {
   openDeleteModal: () => void
   closeDeleteModal: () => void
   setGroupName: (groupName: string) => void
+  openNameEditModal: () => void
+  closeNameEditModal: () => void
 }
 
 const DEFAULT_STATE: IGroupModal = {
@@ -59,6 +62,8 @@ const DEFAULT_STATE: IGroupModal = {
   openDeleteModal: () => {},
   closeDeleteModal: () => {},
   setGroupName: () => {},
+  openNameEditModal: () => {},
+  closeNameEditModal: () => {},
 }
 export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
@@ -88,6 +93,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     onOpen: openDeleteModal,
     onClose: closeDeleteModal,
   } = useDisclosure()
+  const {
+    isOpen: isEditNameModalOpen,
+    onOpen: openNameEditModal,
+    onClose: closeNameEditModal,
+  } = useDisclosure()
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [selectedGroupName, setSelectedGroupName] = useState<string>('')
   const [toggleAdminChange, setToggleAdminChange] = useState(false)
@@ -101,6 +111,8 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     openDeleteModal,
     closeDeleteModal,
     setGroupName: setSelectedGroupName,
+    openNameEditModal,
+    closeNameEditModal,
   }
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
@@ -243,6 +255,13 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           resetState={resetState}
           onClose={closeDeleteModal}
           isOpen={isDeleteModalOpen}
+          groupID={selectedGroupId}
+        />
+        <EditGroupNameModal
+          isOpen={isEditNameModalOpen}
+          onClose={closeNameEditModal}
+          resetState={resetState}
+          groupName={selectedGroupName}
           groupID={selectedGroupId}
         />
 

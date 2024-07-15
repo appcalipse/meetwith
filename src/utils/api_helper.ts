@@ -494,6 +494,18 @@ export const removeGroupMember = async (
   )
   return response?.success
 }
+export const editGroup = async (
+  group_id: string,
+  name?: string,
+  slug?: string
+) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}`,
+    'PUT',
+    { name, slug }
+  )
+  return response?.success
+}
 export const deleteGroup = async (group_id: string) => {
   const response = await internalFetch<{ success: true }>(
     `/secure/group/${group_id}`,

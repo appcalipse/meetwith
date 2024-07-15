@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { deleteGroup, getGroup, initDB } from '@/utils/database'
+import { UpdateGroupPayload } from '@/types/Group'
+import { deleteGroup, editGroup, getGroup, initDB } from '@/utils/database'
 import {
   GroupNotExistsError,
   NotGroupAdminError,
@@ -19,6 +20,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     if (req.method === 'GET') {
       const group = await getGroup(group_id, account_address)
       return res.status(200).json(group)
+    }
+    if (req.method === 'PUT') {
+      const { slug, name } = req.body as UpdateGroupPayload
+      await editGroup(group_id, account_address, name, slug)
+      return res.status(200).json({
+        success: true,
+      })
     }
     if (req.method === 'DELETE') {
       await deleteGroup(group_id, account_address)
