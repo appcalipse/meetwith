@@ -1384,7 +1384,9 @@ const editGroup = async (
     .update(data)
     .eq('id', group_id)
   if (error) {
-    throw new Error(error.message)
+    throw new Error('Group with slug already exists', {
+      cause: error.message,
+    })
   }
 }
 const deleteGroup = async (group_id: string, address: string) => {
