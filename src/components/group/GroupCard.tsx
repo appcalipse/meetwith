@@ -53,6 +53,7 @@ export interface IGroupCard extends GetGroupsResponse {
   currentAccount: Account
   onAddNewMember: (groupId: string, groupName: string) => void
   mt: number
+  resetState: () => void
 }
 
 const GroupCard: React.FC<IGroupCard> = props => {
@@ -223,7 +224,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
                     bgColor={itemsBgColor}
                     shadow="lg"
                   >
-                    At least 1 calendar connected to MeetWithWallet platform.
+                    At least 1 eternal calendar connected to Meet With Wallet
+                    platform.
                   </Text>
                   <Tooltip.Arrow />
                 </Tooltip.Content>
@@ -242,6 +244,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
               setGroupRoles={setGroupRoles}
               updateRole={updateRole}
               groupSlug={props.slug}
+              groupID={props.id}
+              resetState={props.resetState}
               {...member}
             />
           ))}
