@@ -18,6 +18,7 @@ import InfoTooltip from '@/components/profile/components/Tooltip'
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
 import { getExistingAccounts, inviteUsers } from '@/utils/api_helper'
+import { isJson } from '@/utils/generic_utils'
 import {
   isEthereumAddressOrDomain,
   isValidEmail,
@@ -79,12 +80,14 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       onClose()
       setInvitedUsers([])
       onInviteSuccess?.()
-    } catch (error) {
-      console.log(error)
-      const err = error as Error
+    } catch (error: any) {
+      const isJsonErr = isJson(error.message)
+      const errorMessage = isJsonErr
+        ? JSON.parse(error.message)?.error
+        : error.message
       toast({
         title: 'Error inviting member',
-        description: err.message,
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
