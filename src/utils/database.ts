@@ -76,6 +76,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  NotGroupAdminError,
   NotGroupMemberError,
   TimeNotAvailableError,
   UnauthorizedError,
@@ -1333,6 +1334,39 @@ const getGroup = async (group_id: string, address: string): Promise<Group> => {
   }
   return getGroupInternal(group_id)
 }
+const deleteGroup = async (group_id: string, address: string) => {
+  await isGroupExists(group_id)
+  const checkAdmin = await isGroupAdmin(group_id, address)
+  if (!checkAdmin) {
+    throw new NotGroupAdminError()
+  }
+  await deleteGroupMembers(group_id)
+  await deleteGroupInvites(group_id)
+  const { error } = await db.supabase.from('groups').delete().eq('id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+const deleteGroupMembers = async (group_id: string) => {
+  const { error } = await db.supabase
+    .from('group_members')
+    .delete()
+    .eq('group_id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+const deleteGroupInvites = async (group_id: string) => {
+  const { error } = await db.supabase
+    .from('group_invites')
+    .delete()
+    .eq('group_id', group_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+}
 
 export const createGroupInvite = async (
   groupId: string,
@@ -2286,6 +2320,7 @@ export {
   changeGroupRole,
   connectedCalendarExists,
   deleteGateCondition,
+  deleteGroup,
   deleteMeetingFromDB,
   getAccountFromDB,
   getAccountNonce,

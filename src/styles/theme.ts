@@ -43,6 +43,9 @@ const colors = {
     200: '#E4E7EB',
     300: '#CBD2D9',
   },
+  yellow: {
+    300: '#FFC700',
+  },
 }
 
 const newTheme = {
