@@ -1,4 +1,3 @@
-import { CheckCircleIcon } from '@chakra-ui/icons'
 import {
   AccordionButton,
   AccordionItem,
@@ -31,8 +30,7 @@ import React, {
   useMemo,
   useState,
 } from 'react'
-import { BiExit } from 'react-icons/bi'
-import { FaChevronDown, FaChevronUp, FaInfo, FaRegCopy } from 'react-icons/fa'
+import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 
 import { GroupContext } from '@/components/profile/Group'
@@ -44,7 +42,6 @@ import {
   MenuOptions,
 } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
-import { logEvent } from '@/utils/analytics'
 import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
 import { appUrl, isProduction } from '@/utils/constants'
 
@@ -70,8 +67,14 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const id = useId()
   const [firstFetch, setFirstFetch] = useState(true)
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
-  const { openDeleteModal, setGroupName, pickGroupId, openNameEditModal } =
-    useContext(GroupContext)
+  const {
+    openDeleteModal,
+    setGroupName,
+    pickGroupId,
+    openNameEditModal,
+    pickGroupSlug,
+    openSlugEditModal,
+  } = useContext(GroupContext)
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
     setLoading(true)
@@ -115,7 +118,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
           },
           {
             label: 'Edit group scheduling link',
-            link: '',
+            onClick: () => {
+              openSlugEditModal()
+              pickGroupSlug(props.slug)
+              pickGroupId(props.id)
+            },
           },
           {
             label: 'Delete group',
