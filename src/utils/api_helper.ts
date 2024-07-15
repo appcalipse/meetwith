@@ -482,6 +482,18 @@ export const leaveGroup = async (group_id: string) => {
   )
   return response?.success
 }
+export const removeGroupMember = async (
+  group_id: string,
+  member_id: string,
+  invite_pending: boolean
+) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/remove`,
+    'DELETE',
+    { member_id, invite_pending }
+  )
+  return response?.success
+}
 export const deleteGroup = async (group_id: string) => {
   const response = await internalFetch<{ success: true }>(
     `/secure/group/${group_id}`,
