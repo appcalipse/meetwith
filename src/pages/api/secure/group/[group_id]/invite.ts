@@ -76,23 +76,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       let groupInvite: GroupInvitesResponse | null = null
       if (invitee.email) {
         groupInvite = await getGroupInvite({ email: invitee.email })
-      } else if (invitee.userId) {
-        groupInvite = await getGroupInvite({ discordId: invitee.userId })
+      } else if (invitee.address) {
+        groupInvite = await getGroupInvite({ user_id: invitee.address })
       }
 
-      if (groupInvite) {
-        if (invitee.userId) {
-          try {
-            await updateGroupInviteUserId(groupInvite.id, invitee.userId)
-          } catch (error) {
-            console.error('Error updating group invite user ID:', error)
-          }
-        } else {
-          console.warn(
-            'Invitee userId is undefined, continuing with the invite'
-          )
-        }
-      } else {
+      if (!groupInvite) {
         try {
           await addUserToGroupInvites(
             groupId,

@@ -27,7 +27,6 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
-  GetGroupsResponse,
   Group,
   GroupInviteFilters,
   GroupInvites,
@@ -73,6 +72,7 @@ import {
   GateInUseError,
   GroupCreationError,
   GroupNotExistsError,
+  IsGroupAdminError,
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
@@ -958,15 +958,15 @@ const getGroupsEmpty = async (
 
 export const getGroupInvite = async (identifier: {
   email?: string
-  discordId?: string
+  user_id?: string
 }): Promise<GroupInvitesResponse | null> => {
-  const { email, discordId } = identifier
+  const { email, user_id } = identifier
   let query = db.supabase.from('group_invites').select()
 
   if (email) {
     query = query.eq('email', email)
-  } else if (discordId) {
-    query = query.eq('discord_id', discordId)
+  } else if (user_id) {
+    query = query.eq('user_id', user_id)
   } else {
     console.error('No identifier provided')
     return null
@@ -1124,13 +1124,51 @@ const rejectGroupInvite = async (
     },
   })
 }
+const leaveGroup = async (group_id: string, address: string) => {
+  const { data: groupData, error: groupError } = await db.supabase
+    .from('groups')
+    .select()
+    .eq('id', group_id)
+  if (groupError) {
+    throw new Error(groupError.message)
+  }
+  if (!groupData) {
+    throw new GroupNotExistsError()
+  }
+  const { data, error: groupMemberError } = await db.supabase
+    .from('group_members')
+    .select('role')
+    .eq('group_id', group_id)
+    .eq('member_id', address)
+  if (groupMemberError) {
+    throw new Error(groupMemberError.message)
+  }
+  if (!data) {
+    throw new NotGroupMemberError()
+  }
+  const groupAdmins = await getGroupAdminsFromDb(group_id)
+  if (
+    groupAdmins.length === 1 &&
+    groupAdmins.every(val => val.member_id === address)
+  ) {
+    throw new IsGroupAdminError()
+  }
+  const { error } = await db.supabase
+    .from('group_members')
+    .delete()
+    .eq('group_id', group_id)
+    .eq('member_id', address.toLowerCase())
+  if (error) {
+    throw new Error(error.message)
+  }
+}
 
 const getGroupUsers = async (
   group_id: string,
   address: string,
   limit: number,
   offset: number
-): Promise<Array<GroupUsers>> => {
+): Promise<Array<GroupUsers & GroupInvites>> => {
   if (await isGroupExists(group_id)) {
     const { data: inviteData, error: inviteError } = await db.supabase
       .from('group_invites')
@@ -1149,6 +1187,7 @@ const getGroupUsers = async (
     const addresses = membersData
       .map((member: GroupMemberQuery) => member.member_id)
       .concat(inviteData.map((val: GroupMemberQuery) => val.user_id))
+    const nonUsers = inviteData?.filter(data => !data.user_id)
     if (!addresses.includes(address)) {
       throw new NotGroupMemberError()
     }
@@ -1174,7 +1213,7 @@ const getGroupUsers = async (
     }
 
     if (data) {
-      return data
+      return [...data, ...nonUsers]
     }
   }
   return []
@@ -1198,14 +1237,10 @@ const isGroupAdmin = async (groupId: string, userIdentifier?: string) => {
 const changeGroupRole = async (
   groupId: string,
   userIdentifier: string,
-  newRole: MemberType
+  newRole: MemberType,
+  invitePending: boolean
 ) => {
   const groupUsers = await getGroupUsersInternal(groupId)
-  const isInvitee =
-    'user_id' in
-    (groupUsers.find(
-      val => (val?.member_id || val?.user_id) === userIdentifier
-    ) || {})
   if (newRole === MemberType.MEMBER) {
     const adminCount = groupUsers.filter(
       val => val.role === MemberType.ADMIN
@@ -1214,11 +1249,16 @@ const changeGroupRole = async (
       throw new AdminBelowOneError()
     }
   }
-  const { error } = await db.supabase
-    .from(isInvitee ? 'group_invites' : 'group_members')
+  const query = db.supabase
+    .from(invitePending ? 'group_invites' : 'group_members')
     .update({ role: newRole })
     .eq('group_id', groupId)
-    .eq(isInvitee ? 'user_id' : 'member_id', userIdentifier)
+  if (invitePending) {
+    query.eq('id', userIdentifier)
+  } else {
+    query.eq('member_id', userIdentifier)
+  }
+  const { error } = await query
   if (error) {
     throw new Error(error.message)
   }
@@ -2272,6 +2312,7 @@ export {
   insertOfficeEventMapping,
   isGroupAdmin,
   isSlotFree,
+  leaveGroup,
   manageGroupInvite,
   rejectGroupInvite,
   removeConnectedCalendar,

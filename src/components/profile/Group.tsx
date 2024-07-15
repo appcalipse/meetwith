@@ -15,8 +15,11 @@ import { useRouter } from 'next/router'
 import React, { ReactNode, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
+import GroupAdminChangeModal from '@/components/group/GroupAdminChangeModal'
+import GroupAdminLeaveModal from '@/components/group/GroupAdminLeaveModal'
 import GroupInviteCard from '@/components/group/GroupInviteCard'
 import GroupJoinModal from '@/components/group/GroupJoinModal'
+import LeaveGroupModal from '@/components/group/LeaveGroupModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
 import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
 import { Account } from '@/types/Account'
@@ -27,7 +30,6 @@ import {
   MemberType,
 } from '@/types/Group'
 import {
-  getGroup,
   getGroupExternal,
   getGroups,
   listConnectedCalendars,
@@ -36,6 +38,22 @@ import {
 import GroupCard from '../group/GroupCard'
 import InviteModal from '../group/InviteModal'
 
+interface IGroupModal {
+  openLeaveModal: () => void
+  closeLeaveModal: () => void
+  pickLeavingGroup: (groupId: string) => void
+  setToggleAdminLeave: (value: boolean) => void
+  setToggleAdminChange: (value: boolean) => void
+}
+
+const DEFAULT_STATE: IGroupModal = {
+  openLeaveModal: () => {},
+  closeLeaveModal: () => {},
+  pickLeavingGroup: () => {},
+  setToggleAdminLeave: () => {},
+  setToggleAdminChange: () => {},
+}
+export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [groups, setGroups] = useState<Array<GetGroupsResponse>>([])
   const [loading, setLoading] = useState(true)
@@ -53,9 +71,23 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     onOpen: onboardingOnOpen,
     onClose: onboardingOnClose,
   } = useDisclosure()
+  const {
+    isOpen: isLeaveModalOpen,
+    onOpen: openLeaveModal,
+    onClose: closeLeaveModal,
+  } = useDisclosure()
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [leavingGroupId, setLeavingGroupId] = useState<string | null>(null)
   const [selectedGroupName, setSelectedGroupName] = useState<string>('')
-
+  const [toggleAdminChange, setToggleAdminChange] = useState(false)
+  const [toggleAdminLeave, setToggleAdminLeave] = useState(false)
+  const context = {
+    openLeaveModal,
+    closeLeaveModal,
+    pickLeavingGroup: setLeavingGroupId,
+    setToggleAdminLeave,
+    setToggleAdminChange,
+  }
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
     setLoading(true)
@@ -172,6 +204,27 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   } else {
     content = (
       <VStack my={6}>
+        <ModalLoading isOpen={inviteDataIsLoading} />
+        <GroupJoinModal
+          group={inviteGroupData}
+          onClose={() => setInviteGroupData(undefined)}
+          resetState={resetState}
+        />
+        <GroupAdminLeaveModal
+          isOpen={toggleAdminLeave}
+          onClose={() => setToggleAdminLeave(false)}
+        />
+        <GroupAdminChangeModal
+          isOpen={toggleAdminChange}
+          onClose={() => setToggleAdminChange(false)}
+        />
+        <LeaveGroupModal
+          groupID={leavingGroupId}
+          resetState={resetState}
+          onClose={closeLeaveModal}
+          isOpen={isLeaveModalOpen}
+        />
+
         <Accordion allowMultiple width="100%">
           {groups.map(group =>
             group?.invitePending ? (
@@ -190,6 +243,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                   handleAddNewMember(...args)
                 }}
                 mt={0}
+                resetState={resetState}
               />
             )
           )}
@@ -211,53 +265,55 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     )
   }
   return (
-    <Flex direction={'column'} maxWidth="100%">
-      <ModalLoading isOpen={inviteDataIsLoading} />
-      <GroupJoinModal
-        group={inviteGroupData}
-        onClose={() => setInviteGroupData(undefined)}
-        resetState={resetState}
-        inviteEmail={email as string}
-      />
-      <GroupOnBoardingModal
-        isOnboardingOpened={isOnboardingOpened}
-        handleClose={() => handleOnboardingModalClose()}
-        groupName={selectedGroupName}
-      />
-      <HStack
-        justifyContent="space-between"
-        alignItems="flex-start"
-        mb={4}
-        gap={6}
-      >
-        <Heading fontSize="2xl">
-          My Groups
-          <Text fontSize="sm" fontWeight={500} mt={1} lineHeight={1.5}>
-            A group allows you to add multiple members and schedule meetings by
-            automatically finding a suitable time based on each member’s
-            availability.
-          </Text>
-        </Heading>
-        <Button
-          onClick={() => router.push('/dashboard/create-group')}
-          flexShrink={0}
-          colorScheme="primary"
-          display={{ base: 'none', md: 'flex' }}
-          mt={{ base: 4, md: 0 }}
+    <GroupContext.Provider value={context}>
+      <Flex direction={'column'} maxWidth="100%">
+        <ModalLoading isOpen={inviteDataIsLoading} />
+        <GroupJoinModal
+          group={inviteGroupData}
+          onClose={() => setInviteGroupData(undefined)}
+          resetState={resetState}
+          inviteEmail={email as string}
+        />
+        <GroupOnBoardingModal
+          isOnboardingOpened={isOnboardingOpened}
+          handleClose={() => handleOnboardingModalClose()}
+          groupName={selectedGroupName}
+        />
+        <HStack
+          justifyContent="space-between"
+          alignItems="flex-start"
           mb={4}
-          leftIcon={<FaPlus />}
+          gap={6}
         >
-          Create new group
-        </Button>
-      </HStack>
-      {content}
-      <InviteModal
-        groupName={selectedGroupName}
-        isOpen={isOpen}
-        onClose={onClose}
-        groupId={selectedGroupId ?? ''}
-      />
-    </Flex>
+          <Heading fontSize="2xl">
+            My Groups
+            <Text fontSize="sm" fontWeight={500} mt={1} lineHeight={1.5}>
+              A group allows you to add multiple members and schedule meetings
+              by automatically finding a suitable time based on each member’s
+              availability.
+            </Text>
+          </Heading>
+          <Button
+            onClick={() => router.push('/dashboard/create-group')}
+            flexShrink={0}
+            colorScheme="primary"
+            display={{ base: 'none', md: 'flex' }}
+            mt={{ base: 4, md: 0 }}
+            mb={4}
+            leftIcon={<FaPlus />}
+          >
+            Create new group
+          </Button>
+        </HStack>
+        {content}
+        <InviteModal
+          groupName={selectedGroupName}
+          isOpen={isOpen}
+          onClose={onClose}
+          groupId={selectedGroupId ?? ''}
+        />
+      </Flex>
+    </GroupContext.Provider>
   )
 }
 
