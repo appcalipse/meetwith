@@ -330,7 +330,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         <InviteModal
           groupName={selectedGroupName}
           isOpen={isOpen}
-          onClose={onClose}
+          onClose={() => {
+            onClose()
+            setSelectedGroupId(null)
+            resetState()
+          }}
           groupId={selectedGroupId ?? ''}
         />
       </Flex>
