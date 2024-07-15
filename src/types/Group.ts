@@ -38,7 +38,10 @@ export interface GroupMember {
   invitePending: boolean
   calendarConnected: boolean
 }
-
+export interface RemoveGroupMemberPayload {
+  member_id: string
+  invite_pending: boolean
+}
 export type EmptyGroupsResponse = Group
 
 export type InvitedGroupsResponse = EmptyGroupsResponse

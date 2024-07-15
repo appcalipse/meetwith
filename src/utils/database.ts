@@ -1125,7 +1125,11 @@ const rejectGroupInvite = async (
     },
   })
 }
-const leaveGroup = async (group_id: string, address: string) => {
+const leaveGroup = async (
+  group_id: string,
+  userIdentifier: string,
+  invite_pending?: boolean
+) => {
   const { data: groupData, error: groupError } = await db.supabase
     .from('groups')
     .select()
@@ -1136,32 +1140,54 @@ const leaveGroup = async (group_id: string, address: string) => {
   if (!groupData) {
     throw new GroupNotExistsError()
   }
-  const { data, error: groupMemberError } = await db.supabase
-    .from('group_members')
+  const query = db.supabase
+    .from(invite_pending ? 'group_invites' : 'group_members')
     .select('role')
     .eq('group_id', group_id)
-    .eq('member_id', address)
+  if (invite_pending) {
+    query.eq('id', userIdentifier)
+  } else {
+    query.eq('member_id', userIdentifier)
+  }
+  const { data, error: groupMemberError } = await query
   if (groupMemberError) {
     throw new Error(groupMemberError.message)
   }
-  if (!data) {
+  if (!data || data.length === 0) {
     throw new NotGroupMemberError()
   }
   const groupAdmins = await getGroupAdminsFromDb(group_id)
   if (
     groupAdmins.length === 1 &&
-    groupAdmins.every(val => val.member_id === address)
+    groupAdmins.every(val => val.member_id === userIdentifier)
   ) {
     throw new IsGroupAdminError()
   }
-  const { error } = await db.supabase
-    .from('group_members')
+  const deleteQuery = db.supabase
+    .from(invite_pending ? 'group_invites' : 'group_members')
     .delete()
     .eq('group_id', group_id)
-    .eq('member_id', address.toLowerCase())
+  if (invite_pending) {
+    query.eq('id', userIdentifier)
+  } else {
+    deleteQuery.eq('member_id', userIdentifier.toLowerCase())
+  }
+  const { error } = await deleteQuery
   if (error) {
     throw new Error(error.message)
   }
+}
+const removeMember = async (
+  group_id: string,
+  address: string,
+  member_id: string,
+  invite_pending: boolean
+) => {
+  const isAddressAdmin = await isGroupAdmin(group_id, address)
+  if (!isAddressAdmin) {
+    throw new NotGroupAdminError()
+  }
+  return leaveGroup(group_id, member_id, invite_pending)
 }
 
 const getGroupUsers = async (
@@ -2351,6 +2377,7 @@ export {
   manageGroupInvite,
   rejectGroupInvite,
   removeConnectedCalendar,
+  removeMember,
   saveConferenceMeetingToDB,
   saveEmailToDB,
   saveMeeting,
