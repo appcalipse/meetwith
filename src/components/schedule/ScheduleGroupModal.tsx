@@ -13,8 +13,8 @@ import {
 } from '@chakra-ui/react'
 import React, { FC, useEffect, useState } from 'react'
 
-import ScheduleGroup from '@/components/group/ScheduleGroup'
 import Loading from '@/components/Loading'
+import ScheduleGroup from '@/components/schedule/ScheduleGroup'
 import { EditMode } from '@/types/Dashboard'
 import { GetGroupsResponse } from '@/types/Group'
 import { getGroups } from '@/utils/api_helper'
