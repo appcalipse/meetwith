@@ -6,28 +6,32 @@ import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 import { isValidEVMAddress } from '@/utils/validations'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  if (req.method === 'POST') {
-    initDB()
-    const { body } = req
+  try {
+    if (req.method === 'POST') {
+      initDB()
+      const { body } = req
 
-    const addresses: string[] = Array.from(new Set<string>(body.addresses))
-    const startDate = new Date(body.start)
-    const endDate = new Date(body.end)
-    const relation: ConditionRelation = body.relation
+      const addresses: string[] = Array.from(new Set<string>(body.addresses))
+      const startDate = new Date(body.start)
+      const endDate = new Date(body.end)
+      const relation: ConditionRelation = body.relation
 
-    const sanitizedAddresses = addresses.filter(address =>
-      isValidEVMAddress(address)
-    )
-
-    const busySlots: Interval[] =
-      await CalendarBackendHelper.getMergedBusySlotsForMultipleAccounts(
-        sanitizedAddresses,
-        relation,
-        startDate,
-        endDate
+      const sanitizedAddresses = addresses.filter(address =>
+        isValidEVMAddress(address)
       )
 
-    return res.status(200).json(busySlots)
+      const busySlots: Interval[] =
+        await CalendarBackendHelper.getMergedBusySlotsForMultipleAccounts(
+          sanitizedAddresses,
+          relation,
+          startDate,
+          endDate
+        )
+
+      return res.status(200).json(busySlots)
+    }
+  } catch (error) {
+    return res.status(500).send(error)
   }
   return res.status(404).send('Not found')
 }
