@@ -1,12 +1,10 @@
 import {
   Box,
   Divider,
-  Fade,
   Heading,
   HStack,
   Icon,
   IconButton,
-  Slide,
   SlideFade,
   Text,
   useMediaQuery,
@@ -44,7 +42,7 @@ import { SelectComponentsGeneric } from 'react-select/dist/declarations/src/comp
 import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
 import Loading from '@/components/Loading'
-import ScheduleDay from '@/components/scheduling/ScheduleDay'
+import ScheduleDay from '@/components/schedule/ScheduleDay'
 import {
   IGroupParticipant,
   Page,
