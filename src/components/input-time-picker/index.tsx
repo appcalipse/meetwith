@@ -94,10 +94,6 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
             placeholder="Time"
             type="text"
             value={value}
-            onChange={ev => {
-              onChange(ev.target.value)
-              setIsEditing.off()
-            }}
             {...inputProps}
           />
         </InputGroup>
