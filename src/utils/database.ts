@@ -881,7 +881,10 @@ const getUserGroups = async (
   `
     )
     .eq('user_id', address.toLowerCase())
-    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .range(
+      offset || 0,
+      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+    )
   const { data, error } = await db.supabase
     .from('group_members')
     .select(
@@ -894,7 +897,7 @@ const getUserGroups = async (
     .range(
       offset || 0,
       (offset || 0) +
-        (limit ? limit - 1 - (invites?.length || 0) : 999999999999999)
+        (limit ? limit - 1 - (invites?.length || 0) : 999_999_999_999_999)
     )
 
   if (invitesError) {
