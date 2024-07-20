@@ -166,7 +166,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const toast = useToast()
 
-  const hidrateTeamAccounts = async () => {
+  const hydrateTeamAccounts = async () => {
     let accountstoFetch: string[] = []
     if (teamMeetingRequest!.team_structure.type === GroupMeetingType.TEAM) {
       // to be implemented
@@ -280,7 +280,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   useEffect(() => {
     if (calendarType === CalendarType.TEAM) {
-      hidrateTeamAccounts()
+      hydrateTeamAccounts()
     }
   }, [calendarType])
 
