@@ -187,11 +187,10 @@ const GroupInviteForm: FC<InviteModalProps> = ({
             <Input
               name="identifier"
               placeholder="Search or enter identifier"
-              bg="neutral.900"
               _placeholder={{
                 color: 'neutral.400',
               }}
-              border="none"
+              borderColor="neutral.400"
               disabled={isLoading}
               value={enteredIdentifier}
               onChange={e => setEnteredIdentifier(e.target.value)}
