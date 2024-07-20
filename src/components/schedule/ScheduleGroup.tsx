@@ -10,9 +10,9 @@ import {
 import React, { FC, useContext, useEffect, useState } from 'react'
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 
-import ScheduleGroupMember from '@/components/group/ScheduleGroupMember'
 import { Availability } from '@/components/icons/Availability'
 import Loading from '@/components/Loading'
+import ScheduleGroupMember from '@/components/schedule/ScheduleGroupMember'
 import { IGroupParticipant, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { GetGroupsResponse, GroupMember } from '@/types/Group'
