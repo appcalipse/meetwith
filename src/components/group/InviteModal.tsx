@@ -41,6 +41,7 @@ interface InviteModalProps {
   groupId: string
   groupName: string
   onInviteSuccess?: () => void
+  resetState: () => void
 }
 
 const InviteModal: FC<InviteModalProps> = ({
@@ -49,6 +50,7 @@ const InviteModal: FC<InviteModalProps> = ({
   groupId,
   groupName,
   onInviteSuccess,
+  resetState,
 }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -67,7 +69,10 @@ const InviteModal: FC<InviteModalProps> = ({
           <GroupInviteForm
             groupId={groupId}
             groupName={groupName}
-            onClose={onClose}
+            onClose={() => {
+              onClose()
+              resetState()
+            }}
           />
         </ModalBody>
       </ModalContent>

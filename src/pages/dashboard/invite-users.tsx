@@ -62,7 +62,7 @@ const InviteUsersPage = () => {
                     ? groupName[0]
                     : (groupName as string)
                 }
-                onClose={() => router.push('/dashboard/invite-success')}
+                onClose={true}
               />
             </VStack>
           </Box>
