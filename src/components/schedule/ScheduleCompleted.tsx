@@ -68,10 +68,9 @@ const ScheduleCompleted = () => {
           size="md"
           height="48px"
           borderRadius="8px"
-          borderColor="#F9B19A"
+          colorScheme="primary"
           borderWidth="2px"
           w="full"
-          color="#F9B19A"
         >
           Back to My Groups
         </Button>
