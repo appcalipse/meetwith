@@ -56,7 +56,8 @@ interface IGroupMemberCard extends GroupMember {
 
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
-  const activeMenuColor = useColorModeValue('neutral.800', 'neutral.200')
+  const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
+  const activeMenuColor = useColorModeValue('neutral.200', 'neutral.400')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
   const [isRemoving, setIsRemoving] = React.useState(false)
@@ -232,9 +233,11 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
               <MenuItem
                 textTransform="capitalize"
-                borderBottom={`2px solid ${activeMenuColor}`}
+                borderBottom={`2px solid neutral.200`}
                 backgroundColor={
-                  currentRole === MemberType.ADMIN ? activeMenuColor : undefined
+                  currentRole === MemberType.ADMIN
+                    ? activeMenuColor
+                    : menuBgColor
                 }
                 onClick={handleRoleChange(MemberType.MEMBER, MemberType.ADMIN)}
                 disabled={currentRole === MemberType.ADMIN}
@@ -247,7 +250,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 backgroundColor={
                   currentRole === MemberType.MEMBER
                     ? activeMenuColor
-                    : undefined
+                    : menuBgColor
                 }
                 disabled={currentRole === MemberType.MEMBER}
                 onClick={handleRoleChange(
@@ -266,7 +269,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       </HStack>
       <HStack flexBasis="35%" display="flex" justifyContent="space-between">
         {props?.calendarConnected ? (
-          <Tag size={'sm'} variant="subtle" bgColor="neutral.400">
+          <Tag size={'sm'} variant="subtle">
             <TagLeftIcon
               boxSize="12px"
               w={5}
@@ -274,9 +277,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               as={GoDotFill}
               color="green.500"
             />
-            <TagLabel color="white" px="2px">
-              Connected
-            </TagLabel>
+            <TagLabel px="2px">Connected</TagLabel>
           </Tag>
         ) : (
           <Button variant="text" p={0}>
