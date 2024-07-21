@@ -183,6 +183,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               withIcon
               design_type="link"
               pl={0}
+              maxW="335px"
               childStyle={{
                 style: {
                   width: '150px',
