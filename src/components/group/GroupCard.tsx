@@ -70,6 +70,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const { push } = useRouter()
   const [firstFetch, setFirstFetch] = useState(true)
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
+  const [isAdmin, setIsAdmin] = useState(false)
   const {
     openDeleteModal,
     setGroupName,
@@ -89,7 +90,18 @@ const GroupCard: React.FC<IGroupCard> = props => {
     if (newGroupMembers?.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
-    setGroupsMembers(prev => (reset ? [] : [...prev]).concat(newGroupMembers))
+    setGroupsMembers(prev => {
+      const newMembers = (reset ? [] : [...prev]).concat(newGroupMembers)
+      console.log(newMembers)
+      newMembers.forEach(val => {
+        if (val.address === props.currentAccount.address) {
+          setIsAdmin(val.role === MemberType.ADMIN)
+        } else {
+          return false
+        }
+      })
+      return newMembers
+    })
     setGroupRoles(prev =>
       (reset ? [] : [...prev]).concat(newGroupMembers?.map(val => val.role))
     )
@@ -266,6 +278,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
               groupSlug={props.slug}
               groupID={props.id}
               resetState={props.resetState}
+              isAdmin={isAdmin}
               {...member}
             />
           ))}
