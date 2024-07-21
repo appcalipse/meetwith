@@ -31,6 +31,7 @@ import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { removeGroupMember } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { isJson } from '@/utils/generic_utils'
+import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 
@@ -172,7 +173,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
         </Box>
         <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
           <Heading size="sm">
-            {props.displayName}{' '}
+            {props.displayName || ellipsizeAddress(props.address || '')}{' '}
             {props.currentAccount.address === props.address && '(You)'}
           </Heading>
           {!props.invitePending ? (
