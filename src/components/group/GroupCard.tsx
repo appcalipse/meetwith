@@ -328,8 +328,17 @@ const GroupCard: React.FC<IGroupCard> = props => {
       {({ isExpanded }) => (
         <>
           <HStack justifyContent="space-between" width="100%">
-            <VStack gap={0} alignItems="flex-start">
-              <Heading size={'lg'}>{props.name}</Heading>
+            <VStack gap={0} alignItems="start">
+              <Heading
+                size={'lg'}
+                maxW="400px"
+                w="fit-content"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
+              >
+                {props.name}
+              </Heading>
               <CopyLinkButton
                 url={`${appUrl}/${props.slug}`}
                 size="md"
@@ -339,9 +348,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 noOfLines={1}
                 width="100%"
                 mr="auto"
+                maxW="335px"
                 childStyle={{
                   style: {
                     maxWidth: '300px',
+                    width: 'fit-content',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
