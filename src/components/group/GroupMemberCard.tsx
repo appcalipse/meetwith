@@ -53,6 +53,7 @@ interface IGroupMemberCard extends GroupMember {
   resetState: () => void
   groupID: string
   isAdmin: boolean
+  handleIsAdminChange: (val: boolean) => void
 }
 
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
@@ -103,6 +104,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             return rolesArr
           })
           setCurrentRole(newRole)
+          if (props.currentAccount.address === props.address) {
+            props.handleIsAdminChange(newRole === MemberType.ADMIN)
+          }
         }
       } catch (error: any) {
         const isJsonErr = isJson(error.message)
