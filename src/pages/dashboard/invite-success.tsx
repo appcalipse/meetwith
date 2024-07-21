@@ -71,13 +71,12 @@ const InviteSuccessPage: NextPage<{ invitedCount: number }> = ({
         <Button
           onClick={() => router.push('/dashboard/create-group')}
           variant="outline"
+          colorScheme="primary"
           size="md"
           height="48px"
           borderRadius="8px"
-          borderColor="#F9B19A"
           borderWidth="2px"
           w="full"
-          color="#F9B19A"
         >
           Create another Group
         </Button>
