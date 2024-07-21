@@ -66,10 +66,12 @@ const CreateGroupPage = () => {
   }
 
   function handleGroupNameChange(name: string) {
-    setGroupName(name)
-    if (!groupSlug) {
-      setGroupSlug(getSlugFromText(name))
-    }
+    setGroupName(val => {
+      if (!groupSlug || getSlugFromText(val) === groupSlug) {
+        setGroupSlug(getSlugFromText(name))
+      }
+      return name
+    })
   }
 
   return (

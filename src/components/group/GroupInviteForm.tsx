@@ -4,13 +4,12 @@ import {
   FormControl,
   FormLabel,
   Input,
-  ModalBody,
-  ModalFooter,
   Text,
   Textarea,
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
 import React, { FC, FormEvent, useEffect, useState } from 'react'
 
 import InvitedUsersList from '@/components/group/InvitedUsersList'
@@ -26,7 +25,7 @@ import {
 } from '@/utils/validations'
 
 interface InviteModalProps {
-  onClose: () => void
+  onClose: (() => void) | boolean
   groupId: string
   groupName: string
   onInviteSuccess?: () => void
@@ -43,6 +42,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
   const [enteredIdentifier, setEnteredIdentifier] = useState<string>('')
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isSaving, setIsSaving] = useState<boolean>(false)
+  const router = useRouter()
   const [message, setMessage] = useState<string>(
     `Come join our scheduling group "${groupName}" on Meet With Wallet!`
   )
@@ -76,8 +76,16 @@ const GroupInviteForm: FC<InviteModalProps> = ({
         isClosable: true,
         position: 'top',
       })
-
-      onClose()
+      if (typeof onClose === 'boolean') {
+        router.push({
+          pathname: `/dashboard/invite-success`,
+          query: {
+            invitedCount: invitedUsers.length,
+          },
+        })
+      } else {
+        onClose()
+      }
       setInvitedUsers([])
       onInviteSuccess?.()
     } catch (error: any) {
@@ -214,7 +222,6 @@ const GroupInviteForm: FC<InviteModalProps> = ({
               name="message"
               value={message}
               onChange={e => setMessage(e.target.value)}
-              bg="gray.700"
               border="1px solid"
               borderColor="neutral.400"
               fontSize="16px"

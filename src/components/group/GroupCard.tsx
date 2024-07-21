@@ -62,6 +62,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const iconColor = useColorModeValue('gray.600', 'white')
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
+
   const [groupMembers, setGroupsMembers] = useState<Array<GroupMember>>([])
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
