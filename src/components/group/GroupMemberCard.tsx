@@ -52,12 +52,14 @@ interface IGroupMemberCard extends GroupMember {
   groupSlug: string
   resetState: () => void
   groupID: string
+  isAdmin: boolean
 }
 
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const activeMenuColor = useColorModeValue('neutral.200', 'neutral.400')
+  const tagColor = useColorModeValue('neutral.100', 'neutral.400')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
   const [isRemoving, setIsRemoving] = React.useState(false)
@@ -196,7 +198,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 py="3"
                 display="grid"
                 placeContent="center"
-                bg="neutral.400"
+                bg={tagColor}
               >
                 <Text size="sm">Pending</Text>
               </Box>
@@ -227,6 +229,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               pr={4}
               pl={0}
               textTransform="capitalize"
+              isDisabled={!props.isAdmin}
             >
               {currentRole}
             </MenuButton>
@@ -280,9 +283,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             <TagLabel px="2px">Connected</TagLabel>
           </Tag>
         ) : (
-          <Button variant="text" p={0}>
+          <Text p={0} fontWeight={700}>
             Not connected
-          </Button>
+          </Text>
         )}
         {
           // no one can leave an empty group
