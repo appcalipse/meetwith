@@ -21,6 +21,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { useRouter } from 'next/router'
 import React, {
   Fragment,
   ReactNode,
@@ -65,6 +66,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const id = useId()
+  const { push } = useRouter()
   const [firstFetch, setFirstFetch] = useState(true)
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
   const {
@@ -78,11 +80,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
     setLoading(true)
-    const newGroupMembers = (await getGroupsMembers(
+    const newGroupMembers = await getGroupsMembers(
       props.id,
       PAGE_SIZE,
       reset ? 0 : groupMembers?.length
-    )) as Array<GroupMember>
+    )
     if (newGroupMembers?.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
@@ -333,7 +335,14 @@ const GroupCard: React.FC<IGroupCard> = props => {
               />
             </VStack>
             <HStack gap={3} width="fit-content">
-              <Button colorScheme="primary">Schedule</Button>
+              <Button
+                colorScheme="primary"
+                onClick={() =>
+                  push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
+                }
+              >
+                Schedule
+              </Button>
               {props.role === MemberType.ADMIN && (
                 <IconButton
                   aria-label="Add Contact"

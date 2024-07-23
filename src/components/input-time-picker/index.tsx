@@ -4,6 +4,7 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  InputProps,
   Popover,
   PopoverArrow,
   PopoverBody,
@@ -19,9 +20,12 @@ import React from 'react'
 import { FaClock } from 'react-icons/fa'
 
 export interface InputTimePickerProps {
-  onChange: (time: string) => void
-  currentDate: Date
+  onChange: (time: number | Date) => void
+  currentDate: Date | number
   value: string
+  inputProps?: InputProps
+  iconColor?: string
+  iconSize?: number
 }
 
 const generateTimes = (currentDate: Date) => {
@@ -45,10 +49,14 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
   onChange,
   currentDate,
   value,
+  inputProps,
+  ...props
 }) => {
   const [isEditing, setIsEditing] = useBoolean()
-  const iconColor = useColorModeValue('gray.500', 'gray.200')
-  const times = generateTimes(currentDate)
+  const iconColor = useColorModeValue('gray.500', props.iconColor || 'gray.200')
+  const times = generateTimes(
+    typeof currentDate === 'number' ? new Date(currentDate) : currentDate
+  )
 
   return (
     <Popover
@@ -63,9 +71,13 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
         <InputGroup>
           <InputLeftElement
             pointerEvents="none"
+            insetY={0}
+            left={1}
+            height="100%"
+            alignItems="center"
             children={
               <Icon
-                fontSize="16"
+                fontSize={props.iconSize || '16'}
                 color={iconColor}
                 _groupHover={{
                   color: iconColor,
@@ -78,14 +90,11 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
           <Input
             cursor="pointer"
             id="time"
-            sx={{ paddingLeft: '36px' }}
+            sx={{ paddingLeft: inputProps?.pl || '36px' }}
             placeholder="Time"
             type="text"
             value={value}
-            onChange={ev => {
-              onChange(ev.target.value)
-              setIsEditing.off()
-            }}
+            {...inputProps}
           />
         </InputGroup>
       </PopoverTrigger>
@@ -101,7 +110,7 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
                 isDisabled={isBefore(it, new Date())}
                 key={it.toString()}
                 onClick={() => {
-                  onChange(format(it, 'p'))
+                  onChange(it)
                   setIsEditing.off()
                 }}
                 _hover={{ color: 'primary.500' }}
