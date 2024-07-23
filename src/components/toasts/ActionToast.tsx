@@ -18,6 +18,8 @@ const ActionToast: React.FC<{
 }> = ({ description, title, cta, close, action }) => {
   const color = useColorModeValue('gray.800', 'white')
   const bgColor = useColorModeValue('white', '#1F2933')
+  const borderColor = useColorModeValue('transparent', 'neutral.600')
+  const buttonColor = useColorModeValue('primary.600', 'primary.200')
   return (
     <HStack
       justifyContent="space-between"
@@ -29,7 +31,7 @@ const ActionToast: React.FC<{
       px={4}
       borderRadius="lg"
       border={'1px'}
-      borderColor="neutral.600"
+      borderColor={borderColor}
       borderStyle="inset"
     >
       <InfoIcon cursor="pointer" color={color} ml={2} />
@@ -40,7 +42,7 @@ const ActionToast: React.FC<{
         <Text>{description}</Text>
       </VStack>
       <HStack gap={2.5}>
-        <Button variant="text" color="primary.200" onClick={action}>
+        <Button variant="text" color={buttonColor} onClick={action}>
           {cta}
         </Button>
         <CloseIcon w={2.5} h={2.5} onClick={close} cursor="pointer" />

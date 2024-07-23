@@ -362,8 +362,8 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           onClose={() => {
             onClose()
             setSelectedGroupId(null)
-            resetState()
           }}
+          resetState={resetState}
           groupId={selectedGroupId ?? ''}
         />
       </Flex>

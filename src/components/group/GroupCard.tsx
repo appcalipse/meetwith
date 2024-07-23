@@ -62,6 +62,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const iconColor = useColorModeValue('gray.600', 'white')
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
+
   const [groupMembers, setGroupsMembers] = useState<Array<GroupMember>>([])
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
@@ -69,6 +70,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const { push } = useRouter()
   const [firstFetch, setFirstFetch] = useState(true)
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
+  const [isAdmin, setIsAdmin] = useState(false)
   const {
     openDeleteModal,
     setGroupName,
@@ -88,7 +90,18 @@ const GroupCard: React.FC<IGroupCard> = props => {
     if (newGroupMembers?.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
-    setGroupsMembers(prev => (reset ? [] : [...prev]).concat(newGroupMembers))
+    setGroupsMembers(prev => {
+      const newMembers = (reset ? [] : [...prev]).concat(newGroupMembers)
+      console.log(newMembers)
+      newMembers.forEach(val => {
+        if (val.address === props.currentAccount.address) {
+          setIsAdmin(val.role === MemberType.ADMIN)
+        } else {
+          return false
+        }
+      })
+      return newMembers
+    })
     setGroupRoles(prev =>
       (reset ? [] : [...prev]).concat(newGroupMembers?.map(val => val.role))
     )
@@ -265,6 +278,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
               groupSlug={props.slug}
               groupID={props.id}
               resetState={props.resetState}
+              isAdmin={isAdmin}
+              handleIsAdminChange={setIsAdmin}
               {...member}
             />
           ))}
@@ -313,8 +328,17 @@ const GroupCard: React.FC<IGroupCard> = props => {
       {({ isExpanded }) => (
         <>
           <HStack justifyContent="space-between" width="100%">
-            <VStack gap={0} alignItems="flex-start">
-              <Heading size={'lg'}>{props.name}</Heading>
+            <VStack gap={0} alignItems="start">
+              <Heading
+                size={'lg'}
+                maxW="400px"
+                w="fit-content"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
+              >
+                {props.name}
+              </Heading>
               <CopyLinkButton
                 url={`${appUrl}/${props.slug}`}
                 size="md"
@@ -324,9 +348,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 noOfLines={1}
                 width="100%"
                 mr="auto"
+                maxW="335px"
                 childStyle={{
                   style: {
                     maxWidth: '300px',
+                    width: 'fit-content',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
