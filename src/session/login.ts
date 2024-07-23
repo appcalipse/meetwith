@@ -79,8 +79,8 @@ export const useLogin = () => {
         ) {
           shouldRedirect &&
             (await router.push(
-              `/dashboard/meetings?${
-                redirectPath ? `redirect=${redirectPath}` : ''
+              `/dashboard/meetings${
+                redirectPath ? `?redirect=${redirectPath}` : ''
               }`
             ))
           return

@@ -70,6 +70,7 @@ export interface GroupUsers {
   }>
 }
 export interface GroupMemberQuery {
+  id: string
   member_id: string
   user_id: string
   role: MemberType

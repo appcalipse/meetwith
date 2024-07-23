@@ -32,6 +32,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
               }
             : group.group_members.length > 0
             ? {
+                userId: group.group_members?.[0]?.id,
                 displayName: group.preferences?.name,
                 address: group.group_members?.[0]?.member_id as string,
                 role: group.group_members?.[0].role,

@@ -411,8 +411,8 @@ export const getMeetingsForDashboard = async (
 }
 
 export const getGroups = async (
-  limit: number,
-  offset: number
+  limit?: number,
+  offset?: number
 ): Promise<Array<GetGroupsResponse>> => {
   const response = (await internalFetch(
     `/secure/group/user?limit=${limit}&offset=${offset}`
@@ -435,8 +435,8 @@ export const getGroupsInvites = async (address: string) => {
 
 export const getGroupsMembers = async (
   group_id: string,
-  limit: number,
-  offset: number
+  limit?: number,
+  offset?: number
 ): Promise<Array<GroupMember>> => {
   const response = await internalFetch<Array<GroupMember>>(
     `/secure/group/${group_id}/users?limit=${limit}&offset=${offset}`
