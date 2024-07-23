@@ -31,6 +31,7 @@ import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { removeGroupMember } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { isJson } from '@/utils/generic_utils'
+import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 
@@ -52,11 +53,15 @@ interface IGroupMemberCard extends GroupMember {
   groupSlug: string
   resetState: () => void
   groupID: string
+  isAdmin: boolean
+  handleIsAdminChange: (val: boolean) => void
 }
 
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
-  const activeMenuColor = useColorModeValue('neutral.800', 'neutral.200')
+  const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
+  const activeMenuColor = useColorModeValue('neutral.200', 'neutral.400')
+  const tagColor = useColorModeValue('neutral.100', 'neutral.400')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
   const [isRemoving, setIsRemoving] = React.useState(false)
@@ -100,6 +105,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             return rolesArr
           })
           setCurrentRole(newRole)
+          if (props.currentAccount.address === props.address) {
+            props.handleIsAdminChange(newRole === MemberType.ADMIN)
+          }
         }
       } catch (error: any) {
         const isJsonErr = isJson(error.message)
@@ -165,7 +173,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
         </Box>
         <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
           <Heading size="sm">
-            {props.displayName}{' '}
+            {props.displayName || ellipsizeAddress(props.address || '')}{' '}
             {props.currentAccount.address === props.address && '(You)'}
           </Heading>
           {!props.invitePending ? (
@@ -176,6 +184,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               withIcon
               design_type="link"
               pl={0}
+              maxW="335px"
               childStyle={{
                 style: {
                   width: '150px',
@@ -195,7 +204,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 py="3"
                 display="grid"
                 placeContent="center"
-                bg="neutral.400"
+                bg={tagColor}
               >
                 <Text size="sm">Pending</Text>
               </Box>
@@ -226,15 +235,18 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               pr={4}
               pl={0}
               textTransform="capitalize"
+              isDisabled={!props.isAdmin}
             >
               {currentRole}
             </MenuButton>
             <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
               <MenuItem
                 textTransform="capitalize"
-                borderBottom={`2px solid ${activeMenuColor}`}
+                borderBottom={`2px solid neutral.200`}
                 backgroundColor={
-                  currentRole === MemberType.ADMIN ? activeMenuColor : undefined
+                  currentRole === MemberType.ADMIN
+                    ? activeMenuColor
+                    : menuBgColor
                 }
                 onClick={handleRoleChange(MemberType.MEMBER, MemberType.ADMIN)}
                 disabled={currentRole === MemberType.ADMIN}
@@ -247,7 +259,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 backgroundColor={
                   currentRole === MemberType.MEMBER
                     ? activeMenuColor
-                    : undefined
+                    : menuBgColor
                 }
                 disabled={currentRole === MemberType.MEMBER}
                 onClick={handleRoleChange(
@@ -266,7 +278,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       </HStack>
       <HStack flexBasis="35%" display="flex" justifyContent="space-between">
         {props?.calendarConnected ? (
-          <Tag size={'sm'} variant="subtle" bgColor="neutral.400">
+          <Tag size={'sm'} variant="subtle">
             <TagLeftIcon
               boxSize="12px"
               w={5}
@@ -274,14 +286,12 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               as={GoDotFill}
               color="green.500"
             />
-            <TagLabel color="white" px="2px">
-              Connected
-            </TagLabel>
+            <TagLabel px="2px">Connected</TagLabel>
           </Tag>
         ) : (
-          <Button variant="text" p={0}>
+          <Text p={0} fontWeight={700}>
             Not connected
-          </Button>
+          </Text>
         )}
         {
           // no one can leave an empty group
