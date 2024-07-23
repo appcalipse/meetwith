@@ -45,7 +45,16 @@ const GroupInviteCard: React.FC<IGroupInviteCard> = props => {
         left={3}
         bg="primary.500"
       />
-      <Heading size={'lg'}>{props.name}</Heading>
+      <Heading
+        size={'lg'}
+        maxW="500px"
+        w="fit-content"
+        whiteSpace="nowrap"
+        overflow="hidden"
+        textOverflow="ellipsis"
+      >
+        {props.name}
+      </Heading>
       <HStack gap="16px">
         <Button
           isLoading={accepting}
