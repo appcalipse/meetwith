@@ -23,7 +23,7 @@ export const MonthDay = styled.li`
   font-weight: ${props => (props.isToday ? 'bold' : '500')};
   color: ${props =>
     props.isToday ? '#F46739' : props.isWeekend ? '#9AA5B1' : '#E4E7EB'};
-  opacity: 1;
+  opacity: ${props => (props.isValid ? 1 : 0.5)};
 
   :hover {
     cursor: ${props => (props.isValid ? 'pointer' : 'inherit')};
