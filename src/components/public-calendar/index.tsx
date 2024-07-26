@@ -271,9 +271,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account!.preferences.availableTypes
-        .filter(type => !type.deleted)
-        .find(t => t.url === typeOnRoute)
+      const type = account?.preferences?.availableTypes
+        ?.filter(type => !type.deleted)
+        ?.find(t => t.url === typeOnRoute)
       setPrivateType(!!type?.private)
     }
   }, [])
@@ -287,10 +287,12 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account!.preferences.availableTypes
+      const type = account?.preferences?.availableTypes
         .filter(type => !type.deleted)
         .find(t => t.url === typeOnRoute)
-      setSelectedType(type || account!.preferences.availableTypes[0])
+      setSelectedType(
+        (type || account?.preferences?.availableTypes?.[0] || {}) as MeetingType
+      )
       updateSlots()
       setRescheduleSlotId(router.query.slot as string | undefined)
     }
@@ -607,9 +609,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }, [currentMonth])
 
   const changeType = (typeId: string) => {
-    const type = account!.preferences.availableTypes
-      .filter(type => !type.deleted)
-      .find(t => t.id === typeId)!
+    const type = account?.preferences?.availableTypes
+      ?.filter(type => !type.deleted)
+      ?.find(t => t.id === typeId)
+    if (!type) return
     if (!type.scheduleGate) {
       setIsGateValid(undefined)
     }
@@ -626,7 +629,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         selectedType.minAdvanceTime,
         slot,
         busySlots,
-        account!.preferences.availabilities,
+        account?.preferences?.availabilities || [],
         Intl.DateTimeFormat().resolvedOptions().timeZone,
         account!.preferences.timezone
       )
