@@ -69,6 +69,7 @@ import {
 import {
   AccountNotFoundError,
   AdminBelowOneError,
+  AlreadyGroupMemberError,
   GateConditionNotValidError,
   GateInUseError,
   GroupCreationError,
@@ -1072,6 +1073,7 @@ const manageGroupInvite = async (
   reject?: boolean,
   email_address?: string
 ): Promise<void> => {
+  const groupUsers = await getGroupMembersInternal(group_id)
   const { error, data } = await db.supabase
     .from<GroupInvites>('group_invites')
     .delete()
@@ -1079,6 +1081,9 @@ const manageGroupInvite = async (
     .or(`email.eq.${email_address},user_id.eq.${address.toLowerCase()}`)
   if (error) {
     throw new Error(error.message)
+  }
+  if (groupUsers.map(val => val.member_id).includes(address.toLowerCase())) {
+    throw new AlreadyGroupMemberError()
   }
   if (!data) {
     throw new Error('No invites found')
@@ -1320,6 +1325,21 @@ const getGroupUsersInternal = async (
   return []
 }
 
+const getGroupMembersInternal = async (
+  group_id: string
+): Promise<Array<GroupMemberQuery>> => {
+  if (await isGroupExists(group_id)) {
+    const { data: membersData, error: membersError } = await db.supabase
+      .from<GroupMemberQuery>('group_members')
+      .select()
+      .eq('group_id', group_id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    return membersData
+  }
+  return []
+}
 const isGroupExists = async (group_id: string) => {
   const { data: groupData, error: groupError } = await db.supabase
     .from('groups')
@@ -2396,6 +2416,7 @@ export {
   getGroupName,
   getGroupsEmpty,
   getGroupUsers,
+  getGroupUsersInternal,
   getMeetingFromDB,
   getOfficeEventMappingId,
   getSlotsForAccount,
