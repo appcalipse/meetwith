@@ -258,7 +258,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           placeholder="Give a title for your meeting"
         />
       </FormControl>
-      <FormControl textAlign="left">
+      <FormControl
+        textAlign="left"
+        w={{
+          base: '100%',
+          lg: '600px',
+        }}
+      >
         <FormLabel>What is this meeting about? </FormLabel>
         <RichTextEditor
           isDisabled={isScheduling}
