@@ -23,6 +23,7 @@ import GroupAdminLeaveModal from '@/components/group/GroupAdminLeaveModal'
 import GroupInviteCard from '@/components/group/GroupInviteCard'
 import GroupJoinModal from '@/components/group/GroupJoinModal'
 import LeaveGroupModal from '@/components/group/LeaveGroupModal'
+import RemoveGroupMemberModal from '@/components/group/RemoveGroupMemberModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
 import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
 import { Account } from '@/types/Account'
@@ -30,6 +31,7 @@ import { Intents } from '@/types/Dashboard'
 import {
   GetGroupsResponse,
   Group as GroupResponse,
+  GroupMember,
   MemberType,
 } from '@/types/Group'
 import {
@@ -51,6 +53,9 @@ interface IGroupModal {
   setGroupName: (groupName: string) => void
   openNameEditModal: () => void
   openSlugEditModal: () => void
+  selectedGroupMember: GroupMember
+  setSelectedGroupMember: React.Dispatch<React.SetStateAction<GroupMember>>
+  openRemoveModal: () => void
 }
 
 const DEFAULT_STATE: IGroupModal = {
@@ -63,6 +68,9 @@ const DEFAULT_STATE: IGroupModal = {
   setGroupName: () => {},
   openNameEditModal: () => {},
   openSlugEditModal: () => {},
+  selectedGroupMember: {} as GroupMember,
+  setSelectedGroupMember: () => {},
+  openRemoveModal: () => {},
 }
 export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
@@ -107,6 +115,14 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const [selectedGroupSlug, setSelectedGroupSlug] = useState<string>('')
   const [toggleAdminChange, setToggleAdminChange] = useState(false)
   const [toggleAdminLeave, setToggleAdminLeave] = useState(false)
+  const [selectedGroupMember, setSelectedGroupMember] = useState<GroupMember>(
+    {} as GroupMember
+  )
+  const {
+    isOpen: isRemoveModalOpen,
+    onOpen: openRemoveModal,
+    onClose: closeRemoveModal,
+  } = useDisclosure()
   const context = {
     openLeaveModal,
     pickGroupId: setSelectedGroupId,
@@ -117,6 +133,9 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setGroupName: setSelectedGroupName,
     openNameEditModal,
     openSlugEditModal,
+    selectedGroupMember,
+    setSelectedGroupMember,
+    openRemoveModal,
   }
   const fetchGroups = async (reset?: boolean) => {
     const PAGE_SIZE = 5
@@ -253,6 +272,14 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           resetState={resetState}
           onClose={closeLeaveModal}
           isOpen={isLeaveModalOpen}
+        />
+        <RemoveGroupMemberModal
+          groupID={selectedGroupId}
+          groupName={selectedGroupName}
+          resetState={resetState}
+          onClose={closeRemoveModal}
+          isOpen={isRemoveModalOpen}
+          selectedGroupMember={selectedGroupMember}
         />
         <DeleteGroupModal
           groupName={selectedGroupName}
