@@ -208,9 +208,6 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               >
                 <Text size="sm">Pending</Text>
               </Box>
-              <Button colorScheme="primary" variant="link" size="sm">
-                Send reminder
-              </Button>
             </HStack>
           )}
         </VStack>
