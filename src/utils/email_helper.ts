@@ -145,6 +145,7 @@ export const newMeetingEmail = async (
       version: 0,
       related_slot_ids: [],
       meeting_info_encrypted: mockEncrypted,
+      content: description,
     },
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
