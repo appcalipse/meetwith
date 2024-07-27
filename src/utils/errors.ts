@@ -59,6 +59,12 @@ export class IsGroupMemberError extends Error {
     this.name = 'IsGroupMemberError'
   }
 }
+export class AlreadyGroupMemberError extends Error {
+  constructor() {
+    super(`Group member cannot accept invite again`)
+    this.name = 'AlreadyGroupMemberError'
+  }
+}
 export class NotGroupAdminError extends Error {
   constructor() {
     super(`Not a group admin`)

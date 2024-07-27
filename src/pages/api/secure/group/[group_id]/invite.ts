@@ -1,23 +1,16 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import {
-  GroupInvitePayload,
-  GroupInvitesResponse,
-  MemberType,
-} from '@/types/Group'
-import { inviteUsers } from '@/utils/api_helper'
+import { NotificationChannel } from '@/types/AccountNotifications'
+import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { appUrl } from '@/utils/constants'
 import {
   addUserToGroupInvites,
-  createGroupInvite,
   getAccountFromDB,
   getAccountNotificationSubscriptions,
   getGroup,
-  getGroupInvite,
-  getGroupInvites,
+  getGroupUsersInternal,
   isUserAdminOfGroup,
-  updateGroupInviteUserId,
 } from '@/utils/database'
 import { sendInvitationEmail } from '@/utils/email_helper'
 import { getAccountDisplayName } from '@/utils/user_manager'
@@ -43,9 +36,24 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     const inviterName = getAccountDisplayName(session.account)
     const group = await getGroup(groupId, currentUserAddress)
-
     if (!group) {
       return res.status(404).json({ error: 'Group not found' })
+    }
+    const users = await getGroupUsersInternal(groupId)
+    const existingMembersAndInvites = users
+      .map(user => user.user_id || user.email)
+      .filter(Boolean)
+    const alreadyInvitedUsers = invitees.filter(val =>
+      existingMembersAndInvites.includes(val.address || val.email)
+    )
+    if (alreadyInvitedUsers.length > 0) {
+      const invitedUsersConcatenated = alreadyInvitedUsers
+        .map(val => val.address || val.email)
+        .join(', ')
+      return res.status(400).json({
+        error: `${invitedUsersConcatenated} have already been invited or is already members`,
+        alreadyInvitedUsers,
+      })
     }
 
     for (const invitee of invitees) {
@@ -55,9 +63,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
 
       let account = null
+      let userEmail: string | undefined
       if (invitee.email) {
         try {
           account = await getAccountFromDB(invitee.email)
+          userEmail = invitee.email
         } catch (error) {
           console.warn(
             `Account with email ${invitee.email} not found. Proceeding with invite creation.`
@@ -66,6 +76,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       } else if (invitee.address) {
         try {
           account = await getAccountFromDB(invitee.address)
+          const notifications = await getAccountNotificationSubscriptions(
+            invitee.address
+          )
+          userEmail = notifications?.notification_types.find(
+            n => n.channel === NotificationChannel.EMAIL
+          )?.destination
         } catch (error) {
           console.warn(
             `Account with address ${invitee.address} not found. Proceeding with invite creation.`
@@ -73,36 +89,29 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         }
       }
 
-      let groupInvite: GroupInvitesResponse | null = null
-      if (invitee.email) {
-        groupInvite = await getGroupInvite({ email: invitee.email })
-      } else if (invitee.address) {
-        groupInvite = await getGroupInvite({ user_id: invitee.address })
+      try {
+        await addUserToGroupInvites(
+          groupId,
+          invitee.role as MemberType,
+          invitee.email,
+          invitee.address
+        )
+      } catch (error) {
+        console.error('Error creating group invite:', error)
       }
-
-      if (!groupInvite) {
-        try {
-          await addUserToGroupInvites(
-            groupId,
-            invitee.role as MemberType,
-            invitee.email,
-            invitee.address
-          )
-        } catch (error) {
-          console.error('Error creating group invite:', error)
-        }
-      }
-
-      if (invitee.email) {
-        const inviteLink = `${appUrl}/invite-accept?groupId=${groupId}&email=${invitee.email}`
+      if (userEmail) {
+        const inviteLink = `${appUrl}/invite-accept?groupId=${groupId}${
+          invitee.email && `&email=${invitee.email}`
+        }`
         try {
           await sendInvitationEmail(
-            invitee.email,
+            userEmail,
             inviterName,
             message ||
               `Come join our scheduling group "${group.name}" on Meet With Wallet!`,
             groupId,
-            group
+            group,
+            inviteLink
           )
         } catch (error) {
           console.error('Error sending invitation email:', error)
