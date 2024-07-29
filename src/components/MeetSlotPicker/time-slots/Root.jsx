@@ -13,6 +13,8 @@ import React, { useContext } from 'react'
 import { AccountContext } from '@/providers/AccountProvider'
 import { generateTimeSlots } from '@/utils/slots.helper'
 
+import { OnboardingModalContext } from '../../../providers/OnboardingModalProvider'
+
 function Root({
   pickedDay,
   slotSizeMinutes,
@@ -21,6 +23,7 @@ function Root({
   selfAvailabilityCheck,
   showSelfAvailability,
 }) {
+  const { openConnection } = useContext(OnboardingModalContext)
   const { currentAccount } = useContext(AccountContext)
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes, false)
   const filtered = timeSlots.filter(slot => {
@@ -41,6 +44,8 @@ function Root({
           p={2}
           justifyContent="center"
           mb={4}
+          cursor="pointer"
+          onClick={() => openConnection(undefined, false)}
         >
           <Text flex={1} fontSize={'sm'} textAlign="center" color="white">
             Sign in to see your availability
