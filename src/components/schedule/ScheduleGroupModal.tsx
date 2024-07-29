@@ -45,7 +45,14 @@ const ScheduleGroupModal: FC<IScheduleGroupModal> = props => {
       isCentered
     >
       <ModalOverlay />
-      <ModalContent p="6" bgColor="#2F3847" maxW={'90%'}>
+      <ModalContent
+        p="6"
+        bgColor="#2F3847"
+        maxW={{ base: '90%', md: '480px' }}
+        maxH="80%"
+        overflowY="scroll"
+        className="no-scrollbar"
+      >
         <ModalHeader
           p={'0'}
           display="flex"
