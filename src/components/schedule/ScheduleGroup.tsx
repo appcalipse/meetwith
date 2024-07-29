@@ -124,7 +124,16 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
             onChange={handleSwitchClick}
           />
           <VStack gap={0} alignItems="flex-start">
-            <Heading size={'sm'}>{props.name}</Heading>
+            <Heading
+              size={'sm'}
+              maxW="20ch"
+              w="fit-content"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              textOverflow="ellipsis"
+            >
+              {props.name}
+            </Heading>
           </VStack>
         </HStack>
         <HStack gap={3} width="fit-content">

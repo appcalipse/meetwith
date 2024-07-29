@@ -277,6 +277,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
               updateRole={updateRole}
               groupSlug={props.slug}
               groupID={props.id}
+              groupName={props.name}
               resetState={props.resetState}
               isAdmin={isAdmin}
               handleIsAdminChange={setIsAdmin}

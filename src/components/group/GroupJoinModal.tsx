@@ -8,14 +8,15 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  Spinner,
   Text,
+  useToast,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React from 'react'
 
 import { Group } from '@/types/Group'
 import { joinGroup, rejectGroup } from '@/utils/api_helper'
+import { isJson } from '@/utils/generic_utils'
 
 export interface IGroupInviteCardModal {
   group: Group | undefined
@@ -28,23 +29,54 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
   const [declining, setDeclining] = React.useState(false)
   const [accepting, setAccepting] = React.useState(false)
   const { push } = useRouter()
+  const toast = useToast()
   const handleDecline = async () => {
     if (!props.group?.id) return
     setDeclining(true)
-    await rejectGroup(props.group.id, props.inviteEmail)
-    setDeclining(false)
+    try {
+      await rejectGroup(props.group.id, props.inviteEmail)
+    } catch (error: any) {
+      const isJsonErr = isJson(error.message)
+      const errorMessage = isJsonErr
+        ? JSON.parse(error.message)?.error
+        : error.message
+      toast({
+        title: 'Error inviting member',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
+    }
     props.onClose()
     push('/dashboard/groups')
     props.resetState()
+    setDeclining(false)
   }
   const handleAccept = async () => {
     if (!props.group?.id) return
     setAccepting(true)
-    await joinGroup(props.group.id, props.inviteEmail)
-    setAccepting(false)
-    props.onClose()
+    try {
+      await joinGroup(props.group.id, props.inviteEmail)
+    } catch (error: any) {
+      const isJsonErr = isJson(error.message)
+      const errorMessage = isJsonErr
+        ? JSON.parse(error.message)?.error
+        : error.message
+      toast({
+        title: 'Error inviting member',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
+    }
     push('/dashboard/groups')
+    props.onClose()
     props.resetState()
+    setAccepting(false)
   }
   return (
     <Modal

@@ -925,24 +925,5 @@ export const inviteUsers = async (
   groupId: string,
   payload: GroupInvitePayload
 ): Promise<void> => {
-  try {
-    await internalFetch<void>(
-      `/secure/group/${groupId}/invite`,
-      'POST',
-      payload
-    )
-  } catch (e: any) {
-    if (e instanceof ApiFetchError) {
-      if (e.status === 400) {
-        throw new UserInvitationError('Invalid input data', e.status)
-      } else if (e.status === 500) {
-        throw new UserInvitationError('Internal server error', e.status)
-      } else {
-        throw new UserInvitationError(e.message, e.status)
-      }
-    } else {
-      Sentry.captureException(e)
-      throw e
-    }
-  }
+  await internalFetch<void>(`/secure/group/${groupId}/invite`, 'POST', payload)
 }
