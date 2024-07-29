@@ -205,7 +205,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
               onKeyDown={addUserToList}
             />
             <Text mt={2} fontSize="12px" color="gray.400">
-              Tap to enter. No need to add yourself.
+              Press enter. No need to add yourself.
             </Text>
           </FormControl>
 

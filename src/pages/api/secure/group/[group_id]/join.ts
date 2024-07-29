@@ -24,8 +24,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(200).json({
         success: true,
       })
-    } catch (e) {
-      return res.status(500).send(e)
+    } catch (e: any) {
+      return res.status(500).send({
+        error: e.message,
+      })
     }
   }
   return res.status(405).send('Method not allowed')

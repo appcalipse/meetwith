@@ -28,7 +28,6 @@ import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
-import { removeGroupMember } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { isJson } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -53,6 +52,7 @@ interface IGroupMemberCard extends GroupMember {
   groupSlug: string
   resetState: () => void
   groupID: string
+  groupName: string
   isAdmin: boolean
   handleIsAdminChange: (val: boolean) => void
 }
@@ -70,6 +70,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     setToggleAdminChange,
     setToggleAdminLeave,
     pickGroupId,
+    openRemoveModal,
+    setSelectedGroupMember,
+    setGroupName,
   } = useContext(GroupContext)
   const toast = useToast()
   const handleRoleChange = (
@@ -127,36 +130,23 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
     }
   }
   const handleLeaveGroup = async () => {
+    if (!props.groupID) return
     pickGroupId(props.groupID)
     openLeaveModal()
   }
   const handleRemoveGroupMember = async () => {
     if (!props.groupID) return
-    setIsRemoving(true)
-    try {
-      const isSuccessful = await removeGroupMember(
-        props.groupID,
-        (props.invitePending ? props.userId : props.address) as string,
-        props.invitePending
-      )
-      setIsRemoving(false)
-      if (!isSuccessful) return
-      props.resetState()
-    } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-      toast({
-        title: 'Error removing member',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
-    }
-    setIsRemoving(false)
+    pickGroupId(props.groupID)
+    setGroupName(props.groupName)
+    setSelectedGroupMember({
+      address: props.address,
+      role: props.role,
+      displayName: props.displayName,
+      userId: props.userId,
+      calendarConnected: props.calendarConnected,
+      invitePending: props.invitePending,
+    })
+    openRemoveModal()
   }
 
   return (
@@ -208,9 +198,6 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               >
                 <Text size="sm">Pending</Text>
               </Box>
-              <Button colorScheme="primary" variant="link" size="sm">
-                Send reminder
-              </Button>
             </HStack>
           )}
         </VStack>

@@ -402,7 +402,8 @@ export const sendInvitationEmail = async (
   inviterName: string,
   message: string,
   groupId: string,
-  group: Group
+  group: Group,
+  invitationLink: string
 ): Promise<void> => {
   const email = new Email({
     views: {
@@ -419,8 +420,6 @@ export const sendInvitationEmail = async (
       jsonTransport: true,
     },
   })
-
-  const invitationLink = `${appUrl}/invite-accept?groupId=${groupId}&email=${toEmail}`
 
   const locals = {
     inviterName,
