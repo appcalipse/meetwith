@@ -20,7 +20,7 @@ import { useRouter } from 'next/router'
 import React, { useState } from 'react'
 
 import { deleteGroup } from '@/utils/api_helper'
-import { isJson } from '@/utils/generic_utils'
+import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCardModal {
   groupID: string | null
@@ -35,8 +35,6 @@ const DeleteGroupModal: React.FC<IGroupInviteCardModal> = props => {
   const [input, setInput] = useState('')
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setInput(e.target.value)
-  const toast = useToast()
-  const { push } = useRouter()
   const handleDeleteGroup = async () => {
     if (!props.groupID) return
     setIsDeleting(true)
@@ -47,18 +45,7 @@ const DeleteGroupModal: React.FC<IGroupInviteCardModal> = props => {
       props.resetState()
       props.onClose()
     } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-      toast({
-        title: 'Error deleting group',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      handleApiError('Error deleting group', error)
     }
     setIsDeleting(false)
   }
