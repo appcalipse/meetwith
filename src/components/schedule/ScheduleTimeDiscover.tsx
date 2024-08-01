@@ -51,7 +51,7 @@ import {
 import { ConditionRelation } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { fetchBusySlotsForMultipleAccounts } from '@/utils/api_helper'
-import { isJson } from '@/utils/generic_utils'
+import { handleApiError } from '@/utils/error_helper'
 
 const timezonesObj = ct.getAllTimezones()
 const timezonesKeys = Object.keys(timezonesObj) as Array<
@@ -86,7 +86,6 @@ const ScheduleTimeDiscover = () => {
   const [busySlots, setBusySlots] = useState<Array<Interval>>([])
   const [availableSlots, setAvailableSlots] = useState<Array<Interval>>([])
   const [isLoading, setIsLoading] = useState(false)
-  const toast = useToast()
   const [isMobile, isTablet] = useMediaQuery(
     ['(max-width: 800px)', '(max-width: 1024px)'],
     {
@@ -188,18 +187,7 @@ const ScheduleTimeDiscover = () => {
       )
       setBusySlots(busySlots)
     } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error || JSON.parse(error.message)?.name
-        : error.message
-      toast({
-        title: 'Error merging availabilities',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      handleApiError('Error merging availabilities', error)
     }
     setIsLoading(false)
   }
