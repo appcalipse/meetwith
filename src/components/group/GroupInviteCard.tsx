@@ -12,7 +12,7 @@ import React from 'react'
 import GroupInviteCardModal from '@/components/group/GroupInviteCardModal'
 import { GetGroupsResponse } from '@/types/Group'
 import { joinGroup } from '@/utils/api_helper'
-import { isJson } from '@/utils/generic_utils'
+import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCard extends GetGroupsResponse {
   resetState: () => void
@@ -22,24 +22,12 @@ const GroupInviteCard: React.FC<IGroupInviteCard> = props => {
   const bgColor = useColorModeValue('white', 'neutral.900')
   const [accepting, setAccepting] = React.useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const toast = useToast()
   const handleAccept = async () => {
     setAccepting(true)
     try {
       await joinGroup(props.id)
     } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-      toast({
-        title: 'Error inviting member',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      handleApiError('Error accepting invite', error)
     }
     setAccepting(false)
     props.resetState()
