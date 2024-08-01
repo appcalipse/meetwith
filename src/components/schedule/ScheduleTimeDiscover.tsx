@@ -213,7 +213,7 @@ const ScheduleTimeDiscover = () => {
     let _start = start || startDate
     let _end = subSeconds(addMinutes(_start, duration), 1)
     while (isBefore(_end, end || endDate)) {
-      const isNotAvailable =
+      const isAvailable =
         busySlots.filter(slot => {
           const isDaySame =
             isSameDay(_start, slot.start) && isSameDay(slot.end, _end)
@@ -230,7 +230,11 @@ const ScheduleTimeDiscover = () => {
           )
           return isBusySlot
         }).length === 0
-      if (isNotAvailable) {
+
+      if (
+        isAvailable &&
+        !(isSameDay(_start, new Date()) && isBefore(_start, new Date()))
+      ) {
         availableSlots.push({ start: _start, end: _end })
       }
       _start = addMinutes(_start, duration)
