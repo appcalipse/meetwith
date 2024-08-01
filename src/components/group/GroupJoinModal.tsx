@@ -16,7 +16,7 @@ import React from 'react'
 
 import { Group } from '@/types/Group'
 import { joinGroup, rejectGroup } from '@/utils/api_helper'
-import { isJson } from '@/utils/generic_utils'
+import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCardModal {
   group: Group | undefined
@@ -29,26 +29,12 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
   const [declining, setDeclining] = React.useState(false)
   const [accepting, setAccepting] = React.useState(false)
   const { push } = useRouter()
-  const toast = useToast()
   const handleDecline = async () => {
     if (!props.group?.id) return
     setDeclining(true)
     try {
       await rejectGroup(props.group.id, props.inviteEmail)
-    } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-      toast({
-        title: 'Error inviting member',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
-    }
+    } catch (error: any) {}
     props.onClose()
     push('/dashboard/groups')
     props.resetState()
@@ -60,18 +46,7 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
     try {
       await joinGroup(props.group.id, props.inviteEmail)
     } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-      toast({
-        title: 'Error inviting member',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      handleApiError('Error accepting invite', error)
     }
     push('/dashboard/groups')
     props.onClose()
