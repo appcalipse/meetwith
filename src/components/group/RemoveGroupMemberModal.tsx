@@ -82,7 +82,7 @@ const RemoveGroupMemberModal: React.FC<IRemoveGroupMemberModal> = props => {
           justifyContent="space-between"
           alignItems="center"
         >
-          <Heading size={'md'}>Edit group name</Heading>
+          <Heading size={'md'}>Remove group member</Heading>
           <ModalCloseButton />
         </ModalHeader>
         <ModalBody p={'0'} mt={'6'}>
@@ -93,7 +93,7 @@ const RemoveGroupMemberModal: React.FC<IRemoveGroupMemberModal> = props => {
                 ellipsizeAddress(props.selectedGroupMember.address || '')}{' '}
               from {props.groupName || 'the group'}?
             </Text>
-            <HStack ml={'auto'} w={'fit-content'} mt={'6'} gap={'4'}>
+            <HStack ml={'auto'} w={'fit-content'} gap={'4'}>
               <Button onClick={props.onClose} colorScheme="grayButton">
                 No
               </Button>
