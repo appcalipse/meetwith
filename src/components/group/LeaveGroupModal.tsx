@@ -15,7 +15,7 @@ import { useRouter } from 'next/router'
 import React from 'react'
 
 import { leaveGroup } from '@/utils/api_helper'
-import { isJson } from '@/utils/generic_utils'
+import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCardModal {
   groupID: string | null
@@ -26,8 +26,6 @@ export interface IGroupInviteCardModal {
 
 const LeaveGroupModal: React.FC<IGroupInviteCardModal> = props => {
   const [isLeaving, setIsLeaving] = React.useState(false)
-  const toast = useToast()
-  const { push } = useRouter()
   const handleLeaveGroup = async () => {
     if (!props.groupID) return
     setIsLeaving(true)
@@ -38,18 +36,7 @@ const LeaveGroupModal: React.FC<IGroupInviteCardModal> = props => {
       props.resetState()
       props.onClose()
     } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-      toast({
-        title: 'Error leaving group',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      handleApiError('Error leaving group', error)
     }
     setIsLeaving(false)
   }

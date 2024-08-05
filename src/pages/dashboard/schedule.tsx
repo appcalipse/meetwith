@@ -25,7 +25,7 @@ import {
   getGroupsMembers,
 } from '@/utils/api_helper'
 import { scheduleMeeting } from '@/utils/calendar_manager'
-import { isJson } from '@/utils/generic_utils'
+import { handleApiError } from '@/utils/error_helper'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
@@ -261,18 +261,7 @@ const Schedule: NextPage = () => {
       )
       setCurrentPage(Page.COMPLETED)
     } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error || JSON.parse(error.message)?.name
-        : error.message
-      toast({
-        title: 'Error scheduling meeting',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      handleApiError('Error scheduling meeting', error)
     }
     setIsScheduling(false)
   }
@@ -331,18 +320,7 @@ const Schedule: NextPage = () => {
         })
       }
     } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error || JSON.parse(error.message)?.name
-        : error.message
-      toast({
-        title: 'Error merging availabilities',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      handleApiError('Error prefetching group.', error)
     }
     setIsPrefetching(false)
   }

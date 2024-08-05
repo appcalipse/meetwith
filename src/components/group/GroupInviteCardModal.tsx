@@ -8,8 +8,8 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  Spinner,
   Text,
+  useToast,
 } from '@chakra-ui/react'
 import React from 'react'
 
@@ -24,10 +24,12 @@ export interface IGroupInviteCardModal {
 
 const GroupInviteCardModal: React.FC<IGroupInviteCardModal> = props => {
   const [declining, setDeclining] = React.useState(false)
-
+  const toast = useToast()
   const handleDecline = async () => {
     setDeclining(true)
-    await rejectGroup(props.group_id)
+    try {
+      await rejectGroup(props.group_id)
+    } catch (error: any) {}
     setDeclining(false)
     props.onClose()
     props.resetState()
