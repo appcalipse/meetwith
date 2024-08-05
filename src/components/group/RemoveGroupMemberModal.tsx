@@ -2,7 +2,6 @@ import {
   Button,
   Heading,
   HStack,
-  Input,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -14,11 +13,11 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 
 import { GroupMember } from '@/types/Group'
-import { editGroup, removeGroupMember } from '@/utils/api_helper'
-import { isJson } from '@/utils/generic_utils'
+import { removeGroupMember } from '@/utils/api_helper'
+import { handleApiError } from '@/utils/error_helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 export interface IRemoveGroupMemberModal {
@@ -33,8 +32,6 @@ export interface IRemoveGroupMemberModal {
 const RemoveGroupMemberModal: React.FC<IRemoveGroupMemberModal> = props => {
   const [isRemoving, setIsRemoving] = React.useState(false)
 
-  const toast = useToast()
-  const { push } = useRouter()
   const handleRemoveGroupMember = async () => {
     if (!props.groupID) return
     setIsRemoving(true)
@@ -51,18 +48,7 @@ const RemoveGroupMemberModal: React.FC<IRemoveGroupMemberModal> = props => {
       props.onClose()
       props.resetState()
     } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-      toast({
-        title: 'Error removing member',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      handleApiError('Error removing member', error)
     }
     setIsRemoving(false)
   }
@@ -82,7 +68,7 @@ const RemoveGroupMemberModal: React.FC<IRemoveGroupMemberModal> = props => {
           justifyContent="space-between"
           alignItems="center"
         >
-          <Heading size={'md'}>Edit group name</Heading>
+          <Heading size={'md'}>Remove group member</Heading>
           <ModalCloseButton />
         </ModalHeader>
         <ModalBody p={'0'} mt={'6'}>
@@ -93,7 +79,7 @@ const RemoveGroupMemberModal: React.FC<IRemoveGroupMemberModal> = props => {
                 ellipsizeAddress(props.selectedGroupMember.address || '')}{' '}
               from {props.groupName || 'the group'}?
             </Text>
-            <HStack ml={'auto'} w={'fit-content'} mt={'6'} gap={'4'}>
+            <HStack ml={'auto'} w={'fit-content'} gap={'4'}>
               <Button onClick={props.onClose} colorScheme="grayButton">
                 No
               </Button>

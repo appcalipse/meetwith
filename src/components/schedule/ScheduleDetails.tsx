@@ -187,7 +187,12 @@ const ScheduleDetails = () => {
               )}
             </HStack>
           </VStack>
-          <FormControl>
+          <FormControl
+            w={{
+              base: '100%',
+              lg: '600px',
+            }}
+          >
             <FormLabel htmlFor="info">Description (optional)</FormLabel>
             <RichTextEditor
               id="info"

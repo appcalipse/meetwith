@@ -92,7 +92,6 @@ const GroupCard: React.FC<IGroupCard> = props => {
     }
     setGroupsMembers(prev => {
       const newMembers = (reset ? [] : [...prev]).concat(newGroupMembers)
-      console.log(newMembers)
       newMembers.forEach(val => {
         if (val.address === props.currentAccount.address) {
           setIsAdmin(val.role === MemberType.ADMIN)
