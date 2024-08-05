@@ -12,14 +12,12 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 
 import { editGroup } from '@/utils/api_helper'
-import { isJson } from '@/utils/generic_utils'
+import { handleApiError } from '@/utils/error_helper'
 
 export interface IEditGroupNameModal {
   groupID: string | null
@@ -34,8 +32,6 @@ const EditGroupSlugModal: React.FC<IEditGroupNameModal> = props => {
   const [input, setInput] = useState('')
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setInput(e.target.value)
-  const toast = useToast()
-  const { push } = useRouter()
   useEffect(() => {
     if (props.groupSlug) {
       setInput(props.groupSlug)
@@ -51,18 +47,7 @@ const EditGroupSlugModal: React.FC<IEditGroupNameModal> = props => {
       props.resetState()
       props.onClose()
     } catch (error: any) {
-      const isJsonErr = isJson(error.message)
-      const errorMessage = isJsonErr
-        ? JSON.parse(error.message)?.error
-        : error.message
-      toast({
-        title: 'Error changing slug',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      handleApiError('Error changing slug', error)
     }
     setIsUpdating(false)
   }

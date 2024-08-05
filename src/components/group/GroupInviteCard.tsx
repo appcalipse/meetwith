@@ -5,12 +5,14 @@ import {
   HStack,
   useColorModeValue,
   useDisclosure,
+  useToast,
 } from '@chakra-ui/react'
 import React from 'react'
 
 import GroupInviteCardModal from '@/components/group/GroupInviteCardModal'
 import { GetGroupsResponse } from '@/types/Group'
 import { joinGroup } from '@/utils/api_helper'
+import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCard extends GetGroupsResponse {
   resetState: () => void
@@ -22,7 +24,11 @@ const GroupInviteCard: React.FC<IGroupInviteCard> = props => {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const handleAccept = async () => {
     setAccepting(true)
-    await joinGroup(props.id)
+    try {
+      await joinGroup(props.id)
+    } catch (error: any) {
+      handleApiError('Error accepting invite', error)
+    }
     setAccepting(false)
     props.resetState()
   }
