@@ -29,7 +29,7 @@ import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { appUrl } from '@/utils/constants'
-import { isJson } from '@/utils/generic_utils'
+import { handleApiError } from '@/utils/error_helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
@@ -64,17 +64,14 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const tagColor = useColorModeValue('neutral.100', 'neutral.400')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
-  const [isRemoving, setIsRemoving] = React.useState(false)
   const {
     openLeaveModal,
     setToggleAdminChange,
-    setToggleAdminLeave,
     pickGroupId,
     openRemoveModal,
     setSelectedGroupMember,
     setGroupName,
   } = useContext(GroupContext)
-  const toast = useToast()
   const handleRoleChange = (
     oldRole: MemberType,
     newRole: MemberType,
@@ -113,18 +110,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           }
         }
       } catch (error: any) {
-        const isJsonErr = isJson(error.message)
-        const errorMessage = isJsonErr
-          ? JSON.parse(error.message)?.error
-          : error.message
-        toast({
-          title: 'Error changing roles',
-          description: errorMessage,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
+        handleApiError('Error changing roles', error)
       }
       setLoading(false)
     }
@@ -294,18 +280,14 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               />
             ) : // only admin can remove other users
             props.viewerRole === MemberType.ADMIN ? (
-              isRemoving ? (
-                <Spinner ml={2} />
-              ) : (
-                <Icon
-                  ml={2}
-                  w={25}
-                  h={25}
-                  as={MdDelete}
-                  onClick={handleRemoveGroupMember}
-                  cursor="pointer"
-                />
-              )
+              <Icon
+                ml={2}
+                w={25}
+                h={25}
+                as={MdDelete}
+                onClick={handleRemoveGroupMember}
+                cursor="pointer"
+              />
             ) : null)
         }
       </HStack>

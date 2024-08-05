@@ -41,17 +41,21 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     const users = await getGroupUsersInternal(groupId)
     const existingMembersAndInvites = users
-      .map(user => user.user_id || user.email)
+      .map(user =>
+        (user.member_id || user.user_id || user.email)?.toLowerCase()
+      )
       .filter(Boolean)
     const alreadyInvitedUsers = invitees.filter(val =>
-      existingMembersAndInvites.includes(val.address || val.email)
+      existingMembersAndInvites.includes(
+        (val.address || val.email)?.toLowerCase()
+      )
     )
     if (alreadyInvitedUsers.length > 0) {
       const invitedUsersConcatenated = alreadyInvitedUsers
         .map(val => val.address || val.email)
         .join(', ')
       return res.status(400).json({
-        error: `${invitedUsersConcatenated} have already been invited or is already members`,
+        error: `${invitedUsersConcatenated} has already been invited to group.`,
         alreadyInvitedUsers,
       })
     }
