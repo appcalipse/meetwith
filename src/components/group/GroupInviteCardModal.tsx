@@ -59,7 +59,7 @@ const GroupInviteCardModal: React.FC<IGroupInviteCardModal> = props => {
             can always get invited back by an admin.
           </Text>
           <HStack ml={'auto'} w={'fit-content'} mt={'6'} gap={'4'}>
-            <Button onClick={props.onClose} colorScheme="grayButton">
+            <Button onClick={props.onClose} colorScheme="neutral">
               Nervermind
             </Button>
             <Button

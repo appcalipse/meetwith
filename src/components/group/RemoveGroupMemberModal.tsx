@@ -80,7 +80,7 @@ const RemoveGroupMemberModal: React.FC<IRemoveGroupMemberModal> = props => {
               from {props.groupName || 'the group'}?
             </Text>
             <HStack ml={'auto'} w={'fit-content'} gap={'4'}>
-              <Button onClick={props.onClose} colorScheme="grayButton">
+              <Button onClick={props.onClose} colorScheme="neutral">
                 No
               </Button>
               <Button

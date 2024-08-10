@@ -1,11 +1,14 @@
+import { CheckIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
   FormControl,
   FormLabel,
+  HStack,
   Input,
   Text,
   Textarea,
+  useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -43,6 +46,8 @@ const GroupInviteForm: FC<InviteModalProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const router = useRouter()
+  const blurredColor = useColorModeValue('neutral.400', 'neutral.400')
+  const focusedColor = useColorModeValue('neutral.800', 'white')
   const [message, setMessage] = useState<string>(
     `Come join our scheduling group "${groupName}" on Meet With Wallet!`
   )
@@ -95,70 +100,70 @@ const GroupInviteForm: FC<InviteModalProps> = ({
   }
 
   const addUserToList = async (
-    event: React.KeyboardEvent<HTMLInputElement>
+    event:
+      | React.KeyboardEvent<HTMLInputElement>
+      | React.MouseEvent<HTMLButtonElement>
   ) => {
-    if (event.key === 'Enter') {
-      setIsLoading(true)
-      event.preventDefault()
-      if (!enteredIdentifier) return
-      const isValidInput =
-        isValidEmail(enteredIdentifier) ||
-        isEthereumAddressOrDomain(enteredIdentifier)
+    setIsLoading(true)
+    event.preventDefault()
+    if (!enteredIdentifier) return
+    const isValidInput =
+      isValidEmail(enteredIdentifier) ||
+      isEthereumAddressOrDomain(enteredIdentifier)
 
-      if (!isValidInput) {
-        toast({
-          title: 'Invalid Input',
-          description: 'Please enter a valid email or Ethereum address.',
-          status: 'warning',
-          duration: 3000,
-          isClosable: true,
-          position: 'top',
-        })
-        setIsLoading(false)
-        return
-      }
-      if (
-        invitedUsers.some(
-          user =>
-            user.account_address === enteredIdentifier ||
-            user.email === enteredIdentifier
-        )
-      ) {
-        toast({
-          title: 'User already added',
-          description: 'This user has already been added to the invite list.',
-          status: 'warning',
-          duration: 3000,
-          isClosable: true,
-          position: 'top',
-        })
-        setIsLoading(false)
-        return
-      }
-
-      const isEmail = isValidEmail(enteredIdentifier)
-      const newUser: InvitedUser = {
-        id: invitedUsers.length,
-        account_address: !isEmail ? enteredIdentifier : '',
-        email: isEmail ? enteredIdentifier : '',
-        role: MemberType.MEMBER,
-        groupId,
-        userId: '',
-        name: enteredIdentifier,
-        invitePending: true,
-      }
-      if (isValidEVMAddress(enteredIdentifier)) {
-        const info = await getExistingAccounts([enteredIdentifier])
-        const userDetails = info[0]
-        if (userDetails) {
-          newUser.userId = userDetails.preferences.id
-          newUser.name = userDetails.preferences.name
-        }
-      }
-      setInvitedUsers(prev => [...prev, newUser])
-      setEnteredIdentifier('')
+    if (!isValidInput) {
+      toast({
+        title: 'Invalid Input',
+        description: 'Please enter a valid email or Ethereum address.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+        position: 'top',
+      })
       setIsLoading(false)
+      return
     }
+    if (
+      invitedUsers.some(
+        user =>
+          user.account_address === enteredIdentifier ||
+          user.email === enteredIdentifier
+      )
+    ) {
+      toast({
+        title: 'User already added',
+        description: 'This user has already been added to the invite list.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+        position: 'top',
+      })
+      setIsLoading(false)
+      return
+    }
+
+    const isEmail = isValidEmail(enteredIdentifier)
+    const newUser: InvitedUser = {
+      id: invitedUsers.length,
+      account_address: !isEmail ? enteredIdentifier : '',
+      email: isEmail ? enteredIdentifier : '',
+      role: MemberType.MEMBER,
+      groupId,
+      userId: '',
+      name: enteredIdentifier,
+      invitePending: true,
+    }
+    if (isValidEVMAddress(enteredIdentifier)) {
+      const info = await getExistingAccounts([enteredIdentifier])
+      const userDetails = info[0]
+      if (userDetails) {
+        newUser.userId = userDetails.preferences.id
+        newUser.name = userDetails.preferences.name
+      }
+    }
+    setInvitedUsers(prev => [...prev, newUser])
+    setEnteredIdentifier('')
+    setIsLoading(false)
   }
 
   const removeUser = (inviteeId: number) => {
@@ -181,18 +186,33 @@ const GroupInviteForm: FC<InviteModalProps> = ({
               Contact
               <InfoTooltip text="Add your contacts by entering their wallet address, email or other identifier." />
             </FormLabel>
-            <Input
-              name="identifier"
-              placeholder="Search or enter identifier"
-              _placeholder={{
-                color: 'neutral.400',
-              }}
-              borderColor="neutral.400"
-              disabled={isLoading}
-              value={enteredIdentifier}
-              onChange={e => setEnteredIdentifier(e.target.value)}
-              onKeyDown={addUserToList}
-            />
+            <HStack>
+              <Input
+                name="identifier"
+                placeholder="Search or enter identifier"
+                _placeholder={{
+                  color: 'neutral.400',
+                }}
+                borderColor="neutral.400"
+                disabled={isLoading}
+                value={enteredIdentifier}
+                onChange={e => setEnteredIdentifier(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    addUserToList(e)
+                  }
+                }}
+              />
+              <Button
+                colorScheme="primary"
+                type="button"
+                isLoading={isLoading}
+                isDisabled={isLoading}
+                onClick={e => addUserToList(e)}
+              >
+                <CheckIcon />
+              </Button>
+            </HStack>
             <Text mt={2} fontSize="12px" color="gray.400">
               Press enter. No need to add yourself.
             </Text>
@@ -215,7 +235,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
               borderColor="neutral.400"
               fontSize="16px"
               fontWeight="500"
-              color={isMessageFocused ? 'white' : 'neutral.400'}
+              color={isMessageFocused ? focusedColor : blurredColor}
               onFocus={() => setIsMessageFocused(true)}
               onBlur={() => setIsMessageFocused(false)}
             />

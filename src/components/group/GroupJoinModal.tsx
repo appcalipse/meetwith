@@ -81,7 +81,7 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
             <Button
               isLoading={accepting}
               onClick={handleAccept}
-              colorScheme="grayButton"
+              colorScheme="neutral"
             >
               Join Group
             </Button>
