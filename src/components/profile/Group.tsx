@@ -272,6 +272,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           resetState={resetState}
           onClose={closeLeaveModal}
           isOpen={isLeaveModalOpen}
+          setToggleAdminLeaveModal={setToggleAdminLeave}
         />
         <RemoveGroupMemberModal
           groupID={selectedGroupId}
