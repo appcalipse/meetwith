@@ -87,7 +87,7 @@ const EditGroupNameModal: React.FC<IEditGroupNameModal> = props => {
               onChange={handleInputChange}
             />
             <HStack ml={'auto'} w={'fit-content'} mt={'6'} gap={'4'}>
-              <Button onClick={props.onClose} colorScheme="grayButton">
+              <Button onClick={props.onClose} colorScheme="neutral">
                 Cancel
               </Button>
               <Button

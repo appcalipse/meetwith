@@ -22,10 +22,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         success: true,
       })
     } catch (error) {
-      if (error instanceof IsGroupAdminError) {
-        return res.status(403).json({ error: error.message })
-      }
       if (error instanceof NotGroupMemberError) {
+        return res.status(400).json({ error: error.message })
+      }
+      if (error instanceof IsGroupAdminError) {
         return res.status(403).json({ error: error.message })
       }
       if (error instanceof GroupNotExistsError) {
