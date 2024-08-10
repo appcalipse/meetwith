@@ -361,21 +361,23 @@ const GroupCard: React.FC<IGroupCard> = props => {
               />
             </VStack>
             <HStack gap={3} width="fit-content">
-              <Button
-                colorScheme="primary"
-                onClick={() =>
-                  push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
-                }
-              >
-                Schedule
-              </Button>
               {props.role === MemberType.ADMIN && (
-                <IconButton
-                  aria-label="Add Contact"
-                  p={'8px 16px'}
-                  icon={<IoMdPersonAdd size={20} />}
-                  onClick={() => props.onAddNewMember(props.id, props.name)}
-                />
+                <>
+                  <Button
+                    colorScheme="primary"
+                    onClick={() =>
+                      push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
+                    }
+                  >
+                    Schedule
+                  </Button>
+                  <IconButton
+                    aria-label="Add Contact"
+                    p={'8px 16px'}
+                    icon={<IoMdPersonAdd size={20} />}
+                    onClick={() => props.onAddNewMember(props.id, props.name)}
+                  />
+                </>
               )}
               <Menu>
                 <MenuButton

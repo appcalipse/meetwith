@@ -44,6 +44,7 @@ import {
   GroupCreationError,
   Huddle01ServiceUnavailable,
   InvalidSessionError,
+  IsGroupAdminError,
   MeetingChangeConflictError,
   MeetingCreationError,
   TimeNotAvailableError,
@@ -476,11 +477,19 @@ export const rejectGroup = async (group_id: string, email_address?: string) => {
 }
 
 export const leaveGroup = async (group_id: string) => {
-  const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/leave`,
-    'POST'
-  )
-  return response?.success
+  try {
+    const response = await internalFetch<{ success: true }>(
+      `/secure/group/${group_id}/leave`,
+      'POST'
+    )
+    return response?.success
+  } catch (e: any) {
+    if (e.status && e.status === 403) {
+      throw new IsGroupAdminError()
+    } else {
+      throw e
+    }
+  }
 }
 export const removeGroupMember = async (
   group_id: string,

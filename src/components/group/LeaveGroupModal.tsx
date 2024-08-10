@@ -16,12 +16,14 @@ import React from 'react'
 
 import { leaveGroup } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
+import { IsGroupAdminError } from '@/utils/errors'
 
 export interface IGroupInviteCardModal {
   groupID: string | null
   resetState: () => void
   onClose: () => void
   isOpen: boolean
+  setToggleAdminLeaveModal: (value: boolean) => void
 }
 
 const LeaveGroupModal: React.FC<IGroupInviteCardModal> = props => {
@@ -36,7 +38,12 @@ const LeaveGroupModal: React.FC<IGroupInviteCardModal> = props => {
       props.resetState()
       props.onClose()
     } catch (error: any) {
-      handleApiError('Error leaving group', error)
+      if (error instanceof IsGroupAdminError) {
+        props.onClose()
+        props.setToggleAdminLeaveModal(true)
+      } else {
+        handleApiError('Error leaving group', error)
+      }
     }
     setIsLeaving(false)
   }
@@ -66,7 +73,7 @@ const LeaveGroupModal: React.FC<IGroupInviteCardModal> = props => {
             can always get invited back by an admin.
           </Text>
           <HStack ml={'auto'} w={'fit-content'} mt={'6'} gap={'4'}>
-            <Button onClick={props.onClose} colorScheme="grayButton">
+            <Button onClick={props.onClose} colorScheme="neutral">
               Cancel
             </Button>
             <Button
