@@ -3,10 +3,18 @@ import { Auth, google } from 'googleapis'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import {
+  AccountNotifications,
+  NotificationChannel,
+} from '@/types/AccountNotifications'
 import { TimeSlotSource } from '@/types/Meeting'
 
 import { apiUrl, OnboardingSubject } from '../../../../../utils/constants'
-import { addOrUpdateConnectedCalendar } from '../../../../../utils/database'
+import {
+  addOrUpdateConnectedCalendar,
+  getAccountNotificationSubscriptions,
+  setAccountNotificationSubscriptions,
+} from '../../../../../utils/database'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -110,7 +118,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     calendars,
     key
   )
-
+  const notifications = await getAccountNotificationSubscriptions(
+    req.session.account.address
+  )
+  const userEmail = notifications?.notification_types.find(
+    n => n.channel === NotificationChannel.EMAIL
+  )?.destination
+  if (!userEmail) {
+    notifications.notification_types.push({
+      channel: NotificationChannel.EMAIL,
+      destination: userInfoRes.data.email!,
+      disabled: false,
+    })
+    await setAccountNotificationSubscriptions(
+      req.session.account.address,
+      notifications as AccountNotifications
+    )
+  }
   if (stateObject) {
     stateObject.origin = OnboardingSubject.GoogleCalendarConnected
   }
@@ -118,7 +142,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const newState64 = stateObject
     ? Buffer.from(JSON.stringify(stateObject)).toString('base64')
     : undefined
-  if (stateObject.redirectTo) {
+  if (stateObject?.redirectTo) {
     const containParams = stateObject.redirectTo.includes('?')
     const redirect_url =
       stateObject.redirectTo +
