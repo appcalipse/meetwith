@@ -64,7 +64,7 @@ interface MeetSlotPickerProps {
   isGateValid: boolean
   isSchedulingExternal: boolean
   notificationsSubs?: number
-  onDayChange?: (day: Date) => void
+  onDayChange?: (day?: Date) => void
   onMonthChange?: (day: Date) => void
   onTimeChange?: (time?: Date) => void
   onSchedule: (
@@ -84,6 +84,7 @@ interface MeetSlotPickerProps {
   slotDurationInMinutes: number
   timeSlotAvailability: (slot: Date) => boolean
   willStartScheduling: (isScheduling: boolean) => void
+  isMobile: boolean
 }
 
 const timezonesObj = ct.getAllTimezones()
@@ -118,6 +119,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   slotDurationInMinutes,
   timeSlotAvailability,
   willStartScheduling,
+  isMobile,
 }) => {
   const tzs = timezones.map(tz => {
     return {
@@ -155,10 +157,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   const [showConfirm, setShowConfirm] = useState(false)
   const [disablePrev, setDisablePrev] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
-  const [isSmallerThan800] = useMediaQuery('(max-width: 800px)', {
-    ssr: true,
-    fallback: false, // return false on the server, and re-evaluate on the client side
-  })
+
   useEffect(() => {
     if (reset) {
       setPickedDay(null)
@@ -196,6 +195,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 
   const handleClosePickDay = () => {
     setPickedDay(null)
+    onDayChange && onDayChange(undefined)
   }
 
   const handleCloseConfirm = () => {
@@ -408,7 +408,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
         gap={120}
         flexWrap="wrap"
       >
-        {!showConfirm && (!isSmallerThan800 || !pickedDay) && (
+        {!showConfirm && (!isMobile || !pickedDay) && (
           <Calendar
             loading={checkingSlots}
             validator={validator}
@@ -427,19 +427,20 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 
 
         */}
-        {!showConfirm && (!isSmallerThan800 || !!pickedDay) && (
+        {!showConfirm && (!isMobile || pickedDay) && (
           <VStack flex={1} alignItems={{ md: 'flex-start', base: 'center' }}>
             <VStack
               alignItems={{ md: 'flex-start', base: 'center' }}
               width={'100%'}
             >
               <HStack mb={0}>
-                {isSmallerThan800 && !!pickedDay && (
+                {isMobile && !!pickedDay && (
                   <Icon
                     as={FaArrowLeft}
                     onClick={handleClosePickDay}
                     size="1.5em"
                     color={color}
+                    cursor="pointer"
                   />
                 )}
                 <Heading size="md">Select Time</Heading>
