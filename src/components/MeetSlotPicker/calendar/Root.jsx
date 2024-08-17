@@ -1,3 +1,4 @@
+import { useColorMode } from '@chakra-ui/color-mode'
 import {
   Box,
   Center,
@@ -37,7 +38,7 @@ function Root({
 }) {
   const [fakeMonth, setFakeMonth] = useState(selectedMonth)
   const [animation, setAnimation] = useState('')
-
+  const { colorMode } = useColorMode()
   const [startDay, days] = generateDays(selectedMonth)
   const [fakeStartDay, fakeDays] = generateDays(fakeMonth)
 
@@ -154,6 +155,7 @@ function Root({
                         key={day}
                         isValid={isValid}
                         isToday={_isToday}
+                        isDarkMode={colorMode === 'dark'}
                         isWeekend={_isWeekend}
                         onClick={() => isValid && handlePickDay(day)}
                       >
