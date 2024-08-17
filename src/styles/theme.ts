@@ -6,7 +6,7 @@ const config: ThemeConfig = {
   disableTransitionOnChange: false,
 }
 
-const colors = {
+export const colors = {
   primary: {
     50: '#FCDACF',
     100: '#FBC7B7',
