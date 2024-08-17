@@ -5,6 +5,7 @@ import {
   HStack,
   Spinner,
   useColorModeValue,
+  useMediaQuery,
   VStack,
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
@@ -140,6 +141,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   )
   const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<Date | undefined>(undefined)
   const [busySlots, setBusyslots] = useState([] as Interval[])
   const [selfBusySlots, setSelfBusyslots] = useState([] as Interval[])
@@ -182,7 +184,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     )
     setTeamAccounts(accounts)
   }
-
+  const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
+    ssr: true,
+    fallback: false, // return false on the server, and re-evaluate on the client side
+  })
   useEffect(() => {
     const blockedAvailabilities = getBlockedAvailabilities(
       account?.preferences?.availabilities
@@ -631,7 +636,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         busySlots,
         account?.preferences?.availabilities || [],
         Intl.DateTimeFormat().resolvedOptions().timeZone,
-        account!.preferences.timezone
+        account?.preferences?.timezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone
       )
     } else {
       if (
@@ -672,9 +678,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               0,
               slot,
               busySlots,
-              eachAccount.preferences.availabilities,
+              eachAccount?.preferences?.availabilities,
               Intl.DateTimeFormat().resolvedOptions().timeZone,
-              eachAccount?.preferences.timezone
+              eachAccount?.preferences?.timezone
             )
           ) {
             return false
@@ -689,9 +695,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               0,
               slot,
               busySlots,
-              eachAccount.preferences.availabilities,
+              eachAccount?.preferences?.availabilities,
               Intl.DateTimeFormat().resolvedOptions().timeZone,
-              eachAccount!.preferences.timezone
+              eachAccount?.preferences?.timezone
             )
           ) {
             return true
@@ -736,9 +742,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       minAdvanceTime,
       slot,
       selfBusySlots,
-      currentAccount!.preferences.availabilities,
+      currentAccount?.preferences?.availabilities || [],
       Intl.DateTimeFormat().resolvedOptions().timeZone,
-      currentAccount!.preferences.timezone
+      currentAccount?.preferences?.timezone ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
 
@@ -775,7 +782,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   flex="1"
                   minW={{ base: '100%', md: '500px' }}
                   maxW={{ md: '250px', base: '100%' }}
-                  p={8}
+                  px={{ md: 8, base: 0 }}
+                  py={8}
                 >
                   {calendarType === CalendarType.REGULAR ? (
                     <ProfileInfo
@@ -787,6 +795,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       rescheduleSlotId={rescheduleSlotId}
                       readyToSchedule={readyToSchedule}
                       selectedTime={selectedTime}
+                      selectedDay={selectedDay}
+                      isMobile={isMobile}
                     />
                   ) : (
                     <GroupScheduleCalendarProfile
@@ -824,8 +834,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   <Box flex="1" width="100%" p={{ md: 8 }}>
                     <MeetSlotPicker
                       reset={reset}
-                      onMonthChange={(day: Date) => setCurrentMonth(day)}
-                      onTimeChange={(time?: Date) => setSelectedTime(time)}
+                      onMonthChange={setCurrentMonth}
+                      onTimeChange={setSelectedTime}
+                      isMobile={isMobile}
                       availabilityInterval={
                         teamMeetingRequest
                           ? {
@@ -838,6 +849,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       }
                       blockedDates={blockedDates}
                       preferences={account?.preferences}
+                      onDayChange={setSelectedDay}
                       onSchedule={confirmSchedule}
                       willStartScheduling={willStartScheduling => {
                         setReadyToSchedule(willStartScheduling)
