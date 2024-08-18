@@ -6,7 +6,12 @@ import { Wallet } from 'thirdweb/wallets'
 import { getUserEmail } from 'thirdweb/wallets/in-app'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import {
+  AccountNotifications,
+  NotificationChannel,
+} from '@/types/AccountNotifications'
 import { logEvent } from '@/utils/analytics'
+import { setNotificationSubscriptions } from '@/utils/api_helper'
 import { InvalidSessionError } from '@/utils/errors'
 import { loginWithAddress, thirdWebClient } from '@/utils/user_manager'
 
@@ -48,10 +53,29 @@ export const useLogin = () => {
           const stateObj: any = { signedUp: true }
 
           if (wallet.id === 'inApp') {
-            //needed due bug in the SDK that returns last email even if a new EOA signs in
+            // needed due bug in the SDK that returns the last email even if a new EOA signs in
             const email = await getUserEmail({ client: thirdWebClient })
             if (email) {
               stateObj.email = email
+              if (!shouldRedirect) {
+                // force-set email notification for users signing up from pages with no onboarding redirection
+                const subs = {
+                  account_address: currentAccount!.address,
+                  notification_types: [],
+                } as AccountNotifications
+
+                subs.notification_types.push({
+                  channel: NotificationChannel.EMAIL,
+                  destination: email,
+                  disabled: false,
+                })
+
+                await setNotificationSubscriptions(subs)
+
+                logEvent('Set notifications', {
+                  channels: subs.notification_types.map(sub => sub.channel),
+                })
+              }
             }
           }
           if (redirectPath) {
