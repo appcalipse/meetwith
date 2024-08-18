@@ -60,7 +60,7 @@ export const useLogin = () => {
               if (!shouldRedirect) {
                 // force-set email notification for users signing up from pages with no onboarding redirection
                 const subs = {
-                  account_address: currentAccount!.address,
+                  account_address: account.address,
                   notification_types: [],
                 } as AccountNotifications
 
