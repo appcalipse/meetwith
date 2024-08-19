@@ -1,6 +1,13 @@
 import { Image } from '@chakra-ui/image'
 import { Box, Flex, HStack, Spacer, Text } from '@chakra-ui/layout'
-import { Heading, Icon, IconButton, Link, VStack } from '@chakra-ui/react'
+import {
+  Heading,
+  Icon,
+  IconButton,
+  Link,
+  useMediaQuery,
+  VStack,
+} from '@chakra-ui/react'
 import { Tooltip, useColorModeValue } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
 import { addMinutes, format } from 'date-fns'
@@ -35,18 +42,19 @@ interface ProfileInfoProps {
   selectedType: MeetingType
   rescheduleSlotId?: string
   selectedTime?: Date
+  selectedDay?: Date
+  isMobile: boolean
 }
 
 const ProfileInfo: React.FC<ProfileInfoProps> = props => {
   let [twitter, telegram, discord] = ['', '', '']
-
   const social = props.account.preferences?.socialLinks
   if (social) {
     twitter = social.filter(s => s.type === SocialLinkType.TWITTER)[0]?.url
     discord = social.filter(s => s.type === SocialLinkType.DISCORD)[0]?.url
     telegram = social.filter(s => s.type === SocialLinkType.TELEGRAM)[0]?.url
   }
-
+  const socialsExists = social?.some(val => val.url)
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
 
   const iconColor = useColorModeValue('gray.600', 'white')
@@ -85,7 +93,6 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
     minute: 'numeric',
     hour12: true,
   })
-
   const formattedDate = format(startTime, 'PPPP')
   const timeDuration = `${formattedStartTime} - ${formattedEndTime}`
   return (
@@ -94,6 +101,11 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
       w={{ base: '100%', md: 'fit-content' }}
       alignItems={{ md: 'flex-start', base: 'center' }}
       marginX={{ base: 'auto', md: 0 }}
+      display={
+        props.selectedDay && !props.selectedTime && props.isMobile
+          ? 'none'
+          : 'flex'
+      }
     >
       <Box>
         <HStack gap={{ md: 4, base: 2 }} alignItems="center">
@@ -108,7 +120,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
       {props.readyToSchedule ? (
         <VStack
           gap={{ md: 8, base: 6 }}
-          w="fit-content"
+          w="100%"
           alignItems="flex-start"
           mt={{ base: -6, md: 0 }}
         >
@@ -130,7 +142,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
         </VStack>
       ) : (
         <>
-          {!!props.account.preferences?.socialLinks?.length && (
+          {socialsExists && (
             <VStack
               alignItems={{ md: 'flex-start', base: 'center' }}
               mt={{ base: -6, md: 0 }}
