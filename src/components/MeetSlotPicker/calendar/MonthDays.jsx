@@ -1,5 +1,7 @@
 import styled from 'styled-components'
 
+import { colors } from '../../../styles/theme'
+
 export const MonthDays = styled.ul`
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -21,8 +23,22 @@ export const MonthDay = styled.li`
   border-radius: 50%;
   transition: all 0.25s ease;
   font-weight: ${props => (props.isToday ? 'bold' : '500')};
-  color: ${props =>
-    props.isToday ? '#F46739' : props.isWeekend ? '#9AA5B1' : '#E4E7EB'};
+  color: ${props => {
+    const todayColor = props.isDarkMode
+      ? colors.primary['400']
+      : colors.primary['600']
+    const isWeekendColor = props.isDarkMode
+      ? colors.neutral['300']
+      : colors.neutral['400']
+    const isNotValidColor = props.isDarkMode
+      ? colors.neutral['100']
+      : colors.neutral['500']
+    return props.isToday
+      ? todayColor
+      : props.isWeekend
+      ? isWeekendColor
+      : isNotValidColor
+  }};
   opacity: ${props => (props.isValid ? 1 : 0.5)};
 
   :hover {
