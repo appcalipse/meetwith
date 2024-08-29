@@ -1,7 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { initDB, rejectGroupInvite } from '@/utils/database'
+import { NotificationChannel } from '@/types/AccountNotifications'
+import {
+  getAccountNotificationSubscriptions,
+  initDB,
+  rejectGroupInvite,
+} from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
@@ -15,7 +20,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         group_id: string
         email_address?: string
       }
-      await rejectGroupInvite(group_id, account_address, email_address)
+      const notifications = await getAccountNotificationSubscriptions(address)
+      const userEmail = notifications?.notification_types.find(
+        n => n.channel === NotificationChannel.EMAIL
+      )?.destination
+      await rejectGroupInvite(
+        group_id,
+        account_address,
+        email_address || userEmail
+      )
       return res.status(200).json({
         success: true,
       })
