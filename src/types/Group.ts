@@ -128,3 +128,8 @@ export interface GroupInviteFilters {
   limit?: number
   offset?: number
 }
+
+export interface CreateGroupPayload {
+  name: string
+  slug?: string
+}
