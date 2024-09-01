@@ -104,9 +104,10 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       | React.KeyboardEvent<HTMLInputElement>
       | React.MouseEvent<HTMLButtonElement>
   ) => {
-    setIsLoading(true)
     event.preventDefault()
+
     if (!enteredIdentifier) return
+    setIsLoading(true)
     const isValidInput =
       isValidEmail(enteredIdentifier) ||
       isEthereumAddressOrDomain(enteredIdentifier)
