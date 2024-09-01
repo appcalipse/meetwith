@@ -2347,8 +2347,8 @@ export async function isUserAdminOfGroup(
 
 export async function createGroupInDB(
   name: string,
-  slug: string,
-  account_address: string
+  account_address: string,
+  slug?: string
 ): Promise<CreateGroupsResponse> {
   const { data, error } = await db.supabase
     .from<TablesInsert<'groups'>>('groups')
@@ -2361,7 +2361,7 @@ export async function createGroupInDB(
 
   if (error) {
     throw new GroupCreationError(
-      'Group with slug already exists',
+      'Group with name already exists',
       error.message
     )
   }
