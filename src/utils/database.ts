@@ -2361,7 +2361,7 @@ export async function createGroupInDB(
 
   if (error) {
     throw new GroupCreationError(
-      'Group with name already exists',
+      'Group with slug already exists',
       error.message
     )
   }
