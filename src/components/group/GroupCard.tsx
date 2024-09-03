@@ -131,14 +131,6 @@ const GroupCard: React.FC<IGroupCard> = props => {
             },
           },
           {
-            label: 'Edit group scheduling link',
-            onClick: () => {
-              openSlugEditModal()
-              pickGroupSlug(props.slug)
-              pickGroupId(props.id)
-            },
-          },
-          {
             label: 'Delete group',
             important: true,
             onClick: () => {
@@ -327,7 +319,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
     >
       {({ isExpanded }) => (
         <>
-          <HStack justifyContent="space-between" width="100%">
+          <HStack
+            justifyContent="space-between"
+            width="100%"
+            alignItems="flex-start"
+          >
             <VStack gap={0} alignItems="start">
               <Heading
                 size={'lg'}
@@ -339,26 +335,6 @@ const GroupCard: React.FC<IGroupCard> = props => {
               >
                 {props.name}
               </Heading>
-              <CopyLinkButton
-                url={`${appUrl}/${props.slug}`}
-                size="md"
-                label={`${appUrl}/${props.slug}`}
-                withIcon
-                design_type="link"
-                noOfLines={1}
-                width="100%"
-                mr="auto"
-                maxW="335px"
-                childStyle={{
-                  style: {
-                    maxWidth: '300px',
-                    width: 'fit-content',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  },
-                }}
-              />
             </VStack>
             <HStack gap={3} width="fit-content">
               {props.role === MemberType.ADMIN && (
