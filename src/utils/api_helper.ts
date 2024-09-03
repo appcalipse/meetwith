@@ -901,22 +901,18 @@ export const getConferenceMeeting = async (
   }
 }
 
-export const createGroup = async (
-  groupName: string,
-  groupSlug: string
-): Promise<GetGroupsResponse> => {
+export const createGroup = async (name: string): Promise<GetGroupsResponse> => {
   try {
     const response = await internalFetch<GetGroupsResponse>(
       '/secure/group',
       'POST',
       {
-        name: groupName,
-        slug: groupSlug,
+        name,
       }
     )
 
     return response
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e instanceof ApiFetchError) {
       if (e.status === 400) {
         throw new GroupCreationError('Invalid input data')

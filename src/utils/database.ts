@@ -2347,8 +2347,8 @@ export async function isUserAdminOfGroup(
 
 export async function createGroupInDB(
   name: string,
-  slug: string,
-  account_address: string
+  account_address: string,
+  slug?: string
 ): Promise<CreateGroupsResponse> {
   const { data, error } = await db.supabase
     .from<TablesInsert<'groups'>>('groups')

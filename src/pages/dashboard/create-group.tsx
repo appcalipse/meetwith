@@ -17,14 +17,13 @@ import React, { useState } from 'react'
 
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { createGroup } from '@/utils/api_helper'
-import { getSlugFromText, isJson } from '@/utils/generic_utils'
+import { isJson } from '@/utils/generic_utils'
 
 const CreateGroupPage = () => {
   const router = useRouter()
   const toast = useToast()
 
   const [groupName, setGroupName] = useState('')
-  const [groupSlug, setGroupSlug] = useState('')
   const [groupCreating, setGroupCreating] = useState(false)
 
   const handleGroupSubmit = async (event: React.FormEvent) => {
@@ -32,7 +31,7 @@ const CreateGroupPage = () => {
     setGroupCreating(true)
 
     try {
-      const response = await createGroup(groupName, groupSlug) // Use the helper method
+      const response = await createGroup(groupName) // Use the helper method
 
       const newGroupId = response.id
 
@@ -63,15 +62,6 @@ const CreateGroupPage = () => {
       })
     }
     setGroupCreating(false)
-  }
-
-  function handleGroupNameChange(name: string) {
-    setGroupName(val => {
-      if (!groupSlug || getSlugFromText(val) === groupSlug) {
-        setGroupSlug(getSlugFromText(name))
-      }
-      return name
-    })
   }
 
   return (
@@ -111,51 +101,8 @@ const CreateGroupPage = () => {
               _placeholder={{
                 color: 'neutral.400',
               }}
-              onChange={e => handleGroupNameChange(e.target.value)}
+              onChange={e => setGroupName(e.target.value)}
             />
-          </FormControl>
-          <FormControl>
-            <HStack spacing={1} alignItems="center">
-              <FormLabel
-                fontSize="16px"
-                fontWeight="500"
-                lineHeight="24px"
-                fontFamily="'DM Sans', sans-serif"
-                textAlign="left"
-                mb="0"
-                mr="-2"
-              >
-                Group calendar name
-              </FormLabel>
-              <InfoTooltip text="This name will be used for your group calendar." />
-            </HStack>
-            <InputGroup mt="2">
-              <InputLeftAddon
-                border={'1px solid #7B8794'}
-                bg="transparent"
-                borderRightWidth={0}
-                borderColor="neutral.400 !important"
-                pr={0}
-              >
-                meetwithwallet.xyz/
-              </InputLeftAddon>
-              <Input
-                placeholder="my-group-name"
-                value={groupSlug}
-                outline="none"
-                _focusVisible={{
-                  borderColor: 'neutral.400',
-                  boxShadow: 'none',
-                }}
-                borderColor="neutral.400"
-                borderLeftWidth={0}
-                pl={0}
-                _placeholder={{
-                  color: 'neutral.400',
-                }}
-                onChange={e => setGroupSlug(e.target.value)}
-              />
-            </InputGroup>
           </FormControl>
           <Box>
             <Button

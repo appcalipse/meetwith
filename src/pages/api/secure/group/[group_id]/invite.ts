@@ -66,26 +66,20 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         continue
       }
 
-      let account = null
       let userEmail: string | undefined
       if (invitee.email) {
-        try {
-          account = await getAccountFromDB(invitee.email)
-          userEmail = invitee.email
-        } catch (error) {
-          console.warn(
-            `Account with email ${invitee.email} not found. Proceeding with invite creation.`
-          )
-        }
+        userEmail = invitee.email
       } else if (invitee.address) {
         try {
-          account = await getAccountFromDB(invitee.address)
-          const notifications = await getAccountNotificationSubscriptions(
-            invitee.address
-          )
-          userEmail = notifications?.notification_types.find(
-            n => n.channel === NotificationChannel.EMAIL
-          )?.destination
+          const account = await getAccountFromDB(invitee.address)
+          if (account) {
+            const notifications = await getAccountNotificationSubscriptions(
+              invitee.address
+            )
+            userEmail = notifications?.notification_types.find(
+              n => n.channel === NotificationChannel.EMAIL
+            )?.destination
+          }
         } catch (error) {
           console.warn(
             `Account with address ${invitee.address} not found. Proceeding with invite creation.`
