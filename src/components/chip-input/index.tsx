@@ -10,9 +10,11 @@ import {
   ClipboardEventHandler,
   FocusEventHandler,
   KeyboardEventHandler,
+  ReactElement,
   useState,
 } from 'react'
 
+import { IGroupParticipant } from '@/pages/dashboard/schedule'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -27,11 +29,13 @@ const DEFAULT_STOP_KEYS = ['Tab', 'Space', 'Enter', 'Escape', 'Comma']
 interface ChipInputProps {
   onChange: (data: ParticipantInfo[]) => void
   isReadOnly?: boolean
-  currentItems: ParticipantInfo[]
+  currentItems: Array<ParticipantInfo | IGroupParticipant>
   renderItem: (item: ParticipantInfo) => string
   placeholder?: string
   // chakra props that we want to propagate
   size?: InputProps['size']
+  button?: ReactElement
+  inputProps?: InputProps
 }
 
 export const ChipInput: React.FC<ChipInputProps> = ({
@@ -41,6 +45,8 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   renderItem,
   size = 'md',
   placeholder = 'Type do add items',
+  button,
+  inputProps,
 }) => {
   const [current, setCurrent] = useState('')
   const [focused, setFocused] = useState(false)
@@ -53,7 +59,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
     }
 
     const newState: ParticipantInfo[] = [
-      ...currentItems,
+      ...(currentItems as ParticipantInfo[]),
       ...items.map(item => {
         const _item = item.trim()
         if (isValidEVMAddress(_item)) {
@@ -92,7 +98,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   const removeItem = (idx: number) => {
     const copy = [...currentItems]
     copy.splice(idx, 1)
-    onChange(copy)
+    onChange(copy as ParticipantInfo[])
   }
 
   const onRemoveItem = (idx: number) => {
@@ -103,7 +109,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
     return (
       <Box key={`${idx}-${it}`}>
         <BadgeChip onRemove={() => onRemoveItem(idx)} allowRemove={!isReadOnly}>
-          {renderItem(it)}
+          {renderItem(it as ParticipantInfo)}
         </BadgeChip>
       </Box>
     )
@@ -143,7 +149,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
     }
   }
 
-  const borderColor = useColorModeValue('gray.300', 'whiteAlpha.300')
+  const borderColor = useColorModeValue('gray.300', 'neutral.400')
   const hoverColor = useColorModeValue('#3182ce', '#63b3ed')
 
   return (
@@ -164,7 +170,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
       spacing={0}
     >
       {badges}
-      <Box flex={1}>
+      <Box flex={1} pos="relative">
         <Input
           size={size}
           display={'inline-block'}
@@ -177,7 +183,12 @@ export const ChipInput: React.FC<ChipInputProps> = ({
           onBlur={onLostFocus}
           placeholder={currentItems.length ? '' : placeholder}
           onKeyDown={onKeyDown}
+          _placeholder={{
+            color: 'neutral.400',
+          }}
+          {...inputProps}
         />
+        {button}
       </Box>
     </HStack>
   )

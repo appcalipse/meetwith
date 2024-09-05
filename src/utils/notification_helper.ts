@@ -28,7 +28,8 @@ import {
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
-  getGroupFromDB,
+  getGroup,
+  getGroupInternal,
 } from './database'
 import {
   cancelledMeetingEmail,
@@ -59,7 +60,7 @@ export const notifyForGroupInviteJoinOrReject = async (
   notifyType: GroupNotificationType
 ): Promise<void> => {
   const participantsInfo: ParticipantInfoForInviteNotification[] = []
-  const group = await getGroupFromDB(group_id)
+  const group = await getGroupInternal(group_id)
 
   for (const address of accountsToNotify) {
     const account = await getAccountFromDB(address)
@@ -76,6 +77,7 @@ export const notifyForGroupInviteJoinOrReject = async (
 
   return
 }
+
 export const notifyForMeetingCancellation = async (
   participantActing: ParticipantBaseInfo,
   guestsToRemove: ParticipantInfo[],

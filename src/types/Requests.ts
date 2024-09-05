@@ -107,5 +107,6 @@ export interface DiscordMeetingRequest {
 export interface ChangeGroupAdminRequest {
   address?: string
   userId?: string
+  invitePending: boolean
   role: MemberType
 }

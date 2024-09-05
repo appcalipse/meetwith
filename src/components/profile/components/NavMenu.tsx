@@ -59,7 +59,7 @@ export const NavMenu: React.FC<{
   const [noOfInvitedGroups, setNoOfInvitedGroups] = React.useState<number>(0)
 
   const { calendarResult } = router.query
-  const menuBg = useColorModeValue('white', 'gray.800')
+  const menuBg = useColorModeValue('white', 'neutral.900')
   const LinkItems: Array<LinkItemProps> = useMemo(() => {
     const items: Array<LinkItemProps> = [
       { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },

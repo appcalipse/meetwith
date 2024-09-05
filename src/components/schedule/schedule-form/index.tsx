@@ -14,11 +14,12 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { useContext, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import { ToggleSelector } from '@/components/toggle-selector'
+import user from '@/pages/api/secure/group/user'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 
 import { AccountContext } from '../../../providers/AccountProvider'
@@ -77,6 +78,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     if (!logged) return
     await handleConfirm()
   }
+  useEffect(() => {
+    if (logged) {
+      setScheduleType(SchedulingType.REGULAR)
+    } else {
+      setScheduleType(SchedulingType.GUEST)
+    }
+  }, [logged])
 
   const handleConfirm = async () => {
     if (customMeeting && !meetingUrl) {
@@ -155,275 +163,199 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
-
-  useMemo(() => {
-    if (logged) setScheduleType(SchedulingType.REGULAR)
-  }, [logged])
-
   return (
-    <Flex direction="column" gap={4} paddingTop={6}>
-      <ToggleSelector
-        value={scheduleType}
-        onChange={v => {
-          v !== undefined && setScheduleType(v)
-        }}
-        options={[
-          { label: 'Sign in to schedule', value: SchedulingType.REGULAR },
-          { label: 'Schedule as guest', value: SchedulingType.GUEST },
-        ]}
-      />
+    <Flex direction="column" gap={4} paddingTop={3}>
+      <FormControl isInvalid={isNameEmpty}>
+        <FormLabel>Name</FormLabel>
+        <Input
+          autoFocus
+          type="text"
+          isDisabled={isScheduling}
+          placeholder="Your name or an identifier"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+        />
+      </FormControl>
 
-      {scheduleType === SchedulingType.GUEST && (
-        <>
-          <FormControl isInvalid={isNameEmpty}>
-            <FormLabel>Your name</FormLabel>
-            <Input
-              autoFocus
-              type="text"
-              isDisabled={isScheduling}
-              placeholder="Your name or an identifier"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-            />
-          </FormControl>
-
-          <FormControl
-            isInvalid={!isFirstGuestEmailValid && !isGuestEmailValid()}
-          >
-            <FormLabel>Your Email</FormLabel>
-            <Input
-              type="email"
-              placeholder="Insert your email"
-              isDisabled={isScheduling}
-              value={guestEmail}
-              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-              onChange={e => {
+      {(scheduleType === SchedulingType.GUEST || doSendEmailReminders) && (
+        <FormControl
+          isInvalid={
+            doSendEmailReminders
+              ? !isFirstUserEmailValid && !isUserEmailValid()
+              : !isFirstGuestEmailValid && !isGuestEmailValid()
+          }
+        >
+          <FormLabel>Email</FormLabel>
+          <Input
+            type="email"
+            placeholder="Insert your email"
+            isDisabled={isScheduling}
+            value={doSendEmailReminders ? userEmail : guestEmail}
+            onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+            onChange={e => {
+              if (doSendEmailReminders) {
+                setUserEmail(e.target.value)
+                setIsFirstUserEmailValid(false)
+              } else {
                 setGuestEmail(e.target.value)
                 setIsFirstGuestEmailValid(false)
-              }}
-            />
-          </FormControl>
-          <FormControl>
-            <Flex
-              alignItems="center"
-              marginBottom="8px"
-              marginRight="12px"
-              gap="6px"
-            >
-              <FormLabel
-                htmlFor="title"
-                alignItems="center"
-                height="fit-content"
-                margin={0}
-              >
-                Meeting title (optional)
-              </FormLabel>
-              <Tooltip.Provider delayDuration={400}>
-                <Tooltip.Root>
-                  <Tooltip.Trigger>
-                    <Flex
-                      w="16px"
-                      h="16px"
-                      borderRadius="50%"
-                      bgColor={iconColor}
-                      justifyContent="center"
-                      alignItems="center"
-                      ml={1}
-                    >
-                      <Icon w={1} color={bgColor} as={FaInfo} />
-                    </Flex>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content>
-                    <Text
-                      fontSize="sm"
-                      p={4}
-                      maxW="200px"
-                      bgColor={bgColor}
-                      shadow="lg"
-                    >
-                      Give a title for your meeting
-                    </Text>
-                    <Tooltip.Arrow />
-                  </Tooltip.Content>
-                </Tooltip.Root>
-              </Tooltip.Provider>
-            </Flex>
-            <Input
-              id="title"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              type="text"
-              placeholder="Give a title for your meeting"
-            />
-          </FormControl>
-          <FormControl textAlign="left">
-            <FormLabel>What is this meeting about? (optional)</FormLabel>
-            <RichTextEditor
-              isDisabled={isScheduling}
-              placeholder="Any information you want to share prior to the meeting?"
-              value={content}
-              onValueChange={setContent}
-            />
-          </FormControl>
-        </>
+              }
+            }}
+          />
+        </FormControl>
       )}
-
-      {scheduleType === SchedulingType.REGULAR && (
-        <>
-          <FormControl isInvalid={isNameEmpty}>
-            <FormLabel>Your name</FormLabel>
-            <Input
-              autoFocus
-              type="text"
-              placeholder="Your name or an identifier"
-              isDisabled={isScheduling}
-              value={name}
-              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-              onChange={e => setName(e.target.value)}
-            />
-          </FormControl>
-          <FormControl>
-            <Flex
-              alignItems="center"
-              marginBottom="8px"
-              marginRight="12px"
-              gap="6px"
-            >
-              <FormLabel
-                htmlFor="title"
-                alignItems="center"
-                height="fit-content"
-                margin={0}
-              >
-                Meeting title (optional)
-              </FormLabel>
-            </Flex>
-            <Input
-              id="title"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              type="text"
-              placeholder="Give a title for your meeting"
-            />
-          </FormControl>
-          <FormControl textAlign="left">
-            <FormLabel>What is this meeting about? (optional)</FormLabel>
-            <RichTextEditor
-              isDisabled={isScheduling}
-              placeholder="Any information you want to share prior to the meeting?"
-              value={content}
-              onValueChange={setContent}
-            />
-          </FormControl>
-        </>
-      )}
-
-      {scheduleType !== undefined && (
-        <VStack alignItems="start">
-          <HStack alignItems="center">
-            <Switch
-              display="flex"
-              colorScheme="primary"
-              size="md"
-              mr={4}
-              isDisabled={isScheduling}
-              defaultChecked={!customMeeting}
-              onChange={e => setCustomMeeting(!e.target.checked)}
-            />
-            <FormLabel mb="0">
-              <Text>
-                Use{' '}
-                <Link href="https://huddle01.com/?utm_source=mww" isExternal>
-                  Huddle01
-                </Link>{' '}
-                for your meeting
-              </Text>
-            </FormLabel>
-            <Tooltip.Provider delayDuration={400}>
-              <Tooltip.Root>
-                <Tooltip.Trigger>
-                  <Flex
-                    w="16px"
-                    h="16px"
-                    borderRadius="50%"
-                    bgColor={iconColor}
-                    justifyContent="center"
-                    alignItems="center"
-                    ml={1}
-                  >
-                    <Icon w={1} color={bgColor} as={FaInfo} />
-                  </Flex>
-                </Tooltip.Trigger>
-                <Tooltip.Content>
-                  <Text
-                    fontSize="sm"
-                    p={4}
-                    maxW="200px"
-                    bgColor={bgColor}
-                    shadow="lg"
-                  >
-                    Huddle01 is a web3-powered video conferencing tailored for
-                    DAOs and NFT communities.
-                  </Text>
-                  <Tooltip.Arrow />
-                </Tooltip.Content>
-              </Tooltip.Root>
-            </Tooltip.Provider>
-          </HStack>
-          {customMeeting && (
-            <Input
-              type="text"
-              placeholder="insert a custom meeting url"
-              isDisabled={isScheduling}
-              value={meetingUrl}
-              onChange={e => setMeetingUrl(e.target.value)}
-            />
+      <FormControl>
+        <Flex
+          alignItems="center"
+          marginBottom="8px"
+          marginRight="12px"
+          gap="6px"
+        >
+          <FormLabel
+            htmlFor="title"
+            alignItems="center"
+            height="fit-content"
+            margin={0}
+          >
+            Meeting title
+          </FormLabel>
+          <Tooltip.Provider delayDuration={400}>
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                <Flex
+                  w="16px"
+                  h="16px"
+                  borderRadius="50%"
+                  bgColor={iconColor}
+                  justifyContent="center"
+                  alignItems="center"
+                  ml={1}
+                >
+                  <Icon w={1} color={bgColor} as={FaInfo} />
+                </Flex>
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                <Text
+                  fontSize="sm"
+                  p={4}
+                  maxW="200px"
+                  bgColor={bgColor}
+                  shadow="lg"
+                >
+                  Give a title for your meeting (optional)
+                </Text>
+                <Tooltip.Arrow />
+              </Tooltip.Content>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+        </Flex>
+        <Input
+          id="title"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          type="text"
+          placeholder="Give a title for your meeting"
+        />
+      </FormControl>
+      <FormControl
+        textAlign="left"
+        w={{
+          base: '100%',
+          lg: '600px',
+        }}
+      >
+        <FormLabel>What is this meeting about? </FormLabel>
+        <RichTextEditor
+          isDisabled={isScheduling}
+          placeholder="Any information you want to share prior to the meeting?"
+          value={content}
+          onValueChange={setContent}
+        />
+      </FormControl>
+      <VStack alignItems="start">
+        <HStack alignItems="center">
+          <Switch
+            display="flex"
+            colorScheme="primary"
+            size="md"
+            mr={4}
+            isDisabled={isScheduling}
+            defaultChecked={!customMeeting}
+            onChange={e => setCustomMeeting(!e.target.checked)}
+          />
+          <FormLabel mb="0">
+            <Text>
+              Use{' '}
+              <Link href="https://huddle01.com/?utm_source=mww" isExternal>
+                Huddle01
+              </Link>{' '}
+              for your meeting
+            </Text>
+          </FormLabel>
+          <Tooltip.Provider delayDuration={400}>
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                <Flex
+                  w="16px"
+                  h="16px"
+                  borderRadius="50%"
+                  bgColor={iconColor}
+                  justifyContent="center"
+                  alignItems="center"
+                  ml={1}
+                >
+                  <Icon w={1} color={bgColor} as={FaInfo} />
+                </Flex>
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                <Text
+                  fontSize="sm"
+                  p={4}
+                  maxW="200px"
+                  bgColor={bgColor}
+                  shadow="lg"
+                >
+                  Huddle01 is a web3-powered video conferencing tailored for
+                  DAOs and NFT communities.
+                </Text>
+                <Tooltip.Arrow />
+              </Tooltip.Content>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+        </HStack>
+        {customMeeting && (
+          <Input
+            type="text"
+            placeholder="insert a custom meeting url"
+            isDisabled={isScheduling}
+            value={meetingUrl}
+            onChange={e => setMeetingUrl(e.target.value)}
+          />
+        )}
+        {scheduleType === SchedulingType.REGULAR &&
+          (!notificationsSubs || notificationsSubs === 0) && (
+            <>
+              <HStack alignItems="center">
+                <Switch
+                  display="flex"
+                  colorScheme="primary"
+                  size="md"
+                  mr={4}
+                  isDisabled={isScheduling}
+                  defaultChecked={doSendEmailReminders}
+                  onChange={e => {
+                    setSendEmailReminders(e.target.checked)
+                    isUserEmailValid() ? setIsFirstUserEmailValid(true) : null
+                  }}
+                />
+                <FormLabel mb="0">
+                  <Text>Send me email reminders</Text>
+                </FormLabel>
+              </HStack>
+            </>
           )}
-          {scheduleType === SchedulingType.REGULAR &&
-            (!notificationsSubs || notificationsSubs === 0) && (
-              <>
-                <HStack alignItems="center">
-                  <Switch
-                    display="flex"
-                    colorScheme="primary"
-                    size="md"
-                    mr={4}
-                    isDisabled={isScheduling}
-                    defaultChecked={doSendEmailReminders}
-                    onChange={e => {
-                      setSendEmailReminders(e.target.checked)
-                      isUserEmailValid() ? setIsFirstUserEmailValid(true) : null
-                    }}
-                  />
-                  <FormLabel mb="0">
-                    <Text>Send me email reminders</Text>
-                  </FormLabel>
-                </HStack>
-                {doSendEmailReminders === true && (
-                  <FormControl
-                    isInvalid={!isFirstUserEmailValid && !isUserEmailValid()}
-                  >
-                    <Input
-                      type="email"
-                      placeholder="Insert your email"
-                      isDisabled={isScheduling}
-                      value={userEmail}
-                      onKeyDown={event =>
-                        event.key === 'Enter' && handleConfirm()
-                      }
-                      onChange={e => {
-                        setUserEmail(e.target.value)
-                        setIsFirstUserEmailValid(false)
-                      }}
-                    />
-                  </FormControl>
-                )}
-              </>
-            )}
-        </VStack>
-      )}
-
+      </VStack>
       <Button
         width="full"
         isDisabled={
