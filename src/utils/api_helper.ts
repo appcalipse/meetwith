@@ -16,6 +16,7 @@ import {
   EmptyGroupsResponse,
   GetGroupsResponse,
   Group,
+  GroupInvitePayload,
   GroupMember,
 } from '@/types/Group'
 import {
@@ -43,6 +44,7 @@ import {
   GroupCreationError,
   Huddle01ServiceUnavailable,
   InvalidSessionError,
+  IsGroupAdminError,
   MeetingChangeConflictError,
   MeetingCreationError,
   TimeNotAvailableError,
@@ -78,8 +80,9 @@ export const internalFetch = async <T>(
     }
 
     throw new ApiFetchError(response.status, await response.text())
-  } catch (e) {
+  } catch (e: any) {
     Sentry.captureException(e)
+    throw e
   }
 }
 
@@ -407,9 +410,10 @@ export const getMeetingsForDashboard = async (
     created_at: slot.created_at ? new Date(slot.created_at) : undefined,
   }))
 }
+
 export const getGroups = async (
-  limit: number,
-  offset: number
+  limit?: number,
+  offset?: number
 ): Promise<Array<GetGroupsResponse>> => {
   const response = (await internalFetch(
     `/secure/group/user?limit=${limit}&offset=${offset}`
@@ -422,16 +426,18 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   )) as Array<GetGroupsResponse>
   return response
 }
+
 export const getGroupsInvites = async (address: string) => {
   const response = await internalFetch<Array<EmptyGroupsResponse>>(
     `/secure/group/user/${address}`
   )
   return response
 }
+
 export const getGroupsMembers = async (
   group_id: string,
-  limit: number,
-  offset: number
+  limit?: number,
+  offset?: number
 ): Promise<Array<GroupMember>> => {
   const response = await internalFetch<Array<GroupMember>>(
     `/secure/group/${group_id}/users?limit=${limit}&offset=${offset}`
@@ -449,17 +455,70 @@ export const updateGroupRole = async (
   )
   return !!response?.success
 }
-export const joinGroup = async (group_id: string) => {
+
+export const joinGroup = async (group_id: string, email_address?: string) => {
   const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/join`,
+    `/secure/group/${group_id}/join${
+      email_address ? `?email_address=${email_address}` : ''
+    }`,
     'POST'
   )
   return response?.success
 }
-export const rejectGroup = async (group_id: string) => {
+
+export const rejectGroup = async (group_id: string, email_address?: string) => {
   const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/reject`,
+    `/secure/group/${group_id}/reject${
+      email_address ? `?email_address=${email_address}` : ''
+    }`,
     'POST'
+  )
+  return response?.success
+}
+
+export const leaveGroup = async (group_id: string) => {
+  try {
+    const response = await internalFetch<{ success: true }>(
+      `/secure/group/${group_id}/leave`,
+      'POST'
+    )
+    return response?.success
+  } catch (e: any) {
+    if (e.status && e.status === 403) {
+      throw new IsGroupAdminError()
+    } else {
+      throw e
+    }
+  }
+}
+export const removeGroupMember = async (
+  group_id: string,
+  member_id: string,
+  invite_pending: boolean
+) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/remove`,
+    'DELETE',
+    { member_id, invite_pending }
+  )
+  return response?.success
+}
+export const editGroup = async (
+  group_id: string,
+  name?: string,
+  slug?: string
+) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}`,
+    'PUT',
+    { name, slug }
+  )
+  return response?.success
+}
+export const deleteGroup = async (group_id: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}`,
+    'DELETE'
   )
   return response?.success
 }
@@ -467,6 +526,12 @@ export const getGroup = async (group_id: string) => {
   const response = await internalFetch<Group>(`/secure/group/${group_id}`)
   return response
 }
+
+export const getGroupExternal = async (group_id: string) => {
+  const response = await internalFetch<Group>(`/group/${group_id}`)
+  return response
+}
+
 export const subscribeToWaitlist = async (
   email: string,
   plan?: string
@@ -836,31 +901,23 @@ export const getConferenceMeeting = async (
   }
 }
 
-export const createGroup = async (
-  groupName: string,
-  groupCalendarName: string
-): Promise<{ groupId: string }> => {
+export const createGroup = async (name: string): Promise<GetGroupsResponse> => {
   try {
-    const response = await internalFetch<{ id: string }>(
-      '/secure/group/create-group',
+    const response = await internalFetch<GetGroupsResponse>(
+      '/secure/group',
       'POST',
       {
-        name: groupName,
-        calendarName: groupCalendarName,
+        name,
       }
     )
 
-    if (response && response.id) {
-      return { groupId: response.id }
-    } else {
-      throw new GroupCreationError('Invalid response from server')
-    }
-  } catch (e: any) {
+    return response
+  } catch (e: unknown) {
     if (e instanceof ApiFetchError) {
       if (e.status === 400) {
         throw new GroupCreationError('Invalid input data')
       } else if (e.status === 500) {
-        throw new GroupCreationError('Internal server error')
+        throw new GroupCreationError(e.message)
       }
     }
 
@@ -870,26 +927,8 @@ export const createGroup = async (
 }
 
 export const inviteUsers = async (
-  invitedUsers: string[],
-  message: string
+  groupId: string,
+  payload: GroupInvitePayload
 ): Promise<void> => {
-  try {
-    await internalFetch<void>('/api/invite-users', 'POST', {
-      invitedUsers,
-      message,
-    })
-  } catch (e: any) {
-    if (e instanceof ApiFetchError) {
-      if (e.status === 400) {
-        throw new UserInvitationError('Invalid input data', e.status)
-      } else if (e.status === 500) {
-        throw new UserInvitationError('Internal server error', e.status)
-      } else {
-        throw new UserInvitationError(e.message, e.status)
-      }
-    } else {
-      Sentry.captureException(e)
-      throw e
-    }
-  }
+  await internalFetch<void>(`/secure/group/${groupId}/invite`, 'POST', payload)
 }

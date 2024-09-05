@@ -14,21 +14,26 @@ import {
   TagLeftIcon,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import dynamic from 'next/dynamic'
-import React from 'react'
+import React, { useContext } from 'react'
 import { BiExit } from 'react-icons/bi'
 import { FaChevronDown } from 'react-icons/fa'
 import { GoDotFill } from 'react-icons/go'
 import { MdDelete } from 'react-icons/md'
 
+import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
 import { GroupMember, MemberType } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { appUrl } from '@/utils/constants'
+import { handleApiError } from '@/utils/error_helper'
+import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { CopyLinkButton } from '../profile/components/CopyLinkButton'
+
 const Avatar = dynamic(
   async () => (await import('@ukstv/jazzicon-react')).Jazzicon,
   {
@@ -36,6 +41,7 @@ const Avatar = dynamic(
     loading: () => <Spinner />,
   }
 )
+
 interface IGroupMemberCard extends GroupMember {
   currentAccount: Account
   isEmpty?: boolean
@@ -44,24 +50,51 @@ interface IGroupMemberCard extends GroupMember {
   setGroupRoles: React.Dispatch<React.SetStateAction<MemberType[]>>
   updateRole: (data: ChangeGroupAdminRequest) => Promise<boolean>
   groupSlug: string
+  resetState: () => void
+  groupID: string
+  groupName: string
+  isAdmin: boolean
+  handleIsAdminChange: (val: boolean) => void
 }
+
 const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
-  const activeMenuColor = useColorModeValue('neutral.800', 'neutral.200')
+  const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
+  const activeMenuColor = useColorModeValue('neutral.200', 'neutral.400')
+  const tagColor = useColorModeValue('neutral.100', 'neutral.400')
   const [currentRole, setCurrentRole] = React.useState<MemberType>(props.role)
   const [loading, setLoading] = React.useState(false)
+  const {
+    openLeaveModal,
+    setToggleAdminChange,
+    pickGroupId,
+    openRemoveModal,
+    setSelectedGroupMember,
+    setGroupName,
+  } = useContext(GroupContext)
   const handleRoleChange = (
     oldRole: MemberType,
     newRole: MemberType,
     condition?: boolean
   ) => {
+    if (
+      oldRole === MemberType.ADMIN &&
+      currentRole === MemberType.ADMIN &&
+      props.groupRoles.filter(role => role === MemberType.ADMIN).length === 1
+    ) {
+      return () => {
+        setToggleAdminChange(true)
+      }
+    }
     return async () => {
       try {
         if (currentRole === oldRole && !condition) {
           setLoading(true)
           const isSuccessful = await props.updateRole({
-            address: props.address,
+            address: props.invitePending ? undefined : props.address,
+            userId: props.invitePending ? props.userId : undefined,
             role: newRole,
+            invitePending: props.invitePending,
           })
           setLoading(false)
           if (!isSuccessful) return
@@ -72,9 +105,34 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             return rolesArr
           })
           setCurrentRole(newRole)
+          if (props.currentAccount.address === props.address) {
+            props.handleIsAdminChange(newRole === MemberType.ADMIN)
+          }
         }
-      } catch (e) {}
+      } catch (error: any) {
+        handleApiError('Error changing roles', error)
+      }
+      setLoading(false)
     }
+  }
+  const handleLeaveGroup = async () => {
+    if (!props.groupID) return
+    pickGroupId(props.groupID)
+    openLeaveModal()
+  }
+  const handleRemoveGroupMember = async () => {
+    if (!props.groupID) return
+    pickGroupId(props.groupID)
+    setGroupName(props.groupName)
+    setSelectedGroupMember({
+      address: props.address,
+      role: props.role,
+      displayName: props.displayName,
+      userId: props.userId,
+      calendarConnected: props.calendarConnected,
+      invitePending: props.invitePending,
+    })
+    openRemoveModal()
   }
 
   return (
@@ -91,7 +149,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
         </Box>
         <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
           <Heading size="sm">
-            {props.displayName}{' '}
+            {props.displayName || ellipsizeAddress(props.address || '')}{' '}
             {props.currentAccount.address === props.address && '(You)'}
           </Heading>
           {!props.invitePending ? (
@@ -102,6 +160,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               withIcon
               design_type="link"
               pl={0}
+              maxW="335px"
               childStyle={{
                 style: {
                   width: '150px',
@@ -121,13 +180,10 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 py="3"
                 display="grid"
                 placeContent="center"
-                bg="neutral.400"
+                bg={tagColor}
               >
                 <Text size="sm">Pending</Text>
               </Box>
-              <Button colorScheme="primary" variant="link" size="sm">
-                Send reminder
-              </Button>
             </HStack>
           )}
         </VStack>
@@ -149,17 +205,21 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               }
               variant="ghost"
               gap={12}
-              px={4}
+              pr={4}
+              pl={0}
               textTransform="capitalize"
+              isDisabled={!props.isAdmin}
             >
               {currentRole}
             </MenuButton>
             <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
               <MenuItem
                 textTransform="capitalize"
-                borderBottom={`2px solid ${activeMenuColor}`}
+                borderBottom={`2px solid neutral.200`}
                 backgroundColor={
-                  currentRole === MemberType.ADMIN ? activeMenuColor : undefined
+                  currentRole === MemberType.ADMIN
+                    ? activeMenuColor
+                    : menuBgColor
                 }
                 onClick={handleRoleChange(MemberType.MEMBER, MemberType.ADMIN)}
                 disabled={currentRole === MemberType.ADMIN}
@@ -172,14 +232,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 backgroundColor={
                   currentRole === MemberType.MEMBER
                     ? activeMenuColor
-                    : undefined
+                    : menuBgColor
                 }
-                disabled={
-                  (currentRole === MemberType.ADMIN &&
-                    props.groupRoles.filter(role => role === MemberType.ADMIN)
-                      .length === 1) ||
-                  currentRole === MemberType.MEMBER
-                }
+                disabled={currentRole === MemberType.MEMBER}
                 onClick={handleRoleChange(
                   MemberType.ADMIN,
                   MemberType.MEMBER,
@@ -196,7 +251,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       </HStack>
       <HStack flexBasis="35%" display="flex" justifyContent="space-between">
         {props?.calendarConnected ? (
-          <Tag size={'sm'} variant="subtle" bgColor="neutral.400">
+          <Tag size={'sm'} variant="subtle">
             <TagLeftIcon
               boxSize="12px"
               w={5}
@@ -204,24 +259,35 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
               as={GoDotFill}
               color="green.500"
             />
-            <TagLabel color="white" px="2px">
-              Connected
-            </TagLabel>
+            <TagLabel px="2px">Connected</TagLabel>
           </Tag>
         ) : (
-          <Button rightIcon={<FaChevronDown />} variant="ghost" p={0}>
+          <Text p={0} fontWeight={700}>
             Not connected
-          </Button>
+          </Text>
         )}
         {
           // no one can leave an empty group
           !props?.isEmpty &&
-            props.viewerRole === MemberType.ADMIN &&
             (props.address === props.currentAccount.address ? (
-              <Icon ml={2} w={25} h={25} as={BiExit} cursor="pointer" />
+              <Icon
+                ml={2}
+                w={25}
+                h={25}
+                as={BiExit}
+                cursor="pointer"
+                onClick={handleLeaveGroup}
+              />
             ) : // only admin can remove other users
             props.viewerRole === MemberType.ADMIN ? (
-              <Icon ml={2} w={25} h={25} as={MdDelete} cursor="pointer" />
+              <Icon
+                ml={2}
+                w={25}
+                h={25}
+                as={MdDelete}
+                onClick={handleRemoveGroupMember}
+                cursor="pointer"
+              />
             ) : null)
         }
       </HStack>

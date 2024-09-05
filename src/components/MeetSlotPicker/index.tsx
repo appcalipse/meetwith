@@ -2,12 +2,21 @@ import {
   Box,
   Button,
   Flex,
+  Heading,
   HStack,
   Icon,
   Text,
   useColorModeValue,
+  useMediaQuery,
   VStack,
 } from '@chakra-ui/react'
+import {
+  chakraComponents,
+  MultiValue,
+  Select,
+  SingleValue,
+} from 'chakra-react-select'
+import ct from 'countries-and-timezones'
 import {
   addDays,
   addMinutes,
@@ -25,7 +34,18 @@ import {
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import React, { useEffect, useState } from 'react'
-import { FaArrowLeft, FaArrowRight, FaCalendar, FaClock } from 'react-icons/fa'
+import { AiFillCaretDown } from 'react-icons/ai'
+import {
+  FaArrowRight,
+  FaCalendar,
+  FaChevronDown,
+  FaClock,
+  FaGlobe,
+} from 'react-icons/fa'
+import { FaArrowLeft } from 'react-icons/fa6'
+import { IoMdCloseCircleOutline } from 'react-icons/io'
+import { SelectComponentsGeneric } from 'react-select/dist/declarations/src/components'
+import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
 import { AccountPreferences } from '@/types/Account'
 
@@ -44,8 +64,9 @@ interface MeetSlotPickerProps {
   isGateValid: boolean
   isSchedulingExternal: boolean
   notificationsSubs?: number
-  onDayChange?: (day: Date) => void
+  onDayChange?: (day?: Date) => void
   onMonthChange?: (day: Date) => void
+  onTimeChange?: (time?: Date) => void
   onSchedule: (
     scheduleType: SchedulingType,
     startTime: Date,
@@ -63,8 +84,23 @@ interface MeetSlotPickerProps {
   slotDurationInMinutes: number
   timeSlotAvailability: (slot: Date) => boolean
   willStartScheduling: (isScheduling: boolean) => void
+  isMobile: boolean
 }
 
+const timezonesObj = ct.getAllTimezones()
+const timezonesKeys = Object.keys(timezonesObj) as Array<
+  keyof typeof timezonesObj
+>
+const _timezones = timezonesKeys
+  .map(key => {
+    return {
+      name: `${key} (GMT${timezonesObj[key].dstOffsetStr})`,
+      tzCode: key,
+      offset: timezonesObj[key].utcOffset,
+    }
+  })
+  .sort((a, b) => a.offset - b.offset)
+const timezones = [..._timezones, { tzCode: 'UTC', name: '(UTC+00:00) UTC' }]
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   availabilityInterval,
   blockedDates,
@@ -73,6 +109,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   isSchedulingExternal,
   notificationsSubs,
   onDayChange,
+  onTimeChange,
   onMonthChange,
   onSchedule,
   preferences,
@@ -82,19 +119,49 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   slotDurationInMinutes,
   timeSlotAvailability,
   willStartScheduling,
+  isMobile,
 }) => {
-  const [pickedDay, setPickedDay] = useState(null as Date | null)
-  const [pickedTime, setPickedTime] = useState(null as Date | null)
-  const [showPickTime, setShowPickTime] = useState(false)
+  const tzs = timezones.map(tz => {
+    return {
+      value: tz.tzCode,
+      label: tz.name,
+    }
+  })
+  const [timezone, setTimezone] = useState<string | null>(
+    preferences?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
+  const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
+    tzs.filter(
+      val => val.value === Intl.DateTimeFormat().resolvedOptions().timeZone
+    )[0] || tzs[0]
+  )
+
+  const _onChange = (
+    newValue:
+      | SingleValue<{ label: string; value: string }>
+      | MultiValue<{ label: string; value: string }>,
+    actionMeta: ActionMeta<any>
+  ) => {
+    if (Array.isArray(newValue)) {
+      return
+    }
+    const timezone = newValue as SingleValue<{ label: string; value: string }>
+    setTz(timezone)
+    setTimezone(
+      timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
+    )
+  }
+
+  const [pickedDay, setPickedDay] = useState<Date | null>(null)
+  const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [disablePrev, setDisablePrev] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState(new Date())
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
 
   useEffect(() => {
     if (reset) {
       setPickedDay(null)
       setPickedTime(null)
-      setShowPickTime(false)
       setShowConfirm(false)
       setDisablePrev(false)
     }
@@ -117,25 +184,24 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     }
     logEvent('Selected day')
     setPickedDay(day)
-    setShowPickTime(true)
   }
-
   const handlePickTime = (time: Date) => {
     logEvent('Selected time')
     setPickedTime(time)
-    setShowPickTime(false)
+    onTimeChange?.(time)
     setShowConfirm(true)
     willStartScheduling(true)
   }
 
-  const handleClosePickTime = () => {
-    setShowPickTime(false)
+  const handleClosePickDay = () => {
+    setPickedDay(null)
+    onDayChange && onDayChange(undefined)
   }
 
   const handleCloseConfirm = () => {
     willStartScheduling(false)
+    onTimeChange?.(undefined)
     setShowConfirm(false)
-    setShowPickTime(true)
   }
 
   function findNextDay(currentDay: Date, next: number) {
@@ -201,7 +267,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     handlePickDay(nextDay)
   }
 
-  const color = useColorModeValue('primary.500', 'primary.400')
+  const color = useColorModeValue('primary.500', 'white')
 
   const timeZone =
     preferences?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -316,97 +382,117 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       )
     }
   }
-
+  const customComponents: Partial<SelectComponentsGeneric> = {
+    Control: props => (
+      <chakraComponents.Control {...props}>
+        <FaGlobe size={24} /> {props.children}
+      </chakraComponents.Control>
+    ),
+    ClearIndicator: props => (
+      <chakraComponents.ClearIndicator className="noBg" {...props}>
+        <Icon as={FaChevronDown} w={4} h={4} />
+      </chakraComponents.ClearIndicator>
+    ),
+    DropdownIndicator: props => (
+      <chakraComponents.DropdownIndicator className="noBg" {...props}>
+        <Icon as={FaChevronDown} />
+      </chakraComponents.DropdownIndicator>
+    ),
+  }
   return (
     <PopupWrapper>
-      {!showPickTime && !showConfirm && (
-        <Calendar
-          loading={checkingSlots}
-          validator={validator}
-          monthChanged={onMonthChange}
-          pickDay={handlePickDay}
-          selectedMonth={selectedMonth}
-          setSelectedMonth={setSelectedMonth}
-        />
-      )}
-
-      {showPickTime && (
-        <Popup>
-          <PopupHeader>
-            <HStack mb={4} cursor="pointer" onClick={handleClosePickTime}>
-              <Icon as={FaArrowLeft} size="1.5em" color={color} />
-              <Text ml={3} color={color}>
-                Back
-              </Text>
-            </HStack>
-            <HStack gap={4} mb={4}>
-              <Button onClick={onPreviousDay} isDisabled={disablePrev}>
-                <Icon as={FaArrowLeft} size="1.5em" color={color} />
-              </Button>
-              <HStack alignItems="flex-start" flex={1}>
-                <Box mt="4px">
-                  <FaCalendar />
-                </Box>
-                <VStack alignItems="flex-start">
-                  <Text>{format(pickedDay!, 'PPPP')}</Text>
-                </VStack>
-              </HStack>
-              <Button onClick={onNextDay}>
-                <Icon as={FaArrowRight} size="1.5em" color={color} />
-              </Button>
-            </HStack>
-            <Text align="center" fontSize="sm">
-              Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
-            </Text>
-          </PopupHeader>
-
-          {checkingSlots ? (
-            <Flex m={8} justifyContent="center">
-              <Loading label="Checking availability" />
-            </Flex>
-          ) : (
-            <TimeSlots
-              pickedDay={pickedDay}
-              slotSizeMinutes={slotDurationInMinutes}
-              validator={timeSlotAvailability}
-              selfAvailabilityCheck={selfAvailabilityCheck}
-              pickTime={handlePickTime}
-              showSelfAvailability={showSelfAvailability}
-            />
-          )}
-        </Popup>
-      )}
-
-      {showConfirm && (
-        <Popup>
-          <PopupHeader>
-            <HStack mb={4} cursor="pointer" onClick={handleCloseConfirm}>
-              <Icon as={FaArrowLeft} size="1.5em" color={color} />
-              <Text ml={3} color={color}>
-                Back
-              </Text>
-            </HStack>
-            <HStack>
-              <FaCalendar />
-              <Text>{format(pickedDay!, 'PPPP')}</Text>
-            </HStack>
-
-            <HStack>
-              <FaClock />
-              <Text>{format(pickedTime!, 'p')}</Text>
-            </HStack>
-          </PopupHeader>
-
-          <ScheduleForm
-            onConfirm={onSchedule}
-            willStartScheduling={willStartScheduling}
-            pickedTime={pickedTime!}
-            isSchedulingExternal={isSchedulingExternal}
-            isGateValid={isGateValid}
-            notificationsSubs={notificationsSubs}
+      <HStack
+        width="100%"
+        justifyContent="space-between"
+        alignItems="flex-start"
+        gap={120}
+        flexWrap="wrap"
+      >
+        {!showConfirm && (!isMobile || !pickedDay) && (
+          <Calendar
+            loading={checkingSlots}
+            validator={validator}
+            monthChanged={onMonthChange}
+            pickDay={handlePickDay}
+            pickedDay={pickedDay}
+            selectedMonth={selectedMonth}
+            setSelectedMonth={setSelectedMonth}
           />
-        </Popup>
-      )}
+        )}
+        {/* isSmallerThan800 isSmallerThan800
+        /* true and true == true
+        /* true and false == false
+        /* false and true == true
+        /* false and false = true
+
+
+        */}
+        {!showConfirm && (!isMobile || pickedDay) && (
+          <VStack flex={1} alignItems={{ md: 'flex-start', base: 'center' }}>
+            <VStack
+              alignItems={{ md: 'flex-start', base: 'center' }}
+              width={'100%'}
+            >
+              <HStack mb={0}>
+                {isMobile && !!pickedDay && (
+                  <Icon
+                    as={FaArrowLeft}
+                    onClick={handleClosePickDay}
+                    size="1.5em"
+                    color={color}
+                    cursor="pointer"
+                  />
+                )}
+                <Heading size="md">Select Time</Heading>
+              </HStack>
+              <Select
+                value={tz}
+                colorScheme="primary"
+                onChange={_onChange}
+                className="hideBorder"
+                options={tzs}
+                components={customComponents}
+              />
+            </VStack>
+            {checkingSlots ? (
+              <Flex m={8} justifyContent="center">
+                <Loading label="Checking availability" />
+              </Flex>
+            ) : (
+              <TimeSlots
+                pickedDay={pickedDay}
+                slotSizeMinutes={slotDurationInMinutes}
+                validator={timeSlotAvailability}
+                selfAvailabilityCheck={selfAvailabilityCheck}
+                pickTime={handlePickTime}
+                showSelfAvailability={showSelfAvailability}
+              />
+            )}
+          </VStack>
+        )}
+
+        {showConfirm && (
+          <Popup>
+            <PopupHeader>
+              <HStack mb={0} cursor="pointer" onClick={handleCloseConfirm}>
+                <Icon as={FaArrowLeft} size="1.5em" color={color} />
+                <Heading size="md" color={color}>
+                  Meeting Information
+                </Heading>
+              </HStack>
+            </PopupHeader>
+
+            <ScheduleForm
+              onConfirm={onSchedule}
+              willStartScheduling={willStartScheduling}
+              pickedTime={pickedTime!}
+              isSchedulingExternal={isSchedulingExternal}
+              isGateValid={isGateValid}
+              notificationsSubs={notificationsSubs}
+            />
+          </Popup>
+        )}
+      </HStack>
     </PopupWrapper>
   )
 }

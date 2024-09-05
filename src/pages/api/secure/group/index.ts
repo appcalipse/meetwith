@@ -1,10 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { GetGroupsResponse } from '@/types/Group'
+import { CreateGroupPayload, CreateGroupsResponse } from '@/types/Group'
 import { createGroupInDB } from '@/utils/database'
 import { AccountNotFoundError, GroupCreationError } from '@/utils/errors'
-import { getSlugFromText } from '@/utils/generic_utils'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -12,22 +11,24 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     return
   }
 
-  const { name } = req.body
+  const { name, slug } = req.body as CreateGroupPayload
 
-  // Check if there is a valid session with an account address
-  if (!req.session || !req.session.account || !req.session.account.address) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  const account_address = req.session.account!.address
+
+  if (!account_address) {
+    return res.status(401).send('Unauthorized')
   }
-
-  // Check if the name parameter is provided
   if (!name) {
     return res.status(400).json({ error: 'Name is required' })
   }
 
-  const slug = getSlugFromText(name) // Generate a slug from the name
   try {
-    const newGroup: GetGroupsResponse = await createGroupInDB(name, slug)
-    return res.status(201).json(newGroup)
+    const newGroupData: CreateGroupsResponse = await createGroupInDB(
+      name,
+      account_address,
+      slug
+    )
+    return res.status(201).json(newGroupData)
   } catch (error) {
     if (error instanceof AccountNotFoundError) {
       return res.status(404).json({ error: 'User account not found' })

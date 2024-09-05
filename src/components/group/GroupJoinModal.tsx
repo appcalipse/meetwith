@@ -8,19 +8,21 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  Spinner,
   Text,
+  useToast,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React from 'react'
 
 import { Group } from '@/types/Group'
 import { joinGroup, rejectGroup } from '@/utils/api_helper'
+import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCardModal {
   group: Group | undefined
   resetState: () => void
   onClose: () => void
+  inviteEmail?: string
 }
 
 const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
@@ -30,20 +32,26 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
   const handleDecline = async () => {
     if (!props.group?.id) return
     setDeclining(true)
-    await rejectGroup(props.group.id)
-    setDeclining(false)
+    try {
+      await rejectGroup(props.group.id, props.inviteEmail)
+    } catch (error: any) {}
     props.onClose()
     push('/dashboard/groups')
     props.resetState()
+    setDeclining(false)
   }
   const handleAccept = async () => {
     if (!props.group?.id) return
     setAccepting(true)
-    await joinGroup(props.group.id)
-    setAccepting(false)
-    props.onClose()
+    try {
+      await joinGroup(props.group.id, props.inviteEmail)
+    } catch (error: any) {
+      handleApiError('Error accepting invite', error)
+    }
     push('/dashboard/groups')
+    props.onClose()
     props.resetState()
+    setAccepting(false)
   }
   return (
     <Modal
@@ -73,7 +81,7 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
             <Button
               isLoading={accepting}
               onClick={handleAccept}
-              colorScheme="grayButton"
+              colorScheme="neutral"
             >
               Join Group
             </Button>

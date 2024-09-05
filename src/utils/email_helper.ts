@@ -397,3 +397,54 @@ export const updateMeetingEmail = async (
 
   return true
 }
+
+export const sendInvitationEmail = async (
+  toEmail: string,
+  inviterName: string,
+  message: string,
+  groupId: string,
+  group: Group,
+  invitationLink: string
+): Promise<void> => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'group_invite'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const locals = {
+    inviterName,
+    groupName: group.name,
+    message,
+    invitationLink,
+    group,
+  }
+
+  try {
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
+
+    const msg = {
+      to: toEmail,
+      from: FROM,
+      subject: subject,
+      html: rendered,
+      text: `${inviterName} invited you to join ${group.name}. Accept your invite here: ${invitationLink}`,
+    }
+
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}

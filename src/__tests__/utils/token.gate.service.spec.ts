@@ -16,7 +16,7 @@ import {
   POAP_MWW,
   USDC_ELEMENT,
   USDT_ELEMENT,
-} from '../../../testing/mocks'
+} from '../../testing/mocks'
 jest.mock('@/utils/api_helper')
 jest.mock('thirdweb')
 describe('get balance for tokens', () => {
@@ -33,7 +33,7 @@ describe('get balance for tokens', () => {
       CONDITION_NFT_AND_DAI_OR_USDT,
       WALLET_ADDRESS
     )
-    expect(conditionShouldBeMet).toBeTruthy()
+    expect(conditionShouldBeMet.isValid).toBeTruthy()
   })
 
   it("should be false given wallet doesn't have any USDC even if minBalance condition is Zero", async () => {
@@ -44,7 +44,7 @@ describe('get balance for tokens', () => {
       CONDITION_USDC,
       WALLET_ADDRESS
     )
-    expect(conditionShouldNotBeMet).toBeFalsy()
+    expect(conditionShouldNotBeMet.isValid).toBeFalsy()
   })
 
   it("should be false given wallet doesn't have POAP", async () => {
@@ -52,7 +52,7 @@ describe('get balance for tokens', () => {
       CONDITION_RANDOM_POAP,
       WALLET_ADDRESS
     )
-    expect(conditionShouldNotBeMet).toBeFalsy()
+    expect(conditionShouldNotBeMet.isValid).toBeFalsy()
   })
 
   it('should be true given wallet have POAP', async () => {
@@ -81,7 +81,7 @@ describe('get balance for tokens', () => {
       CONDITION_MWW_POAP,
       WALLET_ADDRESS
     )
-    expect(conditionShouldBeMet).toBeTruthy()
+    expect(conditionShouldBeMet.isValid).toBeTruthy()
   })
 
   it('should be false given wallet holds the NFT but do not hold USDT', async () => {
@@ -89,6 +89,6 @@ describe('get balance for tokens', () => {
       CONDITION_NFT_AND_USDT,
       WALLET_ADDRESS
     )
-    expect(conditionShouldNotBeMet).toBeFalsy()
+    expect(conditionShouldNotBeMet.isValid).toBeFalsy()
   })
 })

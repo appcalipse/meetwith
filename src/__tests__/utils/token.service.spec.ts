@@ -8,7 +8,7 @@ import {
   NFT_ELEMENT,
   USDC_ELEMENT,
   USDT_ELEMENT,
-} from '../../../testing/mocks'
+} from '../../testing/mocks'
 jest.mock('thirdweb')
 describe('get balance for tokens', () => {
   afterAll(() => {

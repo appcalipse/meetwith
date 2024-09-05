@@ -30,7 +30,9 @@ export function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-export const notAuthorized = NextResponse.redirect(new URL('/401', apiUrl))
+export const notAuthorized = () => {
+  return NextResponse.redirect(new URL('/401', apiUrl))
+}
 
 // Supports both a single string value or an array of matchers
 export const config = {
