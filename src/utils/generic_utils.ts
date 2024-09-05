@@ -111,3 +111,11 @@ export const useDebounce = (value: any, delay: number) => {
 export const shouldEnforceColorOnPath = (pathname: string): boolean => {
   return pathname === '/' || pathname.indexOf('/features/') !== -1
 }
+export const isJson = (str: string) => {
+  try {
+    JSON.parse(str)
+  } catch (e) {
+    return false
+  }
+  return true
+}

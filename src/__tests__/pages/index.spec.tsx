@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import crypto from 'crypto'
 import * as react from 'react'
 
-import Home from '@/pages/index'
+import Home from '@/pages'
 import { ChakraTestWrapper } from '@/testing/chakra-helpers'
 // jest.mock('react')
 jest.mock('thirdweb/react', () => ({

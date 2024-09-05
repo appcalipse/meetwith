@@ -21,9 +21,11 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { useRouter } from 'next/router'
 import React, {
   Fragment,
   ReactNode,
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -32,6 +34,7 @@ import React, {
 import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 
+import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
 import {
   GetGroupsResponse,
@@ -48,6 +51,9 @@ import GroupMemberCard from './GroupMemberCard'
 
 export interface IGroupCard extends GetGroupsResponse {
   currentAccount: Account
+  onAddNewMember: (groupId: string, groupName: string) => void
+  mt: number
+  resetState: () => void
 }
 
 const GroupCard: React.FC<IGroupCard> = props => {
@@ -56,24 +62,45 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const iconColor = useColorModeValue('gray.600', 'white')
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
+
   const [groupMembers, setGroupsMembers] = useState<Array<GroupMember>>([])
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const id = useId()
+  const { push } = useRouter()
   const [firstFetch, setFirstFetch] = useState(true)
   const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
+  const [isAdmin, setIsAdmin] = useState(false)
+  const {
+    openDeleteModal,
+    setGroupName,
+    pickGroupId,
+    openNameEditModal,
+    pickGroupSlug,
+    openSlugEditModal,
+  } = useContext(GroupContext)
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
     setLoading(true)
-    const newGroupMembers = (await getGroupsMembers(
+    const newGroupMembers = await getGroupsMembers(
       props.id,
       PAGE_SIZE,
       reset ? 0 : groupMembers?.length
-    )) as Array<GroupMember>
+    )
     if (newGroupMembers?.length < PAGE_SIZE) {
       setNoMoreFetch(true)
     }
-    setGroupsMembers(prev => (reset ? [] : [...prev]).concat(newGroupMembers))
+    setGroupsMembers(prev => {
+      const newMembers = (reset ? [] : [...prev]).concat(newGroupMembers)
+      newMembers.forEach(val => {
+        if (val.address === props.currentAccount.address) {
+          setIsAdmin(val.role === MemberType.ADMIN)
+        } else {
+          return false
+        }
+      })
+      return newMembers
+    })
     setGroupRoles(prev =>
       (reset ? [] : [...prev]).concat(newGroupMembers?.map(val => val.role))
     )
@@ -98,17 +125,19 @@ const GroupCard: React.FC<IGroupCard> = props => {
           {
             label: 'Edit group name',
             onClick: () => {
-              // Logic to open edit group popup
+              openNameEditModal()
+              setGroupName(props.name)
+              pickGroupId(props.id)
             },
-          },
-          {
-            label: 'Edit group scheduling link',
-            link: '',
           },
           {
             label: 'Delete group',
             important: true,
-            link: '',
+            onClick: () => {
+              openDeleteModal()
+              setGroupName(props.name)
+              pickGroupId(props.id)
+            },
           },
         ]
       case MemberType.MEMBER:
@@ -218,7 +247,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
                     bgColor={itemsBgColor}
                     shadow="lg"
                   >
-                    At least 1 calendar connected to MeetWithWallet platform.
+                    At least 1 eternal calendar connected to Meet With Wallet
+                    platform.
                   </Text>
                   <Tooltip.Arrow />
                 </Tooltip.Content>
@@ -237,6 +267,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
               setGroupRoles={setGroupRoles}
               updateRole={updateRole}
               groupSlug={props.slug}
+              groupID={props.id}
+              groupName={props.name}
+              resetState={props.resetState}
+              isAdmin={isAdmin}
+              handleIsAdminChange={setIsAdmin}
               {...member}
             />
           ))}
@@ -264,6 +299,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
           height="fit-content !important"
           mr="auto"
           py={1}
+          onClick={() => props.onAddNewMember(props.id, props.name)}
         >
           Add new member
         </Button>
@@ -283,35 +319,41 @@ const GroupCard: React.FC<IGroupCard> = props => {
     >
       {({ isExpanded }) => (
         <>
-          <HStack justifyContent="space-between" width="100%">
-            <VStack gap={0} alignItems="flex-start">
-              <Heading size={'lg'}>{props.name}</Heading>
-              <CopyLinkButton
-                url={`${appUrl}/${props.slug}`}
-                size="md"
-                label={`${appUrl}/${props.slug}`}
-                withIcon
-                design_type="link"
-                noOfLines={1}
-                width="100%"
-                childStyle={{
-                  style: {
-                    width: '150px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  },
-                }}
-              />
+          <HStack
+            justifyContent="space-between"
+            width="100%"
+            alignItems="flex-start"
+          >
+            <VStack gap={0} alignItems="start">
+              <Heading
+                size={'lg'}
+                maxW="400px"
+                w="fit-content"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
+              >
+                {props.name}
+              </Heading>
             </VStack>
             <HStack gap={3} width="fit-content">
-              <Button colorScheme="primary">Schedule</Button>
               {props.role === MemberType.ADMIN && (
-                <IconButton
-                  aria-label="Add Contact"
-                  p={'8px 16px'}
-                  icon={<IoMdPersonAdd size={20} />}
-                />
+                <>
+                  <Button
+                    colorScheme="primary"
+                    onClick={() =>
+                      push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
+                    }
+                  >
+                    Schedule
+                  </Button>
+                  <IconButton
+                    aria-label="Add Contact"
+                    p={'8px 16px'}
+                    icon={<IoMdPersonAdd size={20} />}
+                    onClick={() => props.onAddNewMember(props.id, props.name)}
+                  />
+                </>
               )}
               <Menu>
                 <MenuButton

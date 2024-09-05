@@ -64,6 +64,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   )
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<Plan | undefined>(undefined)
+  const menuBg = useColorModeValue('white', 'neutral.900')
 
   const socialLinks = currentAccount?.preferences?.socialLinks || []
 

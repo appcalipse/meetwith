@@ -30,7 +30,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
-
+  const { push } = useRouter()
   const endToFetch = addHours(new Date(), -1)
 
   const { slotId } = useRouter().query
@@ -197,14 +197,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
           </Text>
         </Heading>
         <Button
-          onClick={() =>
-            openMeetingDialog(
-              null,
-              null,
-              Intl.DateTimeFormat().resolvedOptions().timeZone,
-              afterClose
-            )
-          }
+          onClick={() => push(`/dashboard/schedule`)}
           colorScheme="primary"
           display={{ base: 'none', md: 'flex' }}
           mt={{ base: 4, md: 0 }}
@@ -215,14 +208,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
         </Button>
       </HStack>
       <Button
-        onClick={() =>
-          openMeetingDialog(
-            null,
-            null,
-            Intl.DateTimeFormat().resolvedOptions().timeZone,
-            afterClose
-          )
-        }
+        onClick={() => push(`/dashboard/schedule`)}
         colorScheme="primary"
         display={{ base: 'flex', md: 'none' }}
         mb={8}
