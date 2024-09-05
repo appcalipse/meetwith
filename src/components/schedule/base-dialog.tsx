@@ -594,7 +594,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                   />
                   <InputTimePicker
                     value={selectedTime}
-                    onChange={setTime}
+                    onChange={val => setTime(format(val, 'p'))}
                     currentDate={selectedDate}
                   />
                 </HStack>

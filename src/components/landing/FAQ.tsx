@@ -39,10 +39,7 @@ const faqs: Faq[] = [
     body: (
       <>
         Check our high-level feature roadmap{' '}
-        <Link
-          href="https://app.dework.xyz/meet-with-wallet/mww-roadmap/board/"
-          isExternal
-        >
+        <Link href="mailto:contact@meetwithwallet.xyz" isExternal>
           here
         </Link>{' '}
         and vote on what you want to be done next. You can also be an active

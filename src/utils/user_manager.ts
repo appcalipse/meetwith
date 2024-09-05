@@ -1,6 +1,8 @@
 import { createThirdwebClient } from 'thirdweb'
 import { Wallet } from 'thirdweb/wallets'
 
+import { GroupInvitesResponse } from '@/types/Group'
+
 import { Account } from '../types/Account'
 import {
   InvitedUser,
@@ -213,6 +215,42 @@ const getAllParticipantsDisplayName = (
   const element = displayNames.splice(youIndex, 1)[0]
   displayNames.splice(0, 0, element)
   return displayNames.join(', ')
+}
+
+export const validateUserPermissions = (
+  user: Account,
+  params: {
+    group_id?: string
+    user_id?: string
+    email?: string
+    discord_id?: string
+  },
+  groupInvites: GroupInvitesResponse[]
+) => {
+  const { group_id, user_id, email, discord_id } = params
+
+  if (user_id && user_id !== user.id) {
+    return false
+  }
+
+  if (email) {
+    const invite = groupInvites.find(invite => invite.email === email)
+    if (!invite || invite.userId !== user.id) {
+      return false
+    }
+  }
+
+  if (discord_id) {
+    const invite = groupInvites.find(invite => invite.discordId === discord_id)
+    if (!invite || invite.userId !== user.id) {
+      return false
+    }
+  }
+
+  // Add additional checks for group_id if necessary
+  // For example, you may want to check if the user is a member of the group
+
+  return true
 }
 
 export {

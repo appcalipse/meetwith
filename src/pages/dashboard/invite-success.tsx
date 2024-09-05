@@ -7,10 +7,13 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import { NextPage } from 'next'
 import { useRouter } from 'next/router'
 import React from 'react'
 
-const InviteSuccessPage = ({ invitedCount = 2 }) => {
+const InviteSuccessPage: NextPage<{ invitedCount: number }> = ({
+  invitedCount,
+}) => {
   const router = useRouter()
 
   return (
@@ -48,9 +51,11 @@ const InviteSuccessPage = ({ invitedCount = 2 }) => {
           lineHeight="24px"
           fontFamily="'DM Sans', sans-serif"
         >
-          <strong>{invitedCount} users</strong> will receive invitations to join
-          your new Group. You can manage their permissions and send them
-          reminders.
+          <strong>
+            {invitedCount} user{invitedCount > 1 && 's'}
+          </strong>{' '}
+          will receive invitations to join your new Group. You can manage their
+          permissions and send them reminders.
         </Text>
         <Button
           onClick={() => router.push('/dashboard/groups')}
@@ -61,18 +66,17 @@ const InviteSuccessPage = ({ invitedCount = 2 }) => {
           w="full"
           mb="8px"
         >
-          View Group
+          View Groups
         </Button>
         <Button
           onClick={() => router.push('/dashboard/create-group')}
           variant="outline"
+          colorScheme="primary"
           size="md"
           height="48px"
           borderRadius="8px"
-          borderColor="#F9B19A"
           borderWidth="2px"
           w="full"
-          color="#F9B19A"
         >
           Create another Group
         </Button>
@@ -80,5 +84,8 @@ const InviteSuccessPage = ({ invitedCount = 2 }) => {
     </Flex>
   )
 }
-
+InviteSuccessPage.getInitialProps = async ctx => {
+  const { invitedCount } = ctx.query
+  return { invitedCount: Number(invitedCount) }
+}
 export default InviteSuccessPage

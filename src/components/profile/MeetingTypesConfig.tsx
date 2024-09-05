@@ -1,3 +1,4 @@
+import { AddIcon } from '@chakra-ui/icons'
 import { Link } from '@chakra-ui/next-js'
 import {
   AlertDialog,
@@ -137,8 +138,9 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
               isDisabled={!isPro}
               colorScheme="primary"
               onClick={createType}
+              leftIcon={<AddIcon width={15} height={15} />}
             >
-              + New Meeting Type
+              New Meeting Type
             </Button>
             <NewMeetingTypeDialog
               currentAccount={currentAccount}
@@ -194,7 +196,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
         maxW="320px"
         alignItems="flex-start"
         height={'100%'}
-        bgColor={useColorModeValue('white', 'gray.600')}
+        bgColor={useColorModeValue('white', 'neutral.900')}
       >
         <Flex width="100%">
           <VStack alignItems="flex-start" flex={1}>

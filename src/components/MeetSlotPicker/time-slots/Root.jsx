@@ -13,6 +13,8 @@ import React, { useContext } from 'react'
 import { AccountContext } from '@/providers/AccountProvider'
 import { generateTimeSlots } from '@/utils/slots.helper'
 
+import { OnboardingModalContext } from '../../../providers/OnboardingModalProvider'
+
 function Root({
   pickedDay,
   slotSizeMinutes,
@@ -21,20 +23,20 @@ function Root({
   selfAvailabilityCheck,
   showSelfAvailability,
 }) {
+  const { openConnection } = useContext(OnboardingModalContext)
   const { currentAccount } = useContext(AccountContext)
   const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes, false)
   const filtered = timeSlots.filter(slot => {
     return validator ? validator(slot.start) : true
   })
-  const borderColor = useColorModeValue('neutral.200', 'neutral.600')
+  const borderColor = useColorModeValue('neutral.200', 'neutral.500')
   const circleColor = useColorModeValue('primary.500', 'primary.500')
-
+  const textColor = useColorModeValue('primary.500', 'neutral.100')
   return (
     <>
       {!currentAccount && (
         <HStack
           maxW="220px"
-          mx="auto"
           width="100%"
           border="1px solid"
           borderColor={borderColor}
@@ -42,6 +44,8 @@ function Root({
           p={2}
           justifyContent="center"
           mb={4}
+          cursor="pointer"
+          onClick={() => openConnection(undefined, false)}
         >
           <Text flex={1} fontSize={'sm'} textAlign="center" color="white">
             Sign in to see your availability
@@ -51,7 +55,6 @@ function Root({
       {showSelfAvailability && (
         <HStack
           maxW="220px"
-          mx="auto"
           width="100%"
           border="1px solid"
           borderColor={borderColor}
@@ -72,27 +75,46 @@ function Root({
         </HStack>
       )}
       {filtered.length > 0 ? (
-        <VStack maxW="220px" mx="auto">
+        <VStack maxW="220px">
           {filtered.map(slot => {
             return (
               <Flex
                 key={slot.start}
                 onClick={() => pickTime(slot.start)}
                 width="100%"
-                border="1px solid"
+                borderWidth={2}
                 borderColor={borderColor}
-                p={2}
+                p={4}
                 justifyContent="center"
                 alignItems="center"
-                _hover={{ cursor: 'pointer', color: 'primary.400' }}
+                w={160}
+                _hover={{
+                  cursor: 'pointer',
+                  color: 'white',
+                  bgColor: 'primary.400',
+                  borderColor: textColor,
+                }}
+                role={'group'}
+                borderRadius={8}
+                color={textColor}
+                transitionProperty="all"
+                transitionDuration="300ms"
+                transitionTimingFunction="ease-in-out"
               >
-                {<Text flex={1}>{format(slot.start, 'p')}</Text>}
+                {
+                  <Text flex={1} fontWeight="bold">
+                    {format(slot.start, 'p')}
+                  </Text>
+                }
                 {showSelfAvailability && selfAvailabilityCheck(slot.start) ? (
                   <Flex
                     borderRadius="50%"
                     w="10px"
                     h="10px"
                     bgColor={circleColor}
+                    _groupHover={{
+                      bgColor: 'white',
+                    }}
                     ml={-4}
                     mr={2}
                   />

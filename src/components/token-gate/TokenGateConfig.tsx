@@ -183,7 +183,7 @@ const GateConditionCard = (props: {
     <Box
       my={2}
       borderRadius={4}
-      bgColor={useColorModeValue('white', 'gray.800')}
+      bgColor={useColorModeValue('white', 'neutral.900')}
       p={8}
       shadow="sm"
     >

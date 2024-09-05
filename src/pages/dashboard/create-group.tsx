@@ -7,6 +7,8 @@ import {
   Heading,
   HStack,
   Input,
+  InputGroup,
+  InputLeftAddon,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -15,36 +17,41 @@ import React, { useState } from 'react'
 
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { createGroup } from '@/utils/api_helper'
+import { isJson } from '@/utils/generic_utils'
 
 const CreateGroupPage = () => {
   const router = useRouter()
   const toast = useToast()
 
   const [groupName, setGroupName] = useState('')
-  const [groupCalendarName, setGroupCalendarName] = useState('')
+  const [groupCreating, setGroupCreating] = useState(false)
 
   const handleGroupSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    setGroupCreating(true)
 
     try {
-      const response = await createGroup(groupName, groupCalendarName) // Use the helper method
+      const response = await createGroup(groupName) // Use the helper method
 
-      // Extract the new group ID from the response
-      const newGroupId = response.groupId
+      const newGroupId = response.id
 
-      // Navigate to the invite-users page with relevant query parameters
       router.push({
         pathname: '/dashboard/invite-users',
         query: {
-          success: true,
           groupName: groupName,
           groupId: newGroupId,
         },
       })
-    } catch (error) {
+    } catch (error: any) {
+      const isJsonErr = isJson(error.message)
+      const errorMessage = isJsonErr
+        ? JSON.parse(error.message)?.error
+        : error.message
+
       toast({
         title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
+        description:
+          errorMessage || 'An unexpected error occurred. Please try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -54,6 +61,7 @@ const CreateGroupPage = () => {
         },
       })
     }
+    setGroupCreating(false)
   }
 
   return (
@@ -87,32 +95,13 @@ const CreateGroupPage = () => {
             </FormLabel>
             <Input
               id="groupName"
-              placeholder=""
+              placeholder="My Group Name"
               value={groupName}
+              borderColor="neutral.400"
+              _placeholder={{
+                color: 'neutral.400',
+              }}
               onChange={e => setGroupName(e.target.value)}
-            />
-          </FormControl>
-          <FormControl>
-            <HStack spacing={1} alignItems="center">
-              <FormLabel
-                fontSize="16px"
-                fontWeight="500"
-                lineHeight="24px"
-                fontFamily="'DM Sans', sans-serif"
-                textAlign="left"
-                mb="0"
-                mr="-2"
-              >
-                Group calendar name
-              </FormLabel>
-              <InfoTooltip text="This name will be used for your group calendar." />
-            </HStack>
-            <Input
-              id="groupCalendarName"
-              placeholder="meetwithwallet.xyz/"
-              mt="2"
-              value={groupCalendarName}
-              onChange={e => setGroupCalendarName(e.target.value)}
             />
           </FormControl>
           <Box>
@@ -123,6 +112,7 @@ const CreateGroupPage = () => {
               height="48px"
               borderRadius="8px"
               w="full"
+              isLoading={groupCreating}
             >
               Create
             </Button>
