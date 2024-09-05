@@ -60,9 +60,15 @@ export const NavMenu: React.FC<{
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'neutral.900')
-  const LinkItems: Array<LinkItemProps> = useMemo(() => {
-    const items: Array<LinkItemProps> = [
+  const LinkItems: Array<LinkItemProps> = useMemo(
+    () => [
       { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
+      {
+        name: 'My Groups',
+        icon: FaUserGroup,
+        mode: EditMode.GROUPS,
+        badge: noOfInvitedGroups,
+      },
       {
         name: 'Availabilities',
         icon: FaCalendarAlt,
@@ -90,19 +96,9 @@ export const NavMenu: React.FC<{
         icon: FaSignOutAlt,
         mode: EditMode.SIGNOUT,
       },
-    ]
-
-    if (!isProduction) {
-      items.splice(1, 0, {
-        name: 'My Groups',
-        icon: FaUserGroup,
-        mode: EditMode.GROUPS,
-        badge: noOfInvitedGroups,
-      })
-    }
-
-    return items
-  }, [noOfInvitedGroups])
+    ],
+    [noOfInvitedGroups]
+  )
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
     emptyGroups?.forEach((data, index) => {
