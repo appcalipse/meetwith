@@ -1177,7 +1177,7 @@ const leaveGroup = async (
     .delete()
     .eq('group_id', group_id)
   if (invite_pending) {
-    query.eq('id', userIdentifier)
+    deleteQuery.eq('id', userIdentifier)
   } else {
     deleteQuery.eq('member_id', userIdentifier.toLowerCase())
   }
