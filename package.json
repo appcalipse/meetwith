@@ -74,7 +74,7 @@
     "googleapis": "^92.0.0",
     "graphql": "^16.5.0",
     "ical.js": "^1.5.0",
-    "ics": "^2.35.0",
+    "ics": "3.7.6",
     "ipfs": "^0.59.1",
     "ipfs-http-client": "^54.0.2",
     "iron-session": "^6.3.1",
