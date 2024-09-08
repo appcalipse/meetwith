@@ -1022,23 +1022,24 @@ const getGroupInvites = async ({
     role,
     group: groups(id, name, slug)
   `)
-
+  let orQuery = ''
   if (address) {
-    query = query.eq('user_id', address.toLowerCase())
+    orQuery = `user_id.eq.${address.toLowerCase()}`
   }
   if (group_id) {
+    orQuery += (orQuery ? ',' : '') + `group_id.eq.${group_id}`
     query = query.eq('group_id', group_id)
   }
   if (user_id) {
-    query = query.eq('user_id', user_id.toLowerCase())
+    orQuery += (orQuery ? ',' : '') + `user_id.eq.${user_id.toLowerCase()}`
   }
   if (email) {
-    query = query.eq('email', email.toLowerCase())
+    orQuery += (orQuery ? ',' : '') + `email.eq.${email}`
   }
   if (discord_id) {
-    query = query.eq('discord_id', discord_id.toLowerCase())
+    orQuery += (orQuery ? ',' : '') + `discord_id.eq.${discord_id}`
   }
-
+  query.or(orQuery)
   query = query.range(
     offset || 0,
     (offset || 0) + (limit ? limit - 1 : 999999999999999)
