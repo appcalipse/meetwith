@@ -4,6 +4,7 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
 import { InvitedGroupsResponse } from '@/types/Group'
 import {
+  getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
   getGroupInvites,
   initDB,
@@ -18,10 +19,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     const address = req.query.address as string
     try {
-      const notifications = await getAccountNotificationSubscriptions(address)
-      const userEmail = notifications?.notification_types.find(
-        n => n.channel === NotificationChannel.EMAIL
-      )?.destination
+      const userEmail = await getAccountNotificationSubscriptionEmail(address)
       const groups = await getGroupInvites({ address, email: userEmail })
       const responseJson: Array<InvitedGroupsResponse> = groups.map(group => ({
         id: group.group.id,
