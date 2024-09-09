@@ -674,6 +674,8 @@ const generateIcs = (
     ],
     method: 'REQUEST',
     productId: '-//MEET WITH WALLET//EN',
+    transp: 'OPAQUE',
+    classification: 'PUBLIC',
     end: [
       getYear(meeting.end),
       getMonth(meeting.end) + 1,
@@ -723,7 +725,6 @@ const generateIcs = (
             : participant.guest_email ||
               noNoReplyEmailForAccount(participant.account_address!),
         rsvp: participant.status === ParticipationStatus.Accepted,
-        partstat: participantStatusToICSStatus(participant.status),
         role: 'REQ-PARTICIPANT',
       }
 
