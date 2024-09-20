@@ -6,11 +6,11 @@ import path from 'path'
 
 import { Group } from '@/types/Group'
 import { MeetingChangeType } from '@/types/Meeting'
+import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingChange } from '@/types/Requests'
 import { getConnectedCalendars } from '@/utils/database'
 import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
 
-import { ParticipantInfo, ParticipantType } from '../types/ParticipantInfo'
 import {
   dateToHumanReadable,
   durationToHumanReadable,
