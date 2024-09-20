@@ -867,11 +867,20 @@ const getAccountNotificationSubscriptions = async (
   }
   return { account_address: address, notification_types: [] }
 }
-
+const getAccountNotificationSubscriptionEmail = async (
+  address: string
+): Promise<string> => {
+  const notifications = await getAccountNotificationSubscriptions(address)
+  const userEmail = notifications?.notification_types.find(
+    n => n.channel === NotificationChannel.EMAIL
+  )?.destination
+  return userEmail || ''
+}
 const getUserGroups = async (
   address: string,
   limit: number,
-  offset: number
+  offset: number,
+  email?: string
 ): Promise<Array<UserGroups>> => {
   const { data: invites, error: invitesError } = await db.supabase
     .from('group_invites')
@@ -881,7 +890,9 @@ const getUserGroups = async (
       group: groups( id, name, slug )
   `
     )
-    .eq('user_id', address.toLowerCase())
+    .or(
+      `user_id.eq.${address.toLowerCase()}${email ? `,email.eq.${email}` : ''}`
+    )
     .range(
       offset || 0,
       (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
@@ -1022,23 +1033,24 @@ const getGroupInvites = async ({
     role,
     group: groups(id, name, slug)
   `)
-
+  let orQuery = ''
   if (address) {
-    query = query.eq('user_id', address.toLowerCase())
+    orQuery = `user_id.eq.${address.toLowerCase()}`
   }
   if (group_id) {
+    orQuery += (orQuery ? ',' : '') + `group_id.eq.${group_id}`
     query = query.eq('group_id', group_id)
   }
   if (user_id) {
-    query = query.eq('user_id', user_id.toLowerCase())
+    orQuery += (orQuery ? ',' : '') + `user_id.eq.${user_id.toLowerCase()}`
   }
   if (email) {
-    query = query.eq('email', email.toLowerCase())
+    orQuery += (orQuery ? ',' : '') + `email.eq.${email}`
   }
   if (discord_id) {
-    query = query.eq('discord_id', discord_id.toLowerCase())
+    orQuery += (orQuery ? ',' : '') + `discord_id.eq.${discord_id}`
   }
-
+  query.or(orQuery)
   query = query.range(
     offset || 0,
     (offset || 0) + (limit ? limit - 1 : 999999999999999)
@@ -2403,6 +2415,7 @@ export {
   editGroup,
   getAccountFromDB,
   getAccountNonce,
+  getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
   getAppToken,
   getConferenceMeetingFromDB,
