@@ -310,6 +310,7 @@ export const NavMenu: React.FC<{
                   mode={link.mode}
                   locked={link.locked || false}
                   changeMode={menuClicked}
+                  badge={link.badge}
                 ></NavItem>
               ))}
             </VStack>
