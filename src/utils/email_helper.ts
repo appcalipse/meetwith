@@ -7,6 +7,7 @@ import path from 'path'
 import { Group } from '@/types/Group'
 import { MeetingChangeType } from '@/types/Meeting'
 import { MeetingChange } from '@/types/Requests'
+import { getConnectedCalendars } from '@/utils/database'
 import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
 
 import { ParticipantInfo, ParticipantType } from '../types/ParticipantInfo'
@@ -132,7 +133,19 @@ export const newMeetingEmail = async (
     )}`,
     locals
   )
-
+  let hasCalendarSyncing = false
+  if (destinationAccountAddress) {
+    const accountCalendar = await getConnectedCalendars(
+      destinationAccountAddress,
+      {
+        syncOnly: true,
+        activeOnly: true,
+      }
+    )
+    hasCalendarSyncing = accountCalendar.some(val => {
+      return val.calendars?.some(cal => cal.enabled && cal.sync)
+    })
+  }
   const icsFile = generateIcs(
     {
       meeting_url: meetingUrl as string,
@@ -158,9 +171,9 @@ export const newMeetingEmail = async (
           accountAddress: destinationAccountAddress,
           email: toEmail,
         }
-      : undefined
+      : undefined,
+    hasCalendarSyncing
   )
-
   if (icsFile.error) {
     Sentry.captureException(icsFile.error)
     return false
@@ -339,7 +352,19 @@ export const updateMeetingEmail = async (
     `${path.resolve('src', 'emails', 'meeting_updated')}`,
     locals
   )
-
+  let hasCalendarSyncing = false
+  if (destinationAccountAddress) {
+    const accountCalendar = await getConnectedCalendars(
+      destinationAccountAddress,
+      {
+        syncOnly: true,
+        activeOnly: true,
+      }
+    )
+    hasCalendarSyncing = accountCalendar.some(val => {
+      return val.calendars?.some(cal => cal.enabled && cal.sync)
+    })
+  }
   const icsFile = generateIcs(
     {
       meeting_url: meetingUrl as string,
@@ -364,7 +389,8 @@ export const updateMeetingEmail = async (
           accountAddress: destinationAccountAddress,
           email: toEmail,
         }
-      : undefined
+      : undefined,
+    hasCalendarSyncing
   )
 
   if (icsFile.error) {
