@@ -20,7 +20,9 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import {
+  getAccount,
   getExistingAccounts,
+  getExistingAccountsSimple,
   getGroup,
   getGroupsMembers,
 } from '@/utils/api_helper'
@@ -188,10 +190,23 @@ const Schedule: NextPage = () => {
             status: ParticipationStatus.Pending,
           })
         } else {
-          invalid.push(participant.name!)
+          const account = await getExistingAccountsSimple([participant.name!])
+          console.log({ account, participant })
+          if (account.length > 0) {
+            valid.push({
+              account_address: account[0].address,
+              type: ParticipantType.Invitee,
+              slot_id: '',
+              meeting_id: '',
+              status: ParticipationStatus.Pending,
+            })
+          } else {
+            invalid.push(participant.name || '')
+          }
         }
       }
     }
+    console.log({ invalid })
     return { valid, invalid }
   }
   const handleSchedule = async () => {
