@@ -71,7 +71,6 @@ a {
 
 .custom-editor {
   width: 100%;
-  max-width: 90vw;
 }
 
 /* For Chrome, Safari and Opera */
@@ -116,6 +115,7 @@ a {
 .hideBorder > div {
   border: 0 solid transparent;
 }
+
 .hideBorder > div[data-focus-visible] {
   box-shadow: none !important;
 }
@@ -124,15 +124,19 @@ a {
   background: transparent !important;
   border: 0 solid transparent;
 }
+
 .hideBorder > div > div {
   left: -7px;
 }
+
 .hideBorder > div > div > hr {
   display: none;
 }
+
 .timezone-select > div > div > hr {
   display: none;
 }
+
 .timezone-select {
   min-width: 200px;
 }
