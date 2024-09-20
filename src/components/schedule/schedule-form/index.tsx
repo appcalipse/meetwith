@@ -14,12 +14,10 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
-import { ToggleSelector } from '@/components/toggle-selector'
-import user from '@/pages/api/secure/group/user'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 
 import { AccountContext } from '../../../providers/AccountProvider'
@@ -258,13 +256,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           placeholder="Give a title for your meeting"
         />
       </FormControl>
-      <FormControl
-        textAlign="left"
-        w={{
-          base: '100%',
-          lg: '600px',
-        }}
-      >
+      <FormControl textAlign="left" w="100%" maxW="100%">
         <FormLabel>What is this meeting about? </FormLabel>
         <RichTextEditor
           isDisabled={isScheduling}
