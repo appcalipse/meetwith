@@ -9,6 +9,7 @@ import StarterKit from '@tiptap/starter-kit'
 import * as React from 'react'
 
 import ToolBar from './ToolBar'
+
 interface RichTextEditorProps {
   onValueChange?: (content: string) => void
   value?: string
@@ -16,6 +17,7 @@ interface RichTextEditorProps {
   id?: string
   isDisabled?: boolean
 }
+
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onValueChange,
   placeholder,
@@ -78,6 +80,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       _focusWithin={{
         border: '2px solid #32ADE6',
       }}
+      maxW="100%"
     >
       <ToolBar editor={editor} />
       <EditorContent
