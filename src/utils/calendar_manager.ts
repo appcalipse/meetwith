@@ -657,7 +657,8 @@ const generateIcs = (
   meetingStatus: MeetingChangeType,
   changeUrl?: string,
   removeAttendess?: boolean,
-  destination?: { accountAddress: string; email: string }
+  destination?: { accountAddress: string; email: string },
+  isPrivate?: boolean
 ): ReturnObject => {
   let url = meeting.meeting_url.trim()
   if (!isValidUrl(url)) {
@@ -672,10 +673,7 @@ const generateIcs = (
       getHours(meeting.start),
       getMinutes(meeting.start),
     ],
-    method: 'REQUEST',
     productId: '-//MEET WITH WALLET//EN',
-    transp: 'OPAQUE',
-    classification: 'PUBLIC',
     end: [
       getYear(meeting.end),
       getMonth(meeting.end) + 1,
@@ -710,9 +708,13 @@ const generateIcs = (
     status:
       meetingStatus === MeetingChangeType.DELETE ? 'CANCELLED' : 'CONFIRMED',
   }
+  if (!isPrivate) {
+    event.method = 'REQUEST'
+    event.transp = 'OPAQUE'
+    event.classification = 'PUBLIC'
+  }
 
   event.attendees = []
-
   if (!removeAttendess) {
     for (const participant of meeting.participants) {
       const attendee: Attendee = {
@@ -725,6 +727,7 @@ const generateIcs = (
             : participant.guest_email ||
               noNoReplyEmailForAccount(participant.account_address!),
         rsvp: participant.status === ParticipationStatus.Accepted,
+        partstat: participantStatusToICSStatus(participant.status),
         role: 'REQ-PARTICIPANT',
       }
 
