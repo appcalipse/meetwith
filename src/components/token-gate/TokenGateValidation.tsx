@@ -88,7 +88,7 @@ const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
   }
 
   useEffect(() => {
-    handleGateValidation(props.gate)
+    void handleGateValidation(props.gate)
   }, [props.gate, currentAccount])
   const bgColor = !props.userAccount
     ? '#FFC700'
