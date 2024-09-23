@@ -806,7 +806,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
                   {CalendarType.REGULAR === calendarType &&
                   !rescheduleSlotId &&
-                  selectedType.scheduleGate ? (
+                  selectedType.scheduleGate &&
+                  selectedType.scheduleGate !== 'No gate' ? (
                     <TokenGateValidation
                       gate={selectedType.scheduleGate}
                       targetAccount={account!}
