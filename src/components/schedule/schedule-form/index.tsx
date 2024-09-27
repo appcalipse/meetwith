@@ -17,8 +17,11 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { useContext, useEffect, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
+import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { SchedulingType } from '../../../types/Meeting'
@@ -37,7 +40,8 @@ interface ScheduleFormProps {
     content?: string,
     meetingUrl?: string,
     emailToSendReminders?: string,
-    title?: string
+    title?: string,
+    participants?: Array<ParticipantInfo>
   ) => Promise<boolean>
   notificationsSubs?: number
 }
@@ -51,7 +55,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   notificationsSubs,
 }) => {
   const { currentAccount, logged } = useContext(AccountContext)
-
+  const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const toast = useToast()
 
   const [content, setContent] = useState('')
@@ -63,6 +67,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [scheduleType, setScheduleType] = useState(
     SchedulingType.REGULAR as SchedulingType
   )
+  const [addGuest, setAddGuest] = useState(false)
   const [guestEmail, setGuestEmail] = useState('')
   const [userEmail, setUserEmail] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
@@ -132,6 +137,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       return
     }
     setIsScheduling(true)
+
     const success = await onConfirm(
       scheduleType!,
       pickedTime,
@@ -140,7 +146,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       content,
       meetingUrl,
       doSendEmailReminders ? userEmail : undefined,
-      title
+      title,
+      participants
     )
     setIsScheduling(false)
     willStartScheduling(!success)
@@ -161,6 +168,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
+
   return (
     <Flex direction="column" gap={4} paddingTop={3}>
       <FormControl isInvalid={isNameEmpty}>
@@ -348,6 +356,32 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             </>
           )}
       </VStack>
+      {!addGuest ? (
+        <Button
+          colorScheme="orangeButton"
+          variant="outline"
+          onClick={() => setAddGuest(true)}
+        >
+          Add other participants
+        </Button>
+      ) : (
+        <ChipInput
+          currentItems={participants}
+          placeholder="Enter participants"
+          onChange={setParticipants}
+          renderItem={p => {
+            if (p.account_address) {
+              return p.name || ellipsizeAddress(p.account_address!)
+            } else if (p.name && p.guest_email) {
+              return `${p.name} - ${p.guest_email}`
+            } else if (p.name) {
+              return `${p.name}`
+            } else {
+              return p.guest_email!
+            }
+          }}
+        />
+      )}
       <Button
         width="full"
         isDisabled={
@@ -365,7 +399,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             : handleConfirm
         }
         colorScheme="primary"
-        mt={6}
+        // mt={6}
       >
         {isScheduling
           ? 'Scheduling...'
