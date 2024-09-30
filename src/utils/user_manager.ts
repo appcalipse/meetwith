@@ -161,7 +161,8 @@ const getParticipantDisplay = (
 
   if (
     participant.account_address?.toLowerCase() ===
-    currentAccountAddress?.toLowerCase()
+      currentAccountAddress?.toLowerCase() &&
+    participant.account_address
   ) {
     display = 'You'
   } else if (participant.guest_email) {
