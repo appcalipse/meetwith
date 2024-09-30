@@ -3,10 +3,17 @@ import { randomUUID } from 'crypto'
 import * as uuid from 'uuid'
 
 import { Account } from '@/types/Account'
-import { MeetingInfo, SchedulingType, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { ParticipantType } from '@/types/ParticipantInfo'
-import { ParticipationStatus } from '@/types/ParticipantInfo'
+import {
+  MeetingInfo,
+  MeetingProvider,
+  SchedulingType,
+  TimeSlotSource,
+} from '@/types/Meeting'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
 import * as helper from '@/utils/api_helper'
 import { sanitizeParticipants, scheduleMeeting } from '@/utils/calendar_manager'
 import * as crypto from '@/utils/cryptography'
@@ -35,6 +42,7 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
       description: faker.datatype.string(),
       availabilities: [],
       socialLinks: [],
+      meetingProvider: MeetingProvider.HUDDLE,
     },
   }
 }
@@ -94,6 +102,7 @@ describe('calendar manager', () => {
         startTime,
         endTime,
         participants,
+        MeetingProvider.HUDDLE,
         account,
         meetingContent,
         meetingUrl
@@ -150,6 +159,7 @@ describe('calendar manager', () => {
         startTime,
         endTime,
         participants,
+        MeetingProvider.HUDDLE,
         account,
         meetingContent,
         meetingUrl
@@ -234,6 +244,7 @@ describe('calendar manager', () => {
       startTime,
       endTime,
       participants,
+      MeetingProvider.HUDDLE,
       account,
       meetingContent,
       meetingUrl
@@ -335,6 +346,7 @@ describe('calendar manager', () => {
       startTime,
       endTime,
       JSON.parse(JSON.stringify(participants)),
+      MeetingProvider.HUDDLE,
       existingAccounts[1],
       meetingContent,
       meetingUrl
@@ -432,6 +444,7 @@ describe('calendar manager', () => {
       startTime,
       endTime,
       participants,
+      MeetingProvider.HUDDLE,
       null,
       meetingContent,
       meetingUrl

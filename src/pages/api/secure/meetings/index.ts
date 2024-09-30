@@ -3,11 +3,8 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
-import {
-  DBSlotEnhanced,
-  MeetingProvider,
-  TimeSlotSource,
-} from '@/types/Meeting'
+// eslint-disable-next-line
+import { DBSlot, MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingCreationRequest } from '@/types/Requests'
 import { createHuddleRoom } from '@/utils/api_helper'
@@ -145,7 +142,7 @@ export const handleMeetingSchedule = async (
     }
 
     try {
-      const meetingResult: DBSlotEnhanced = await saveMeeting(
+      const meetingResult: DBSlot = await saveMeeting(
         participantActing,
         meeting
       )
