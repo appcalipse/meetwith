@@ -293,7 +293,8 @@ export default class Office365CalendarService implements CalendarService {
     const payload = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
-        participantsInfo
+        participantsInfo,
+        details.title
       ),
       body: {
         contentType: 'TEXT',

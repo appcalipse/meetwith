@@ -1,8 +1,8 @@
 import { Flex, HStack, Image, Text } from '@chakra-ui/react'
-import { formatUnits } from 'viem'
 
 import { ConditionRelation } from '@/types/common'
 import { GateCondition, GateInterface } from '@/types/TokenGating'
+import { formatUnits } from '@/utils/generic_utils'
 
 interface HumanReadableGateProps {
   gateCondition: GateCondition

@@ -1,20 +1,17 @@
 import * as Sentry from '@sentry/nextjs'
 import { Resolution } from '@unstoppabledomains/resolution'
 import {
-  fetchEnsAddress,
-  fetchEnsAvatar,
-  fetchEnsName,
-  getNetwork,
-  GetWalletClientResult,
-  switchNetwork,
-} from '@wagmi/core'
-import { ca } from 'date-fns/locale'
-import { ProviderName, Web3Resolver } from 'web3-domain-resolver'
+  resolveAddress,
+  resolveAvatar,
+  resolveName,
+} from 'thirdweb/extensions/ens'
+import { Wallet } from 'thirdweb/wallets'
 
-import { getChainInfo, SupportedChain } from '../types/chains'
+import { getChainInfo, SupportedChain } from '@/types/chains'
+
 import { getSubscriptionByDomain } from './api_helper'
-import lensHelper from './lens.helper'
-
+import { getLensProfile } from './lens.helper'
+import { thirdWebClient } from './user_manager'
 interface AccountExtraProps {
   name: string
   avatar?: string
@@ -30,16 +27,19 @@ export const resolveENS = async (
   address: string
 ): Promise<AccountExtraProps | undefined> => {
   try {
-    const name = await fetchEnsName({
-      address: address as `0x${string}`,
-      chainId: 1,
+    const name = await resolveName({
+      address: address,
+      client: thirdWebClient,
     })
 
     if (!name) {
       return undefined
     }
 
-    const validatedAddress = await fetchEnsAddress({ name, chainId: 1 })
+    const validatedAddress = await resolveAddress({
+      name,
+      client: thirdWebClient,
+    })
 
     // Check to be sure the reverse record is correct.
     if (address.toLowerCase() !== validatedAddress?.toLowerCase()) {
@@ -48,9 +48,11 @@ export const resolveENS = async (
 
     let avatar = undefined
     try {
-      avatar = await fetchEnsAvatar({ name, chainId: 1 })
+      avatar = await resolveAvatar({
+        name,
+        client: thirdWebClient,
+      })
     } catch (e) {}
-
     return {
       name,
       avatar: avatar || undefined,
@@ -61,18 +63,11 @@ export const resolveENS = async (
 }
 
 const checkENSBelongsTo = async (domain: string): Promise<string | null> => {
-  return await fetchEnsAddress({ name: domain, chainId: 1 })
-}
-
-const checkFreenameBelongsTo = async (
-  domain: string
-): Promise<string | null> => {
-  const web3resolver = new Web3Resolver()
-  web3resolver.setResolversPriority([ProviderName.FREENAME])
-
-  const resolvedDomain = await web3resolver.resolve(domain)
-
-  return resolvedDomain?.ownerAddress || null
+  const validatedAddress = await resolveAddress({
+    name: domain,
+    client: thirdWebClient,
+  })
+  return validatedAddress
 }
 
 const checkDomainBelongsTo = async (domain: string): Promise<string | null> => {
@@ -83,20 +78,6 @@ const checkDomainBelongsTo = async (domain: string): Promise<string | null> => {
   } catch (e) {
     return null
   }
-}
-
-export const resolveFreename = async (
-  address: string
-): Promise<AccountExtraProps | null> => {
-  const web3resolver = new Web3Resolver()
-  const resolvedDomain = await web3resolver.reverseResolve(
-    address,
-    ProviderName.FREENAME
-  )
-
-  return resolvedDomain
-    ? { name: resolvedDomain.fullname!, avatar: resolvedDomain.imageUrl }
-    : null
 }
 
 const checkUnstoppableDomainBelongsTo = async (
@@ -137,60 +118,17 @@ const checkUnstoppableDomainBelongsTo = async (
 
 export const validateChainToActOn = async (
   desiredChain: SupportedChain,
-  walletClient: GetWalletClientResult | undefined
+  wallet: Wallet
 ): Promise<void> => {
-  const { chain } = getNetwork()
+  const chainId = await wallet.getChain()!.id
 
   const chainInfo = getChainInfo(desiredChain)
-  if (chainInfo && chain?.id !== chainInfo.id) {
-    try {
-      await switchNetwork({
-        chainId: chainInfo.id,
-      })
 
+  if (chainInfo && chainId !== chainInfo.id) {
+    try {
+      await wallet.switchChain(chainInfo.thirdwebChain)
       return
     } catch (switchError: any) {
-      if (switchError.name === 'ChainNotConfiguredForConnectorError') {
-        try {
-          await walletClient?.addChain({
-            chain: {
-              id: chainInfo.id,
-              name: chainInfo.fullName,
-              network: chainInfo.name,
-              nativeCurrency: {
-                name: chainInfo.nativeTokenSymbol,
-                symbol: chainInfo.nativeTokenSymbol,
-                decimals: 18,
-              },
-              rpcUrls: {
-                default: {
-                  http: [chainInfo.rpcUrl],
-                },
-                public: {
-                  http: [chainInfo.rpcUrl],
-                },
-              },
-              /** Collection of block explorers */
-              blockExplorers: {
-                default: {
-                  name: chainInfo.fullName,
-                  url: chainInfo.blockExplorerUrl,
-                },
-              },
-              testnet: chainInfo.testnet,
-            },
-          })
-
-          const connectedChain = await walletClient?.getChainId()
-          //check if user accepted chain switch after adding it
-          if (connectedChain !== chainInfo.id) {
-            throw Error('User did not accept chain switch')
-          }
-          return
-        } catch (addError: any) {
-          throw Error(addError)
-        }
-      }
       throw Error(switchError)
     }
   }
@@ -227,17 +165,10 @@ export const getAddressFromDomain = async (
     ) {
       return (await checkUnstoppableDomainBelongsTo(domain))?.toLowerCase()
     } else if (domain.endsWith('.lens')) {
-      const lensProfile = await lensHelper.getLensProfile(domain)
+      const lensProfile = await getLensProfile(domain)
       return lensProfile?.ownedBy.toLowerCase()
     } else {
-      const freename_address = (
-        await checkFreenameBelongsTo(domain)
-      )?.toLowerCase()
-      if (freename_address) {
-        return freename_address
-      } else {
-        return (await checkDomainBelongsTo(domain))?.toLowerCase()
-      }
+      return (await checkDomainBelongsTo(domain))?.toLowerCase()
     }
   } catch (e) {
     Sentry.captureException(e)

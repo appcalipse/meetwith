@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { DBSlotEnhanced, SchedulingType } from '@/types/Meeting'
+import { DBSlot, SchedulingType } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingCreationRequest } from '@/types/Requests'
 import { saveMeeting } from '@/utils/database'
@@ -22,7 +22,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(500).send('No guest scheduler found')
     }
     try {
-      const meetingResult: DBSlotEnhanced = await saveMeeting(
+      const meetingResult: DBSlot = await saveMeeting(
         {
           name: guest.name,
           guest_email: guest.guest_email,

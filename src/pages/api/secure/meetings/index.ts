@@ -52,7 +52,7 @@ export const handleMeetingSchedule = async (
     ) {
       return res
         .status(403)
-        .send('You cant schedule a meeting for someone else')
+        .send("You can't schedule a meeting for someone else")
     }
 
     const participantActing = getParticipantBaseInfoFromAccount(

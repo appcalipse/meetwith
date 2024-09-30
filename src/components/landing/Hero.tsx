@@ -11,23 +11,23 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react'
-import { useModal } from 'connectkit'
 import router from 'next/router'
 import { useContext } from 'react'
 import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
 
 export function Hero() {
   const { currentAccount, loginIn } = useContext(AccountContext)
 
-  const { setOpen } = useModal()
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on FREE plan')
-      setOpen(true)
+      openConnection()
     } else {
       await router.push('/dashboard')
     }
@@ -179,22 +179,19 @@ export function Hero() {
           gridAutoFlow={{ base: 'none', md: 'column' }}
         >
           <Link href="https://poap.xyz/">
-            <Image src={'/assets/logo-poap.svg'} />
+            <Image src={'/assets/logo-poap.svg'} alt="POAP Logo" />
           </Link>
           <Link href="http://huddle01.xyz/">
-            <Image src={'/assets/logo-huddle01.svg'} />
+            <Image src={'/assets/logo-huddle01.svg'} alt="Huddle01 Logo" />
           </Link>
           {/* <Link href="">
-            <Image src={'/assets/logo-e.svg'} />
+            <Image src={'/assets/logo-e.svg'} alt="E Logo" />
           </Link> */}
           <Link href="https://unstoppabledomains.com/">
-            <Image src={'/assets/logo-u.svg'} />
-          </Link>
-          <Link href="https://push.org">
-            <Image src={'/assets/logo-push.svg'} />
+            <Image src={'/assets/logo-u.svg'} alt="Unstoppable Domains Logo" />
           </Link>
           <Link href="">
-            <Image src={'/assets/logo-triangle.svg'} />
+            <Image src={'/assets/logo-triangle.svg'} alt="Triangle Logo" />
           </Link>
         </Grid>
       </Box>

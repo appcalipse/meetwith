@@ -35,7 +35,7 @@ export interface ConnectedCalendarCardProps {
 const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const textColor = useColorModeValue('gray.700', 'gray.300')
-  const bgColor = useColorModeValue('white', 'gray.600')
+  const bgColor = useColorModeValue('white', 'neutral.900')
   const [isUpdating, setUpdating] = useState(false)
   const [calendars, setCalendars] = useState(
     props.calendars.map(c => {

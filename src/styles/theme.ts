@@ -6,7 +6,7 @@ const config: ThemeConfig = {
   disableTransitionOnChange: false,
 }
 
-const colors = {
+export const colors = {
   primary: {
     50: '#FCDACF',
     100: '#FBC7B7',
@@ -32,6 +32,9 @@ const colors = {
     800: '#323F4B',
     900: '#1F2933',
   },
+  green: {
+    500: '#34C759',
+  },
   orangeButton: {
     200: '#F46739',
     300: '#F35826',
@@ -39,6 +42,9 @@ const colors = {
   grayButton: {
     200: '#E4E7EB',
     300: '#CBD2D9',
+  },
+  yellow: {
+    300: '#FFC700',
   },
 }
 

@@ -4,22 +4,89 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
+import { Group } from '@/types/Group'
 import { MeetingChangeType } from '@/types/Meeting'
+import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingChange } from '@/types/Requests'
+import { getConnectedCalendars } from '@/utils/database'
+import { ParticipantInfoForInviteNotification } from '@/utils/notification_helper'
 
-import { ParticipantInfo, ParticipantType } from '../types/ParticipantInfo'
 import {
   dateToHumanReadable,
   durationToHumanReadable,
   generateIcs,
 } from './calendar_manager'
 import { appUrl } from './constants'
+import { mockEncrypted } from './cryptography'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
+export const newGroupInviteEmail = async (
+  toEmail: string,
+  participant: ParticipantInfoForInviteNotification,
+  group: Group
+): Promise<boolean> => {
+  const email = new Email()
+  const displayName = participant.name || participant.account_address
+  const locals = {
+    displayName,
+    group,
+    joinUrl: `${appUrl}/dashboard/group/${group.id}`,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'group_invite')}`,
+    locals
+  )
 
+  const msg: sgMail.MailDataRequired = {
+    to: toEmail,
+    from: FROM,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+  }
+  try {
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+export const newGroupRejectEmail = async (
+  toEmail: string,
+  participant: ParticipantInfoForInviteNotification,
+  group: Group
+): Promise<boolean> => {
+  const email = new Email()
+  const displayName = participant.name || participant.account_address
+  const locals = {
+    displayName,
+    group,
+    joinUrl: `${appUrl}/dashboard/groups?invite=${group.id}`,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'reject_group_invite')}`,
+    locals
+  )
+
+  const msg: sgMail.MailDataRequired = {
+    to: toEmail,
+    from: FROM,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+  }
+  try {
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
 export const newMeetingEmail = async (
   toEmail: string,
   participantType: ParticipantType,
@@ -66,7 +133,19 @@ export const newMeetingEmail = async (
     )}`,
     locals
   )
-
+  let hasCalendarSyncing = false
+  if (destinationAccountAddress) {
+    const accountCalendar = await getConnectedCalendars(
+      destinationAccountAddress,
+      {
+        syncOnly: true,
+        activeOnly: true,
+      }
+    )
+    hasCalendarSyncing = accountCalendar.some(val => {
+      return val.calendars?.some(cal => cal.enabled && cal.sync)
+    })
+  }
   const icsFile = generateIcs(
     {
       meeting_url: meetingUrl as string,
@@ -75,10 +154,11 @@ export const newMeetingEmail = async (
       id: meeting_id as string,
       meeting_id,
       created_at: new Date(created_at as Date),
-      meeting_info_file_path: '',
       participants,
       version: 0,
       related_slot_ids: [],
+      meeting_info_encrypted: mockEncrypted,
+      content: description,
     },
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
@@ -91,9 +171,9 @@ export const newMeetingEmail = async (
           accountAddress: destinationAccountAddress,
           email: toEmail,
         }
-      : undefined
+      : undefined,
+    hasCalendarSyncing
   )
-
   if (icsFile.error) {
     Sentry.captureException(icsFile.error)
     return false
@@ -154,10 +234,10 @@ export const cancelledMeetingEmail = async (
       end: new Date(end),
       id: meeting_id,
       created_at: new Date(created_at as Date),
-      meeting_info_file_path: '',
       participants: [],
       version: 0,
       related_slot_ids: [],
+      meeting_info_encrypted: mockEncrypted,
     },
     destinationAccountAddress || '',
     MeetingChangeType.DELETE,
@@ -272,7 +352,19 @@ export const updateMeetingEmail = async (
     `${path.resolve('src', 'emails', 'meeting_updated')}`,
     locals
   )
-
+  let hasCalendarSyncing = false
+  if (destinationAccountAddress) {
+    const accountCalendar = await getConnectedCalendars(
+      destinationAccountAddress,
+      {
+        syncOnly: true,
+        activeOnly: true,
+      }
+    )
+    hasCalendarSyncing = accountCalendar.some(val => {
+      return val.calendars?.some(cal => cal.enabled && cal.sync)
+    })
+  }
   const icsFile = generateIcs(
     {
       meeting_url: meetingUrl as string,
@@ -281,10 +373,10 @@ export const updateMeetingEmail = async (
       id: meeting_id,
       meeting_id,
       created_at: new Date(created_at as Date),
-      meeting_info_file_path: '',
       participants,
       version: 0,
       related_slot_ids: [],
+      meeting_info_encrypted: mockEncrypted,
     },
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
@@ -297,7 +389,8 @@ export const updateMeetingEmail = async (
           accountAddress: destinationAccountAddress,
           email: toEmail,
         }
-      : undefined
+      : undefined,
+    hasCalendarSyncing
   )
 
   if (icsFile.error) {
@@ -329,4 +422,55 @@ export const updateMeetingEmail = async (
   }
 
   return true
+}
+
+export const sendInvitationEmail = async (
+  toEmail: string,
+  inviterName: string,
+  message: string,
+  groupId: string,
+  group: Group,
+  invitationLink: string
+): Promise<void> => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'group_invite'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const locals = {
+    inviterName,
+    groupName: group.name,
+    message,
+    invitationLink,
+    group,
+  }
+
+  try {
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
+
+    const msg = {
+      to: toEmail,
+      from: FROM,
+      subject: subject,
+      html: rendered,
+      text: `${inviterName} invited you to join ${group.name}. Accept your invite here: ${invitationLink}`,
+    }
+
+    await sgMail.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
 }

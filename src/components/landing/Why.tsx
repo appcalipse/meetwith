@@ -9,7 +9,6 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import { useModal } from 'connectkit'
 import router from 'next/router'
 import { useContext } from 'react'
 import { BsBell, BsShieldShaded } from 'react-icons/bs'
@@ -17,17 +16,18 @@ import { FaRegCalendarCheck, FaRegHandshake } from 'react-icons/fa'
 import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
 
 export function Why() {
   const { currentAccount, loginIn } = useContext(AccountContext)
 
-  const { setOpen } = useModal()
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on WHY section')
-      setOpen(true)
+      openConnection()
     } else {
       await router.push('/dashboard')
     }
@@ -110,7 +110,7 @@ export function Why() {
               </Heading>
               <Text fontSize="" color="neutral.100">
                 Meet with Wallet automatically notifies you of upcoming meetings
-                over email, push, Discord or Push protocol so that you don’t
+                over email, push notifications, or Discord so that you don’t
                 miss a beat. Only if you want it, of course.
               </Text>
             </VStack>

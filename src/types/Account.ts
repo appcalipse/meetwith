@@ -16,7 +16,7 @@ export interface Account {
   address: string
   internal_pub_key: string
   encoded_signature: string
-  preferences?: AccountPreferences
+  preferences: AccountPreferences
   nonce: number
   is_invited: boolean
   subscriptions: Subscription[]
@@ -52,11 +52,12 @@ export interface TimeRange {
 }
 
 export interface AccountPreferences {
+  id?: string
   timezone: string
   availableTypes: MeetingType[]
-  description: string
+  description?: string
   availabilities: DayAvailability[]
-  socialLinks: SocialLink[]
+  socialLinks?: SocialLink[]
   name?: string
   avatar?: string
   meetingProvider: MeetingProvider

@@ -14,10 +14,9 @@ import { v4 as uuidv4 } from 'uuid'
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import {
   DBSlot,
-  DBSlotEnhanced,
-  IPFSMeetingInfo,
   MeetingChangeType,
   MeetingDecrypted,
+  MeetingInfo,
   MeetingProvider,
   ParticipantMappingType,
   SchedulingType,
@@ -34,6 +33,7 @@ import {
 import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
+  createHuddleRoom,
   fetchContentFromIPFSFromBrowser,
   getAccount,
   getExistingAccounts,
@@ -256,7 +256,7 @@ const buildMeetingData = async (
     throw new MeetingCreationError()
   }
 
-  const privateInfo: IPFSMeetingInfo = {
+  const privateInfo: MeetingInfo = {
     created_at: new Date(),
     participants: sanitizedParticipants,
     title: meetingTitle,
@@ -292,7 +292,7 @@ const buildMeetingData = async (
       ...privateInfo,
       // we need to store the other related slots in other to update the meeting later
       related_slot_ids: allSlotIds.filter(id => id !== participant.slot_id),
-    } as IPFSMeetingInfo)
+    } as MeetingInfo)
 
     const participantMapping: RequestParticipantMapping = {
       account_address: participant.account_address || '',
@@ -347,6 +347,7 @@ const buildMeetingData = async (
  * @returns
  */
 const updateMeeting = async (
+  ignoreAvailabilities: boolean,
   currentAccountAddress: string,
   meetingTypeId: string,
   startTime: Date,
@@ -430,6 +431,35 @@ const updateMeeting = async (
   )
 
   const rootMeetingId = existingMeeting?.meeting_id
+
+  if (!ignoreAvailabilities) {
+    const promises: Promise<void>[] = []
+
+    participants
+      .filter(p => p.account_address !== currentAccount?.address)
+      .forEach(participant => {
+        promises.push(
+          new Promise<void>(async resolve => {
+            if (
+              !participant.account_address ||
+              (
+                await isSlotFreeApiCall(
+                  participant.account_address,
+                  startTime,
+                  endTime,
+                  meetingTypeId
+                )
+              ).isFree
+            ) {
+              resolve()
+            }
+            throw new TimeNotAvailableError()
+          })
+        )
+      })
+    await Promise.all(promises)
+  }
+
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     meetingTypeId,
@@ -455,10 +485,7 @@ const updateMeeting = async (
   }
 
   // Fetch the updated data one last time
-  const slot: DBSlotEnhanced = await apiUpdateMeeting(
-    decryptedMeeting.id,
-    payload
-  )
+  const slot: DBSlot = await apiUpdateMeeting(decryptedMeeting.id, payload)
   return (await decryptMeeting(slot, currentAccount))!
 }
 
@@ -519,6 +546,7 @@ const cancelMeeting = async (
 }
 
 const scheduleMeeting = async (
+  ignoreAvailabilities: boolean,
   schedulingType: SchedulingType,
   meetingTypeId: string,
   startTime: Date,
@@ -547,75 +575,85 @@ const scheduleMeeting = async (
     meetingTitle
   )
 
-  const owner = meeting.participants_mapping.filter(
-    p => p.type === ParticipantType.Owner
-  )[0]
-
-  if (
-    !owner || // scheduling from dashboard
-    (
-      await isSlotFreeApiCall(
-        owner.account_address!,
-        startTime,
-        endTime,
-        meetingTypeId
-      )
-    ).isFree
-  ) {
-    try {
-      let slot: DBSlotEnhanced
-      if (schedulingType === SchedulingType.GUEST) {
-        slot = await scheduleMeetingAsGuest(meeting)
-      } else if (schedulingType === SchedulingType.DISCORD) {
-        slot = await scheduleMeetingFromServer(currentAccount!.address, meeting)
-      } else {
-        meeting.emailToSendReminders = emailToSendReminders
-        slot = await apiScheduleMeeting(meeting)
-      }
-
-      if (currentAccount && schedulingType !== SchedulingType.DISCORD) {
-        return (await decryptMeeting(slot, currentAccount))!
-      }
-
-      // Invalidate meetings cache and update meetings where required
-      queryClient.invalidateQueries(
-        QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
-      )
-      queryClient.invalidateQueries(
-        QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
-      )
-
-      participants.forEach(p => {
-        queryClient.invalidateQueries(
-          QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
-        )
-        queryClient.invalidateQueries(
-          QueryKeys.busySlots({
-            id: p.account_address?.toLowerCase(),
+  if (!ignoreAvailabilities) {
+    const promises: Promise<boolean>[] = []
+    participants
+      .filter(p => p.account_address !== currentAccount?.address)
+      .forEach(participant => {
+        promises.push(
+          new Promise<boolean>(async resolve => {
+            if (
+              !participant.account_address ||
+              (
+                await isSlotFreeApiCall(
+                  participant.account_address,
+                  startTime,
+                  endTime,
+                  meetingTypeId
+                )
+              ).isFree
+            ) {
+              resolve(true)
+            }
+            resolve(false)
           })
         )
       })
-
-      return {
-        id: slot.id!,
-        ...meeting,
-        created_at: meeting.start,
-        participants: meeting.participants_mapping,
-        content: meeting.content,
-        title: meeting.title,
-        meeting_id: newMeetingId,
-        meeting_url: meeting.meeting_url,
-        start: meeting.start,
-        end: meeting.end,
-        meeting_info_file_path: slot.meeting_info_file_path,
-        related_slot_ids: [],
-        version: 0,
-      }
-    } catch (error: any) {
-      throw error
+    const results = await Promise.all(promises)
+    if (results.some(r => !r)) {
+      throw new TimeNotAvailableError()
     }
-  } else {
-    throw new TimeNotAvailableError()
+  }
+  try {
+    let slot: DBSlot
+    if (schedulingType === SchedulingType.GUEST) {
+      slot = await scheduleMeetingAsGuest(meeting)
+    } else if (schedulingType === SchedulingType.DISCORD) {
+      slot = await scheduleMeetingFromServer(currentAccount!.address, meeting)
+    } else {
+      meeting.emailToSendReminders = emailToSendReminders
+      slot = await apiScheduleMeeting(meeting)
+    }
+    if (currentAccount && schedulingType !== SchedulingType.DISCORD) {
+      const meeting = (await decryptMeeting(slot, currentAccount))!
+      return meeting
+    }
+
+    // Invalidate meetings cache and update meetings where required
+    queryClient.invalidateQueries(
+      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
+    )
+    queryClient.invalidateQueries(
+      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
+    )
+
+    participants.forEach(p => {
+      queryClient.invalidateQueries(
+        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
+      )
+      queryClient.invalidateQueries(
+        QueryKeys.busySlots({
+          id: p.account_address?.toLowerCase(),
+        })
+      )
+    })
+    return {
+      id: slot.id!,
+      ...meeting,
+      created_at: meeting.start,
+      participants: meeting.participants_mapping,
+      content: meeting.content,
+      title: meeting.title,
+      meeting_id: newMeetingId,
+      meeting_url: meeting.meeting_url,
+      start: meeting.start,
+      end: meeting.end,
+      related_slot_ids: [],
+      version: 0,
+      meeting_info_encrypted: slot.meeting_info_encrypted,
+    }
+  } catch (error: any) {
+    throw error
   }
 }
 
@@ -625,7 +663,8 @@ const generateIcs = (
   meetingStatus: MeetingChangeType,
   changeUrl?: string,
   removeAttendess?: boolean,
-  destination?: { accountAddress: string; email: string }
+  destination?: { accountAddress: string; email: string },
+  isPrivate?: boolean
 ): ReturnObject => {
   let url = meeting.meeting_url.trim()
   if (!isValidUrl(url)) {
@@ -640,6 +679,7 @@ const generateIcs = (
       getHours(meeting.start),
       getMinutes(meeting.start),
     ],
+    productId: '-//MEET WITH WALLET//EN',
     end: [
       getYear(meeting.end),
       getMonth(meeting.end) + 1,
@@ -649,7 +689,8 @@ const generateIcs = (
     ],
     title: CalendarServiceHelper.getMeetingTitle(
       ownerAddress,
-      meeting.participants
+      meeting.participants,
+      meeting.title
     ),
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
@@ -673,9 +714,13 @@ const generateIcs = (
     status:
       meetingStatus === MeetingChangeType.DELETE ? 'CANCELLED' : 'CONFIRMED',
   }
+  if (!isPrivate) {
+    event.method = 'REQUEST'
+    event.transp = 'OPAQUE'
+    event.classification = 'PUBLIC'
+  }
 
   event.attendees = []
-
   if (!removeAttendess) {
     for (const participant of meeting.participants) {
       const attendee: Attendee = {
@@ -701,9 +746,6 @@ const generateIcs = (
   }
 
   const icsEvent = createEvent(event)
-  // hack to fix https://www.rfc-editor.org/rfc/rfc4791#section-4.1 – "Calendar object resources contained in calendar collections MUST NOT specify the iCalendar METHOD property."
-  icsEvent.value = icsEvent.value!.replace(/METHOD\:.*[\n|\r]+/, '')
-
   return icsEvent
 }
 
@@ -719,19 +761,19 @@ const participantStatusToICSStatus = (status: ParticipationStatus) => {
 }
 
 const decryptMeeting = async (
-  meeting: DBSlotEnhanced,
+  meeting: DBSlot,
   account: Account,
   signature?: string
 ): Promise<MeetingDecrypted | null> => {
   const content = await getContentFromEncrypted(
     account!,
     signature || getSignature(account!.address)!,
-    meeting.meeting_info_encrypted
+    meeting?.meeting_info_encrypted
   )
 
   if (!content) return null
 
-  const meetingInfo = JSON.parse(content) as IPFSMeetingInfo
+  const meetingInfo = JSON.parse(content) as MeetingInfo
   return {
     id: meeting.id!,
     ...meeting,
@@ -744,7 +786,6 @@ const decryptMeeting = async (
     related_slot_ids: meetingInfo.related_slot_ids,
     start: new Date(meeting.start),
     end: new Date(meeting.end),
-    meeting_info_file_path: meeting.meeting_info_file_path,
     version: meeting.version,
   }
 }
@@ -804,16 +845,17 @@ const dateToLocalizedRange = (
   start_date: Date,
   end_date: Date,
   timezone: string,
-  includeTimezone: boolean
+  includeTimezone?: boolean
 ): string => {
   const start = `${format(
     utcToZonedTime(start_date, timezone),
     'eeee, LLL d • p - '
   )}`
-  let end = `${format(utcToZonedTime(end_date, timezone), 'pp')}`
+  let end = `${format(utcToZonedTime(end_date, timezone), 'p')}`
   if (includeTimezone) {
     end += ` (${timezone})`
   }
+
   return start + end
 }
 
@@ -872,9 +914,7 @@ const decodeMeeting = async (
   meeting: DBSlot,
   currentAccount: Account
 ): Promise<MeetingDecrypted | null> => {
-  const meetingInfoEncrypted = (await fetchContentFromIPFSFromBrowser(
-    meeting.meeting_info_file_path
-  )) as Encrypted
+  const meetingInfoEncrypted = meeting.meeting_info_encrypted as Encrypted
   if (meetingInfoEncrypted) {
     const decryptedMeeting = await decryptMeeting(
       {
@@ -900,7 +940,7 @@ const generateGoogleCalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
-  let baseUrl = 'https://calendar.google.com/calendar/r/eventedit11?sf=true'
+  let baseUrl = 'https://calendar.google.com/calendar/r/eventedit?sf=true'
   if (start && end) {
     baseUrl += `&dates=${googleUrlParsedDate(
       new Date(start)
