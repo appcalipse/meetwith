@@ -17,12 +17,12 @@ export interface DBSlot extends TimeSlot {
   id?: string
   created_at?: Date
   account_address: string
-  meeting_info_file_path: string
   version: number
+  meeting_info_encrypted: Encrypted
 }
 ```
 
-You can see both types of information here, the public one and the sensitive one that is stored encrypted into the `meeting_info_file_path` property (via [IPFS](https://ipfs.io/?utm_source=meetwithwallet)).
+You can see both types of information here, the public one and the sensitive one that is stored encrypted in `meeting_info_encrypted` property.
 
 ## Encryption
 
@@ -42,7 +42,6 @@ export interface MeetingDecrypted {
   end: Date
   participants: ParticipantInfo[]
   meeting_url: string
-  meeting_info_file_path: string
   content?: string
   related_slot_ids: string[]
   version: DBSlot['version']

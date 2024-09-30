@@ -28,16 +28,18 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
   const [loading, setLoading] = useState(false)
   const [timezone, setTimezone] = useState<string | null | undefined>(
-    currentAccount!.preferences!.timezone
+    currentAccount!.preferences.timezone
   )
 
   const [initialAvailabilities, setInitialAvailabilities] = useState([
-    ...currentAccount!.preferences!.availabilities,
+    ...(currentAccount!.preferences.availabilities || []),
   ])
 
   useEffect(() => {
-    setTimezone(currentAccount!.preferences!.timezone)
-    const availabilities = [...currentAccount!.preferences!.availabilities]
+    setTimezone(currentAccount!.preferences.timezone)
+    const availabilities = [
+      ...(currentAccount!.preferences.availabilities || []),
+    ]
     for (let i = 0; i <= 6; i++) {
       let found = false
       for (const availability of initialAvailabilities) {

@@ -29,7 +29,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (meetingType?.id) {
       // editing and not adding
-      const type = account.preferences!.availableTypes.find(
+      const type = account.preferences.availableTypes.find(
         t => t.id === meetingType.id
       )
 
@@ -40,7 +40,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         ...account,
         preferences: {
           ...account.preferences!,
-          availableTypes: account.preferences!.availableTypes.map(t => {
+          availableTypes: account.preferences.availableTypes.map(t => {
             if (t.id === meetingType.id) {
               return meetingType
             }
@@ -54,7 +54,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         preferences: {
           ...account.preferences!,
           availableTypes: [
-            ...account.preferences!.availableTypes,
+            ...account.preferences.availableTypes,
             { ...meetingType, id: v4() },
           ],
         },
@@ -73,13 +73,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     const { typeId } = req.body
 
-    const type = account.preferences!.availableTypes.find(t => t.id === typeId)
+    const type = account.preferences.availableTypes.find(t => t.id === typeId)
 
     if (!type) {
       return res.status(403).send("You can't remove this meeting type")
     }
 
-    if (account.preferences!.availableTypes.length == 1) {
+    if (account.preferences.availableTypes.length == 1) {
       return res.status(403).send('You should keep at least one meeting type')
     }
 
@@ -89,7 +89,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       ...account,
       preferences: {
         ...account.preferences!,
-        availableTypes: account.preferences!.availableTypes.map(t => {
+        availableTypes: account.preferences.availableTypes.map(t => {
           if (t.id === typeId) {
             return type
           }

@@ -3,7 +3,7 @@ export const UTM_PARAMS =
 
 export const HUDDLE_BASE_URL = 'https://meetwithwallet.huddle01.com/'
 
-export const HUDDLE_API_URL = 'https://us-central1-nfts-apis.cloudfunctions.net'
+export const HUDDLE_API_URL = 'https://platform.huddle01.media/api'
 
 export const addUTMParams = (originalUrl: string) => {
   let startChar = ''

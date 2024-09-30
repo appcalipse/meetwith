@@ -1,0 +1,166 @@
+doctype html
+html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:office:office', xmlns:v='urn:schemas-microsoft-com:vml')
+    head
+        meta(charset="UTF-8")
+        meta(name="viewport" content="width=device-width, initial-scale=1.0")
+        title Invitation Email
+        link(rel="stylesheet", href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700&display=swap")
+        style(type='text/css').
+            body, table, td, a {
+                -webkit-text-size-adjust: 100%;
+                -ms-text-size-adjust: 100%;
+            }
+
+            table, td {
+                mso-table-rspace: 0pt;
+                mso-table-lspace: 0pt;
+            }
+
+            img {
+                -ms-interpolation-mode: bicubic;
+            }
+
+            a[x-apple-data-detectors] {
+                font-family: inherit;
+                font-size: inherit;
+                font-weight: inherit;
+                line-height: inherit;
+                text-decoration: none;
+            }
+
+            html, body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                width: 100%;
+                background-color: transparent;
+            }
+
+            body {
+                background: linear-gradient(rgba(45, 55, 72, 0.85), rgba(45, 55, 72, 0.85)), url('https://mww-public.s3.eu-west-1.amazonaws.com/email/twist_orange.png') no-repeat center center;
+                background-size: cover;
+                font-family: 'DM Sans', sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+                padding: 112px 0;
+            }
+
+            .outer-container {
+                width: fit-content;
+                margin: auto;
+                max-width: 1097px;
+                display: block;
+                padding: 24px;
+                background-color: transparent;
+            }
+
+            .container {
+                width: fit-content;
+                max-width: 452px;
+                height: auto;
+                padding: 24px;
+                background-color: #323F4B;
+                border-radius: 6px;
+                border: 1px solid #52606D;
+                text-align: center;
+                box-sizing: border-box;
+            }
+
+            .logo {
+                width: 70px;
+                height: 33px;
+                margin-bottom: 30px;
+            }
+
+            .header, .message {
+                width: 100%;
+                margin: 0 auto 24px auto;
+                text-align: center;
+                box-sizing: border-box;
+            }
+
+            .header {
+                font-family: 'DM Sans', sans-serif;
+                font-size: 24px;
+                font-weight: 700;
+                line-height: 28.8px;
+                color: #FFFFFF;
+            }
+
+            .message {
+                font-family: 'DM Sans', sans-serif;
+                font-size: 16px;
+                font-weight: 500;
+                line-height: 24px;
+                color: #CBD2D9;
+            }
+
+            .button {
+                display: inline-block;
+                width: auto;
+                min-width: 166px;
+                height: 48px;
+                line-height: 48px;
+                padding: 0 16px;
+                font-family: 'DM Sans', sans-serif;
+                font-size: 16px;
+                font-weight: 700;
+                text-align: center;
+                color: #1F2933;
+                background-color: #F7A892;
+                border: none;
+                border-radius: 6px;
+                text-decoration: none;
+                box-sizing: border-box;
+            }
+
+            @media only screen and (max-width: 660px) and (min-width: 480px) and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+                .outer-container {
+                    padding: 0;
+                }
+            }
+
+            @media (max-width: 660px) {
+                html {
+                    background-color: transparent;
+                }
+
+                body {
+                    background-position: center center;
+                    background-repeat: no-repeat;
+                    background-size: cover;
+                    padding-top: 0;
+                    background-color: transparent;
+                }
+
+                .outer-container {
+                    width: fit-content;
+                    margin: auto;
+                    display: block;
+                    padding: 20px;
+                }
+
+                .logo {
+                    margin-bottom: 20px;
+                }
+
+                .header, .message, .button {
+                    width: auto;
+                    max-width: 100%;
+                    margin: 0 0 24px 0;
+                }
+
+                .button {
+                    display: block;
+                    width: 100%;
+                    margin-top: 10px;
+                }
+            }
+    body
+        .outer-container
+            img.logo(src="https://meetwithwalletstatic.s3.us-west-2.amazonaws.com/email/logo_mail.png", alt="Logo", style="display: block;margin: 20px auto;")
+            .container(style='margin: 0 auto;')
+                .header #{inviterName} invited you to join #{groupName}
+                .message #{message}
+                a.button(href=invitationLink) Accept Invitation

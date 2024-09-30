@@ -9,18 +9,25 @@ import {
   ConnectedCalendarCore,
   ConnectResponse,
 } from '@/types/CalendarConnections'
-import { ConditionRelation } from '@/types/common'
+import { ConditionRelation, SuccessResponse } from '@/types/common'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
+  EmptyGroupsResponse,
+  GetGroupsResponse,
+  Group,
+  GroupInvitePayload,
+  GroupMember,
+} from '@/types/Group'
+import {
   ConferenceMeeting,
   DBSlot,
-  DBSlotEnhanced,
   GroupMeetingRequest,
   MeetingDecrypted,
   TimeSlotSource,
 } from '@/types/Meeting'
 import {
+  ChangeGroupAdminRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
@@ -34,11 +41,14 @@ import {
   ApiFetchError,
   GateConditionNotValidError,
   GateInUseError,
+  GroupCreationError,
   Huddle01ServiceUnavailable,
   InvalidSessionError,
+  IsGroupAdminError,
   MeetingChangeConflictError,
   MeetingCreationError,
   TimeNotAvailableError,
+  UserInvitationError,
 } from './errors'
 import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
@@ -70,8 +80,9 @@ export const internalFetch = async <T>(
     }
 
     throw new ApiFetchError(response.status, await response.text())
-  } catch (e) {
+  } catch (e: any) {
     Sentry.captureException(e)
+    throw e
   }
 }
 
@@ -158,7 +169,7 @@ export const saveAccountChanges = async (
 export const scheduleMeetingFromServer = async (
   scheduler_address: string,
   meeting: MeetingCreationRequest
-): Promise<DBSlotEnhanced> => {
+): Promise<DBSlot> => {
   try {
     return (await internalFetch(
       `/server/meetings`,
@@ -168,7 +179,7 @@ export const scheduleMeetingFromServer = async (
       {
         'X-Server-Secret': process.env.SERVER_SECRET!,
       }
-    )) as DBSlotEnhanced
+    )) as DBSlot
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
@@ -204,13 +215,9 @@ export const getFullAccountInfo = async (
 
 export const scheduleMeeting = async (
   meeting: MeetingCreationRequest
-): Promise<DBSlotEnhanced> => {
+): Promise<DBSlot> => {
   try {
-    return (await internalFetch(
-      `/secure/meetings`,
-      'POST',
-      meeting
-    )) as DBSlotEnhanced
+    return (await internalFetch(`/secure/meetings`, 'POST', meeting)) as DBSlot
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
@@ -225,13 +232,9 @@ export const scheduleMeeting = async (
 
 export const scheduleMeetingAsGuest = async (
   meeting: MeetingCreationRequest
-): Promise<DBSlotEnhanced> => {
+): Promise<DBSlot> => {
   try {
-    return (await internalFetch(
-      `/meetings/guest`,
-      'POST',
-      meeting
-    )) as DBSlotEnhanced
+    return (await internalFetch(`/meetings/guest`, 'POST', meeting)) as DBSlot
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
@@ -247,13 +250,13 @@ export const scheduleMeetingAsGuest = async (
 export const updateMeeting = async (
   slotId: string,
   meeting: MeetingUpdateRequest
-): Promise<DBSlotEnhanced> => {
+): Promise<DBSlot> => {
   try {
     return (await internalFetch(
       `/secure/meetings/${slotId}`,
       'POST',
       meeting
-    )) as DBSlotEnhanced
+    )) as DBSlot
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
@@ -408,19 +411,142 @@ export const getMeetingsForDashboard = async (
   }))
 }
 
+export const getGroups = async (
+  limit?: number,
+  offset?: number
+): Promise<Array<GetGroupsResponse>> => {
+  const response = (await internalFetch(
+    `/secure/group/user?limit=${limit}&offset=${offset}`
+  )) as Array<GetGroupsResponse>
+  return response
+}
+export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
+  const response = (await internalFetch(
+    `/secure/group/empty`
+  )) as Array<GetGroupsResponse>
+  return response
+}
+
+export const getGroupsInvites = async (address: string) => {
+  const response = await internalFetch<Array<EmptyGroupsResponse>>(
+    `/secure/group/user/${address}`
+  )
+  return response
+}
+
+export const getGroupsMembers = async (
+  group_id: string,
+  limit?: number,
+  offset?: number
+): Promise<Array<GroupMember>> => {
+  const response = await internalFetch<Array<GroupMember>>(
+    `/secure/group/${group_id}/users?limit=${limit}&offset=${offset}`
+  )
+  return response || []
+}
+export const updateGroupRole = async (
+  group_id: string,
+  data: ChangeGroupAdminRequest
+) => {
+  const response = await internalFetch<SuccessResponse>(
+    `/secure/group/${group_id}/admin`,
+    'PATCH',
+    data
+  )
+  return !!response?.success
+}
+
+export const joinGroup = async (group_id: string, email_address?: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/join${
+      email_address ? `?email_address=${email_address}` : ''
+    }`,
+    'POST'
+  )
+  return response?.success
+}
+
+export const rejectGroup = async (group_id: string, email_address?: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/reject${
+      email_address ? `?email_address=${email_address}` : ''
+    }`,
+    'POST'
+  )
+  return response?.success
+}
+
+export const leaveGroup = async (group_id: string) => {
+  try {
+    const response = await internalFetch<{ success: true }>(
+      `/secure/group/${group_id}/leave`,
+      'POST'
+    )
+    return response?.success
+  } catch (e: any) {
+    if (e.status && e.status === 403) {
+      throw new IsGroupAdminError()
+    } else {
+      throw e
+    }
+  }
+}
+export const removeGroupMember = async (
+  group_id: string,
+  member_id: string,
+  invite_pending: boolean
+) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}/remove`,
+    'DELETE',
+    { member_id, invite_pending }
+  )
+  return response?.success
+}
+export const editGroup = async (
+  group_id: string,
+  name?: string,
+  slug?: string
+) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}`,
+    'PUT',
+    { name, slug }
+  )
+  return response?.success
+}
+export const deleteGroup = async (group_id: string) => {
+  const response = await internalFetch<{ success: true }>(
+    `/secure/group/${group_id}`,
+    'DELETE'
+  )
+  return response?.success
+}
+export const getGroup = async (group_id: string) => {
+  const response = await internalFetch<Group>(`/secure/group/${group_id}`)
+  return response
+}
+
+export const getGroupExternal = async (group_id: string) => {
+  const response = await internalFetch<Group>(`/group/${group_id}`)
+  return response
+}
+
 export const subscribeToWaitlist = async (
   email: string,
   plan?: string
 ): Promise<boolean> => {
-  const result = await internalFetch(`/subscribe`, 'POST', { email, plan })
-  return (result as any).success
+  const result = await internalFetch<SuccessResponse>(`/subscribe`, 'POST', {
+    email,
+    plan,
+  })
+  return !!result?.success
 }
 
-export const getMeeting = async (slot_id: string): Promise<DBSlotEnhanced> => {
+export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
   const response = await queryClient.fetchQuery(
     QueryKeys.meeting(slot_id),
-    () =>
-      internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlotEnhanced>
+    () => internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlot>
   )
   return {
     ...response,
@@ -444,17 +570,6 @@ export const setNotificationSubscriptions = async (
     'POST',
     notifications
   )) as AccountNotifications
-}
-
-export const fetchContentFromIPFSFromBrowser = async (
-  hash: string
-): Promise<object | undefined> => {
-  try {
-    return await (await fetch(`https://mww.infura-ipfs.io/ipfs/${hash}`)).json()
-  } catch (err) {
-    Sentry.captureException(err)
-    return undefined
-  }
 }
 
 export const getGoogleAuthConnectUrl = async (state?: string | null) => {
@@ -756,10 +871,6 @@ export const getUnstoppableDomainsForAddress = async (
   }
 }
 
-export const getIPFSContent = async (cid: string): Promise<any> => {
-  return await internalFetch(`/ipfs/${cid}`)
-}
-
 export const createHuddleRoom = async (
   title?: string
 ): Promise<{ url: string }> => {
@@ -788,4 +899,36 @@ export const getConferenceMeeting = async (
     start: new Date(response.start),
     end: new Date(response.end),
   }
+}
+
+export const createGroup = async (name: string): Promise<GetGroupsResponse> => {
+  try {
+    const response = await internalFetch<GetGroupsResponse>(
+      '/secure/group',
+      'POST',
+      {
+        name,
+      }
+    )
+
+    return response
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 400) {
+        throw new GroupCreationError('Invalid input data')
+      } else if (e.status === 500) {
+        throw new GroupCreationError(e.message)
+      }
+    }
+
+    Sentry.captureException(e)
+    throw e
+  }
+}
+
+export const inviteUsers = async (
+  groupId: string,
+  payload: GroupInvitePayload
+): Promise<void> => {
+  await internalFetch<void>(`/secure/group/${groupId}/invite`, 'POST', payload)
 }

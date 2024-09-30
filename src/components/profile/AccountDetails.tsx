@@ -24,7 +24,6 @@ import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
-import { useWalletClient } from 'wagmi'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
@@ -40,13 +39,9 @@ import {
   syncSubscriptions,
 } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
-import lensHelper from '@/utils/lens.helper'
-import {
-  checkValidDomain,
-  resolveENS,
-  resolveFreename,
-} from '@/utils/rpc_helper_front'
-import { changeDomainOnChain, isProAccount } from '@/utils/subscription_manager'
+import { getLensHandlesForAddress } from '@/utils/lens.helper'
+import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
+import { isProAccount } from '@/utils/subscription_manager'
 import { isValidSlug } from '@/utils/validations'
 
 import Block from './components/Block'
@@ -73,6 +68,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   )
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<Plan | undefined>(undefined)
+  const menuBg = useColorModeValue('white', 'neutral.900')
 
   const socialLinks = currentAccount?.preferences?.socialLinks || []
 
@@ -85,7 +81,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     currentAccount.subscriptions?.[0]?.domain || ''
   )
   const [newProDomain, setNewProDomain] = useState<string>(
-    currentAccount.subscriptions?.[0]?.domain || ''
+    currentAccount.subscriptions?.[0]?.domain ?? ''
   )
 
   const [name, setName] = useState<DisplayName | undefined>(
@@ -134,11 +130,8 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           }
         : undefined
     )
-    setNewProDomain(currentAccount?.subscriptions?.[0]?.domain || '')
+    setNewProDomain(currentAccount?.subscriptions?.[0]?.domain ?? '')
   }
-
-  const chainInfo = getChainInfo(currentAccount.subscriptions?.[0]?.chain)
-  const { data: walletClient } = useWalletClient({ chainId: chainInfo?.id })
 
   const updateAccountSubs = async () => {
     setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
@@ -151,9 +144,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const getHandles = async () => {
     let handles: DisplayName[] = []
     const lensProfiles = async () => {
-      const profiles = await lensHelper.getLensHandlesForAddress(
-        currentAccount!.address
-      )
+      const profiles = await getLensHandlesForAddress(currentAccount!.address)
       if (profiles) {
         handles = handles.concat(
           profiles.map(profile => {
@@ -185,7 +176,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           })
         )
         setProDomain(domains[0])
-        setNewProDomain(domains[0])
+        setNewProDomain(domains[0] ?? '')
       }
     }
 
@@ -218,23 +209,11 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       }
     }
 
-    const getFreenameHandles = async () => {
-      const freename = await resolveFreename(currentAccount!.address)
-      if (freename) {
-        handles.push({
-          label: freename.name,
-          value: freename.name,
-          type: ProfileInfoProvider.FREENAME,
-        })
-      }
-    }
-
     await Promise.all([
       getMWWDomains(),
       lensProfiles(),
       getENSHandle(),
       getUNHandles(),
-      getFreenameHandles(),
     ])
     setNameOptions(handles)
   }
@@ -331,12 +310,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     }
 
     try {
-      await changeDomainOnChain(
-        currentAccount.address,
-        proDomain,
-        newProDomain,
-        walletClient!
-      )
       await updateAccountSubs()
       toast({
         title: 'Calendar link updated',
@@ -382,6 +355,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const subsPurchased = (sub: Subscription) => {
     setPurchased(sub)
     setCurrentPlan(sub.plan_id)
+    setNewProDomain(sub.domain)
     updateAccountSubs()
     setTimeout(
       () => window.scrollTo(0, (subsRef.current as any).offsetTop - 60),
@@ -567,7 +541,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
               'Customizable booking link',
               'External calendar connections (Google and iCloud)',
               'Unlimited meeting configurations',
-              'Email, Push Notifications with Push protocol, and Discord Notifications (optional)',
+              'Email and Discord Notifications (optional)',
               'Schedule meetings with multiple participants',
               'Request payment for meeting scheduling (coming soon)',
             ]}

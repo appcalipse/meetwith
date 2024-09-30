@@ -1,6 +1,62 @@
 import { useEffect, useState } from 'react'
 import slugify from 'slugify'
 
+export const zeroAddress = '0x0000000000000000000000000000000000000000' as const
+
+export function parseUnits(value: `${number}`, decimals: number) {
+  let [integer, fraction = '0'] = value.split('.')
+
+  const negative = integer.startsWith('-')
+  if (negative) integer = integer.slice(1)
+
+  // trim leading zeros.
+  fraction = fraction.replace(/(0+)$/, '')
+
+  // round off if the fraction is larger than the number of decimals.
+  if (decimals === 0) {
+    integer = `${Math.round(Number(`${integer}.${fraction}`))}`
+    fraction = ''
+  } else if (fraction.length > decimals) {
+    const [left, unit, right] = [
+      fraction.slice(0, decimals - 1),
+      fraction.slice(decimals - 1, decimals),
+      fraction.slice(decimals),
+    ]
+
+    const rounded = Math.round(Number(`${unit}.${right}`))
+    if (rounded > 9)
+      fraction = `${BigInt(left) + BigInt(1)}0`.padStart(left.length + 1, '0')
+    else fraction = `${left}${rounded}`
+
+    if (fraction.length > decimals) {
+      fraction = fraction.slice(1)
+      integer = `${BigInt(integer) + 1n}`
+    }
+
+    fraction = fraction.slice(0, decimals)
+  } else {
+    fraction = fraction.padEnd(decimals, '0')
+  }
+
+  return BigInt(`${negative ? '-' : ''}${integer}${fraction}`)
+}
+
+export function formatUnits(value: bigint, decimals: number) {
+  let display = value.toString()
+
+  const negative = display.startsWith('-')
+  if (negative) display = display.slice(1)
+
+  display = display.padStart(decimals, '0')
+
+  const integer = display.slice(0, display.length - decimals)
+  let fraction = display.slice(display.length - decimals)
+  fraction = fraction.replace(/(0+)$/, '')
+  return `${negative ? '-' : ''}${integer || '0'}${
+    fraction ? `.${fraction}` : ''
+  }`
+}
+
 export const generateTwitterUrl = (url: string) => {
   if (url.startsWith('@')) {
     return `https://twitter.com/${url.replace('@', '')}`
@@ -54,4 +110,12 @@ export const useDebounce = (value: any, delay: number) => {
 
 export const shouldEnforceColorOnPath = (pathname: string): boolean => {
   return pathname === '/' || pathname.indexOf('/features/') !== -1
+}
+export const isJson = (str: string) => {
+  try {
+    JSON.parse(str)
+  } catch (e) {
+    return false
+  }
+  return true
 }

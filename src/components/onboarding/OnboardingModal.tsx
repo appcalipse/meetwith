@@ -16,27 +16,21 @@ import {
   Switch,
   Text,
   useColorModeValue,
-  useDisclosure,
   useSteps,
   useToast,
 } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
-import { useModal } from 'connectkit'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/router'
-import {
-  forwardRef,
-  useContext,
-  useEffect,
-  useImperativeHandle,
-  useState,
-} from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { TimeRange } from '@/types/Account'
 import { NotificationChannel } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
+import { EditMode } from '@/types/Dashboard'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import { TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
@@ -59,10 +53,7 @@ import { WeekdayConfig } from '../availabilities/weekday-config'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
 import TimezoneSelector from '../TimezoneSelector'
 
-let didInit = false
-let didOpenConnectWallet = false
-
-const OnboardingModal = forwardRef((props, ref) => {
+const OnboardingModal = () => {
   const router = useRouter()
 
   // Callback Control
@@ -74,7 +65,18 @@ const OnboardingModal = forwardRef((props, ref) => {
       : {}
   const origin = stateObject.origin as OnboardingSubject | undefined
   const skipNextSteps = stateObject.skipNextSteps as boolean | undefined
-  const signedUp = stateObject.signedUp as boolean | undefined
+
+  const [signedUp, setSignedUp] = useState<string>(
+    stateObject.signedUp || false
+  )
+  const [name, setName] = useState<string>(stateObject.name || '')
+  const [email, setEmail] = useState<string>(stateObject.email || '')
+
+  const [timezone, setTimezone] = useState<string | undefined | null>(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
+
+  const [didOpenConnectWallet, setDidOpenConnectWallet] = useState(false)
 
   // Color Control
   const bgColor = useColorModeValue('gray.100', 'gray.600')
@@ -82,9 +84,17 @@ const OnboardingModal = forwardRef((props, ref) => {
   const textColor = useColorModeValue('neutral.600', 'neutral.200')
 
   // Onboarding Modal Control
-  const { isOpen, onOpen: onOpenOnboardingModal, onClose } = useDisclosure()
+  // const { isOpen, onOpen: onOpenOnboardingModal, onClose } = useDisclosure()
+
   // Wallet Modal Control
-  const { setOpen: setWalletModalOpen } = useModal()
+  const {
+    openConnection,
+    isOnboardingOpened,
+    openOnboarding,
+    closeOnboarding,
+    onboardingInit,
+    onboardingStarted,
+  } = useContext(OnboardingModalContext)
   const {
     activeStep,
     goToNext: goToNextStep,
@@ -94,12 +104,6 @@ const OnboardingModal = forwardRef((props, ref) => {
     index: 0,
     count: 2,
   })
-  // Necessary to call these functions from parent
-  useImperativeHandle(ref, () => ({
-    onOpen: onOpenOnboardingModal,
-    onClose,
-    isOpen,
-  }))
 
   // User Control
 
@@ -113,7 +117,7 @@ const OnboardingModal = forwardRef((props, ref) => {
   useEffect(() => {
     // When something related to user changes, check if we should open the modal
     // If the user is logged in and modal hans't been opened yet
-    if (!!currentAccount?.address && !didInit && !skipNextSteps) {
+    if (!!currentAccount?.address && !onboardingInit && !skipNextSteps) {
       // We check if the user is comming from Discord Onboarding Modal
       // and has its discord account linked
 
@@ -123,8 +127,8 @@ const OnboardingModal = forwardRef((props, ref) => {
         origin === OnboardingSubject.DiscordConnectedInModal &&
         !!currentAccount.discord_account
       ) {
-        onOpenOnboardingModal()
-        didInit = true
+        openOnboarding()
+        onboardingStarted()
 
         // 2nd Case
         // Connect Google Calendar or Office 365 Calendar in Modal
@@ -133,14 +137,14 @@ const OnboardingModal = forwardRef((props, ref) => {
         origin === OnboardingSubject.Office365CalendarConnected
       ) {
         setActiveStep(1)
-        onOpenOnboardingModal()
-        didInit = true
+        openOnboarding()
+        onboardingStarted()
 
         // 3rd Case
         // Don't have any origin, just created Account
       } else if (!origin && signedUp) {
-        onOpenOnboardingModal()
-        didInit = true
+        openOnboarding()
+        onboardingStarted()
       }
 
       // If not, we check if any origin is passed in and if the user its not logged in
@@ -150,20 +154,32 @@ const OnboardingModal = forwardRef((props, ref) => {
       !currentAccount?.address &&
       !!origin &&
       !didOpenConnectWallet &&
-      !isOpen
+      !isOnboardingOpened
     ) {
       // We open the connection modal and avoid it being opened again
-      setWalletModalOpen(true)
-      didOpenConnectWallet = true
+      openConnection()
+      setDidOpenConnectWallet(true)
     }
   }, [
     currentAccount,
-    onOpenOnboardingModal,
+    openOnboarding,
     origin,
-    setWalletModalOpen,
-    isOpen,
+    openConnection,
+    isOnboardingOpened,
     signedUp,
   ])
+
+  useEffect(() => {
+    if (stateObject.name && !name) {
+      setName(stateObject.name)
+    }
+    if (stateObject.email && !email) {
+      setEmail(stateObject.email)
+    }
+    if (stateObject.signedUp && !signedUp) {
+      setSignedUp(stateObject.signedUp)
+    }
+  }, [queryParams])
 
   // Discord Step
   async function fillDiscordUserInfo() {
@@ -172,32 +188,24 @@ const OnboardingModal = forwardRef((props, ref) => {
       return
     }
 
-    const discordUserInfo = await queryClient.fetchQuery(
-      QueryKeys.discordUserInfo(currentAccount?.address),
-      async () => {
-        const data = (await internalFetch('/secure/discord/info')) as
-          | DiscordUserInfo
-          | undefined
-        return data ?? null
-      }
-    )
+    if (currentAccount) {
+      const discordUserInfo = await queryClient.fetchQuery(
+        QueryKeys.discordUserInfo(currentAccount?.address),
+        async () => {
+          const data = (await internalFetch('/secure/discord/info')) as
+            | DiscordUserInfo
+            | undefined
+          return data ?? null
+        }
+      )
 
-    if (discordUserInfo?.global_name) setName(discordUserInfo.global_name)
+      if (discordUserInfo?.global_name) setName(discordUserInfo.global_name)
+    }
   }
 
   useEffect(() => {
-    if (isOpen === true) fillDiscordUserInfo()
-  }, [isOpen])
-
-  const [name, setName] = useState<string | undefined>(
-    stateObject.name || undefined
-  )
-  const [email, setEmail] = useState<string | undefined>(
-    stateObject.email || undefined
-  )
-  const [timezone, setTimezone] = useState<string | undefined | null>(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  )
+    if (isOnboardingOpened === true) fillDiscordUserInfo()
+  }, [isOnboardingOpened])
 
   const toast = useToast()
 
@@ -390,8 +398,12 @@ const OnboardingModal = forwardRef((props, ref) => {
       logEvent('Updated account details')
       login(updatedAccount)
 
-      await router.push('/dashboard')
-      onClose()
+      await router.push(
+        !!stateObject.redirect
+          ? `/dashboard/${EditMode.MEETINGS}?redirect=${stateObject.redirect}`
+          : `/dashboard/${EditMode.MEETINGS}`
+      )
+      closeOnboarding()
     } catch (e) {
       console.error(e)
       setLoadingSave(false)
@@ -400,12 +412,12 @@ const OnboardingModal = forwardRef((props, ref) => {
 
   const activeStepColor = useColorModeValue('neutral.400', 'neutral.50')
   const stepColor = useColorModeValue('neutral.50', 'neutral.400')
-
+  const handleClose = () => closeOnboarding(stateObject.redirect)
   return (
     <>
       <Modal
-        isOpen={isOpen}
-        onClose={onClose}
+        isOpen={isOnboardingOpened}
+        onClose={handleClose}
         closeOnOverlayClick={false}
         closeOnEsc={false}
         size="xl"
@@ -416,7 +428,7 @@ const OnboardingModal = forwardRef((props, ref) => {
             <Flex justifyContent="flex-end">
               <Button
                 variant="ghost"
-                onClick={onClose}
+                onClick={handleClose}
                 isDisabled={loadingSave}
               >
                 Skip all
@@ -863,7 +875,6 @@ const OnboardingModal = forwardRef((props, ref) => {
       </Modal>
     </>
   )
-})
+}
 
-OnboardingModal.displayName = 'OnboardingModal'
 export default OnboardingModal

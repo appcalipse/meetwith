@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       account_notifications: {
@@ -25,60 +25,53 @@ export interface Database {
           id?: number
           notification_types?: Json | null
         }
-        Relationships: []
-      }
-      account_notifications_duplicate: {
-        Row: {
-          account_address: string
-          id: number
-          notification_types: Json | null
-        }
-        Insert: {
-          account_address: string
-          id?: number
-          notification_types?: Json | null
-        }
-        Update: {
-          account_address?: string
-          id?: number
-          notification_types?: Json | null
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_account_notifications_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: true
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       account_preferences: {
         Row: {
-          availabilities: Json | null
+          availabilities: Json
           availableTypes: Json[] | null
           description: string | null
           id: string
           name: string | null
           owner_account_address: string
-          socialLinks: Json[] | null
+          socialLinks: Json[]
           timezone: string | null
+          videoMeeting: Database['public']['Enums']['VideoMeeting']
         }
         Insert: {
-          availabilities?: Json | null
+          availabilities?: Json
           availableTypes?: Json[] | null
           description?: string | null
           id?: string
           name?: string | null
           owner_account_address: string
-          socialLinks?: Json[] | null
+          socialLinks: Json[]
           timezone?: string | null
+          videoMeeting?: Database['public']['Enums']['VideoMeeting']
         }
         Update: {
-          availabilities?: Json | null
+          availabilities?: Json
           availableTypes?: Json[] | null
           description?: string | null
           id?: string
           name?: string | null
           owner_account_address?: string
-          socialLinks?: Json[] | null
+          socialLinks?: Json[]
           timezone?: string | null
+          videoMeeting?: Database['public']['Enums']['VideoMeeting']
         }
         Relationships: [
           {
-            foreignKeyName: 'account_preferences_owner_account_address_fkey'
+            foreignKeyName: 'public_account_preferences_owner_account_address_fkey'
             columns: ['owner_account_address']
             isOneToOne: true
             referencedRelation: 'accounts'
@@ -90,29 +83,29 @@ export interface Database {
         Row: {
           address: string
           created_at: string | null
-          encoded_signature: string
+          encoded_signature: string | null
           id: string
-          internal_pub_key: string
+          internal_pub_key: string | null
           is_invited: boolean | null
-          nonce: number
+          nonce: string | null
         }
         Insert: {
           address: string
           created_at?: string | null
-          encoded_signature: string
+          encoded_signature?: string | null
           id?: string
-          internal_pub_key: string
+          internal_pub_key?: string | null
           is_invited?: boolean | null
-          nonce: number
+          nonce?: string | null
         }
         Update: {
           address?: string
           created_at?: string | null
-          encoded_signature?: string
+          encoded_signature?: string | null
           id?: string
-          internal_pub_key?: string
+          internal_pub_key?: string | null
           is_invited?: boolean | null
-          nonce?: number
+          nonce?: string | null
         }
         Relationships: []
       }
@@ -150,7 +143,15 @@ export interface Database {
           sync?: boolean
           updated?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_connected_calendars_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       discord_accounts: {
         Row: {
@@ -171,22 +172,33 @@ export interface Database {
           discord_id?: string
           id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_discord_accounts_address_fkey'
+            columns: ['address']
+            isOneToOne: true
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       emails: {
         Row: {
           created_at: string | null
-          email: string
+          email: string | null
+          id: number
           plan: string | null
         }
         Insert: {
           created_at?: string | null
-          email: string
+          email?: string | null
+          id?: number
           plan?: string | null
         }
         Update: {
           created_at?: string | null
-          email?: string
+          email?: string | null
+          id?: number
           plan?: string | null
         }
         Relationships: []
@@ -210,28 +222,78 @@ export interface Database {
           owner?: string
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_gate_definition_owner_fkey'
+            columns: ['owner']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       gate_usage: {
         Row: {
           gate_id: string
           gated_entity_id: string
-          id: string
+          id: number
           type: string
         }
         Insert: {
           gate_id: string
           gated_entity_id: string
-          id?: string
+          id?: number
           type: string
         }
         Update: {
           gate_id?: string
           gated_entity_id?: string
-          id?: string
+          id?: number
           type?: string
         }
         Relationships: []
+      }
+      group_invites: {
+        Row: {
+          discord_id: string | null
+          email: string | null
+          group_id: string
+          id: string
+          role: Database['public']['Enums']['GroupRole']
+          user_id: string | null
+        }
+        Insert: {
+          discord_id?: string | null
+          email?: string | null
+          group_id: string
+          id?: string
+          role?: Database['public']['Enums']['GroupRole']
+          user_id?: string | null
+        }
+        Update: {
+          discord_id?: string | null
+          email?: string | null
+          group_id?: string
+          id?: string
+          role?: Database['public']['Enums']['GroupRole']
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'public_group_invites_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'public_group_invites_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       group_meeting_request: {
         Row: {
@@ -261,35 +323,136 @@ export interface Database {
           team_structure?: Json | null
           title?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: 'public_group_meeting_request_owner_fkey'
+            columns: ['owner']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
+      group_members: {
+        Row: {
+          created_at: string
+          group_id: string
+          member_id: string
+          role: Database['public']['Enums']['GroupRole']
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          member_id: string
+          role?: Database['public']['Enums']['GroupRole']
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          member_id?: string
+          role?: Database['public']['Enums']['GroupRole']
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'public_group_members_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'public_group_members_member_id_fkey'
+            columns: ['member_id']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
         Relationships: []
+      }
+      groups_to_meetings: {
+        Row: {
+          group_id: string
+          meeting_id: string
+        }
+        Insert: {
+          group_id: string
+          meeting_id: string
+        }
+        Update: {
+          group_id?: string
+          meeting_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'public_groups_to_meetings_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'public_groups_to_meetings_meeting_id_fkey'
+            columns: ['meeting_id']
+            isOneToOne: false
+            referencedRelation: 'group_meeting_request'
+            referencedColumns: ['id']
+          }
+        ]
       }
       meetings: {
         Row: {
           access_type: string | null
-          created_at: string
-          end: string
+          created_at: string | null
+          end: string | null
           id: string
           meeting_url: string | null
-          provider: string
-          start: string
+          provider: string | null
+          start: string | null
         }
         Insert: {
           access_type?: string | null
-          created_at?: string
-          end: string
+          created_at?: string | null
+          end?: string | null
           id: string
           meeting_url?: string | null
-          provider: string
-          start: string
+          provider?: string | null
+          start?: string | null
         }
         Update: {
           access_type?: string | null
-          created_at?: string
-          end?: string
+          created_at?: string | null
+          end?: string | null
           id?: string
           meeting_url?: string | null
-          provider?: string
-          start?: string
+          provider?: string | null
+          start?: string | null
         }
         Relationships: []
       }
@@ -314,7 +477,7 @@ export interface Database {
           created_at: string | null
           end: string | null
           id: string
-          meeting_info_file_path: string | null
+          meeting_info_encrypted: Json | null
           start: string | null
           version: number | null
         }
@@ -323,7 +486,7 @@ export interface Database {
           created_at?: string | null
           end?: string | null
           id: string
-          meeting_info_file_path?: string | null
+          meeting_info_encrypted?: Json | null
           start?: string | null
           version?: number | null
         }
@@ -332,11 +495,19 @@ export interface Database {
           created_at?: string | null
           end?: string | null
           id?: string
-          meeting_info_file_path?: string | null
+          meeting_info_encrypted?: Json | null
           start?: string | null
           version?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'public_slots_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
       }
       subscriptions: {
         Row: {
@@ -369,6 +540,35 @@ export interface Database {
           plan_id?: number
           registered_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'public_subscriptions_owner_account_fkey'
+            columns: ['owner_account']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
+      video_meeting: {
+        Row: {
+          id: string
+          isGuest: boolean
+          slot_id: string | null
+          videoMeeting: Json | null
+        }
+        Insert: {
+          id?: string
+          isGuest: boolean
+          slot_id?: string | null
+          videoMeeting?: Json | null
+        }
+        Update: {
+          id?: string
+          isGuest?: boolean
+          slot_id?: string | null
+          videoMeeting?: Json | null
+        }
         Relationships: []
       }
     }
@@ -382,9 +582,22 @@ export interface Database {
         }
         Returns: Json
       }
+      get_availability_types_for_account_preferences: {
+        Args: {
+          address: string
+        }
+        Returns: {
+          id: number
+          title: string
+          url: string
+          duration: unknown
+          min_advance_time: unknown
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      GroupRole: 'admin' | 'member'
+      VideoMeeting: 'None' | 'GoogleMeet'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -392,9 +605,11 @@ export interface Database {
   }
 }
 
+type PublicSchema = Database[Extract<keyof Database, 'public'>]
+
 export type Tables<
   PublicTableNameOrOptions extends
-    | keyof (Database['public']['Tables'] & Database['public']['Views'])
+    | keyof (PublicSchema['Tables'] & PublicSchema['Views'])
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof (Database[PublicTableNameOrOptions['schema']]['Tables'] &
@@ -407,10 +622,10 @@ export type Tables<
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (Database['public']['Tables'] &
-      Database['public']['Views'])
-  ? (Database['public']['Tables'] &
-      Database['public']['Views'])[PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof (PublicSchema['Tables'] &
+      PublicSchema['Views'])
+  ? (PublicSchema['Tables'] &
+      PublicSchema['Views'])[PublicTableNameOrOptions] extends {
       Row: infer R
     }
     ? R
@@ -419,7 +634,7 @@ export type Tables<
 
 export type TablesInsert<
   PublicTableNameOrOptions extends
-    | keyof Database['public']['Tables']
+    | keyof PublicSchema['Tables']
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
@@ -430,8 +645,8 @@ export type TablesInsert<
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof Database['public']['Tables']
-  ? Database['public']['Tables'][PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
+  ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
       Insert: infer I
     }
     ? I
@@ -440,7 +655,7 @@ export type TablesInsert<
 
 export type TablesUpdate<
   PublicTableNameOrOptions extends
-    | keyof Database['public']['Tables']
+    | keyof PublicSchema['Tables']
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
@@ -451,8 +666,8 @@ export type TablesUpdate<
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof Database['public']['Tables']
-  ? Database['public']['Tables'][PublicTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
+  ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
       Update: infer U
     }
     ? U
@@ -461,13 +676,16 @@ export type TablesUpdate<
 
 export type Enums<
   PublicEnumNameOrOptions extends
-    | keyof Database['public']['Enums']
+    | keyof PublicSchema['Enums']
     | { schema: keyof Database },
   EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
     ? keyof Database[PublicEnumNameOrOptions['schema']]['Enums']
     : never = never
 > = PublicEnumNameOrOptions extends { schema: keyof Database }
   ? Database[PublicEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : PublicEnumNameOrOptions extends keyof Database['public']['Enums']
-  ? Database['public']['Enums'][PublicEnumNameOrOptions]
+  : PublicEnumNameOrOptions extends keyof PublicSchema['Enums']
+  ? PublicSchema['Enums'][PublicEnumNameOrOptions]
   : never
+
+export type GroupMembersRow =
+  Database['public']['Tables']['group_members']['Row']

@@ -1,14 +1,16 @@
 import * as Sentry from '@sentry/nextjs'
+import { erc20Abi } from 'abitype/abis'
+import { Abi } from 'abitype/zod'
 import {
-  GetWalletClientResult,
-  prepareWriteContract,
+  getContract,
+  prepareContractCall,
   readContract,
-  waitForTransaction,
-  writeContract,
-} from '@wagmi/core'
-import { parseUnits, TransactionReceipt, zeroAddress } from 'viem'
+  sendTransaction,
+  waitForReceipt,
+} from 'thirdweb'
+import { TransactionReceipt } from 'thirdweb/dist/types/transaction/types'
+import { Wallet } from 'thirdweb/wallets'
 
-import { ERC20 } from '../abis/erc20'
 import { MWWDomain, MWWRegister } from '../abis/mww'
 import { Account } from '../types/Account'
 import { AcceptedToken, getChainInfo, SupportedChain } from '../types/chains'
@@ -20,7 +22,9 @@ import {
 } from '../types/Subscription'
 import { getSubscriptionByDomain } from './api_helper'
 import { YEAR_DURATION_IN_SECONDS } from './constants'
+import { parseUnits, zeroAddress } from './generic_utils'
 import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
+import { thirdWebClient } from './user_manager'
 
 export const isProAccount = (account?: Account): boolean => {
   return Boolean(getActiveProSubscription(account))
@@ -40,15 +44,16 @@ export const checkAllowance = async (
   chain: SupportedChain,
   token: AcceptedToken,
   duration: number,
-  walletClient?: GetWalletClientResult
+  wallet: Wallet
 ): Promise<bigint> => {
   const price = getPlanInfo(plan)?.usdPrice
   if (price) {
     const chainInfo = getChainInfo(chain)
 
     try {
-      await validateChainToActOn(chain, walletClient)
+      await validateChainToActOn(chain, wallet)
     } catch (e) {
+      console.error(e)
       throw Error('Please connect to the correct network')
     }
 
@@ -59,25 +64,26 @@ export const checkAllowance = async (
       throw Error('Token not accepted')
     }
 
-    const info = {
-      address: tokenInfo.contractAddress as `0x${string}`,
-      chainId: chainInfo!.id,
-      abi: ERC20,
-    }
+    const contract = getContract({
+      client: thirdWebClient,
+      chain: chainInfo!.thirdwebChain,
+      address: tokenInfo.contractAddress,
+      abi: erc20Abi,
+    })
 
-    const decimals = (await readContract({
-      ...info,
-      functionName: 'decimals',
-    })) as bigint
+    const decimals = await readContract({
+      contract,
+      method: 'decimals',
+    })
 
-    const allowance = (await readContract({
-      ...info,
-      functionName: 'allowance',
-      args: [
-        accountAddress.toLocaleLowerCase(),
+    const allowance = await readContract({
+      contract,
+      method: 'allowance',
+      params: [
+        accountAddress.toLowerCase(),
         chainInfo!.registarContractAddress,
       ],
-    })) as bigint
+    })
 
     const amount =
       (parseUnits(`${price}`, Number(decimals)) * BigInt(duration)) /
@@ -97,12 +103,12 @@ export const approveTokenSpending = async (
   chain: SupportedChain,
   token: AcceptedToken,
   amount: bigint,
-  walletClient: GetWalletClientResult | undefined
+  wallet: Wallet
 ): Promise<void> => {
   const chainInfo = getChainInfo(chain)
 
   try {
-    await validateChainToActOn(chain, walletClient)
+    await validateChainToActOn(chain, wallet)
   } catch (e) {
     throw Error('Please connect to the correct network')
   }
@@ -114,21 +120,28 @@ export const approveTokenSpending = async (
     throw Error('Token not accepted')
   }
 
-  const info = {
-    address: tokenInfo.contractAddress as `0x${string}`,
-    chainId: chainInfo!.id,
-    abi: ERC20,
-  }
-
-  const config = await prepareWriteContract({
-    ...info,
-    functionName: 'approve',
-    args: [chainInfo!.registarContractAddress, amount],
+  const contract = getContract({
+    client: thirdWebClient,
+    chain: chainInfo!.thirdwebChain,
+    address: tokenInfo.contractAddress,
+    abi: erc20Abi,
   })
 
-  const { hash } = await writeContract(config)
-  await waitForTransaction({
-    hash,
+  const tokenTransaction = await prepareContractCall({
+    contract,
+    method: 'approve',
+    params: [chainInfo!.registarContractAddress, amount],
+  })
+
+  const { transactionHash: tokenHash } = await sendTransaction({
+    account: wallet.getAccount()!,
+    transaction: tokenTransaction,
+  })
+
+  await waitForReceipt({
+    client: thirdWebClient,
+    chain: chainInfo!.thirdwebChain,
+    transactionHash: tokenHash,
   })
 }
 
@@ -140,19 +153,20 @@ export const getNativePriceForDuration = async (
   const chainInfo = getChainInfo(chain)
   const planInfo = getPlanInfo(plan)
   if (planInfo) {
-    const info = {
-      address: chainInfo!.registarContractAddress as `0x${string}`,
-      chainId: chainInfo!.id,
-      abi: MWWRegister,
-    }
+    const contract = getContract({
+      client: thirdWebClient,
+      chain: chainInfo!.thirdwebChain,
+      address: chainInfo!.registarContractAddress,
+      abi: Abi.parse(MWWRegister),
+    })
 
     const result = (await readContract({
-      ...info,
-      functionName: 'getNativeConvertedValue',
-      args: [planInfo.usdPrice],
+      contract,
+      method: 'function getNativeConvertedValue(uint8 price)',
+      params: [planInfo.usdPrice],
     })) as any
     const value =
-      (result[0] * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
+      (BigInt(result[0]) * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
 
     return value
   } else {
@@ -167,7 +181,7 @@ export const subscribeToPlan = async (
   duration: number,
   domain: string,
   token: AcceptedToken,
-  walletClient?: GetWalletClientResult
+  wallet: Wallet
 ): Promise<TransactionReceipt> => {
   try {
     const subExists = await getSubscriptionByDomain(domain)
@@ -183,16 +197,17 @@ export const subscribeToPlan = async (
   const chainInfo = getChainInfo(chain)
 
   try {
-    await validateChainToActOn(chain, walletClient)
+    await validateChainToActOn(chain, wallet)
   } catch (e) {
     throw Error('Please connect to the correct network')
   }
 
-  const info = {
-    address: chainInfo!.registarContractAddress as `0x${string}`,
-    chainId: chainInfo!.id,
-    abi: MWWRegister,
-  }
+  const contract = getContract({
+    client: thirdWebClient,
+    chain: chainInfo!.thirdwebChain,
+    address: chainInfo!.registarContractAddress,
+    abi: Abi.parse(MWWRegister),
+  })
 
   try {
     const tokenInfo = chainInfo!.acceptableTokens.find(
@@ -209,40 +224,58 @@ export const subscribeToPlan = async (
         chain,
         token,
         duration,
-        walletClient
+        wallet
       )
 
       if (neededApproval > 0) {
-        const tokenConfig = await prepareWriteContract({
-          address: tokenInfo.contractAddress as `0x${string}`,
-          chainId: chainInfo!.id,
-          abi: ERC20,
-          functionName: 'approve',
-          args: [chainInfo!.registarContractAddress, neededApproval],
+        const tokenContract = getContract({
+          client: thirdWebClient,
+          chain: chainInfo!.thirdwebChain,
+          address: tokenInfo.contractAddress,
+          abi: erc20Abi,
         })
 
-        const tokenResult = await writeContract(tokenConfig)
-        await waitForTransaction({
-          hash: tokenResult.hash,
+        const tokenTransaction = await prepareContractCall({
+          contract: tokenContract,
+          method: 'approve',
+          params: [chainInfo!.registarContractAddress, neededApproval],
+        })
+
+        const { transactionHash: tokenHash } = await sendTransaction({
+          account: wallet.getAccount()!,
+          transaction: tokenTransaction,
+        })
+
+        await waitForReceipt({
+          client: thirdWebClient,
+          chain: chainInfo!.thirdwebChain,
+          transactionHash: tokenHash,
         })
       }
 
-      const config = await prepareWriteContract({
-        ...info,
-        functionName: 'purchaseWithToken',
-        args: [
+      const transaction = await prepareContractCall({
+        contract,
+        method:
+          'function purchaseWithToken(address tokenAddress, uint8 planId, address planOwner, uint256 duration, string memory domain, string memory ipfsHash)',
+        params: [
           tokenInfo.contractAddress,
           plan,
           accountAddress.toLocaleLowerCase(),
-          duration,
+          BigInt(duration),
           domain,
           '',
         ],
       })
 
-      const result = await writeContract(config)
-      return await waitForTransaction({
-        hash: result.hash,
+      const { transactionHash } = await sendTransaction({
+        account: wallet.getAccount()!,
+        transaction,
+      })
+
+      return await waitForReceipt({
+        client: thirdWebClient,
+        chain: chainInfo!.thirdwebChain,
+        transactionHash,
       })
     } else {
       const planInfo = getPlanInfo(plan)
@@ -251,23 +284,39 @@ export const subscribeToPlan = async (
       }
 
       const readResult = (await readContract({
-        ...info,
-        functionName: 'getNativeConvertedValue',
-        args: [planInfo.usdPrice],
+        contract,
+        method:
+          'function getNativeConvertedValue(uint256 usdPrice) public view returns (uint256 amountInNative, uint256 timestamp)',
+        params: [BigInt(planInfo.usdPrice)],
       })) as any
-      const value =
-        (readResult[0] * BigInt(duration)) / BigInt(YEAR_DURATION_IN_SECONDS)
 
-      const config = await prepareWriteContract({
-        ...info,
-        functionName: 'purchaseWithNative',
-        args: [plan, accountAddress.toLocaleLowerCase(), duration, domain, ''],
+      const value =
+        (BigInt(readResult[0]) * BigInt(duration)) /
+        BigInt(YEAR_DURATION_IN_SECONDS)
+
+      const transaction = await prepareContractCall({
+        contract,
+        method:
+          'function purchaseWithNative(uint8 planId, address planOwner, uint256 duration, string memory domain, string memory ipfsHash)',
+        params: [
+          plan,
+          accountAddress.toLocaleLowerCase(),
+          BigInt(duration),
+          domain,
+          '',
+        ],
         value: BigInt(value),
       })
 
-      const result = await writeContract(config)
-      return await waitForTransaction({
-        hash: result.hash,
+      const { transactionHash } = await sendTransaction({
+        account: wallet.getAccount()!,
+        transaction,
+      })
+
+      return await waitForReceipt({
+        client: thirdWebClient,
+        chain: chainInfo!.thirdwebChain,
+        transactionHash,
       })
     }
   } catch (error) {
@@ -306,7 +355,7 @@ export const changeDomainOnChain = async (
   accountAddress: string,
   domain: string,
   newDomain: string,
-  walletClient?: GetWalletClientResult
+  wallet: Wallet
 ): Promise<TransactionReceipt> => {
   try {
     const subExists = await getSubscriptionByDomain(newDomain)
@@ -334,29 +383,36 @@ export const changeDomainOnChain = async (
   const chainInfo = getChainInfo(chain!)
 
   try {
-    await validateChainToActOn(chain!, walletClient)
+    await validateChainToActOn(chain!, wallet)
   } catch (e) {
     throw Error(
       'Please connect to the ${chain} network. (consider you must unlock your wallet and also reload the page after that)'
     )
   }
 
-  const info = {
-    address: chainInfo!.domainContractAddess as `0x${string}`,
-    chainId: chainInfo!.id,
-    abi: MWWDomain,
-  }
+  const contract = getContract({
+    client: thirdWebClient,
+    chain: chainInfo!.thirdwebChain,
+    address: chainInfo!.domainContractAddess,
+    abi: Abi.parse(MWWDomain),
+  })
 
   try {
-    const config = await prepareWriteContract({
-      ...info,
-      functionName: 'changeDomain',
-      args: [domain, newDomain],
+    const transaction = await prepareContractCall({
+      contract,
+      method: 'function changeDomain(string old, string new)',
+      params: [domain, newDomain],
     })
 
-    const result = await writeContract(config)
-    return await waitForTransaction({
-      hash: result.hash,
+    const { transactionHash } = await sendTransaction({
+      account: wallet.getAccount()!,
+      transaction,
+    })
+
+    return await waitForReceipt({
+      client: thirdWebClient,
+      chain: chainInfo!.thirdwebChain,
+      transactionHash,
     })
   } catch (error: any) {
     Sentry.captureException(error)
