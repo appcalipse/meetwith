@@ -1,11 +1,18 @@
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 
+import { Group, MemberType } from '@/types/Group'
+import { appUrl } from '@/utils/constants'
+
 import {
   AccountNotifications,
   NotificationChannel,
 } from '../types/AccountNotifications'
-import { MeetingChangeType, ParticipantMappingType } from '../types/Meeting'
+import {
+  GroupNotificationType,
+  MeetingChangeType,
+  ParticipantMappingType,
+} from '../types/Meeting'
 import {
   ParticipantBaseInfo,
   ParticipantInfo,
@@ -20,13 +27,16 @@ import {
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
+  getGroup,
+  getGroupInternal,
 } from './database'
 import {
   cancelledMeetingEmail,
+  newGroupInviteEmail,
+  newGroupRejectEmail,
   newMeetingEmail,
   updateMeetingEmail,
 } from './email_helper'
-import { sendPushNotification } from './push_protocol_helper'
 import { dmAccount } from './services/discord.helper'
 import { isProAccount } from './subscription_manager'
 import { getAllParticipantsDisplayName } from './user_manager'
@@ -36,6 +46,35 @@ export interface ParticipantInfoForNotification extends ParticipantInfo {
   meeting_id: string
   notifications?: AccountNotifications
   mappingType: ParticipantMappingType
+}
+export interface ParticipantInfoForInviteNotification
+  extends ParticipantBaseInfo {
+  timezone: string
+  notifications?: AccountNotifications
+}
+
+export const notifyForGroupInviteJoinOrReject = async (
+  accountsToNotify: string[],
+  group_id: string,
+  notifyType: GroupNotificationType
+): Promise<void> => {
+  const participantsInfo: ParticipantInfoForInviteNotification[] = []
+  const group = await getGroupInternal(group_id)
+
+  for (const address of accountsToNotify) {
+    const account = await getAccountFromDB(address)
+    participantsInfo.push({
+      account_address: address,
+      name: account.preferences?.name,
+      notifications: await getAccountNotificationSubscriptions(address),
+      timezone: account.preferences.timezone,
+    })
+  }
+  await runPromises(
+    await workGroupNotifications(participantsInfo, group, notifyType)
+  )
+
+  return
 }
 
 export const notifyForMeetingCancellation = async (
@@ -65,7 +104,7 @@ export const notifyForMeetingCancellation = async (
       account_address: address,
       name: account.preferences?.name,
       notifications: await getAccountNotificationSubscriptions(address),
-      timezone: account.preferences!.timezone,
+      timezone: account.preferences.timezone,
       type: ParticipantType.Invitee,
       meeting_id,
       status: ParticipationStatus.Rejected,
@@ -230,28 +269,46 @@ const workNotifications = async (
                   )
                 }
                 break
-              case NotificationChannel.EPNS:
-                const accountForEPNS = await getAccountFromDB(
+              default:
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    Sentry.captureException(error)
+  }
+  return promises
+}
+const workGroupNotifications = async (
+  participantsInfo: ParticipantInfoForInviteNotification[],
+  group: Group,
+  notifyType: GroupNotificationType
+): Promise<Promise<boolean>[]> => {
+  const promises: Promise<boolean>[] = []
+
+  try {
+    for (const participant of participantsInfo) {
+      if (
+        participant.account_address &&
+        participant.notifications &&
+        participant.notifications?.notification_types.length > 0
+      ) {
+        for (const notification_type of participant.notifications
+          .notification_types) {
+          if (!notification_type.disabled) {
+            switch (notification_type.channel) {
+              case NotificationChannel.EMAIL:
+                promises.push(
+                  getGroupEmailNotification(participant, group, notifyType)
+                )
+                break
+              case NotificationChannel.DISCORD:
+                const accountForDiscord = await getAccountFromDB(
                   participant.account_address
                 )
                 // Dont DM if you are the person is the one scheduling the meeting
-                if (
-                  isProAccount(accountForEPNS) &&
-                  participantActing.account_address?.toLowerCase() !==
-                    participant.account_address.toLowerCase()
-                ) {
-                  promises.push(
-                    getEPNSNotification(
-                      changeType,
-                      notification_type.destination,
-                      start,
-                      end,
-                      participantActing,
-                      participant,
-                      participantsInfo,
-                      changes
-                    )
-                  )
+                if (isProAccount(accountForDiscord)) {
                 }
                 break
               default:
@@ -265,7 +322,25 @@ const workNotifications = async (
   }
   return promises
 }
-
+const getGroupEmailNotification = async (
+  participant: ParticipantInfoForInviteNotification,
+  group: Group,
+  notifyType?: GroupNotificationType
+) => {
+  const toEmail =
+    participant.guest_email ||
+    participant.notifications!.notification_types.filter(
+      t => t.channel === NotificationChannel.EMAIL
+    )[0]!.destination
+  switch (notifyType) {
+    case GroupNotificationType.INVITE:
+      return newGroupInviteEmail(toEmail, participant, group)
+    case GroupNotificationType.REJECT:
+      return newGroupRejectEmail(toEmail, participant, group)
+    default:
+  }
+  return Promise.resolve(false)
+}
 const getEmailNotification = async (
   _changeType: MeetingChangeType,
   participantActing: ParticipantBaseInfo,
@@ -448,102 +523,6 @@ const getDiscordNotification = async (
     }
   }
   return Promise.resolve(false)
-}
-
-const getEPNSNotification = async (
-  _changeType: MeetingChangeType,
-  destination: string,
-  start: Date,
-  end: Date,
-  participantActing: ParticipantBaseInfo,
-  participant: ParticipantInfoForNotification,
-  participantsInfo?: ParticipantInfo[],
-  changes?: MeetingChange
-): Promise<boolean> => {
-  const parameters = {
-    destination_address: destination,
-    title: '',
-    message: '',
-  }
-  const changeType =
-    participant.mappingType === ParticipantMappingType.ADD
-      ? MeetingChangeType.CREATE
-      : _changeType
-
-  switch (changeType) {
-    case MeetingChangeType.CREATE:
-      parameters.title = 'New meeting scheduled'
-      parameters.message = `${dateToHumanReadable(
-        start,
-        participant.timezone,
-        true
-      )} - ${getAllParticipantsDisplayName(
-        participantsInfo!,
-        participant.account_address
-      )}`
-      break
-    case MeetingChangeType.DELETE:
-      parameters.title = 'A meeting was canceled'
-      parameters.message = `The meeting at ${dateToHumanReadable(
-        start,
-        participant.timezone,
-        true
-      )} was canceled by ${getParticipantActingDisplayName(
-        participantActing,
-        participant
-      )}`
-      break
-    case MeetingChangeType.UPDATE:
-      parameters.title = 'A meeting has been changed'
-
-      let message = `${getParticipantActingDisplayName(
-        participantActing,
-        participant
-      )} changed the meeting at ${dateToHumanReadable(
-        changes!.dateChange!.oldStart,
-        participant.timezone,
-        true
-      )}. It`
-      let added = false
-      if (
-        new Date(changes!.dateChange!.oldStart).getTime() !== start.getTime()
-      ) {
-        message += ` will be at ${dateToHumanReadable(
-          start,
-          participant.timezone,
-          true
-        )}`
-        added = true
-      }
-
-      const newDuration = differenceInMinutes(end, start)
-      const oldDuration = changes?.dateChange
-        ? differenceInMinutes(
-            new Date(changes?.dateChange?.oldEnd),
-            new Date(changes?.dateChange?.oldStart)
-          )
-        : null
-
-      if (oldDuration && newDuration !== oldDuration) {
-        if (added) {
-          message += ` and will last ${durationToHumanReadable(newDuration)}`
-        } else {
-          message += ` will now last ${durationToHumanReadable(
-            newDuration
-          )} instead of ${durationToHumanReadable(oldDuration)}`
-        }
-      }
-
-      parameters.message = message
-      break
-    default:
-  }
-
-  return sendPushNotification(
-    parameters.destination_address,
-    parameters.title,
-    parameters.message
-  )
 }
 
 const getParticipantActingDisplayName = (

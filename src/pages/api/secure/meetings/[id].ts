@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { DBSlotEnhanced } from '@/types/Meeting'
+import { DBSlot } from '@/types/Meeting'
 import { MeetingCancelRequest, MeetingUpdateRequest } from '@/types/Requests'
 import {
   deleteMeetingFromDB,
@@ -51,7 +51,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      const meetingResult: DBSlotEnhanced = await updateMeeting(
+      const meetingResult: DBSlot = await updateMeeting(
         getParticipantBaseInfoFromAccount(account),
         meeting
       )

@@ -4,6 +4,7 @@ export const Grid = styled.div`
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto auto 1fr;
+  width: 100%;
   grid-template-areas:
     'month-year'
     'days-of-week'

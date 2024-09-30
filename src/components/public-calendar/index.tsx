@@ -1,7 +1,13 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { Box, Container, Flex, Text } from '@chakra-ui/layout'
-import { Button, Spinner } from '@chakra-ui/react'
-import { Select } from '@chakra-ui/select'
+import {
+  Button,
+  HStack,
+  Spinner,
+  useColorModeValue,
+  useMediaQuery,
+  VStack,
+} from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
 import {
@@ -32,6 +38,7 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { Account, MeetingType } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
@@ -61,7 +68,6 @@ import {
 } from '@/utils/api_helper'
 import {
   dateToHumanReadable,
-  durationToHumanReadable,
   getAccountDomainUrl,
   scheduleMeeting,
 } from '@/utils/calendar_manager'
@@ -76,8 +82,8 @@ import {
 import {
   getAvailabilitiesForWeekDay,
   getBlockedAvailabilities,
+  isSlotAvailable,
 } from '@/utils/slots.helper'
-import { isSlotAvailable } from '@/utils/slots.helper'
 import { saveMeetingsScheduled } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -105,10 +111,11 @@ interface PublicCalendarProps {
   serverSideRender: boolean
 }
 
-enum CalendarType {
+export enum CalendarType {
   REGULAR,
   TEAM,
 }
+
 const PublicCalendar: React.FC<PublicCalendarProps> = ({
   url,
   account,
@@ -135,6 +142,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   )
   const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
+  const [selectedTime, setSelectedTime] = useState<Date | undefined>(undefined)
   const [busySlots, setBusyslots] = useState([] as Interval[])
   const [selfBusySlots, setSelfBusyslots] = useState([] as Interval[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
@@ -146,12 +155,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
     undefined as MeetingDecrypted | undefined
   )
-
+  const bgColor = useColorModeValue('white', 'neutral.900')
   const [notificationsSubs, setNotificationSubs] = useState(0)
   const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
   const [rescheduleSlotId, setRescheduleSlotId] = useState<string | undefined>(
     undefined
   )
+  const { openConnection } = useContext(OnboardingModalContext)
   const [rescheduleSlot, setRescheduleSlot] = useState<DBSlot | undefined>(
     undefined
   )
@@ -159,7 +169,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const toast = useToast()
 
-  const hidrateTeamAccounts = async () => {
+  const hydrateTeamAccounts = async () => {
     let accountstoFetch: string[] = []
     if (teamMeetingRequest!.team_structure.type === GroupMeetingType.TEAM) {
       // to be implemented
@@ -175,7 +185,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     )
     setTeamAccounts(accounts)
   }
-
+  const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
+    ssr: true,
+    fallback: false, // return false on the server, and re-evaluate on the client side
+  })
   useEffect(() => {
     const blockedAvailabilities = getBlockedAvailabilities(
       account?.preferences?.availabilities
@@ -264,26 +277,28 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account!
-        .preferences!.availableTypes.filter(type => !type.deleted)
-        .find(t => t.url === typeOnRoute)
+      const type = account?.preferences?.availableTypes
+        ?.filter(type => !type.deleted)
+        ?.find(t => t.url === typeOnRoute)
       setPrivateType(!!type?.private)
     }
   }, [])
 
   useEffect(() => {
     if (calendarType === CalendarType.TEAM) {
-      hidrateTeamAccounts()
+      hydrateTeamAccounts()
     }
   }, [calendarType])
 
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
-      const type = account!
-        .preferences!.availableTypes.filter(type => !type.deleted)
+      const type = account?.preferences?.availableTypes
+        .filter(type => !type.deleted)
         .find(t => t.url === typeOnRoute)
-      setSelectedType(type || account!.preferences!.availableTypes[0])
+      setSelectedType(
+        (type || account?.preferences?.availableTypes?.[0] || {}) as MeetingType
+      )
       updateSlots()
       setRescheduleSlotId(router.query.slot as string | undefined)
     }
@@ -309,16 +324,14 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const fetchNotificationSubscriptions = async () => {
     let subs: AccountNotifications | null = null
     let connectedCalendars: ConnectedCalendarCore[] = []
-    await Promise.all([
-      (subs = await getNotificationSubscriptions()),
-      (connectedCalendars = await listConnectedCalendars()),
-    ])
+    subs = (await getNotificationSubscriptions()) || {}
+    connectedCalendars = (await listConnectedCalendars()) || []
 
     const validCals = connectedCalendars
       .filter(cal => cal.provider !== TimeSlotSource.MWW)
       .some(cal => cal.calendars.some(_cal => _cal.enabled))
 
-    setNotificationSubs(subs.notification_types.length)
+    setNotificationSubs(subs.notification_types?.length)
     setHasConnectedCalendar(!!validCals)
   }
 
@@ -349,7 +362,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     content?: string,
     meetingUrl?: string,
     emailToSendReminders?: string,
-    title?: string
+    title?: string,
+    otherParticipants?: Array<ParticipantInfo>
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
@@ -369,7 +383,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       name = getAccountDisplayName(currentAccount!)
     }
 
-    const participants: ParticipantInfo[] = []
+    const participants: ParticipantInfo[] = [...(otherParticipants || [])]
 
     if (CalendarType.REGULAR === calendarType) {
       participants.push({
@@ -441,6 +455,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
     try {
       const meeting = await scheduleMeeting(
+        false,
         scheduleType,
         'no_type',
         start,
@@ -540,7 +555,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
       try {
         const busySlots = await getBusySlots(
-          currentAccount!.address,
+          currentAccount?.address,
           monthStart,
           monthEnd
         )
@@ -602,9 +617,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   }, [currentMonth])
 
   const changeType = (typeId: string) => {
-    const type = account!
-      .preferences!.availableTypes.filter(type => !type.deleted)
-      .find(t => t.id === typeId)!
+    const type = account?.preferences?.availableTypes
+      ?.filter(type => !type.deleted)
+      ?.find(t => t.id === typeId)
+    if (!type) return
     if (!type.scheduleGate) {
       setIsGateValid(undefined)
     }
@@ -621,9 +637,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         selectedType.minAdvanceTime,
         slot,
         busySlots,
-        account!.preferences!.availabilities,
+        account?.preferences?.availabilities || [],
         Intl.DateTimeFormat().resolvedOptions().timeZone,
-        account!.preferences!.timezone
+        account?.preferences?.timezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone
       )
     } else {
       if (
@@ -664,9 +681,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               0,
               slot,
               busySlots,
-              eachAccount.preferences!.availabilities,
+              eachAccount?.preferences?.availabilities,
               Intl.DateTimeFormat().resolvedOptions().timeZone,
-              eachAccount!.preferences!.timezone
+              eachAccount?.preferences?.timezone
             )
           ) {
             return false
@@ -681,9 +698,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
               0,
               slot,
               busySlots,
-              eachAccount.preferences!.availabilities,
+              eachAccount?.preferences?.availabilities,
               Intl.DateTimeFormat().resolvedOptions().timeZone,
-              eachAccount!.preferences!.timezone
+              eachAccount?.preferences?.timezone
             )
           ) {
             return true
@@ -728,9 +745,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       minAdvanceTime,
       slot,
       selfBusySlots,
-      currentAccount!.preferences!.availabilities,
+      currentAccount?.preferences?.availabilities || [],
       Intl.DateTimeFormat().resolvedOptions().timeZone,
-      currentAccount!.preferences!.timezone
+      currentAccount?.preferences?.timezone ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
 
@@ -743,126 +761,160 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         teamMeetingRequest={teamMeetingRequest}
         url={url}
       />
-      <Container maxW="7xl" mt={32} mb={8} flex={1}>
-        {!lastScheduledMeeting ? (
-          <Box>
-            <Flex wrap="wrap" justifyContent="center">
-              <Box
-                flex="1"
-                minW={{ base: '300px', md: '500px' }}
-                maxW="600px"
-                p={8}
-              >
-                {calendarType === CalendarType.REGULAR ? (
-                  <ProfileInfo account={account!} />
-                ) : (
-                  <GroupScheduleCalendarProfile teamAccounts={groupAccounts} />
-                )}
-                {calendarType === CalendarType.REGULAR && !rescheduleSlotId && (
-                  <>
-                    <Select
-                      isDisabled={readyToSchedule}
-                      placeholder="Select option"
-                      mt={8}
-                      value={selectedType.id}
-                      onChange={e =>
-                        e.target.value && changeType(e.target.value)
-                      }
-                    >
-                      {account!
-                        .preferences!.availableTypes.filter(
-                          type =>
-                            !type.deleted && (!type.private || isPrivateType)
-                        )
-                        .map(type => (
-                          <option key={type.id} value={type.id}>
-                            {type.title ? `${type.title} - ` : ''}
-                            {durationToHumanReadable(type.duration)}
-                          </option>
-                        ))}
-                    </Select>
-                    {selectedType.description && (
-                      <Text p={2}>{selectedType.description}</Text>
+      <VStack mb={36} gap={1}>
+        <Container
+          bg={lastScheduledMeeting ? 'transparent' : bgColor}
+          maxW="95%"
+          mt={{ md: 48, base: 60 }}
+          flex={1}
+          width={
+            readyToSchedule || lastScheduledMeeting ? 'fit-content' : '90%'
+          }
+          pb={lastScheduledMeeting ? 0 : 6}
+          marginX="auto"
+          borderRadius="lg"
+          transitionProperty="width"
+          transitionDuration="2s"
+          transitionTimingFunction="ease-in-out"
+          position={'relative'}
+        >
+          {!lastScheduledMeeting ? (
+            <Box>
+              <Flex wrap="wrap">
+                <Box
+                  flex="1"
+                  minW={{ base: '100%', md: '500px' }}
+                  maxW={{ md: '250px', base: '100%' }}
+                  px={{ md: 8, base: 0 }}
+                  py={8}
+                >
+                  {calendarType === CalendarType.REGULAR ? (
+                    <ProfileInfo
+                      calendarType={calendarType}
+                      isPrivateType={isPrivateType}
+                      account={account!}
+                      changeType={changeType}
+                      selectedType={selectedType}
+                      rescheduleSlotId={rescheduleSlotId}
+                      readyToSchedule={readyToSchedule}
+                      selectedTime={selectedTime}
+                      selectedDay={selectedDay}
+                      isMobile={isMobile}
+                    />
+                  ) : (
+                    <GroupScheduleCalendarProfile
+                      teamAccounts={groupAccounts}
+                    />
+                  )}
+
+                  {CalendarType.REGULAR === calendarType &&
+                  !rescheduleSlotId &&
+                  selectedType.scheduleGate &&
+                  selectedType.scheduleGate !== 'No gate' ? (
+                    <TokenGateValidation
+                      gate={selectedType.scheduleGate}
+                      targetAccount={account!}
+                      userAccount={currentAccount!}
+                      setIsGateValid={setIsGateValid}
+                      isGateValid={isGateValid!}
+                    />
+                  ) : null}
+                  {dateRangeText && (
+                    <Text textAlign="center" mt={4}>
+                      {dateRangeText}
+                    </Text>
+                  )}
+
+                  {calendarType === CalendarType.REGULAR &&
+                    rescheduleSlotId && (
+                      <RescheduleInfoBox
+                        loading={!rescheduleSlot}
+                        slot={rescheduleSlot}
+                      />
                     )}
-                  </>
-                )}
-
-                {CalendarType.REGULAR === calendarType &&
-                !rescheduleSlotId &&
-                selectedType.scheduleGate ? (
-                  <TokenGateValidation
-                    gate={selectedType.scheduleGate}
-                    targetAccount={account!}
-                    userAccount={currentAccount!}
-                    setIsGateValid={setIsGateValid}
-                    isGateValid={isGateValid!}
-                  />
-                ) : null}
-                {dateRangeText && (
-                  <Text textAlign="center" mt={4}>
-                    {dateRangeText}
-                  </Text>
-                )}
-
-                {calendarType === CalendarType.REGULAR && rescheduleSlotId && (
-                  <RescheduleInfoBox
-                    loading={!rescheduleSlot}
-                    slot={rescheduleSlot}
-                  />
-                )}
-              </Box>
-              {isSSR ? null : (
-                <Box flex="2" p={8}>
-                  <MeetSlotPicker
-                    reset={reset}
-                    onMonthChange={(day: Date) => setCurrentMonth(day)}
-                    availabilityInterval={
-                      teamMeetingRequest
-                        ? {
-                            start: new Date(teamMeetingRequest.range_start),
-                            end: new Date(
-                              teamMeetingRequest.range_end || '2999-01-01'
-                            ),
-                          }
-                        : undefined
-                    }
-                    blockedDates={blockedDates}
-                    preferences={account?.preferences}
-                    onSchedule={confirmSchedule}
-                    willStartScheduling={willStartScheduling => {
-                      setReadyToSchedule(willStartScheduling)
-                    }}
-                    isSchedulingExternal={isScheduling}
-                    slotDurationInMinutes={
-                      CalendarType.REGULAR === calendarType
-                        ? selectedType.duration
-                        : teamMeetingRequest!.duration_in_minutes
-                    }
-                    checkingSlots={checkingSlots}
-                    timeSlotAvailability={validateSlot}
-                    selfAvailabilityCheck={selfAvailabilityCheck}
-                    showSelfAvailability={checkedSelfSlots}
-                    isGateValid={isGateValid!}
-                    notificationsSubs={notificationsSubs}
-                  />
                 </Box>
-              )}
+
+                {isSSR ? null : (
+                  <Box flex="1" width="100%" p={{ md: 8 }}>
+                    <MeetSlotPicker
+                      reset={reset}
+                      onMonthChange={setCurrentMonth}
+                      onTimeChange={setSelectedTime}
+                      isMobile={isMobile}
+                      availabilityInterval={
+                        teamMeetingRequest
+                          ? {
+                              start: new Date(teamMeetingRequest.range_start),
+                              end: new Date(
+                                teamMeetingRequest.range_end || '2999-01-01'
+                              ),
+                            }
+                          : undefined
+                      }
+                      blockedDates={blockedDates}
+                      preferences={account?.preferences}
+                      onDayChange={setSelectedDay}
+                      onSchedule={confirmSchedule}
+                      willStartScheduling={willStartScheduling => {
+                        setReadyToSchedule(willStartScheduling)
+                      }}
+                      isSchedulingExternal={isScheduling}
+                      slotDurationInMinutes={
+                        CalendarType.REGULAR === calendarType
+                          ? selectedType.duration
+                          : teamMeetingRequest!.duration_in_minutes
+                      }
+                      checkingSlots={checkingSlots}
+                      timeSlotAvailability={validateSlot}
+                      selfAvailabilityCheck={selfAvailabilityCheck}
+                      showSelfAvailability={checkedSelfSlots}
+                      isGateValid={isGateValid!}
+                      notificationsSubs={notificationsSubs}
+                    />
+                  </Box>
+                )}
+              </Flex>
+            </Box>
+          ) : isSSR ? null : (
+            <Flex justify="center">
+              <MeetingScheduledDialog
+                participants={lastScheduledMeeting!.participants}
+                schedulerAccount={currentAccount!}
+                scheduleType={schedulingType}
+                meeting={lastScheduledMeeting}
+                accountNotificationSubs={notificationsSubs}
+                hasConnectedCalendar={hasConnectedCalendar}
+                reset={_onClose}
+              />
             </Flex>
-          </Box>
-        ) : isSSR ? null : (
-          <Flex justify="center">
-            <MeetingScheduledDialog
-              participants={lastScheduledMeeting!.participants}
-              schedulerAccount={currentAccount!}
-              scheduleType={schedulingType}
-              meeting={lastScheduledMeeting}
-              accountNotificationSubs={notificationsSubs}
-              hasConnectedCalendar={hasConnectedCalendar}
-              reset={_onClose}
-            />
-          </Flex>
+          )}
+        </Container>
+        {!logged && (
+          <HStack
+            fontSize={{
+              sm: '14px',
+              md: '16px',
+            }}
+            maxW="90%"
+            textAlign="center"
+          >
+            <Text>
+              Have an account with us already?{' '}
+              <Text
+                display="inline"
+                color={'primary.400'}
+                textDecoration="underline"
+                textUnderlineOffset={2}
+                onClick={() => openConnection(undefined, false)}
+                cursor={'pointer'}
+              >
+                Sign in
+              </Text>{' '}
+              to see your availability
+            </Text>
+          </HStack>
         )}
-      </Container>
+      </VStack>
     </>
   )
 }

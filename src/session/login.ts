@@ -2,35 +2,43 @@ import { useToast } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
 import router from 'next/router'
 import { useContext } from 'react'
+import { Wallet } from 'thirdweb/wallets'
+import { getUserEmail } from 'thirdweb/wallets/in-app'
 
-import { AccountContext } from '../providers/AccountProvider'
-import { logEvent } from '../utils/analytics'
-import { InvalidSessionError } from '../utils/errors'
-import { loginWithAddress } from '../utils/user_manager'
+import { AccountContext } from '@/providers/AccountProvider'
+import {
+  AccountNotifications,
+  NotificationChannel,
+} from '@/types/AccountNotifications'
+import { logEvent } from '@/utils/analytics'
+import { setNotificationSubscriptions } from '@/utils/api_helper'
+import { InvalidSessionError } from '@/utils/errors'
+import { loginWithAddress, thirdWebClient } from '@/utils/user_manager'
 
 export const useLogin = () => {
-  const { currentAccount, logged, login, loginIn, setLoginIn, logout } =
+  const { logged, currentAccount, login, loginIn, setLoginIn, logout } =
     useContext(AccountContext)
   const toast = useToast()
-
   const handleLogin = async (
-    address: string | undefined,
+    wallet: Wallet | undefined,
     useWaiting = true,
-    forceRedirect = true
+    forceRedirect = true,
+    shouldRedirect = true,
+    redirectPath?: string
   ) => {
     !forceRedirect && logEvent('Clicked to connect wallet')
-    if (!address) return
+    if (!wallet?.getAccount()) return
     try {
       const account = await loginWithAddress(
-        address,
+        wallet,
         useWaiting ? setLoginIn : () => null
       )
 
       // user could revoke wallet authorization any moment
       if (!account) {
-        await logout(address)
+        await logout(wallet)
         if (logged && forceRedirect) {
-          await router.push('/')
+          shouldRedirect && (await router.push('/'))
         }
         return
       }
@@ -42,22 +50,63 @@ export const useLogin = () => {
       if (forceRedirect) {
         // redirect new accounts to onboarding
         if (account.signedUp) {
-          const state = Buffer.from(
-            JSON.stringify({
-              signedUp: true,
-            })
-          ).toString('base64')
-          await router.push(`/dashboard/details?state=${state}`)
+          const stateObj: any = { signedUp: true }
+
+          if (wallet.id === 'inApp') {
+            // needed due bug in the SDK that returns the last email even if a new EOA signs in
+            const email = await getUserEmail({ client: thirdWebClient })
+            if (email) {
+              stateObj.email = email
+              if (!shouldRedirect) {
+                // force-set email notification for users signing up from pages with no onboarding redirection
+                const subs = {
+                  account_address: account.address,
+                  notification_types: [],
+                } as AccountNotifications
+
+                subs.notification_types.push({
+                  channel: NotificationChannel.EMAIL,
+                  destination: email,
+                  disabled: false,
+                })
+
+                await setNotificationSubscriptions(subs)
+
+                logEvent('Set notifications', {
+                  channels: subs.notification_types.map(sub => sub.channel),
+                })
+              }
+            }
+          }
+          if (redirectPath) {
+            stateObj.redirect = redirectPath
+          }
+          const state = Buffer.from(JSON.stringify(stateObj)).toString('base64')
+
+          shouldRedirect &&
+            (await router.push(
+              redirectPath
+                ? `${redirectPath}&authstate=${state}`
+                : `/dashboard/details?state=${state}`
+            ))
           return
         }
 
         // avoid redirecting if person is scheduling on a public calendar
         // of someone else and was not logged. Definitely not the best way to do this
+        if (router.pathname === '/invite-accept' && redirectPath) {
+          await router.push(redirectPath)
+        }
         if (
           router.pathname === '/' ||
           router.pathname.indexOf('/embed') != -1
         ) {
-          await router.push('/dashboard/meetings')
+          shouldRedirect &&
+            (await router.push(
+              `/dashboard/meetings${
+                redirectPath ? `?redirect=${redirectPath}` : ''
+              }`
+            ))
           return
         }
       }

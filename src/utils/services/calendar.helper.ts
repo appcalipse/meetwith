@@ -1,12 +1,13 @@
+import { parseFromString } from 'dom-parser'
+
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
 import { getAllParticipantsDisplayName } from '../user_manager'
 
 export const CalendarServiceHelper = {
   convertHtmlToPlainText: (html: string) => {
-    const doc = new DOMParser().parseFromString(html, 'text/html')
-    const paragraphs = doc.body.querySelectorAll('p')
-
+    const doc = parseFromString(html)
+    const paragraphs = doc.getElementsByTagName('p')
     let plainText = ''
     paragraphs.forEach(paragraph => {
       plainText += paragraph.textContent + '\n'
@@ -16,8 +17,12 @@ export const CalendarServiceHelper = {
   },
   getMeetingTitle: (
     slotOwnerAccountAddress: string,
-    participants: ParticipantInfo[]
+    participants: ParticipantInfo[],
+    title?: string
   ) => {
+    if (title) {
+      return title
+    }
     const displayNames = getAllParticipantsDisplayName(
       participants,
       slotOwnerAccountAddress

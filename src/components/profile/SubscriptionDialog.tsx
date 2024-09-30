@@ -20,10 +20,10 @@ import {
 } from '@chakra-ui/react'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaMinus, FaPlus } from 'react-icons/fa'
-import { zeroAddress } from 'viem'
-import { useWalletClient } from 'wagmi'
+import { useActiveWallet } from 'thirdweb/react'
 
 import { syncSubscriptions } from '@/utils/api_helper'
+import { zeroAddress } from '@/utils/generic_utils'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import {
@@ -52,6 +52,37 @@ interface IProps {
   onDialogClose: () => void
   onSuccessPurchase?: (sub: Subscription) => void
 }
+export const getChainIcon = (chain: SupportedChain) => {
+  switch (chain) {
+    case SupportedChain.POLYGON_MATIC:
+    case SupportedChain.POLYGON_AMOY:
+      return '/assets/chains/Polygon.svg'
+    case SupportedChain.METIS_ANDROMEDA:
+      return '/assets/chains/Metis.svg'
+    case SupportedChain.ETHEREUM:
+    case SupportedChain.SEPOLIA:
+      return '/assets/chains/ethereum.svg'
+    default:
+      break
+  }
+}
+
+export const getTokenIcon = (token: AcceptedToken) => {
+  switch (token) {
+    case AcceptedToken.DAI:
+      return '/assets/chains/DAI.svg'
+    case AcceptedToken.USDC:
+      return '/assets/chains/USDC.svg'
+    case AcceptedToken.METIS:
+      return '/assets/chains/Metis.svg'
+    case AcceptedToken.MATIC:
+      return '/assets/chains/Polygon.svg'
+    case AcceptedToken.ETHER:
+      return '/assets/chains/ethereum.svg'
+    default:
+      return
+  }
+}
 
 const SubscriptionDialog: React.FC<IProps> = ({
   currentSubscription,
@@ -60,56 +91,29 @@ const SubscriptionDialog: React.FC<IProps> = ({
   onDialogClose,
   onSuccessPurchase,
 }) => {
+  const _currentSubscription = currentSubscription
+    ? new Date(currentSubscription?.expiry_time) > new Date()
+      ? currentSubscription
+      : undefined
+    : undefined
+
   const { currentAccount } = useContext(AccountContext)
-  const { data: walletClient } = useWalletClient()
   const [domain, setDomain] = useState<string>('')
   const [currentChain, setCurrentChain] = useState<ChainInfo | undefined>(
-    currentSubscription ? getChainInfo(currentSubscription.chain) : undefined
+    _currentSubscription ? getChainInfo(_currentSubscription.chain) : undefined
   )
   const [currentToken, setCurrentToken] = useState<
     AcceptedTokenInfo | undefined
   >(undefined)
-
   const [checkingCanSubscribe, setCheckingCanSubscribe] = useState(false)
   const [needsApproval, setNeedsAproval] = useState(false)
   const [waitingConfirmation, setWaitingConfirmation] = useState(false)
   const [txRunning, setTxRunning] = useState(false)
   const [duration, setDuration] = useState(1)
-
   const inputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
 
-  const getChainIcon = (chain: SupportedChain) => {
-    switch (chain) {
-      case SupportedChain.POLYGON_MATIC:
-      case SupportedChain.POLYGON_MUMBAI:
-        return '/assets/chains/Polygon.svg'
-      case SupportedChain.METIS_ANDROMEDA:
-        return '/assets/chains/Metis.svg'
-      case SupportedChain.ETHEREUM:
-      case SupportedChain.GOERLI:
-        return '/assets/chains/ethereum.svg'
-      default:
-        break
-    }
-  }
-
-  const getTokenIcon = (token: AcceptedToken) => {
-    switch (token) {
-      case AcceptedToken.DAI:
-        return '/assets/chains/DAI.svg'
-      case AcceptedToken.USDC:
-        return '/assets/chains/USDC.svg'
-      case AcceptedToken.METIS:
-        return '/assets/chains/Metis.svg'
-      case AcceptedToken.MATIC:
-        return '/assets/chains/Polygon.svg'
-      case AcceptedToken.ETHER:
-        return '/assets/chains/ethereum.svg'
-      default:
-        break
-    }
-  }
+  const wallet = useActiveWallet()
 
   const changeDuration = (duration: number) => {
     setDuration(duration)
@@ -117,10 +121,6 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
   const updateDomain = async () => {
     setDomain((await getActiveProSubscription(currentAccount!))?.domain || '')
-  }
-
-  if (currentSubscription && !domain) {
-    updateDomain()
   }
 
   const updateSubscriptionDetails = async () => {
@@ -135,7 +135,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
           currentChain!.chain,
           currentToken!.token,
           duration * YEAR_DURATION_IN_SECONDS,
-          walletClient
+          wallet!
         )
         if (neededApproval != 0n) {
           setNeedsAproval(true)
@@ -207,6 +207,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
     logEvent('Started subscription', { currentChain, currentToken, domain })
 
     setNeedsAproval(false)
+
     try {
       if (currentToken && currentToken.contractAddress !== zeroAddress) {
         const neededApproval = await checkAllowance(
@@ -215,7 +216,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
           currentChain!.chain,
           currentToken!.token,
           duration * YEAR_DURATION_IN_SECONDS,
-          walletClient
+          wallet!
         )
         if (neededApproval != 0n) {
           setNeedsAproval(true)
@@ -223,13 +224,14 @@ const SubscriptionDialog: React.FC<IProps> = ({
             currentChain!.chain,
             currentToken!.token,
             neededApproval,
-            walletClient
+            wallet!
           )
           setNeedsAproval(false)
         }
       }
 
       setTxRunning(true)
+
       const tx = await subscribeToPlan(
         currentAccount!.address,
         Plan.PRO,
@@ -237,7 +239,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
         duration * YEAR_DURATION_IN_SECONDS,
         domain,
         currentToken!.token,
-        walletClient
+        wallet!
       )
       setWaitingConfirmation(true)
       const subscriptions = await syncSubscriptions()
@@ -266,6 +268,13 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   useEffect(() => {
+    if (_currentSubscription) {
+      !domain && updateDomain()
+      setCurrentChain(getChainInfo(_currentSubscription.chain))
+    }
+  }, [_currentSubscription])
+
+  useEffect(() => {
     isDialogOpen && logEvent('Opened subscription dialog')
   }, [isDialogOpen])
 
@@ -278,7 +287,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   )
 
   const renderBookingLink = () => {
-    if (currentSubscription) {
+    if (_currentSubscription) {
       return (
         <FormControl>
           <Text pt={2}>Booking link</Text>
@@ -316,7 +325,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   const renderChainInfo = () => {
-    if (currentSubscription) {
+    if (_currentSubscription) {
       return (
         <>
           <FormControl>
@@ -325,8 +334,10 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
           <HStack justify="flex-start" pt={4}>
             <Button
-              key={currentSubscription.chain}
-              leftIcon={<Image src={getChainIcon(currentSubscription.chain)} />}
+              key={_currentSubscription.chain}
+              leftIcon={
+                <Image src={getChainIcon(_currentSubscription.chain)} />
+              }
               variant="outline"
             >
               {currentChain?.name}
@@ -381,7 +392,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>
-          {currentSubscription ? 'Extend Subscription' : 'Subscribe to Pro'}
+          {_currentSubscription ? 'Extend Subscription' : 'Subscribe to Pro'}
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
@@ -439,7 +450,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
           >
             {needsApproval
               ? `Approve ${currentToken?.token} to be spent`
-              : currentSubscription
+              : _currentSubscription
               ? 'Extend'
               : 'Subscribe'}
           </Button>

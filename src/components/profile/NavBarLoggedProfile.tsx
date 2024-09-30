@@ -42,7 +42,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
 
   const variantAction = useBreakpointValue({
     base: openMenu,
-    md: goToDashboard,
+    lg: goToDashboard,
   })
 
   const closeMenu = () => {
@@ -73,7 +73,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         transition="all 0.3s"
         backgroundColor={'neutral.50'}
       >
-        <Box width="24px" height="24px" mr={{ base: 0, md: 2 }}>
+        <Box width="24px" height="24px" mr={{ base: 0, lg: 2 }}>
           {props.account.preferences?.avatar ? (
             <Image
               src={props.account.preferences.avatar}
@@ -92,7 +92,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
             {accountName}
           </Text>
         )}
-        <Text fontSize={'sm'} display={{ base: 'none', md: 'inline-block' }}>
+        <Text fontSize={'sm'} display={{ base: 'none', lg: 'inline-block' }}>
           {accountName}
         </Text>
       </Flex>

@@ -23,7 +23,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         ...updatedAccount,
         signature: req.session.account!.signature,
       }
-      delete req.session.account.preferences
+
+      //avoid exploding cookie size
+      req.session.account.preferences = {
+        timezone: '',
+        availableTypes: [],
+        availabilities: [],
+      }
 
       await req.session.save()
 

@@ -3,24 +3,23 @@ import '../styles/swipers.css'
 
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { ConnectKitProvider } from 'connectkit'
 import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
 import * as React from 'react'
-import { useDisconnect, WagmiConfig } from 'wagmi'
+import { ThirdwebProvider } from 'thirdweb/react'
 
 import { Head } from '@/components/Head'
+import { ConnectModal } from '@/components/nav/ConnectModal'
 import { BaseLayout } from '@/layouts/Base'
 import { AccountProvider } from '@/providers/AccountProvider'
+import { OnboardingModalProvider } from '@/providers/OnboardingModalProvider'
 import { validateAuthenticationApp } from '@/session/core'
-import { useLogin } from '@/session/login'
 import { Account } from '@/types/Account'
 import { initAnalytics, pageView } from '@/utils/analytics'
 import { queryClient } from '@/utils/react_query'
 import { getLocaleForDateFNS } from '@/utils/time.helper'
-import { wagmiConfig } from '@/utils/user_manager'
 
 interface MyAppProps extends AppProps {
   consentCookie?: boolean | undefined
@@ -71,56 +70,24 @@ function MyApp({
       {process.env.NODE_ENV === 'development' && (
         <ReactQueryDevtools initialIsOpen={true} />
       )}
-      <WagmiConfig config={wagmiConfig}>
-        <AccountProvider
-          currentAccount={currentAccount}
-          logged={!!currentAccount}
-        >
-          <Inner consentCookie={consentCookie ?? false}>
-            <Component {...customProps} />
-          </Inner>
-        </AccountProvider>
-      </WagmiConfig>
+      <ThirdwebProvider>
+        <OnboardingModalProvider>
+          <AccountProvider
+            currentAccount={currentAccount}
+            logged={!!currentAccount}
+          >
+            <Head />
+            <BaseLayout consentCookie={consentCookie ?? false}>
+              <Component {...customProps} />
+            </BaseLayout>
+            <ConnectModal />
+          </AccountProvider>
+        </OnboardingModalProvider>
+      </ThirdwebProvider>
     </QueryClientProvider>
   )
 }
 
-const Inner = (props: {
-  children: React.ReactNode
-  consentCookie: boolean
-}) => {
-  const { handleLogin, logged } = useLogin()
-  const { disconnect } = useDisconnect()
-
-  // This protection is to avoid pre-rendering of the modal
-  // that leads to errors
-  const [isClient, setIsClient] = React.useState(false)
-
-  React.useEffect(() => {
-    if (!logged) {
-      //make sure wagmi doesn't stay connect if for any reason we don't have the account
-      disconnect()
-    }
-
-    if (!isClient) {
-      setIsClient(true)
-    }
-  }, [])
-
-  return (
-    <ConnectKitProvider
-      options={{ initialChainId: 0, enforceSupportedChains: false }}
-      onConnect={({ address }) => {
-        handleLogin(address)
-      }}
-    >
-      <Head />
-      <BaseLayout consentCookie={props.consentCookie}>
-        {props.children}
-      </BaseLayout>
-    </ConnectKitProvider>
-  )
-}
 MyApp.getInitialProps = async (appContext: AppContext) => {
   const appProps: AppInitialProps = await App.getInitialProps(appContext)
 

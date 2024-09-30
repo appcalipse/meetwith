@@ -1,5 +1,8 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
+import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
+
+import RedirectHandler from '@/components/redirect'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { EditMode } from '../../types/Dashboard'
@@ -13,6 +16,8 @@ import ConnectCalendar from './ConnectCalendar'
 import Meetings from './Meetings'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
+const GroupWithNoSSR = dynamic(() => import('./Group'), { ssr: false })
+
 const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
 }) => {
@@ -22,6 +27,8 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
     switch (currentSection) {
       case EditMode.MEETINGS:
         return <Meetings currentAccount={currentAccount!} />
+      case EditMode.GROUPS:
+        return <GroupWithNoSSR currentAccount={currentAccount!} />
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig currentAccount={currentAccount!} />
       case EditMode.DETAILS:
@@ -38,12 +45,19 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   }
 
   return currentAccount ? (
-    <HStack alignItems="start" width="100%" flexWrap="wrap" maxWidth="100%">
-      <Box flex={{ base: '0', md: '4' }} mr={{ base: 0, md: 18 }}>
+    <HStack
+      alignItems="start"
+      width="100%"
+      maxWidth="100%"
+      justifyContent="space-between"
+    >
+      <RedirectHandler />
+      <Box flex={{ base: '0', lg: '4' }} mr={{ base: 0, lg: 18 }}>
         <NavMenu currentSection={currentSection} />
       </Box>
       <Box
         maxWidth="100%"
+        overflow="hidden"
         flex={{ base: '1', md: '8' }}
         marginLeft={{ base: '0 !important', md: 2 }}
         marginInlineStart={{ base: '0 !important', md: 2 }}
