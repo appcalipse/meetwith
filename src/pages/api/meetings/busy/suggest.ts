@@ -1,4 +1,4 @@
-import { areIntervalsOverlapping, isPast, startOfDay } from 'date-fns'
+import { areIntervalsOverlapping, isPast } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -39,7 +39,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     await Promise.all(promises)
 
-    const allSlots = generateTimeSlots(startOfDay(startDate), duration, endDate)
+    const allSlots = generateTimeSlots(startDate, duration, true, endDate)
     const suggestedTimes: Interval[] = []
 
     const busySlots: Interval[] =
@@ -57,8 +57,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         break
       }
       for (const account of accounts) {
-        const availabilities = account.preferences!.availabilities
-        const tz = account.preferences!.timezone
+        const availabilities = account.preferences.availabilities
+        const tz = account.preferences.timezone
         if (
           !isTimeInsideAvailabilities(
             utcToZonedTime(slot.start as Date, tz),

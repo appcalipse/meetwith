@@ -2,6 +2,7 @@ import {
   Box,
   Flex,
   FlexProps,
+  HStack,
   Icon,
   Slide,
   Text,
@@ -20,7 +21,9 @@ interface NavItemProps extends FlexProps {
   mode: EditMode
   locked: boolean
   changeMode: (mode: EditMode) => void
+  badge?: number
 }
+
 export const NavItem = ({
   selected,
   icon,
@@ -28,6 +31,7 @@ export const NavItem = ({
   mode,
   changeMode,
   locked,
+  badge,
   ...rest
 }: NavItemProps) => {
   const unlockedColor = useColorModeValue('gray.700', 'gray.200')
@@ -35,7 +39,6 @@ export const NavItem = ({
   const hoverColor = useColorModeValue('gray.200', 'gray.600')
   const lockedColor = useColorModeValue('gray.400', 'gray.100')
   const iconColor = locked ? lockedColor : unlockedIconColor
-
   return (
     <Box
       width="100%"
@@ -97,9 +100,26 @@ export const NavItem = ({
             />
           </>
         )}
-        <Text position="relative" flex={1} color={iconColor}>
-          {text}
-        </Text>
+        <HStack alignItems="center">
+          <Text position="relative" flex={1} color={iconColor}>
+            {text}
+          </Text>
+          {badge && (
+            <Box
+              borderRadius="999"
+              backgroundColor="primary.500"
+              color="white"
+              fontSize="xs"
+              display="flex"
+              alignItems="center"
+              justifyContent={'center'}
+              w="16px"
+              h="16px"
+            >
+              {badge}
+            </Box>
+          )}
+        </HStack>
         {locked && (
           <Icon
             mr="4"

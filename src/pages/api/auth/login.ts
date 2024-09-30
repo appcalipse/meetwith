@@ -25,7 +25,13 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
         ...account,
         signature,
       }
-      delete req.session.account.preferences
+
+      //avoid exploding cookie size
+      req.session.account.preferences = {
+        timezone: '',
+        availableTypes: [],
+        availabilities: [],
+      }
       await req.session.save()
 
       return res.status(200).json(account)

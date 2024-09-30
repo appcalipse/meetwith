@@ -1,5 +1,3 @@
-import { Link } from '@chakra-ui/next-js'
-import { Link as ChakraLink } from '@chakra-ui/react'
 import {
   Button,
   FormControl,
@@ -15,18 +13,10 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import * as PushAPI from '@pushprotocol/restapi'
-import { SubscribeOptionsType } from '@pushprotocol/restapi/src/lib/channels'
-import { ethers } from 'ethers'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useEffect } from 'react'
-import { useWalletClient, WalletClient } from 'wagmi'
 
 import { Account } from '@/types/Account'
-import { SupportedChain } from '@/types/chains'
-import { isProduction } from '@/utils/constants'
-import { getCAIPAddress, PUSH_CHANNEL } from '@/utils/push_protocol_helper'
-import { validateChainToActOn } from '@/utils/rpc_helper_front'
 
 import {
   AccountNotifications,
@@ -38,23 +28,16 @@ import {
   getNotificationSubscriptions,
   setNotificationSubscriptions,
 } from '../../utils/api_helper'
-import { isProAccount } from '../../utils/subscription_manager'
 import { isValidEmail } from '../../utils/validations'
 import DiscordNotificationConfig from './DiscordNotificationConfig'
 
 const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
-  const { data: walletClient } = useWalletClient()
-
   const [loading, setLoading] = useState(false)
   const [loadingInitialInfo, setLoadingInitialInfo] = useState(true)
   const [email, setEmail] = useState('')
   const [emailNotifications, setEmailNotifications] = useState(false)
-  const [epnsNotifications, setEPNSNotifications] = useState(false)
-  const [pushOptedIn, setPushOptedIn] = useState<{ opted: boolean } | null>(
-    null
-  )
   const [discordNotificationConfig, setDiscordNotificationConfig] = useState(
     undefined as DiscordNotificationType | undefined
   )
@@ -63,23 +46,17 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setLoadingInitialInfo(true)
     setEmailNotifications(false)
     setEmail('')
-    setPushOptedIn(null)
-    setEPNSNotifications(false)
     fetchSubscriptions()
     setDiscordNotificationConfig(undefined)
   }, [currentAccount])
 
   const fetchSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()
-    checkPushSubscription()
     for (let i = 0; i < subs.notification_types.length; i++) {
       switch (subs.notification_types[i].channel) {
         case NotificationChannel.EMAIL:
           setEmail(subs.notification_types[i].destination)
           setEmailNotifications(true)
-          break
-        case NotificationChannel.EPNS:
-          setEPNSNotifications(true)
           break
         case NotificationChannel.DISCORD:
           setDiscordNotificationConfig(
@@ -93,68 +70,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   }
 
   const toast = useToast()
-
-  const onPushChange = (selected: boolean, signer?: any) => {
-    setEPNSNotifications(selected)
-    if (selected && signer) {
-      subscribeToPushChannel(signer)
-    }
-  }
-
-  const checkPushSubscription = async () => {
-    const subscriptions = await PushAPI.user.getSubscriptions({
-      user: getCAIPAddress(currentAccount!.address.toLowerCase()),
-      env: process.env.NEXT_PUBLIC_ENV === 'production' ? 'prod' : 'staging',
-    })
-    const subscribed = subscriptions.some(
-      (s: any) => s.channel.toLowerCase() === PUSH_CHANNEL.toLowerCase()
-    )
-    if (subscribed) {
-      setPushOptedIn({ opted: true })
-    } else {
-      setPushOptedIn({ opted: false })
-    }
-  }
-  const subscribeToPushChannel = async (
-    signer: SubscribeOptionsType['signer']
-  ) => {
-    if (pushOptedIn?.opted === true) {
-      return
-    }
-    try {
-      await validateChainToActOn(
-        process.env.NEXT_PUBLIC_ENV === 'production'
-          ? SupportedChain.ETHEREUM
-          : SupportedChain.GOERLI,
-        walletClient
-      )
-    } catch (e) {
-      toast({
-        title: 'Error',
-        description:
-          "Please change your wallet's network to Ethereum to subscribe to Push protocol notifications.",
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
-      return
-    }
-
-    await PushAPI.channels.subscribe({
-      signer,
-      channelAddress: getCAIPAddress(PUSH_CHANNEL), // channel address in CAIP
-      userAddress: getCAIPAddress(currentAccount!.address.toLowerCase()), // user address in CAIP
-      onSuccess: () => {
-        setEPNSNotifications(true)
-        setPushOptedIn({ opted: true })
-      },
-      onError: () => {
-        setPushOptedIn({ opted: false })
-      },
-      env: isProduction ? 'prod' : 'staging',
-    })
-  }
 
   const onDiscordNotificationChange = (
     discordNotification?: DiscordNotificationType
@@ -189,13 +104,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
         disabled: false,
       })
     }
-    if (epnsNotifications) {
-      subs.notification_types.push({
-        channel: NotificationChannel.EPNS,
-        destination: currentAccount!.address,
-        disabled: false,
-      })
-    }
+
     if (discordNotificationConfig) {
       subs.notification_types.push(discordNotificationConfig)
     }
@@ -208,31 +117,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
     setLoading(false)
   }
-
-  const isPro = isProAccount(currentAccount!)
-
-  const walletClientToSigner = (walletClient: WalletClient) => {
-    const { account, chain, transport } = walletClient
-    const network = {
-      chainId: chain.id,
-      name: chain.name,
-      ensAddress: chain.contracts?.ensRegistry?.address,
-    }
-    const provider = new ethers.providers.Web3Provider(transport, network)
-    const signer = provider.getSigner(account.address)
-    return signer
-  }
-
-  /** Hook to convert a viem Wallet Client to an ethers.js Signer. */
-  const useEthersSigner = ({ chainId }: { chainId?: number } = {}) => {
-    const { data: walletClient } = useWalletClient({ chainId })
-    return useMemo(
-      () => (walletClient ? walletClientToSigner(walletClient) : undefined),
-      [walletClient]
-    )
-  }
-
-  const signer = useEthersSigner()
 
   return (
     <VStack alignItems="start" flex={1} mb={8}>
@@ -276,40 +160,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             discordNotification={discordNotificationConfig}
           />
 
-          <Spacer />
-
-          <HStack py={2}>
-            <Switch
-              colorScheme="primary"
-              size="md"
-              isChecked={pushOptedIn?.opted && epnsNotifications}
-              onChange={e => onPushChange(e.target.checked, signer)}
-              isDisabled={!isPro || !pushOptedIn}
-            />
-            <Text>
-              Push notifications by{' '}
-              <ChakraLink href="https://push.org" isExternal>
-                Push protocol
-              </ChakraLink>
-              {!isPro && (
-                <>
-                  {' '}
-                  (<Link href="/dashboard/details#subscriptions">
-                    Go Pro
-                  </Link>{' '}
-                  to enable it)
-                </>
-              )}
-            </Text>
-          </HStack>
-          {epnsNotifications && pushOptedIn && !pushOptedIn.opted && (
-            <Text fontSize="sm">
-              You need to subscribe to the meet with wallet channel on Push
-              protocol.
-            </Text>
-          )}
-
-          <Spacer />
           <Spacer />
           <Button
             isLoading={loading}

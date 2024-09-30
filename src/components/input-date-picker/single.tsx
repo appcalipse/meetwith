@@ -20,12 +20,14 @@ import { OnDateSelected } from '.'
 import { CalendarPanel } from './components/calendarPanel'
 
 export interface SingleDatepickerProps {
-  date: Date
+  date: Date | number
   disabled?: boolean
   onDateChange: (date: Date) => void
   id?: string
   name?: string
   inputProps?: InputProps
+  iconColor?: string
+  iconSize?: number
   blockPast?: boolean
 }
 
@@ -59,10 +61,10 @@ export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
   const dayzedData = useDayzed({
     showOutsideDays: true,
     onDateSelected: handleOnDateSelected,
-    selected: date,
+    selected: typeof date === 'number' ? new Date(date) : date,
   })
 
-  const iconColor = useColorModeValue('gray.500', 'gray.200')
+  const iconColor = useColorModeValue('gray.500', props.iconColor || 'gray.200')
 
   return (
     <Popover
@@ -77,9 +79,13 @@ export const SingleDatepicker: React.FC<SingleDatepickerProps> = ({
         <InputGroup>
           <InputLeftElement
             pointerEvents="none"
+            insetY={0}
+            height="100%"
+            alignItems="center"
+            left={1}
             children={
               <Icon
-                fontSize="16"
+                fontSize={props.iconSize || '16'}
                 color={iconColor}
                 _groupHover={{
                   color: iconColor,

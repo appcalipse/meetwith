@@ -9,19 +9,21 @@ import {
   Input,
   Switch,
   Text,
-  Textarea,
   useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { useModal } from 'connectkit'
-import { useContext, useMemo, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
+import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import { ToggleSelector } from '@/components/toggle-selector'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences } from '@/types/Account'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { MeetingProvider, SchedulingType } from '../../../types/Meeting'
@@ -41,7 +43,8 @@ interface ScheduleFormProps {
     content?: string,
     meetingUrl?: string,
     emailToSendReminders?: string,
-    title?: string
+    title?: string,
+    participants?: Array<ParticipantInfo>
   ) => Promise<boolean>
   notificationsSubs?: number
 }
@@ -56,7 +59,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   preferences,
 }) => {
   const { currentAccount, logged } = useContext(AccountContext)
-
+  const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const toast = useToast()
 
   const [content, setContent] = useState('')
@@ -68,6 +71,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [scheduleType, setScheduleType] = useState(
     SchedulingType.REGULAR as SchedulingType
   )
+  const [addGuest, setAddGuest] = useState(false)
   const [guestEmail, setGuestEmail] = useState('')
   const [userEmail, setUserEmail] = useState('')
   const [meetingUrl, setMeetingUrl] = useState('')
@@ -81,6 +85,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     if (!logged) return
     await handleConfirm()
   }
+  useEffect(() => {
+    if (logged) {
+      setScheduleType(SchedulingType.REGULAR)
+    } else {
+      setScheduleType(SchedulingType.GUEST)
+    }
+  }, [logged])
 
   const googleMeetUser = () =>
     preferences?.meetingProvider === MeetingProvider.GOOGLE_MEET
@@ -133,6 +144,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       return
     }
     setIsScheduling(true)
+
     const success = await onConfirm(
       scheduleType!,
       pickedTime,
@@ -141,18 +153,19 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       content,
       meetingUrl,
       doSendEmailReminders ? userEmail : undefined,
-      title
+      title,
+      participants
     )
     setIsScheduling(false)
     willStartScheduling(!success)
   }
 
-  const { setOpen } = useModal()
+  const { openConnection } = useContext(OnboardingModalContext)
 
   const handleScheduleType = async (type: SchedulingType) => {
     setScheduleType(type)
     if (type === SchedulingType.REGULAR && !logged) {
-      setOpen(true)
+      openConnection()
     }
   }
 
@@ -163,169 +176,110 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
 
-  useMemo(() => {
-    if (logged) setScheduleType(SchedulingType.REGULAR)
-  }, [logged])
-
   return (
-    <Flex direction="column" gap={4} paddingTop={6}>
-      <ToggleSelector
-        value={scheduleType}
-        onChange={v => {
-          v !== undefined && setScheduleType(v)
-        }}
-        options={[
-          { label: 'Schedule with wallet', value: SchedulingType.REGULAR },
-          { label: 'Schedule as guest', value: SchedulingType.GUEST },
-        ]}
-      />
+    <Flex direction="column" gap={4} paddingTop={3}>
+      <FormControl isInvalid={isNameEmpty}>
+        <FormLabel>Name</FormLabel>
+        <Input
+          autoFocus
+          type="text"
+          isDisabled={isScheduling}
+          placeholder="Your name or an identifier"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+        />
+      </FormControl>
 
-      {scheduleType === SchedulingType.GUEST && (
-        <>
-          <FormControl isInvalid={isNameEmpty}>
-            <FormLabel>Your name</FormLabel>
-            <Input
-              autoFocus
-              type="text"
-              isDisabled={isScheduling}
-              placeholder="Your name or an identifier"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-            />
-          </FormControl>
-
-          <FormControl
-            isInvalid={!isFirstGuestEmailValid && !isGuestEmailValid()}
-          >
-            <FormLabel>Your Email</FormLabel>
-            <Input
-              type="email"
-              placeholder="Insert your email"
-              isDisabled={isScheduling}
-              value={guestEmail}
-              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-              onChange={e => {
+      {(scheduleType === SchedulingType.GUEST || doSendEmailReminders) && (
+        <FormControl
+          isInvalid={
+            doSendEmailReminders
+              ? !isFirstUserEmailValid && !isUserEmailValid()
+              : !isFirstGuestEmailValid && !isGuestEmailValid()
+          }
+        >
+          <FormLabel>Email</FormLabel>
+          <Input
+            type="email"
+            placeholder="Insert your email"
+            isDisabled={isScheduling}
+            value={doSendEmailReminders ? userEmail : guestEmail}
+            onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+            onChange={e => {
+              if (doSendEmailReminders) {
+                setUserEmail(e.target.value)
+                setIsFirstUserEmailValid(false)
+              } else {
                 setGuestEmail(e.target.value)
                 setIsFirstGuestEmailValid(false)
-              }}
-            />
-          </FormControl>
-          <FormControl>
-            <Flex
-              alignItems="center"
-              marginBottom="8px"
-              marginRight="12px"
-              gap="6px"
-            >
-              <FormLabel
-                htmlFor="title"
-                alignItems="center"
-                height="fit-content"
-                margin={0}
-              >
-                Meeting title (optional)
-              </FormLabel>
-              <Tooltip.Provider delayDuration={400}>
-                <Tooltip.Root>
-                  <Tooltip.Trigger>
-                    <Flex
-                      w="16px"
-                      h="16px"
-                      borderRadius="50%"
-                      bgColor={iconColor}
-                      justifyContent="center"
-                      alignItems="center"
-                      ml={1}
-                    >
-                      <Icon w={1} color={bgColor} as={FaInfo} />
-                    </Flex>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content>
-                    <Text
-                      fontSize="sm"
-                      p={4}
-                      maxW="200px"
-                      bgColor={bgColor}
-                      shadow="lg"
-                    >
-                      Give a title for your meeting
-                    </Text>
-                    <Tooltip.Arrow />
-                  </Tooltip.Content>
-                </Tooltip.Root>
-              </Tooltip.Provider>
-            </Flex>
-            <Input
-              id="title"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              type="text"
-              placeholder="Give a title for your meeting"
-            />
-          </FormControl>
-          <FormControl textAlign="left">
-            <FormLabel>What is this meeting about? (optional)</FormLabel>
-            <RichTextEditor
-              isDisabled={isScheduling}
-              placeholder="Any information you want to share prior to the meeting?"
-              value={content}
-              onValueChange={setContent}
-            />
-          </FormControl>
-        </>
+              }
+            }}
+          />
+        </FormControl>
       )}
-
-      {scheduleType === SchedulingType.REGULAR && (
-        <>
-          <FormControl isInvalid={isNameEmpty}>
-            <FormLabel>Your name</FormLabel>
-            <Input
-              autoFocus
-              type="text"
-              placeholder="Your name or an identifier"
-              isDisabled={isScheduling}
-              value={name}
-              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-              onChange={e => setName(e.target.value)}
-            />
-          </FormControl>
-          <FormControl>
-            <Flex
-              alignItems="center"
-              marginBottom="8px"
-              marginRight="12px"
-              gap="6px"
-            >
-              <FormLabel
-                htmlFor="title"
-                alignItems="center"
-                height="fit-content"
-                margin={0}
-              >
-                Meeting title (optional)
-              </FormLabel>
-            </Flex>
-            <Input
-              id="title"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              type="text"
-              placeholder="Give a title for your meeting"
-            />
-          </FormControl>
-          <FormControl textAlign="left">
-            <FormLabel>What is this meeting about? (optional)</FormLabel>
-            <RichTextEditor
-              isDisabled={isScheduling}
-              placeholder="Any information you want to share prior to the meeting?"
-              value={content}
-              onValueChange={setContent}
-            />
-          </FormControl>
-        </>
-      )}
-
+      <FormControl>
+        <Flex
+          alignItems="center"
+          marginBottom="8px"
+          marginRight="12px"
+          gap="6px"
+        >
+          <FormLabel
+            htmlFor="title"
+            alignItems="center"
+            height="fit-content"
+            margin={0}
+          >
+            Meeting title
+          </FormLabel>
+          <Tooltip.Provider delayDuration={400}>
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                <Flex
+                  w="16px"
+                  h="16px"
+                  borderRadius="50%"
+                  bgColor={iconColor}
+                  justifyContent="center"
+                  alignItems="center"
+                  ml={1}
+                >
+                  <Icon w={1} color={bgColor} as={FaInfo} />
+                </Flex>
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                <Text
+                  fontSize="sm"
+                  p={4}
+                  maxW="200px"
+                  bgColor={bgColor}
+                  shadow="lg"
+                >
+                  Give a title for your meeting (optional)
+                </Text>
+                <Tooltip.Arrow />
+              </Tooltip.Content>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+        </Flex>
+        <Input
+          id="title"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          type="text"
+          placeholder="Give a title for your meeting"
+        />
+      </FormControl>
+      <FormControl textAlign="left" w="100%" maxW="100%">
+        <FormLabel>What is this meeting about? </FormLabel>
+        <RichTextEditor
+          isDisabled={isScheduling}
+          placeholder="Any information you want to share prior to the meeting?"
+          value={content}
+          onValueChange={setContent}
+        />
+      </FormControl>
       {scheduleType !== undefined && (
         <VStack alignItems="start">
           <HStack alignItems="center" mb={googleMeetUser() ? 6 : 0}>
@@ -448,7 +402,32 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             )}
         </VStack>
       )}
-
+      {!addGuest ? (
+        <Button
+          colorScheme="orangeButton"
+          variant="outline"
+          onClick={() => setAddGuest(true)}
+        >
+          Add other participants
+        </Button>
+      ) : (
+        <ChipInput
+          currentItems={participants}
+          placeholder="Enter participants"
+          onChange={setParticipants}
+          renderItem={p => {
+            if (p.account_address) {
+              return p.name || ellipsizeAddress(p.account_address!)
+            } else if (p.name && p.guest_email) {
+              return `${p.name} - ${p.guest_email}`
+            } else if (p.name) {
+              return `${p.name}`
+            } else {
+              return p.guest_email!
+            }
+          }}
+        />
+      )}
       <Button
         width="full"
         isDisabled={
@@ -466,7 +445,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             : handleConfirm
         }
         colorScheme="primary"
-        mt={6}
+        // mt={6}
       >
         {isScheduling
           ? 'Scheduling...'

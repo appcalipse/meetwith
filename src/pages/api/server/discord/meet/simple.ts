@@ -78,6 +78,7 @@ export default async function simpleDiscordMeet(
 
     try {
       const meeting = await scheduleMeeting(
+        false,
         SchedulingType.DISCORD,
         'no_type',
         new Date(slot.start),

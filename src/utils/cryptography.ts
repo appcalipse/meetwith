@@ -58,6 +58,13 @@ const checkSignature = (signature: string, nonce: number): string => {
   return addr
 }
 
+export const mockEncrypted: Encrypted = {
+  ciphertext: '',
+  ephemPublicKey: '',
+  iv: '',
+  mac: '',
+}
+
 export const simpleHash = (contents: string) =>
   crypto.createHash('md5').update(contents).digest('hex')
 
