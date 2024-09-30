@@ -13,7 +13,7 @@ import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
 import { AccountContext } from '@/providers/AccountProvider'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
-import { SchedulingType } from '@/types/Meeting'
+import { MeetingProvider, SchedulingType } from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -253,6 +253,7 @@ const Schedule: NextPage = () => {
         start,
         end,
         _participants.valid,
+        MeetingProvider.HUDDLE,
         currentAccount,
         content,
         undefined,

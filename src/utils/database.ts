@@ -246,7 +246,6 @@ const updateAccountFromInvite = async (
         newIdentity.publicKey,
         privateInfo
       )
-      const newEncryptedPath = await addContentToIPFS(newPvtInfo)
 
       const { error } = await db.supabase
         .from('slots')
