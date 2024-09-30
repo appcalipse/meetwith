@@ -16,7 +16,7 @@ import {
   Select,
   SingleValue,
 } from 'chakra-react-select'
-import ct from 'countries-and-timezones'
+import * as ct from 'countries-and-timezones'
 import {
   addDays,
   addMinutes,
@@ -48,6 +48,7 @@ import { SelectComponentsGeneric } from 'react-select/dist/declarations/src/comp
 import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
 import { AccountPreferences } from '@/types/Account'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 
 import { SchedulingType } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
@@ -75,7 +76,8 @@ interface MeetSlotPickerProps {
     content?: string,
     meetingUrl?: string,
     emailToSendReminders?: string,
-    title?: string
+    title?: string,
+    participants?: Array<ParticipantInfo>
   ) => Promise<boolean>
   preferences?: AccountPreferences
   reset: boolean
@@ -94,7 +96,7 @@ const timezonesKeys = Object.keys(timezonesObj) as Array<
 const _timezones = timezonesKeys
   .map(key => {
     return {
-      name: `${key} (GMT${timezonesObj[key].dstOffsetStr})`,
+      name: `${String(key)} (GMT${timezonesObj[key].dstOffsetStr})`,
       tzCode: key,
       offset: timezonesObj[key].utcOffset,
     }
@@ -123,7 +125,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 }) => {
   const tzs = timezones.map(tz => {
     return {
-      value: tz.tzCode,
+      value: String(tz.tzCode),
       label: tz.name,
     }
   })
