@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { MeetingProvider } from '@/types/Meeting'
 import { getAccountFromDB, updateAccountPreferences } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -29,6 +30,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         timezone: '',
         availableTypes: [],
         availabilities: [],
+        meetingProvider: MeetingProvider.HUDDLE,
       }
 
       await req.session.save()

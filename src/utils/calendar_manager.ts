@@ -33,8 +33,6 @@ import {
 import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
-  createHuddleRoom,
-  fetchContentFromIPFSFromBrowser,
   getAccount,
   getExistingAccounts,
   getMeeting,
