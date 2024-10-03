@@ -41,7 +41,7 @@ export const UseGoogleMeet: React.FC<{ currentAccount: Account }> = ({
       </Heading>
       <FormControl display="flex" alignItems="center">
         <FormLabel htmlFor="use-google-meet" mb="0">
-          Use Google Meet for my next meetings?
+          Use Google Meet for my next meetings
         </FormLabel>
         <Switch
           id="use-google-meet"
