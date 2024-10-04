@@ -545,9 +545,9 @@ const getParticipantActingDisplayName = (
 }
 
 const runPromises = async (promises: Promise<boolean>[]) => {
-  // const timeout = setTimeout(() => {
-  //   console.error('timed out on notifications')
-  // }, 7000)
+  const timeout = setTimeout(() => {
+    console.error('timed out on notifications')
+  }, 7000)
 
-  await Promise.all(promises)
+  await Promise.race([Promise.all(promises), timeout])
 }
