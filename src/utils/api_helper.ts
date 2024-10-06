@@ -31,6 +31,7 @@ import {
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
+  UrlCreationRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
 import { GateConditionObject } from '@/types/TokenGating'
@@ -878,6 +879,22 @@ export const createHuddleRoom = async (
     return (await internalFetch('/integrations/huddle/create', 'POST', {
       title,
     })) as { url: string }
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 503) {
+        throw new Huddle01ServiceUnavailable()
+      }
+    }
+    throw e
+  }
+}
+export const generateMeetingUrl = async (
+  payload: UrlCreationRequest
+): Promise<{ url: string }> => {
+  try {
+    return (await internalFetch('/secure/meetings/url', 'POST', payload)) as {
+      url: string
+    }
   } catch (e) {
     if (e instanceof ApiFetchError) {
       if (e.status === 503) {
