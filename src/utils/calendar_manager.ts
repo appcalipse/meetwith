@@ -463,7 +463,7 @@ const updateMeeting = async (
       })
     await Promise.all(promises)
   }
-  const participantData = await handleParticipants(participants)
+  const participantData = await handleParticipants(participants, currentAccount)
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     meetingTypeId,
@@ -565,7 +565,7 @@ const scheduleMeeting = async (
   meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
-  const participantData = await handleParticipants(participants) // check participants before proceeding
+  const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
   const meeting_url =
     meetingUrl ||
     (
