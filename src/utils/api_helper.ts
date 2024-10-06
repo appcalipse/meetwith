@@ -892,7 +892,7 @@ export const generateMeetingUrl = async (
   payload: UrlCreationRequest
 ): Promise<{ url: string }> => {
   try {
-    return (await internalFetch('/secure/meetings/url', 'POST', payload)) as {
+    return (await internalFetch('/meetings/url', 'POST', payload)) as {
       url: string
     }
   } catch (e) {
