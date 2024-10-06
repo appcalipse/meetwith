@@ -38,7 +38,6 @@ export const handleMeetingSchedule = async (
 ) => {
   if (req.method === 'POST') {
     const account = await getAccountFromDB(account_address)
-
     if (
       meeting.participants_mapping.filter(
         participant =>
@@ -77,68 +76,6 @@ export const handleMeetingSchedule = async (
     }
     if (isValidEmail(meeting.emailToSendReminders))
       await updateEmailNotifications(meeting.emailToSendReminders!)
-
-    switch (meeting.meetingProvider) {
-      case MeetingProvider.GOOGLE_MEET:
-        const owner = meeting.participants_mapping.filter(
-          participant => participant.type == ParticipantType.Owner
-        )[0]
-
-        if (!owner) {
-          return res.status(412).send('No owner with connected Google Calendar')
-        }
-
-        const calendars = await getConnectedCalendars(owner.account_address!, {
-          syncOnly: false,
-          activeOnly: true,
-        })
-
-        for (const calendar of calendars) {
-          if (calendar.provider == TimeSlotSource.GOOGLE) {
-            const integration = getConnectedCalendarIntegration(
-              calendar.account_address,
-              calendar.email,
-              calendar.provider,
-              calendar.payload
-            )
-
-            const promises = []
-            for (const innerCalendar of calendar.calendars!) {
-              if (innerCalendar.enabled && innerCalendar.sync) {
-                promises.push(
-                  integration.createEvent(
-                    owner.account_address!,
-                    {
-                      meeting_url: '',
-                      participants: meeting.participants_mapping,
-                      title: meeting.title,
-                      content: meeting.content,
-                      meetingProvider: MeetingProvider.GOOGLE_MEET,
-                      participantActing,
-                      meeting_id: meeting.meeting_id,
-                      start: new Date(meeting.start),
-                      end: new Date(meeting.end),
-                      created_at: new Date(),
-                      timezone: owner.timeZone,
-                    },
-                    new Date(),
-                    innerCalendar.calendarId
-                  )
-                )
-              }
-            }
-            const results = await Promise.all(promises)
-            console.log(results)
-            meeting.meeting_url = results[0].url
-          }
-        }
-        break
-      case MeetingProvider.HUDDLE:
-        meeting.meeting_url = (await createHuddleRoom())?.url
-        break
-      default:
-        break
-    }
 
     try {
       const meetingResult: DBSlot = await saveMeeting(
