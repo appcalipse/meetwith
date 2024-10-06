@@ -31,7 +31,8 @@ const syncCreatedEventWithCalendar = async (
             targetAccount,
             meetingDetails,
             meetingDetails.created_at,
-            innerCalendar.calendarId
+            innerCalendar.calendarId,
+            false
           )
         )
       }
