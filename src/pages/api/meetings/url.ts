@@ -3,7 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
-import { UrlCreationRequest } from '@/types/Requests'
+import { RequestParticipantMapping, UrlCreationRequest } from '@/types/Requests'
 import { createHuddleRoom } from '@/utils/api_helper'
 import { getAccountFromDB, getConnectedCalendars } from '@/utils/database'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
@@ -68,7 +68,8 @@ export const handleMeetingSchedule = async (
                       owner.account_address!,
                       {
                         meeting_url: '',
-                        participants: meeting.participants_mapping,
+                        participants:
+                          meeting.participants_mapping as RequestParticipantMapping[],
                         title: meeting.title,
                         content: meeting.content,
                         meetingProvider: MeetingProvider.GOOGLE_MEET,
