@@ -38,7 +38,7 @@ export interface MeetingCreationRequest {
   emailToSendReminders?: string
 }
 export interface UrlCreationRequest {
-  participants_mapping: ParticipantInfo[]
+  participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
   start: Date
   end: Date
   meetingProvider: MeetingProvider
@@ -79,7 +79,7 @@ export interface MeetingChange {
 }
 export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meeting_url: string
-  participants: (RequestParticipantMapping | ParticipantInfo)[]
+  participants: RequestParticipantMapping[]
   changes?: MeetingChange
   title?: string
   content?: string
