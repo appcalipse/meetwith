@@ -253,7 +253,7 @@ const Schedule: NextPage = () => {
         start,
         end,
         _participants.valid,
-        MeetingProvider.HUDDLE,
+        currentAccount?.preferences.meetingProvider || MeetingProvider.HUDDLE,
         currentAccount,
         content,
         undefined,
