@@ -675,7 +675,6 @@ const scheduleMeeting = async (
     throw error
   }
 }
-
 const generateIcs = (
   meeting: MeetingDecrypted,
   ownerAddress: string,
@@ -1022,7 +1021,6 @@ const generateOffice365CalendarUrl = (
   return baseUrl
 }
 const allSlots = generateAllSlots()
-
 export {
   allSlots,
   cancelMeeting,
