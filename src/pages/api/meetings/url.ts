@@ -1,51 +1,26 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { UrlCreationRequest } from '@/types/Requests'
 import { createHuddleRoom } from '@/utils/api_helper'
 import { getAccountFromDB, getConnectedCalendars } from '@/utils/database'
-import {
-  GateConditionNotValidError,
-  MeetingCreationError,
-  TimeNotAvailableError,
-} from '@/utils/errors'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
-import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
-  const account_address = req.session.account!.address
   const meeting: UrlCreationRequest = req.body as UrlCreationRequest
 
-  return handleMeetingSchedule(account_address, meeting, req, res)
+  return handleMeetingSchedule(meeting, req, res)
 }
 
 export const handleMeetingSchedule = async (
-  account_address: string,
   meeting: UrlCreationRequest,
   req: NextApiRequest,
   res: NextApiResponse
 ) => {
   if (req.method === 'POST') {
     try {
-      const account = await getAccountFromDB(account_address)
-      if (
-        meeting.participants_mapping.filter(
-          participant =>
-            participant.account_address?.toLowerCase() ===
-            account.address.toLowerCase()
-        ).length === 0
-      ) {
-        return res
-          .status(403)
-          .send("You can't schedule a meeting for someone else")
-      }
-
-      const participantActing = getParticipantBaseInfoFromAccount(
-        await getAccountFromDB(account_address)
-      )
       let url = ''
       switch (meeting.meetingProvider) {
         case MeetingProvider.GOOGLE_MEET:
@@ -97,7 +72,7 @@ export const handleMeetingSchedule = async (
                         title: meeting.title,
                         content: meeting.content,
                         meetingProvider: MeetingProvider.GOOGLE_MEET,
-                        participantActing,
+                        participantActing: {}, // actor not needed to generate link
                         meeting_id: meeting.meeting_id,
                         start: new Date(meeting.start),
                         end: new Date(meeting.end),
@@ -118,7 +93,7 @@ export const handleMeetingSchedule = async (
           }
           break
         case MeetingProvider.HUDDLE:
-          url = (await createHuddleRoom())?.url
+          url = (await createHuddleRoom(meeting.title))?.url
           break
         default:
           break
@@ -128,20 +103,11 @@ export const handleMeetingSchedule = async (
         url,
       })
     } catch (e) {
-      if (e instanceof TimeNotAvailableError) {
-        return res.status(409).send(e)
-      } else if (e instanceof MeetingCreationError) {
-        return res.status(412).send(e)
-      } else if (e instanceof GateConditionNotValidError) {
-        return res.status(403).send(e)
-      } else {
-        Sentry.captureException(e)
-        return res.status(500).send(e)
-      }
+      return res.status(500).send(e)
     }
   }
 
   return res.status(404).send('Not found')
 }
 
-export default withSessionRoute(handle)
+export default handle
