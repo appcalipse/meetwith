@@ -30,7 +30,7 @@ const ScheduleGroupModal: FC<IScheduleGroupModal> = props => {
   const fetchGroups = async (reset?: boolean) => {
     setLoading(true)
     const fetchedGroups = await getGroups(undefined, undefined)
-    setGroups(reset ? [] : fetchedGroups)
+    setGroups(reset ? [] : fetchedGroups.filter(val => !val.invitePending))
     setLoading(false)
   }
   useEffect(() => {
