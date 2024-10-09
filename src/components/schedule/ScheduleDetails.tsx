@@ -36,7 +36,6 @@ const ScheduleDetails = () => {
     handlePageSwitch,
     title,
     duration,
-    currentSelectedDate,
     timezone,
     participants,
     groupAvailability,
@@ -44,6 +43,7 @@ const ScheduleDetails = () => {
     content,
     handleContentChange,
     isScheduling,
+    pickedTime,
     handleSchedule,
   } = useContext(ScheduleContext)
   const { currentAccount } = useContext(AccountContext)
@@ -146,14 +146,12 @@ const ScheduleDetails = () => {
           <VStack alignItems="start" gap={4}>
             <HStack gap={3}>
               <FaCalendar size={24} />
-              <Text fontWeight="700">
-                {format(currentSelectedDate, 'MMM d, yyyy')}
-              </Text>
+              <Text fontWeight="700">{format(pickedTime!, 'MMM d, yyyy')}</Text>
             </HStack>
             <HStack gap={3}>
               <FaClock size={24} />
               <Text fontWeight="700">
-                {format(currentSelectedDate, 'hh:mm a')} ({timezone})
+                {format(pickedTime!, 'hh:mm a')} ({timezone})
               </Text>
             </HStack>
             <HStack gap={3}>
