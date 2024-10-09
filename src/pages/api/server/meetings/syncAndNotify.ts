@@ -30,7 +30,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         request.created_at,
         request.meeting_url,
         request.title,
-        request.content
+        request.content,
+        undefined,
+        request.meetingProvider
       )
     } catch (error) {
       Sentry.captureException(error)
@@ -39,7 +41,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       await ExternalCalendarSync.create(request)
     } catch (error) {
-      Sentry.captureException(error)
+      console.error(error)
     }
 
     return res.status(200).send(true)
@@ -61,7 +63,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         request.meeting_url,
         request.title,
         request.content,
-        request.changes
+        request.changes,
+        request.meetingProvider
       )
     } catch (error) {
       Sentry.captureException(error)

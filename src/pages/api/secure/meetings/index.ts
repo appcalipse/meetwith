@@ -3,12 +3,14 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
-import { DBSlot } from '@/types/Meeting'
+import { DBSlot, MeetingProvider, TimeSlotSource } from '@/types/Meeting'
+import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingCreationRequest } from '@/types/Requests'
+import { createHuddleRoom } from '@/utils/api_helper'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
-  initDB,
+  getConnectedCalendars,
   saveMeeting,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
@@ -17,6 +19,7 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
 } from '@/utils/errors'
+import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
 import { isValidEmail } from '@/utils/validations'
 
@@ -34,10 +37,7 @@ export const handleMeetingSchedule = async (
   res: NextApiResponse
 ) => {
   if (req.method === 'POST') {
-    initDB()
-
     const account = await getAccountFromDB(account_address)
-
     if (
       meeting.participants_mapping.filter(
         participant =>
@@ -55,23 +55,27 @@ export const handleMeetingSchedule = async (
     )
 
     const updateEmailNotifications = async (email: string) => {
-      const subs = await getAccountNotificationSubscriptions(account_address)
+      try {
+        const subs = await getAccountNotificationSubscriptions(account_address)
 
-      subs.notification_types = subs.notification_types.filter(
-        type => type.channel !== NotificationChannel.EMAIL
-      )
+        subs.notification_types = subs.notification_types.filter(
+          type => type.channel !== NotificationChannel.EMAIL
+        )
 
-      if (isValidEmail(email)) {
-        subs.notification_types.push({
-          channel: NotificationChannel.EMAIL,
-          destination: email,
-          disabled: false,
-        })
-        await setAccountNotificationSubscriptions(account_address, subs)
+        if (isValidEmail(email)) {
+          subs.notification_types.push({
+            channel: NotificationChannel.EMAIL,
+            destination: email,
+            disabled: false,
+          })
+          await setAccountNotificationSubscriptions(account_address, subs)
+        }
+      } catch (e) {
+        console.error(e)
       }
     }
-    await (isValidEmail(meeting.emailToSendReminders) &&
-      updateEmailNotifications(meeting.emailToSendReminders!))
+    if (isValidEmail(meeting.emailToSendReminders))
+      await updateEmailNotifications(meeting.emailToSendReminders!)
 
     try {
       const meetingResult: DBSlot = await saveMeeting(

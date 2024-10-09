@@ -17,6 +17,7 @@ import {
   MeetingChangeType,
   MeetingDecrypted,
   MeetingInfo,
+  MeetingProvider,
   ParticipantMappingType,
   SchedulingType,
 } from '@/types/Meeting'
@@ -32,7 +33,7 @@ import {
 import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
-  createHuddleRoom,
+  generateMeetingUrl,
   getAccount,
   getExistingAccounts,
   getMeeting,
@@ -185,34 +186,10 @@ const loadMeetingAccountAddresses = async (
     ...otherSlots.map(it => it.account_address.toLowerCase()),
   ]
 }
-
-const buildMeetingData = async (
-  schedulingType: SchedulingType,
-  meetingTypeId: string,
-  startTime: Date,
-  endTime: Date,
+const handleParticipants = async (
   participants: ParticipantInfo[],
-  participantsToKeep: {
-    [accountOrEmail: string]: string
-  },
-  currentAccount?: Account | null,
-  meetingContent?: string,
-  meetingUrl?: string,
-  meetingId = '',
-  meetingTitle = 'No Title'
-): Promise<MeetingCreationRequest> => {
-  if (meetingUrl) {
-    if (isValidEmail(meetingUrl)) {
-      throw new InvalidURL()
-    }
-    if (!isValidUrl(meetingUrl)) {
-      meetingUrl = `https://${meetingUrl}`
-      if (!isValidUrl(meetingUrl)) {
-        throw new InvalidURL()
-      }
-    }
-  }
-
+  currentAccount?: Account | null
+) => {
   const allAccounts: Account[] = await getExistingAccounts(
     participants.filter(p => p.account_address).map(p => p.account_address!)
   )
@@ -252,13 +229,43 @@ const buildMeetingData = async (
   ) {
     throw new MeetingCreationError()
   }
+  return { sanitizedParticipants, allAccounts }
+}
+const buildMeetingData = async (
+  schedulingType: SchedulingType,
+  meetingTypeId: string,
+  startTime: Date,
+  endTime: Date,
+  sanitizedParticipants: ParticipantInfo[],
+  allAccounts: Account[],
+  participantsToKeep: {
+    [accountOrEmail: string]: string
+  },
+  meetingProvider: MeetingProvider,
+  currentAccount?: Account | null,
+  meetingContent?: string,
+  meetingUrl = '',
+  meetingId = '',
+  meetingTitle = 'No Title'
+): Promise<MeetingCreationRequest> => {
+  if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
+    if (isValidEmail(meetingUrl)) {
+      throw new InvalidURL()
+    }
+    if (!isValidUrl(meetingUrl)) {
+      meetingUrl = `https://${meetingUrl}`
+      if (!isValidUrl(meetingUrl)) {
+        throw new InvalidURL()
+      }
+    }
+  }
 
   const privateInfo: MeetingInfo = {
     created_at: new Date(),
     participants: sanitizedParticipants,
     title: meetingTitle,
     content: meetingContent,
-    meeting_url: meetingUrl || (await createHuddleRoom()).url,
+    meeting_url: meetingUrl,
     change_history_paths: [],
     related_slot_ids: [],
     meeting_id: meetingId,
@@ -318,7 +325,7 @@ const buildMeetingData = async (
     participantsMappings.push(participantMapping)
   }
 
-  const meeting: MeetingCreationRequest = {
+  return {
     type: schedulingType,
     start: startTime,
     end: endTime,
@@ -328,9 +335,8 @@ const buildMeetingData = async (
     meeting_url: privateInfo['meeting_url'],
     content: privateInfo['content'],
     title: privateInfo['title'],
+    meetingProvider,
   }
-
-  return meeting
 }
 
 /**
@@ -355,6 +361,7 @@ const updateMeeting = async (
   participants: ParticipantInfo[],
   content: string,
   meetingUrl: string,
+  meetingProvider: MeetingProvider,
   meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   // Sanity check
@@ -456,17 +463,19 @@ const updateMeeting = async (
       })
     await Promise.all(promises)
   }
-
+  const participantData = await handleParticipants(participants, currentAccount)
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     meetingTypeId,
     startTime,
     endTime,
-    participants,
+    participantData.sanitizedParticipants,
+    participantData.allAccounts,
     [...toKeep, ...guestsToKeep].reduce<any>((acc, it) => {
       acc[it] = accountSlotMap[it] || it
       return acc
     }, {}),
+    meetingProvider,
     currentAccount,
     content,
     meetingUrl,
@@ -548,6 +557,7 @@ const scheduleMeeting = async (
   startTime: Date,
   endTime: Date,
   participants: ParticipantInfo[],
+  meetingProvider: MeetingProvider,
   currentAccount?: Account | null,
   meetingContent?: string,
   meetingUrl?: string,
@@ -555,20 +565,35 @@ const scheduleMeeting = async (
   meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
+  const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
+  const meeting_url =
+    meetingUrl ||
+    (
+      await generateMeetingUrl({
+        meeting_id: newMeetingId,
+        title: meetingTitle || 'No Title',
+        end: endTime,
+        start: startTime,
+        meetingProvider,
+        participants_mapping: participantData.sanitizedParticipants,
+        content: meetingContent,
+      })
+    ).url
   const meeting = await buildMeetingData(
     schedulingType,
     meetingTypeId,
     startTime,
     endTime,
-    participants,
+    participantData.sanitizedParticipants,
+    participantData.allAccounts,
     {},
+    meetingProvider,
     currentAccount,
     meetingContent,
-    meetingUrl,
+    meeting_url,
     newMeetingId,
     meetingTitle
   )
-
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = []
     participants
@@ -650,7 +675,6 @@ const scheduleMeeting = async (
     throw error
   }
 }
-
 const generateIcs = (
   meeting: MeetingDecrypted,
   ownerAddress: string,
@@ -997,7 +1021,6 @@ const generateOffice365CalendarUrl = (
   return baseUrl
 }
 const allSlots = generateAllSlots()
-
 export {
   allSlots,
   cancelMeeting,

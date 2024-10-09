@@ -1,15 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import {
-  getSlotsForAccount,
-  getSlotsForDashboard,
-  initDB,
-} from '@/utils/database'
+import { getSlotsForAccount, getSlotsForDashboard } from '@/utils/database'
 import { AccountNotFoundError } from '@/utils/errors'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    initDB()
     try {
       let meetings
       if (req.query.upcoming === 'true') {

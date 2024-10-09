@@ -15,6 +15,7 @@ const withMDX = require('@next/mdx')({
   },
 })
 
+/** @type {import('@sentry/nextjs/types/config/types').ExportedNextConfig} */
 const moduleExports = {
   reactStrictMode: true,
   eslint: { dirs: ['src'] },
