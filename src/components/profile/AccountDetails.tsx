@@ -28,10 +28,13 @@ import { FaTag } from 'react-icons/fa'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account, SocialLink, SocialLinkType } from '@/types/Account'
+import { getChainInfo } from '@/types/chains'
+import { TimeSlotSource } from '@/types/Meeting'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
 import {
   getUnstoppableDomainsForAddress,
+  listConnectedCalendars,
   saveAccountChanges,
   syncSubscriptions,
 } from '@/utils/api_helper'
@@ -49,6 +52,7 @@ import HandlePicker, {
 import Tooltip from './components/Tooltip'
 import ConnectedAccounts from './ConnectedAccounts'
 import SubscriptionDialog from './SubscriptionDialog'
+import { UseGoogleMeet } from './UseGoogleMeet'
 
 const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
@@ -363,8 +367,23 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const subscription = currentAccount?.subscriptions?.filter(
     sub => sub.plan_id === Plan.PRO
   )?.[0]
+
+  const [googleConnected, setGoogleConnected] = useState(false)
+
+  async function checkGoogleCalendarIsConnected() {
+    const calendars = await listConnectedCalendars()
+    const isGoogleConnected = calendars.some(
+      calendar => calendar.provider === TimeSlotSource.GOOGLE
+    )
+    setGoogleConnected(isGoogleConnected)
+  }
+
+  useEffect(() => {
+    checkGoogleCalendarIsConnected()
+  }, [currentAccount])
+
   return (
-    <VStack mb={8} alignItems="start" flex={1}>
+    <VStack gap={4} mb={8} alignItems="start" flex={1}>
       <Block>
         <>
           <Heading fontSize="2xl" mb={4}>
@@ -483,11 +502,15 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         </>
       </Block>
 
-      <Block mt={8}>
+      <Block>
         <ConnectedAccounts />
       </Block>
 
-      <Block mt={8}>
+      {googleConnected ? (
+        <UseGoogleMeet currentAccount={currentAccount} />
+      ) : null}
+
+      <Block>
         <Heading ref={subsRef} fontSize="2xl" id="subscriptions" mb={8}>
           Subscription
         </Heading>
@@ -547,7 +570,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   )
 }
 
-interface SubscriptioCardProps {
+interface SubscriptionCardProps {
   active: boolean
   benefits: string[]
   subscription?: Subscription
@@ -555,7 +578,7 @@ interface SubscriptioCardProps {
   onClick: () => void
 }
 
-export const SubscriptionCard: React.FC<SubscriptioCardProps> = ({
+export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   active,
   subscription,
   planInfo,

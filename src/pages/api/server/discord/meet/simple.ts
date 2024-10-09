@@ -1,7 +1,7 @@
 import { addDays } from 'date-fns'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { SchedulingType } from '@/types/Meeting'
+import { MeetingProvider, SchedulingType } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { DiscordMeetingRequest } from '@/types/Requests'
 import { getSuggestedSlots } from '@/utils/api_helper'
@@ -84,6 +84,7 @@ export default async function simpleDiscordMeet(
         new Date(slot.start),
         new Date(slot.end),
         participants,
+        MeetingProvider.HUDDLE,
         scheduler,
         description
       )

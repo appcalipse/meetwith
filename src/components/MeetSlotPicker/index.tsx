@@ -491,6 +491,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               isSchedulingExternal={isSchedulingExternal}
               isGateValid={isGateValid}
               notificationsSubs={notificationsSubs}
+              preferences={preferences}
             />
           </Popup>
         )}
