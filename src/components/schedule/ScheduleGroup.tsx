@@ -26,7 +26,6 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
   const { currentAccount } = useContext(AccountContext)
   const [loading, setLoading] = useState(false)
   const {
-    groupParticipants,
     groupAvailability,
     setGroupAvailability,
     setGroupParticipants,
@@ -42,19 +41,6 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
       .filter(val => !val.invitePending)
       .filter(val => !!val.address)
     setGroupsMembers(reset ? [] : actualMembers)
-    const allAddresses = actualMembers
-      .map(val => val.address)
-      .filter((val): val is string => typeof val === 'string')
-    if (!(groupParticipants[props.id] || groupAvailability[props.id])) {
-      setGroupAvailability(prev => ({
-        ...prev,
-        [props.id]: allAddresses,
-      }))
-      setGroupParticipants(prev => ({
-        ...prev,
-        [props.id]: allAddresses,
-      }))
-    }
     setLoading(false)
   }
   useEffect(() => {
@@ -68,7 +54,10 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
       .filter((val): val is string => typeof val === 'string')
     setGroupAvailability(prev => ({
       ...prev,
-      [props.id]: allAddresses,
+      [props.id]:
+        groupAvailability[props.id]?.length === allAddresses.length
+          ? []
+          : allAddresses,
     }))
   }
   const handleSwitchClick = (e: React.ChangeEvent<HTMLInputElement>) => {
