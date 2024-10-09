@@ -34,6 +34,13 @@ export default function LogoutPage() {
     setLoading(false)
   }
   useEffect(() => {
+    if (logged) {
+      push(
+        `/dashboard/${EditMode.GROUPS}?${queryString}&intent=${Intents.JOIN}`
+      )
+    }
+  }, [logged])
+  useEffect(() => {
     if (groupId) {
       void fetchGroup(groupId.toString())
     }
