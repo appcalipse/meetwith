@@ -84,6 +84,7 @@ import {
   UnauthorizedError,
 } from '@/utils/errors'
 
+import { GateCondition } from '../types/TokenGating'
 import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
@@ -163,6 +164,7 @@ const initAccountDBForWallet = async (
     availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
+    meetingProvider: MeetingProvider.HUDDLE,
   }
 
   if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
@@ -256,7 +258,7 @@ const updateAccountFromInvite = async (
         throw new Error(error.message)
       }
     } catch (err) {
-      //if any fail, dont fail them all
+      //if any fail, don't fail them all
     }
   }
 
@@ -325,6 +327,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       name: preferences.name,
       socialLinks: preferences.socialLinks,
       availableTypes: preferences.availableTypes,
+      meetingProvider: preferences.meetingProvider,
     })
     .match({ owner_account_address: account.address.toLowerCase() })
 
@@ -589,9 +592,7 @@ const getMeetingsFromDB = async (slotIds: string[]): Promise<DBSlot[]> => {
     // todo handle error
   }
 
-  if (data.length == 0) {
-    return []
-  }
+  if (data.length == 0) return []
 
   const meetings = []
   for (const dbMeeting of data) {
@@ -610,18 +611,13 @@ const deleteMeetingFromDB = async (
   meeting_id: string,
   timezone: string
 ) => {
-  if (!slotIds?.length) {
-    throw new Error('No slot ids provided')
-  }
+  if (!slotIds?.length) throw new Error('No slot ids provided')
 
   const oldSlots: DBSlot[] =
     (await db.supabase.from<DBSlot>('slots').select().in('id', slotIds)).data ||
     []
 
-  const { data, error } = await db.supabase
-    .from('slots')
-    .delete()
-    .in('id', slotIds)
+  const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
 
   if (error) {
     throw new Error(error.message)
@@ -656,10 +652,9 @@ const saveMeeting = async (
     new Set(
       meeting.participants_mapping.map(p => p.account_address || p.guest_email)
     ).size !== meeting.participants_mapping.length
-  ) {
+  )
     //means there are duplicate participants
     throw new MeetingCreationError()
-  }
 
   const slots = []
   let meetingResponse: Partial<DBSlot> = {}
@@ -683,11 +678,10 @@ const saveMeeting = async (
       p => p.type === ParticipantType.Scheduler
     ) || null
 
-  const ownerIsNotScheduler = Boolean(
-    ownerParticipant &&
-      schedulerAccount &&
-      ownerParticipant.account_address !== schedulerAccount.account_address
-  )
+  const ownerIsNotScheduler =
+    !!ownerParticipant &&
+    !!schedulerAccount &&
+    ownerParticipant.account_address !== schedulerAccount.account_address
 
   if (ownerIsNotScheduler && schedulerAccount) {
     const gatesResponse = await db.supabase
@@ -709,12 +703,6 @@ const saveMeeting = async (
     }
   }
 
-  // TODO: for now
-  let meetingProvider = MeetingProvider.CUSTOM
-  if (meeting.meeting_url.includes('huddle')) {
-    meetingProvider = MeetingProvider.HUDDLE
-  }
-
   // we create here the root meeting data, with enough data
   const createdRootMeeting = await saveConferenceMeetingToDB({
     id: meeting.meeting_id,
@@ -722,7 +710,7 @@ const saveMeeting = async (
     end: meeting.end,
     meeting_url: meeting.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
-    provider: meetingProvider,
+    provider: meeting.meetingProvider,
   })
 
   if (!createdRootMeeting) {
@@ -763,9 +751,8 @@ const saveMeeting = async (
           participantIsOwner &&
           ownerIsNotScheduler &&
           (!isTimeAvailable() || (await slotIsTaken()))
-        ) {
+        )
           throw new TimeNotAvailableError()
-        }
       }
 
       let account: Account
@@ -836,6 +823,7 @@ const saveMeeting = async (
     participants: meeting.participants_mapping,
     title: meeting.title,
     content: meeting.content,
+    meetingProvider: meeting.meetingProvider,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -862,9 +850,8 @@ const getAccountNotificationSubscriptions = async (
     throw new Error(error.message)
   }
 
-  if (data && data[0]) {
-    return data[0] as AccountNotifications
-  }
+  if (data && data[0]) return data[0] as AccountNotifications
+
   return { account_address: address, notification_types: [] }
 }
 const getAccountNotificationSubscriptionEmail = async (
@@ -1630,9 +1617,7 @@ const getConnectedCalendars = async (
     throw new Error(error.message)
   }
 
-  if (!data) {
-    return []
-  }
+  if (!data) return []
 
   const connectedCalendars: ConnectedCalendar[] =
     !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
@@ -1675,7 +1660,7 @@ export const updateCalendarPayload = async (
   provider: TimeSlotSource,
   payload: any
 ): Promise<void> => {
-  const { data, error } = await db.supabase
+  const { error } = await db.supabase
     .from('connected_calendars')
     .update({ payload, updated: new Date() })
     .eq('account_address', address.toLowerCase())
@@ -1783,7 +1768,9 @@ export const getSubscriptionFromDBForAccount = async (
       throw new Error(collisionExists.error.message)
     }
 
-    // If for any reason some smart ass registered a domain manually on the blockchain, but such domain already existed for someone else and is not expired, we remove it here
+    // If for any reason some smart ass registered a domain manually
+    // on the blockchain, but such domain already existed for someone
+    // else and is not expired, we remove it here.
     for (const collision of collisionExists.data) {
       if (
         (collision as Subscription).registered_at <
@@ -1812,9 +1799,8 @@ export const getSubscription = async (
     throw new Error(error.message)
   }
 
-  if (data && data?.length > 0) {
-    return data[0] as Subscription
-  }
+  if (data && data?.length > 0) return data[0] as Subscription
+
   return undefined
 }
 
@@ -1849,13 +1835,8 @@ export const getExistingSubscriptionsByDomain = async (
     .gt('expiry_time', new Date().toISOString())
     .order('registered_at', { ascending: true })
 
-  if (error) {
-    Sentry.captureException(error)
-  }
-
-  if (data && data?.length > 0) {
-    return data as Subscription[]
-  }
+  if (error) Sentry.captureException(error)
+  if (data && data?.length > 0) return data as Subscription[]
 
   return undefined
 }
@@ -2006,9 +1987,7 @@ const getAppToken = async (tokenType: string): Promise<any | null> => {
     .select()
     .eq('type', tokenType)
 
-  if (!error) {
-    return data[0]
-  }
+  if (!error) return data[0]
 
   return null
 }
@@ -2119,9 +2098,8 @@ const updateMeeting = async (
           !isEditingToSameTime &&
           participantActing.account_address !== participant.account_address &&
           (!isTimeAvailable() || (await slotIsTaken()))
-        ) {
+        )
           throw new TimeNotAvailableError()
-        }
       }
 
       let account: Account
@@ -2176,9 +2154,8 @@ const updateMeeting = async (
     .filter(it => it.slot_id)
     .map(it => it.slot_id) as string[]
   const everySlot = await getMeetingsFromDB(everySlotId)
-  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version)) {
+  if (everySlot.find(it => it.version + 1 !== meetingUpdateRequest.version))
     throw new MeetingChangeConflictError()
-  }
 
   // there is no support from suppabase to really use optimistic locking,
   // right now we do the best we can assuming that no update will happen in the EXACT same time
@@ -2212,11 +2189,10 @@ const updateMeeting = async (
     provider: meetingProvider,
   })
 
-  if (!createdRootMeeting) {
+  if (!createdRootMeeting)
     throw new Error(
       'Could not update your meeting right now, get in touch with us if the problem persists'
     )
-  }
 
   const body: MeetingCreationSyncRequest = {
     participantActing,
@@ -2226,6 +2202,7 @@ const updateMeeting = async (
     created_at: meetingResponse.created_at!,
     timezone,
     meeting_url: meetingUpdateRequest.meeting_url,
+    meetingProvider: meetingUpdateRequest.meetingProvider,
     participants: meetingUpdateRequest.participants_mapping,
     title: meetingUpdateRequest.title,
     content: meetingUpdateRequest.content,
@@ -2245,7 +2222,7 @@ const updateMeeting = async (
   if (
     meetingUpdateRequest.slotsToRemove.length > 0 ||
     meetingUpdateRequest.guestsToRemove.length > 0
-  ) {
+  )
     await deleteMeetingFromDB(
       participantActing,
       meetingUpdateRequest.slotsToRemove,
@@ -2253,7 +2230,6 @@ const updateMeeting = async (
       meetingUpdateRequest.meeting_id,
       timezone
     )
-  }
 
   return meetingResponse
 }
@@ -2266,9 +2242,7 @@ const selectTeamMeetingRequest = async (
     .select()
     .eq('id', id)
 
-  if (!error) {
-    return data[0] as GroupMeetingRequest
-  }
+  if (!error) return data[0] as GroupMeetingRequest
 
   return null
 }
@@ -2277,7 +2251,7 @@ const insertOfficeEventMapping = async (
   office_id: string,
   mww_id: string
 ): Promise<void> => {
-  const { data, error } = await db.supabase
+  const { error } = await db.supabase
     .from('office_event_mapping')
     .insert({ office_id, mww_id })
 

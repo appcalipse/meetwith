@@ -48,6 +48,7 @@ import {
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
+  MeetingProvider,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -460,6 +461,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         start,
         end,
         participants,
+        account!.preferences!.meetingProvider,
         currentAccount,
         content,
         meetingUrl,
