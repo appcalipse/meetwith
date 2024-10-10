@@ -17,7 +17,7 @@ import {
   Select,
   SingleValue,
 } from 'chakra-react-select'
-import ct from 'countries-and-timezones'
+import * as ct from 'countries-and-timezones'
 import {
   addDays,
   addMinutes,
@@ -50,7 +50,10 @@ import {
 } from '@/pages/dashboard/schedule'
 import { ConditionRelation } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { fetchBusySlotsForMultipleAccounts } from '@/utils/api_helper'
+import {
+  fetchBusySlotsForMultipleAccounts,
+  getSuggestedSlots,
+} from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
 const timezonesObj = ct.getAllTimezones()
@@ -95,7 +98,7 @@ const ScheduleTimeDiscover = () => {
   )
   const tzs = timezones.map(tz => {
     return {
-      value: tz.tzCode,
+      value: String(tz.tzCode),
       label: tz.name,
     }
   })
@@ -103,26 +106,31 @@ const ScheduleTimeDiscover = () => {
   const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
     tzs.filter(val => val.value === timezone)[0] || tzs[0]
   )
-  const startDate = setSeconds(
-    setMinutes(setHours(addDays(currentSelectedDate, 0), 0), 0),
-    0
+  const getDates = (screenSize: number) => {
+    if (availableSlots.length === 0) return []
+    if (
+      !availableSlots.every(slot =>
+        isSameMonth(slot.start, currentSelectedDate)
+      )
+    )
+      return []
+    const arr = []
+    let index = 0
+    const maxCheck = 50
+    let selectedDate = addDays(currentSelectedDate, index)
+    while (arr.length < screenSize && index < maxCheck) {
+      if (availableSlots.some(slot => isSameDay(slot.start, selectedDate))) {
+        arr.push(selectedDate)
+      }
+      index++
+      selectedDate = addDays(currentSelectedDate, index)
+    }
+
+    return arr
+  }
+  const days = getDates(isMobile ? 1 : isTablet ? 2 : 3).filter(val =>
+    isSameMonth(val, currentMonth)
   )
-  const endDate = setSeconds(
-    setMinutes(
-      setHours(
-        addDays(currentSelectedDate, isMobile ? 0 : isTablet ? 1 : 2),
-        24
-      ),
-      59
-    ),
-    59
-  )
-  const days = Array.from(
-    { length: isMobile ? 1 : isTablet ? 2 : 3 },
-    (v, k) => k
-  )
-    .map(k => addDays(currentSelectedDate, k))
-    .filter(val => isSameMonth(val, currentMonth))
   const _onChange = (
     newValue:
       | SingleValue<{ label: string; value: string }>
@@ -179,63 +187,24 @@ const ScheduleTimeDiscover = () => {
           ...currentParticipant,
         ]),
       ]
-      const busySlots = await fetchBusySlotsForMultipleAccounts(
+      const busySlots = await getSuggestedSlots(
         accounts,
         monthStart,
         monthEnd,
-        ConditionRelation.AND
+        duration,
+        true
       )
-      setBusySlots(busySlots)
+      setAvailableSlots(busySlots)
     } catch (error: any) {
       handleApiError('Error merging availabilities', error)
     }
     setIsLoading(false)
   }
 
-  const handleAvailableSlots = async (
-    busySlots: Array<Interval>,
-    start?: Date,
-    end?: Date
-  ) => {
-    const availableSlots = []
-    let _start = start || startDate
-    let _end = subSeconds(addMinutes(_start, duration), 1)
-    while (isBefore(_end, end || endDate)) {
-      const isAvailable =
-        busySlots.filter(slot => {
-          const isDaySame =
-            isSameDay(_start, slot.start) && isSameDay(slot.end, _end)
-          if (!isDaySame) {
-            return false
-          }
-          const isBusySlot = areIntervalsOverlapping(
-            slot,
-            {
-              start: _start,
-              end: _end,
-            },
-            { inclusive: true }
-          )
-          return isBusySlot
-        }).length === 0
-
-      if (
-        isAvailable &&
-        !(isSameDay(_start, new Date()) && isBefore(_start, new Date()))
-      ) {
-        availableSlots.push({ start: _start, end: _end })
-      }
-      _start = addMinutes(_start, duration)
-      _end = subSeconds(addMinutes(_start, duration), 1)
-    }
-    setAvailableSlots(availableSlots)
-  }
   useEffect(() => {
     handleSlotLoad()
   }, [groupAvailability, currentMonth])
-  useEffect(() => {
-    handleAvailableSlots(busySlots)
-  }, [busySlots, isMobile, isTablet])
+
   const getDayAvailableSlots = (day: Date) => {
     return availableSlots.filter(slot => isSameDay(slot.start, day))
   }
@@ -247,18 +216,6 @@ const ScheduleTimeDiscover = () => {
       setCurrentMonth(newMonth)
       newDate = startOfMonth(newMonth)
     }
-    const startDate = setSeconds(
-      setMinutes(setHours(addDays(newDate, 0), 0), 0),
-      0
-    )
-    const endDate = setSeconds(
-      setMinutes(
-        setHours(addDays(newDate, isMobile ? 0 : isTablet ? 1 : 2), 24),
-        59
-      ),
-      59
-    )
-    handleAvailableSlots(busySlots, startDate, endDate)
     setCurrentSelectedDate(newDate)
   }
   const handleScheduledTimeBack = () => {
@@ -271,18 +228,6 @@ const ScheduleTimeDiscover = () => {
       const newMonth = subMonths(currentMonth, 1)
       setCurrentMonth(newMonth)
     }
-    const startDate = setSeconds(
-      setMinutes(setHours(addDays(newDate, 0), 0), 0),
-      0
-    )
-    const endDate = setSeconds(
-      setMinutes(
-        setHours(addDays(newDate, isMobile ? 0 : isTablet ? 1 : 2), 24),
-        59
-      ),
-      59
-    )
-    handleAvailableSlots(busySlots, startDate, endDate)
     setCurrentSelectedDate(newDate)
   }
   return (
