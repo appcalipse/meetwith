@@ -8,7 +8,6 @@ import {
   SlideFade,
   Text,
   useMediaQuery,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
 import {
@@ -19,21 +18,11 @@ import {
 } from 'chakra-react-select'
 import * as ct from 'countries-and-timezones'
 import {
-  addDays,
-  addMinutes,
   addMonths,
-  areIntervalsOverlapping,
   endOfMonth,
-  isBefore,
   isSameDay,
-  isSameMonth,
-  setHours,
-  setMinutes,
-  setSeconds,
   startOfMonth,
-  subDays,
   subMonths,
-  subSeconds,
 } from 'date-fns'
 import React, { useContext, useEffect, useState } from 'react'
 import { FaChevronDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
@@ -48,12 +37,8 @@ import {
   Page,
   ScheduleContext,
 } from '@/pages/dashboard/schedule'
-import { ConditionRelation } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import {
-  fetchBusySlotsForMultipleAccounts,
-  getSuggestedSlots,
-} from '@/utils/api_helper'
+import { getSuggestedSlots } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
 const timezonesObj = ct.getAllTimezones()
@@ -79,8 +64,6 @@ const ScheduleTimeDiscover = () => {
     handleTimePick,
     currentMonth,
     setCurrentMonth,
-    currentSelectedDate,
-    setCurrentSelectedDate,
     timezone,
     setTimezone,
     participants,
