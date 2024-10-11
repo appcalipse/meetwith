@@ -14,6 +14,7 @@ import AccountDetails from './AccountDetails'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
 import Meetings from './Meetings'
+import MeetingSettings from './MeetingSettings'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
 const GroupWithNoSSR = dynamic(() => import('./Group'), { ssr: false })
@@ -35,6 +36,8 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         return <AccountDetails currentAccount={currentAccount!} />
       case EditMode.TYPES:
         return <MeetingTypesConfig currentAccount={currentAccount!} />
+      case EditMode.MEETING_SETTINGS:
+        return <MeetingSettings currentAccount={currentAccount!} />
       case EditMode.CALENDARS:
         return <ConnectCalendar currentAccount={currentAccount!} />
       case EditMode.NOTIFICATIONS:
