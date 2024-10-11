@@ -22,7 +22,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useContext, useRef, useState } from 'react'
-import { FaArrowLeft, FaTrash } from 'react-icons/fa'
+import { FaArrowLeft, FaClock, FaTrash } from 'react-icons/fa'
 
 import { removeMeetingType } from '@/utils/api_helper'
 import { ApiFetchError } from '@/utils/errors'
@@ -43,7 +43,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { login } = useContext(AccountContext)
-
+  const bgColor = useColorModeValue('white', 'neutral.900')
   const [selectedType, setSelectedType] = useState<string>('')
   const [typeToRemove, setTypeToRemove] = useState<string | undefined>(
     undefined
@@ -72,7 +72,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   const isPro = isProAccount(currentAccount!)
 
   return (
-    <Box>
+    <Box width="100%" bg={bgColor} p={8} borderRadius={12}>
       {selectedType ? (
         <TypeConfig
           typeId={selectedType}
@@ -81,12 +81,51 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         />
       ) : (
         <VStack width="100%" maxW="100%" alignItems={'flex-start'}>
-          <Heading fontSize="2xl">Your meeting types</Heading>
-          <SimpleGrid
+          <VStack alignItems="flex-start" width="100%" maxW="100%" gap={3}>
+            <HStack
+              width="100%"
+              alignItems="flex-start"
+              justifyContent="space-between"
+            >
+              <Heading fontSize="2xl">Meeting Types</Heading>
+              <Button
+                isDisabled={!isPro}
+                colorScheme="primary"
+                onClick={createType}
+                leftIcon={<AddIcon width={15} height={15} />}
+              >
+                New Meeting Type
+              </Button>
+            </HStack>
+            <HStack
+              width="100%"
+              alignItems="flex-start"
+              justifyContent="space-between"
+            >
+              <Text color="neutral.400">
+                Here are your preferred meeting types
+              </Text>
+              {!isPro && (
+                <Text pb="6">
+                  <Link
+                    href="/dashboard/details#subscriptions"
+                    colorScheme="primary"
+                    fontWeight="bold"
+                  >
+                    Go PRO
+                  </Link>{' '}
+                  to add as many meeting types as you want
+                </Text>
+              )}
+            </HStack>
+          </VStack>
+          <Box
+            justifyContent="space-between"
+            flexWrap="wrap"
             width="100%"
-            minChildWidth="280px"
-            spacingX="20px"
-            spacingY="16px"
+            display="flex"
+            flexDirection="row"
+            mt={6}
           >
             {currentAccount.preferences.availableTypes
               .filter(type => !type.deleted)
@@ -95,53 +134,29 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
                   type.url
                 }`
                 return (
-                  <Box key={type.id}>
-                    <MeetingTypeCard
-                      onSelect={setSelectedType}
-                      title={type.title}
-                      duration={type.duration}
-                      url={url}
-                      typeId={type.id!}
-                      removeType={removeType}
-                      showRemoval={
-                        currentAccount!.preferences.availableTypes!.filter(
-                          type => !type.deleted
-                        ).length > 1
-                      }
-                    />
-                    <Spacer />
-                  </Box>
+                  <MeetingTypeCard
+                    key={type.id}
+                    onSelect={setSelectedType}
+                    title={type.title}
+                    duration={type.duration}
+                    url={url}
+                    typeId={type.id!}
+                    removeType={removeType}
+                    showRemoval={
+                      currentAccount!.preferences.availableTypes!.filter(
+                        type => !type.deleted
+                      ).length > 1
+                    }
+                  />
                 )
               })}
-          </SimpleGrid>
+          </Box>
           <VStack
             borderRadius={8}
             alignItems="flex-start"
-            pt={4}
-            pb={4}
             height={'100%'}
             justifyContent="center"
           >
-            {!isPro && (
-              <Text pb="6">
-                <Link
-                  href="/dashboard/details#subscriptions"
-                  colorScheme="primary"
-                  fontWeight="bold"
-                >
-                  Go PRO
-                </Link>{' '}
-                to add as many meeting types as you want
-              </Text>
-            )}
-            <Button
-              isDisabled={!isPro}
-              colorScheme="primary"
-              onClick={createType}
-              leftIcon={<AddIcon width={15} height={15} />}
-            >
-              New Meeting Type
-            </Button>
             <NewMeetingTypeDialog
               currentAccount={currentAccount}
               isDialogOpen={isDialogOpen}
@@ -170,7 +185,7 @@ interface CardProps {
   showRemoval: boolean
 }
 
-const MeetingTypeCard: React.FC<CardProps> = ({
+export const MeetingTypeCard: React.FC<CardProps> = ({
   title,
   typeId,
   url,
@@ -185,38 +200,62 @@ const MeetingTypeCard: React.FC<CardProps> = ({
   }
 
   const iconColor = useColorModeValue('gray.500', 'gray.200')
-
+  const [isHovered, setIsHovered] = useState(false)
   return (
-    <Box alignSelf="stretch" mb={4}>
+    <Box w={'100%'} flexBasis="49%">
       <VStack
-        borderRadius={8}
-        p={4}
+        borderRadius={12}
+        borderColor="neutral.400"
+        borderWidth={'1px'}
+        p={5}
         shadow={'sm'}
         minW="280px"
-        maxW="320px"
+        w={'100%'}
         alignItems="flex-start"
         height={'100%'}
         bgColor={useColorModeValue('white', 'neutral.900')}
       >
         <Flex width="100%">
           <VStack alignItems="flex-start" flex={1}>
-            <Text fontWeight="medium">{title}</Text>
-            <Text>Duration: {durationToHumanReadable(duration)}</Text>
+            <Text fontWeight="medium" fontSize={20}>
+              {title}
+            </Text>
           </VStack>
-          {showRemoval && (
-            <Box>
-              <IconButton
-                color={iconColor}
-                aria-label="remove"
-                icon={<FaTrash size={18} />}
-                onClick={() => removeType(typeId)}
-              />
-            </Box>
-          )}
+          <Box role={'group'} minH={10}>
+            <HStack
+              alignItems="center"
+              bg={'neutral.800'}
+              px={2}
+              py={1}
+              borderRadius={8}
+              _groupHover={{
+                display: 'none',
+              }}
+              h={'fit-content'}
+            >
+              <FaClock />
+              <Text>{durationToHumanReadable(duration)}</Text>
+            </HStack>
+            {showRemoval && (
+              <Box
+                display={'none'}
+                _groupHover={{
+                  display: 'block',
+                }}
+              >
+                <IconButton
+                  color={iconColor}
+                  aria-label="remove"
+                  icon={<FaTrash size={18} />}
+                  onClick={() => removeType(typeId)}
+                />
+              </Box>
+            )}
+          </Box>
         </Flex>
-        <HStack width="100%" pt={4}>
-          <CopyLinkButton url={url} />
-          <Button flex={1} colorScheme="primary" onClick={openType}>
+        <HStack width="100%" pt={4} gap={5}>
+          <CopyLinkButton url={url} colorScheme="neutral" px={'38px'} />
+          <Button flex={1} colorScheme="primary" onClick={openType} px={'38px'}>
             Edit
           </Button>
         </HStack>

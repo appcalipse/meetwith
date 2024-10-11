@@ -31,7 +31,6 @@ import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
-import { isProduction } from '@/utils/constants'
 import { getNotificationTime, saveNotificationTime } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -68,6 +67,11 @@ export const NavMenu: React.FC<{
         icon: FaUserGroup,
         mode: EditMode.GROUPS,
         badge: noOfInvitedGroups,
+      },
+      {
+        name: 'Meeting Settings',
+        icon: FaCalendarWeek,
+        mode: EditMode.MEETING_SETTINGS,
       },
       {
         name: 'Availabilities',
