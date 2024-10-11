@@ -164,7 +164,7 @@ const initAccountDBForWallet = async (
     availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
-    meetingProvider: MeetingProvider.HUDDLE,
+    meetingProvider: [MeetingProvider.HUDDLE],
   }
 
   if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
