@@ -8,7 +8,6 @@ import {
   SlideFade,
   Text,
   useMediaQuery,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
 import {
@@ -17,7 +16,7 @@ import {
   Select,
   SingleValue,
 } from 'chakra-react-select'
-import ct from 'countries-and-timezones'
+import * as ct from 'countries-and-timezones'
 import {
   addDays,
   addMinutes,
