@@ -96,7 +96,7 @@
     "slugify": "^1.6.5",
     "styled-components": "^4.2.0",
     "swiper": "^8.4.5",
-    "thirdweb": "5.61.5",
+    "thirdweb": "^5.22.1",
     "timezones-list": "^3.0.1",
     "tsdav": "^2.0.2",
     "usehooks-ts": "^2.6.0",
