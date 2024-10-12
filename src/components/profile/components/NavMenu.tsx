@@ -78,16 +78,10 @@ export const NavMenu: React.FC<{
         icon: FaCalendarAlt,
         mode: EditMode.AVAILABILITY,
       },
-      { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
       {
         name: 'Notifications',
         icon: FaBell,
         mode: EditMode.NOTIFICATIONS,
-      },
-      {
-        name: 'Token Gates',
-        icon: FaDoorClosed,
-        mode: EditMode.GATES,
       },
       {
         name: 'Connected Calendars',
@@ -202,7 +196,7 @@ export const NavMenu: React.FC<{
       void handleEmptyGroupCheck()
       saveNotificationTime(currentAccount?.address)
     }
-  }, [currentAccount])
+  }, [currentAccount?.address])
 
   if (!currentAccount) return null
 
