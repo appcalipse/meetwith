@@ -51,6 +51,10 @@ export enum MeetingProvider {
    */
   GOOGLE_MEET = 'google-meet',
 
+  ZOOM = 'zoom',
+
+  JITSI_MEET = 'jitsi-meet',
+
   /**
    * User will provide the meeting link
    */
