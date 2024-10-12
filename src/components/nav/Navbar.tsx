@@ -94,7 +94,7 @@ export const Navbar = () => {
         px="4"
         align={'center'}
       >
-        <Container maxW={'7xl'}>
+        <Container maxW={'8xl'}>
           <Flex alignItems="center">
             <Flex ml={{ base: -2 }} display={{ base: 'flex', lg: 'none' }}>
               <Flex
