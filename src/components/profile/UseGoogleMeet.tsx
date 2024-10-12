@@ -15,7 +15,9 @@ export const UseGoogleMeet: React.FC<{ currentAccount: Account }> = ({
   const { login } = useContext(AccountContext)
 
   const [useGoogleMeet, setUseGoogleMeet] = useState<boolean>(
-    currentAccount.preferences?.meetingProvider === MeetingProvider.GOOGLE_MEET
+    currentAccount.preferences?.meetingProvider.includes(
+      MeetingProvider.GOOGLE_MEET
+    )
   )
 
   async function onChange(event: ChangeEvent<HTMLInputElement>) {
@@ -25,9 +27,11 @@ export const UseGoogleMeet: React.FC<{ currentAccount: Account }> = ({
       ...currentAccount!,
       preferences: {
         ...currentAccount!.preferences!,
-        meetingProvider: event.target.checked
-          ? MeetingProvider.GOOGLE_MEET
-          : MeetingProvider.HUDDLE,
+        meetingProvider: [
+          event.target.checked
+            ? MeetingProvider.GOOGLE_MEET
+            : MeetingProvider.HUDDLE,
+        ],
       },
     })
     logEvent('use_google_meet_toggled', { value: event.target.checked })
