@@ -22,21 +22,20 @@ interface TokenGateValidationProps {
   setIsGateValid: (isValid: boolean) => void
   isGateValid: boolean
 }
-
+export const getChainImage = (chain: SupportedChain) => {
+  return supportedChains.find(val => val.chain === chain)?.image
+}
 const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
   const [chosenGate, setChosenGate] = useState<GateCondition | null>(null)
   const [userTokens, setUserTokens] = useState<ConditionValidation['tokens']>(
     []
   )
+  const { currentAccount } = useLogin()
   const [firstToken, setFirstToken] = useState<
     (GateCondition['elements'][number] & { image?: string }) | undefined
   >(undefined)
   const [loading, setLoading] = useState<boolean>(true)
   const { openConnection } = useContext(OnboardingModalContext)
-  const { currentAccount } = useLogin()
-  const getChainImage = (chain: SupportedChain) => {
-    return supportedChains.find(val => val.chain === chain)?.image
-  }
   const handleGateValidation = async (gateId: string) => {
     if (!gateId || gateId === 'No gate') return
     setLoading(true)
