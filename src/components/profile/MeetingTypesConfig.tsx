@@ -81,7 +81,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         />
       ) : (
         <VStack width="100%" maxW="100%" alignItems={'flex-start'}>
-          <VStack alignItems="flex-start" width="100%" maxW="100%" gap={3}>
+          <VStack alignItems="flex-start" width="100%" maxW="100%" gap={2}>
             <HStack
               width="100%"
               alignItems="flex-start"

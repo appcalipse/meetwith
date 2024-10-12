@@ -6,6 +6,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogOverlay,
+  Avatar,
+  AvatarGroup,
   Box,
   Button,
   Heading,
@@ -20,11 +22,15 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import src from '@tiptap/extension-bubble-menu'
+import { max } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaEdit, FaTrash } from 'react-icons/fa'
+import { size } from 'viem'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account } from '@/types/Account'
+import { SupportedChain } from '@/types/chains'
 import { GateConditionObject } from '@/types/TokenGating'
 import {
   deleteGateCondition,
@@ -32,18 +38,22 @@ import {
 } from '@/utils/api_helper'
 import { GateInUseError } from '@/utils/errors'
 import { isProAccount } from '@/utils/subscription_manager'
+import { getTokenMeta } from '@/utils/token.service'
 
+import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 import {
   AddGateObjectDialog,
   getDefaultConditionClone,
 } from './AddGateObjectDialog'
 import HumanReadableGate from './HumanReadableGate'
+import { getChainImage } from './TokenGateValidation'
 
 export const TokenGateConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const [loading, setLoading] = useState(true)
   const [configs, setConfigs] = useState<GateConditionObject[]>([])
+  const bgColor = useColorModeValue('white', 'neutral.900')
   const [gateToRemove, setGateToRemove] = useState<string | undefined>(
     undefined
   )
@@ -73,52 +83,86 @@ export const TokenGateConfig: React.FC<{ currentAccount: Account }> = ({
   useEffect(() => {
     setLoading(true)
     fetchConfigs()
-  }, [currentAccount])
+  }, [currentAccount?.address])
 
   const isPro = isProAccount(currentAccount!)
 
   return (
-    <Box>
-      <Heading fontSize="2xl" mb={4}>
-        Meeting gates
-      </Heading>
+    <Box width="100%" bg={bgColor} p={8} borderRadius={12}>
+      <VStack alignItems="flex-start" width="100%" maxW="100%" gap={2}>
+        <HStack
+          width="100%"
+          alignItems="flex-start"
+          justifyContent="space-between"
+        >
+          <Heading fontSize="2xl">Token Gates</Heading>
 
+          <Button
+            isDisabled={!isPro}
+            colorScheme="primary"
+            onClick={() => setSelectedGate(getDefaultConditionClone())}
+          >
+            Add new
+          </Button>
+        </HStack>
+        <HStack
+          width="100%"
+          alignItems="flex-start"
+          justifyContent="space-between"
+        >
+          <Text color="neutral.400">
+            Only users with a certain tokens can schedule meetings with you
+          </Text>
+          {!isPro && (
+            <Text>
+              <Link
+                href="/dashboard/details#subscriptions"
+                colorScheme="primary"
+                fontWeight="bold"
+              >
+                Go PRO
+              </Link>{' '}
+              to create token gates.
+            </Text>
+          )}
+        </HStack>
+      </VStack>
       {loading ? (
         <LoadingComponent />
-      ) : configs.length > 0 ? (
-        configs
-          .sort((a, b) =>
-            a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
-          )
-          .map((config, index) => (
-            <GateConditionCard
-              key={index}
-              element={config}
-              onRemove={gateId => setGateToRemove(gateId)}
-              onEdit={gate =>
-                // doing this de-structuring to avoid UI from updating "automatically" while editing
-                setSelectedGate({
-                  ...gate,
-                  definition: {
-                    ...gate.definition,
-                    elements: [...gate.definition.elements],
-                  },
-                })
-              }
-            />
-          ))
       ) : (
-        <VStack mb={8}>
-          <Image
-            alignSelf="center"
-            src="/assets/no_gates.svg"
-            height="200px"
-            alt="No token gates created"
-          />
-          <HStack pt={8}>
-            <Text fontSize="lg">You haven&lsquo;t created any gate yet</Text>
-          </HStack>
-        </VStack>
+        <Box
+          justifyContent="space-between"
+          flexWrap="wrap"
+          width="100%"
+          display="flex"
+          flexDirection="row"
+          mt={6}
+        >
+          {configs.length > 0 &&
+            configs
+              .sort((a, b) =>
+                a.title.localeCompare(b.title, undefined, {
+                  sensitivity: 'base',
+                })
+              )
+              .map((config, index) => (
+                <GateConditionCard
+                  key={index}
+                  element={config}
+                  onRemove={gateId => setGateToRemove(gateId)}
+                  onEdit={gate =>
+                    // doing this de-structuring to avoid UI from updating "automatically" while editing
+                    setSelectedGate({
+                      ...gate,
+                      definition: {
+                        ...gate.definition,
+                        elements: [...gate.definition.elements],
+                      },
+                    })
+                  }
+                />
+              ))}
+        </Box>
       )}
 
       <AddGateObjectDialog
@@ -135,34 +179,13 @@ export const TokenGateConfig: React.FC<{ currentAccount: Account }> = ({
         gateId={gateToRemove}
         onClose={() => setGateToRemove(undefined)}
       />
-
-      {!isPro && (
-        <Text pb="6">
-          <Link
-            href="/dashboard/details#subscriptions"
-            colorScheme="primary"
-            fontWeight="bold"
-          >
-            Go PRO
-          </Link>{' '}
-          to create token gates.
-        </Text>
-      )}
-
-      <Button
-        isDisabled={!isPro}
-        colorScheme="primary"
-        onClick={() => setSelectedGate(getDefaultConditionClone())}
-      >
-        Add new
-      </Button>
     </Box>
   )
 }
 
 const LoadingComponent = () => {
   return (
-    <Stack my={8}>
+    <Stack mt={8}>
       <Skeleton height="60px" />
       <Skeleton height="60px" />
       <Skeleton height="60px" />
@@ -179,34 +202,84 @@ const GateConditionCard = (props: {
   onRemove: (gateId: string) => void
   onEdit: (gate: GateConditionObject) => void
 }) => {
+  const [images, setImages] = useState<string[]>([])
+  const [symbols, setSymbols] = useState<string[]>([])
+  const getImages = async (element: GateConditionObject) => {
+    const elements = element.definition.elements
+    const images = []
+    const symbols = []
+    for (let i = 0; i < elements.length; i++) {
+      const element = elements[i]
+      const tokenImage =
+        element.itemLogo ||
+        (element?.type === 'native'
+          ? getChainImage(element.chain as SupportedChain)
+          : (
+              await getTokenMeta(
+                element?.chain?.toLowerCase() || '',
+                element?.itemId || ''
+              )
+            )?.image?.large)
+
+      images.push(
+        tokenImage ||
+          `
+        https://via.placeholder.com/150/000000/FFFFFF?text=${element.itemSymbol}
+        `
+      )
+      symbols.push(element.itemSymbol || element.itemName)
+    }
+    setImages(images)
+    setSymbols(symbols)
+  }
   return (
     <Box
-      my={2}
       borderRadius={4}
       bgColor={useColorModeValue('white', 'neutral.900')}
-      p={8}
       shadow="sm"
+      w={'100%'}
+      flexBasis="49%"
     >
-      <HStack>
-        <VStack alignItems="flex-start" flex={1}>
+      <VStack
+        borderRadius={12}
+        borderColor="neutral.400"
+        borderWidth={'1px'}
+        p={5}
+        shadow={'sm'}
+        minW="280px"
+        w={'100%'}
+        alignItems="flex-start"
+        height={'100%'}
+        bgColor={useColorModeValue('white', 'neutral.900')}
+      >
+        <VStack alignItems="start" flex={1}>
           <Text>
             <b>{props.element.title}</b>
           </Text>
-          <HumanReadableGate gateCondition={props.element.definition} />
+          <AvatarGroup size="md" max={3}>
+            <HumanReadableGate gateCondition={props.element.definition} />
+          </AvatarGroup>
         </VStack>
-        <HStack ml={8}>
-          <IconButton
-            aria-label="Edit"
-            icon={<FaEdit />}
-            onClick={_ => props.onEdit(props.element)}
-          />
-          <IconButton
-            aria-label="Remove"
-            icon={<FaTrash />}
+        <HStack width="100%" pt={4} gap={5}>
+          <Button
+            flex={1}
+            colorScheme="orangeButton"
+            variant="outline"
             onClick={_ => props.onRemove(props.element.id!)}
-          />
+            px={'38px'}
+          >
+            Delete
+          </Button>
+          <Button
+            flex={1}
+            colorScheme="primary"
+            onClick={_ => props.onEdit(props.element)}
+            px={'38px'}
+          >
+            Edit
+          </Button>
         </HStack>
-      </HStack>
+      </VStack>
     </Box>
   )
 }
