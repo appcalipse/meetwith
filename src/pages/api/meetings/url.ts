@@ -96,6 +96,12 @@ export const handleMeetingSchedule = async (
         case MeetingProvider.HUDDLE:
           url = (await createHuddleRoom(meeting.title))?.url
           break
+        case MeetingProvider.JITSI_MEET:
+          url = `https://meet.jit.si/meet-with-wallet/${meeting.meeting_id}`
+          break
+        case MeetingProvider.ZOOM:
+          url = `https://zoom.us/j/${meeting.meeting_id}`
+          break
         default:
           break
       }
