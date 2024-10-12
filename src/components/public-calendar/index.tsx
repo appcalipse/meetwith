@@ -363,7 +363,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     meetingUrl?: string,
     emailToSendReminders?: string,
     title?: string,
-    otherParticipants?: Array<ParticipantInfo>
+    otherParticipants?: Array<ParticipantInfo>,
+    meetingProvider?: MeetingProvider
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
@@ -461,7 +462,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         start,
         end,
         participants,
-        account!.preferences!.meetingProvider,
+        meetingProvider || MeetingProvider.HUDDLE,
         currentAccount,
         content,
         meetingUrl,
