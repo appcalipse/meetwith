@@ -30,7 +30,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         timezone: '',
         availableTypes: [],
         availabilities: [],
-        meetingProvider: MeetingProvider.HUDDLE,
+        meetingProvider: [MeetingProvider.HUDDLE],
       }
 
       await req.session.save()
