@@ -50,7 +50,7 @@ import { ActionMeta } from 'react-select/dist/declarations/src/types'
 import { AccountPreferences } from '@/types/Account'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
-import { SchedulingType } from '../../types/Meeting'
+import { MeetingProvider, SchedulingType } from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
 import Loading from '../Loading'
 import { ScheduleForm } from '../schedule/schedule-form'
@@ -77,7 +77,8 @@ interface MeetSlotPickerProps {
     meetingUrl?: string,
     emailToSendReminders?: string,
     title?: string,
-    participants?: Array<ParticipantInfo>
+    participants?: Array<ParticipantInfo>,
+    meetingProvider?: MeetingProvider
   ) => Promise<boolean>
   preferences?: AccountPreferences
   reset: boolean
@@ -492,6 +493,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               isGateValid={isGateValid}
               notificationsSubs={notificationsSubs}
               preferences={preferences}
+              meetingProviders={preferences?.meetingProvider}
             />
           </Popup>
         )}
