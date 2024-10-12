@@ -68,6 +68,10 @@ interface IScheduleContext {
   setTimezone: React.Dispatch<React.SetStateAction<string>>
   handleSchedule: () => void
   isScheduling: boolean
+  meetingProvider: MeetingProvider
+  setMeetingProvider: React.Dispatch<React.SetStateAction<MeetingProvider>>
+  meetingUrl?: string
+  setMeetingUrl: React.Dispatch<React.SetStateAction<string>>
 }
 
 export interface IGroupParticipant {
@@ -102,6 +106,10 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setTimezone: () => {},
   handleSchedule: () => {},
   isScheduling: false,
+  meetingProvider: MeetingProvider.HUDDLE,
+  setMeetingProvider: () => {},
+  meetingUrl: '',
+  setMeetingUrl: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -129,6 +137,12 @@ const Schedule: NextPage = () => {
     currentAccount?.preferences?.timezone ??
       Intl.DateTimeFormat().resolvedOptions().timeZone
   )
+  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
+    currentAccount?.preferences.meetingProvider.includes(MeetingProvider.HUDDLE)
+      ? MeetingProvider.HUDDLE
+      : MeetingProvider.CUSTOM
+  )
+  const [meetingUrl, setMeetingUrl] = useState('')
   const toast = useToast()
   const { query } = useRouter()
   const { groupId } = query as { groupId: string }
@@ -253,10 +267,10 @@ const Schedule: NextPage = () => {
         start,
         end,
         _participants.valid,
-        currentAccount?.preferences.meetingProvider || MeetingProvider.HUDDLE,
+        meetingProvider || MeetingProvider.HUDDLE,
         currentAccount,
         content,
-        undefined,
+        meetingUrl,
         undefined,
         title
       )
@@ -292,6 +306,10 @@ const Schedule: NextPage = () => {
     setTimezone,
     handleSchedule,
     isScheduling,
+    meetingProvider,
+    setMeetingProvider,
+    meetingUrl,
+    setMeetingUrl,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
