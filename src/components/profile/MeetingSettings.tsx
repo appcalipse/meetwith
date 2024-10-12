@@ -3,15 +3,18 @@ import React from 'react'
 
 import { Account } from '@/types/Account'
 
+import { TokenGateConfig } from '../token-gate/TokenGateConfig'
+import MeetingPlatform from './MeetingPlatform'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
 const MeetingSettings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   return (
-    <VStack width="100%" maxW="100%" alignItems={'flex-start'} mb={4}>
+    <VStack width="100%" maxW="100%" gap={6} alignItems={'flex-start'} mb={4}>
       <Heading fontSize="2xl">Meeting Settings</Heading>
       <MeetingTypesConfig currentAccount={currentAccount} />
+      <MeetingPlatform currentAccount={currentAccount} />
     </VStack>
   )
 }
