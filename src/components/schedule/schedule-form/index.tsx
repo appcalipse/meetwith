@@ -1,4 +1,4 @@
-import { Image, Link, Radio, RadioGroup, Select, Stack } from '@chakra-ui/react'
+import { Radio, RadioGroup } from '@chakra-ui/react'
 import {
   Button,
   Flex,
@@ -19,7 +19,6 @@ import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
-import { ToggleSelector } from '@/components/toggle-selector'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences } from '@/types/Account'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
@@ -72,7 +71,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [content, setContent] = useState('')
   const [name, setName] = useState(currentAccount?.preferences?.name || '')
   const [title, setTitle] = useState('')
-  const [isScheduling, setIsScheduling] = useState(false)
   const [doSendEmailReminders, setSendEmailReminders] = useState(false)
   const [scheduleType, setScheduleType] = useState(
     SchedulingType.REGULAR as SchedulingType
@@ -148,22 +146,24 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       })
       return
     }
-    setIsScheduling(true)
+    try {
+      const success = await onConfirm(
+        scheduleType!,
+        pickedTime,
+        guestEmail,
+        name,
+        content,
+        meetingUrl,
+        doSendEmailReminders ? userEmail : undefined,
+        title,
+        participants,
+        meetingProvider
+      )
 
-    const success = await onConfirm(
-      scheduleType!,
-      pickedTime,
-      guestEmail,
-      name,
-      content,
-      meetingUrl,
-      doSendEmailReminders ? userEmail : undefined,
-      title,
-      participants,
-      meetingProvider
-    )
-    setIsScheduling(false)
-    willStartScheduling(!success)
+      willStartScheduling(!success)
+    } catch (e) {
+      willStartScheduling(true)
+    }
   }
 
   const { openConnection } = useContext(OnboardingModalContext)
@@ -189,7 +189,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         <Input
           autoFocus
           type="text"
-          isDisabled={isScheduling}
+          isDisabled={isSchedulingExternal}
           placeholder="Your name or an identifier"
           value={name}
           onChange={e => setName(e.target.value)}
@@ -209,7 +209,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           <Input
             type="email"
             placeholder="Insert your email"
-            isDisabled={isScheduling}
+            isDisabled={isSchedulingExternal}
             value={doSendEmailReminders ? userEmail : guestEmail}
             onKeyDown={event => event.key === 'Enter' && handleConfirm()}
             onChange={e => {
@@ -280,7 +280,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       <FormControl textAlign="left" w="100%" maxW="100%">
         <FormLabel>What is this meeting about? </FormLabel>
         <RichTextEditor
-          isDisabled={isScheduling}
+          isDisabled={isSchedulingExternal}
           placeholder="Any information you want to share prior to the meeting?"
           value={content}
           onValueChange={setContent}
@@ -317,7 +317,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             <Input
               type="text"
               placeholder="insert a custom meeting url"
-              isDisabled={isScheduling}
+              isDisabled={isSchedulingExternal}
               my={4}
               value={meetingUrl}
               onChange={e => setMeetingUrl(e.target.value)}
@@ -332,7 +332,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     colorScheme="primary"
                     size="md"
                     mr={4}
-                    isDisabled={isScheduling}
+                    isDisabled={isSchedulingExternal}
                     defaultChecked={doSendEmailReminders}
                     onChange={e => {
                       setSendEmailReminders(e.target.checked)
@@ -350,7 +350,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     <Input
                       type="email"
                       placeholder="Insert your email"
-                      isDisabled={isScheduling}
+                      isDisabled={isSchedulingExternal}
                       value={userEmail}
                       onKeyDown={event =>
                         event.key === 'Enter' && handleConfirm()
@@ -398,11 +398,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) ||
           (logged &&
             ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
-          isScheduling ||
           isSchedulingExternal ||
           isGateValid === false
         }
-        isLoading={isScheduling || isSchedulingExternal}
+        isLoading={isSchedulingExternal}
         onClick={
           scheduleType === SchedulingType.REGULAR
             ? handleScheduleWithWallet
@@ -411,7 +410,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         colorScheme="primary"
         // mt={6}
       >
-        {isScheduling
+        {isSchedulingExternal
           ? 'Scheduling...'
           : logged || scheduleType === SchedulingType.GUEST
           ? 'Schedule'
