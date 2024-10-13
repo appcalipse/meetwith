@@ -1,5 +1,5 @@
 import { Select, SingleValue } from 'chakra-react-select'
-import ct from 'countries-and-timezones'
+import * as ct from 'countries-and-timezones'
 import { useState } from 'react'
 
 interface TimezoneProps {
