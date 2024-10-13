@@ -64,7 +64,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const toast = useToast()
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    preferences?.meetingProvider?.includes(MeetingProvider.HUDDLE)
+    preferences?.meetingProviders?.includes(MeetingProvider.HUDDLE)
       ? MeetingProvider.HUDDLE
       : MeetingProvider.CUSTOM
   )
@@ -81,7 +81,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [meetingUrl, setMeetingUrl] = useState('')
   const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
   const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
-  const meetingProviders = (preferences?.meetingProvider || []).concat(
+  const meetingProviders = (preferences?.meetingProviders || []).concat(
     MeetingProvider.CUSTOM
   )
   const handleScheduleWithWallet = async () => {
