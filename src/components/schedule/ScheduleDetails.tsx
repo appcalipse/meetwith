@@ -59,7 +59,7 @@ const ScheduleDetails = () => {
   const [groupMembers, setGroupsMembers] = useState<Array<ParticipantInfo>>([])
   const [loading, setLoading] = useState(false)
   const meetingProviders = (
-    currentAccount?.preferences?.meetingProvider || []
+    currentAccount?.preferences?.meetingProviders || []
   ).concat(MeetingProvider.CUSTOM)
   const containsGroup = participants.some(val => {
     const groupData = val as IGroupParticipant

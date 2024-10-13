@@ -15,7 +15,7 @@ export const UseGoogleMeet: React.FC<{ currentAccount: Account }> = ({
   const { login } = useContext(AccountContext)
 
   const [useGoogleMeet, setUseGoogleMeet] = useState<boolean>(
-    currentAccount.preferences?.meetingProvider.includes(
+    currentAccount.preferences?.meetingProviders.includes(
       MeetingProvider.GOOGLE_MEET
     )
   )
@@ -27,7 +27,7 @@ export const UseGoogleMeet: React.FC<{ currentAccount: Account }> = ({
       ...currentAccount!,
       preferences: {
         ...currentAccount!.preferences!,
-        meetingProvider: [
+        meetingProviders: [
           event.target.checked
             ? MeetingProvider.GOOGLE_MEET
             : MeetingProvider.HUDDLE,

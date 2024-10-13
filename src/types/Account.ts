@@ -60,7 +60,7 @@ export interface AccountPreferences {
   socialLinks?: SocialLink[]
   name?: string
   avatar?: string
-  meetingProvider: Array<MeetingProvider>
+  meetingProviders: Array<MeetingProvider>
 }
 
 export enum SocialLinkType {
