@@ -147,7 +147,7 @@ const Schedule: NextPage = () => {
       Intl.DateTimeFormat().resolvedOptions().timeZone
   )
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    currentAccount?.preferences.meetingProviders.includes(
+    currentAccount?.preferences.meetingProviders?.includes(
       MeetingProvider.HUDDLE
     )
       ? MeetingProvider.HUDDLE
