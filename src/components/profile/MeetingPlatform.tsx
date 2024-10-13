@@ -105,7 +105,7 @@ const MeetingPlatform: FC<Props> = props => {
 
   useEffect(() => {
     loadCalendars()
-  }, [currentAccount])
+  }, [currentAccount.address])
   return (
     <VStack
       alignItems="flex-start"
