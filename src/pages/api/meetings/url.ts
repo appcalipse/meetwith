@@ -4,7 +4,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { RequestParticipantMapping, UrlCreationRequest } from '@/types/Requests'
-import { createHuddleRoom } from '@/utils/api_helper'
+import { createHuddleRoom, createZoomMeeting } from '@/utils/api_helper'
 import { getAccountFromDB, getConnectedCalendars } from '@/utils/database'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 
@@ -94,13 +94,15 @@ export const handleMeetingSchedule = async (
           }
           break
         case MeetingProvider.HUDDLE:
-          url = (await createHuddleRoom(meeting.title))?.url
+          const huddleResponse = await createHuddleRoom(meeting.title)
+          url = huddleResponse?.url
           break
         case MeetingProvider.JITSI_MEET:
-          url = `https://meet.jit.si/meet-with-wallet/${meeting.meeting_id}`
+          url = `https://meet.jit.si/meetwithwallet/${meeting.meeting_id}`
           break
         case MeetingProvider.ZOOM:
-          url = `https://zoom.us/j/${meeting.meeting_id}`
+          const zoomResponse = await createZoomMeeting(meeting)
+          url = zoomResponse.url
           break
         default:
           break
