@@ -29,7 +29,7 @@ const MeetingPlatform: FC<Props> = props => {
   const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
   const [selectedProviders, setSelectedProviders] = useState<
     Array<MeetingProvider>
-  >(currentAccount?.preferences?.meetingProvider || [])
+  >(currentAccount?.preferences?.meetingProviders || [])
   const PROVIDERS = useMemo(() => {
     const providers = [
       MeetingProvider.GOOGLE_MEET,
@@ -65,7 +65,7 @@ const MeetingPlatform: FC<Props> = props => {
         ...currentAccount!,
         preferences: {
           ...currentAccount.preferences!,
-          meetingProvider: newValue,
+          meetingProviders: newValue,
         },
       })
       logEvent('updated_meeting_provider', { selectedProviders })
