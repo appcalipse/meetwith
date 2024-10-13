@@ -61,12 +61,6 @@ const ScheduleDetails = () => {
   const meetingProviders = (
     currentAccount?.preferences?.meetingProviders || []
   ).concat(MeetingProvider.CUSTOM)
-  const containsGroup = participants.some(val => {
-    const groupData = val as IGroupParticipant
-    const isGroup = groupData.isGroup
-    return isGroup
-  })
-
   const handleClose = () => {
     handlePageSwitch(Page.SCHEDULE_TIME)
   }

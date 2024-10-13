@@ -71,8 +71,6 @@ interface IScheduleContext {
   handleTimePick: (time: Date | number) => void
   currentMonth: Date
   setCurrentMonth: React.Dispatch<React.SetStateAction<Date>>
-  currentSelectedDate: Date
-  setCurrentSelectedDate: React.Dispatch<React.SetStateAction<Date>>
   timezone: string
   setTimezone: React.Dispatch<React.SetStateAction<string>>
   handleSchedule: () => void
@@ -109,8 +107,6 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   handleTimePick: () => {},
   currentMonth: new Date(),
   setCurrentMonth: () => {},
-  currentSelectedDate: new Date(),
-  setCurrentSelectedDate: () => {},
   timezone: '',
   setTimezone: () => {},
   handleSchedule: () => {},
@@ -140,7 +136,6 @@ const Schedule: NextPage = () => {
   const [duration, setDuration] = React.useState(30)
   const [pickedTime, setPickedTime] = useState<Date | number | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [currentSelectedDate, setCurrentSelectedDate] = useState(new Date())
   const [isPrefetching, setIsPrefetching] = useState(false)
   const [timezone, setTimezone] = useState<string>(
     currentAccount?.preferences?.timezone ??
@@ -379,8 +374,6 @@ const Schedule: NextPage = () => {
     handleTimePick,
     currentMonth,
     setCurrentMonth,
-    currentSelectedDate,
-    setCurrentSelectedDate,
     timezone,
     setTimezone,
     handleSchedule,
