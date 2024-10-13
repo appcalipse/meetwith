@@ -78,6 +78,7 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
+  ZoomServiceUnavailable,
 } from '@/utils/errors'
 import {
   getAvailabilitiesForWeekDay,
@@ -537,7 +538,17 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           position: 'top',
           isClosable: true,
         })
-      } else throw e
+      } else if (e instanceof ZoomServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
     }
     setIsScheduling(false)
     return false
