@@ -20,6 +20,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     const startDate = new Date(body.startDate)
     const endDate = new Date(body.endDate)
     const duration = body.duration
+    const includePast = body.includePast
 
     const sanitizedAddresses = addresses.filter(address =>
       isValidEVMAddress(address)
@@ -49,10 +50,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         startDate,
         endDate
       )
-
     for (const slot of allSlots) {
       let validSlot = true
-      if (isPast(slot.start as Date)) {
+      if (isPast(slot.start as Date) && !includePast) {
         validSlot = false
         break
       }
