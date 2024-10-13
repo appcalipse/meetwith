@@ -49,11 +49,6 @@ const ScheduleDetails = () => {
   const { currentAccount } = useContext(AccountContext)
   const [groupMembers, setGroupsMembers] = useState<Array<ParticipantInfo>>([])
   const [loading, setLoading] = useState(false)
-  const containsGroup = participants.some(val => {
-    const groupData = val as IGroupParticipant
-    const isGroup = groupData.isGroup
-    return isGroup
-  })
 
   const handleClose = () => {
     handlePageSwitch(Page.SCHEDULE_TIME)
