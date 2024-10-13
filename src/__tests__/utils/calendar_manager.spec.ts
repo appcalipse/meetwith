@@ -42,7 +42,7 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
       description: faker.datatype.string(),
       availabilities: [],
       socialLinks: [],
-      meetingProvider: [MeetingProvider.HUDDLE],
+      meetingProviders: [MeetingProvider.HUDDLE],
     },
   }
 }

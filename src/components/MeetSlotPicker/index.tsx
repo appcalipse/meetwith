@@ -493,7 +493,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               isGateValid={isGateValid}
               notificationsSubs={notificationsSubs}
               preferences={preferences}
-              meetingProviders={preferences?.meetingProvider}
+              meetingProviders={preferences?.meetingProviders}
             />
           </Popup>
         )}

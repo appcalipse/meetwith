@@ -164,7 +164,7 @@ const initAccountDBForWallet = async (
     availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
-    meetingProvider: [MeetingProvider.HUDDLE],
+    meetingProviders: [MeetingProvider.HUDDLE],
   }
 
   if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
@@ -327,7 +327,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       name: preferences.name,
       socialLinks: preferences.socialLinks,
       availableTypes: preferences.availableTypes,
-      meetingProvider: preferences.meetingProvider,
+      meetingProviders: preferences.meetingProviders,
     })
     .match({ owner_account_address: account.address.toLowerCase() })
 

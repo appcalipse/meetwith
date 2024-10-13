@@ -69,7 +69,7 @@ const ScheduleBase = () => {
     undefined as ReactNode | undefined
   )
   const meetingProviders = (
-    currentAccount?.preferences?.meetingProvider || []
+    currentAccount?.preferences?.meetingProviders || []
   ).concat(MeetingProvider.CUSTOM)
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
   const iconColor = useColorModeValue('gray.800', 'white')
