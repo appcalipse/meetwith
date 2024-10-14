@@ -88,13 +88,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           meeting_invitees,
           participant_focused_meeting: false,
           push_change_to_calendar: false,
-          resources: [
-            {
-              resource_type: 'whiteboard',
-              resource_id: 'X4Hy02w3QUOdskKofgb9Jg',
-              permission_level: 'editor',
-            },
-          ],
           auto_start_meeting_summary: false,
           auto_start_ai_companion_questions: false,
           device_testing: false,
