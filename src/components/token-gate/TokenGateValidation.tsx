@@ -5,7 +5,7 @@ import Loading from '@/components/Loading'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { useLogin } from '@/session/login'
 import { Account } from '@/types/Account'
-import { SupportedChain, supportedChains } from '@/types/chains'
+import { getChainImage, SupportedChain } from '@/types/chains'
 import { GateCondition } from '@/types/TokenGating'
 import { getGateCondition } from '@/utils/api_helper'
 import { formatUnits } from '@/utils/generic_utils'
@@ -22,14 +22,9 @@ interface TokenGateValidationProps {
   setIsGateValid: (isValid: boolean) => void
   isGateValid: boolean
 }
-export const getChainImage = (chain: SupportedChain) => {
-  return supportedChains.find(val => val.chain === chain)?.image
-}
+
 const TokenGateValidation: React.FC<TokenGateValidationProps> = props => {
   const [chosenGate, setChosenGate] = useState<GateCondition | null>(null)
-  const [userTokens, setUserTokens] = useState<ConditionValidation['tokens']>(
-    []
-  )
   const { currentAccount } = useLogin()
   const [firstToken, setFirstToken] = useState<
     (GateCondition['elements'][number] & { image?: string }) | undefined
