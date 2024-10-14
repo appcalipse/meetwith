@@ -13,7 +13,7 @@ import React, { FC, useContext, useEffect, useMemo, useState } from 'react'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account } from '@/types/Account'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
-import { MeetingProvider } from '@/types/Meeting'
+import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import { listConnectedCalendars, saveAccountChanges } from '@/utils/api_helper'
 import { renderProviderName } from '@/utils/generic_utils'
@@ -84,23 +84,14 @@ const MeetingPlatform: FC<Props> = props => {
   }
   const loadCalendars = async () => {
     setLoading(true)
-    return listConnectedCalendars()
-      .then(data => {
-        // for old version without the calendars property
-        const calendars = data?.map((calendar: ConnectedCalendarCore) => ({
-          ...calendar,
-          calendars: calendar.calendars,
-        }))
-        const hasConnectedCalendar = calendars.some(
-          val => val.provider.toLowerCase() === 'google'
-        )
-        setHasConnectedCalendar(hasConnectedCalendar)
-        setLoading(false)
-      })
-      .catch(error => {
-        console.error(error)
-        setLoading(false)
-      })
+    try {
+      const calendars = await listConnectedCalendars()
+      const isGoogleConnected = calendars.some(
+        calendar => calendar.provider === TimeSlotSource.GOOGLE
+      )
+      setHasConnectedCalendar(isGoogleConnected)
+    } catch (e) {}
+    setLoading(false)
   }
 
   useEffect(() => {
