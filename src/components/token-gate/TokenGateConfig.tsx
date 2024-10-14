@@ -30,7 +30,7 @@ import { size } from 'viem'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { Account } from '@/types/Account'
-import { SupportedChain } from '@/types/chains'
+import { getChainImage, SupportedChain } from '@/types/chains'
 import { GateConditionObject } from '@/types/TokenGating'
 import {
   deleteGateCondition,
@@ -40,13 +40,11 @@ import { GateInUseError } from '@/utils/errors'
 import { isProAccount } from '@/utils/subscription_manager'
 import { getTokenMeta } from '@/utils/token.service'
 
-import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 import {
   AddGateObjectDialog,
   getDefaultConditionClone,
 } from './AddGateObjectDialog'
 import HumanReadableGate from './HumanReadableGate'
-import { getChainImage } from './TokenGateValidation'
 
 export const TokenGateConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
