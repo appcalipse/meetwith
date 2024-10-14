@@ -3,7 +3,6 @@ import React from 'react'
 
 import { Account } from '@/types/Account'
 
-import { TokenGateConfig } from '../token-gate/TokenGateConfig'
 import MeetingPlatform from './MeetingPlatform'
 import MeetingTypesConfig from './MeetingTypesConfig'
 
