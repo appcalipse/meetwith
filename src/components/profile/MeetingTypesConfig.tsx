@@ -102,9 +102,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
               alignItems="flex-start"
               justifyContent="space-between"
             >
-              <Text color="neutral.400">
-                Here are your preferred meeting types
-              </Text>
+              <Text color="neutral.400">Here are your meeting types</Text>
               {!isPro && (
                 <Text pb="6">
                   <Link
