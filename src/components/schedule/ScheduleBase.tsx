@@ -1,4 +1,4 @@
-import { InfoIcon } from '@chakra-ui/icons'
+import { AddIcon, InfoIcon } from '@chakra-ui/icons'
 import { Link } from '@chakra-ui/next-js'
 import {
   Box,
@@ -146,17 +146,18 @@ const ScheduleBase = () => {
                 }}
                 button={
                   <Button
-                    variant={'link'}
                     pos="absolute"
                     insetY={0}
                     right={2}
-                    _hover={{
-                      textDecor: 'none',
-                    }}
+                    alignItems="center"
                     onClick={openGroupModal}
-                    fontSize={{ base: 12, md: 16 }}
+                    variant={'link'}
+                    _hover={{
+                      textDecoration: 'none',
+                    }}
                   >
-                    Add/Edit Groups
+                    <AddIcon color="white" mr={3} />
+                    <Text fontSize={{ base: 12, md: 16 }}>Add/Edit Groups</Text>
                   </Button>
                 }
               />
