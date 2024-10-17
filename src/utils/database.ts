@@ -1091,13 +1091,14 @@ const manageGroupInvite = async (
     .delete()
     .eq('group_id', group_id)
     .or(`email.eq.${email_address},user_id.eq.${address.toLowerCase()}`)
+
   if (error) {
     throw new Error(error.message)
   }
   if (groupUsers.map(val => val.member_id).includes(address.toLowerCase())) {
     throw new AlreadyGroupMemberError()
   }
-  if (!data) {
+  if (!data || !data[0]?.role) {
     throw new Error('No invites found')
   }
   if (reject) {
@@ -1105,7 +1106,11 @@ const manageGroupInvite = async (
   }
   const { error: memberError } = await db.supabase
     .from('group_members')
-    .insert({ group_id, member_id: address.toLowerCase(), role: data[0].role })
+    .insert({
+      group_id,
+      member_id: address.toLowerCase(),
+      role: data[0].role,
+    })
   if (memberError) {
     throw new Error(memberError.message)
   }
@@ -1279,7 +1284,7 @@ const isGroupAdmin = async (groupId: string, userIdentifier?: string) => {
   if (!data[0]) {
     throw new NotGroupMemberError()
   }
-  return data[0].role === MemberType.ADMIN
+  return data[0]?.role === MemberType.ADMIN
 }
 
 const changeGroupRole = async (
@@ -1291,7 +1296,7 @@ const changeGroupRole = async (
   const groupUsers = await getGroupUsersInternal(groupId)
   if (newRole === MemberType.MEMBER) {
     const adminCount = groupUsers.filter(
-      val => val.role === MemberType.ADMIN
+      val => val?.role === MemberType.ADMIN
     ).length
     if (adminCount < 2) {
       throw new AdminBelowOneError()
@@ -1492,7 +1497,7 @@ export const addUserToGroupInvites = async (
       email,
       user_id: accountAddress || null,
       group_id: groupId,
-      role,
+      role: role || MemberType.MEMBER, // default to member
     })
 
     if (error) {
@@ -2354,7 +2359,7 @@ export async function isUserAdminOfGroup(
     throw error
   }
 
-  return data?.role === 'admin'
+  return data?.role === MemberType.ADMIN
 }
 
 export async function createGroupInDB(
