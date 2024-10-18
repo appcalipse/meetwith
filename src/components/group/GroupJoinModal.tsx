@@ -29,6 +29,7 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
   const [declining, setDeclining] = React.useState(false)
   const [accepting, setAccepting] = React.useState(false)
   const { push } = useRouter()
+
   const handleDecline = async () => {
     if (!props.group?.id) return
     setDeclining(true)

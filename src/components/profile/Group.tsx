@@ -254,11 +254,6 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     content = (
       <VStack my={6}>
         <ModalLoading isOpen={inviteDataIsLoading} />
-        <GroupJoinModal
-          group={inviteGroupData}
-          onClose={() => setInviteGroupData(undefined)}
-          resetState={resetState}
-        />
         <GroupAdminLeaveModal
           isOpen={toggleAdminLeave}
           onClose={() => setToggleAdminLeave(false)}
