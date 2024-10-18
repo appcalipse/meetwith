@@ -1085,12 +1085,15 @@ const manageGroupInvite = async (
   reject?: boolean,
   email_address?: string
 ): Promise<void> => {
+  const query = email_address
+    ? `email.eq.${email_address},user_id.eq.${address.toLowerCase()}`
+    : `user_id.eq.${address.toLowerCase()}`
   const groupUsers = await getGroupMembersInternal(group_id)
   const { error, data } = await db.supabase
     .from<GroupInvites>('group_invites')
     .delete()
     .eq('group_id', group_id)
-    .or(`email.eq.${email_address},user_id.eq.${address.toLowerCase()}`)
+    .or(query)
 
   if (error) {
     throw new Error(error.message)
