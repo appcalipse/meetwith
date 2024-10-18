@@ -1099,7 +1099,7 @@ const manageGroupInvite = async (
     throw new AlreadyGroupMemberError()
   }
   if (!data || !data[0]?.role) {
-    throw new Error('No invites found')
+    throw new Error('Invite Expired')
   }
   if (reject) {
     return
