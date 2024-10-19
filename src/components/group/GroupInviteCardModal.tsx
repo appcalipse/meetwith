@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react'
 import React from 'react'
 
+import { logEvent } from '@/utils/analytics'
 import { rejectGroup } from '@/utils/api_helper'
 
 export interface IGroupInviteCardModal {
@@ -29,6 +30,9 @@ const GroupInviteCardModal: React.FC<IGroupInviteCardModal> = props => {
     setDeclining(true)
     try {
       await rejectGroup(props.group_id)
+      logEvent('Rejected invite', {
+        group_id: props.group_id,
+      })
     } catch (error: any) {}
     setDeclining(false)
     props.onClose()

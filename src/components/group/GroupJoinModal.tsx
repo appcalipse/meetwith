@@ -15,6 +15,7 @@ import { useRouter } from 'next/router'
 import React from 'react'
 
 import { Group } from '@/types/Group'
+import { logEvent } from '@/utils/analytics'
 import { joinGroup, rejectGroup } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
@@ -35,6 +36,10 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
     setDeclining(true)
     try {
       await rejectGroup(props.group.id, props.inviteEmail)
+      logEvent('Rejected invite', {
+        group: props.group,
+        email: props.inviteEmail,
+      })
     } catch (error: any) {}
     props.onClose()
     push('/dashboard/groups')
@@ -46,6 +51,10 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
     setAccepting(true)
     try {
       await joinGroup(props.group.id, props.inviteEmail)
+      logEvent('Accepted invite', {
+        group: props.group,
+        email: props.inviteEmail,
+      })
     } catch (error: any) {
       handleApiError('Error accepting invite', error)
     }
