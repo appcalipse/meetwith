@@ -40,7 +40,9 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
         group: props.group,
         email: props.inviteEmail,
       })
-    } catch (error: any) {}
+    } catch (error: any) {
+      handleApiError('Error rejecting invite', error)
+    }
     props.onClose()
     push('/dashboard/groups')
     props.resetState()
@@ -89,18 +91,18 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
           <Text size={'sm'}>Would you like to join {props.group?.name}?</Text>
           <HStack ml={'auto'} w={'fit-content'} mt={'6'} gap={'4'}>
             <Button
-              isLoading={accepting}
-              onClick={handleAccept}
               colorScheme="neutral"
-            >
-              Join Group
-            </Button>
-            <Button
               isLoading={declining}
-              colorScheme="primary"
               onClick={handleDecline}
             >
               Decline
+            </Button>
+            <Button
+              onClick={handleAccept}
+              isLoading={accepting}
+              colorScheme="primary"
+            >
+              Join Group
             </Button>
           </HStack>
         </ModalBody>
