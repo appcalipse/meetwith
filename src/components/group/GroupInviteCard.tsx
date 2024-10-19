@@ -11,6 +11,7 @@ import React from 'react'
 
 import GroupInviteCardModal from '@/components/group/GroupInviteCardModal'
 import { GetGroupsResponse } from '@/types/Group'
+import { logEvent } from '@/utils/analytics'
 import { joinGroup } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
@@ -26,6 +27,9 @@ const GroupInviteCard: React.FC<IGroupInviteCard> = props => {
     setAccepting(true)
     try {
       await joinGroup(props.id)
+      logEvent('Accepted invite', {
+        group: props,
+      })
     } catch (error: any) {
       handleApiError('Error accepting invite', error)
     }
