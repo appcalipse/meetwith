@@ -106,7 +106,7 @@ export interface GroupInvitePayload {
     address?: string
     email?: string
     userId?: string
-    role: 'admin' | 'member'
+    role: MemberType
   }[]
   message?: string
 }

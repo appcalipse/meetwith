@@ -90,7 +90,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       try {
         await addUserToGroupInvites(
           groupId,
-          invitee.role as MemberType,
+          invitee.role,
           invitee.email,
           invitee.address
         )

@@ -15,6 +15,7 @@ import { useRouter } from 'next/router'
 import React from 'react'
 
 import { Group } from '@/types/Group'
+import { logEvent } from '@/utils/analytics'
 import { joinGroup, rejectGroup } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
@@ -29,12 +30,19 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
   const [declining, setDeclining] = React.useState(false)
   const [accepting, setAccepting] = React.useState(false)
   const { push } = useRouter()
+
   const handleDecline = async () => {
     if (!props.group?.id) return
     setDeclining(true)
     try {
       await rejectGroup(props.group.id, props.inviteEmail)
-    } catch (error: any) {}
+      logEvent('Rejected invite', {
+        group: props.group,
+        email: props.inviteEmail,
+      })
+    } catch (error: any) {
+      handleApiError('Error rejecting invite', error)
+    }
     props.onClose()
     push('/dashboard/groups')
     props.resetState()
@@ -45,6 +53,10 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
     setAccepting(true)
     try {
       await joinGroup(props.group.id, props.inviteEmail)
+      logEvent('Accepted invite', {
+        group: props.group,
+        email: props.inviteEmail,
+      })
     } catch (error: any) {
       handleApiError('Error accepting invite', error)
     }
@@ -79,18 +91,18 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
           <Text size={'sm'}>Would you like to join {props.group?.name}?</Text>
           <HStack ml={'auto'} w={'fit-content'} mt={'6'} gap={'4'}>
             <Button
-              isLoading={accepting}
-              onClick={handleAccept}
               colorScheme="neutral"
-            >
-              Join Group
-            </Button>
-            <Button
               isLoading={declining}
-              colorScheme="primary"
               onClick={handleDecline}
             >
               Decline
+            </Button>
+            <Button
+              onClick={handleAccept}
+              isLoading={accepting}
+              colorScheme="primary"
+            >
+              Join Group
             </Button>
           </HStack>
         </ModalBody>
