@@ -215,3 +215,6 @@ export const getSupportedChainFromId = (
 ): ChainInfo | undefined => {
   return supportedChains.find(c => c.id === chainId)
 }
+export const getChainImage = (chain: SupportedChain) => {
+  return supportedChains.find(val => val.chain === chain)?.image
+}

@@ -164,7 +164,7 @@ const initAccountDBForWallet = async (
     availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
-    meetingProvider: MeetingProvider.HUDDLE,
+    meetingProviders: [MeetingProvider.HUDDLE],
   }
 
   if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
@@ -327,7 +327,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
       name: preferences.name,
       socialLinks: preferences.socialLinks,
       availableTypes: preferences.availableTypes,
-      meetingProvider: preferences.meetingProvider,
+      meetingProviders: preferences.meetingProviders,
     })
     .match({ owner_account_address: account.address.toLowerCase() })
 
@@ -854,6 +854,28 @@ const getAccountNotificationSubscriptions = async (
 
   return { account_address: address, notification_types: [] }
 }
+const getAccountsNotificationSubscriptions = async (
+  addresses: Array<string>
+): Promise<Array<AccountNotifications>> => {
+  const { data, error } = await db.supabase
+    .from('account_notifications')
+    .select()
+    .in(
+      'account_address',
+      addresses.map(val => val.toLowerCase())
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (data) return data as Array<AccountNotifications>
+
+  return addresses.map(address => ({
+    account_address: address,
+    notification_types: [],
+  }))
+}
 const getAccountNotificationSubscriptionEmail = async (
   address: string
 ): Promise<string> => {
@@ -863,6 +885,21 @@ const getAccountNotificationSubscriptionEmail = async (
   )?.destination
   return userEmail || ''
 }
+
+const getAccountsNotificationSubscriptionEmails = async (
+  address: Array<string>
+): Promise<Array<string>> => {
+  const notifications = await getAccountsNotificationSubscriptions(address)
+  const userEmails = []
+  for (const notification of notifications) {
+    const userEmail = notification?.notification_types.find(
+      n => n.channel === NotificationChannel.EMAIL
+    )?.destination
+    if (userEmail) userEmails.push(userEmail)
+  }
+  return userEmails
+}
+
 const getUserGroups = async (
   address: string,
   limit: number,
@@ -2399,6 +2436,7 @@ export {
   getAccountNonce,
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
+  getAccountsNotificationSubscriptionEmails,
   getAppToken,
   getConferenceMeetingFromDB,
   getConnectedCalendars,

@@ -26,6 +26,15 @@ import {
 } from '@/utils/api_helper'
 import { scheduleMeeting } from '@/utils/calendar_manager'
 import { handleApiError } from '@/utils/error_helper'
+import {
+  GateConditionNotValidError,
+  Huddle01ServiceUnavailable,
+  InvalidURL,
+  MeetingCreationError,
+  MeetingWithYourselfError,
+  TimeNotAvailableError,
+  ZoomServiceUnavailable,
+} from '@/utils/errors'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
@@ -66,6 +75,10 @@ interface IScheduleContext {
   setTimezone: React.Dispatch<React.SetStateAction<string>>
   handleSchedule: () => void
   isScheduling: boolean
+  meetingProvider: MeetingProvider
+  setMeetingProvider: React.Dispatch<React.SetStateAction<MeetingProvider>>
+  meetingUrl?: string
+  setMeetingUrl: React.Dispatch<React.SetStateAction<string>>
 }
 
 export interface IGroupParticipant {
@@ -98,6 +111,10 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setTimezone: () => {},
   handleSchedule: () => {},
   isScheduling: false,
+  meetingProvider: MeetingProvider.HUDDLE,
+  setMeetingProvider: () => {},
+  meetingUrl: '',
+  setMeetingUrl: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -124,6 +141,14 @@ const Schedule: NextPage = () => {
     currentAccount?.preferences?.timezone ??
       Intl.DateTimeFormat().resolvedOptions().timeZone
   )
+  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
+    currentAccount?.preferences.meetingProviders?.includes(
+      MeetingProvider.HUDDLE
+    )
+      ? MeetingProvider.HUDDLE
+      : MeetingProvider.CUSTOM
+  )
+  const [meetingUrl, setMeetingUrl] = useState('')
   const toast = useToast()
   const { query } = useRouter()
   const { groupId } = query as { groupId: string }
@@ -248,16 +273,84 @@ const Schedule: NextPage = () => {
         start,
         end,
         _participants.valid,
-        currentAccount?.preferences.meetingProvider || MeetingProvider.HUDDLE,
+        meetingProvider || MeetingProvider.HUDDLE,
         currentAccount,
         content,
-        undefined,
+        meetingUrl,
         undefined,
         title
       )
       setCurrentPage(Page.COMPLETED)
-    } catch (error: any) {
-      handleApiError('Error scheduling meeting', error)
+    } catch (e: any) {
+      if (e instanceof MeetingWithYourselfError) {
+        toast({
+          title: "Ops! Can't do that",
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof TimeNotAvailableError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GateConditionNotValidError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof InvalidURL) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'Please provide a valid url/link for your meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof Huddle01ServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof ZoomServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else {
+        handleApiError('Error scheduling meeting', e)
+      }
     }
     setIsScheduling(false)
   }
@@ -285,6 +378,10 @@ const Schedule: NextPage = () => {
     setTimezone,
     handleSchedule,
     isScheduling,
+    meetingProvider,
+    setMeetingProvider,
+    meetingUrl,
+    setMeetingUrl,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return

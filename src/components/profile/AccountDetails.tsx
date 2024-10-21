@@ -28,7 +28,6 @@ import { FaTag } from 'react-icons/fa'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account, SocialLink, SocialLinkType } from '@/types/Account'
-import { getChainInfo } from '@/types/chains'
 import { TimeSlotSource } from '@/types/Meeting'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
@@ -52,7 +51,6 @@ import HandlePicker, {
 import Tooltip from './components/Tooltip'
 import ConnectedAccounts from './ConnectedAccounts'
 import SubscriptionDialog from './SubscriptionDialog'
-import { UseGoogleMeet } from './UseGoogleMeet'
 
 const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
@@ -68,7 +66,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   )
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<Plan | undefined>(undefined)
-  const menuBg = useColorModeValue('white', 'neutral.900')
 
   const socialLinks = currentAccount?.preferences?.socialLinks || []
 
@@ -505,10 +502,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       <Block>
         <ConnectedAccounts />
       </Block>
-
-      {googleConnected ? (
-        <UseGoogleMeet currentAccount={currentAccount} />
-      ) : null}
 
       <Block>
         <Heading ref={subsRef} fontSize="2xl" id="subscriptions" mb={8}>

@@ -9,12 +9,11 @@ import { EditMode } from '../../types/Dashboard'
 import AvailabilityConfig from '../availabilities/availability-config'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
-import { TokenGateConfig } from '../token-gate/TokenGateConfig'
 import AccountDetails from './AccountDetails'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
 import Meetings from './Meetings'
-import MeetingTypesConfig from './MeetingTypesConfig'
+import MeetingSettings from './MeetingSettings'
 
 const GroupWithNoSSR = dynamic(() => import('./Group'), { ssr: false })
 
@@ -33,14 +32,12 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         return <AvailabilityConfig currentAccount={currentAccount!} />
       case EditMode.DETAILS:
         return <AccountDetails currentAccount={currentAccount!} />
-      case EditMode.TYPES:
-        return <MeetingTypesConfig currentAccount={currentAccount!} />
+      case EditMode.MEETING_SETTINGS:
+        return <MeetingSettings currentAccount={currentAccount!} />
       case EditMode.CALENDARS:
         return <ConnectCalendar currentAccount={currentAccount!} />
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig currentAccount={currentAccount!} />
-      case EditMode.GATES:
-        return <TokenGateConfig currentAccount={currentAccount!} />
     }
   }
 
