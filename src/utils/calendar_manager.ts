@@ -566,6 +566,7 @@ const scheduleMeeting = async (
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
+
   const meeting_url =
     meetingUrl ||
     (
@@ -576,6 +577,7 @@ const scheduleMeeting = async (
         start: startTime,
         meetingProvider,
         participants_mapping: participantData.sanitizedParticipants,
+        accounts: participantData.allAccounts,
         content: meetingContent,
       })
     ).url
