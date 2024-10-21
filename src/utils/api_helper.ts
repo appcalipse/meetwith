@@ -50,6 +50,7 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
   UserInvitationError,
+  ZoomServiceUnavailable,
 } from './errors'
 import QueryKeys from './query_keys'
 import { queryClient } from './react_query'
@@ -885,6 +886,24 @@ export const createHuddleRoom = async (
     if (e instanceof ApiFetchError) {
       if (e.status === 503) {
         throw new Huddle01ServiceUnavailable()
+      }
+    }
+    throw e
+  }
+}
+export const createZoomMeeting = async (
+  payload: UrlCreationRequest
+): Promise<{ url: string }> => {
+  try {
+    return (await internalFetch(
+      '/integrations/zoom/create',
+      'POST',
+      payload
+    )) as { url: string }
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 503) {
+        throw new ZoomServiceUnavailable()
       }
     }
     throw e
