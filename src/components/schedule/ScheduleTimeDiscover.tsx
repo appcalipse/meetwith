@@ -41,6 +41,8 @@ import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { getSuggestedSlots } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
+import InfoTooltip from '../profile/components/Tooltip'
+
 const timezonesObj = ct.getAllTimezones()
 const timezonesKeys = Object.keys(timezonesObj) as Array<
   keyof typeof timezonesObj
@@ -235,7 +237,10 @@ const ScheduleTimeDiscover = () => {
       </HStack>
       <VStack gap={10} w="100%">
         <VStack gap={2}>
-          <Heading fontSize="16px">Show times in</Heading>
+          <HStack width="fit-content" mx={'auto'} gap={0}>
+            <Heading fontSize="16px">Show times in</Heading>
+            <InfoTooltip text="the default timezone is based on your availability settings" />
+          </HStack>
           <Select
             value={tz}
             colorScheme="primary"
