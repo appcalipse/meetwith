@@ -1,4 +1,4 @@
-import { Image, Link } from '@chakra-ui/react'
+import { Radio, RadioGroup } from '@chakra-ui/react'
 import {
   Button,
   Flex,
@@ -19,10 +19,10 @@ import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
-import { ToggleSelector } from '@/components/toggle-selector'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences } from '@/types/Account'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
@@ -44,9 +44,11 @@ interface ScheduleFormProps {
     meetingUrl?: string,
     emailToSendReminders?: string,
     title?: string,
-    participants?: Array<ParticipantInfo>
+    participants?: Array<ParticipantInfo>,
+    meetingProvider?: MeetingProvider
   ) => Promise<boolean>
   notificationsSubs?: number
+  meetingProviders?: Array<MeetingProvider>
 }
 
 export const ScheduleForm: React.FC<ScheduleFormProps> = ({
@@ -61,12 +63,14 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const { currentAccount, logged } = useContext(AccountContext)
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const toast = useToast()
-
+  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
+    preferences?.meetingProviders?.includes(MeetingProvider.HUDDLE)
+      ? MeetingProvider.HUDDLE
+      : MeetingProvider.CUSTOM
+  )
   const [content, setContent] = useState('')
   const [name, setName] = useState(currentAccount?.preferences?.name || '')
   const [title, setTitle] = useState('')
-  const [isScheduling, setIsScheduling] = useState(false)
-  const [customMeeting, setCustomMeeting] = useState(false)
   const [doSendEmailReminders, setSendEmailReminders] = useState(false)
   const [scheduleType, setScheduleType] = useState(
     SchedulingType.REGULAR as SchedulingType
@@ -77,7 +81,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [meetingUrl, setMeetingUrl] = useState('')
   const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
   const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
-
+  const meetingProviders = (preferences?.meetingProviders || []).concat(
+    MeetingProvider.CUSTOM
+  )
   const handleScheduleWithWallet = async () => {
     if (!logged && scheduleType === SchedulingType.REGULAR) {
       await handleScheduleType(SchedulingType.REGULAR)
@@ -93,11 +99,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     }
   }, [logged])
 
-  const googleMeetUser = () =>
-    preferences?.meetingProvider === MeetingProvider.GOOGLE_MEET
-
   const handleConfirm = async () => {
-    if (!googleMeetUser() && customMeeting && !meetingUrl) {
+    if (meetingProvider === MeetingProvider.CUSTOM && !meetingUrl) {
       toast({
         title: 'Missing information',
         description: 'Please provide a meeting link for participants to join',
@@ -143,21 +146,24 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       })
       return
     }
-    setIsScheduling(true)
+    try {
+      const success = await onConfirm(
+        scheduleType!,
+        pickedTime,
+        guestEmail,
+        name,
+        content,
+        meetingUrl,
+        doSendEmailReminders ? userEmail : undefined,
+        title,
+        participants,
+        meetingProvider
+      )
 
-    const success = await onConfirm(
-      scheduleType!,
-      pickedTime,
-      guestEmail,
-      name,
-      content,
-      meetingUrl,
-      doSendEmailReminders ? userEmail : undefined,
-      title,
-      participants
-    )
-    setIsScheduling(false)
-    willStartScheduling(!success)
+      willStartScheduling(!success)
+    } catch (e) {
+      willStartScheduling(true)
+    }
   }
 
   const { openConnection } = useContext(OnboardingModalContext)
@@ -183,7 +189,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         <Input
           autoFocus
           type="text"
-          isDisabled={isScheduling}
+          isDisabled={isSchedulingExternal}
           placeholder="Your name or an identifier"
           value={name}
           onChange={e => setName(e.target.value)}
@@ -203,7 +209,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           <Input
             type="email"
             placeholder="Insert your email"
-            isDisabled={isScheduling}
+            isDisabled={isSchedulingExternal}
             value={doSendEmailReminders ? userEmail : guestEmail}
             onKeyDown={event => event.key === 'Enter' && handleConfirm()}
             onChange={e => {
@@ -274,7 +280,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       <FormControl textAlign="left" w="100%" maxW="100%">
         <FormLabel>What is this meeting about? </FormLabel>
         <RichTextEditor
-          isDisabled={isScheduling}
+          isDisabled={isSchedulingExternal}
           placeholder="Any information you want to share prior to the meeting?"
           value={content}
           onValueChange={setContent}
@@ -282,79 +288,37 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       </FormControl>
       {scheduleType !== undefined && (
         <VStack alignItems="start">
-          <HStack alignItems="center" mb={googleMeetUser() ? 6 : 0}>
-            {googleMeetUser() ? (
-              <>
-                <Image
-                  boxSize="24px"
-                  src="/assets/google-meet.svg"
-                  alt="Google Meet Logo"
-                />
-                <Text fontSize={14} fontWeight={300}>
-                  For this meeting you will be using Google Meet.
-                </Text>
-              </>
-            ) : (
-              <>
-                <Switch
-                  display="flex"
+          <Text fontSize="18px" fontWeight={500}>
+            Location
+          </Text>
+          <RadioGroup
+            onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+            value={meetingProvider}
+            w={'100%'}
+          >
+            <VStack w={'100%'} gap={4}>
+              {meetingProviders.map(provider => (
+                <Radio
+                  flexDirection="row-reverse"
+                  justifyContent="space-between"
+                  w="100%"
                   colorScheme="primary"
-                  size="md"
-                  mr={4}
-                  isDisabled={isScheduling}
-                  defaultChecked={!customMeeting}
-                  onChange={e => setCustomMeeting(!e.target.checked)}
-                />
-                <FormLabel mb="0">
-                  <Text>
-                    Use{' '}
-                    <Link
-                      href="https://huddle01.com/?utm_source=mww"
-                      isExternal
-                    >
-                      Huddle01
-                    </Link>{' '}
-                    for your meeting
+                  value={provider}
+                  key={provider}
+                >
+                  <Text fontWeight="600" color={'primary.200'} cursor="pointer">
+                    {renderProviderName(provider)}
                   </Text>
-                </FormLabel>
-                <Tooltip.Provider delayDuration={400}>
-                  <Tooltip.Root>
-                    <Tooltip.Trigger>
-                      <Flex
-                        w="16px"
-                        h="16px"
-                        borderRadius="50%"
-                        bgColor={iconColor}
-                        justifyContent="center"
-                        alignItems="center"
-                        ml={1}
-                      >
-                        <Icon w={1} color={bgColor} as={FaInfo} />
-                      </Flex>
-                    </Tooltip.Trigger>
-                    <Tooltip.Content>
-                      <Text
-                        fontSize="sm"
-                        p={4}
-                        maxW="200px"
-                        bgColor={bgColor}
-                        shadow="lg"
-                      >
-                        Huddle01 is a web3-powered video conferencing tailored
-                        for DAOs and NFT communities.
-                      </Text>
-                      <Tooltip.Arrow />
-                    </Tooltip.Content>
-                  </Tooltip.Root>
-                </Tooltip.Provider>
-              </>
-            )}
-          </HStack>
-          {customMeeting && (
+                </Radio>
+              ))}
+            </VStack>
+          </RadioGroup>
+          {meetingProvider === MeetingProvider.CUSTOM && (
             <Input
               type="text"
               placeholder="insert a custom meeting url"
-              isDisabled={isScheduling}
+              isDisabled={isSchedulingExternal}
+              my={4}
               value={meetingUrl}
               onChange={e => setMeetingUrl(e.target.value)}
             />
@@ -368,7 +332,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     colorScheme="primary"
                     size="md"
                     mr={4}
-                    isDisabled={isScheduling}
+                    isDisabled={isSchedulingExternal}
                     defaultChecked={doSendEmailReminders}
                     onChange={e => {
                       setSendEmailReminders(e.target.checked)
@@ -386,7 +350,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     <Input
                       type="email"
                       placeholder="Insert your email"
-                      isDisabled={isScheduling}
+                      isDisabled={isSchedulingExternal}
                       value={userEmail}
                       onKeyDown={event =>
                         event.key === 'Enter' && handleConfirm()
@@ -434,11 +398,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) ||
           (logged &&
             ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
-          isScheduling ||
           isSchedulingExternal ||
           isGateValid === false
         }
-        isLoading={isScheduling || isSchedulingExternal}
+        isLoading={isSchedulingExternal}
         onClick={
           scheduleType === SchedulingType.REGULAR
             ? handleScheduleWithWallet
@@ -447,7 +410,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         colorScheme="primary"
         // mt={6}
       >
-        {isScheduling
+        {isSchedulingExternal
           ? 'Scheduling...'
           : logged || scheduleType === SchedulingType.GUEST
           ? 'Schedule'

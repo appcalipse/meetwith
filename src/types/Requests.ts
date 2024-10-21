@@ -42,6 +42,7 @@ export interface UrlCreationRequest {
   start: Date
   end: Date
   meetingProvider: MeetingProvider
+  accounts?: Account[]
   content?: string
   title?: string
   meeting_id: ConferenceMeeting['id']

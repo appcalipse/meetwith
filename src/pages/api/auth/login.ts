@@ -32,7 +32,7 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
         timezone: '',
         availableTypes: [],
         availabilities: [],
-        meetingProvider: MeetingProvider.HUDDLE,
+        meetingProviders: [MeetingProvider.HUDDLE],
       }
       await req.session.save()
 
