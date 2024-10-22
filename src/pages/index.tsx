@@ -16,33 +16,13 @@ const Home: NextPage = () => {
   return (
     <main data-testid="main-container">
       <DarkMode>
-        <Box bg={'neutral.900'}>
-          <Box
-            bgImage={{
-              base: `url('/assets/bg-hero-why-mobile.png')`,
-              md: `url('/assets/bg-hero-why.png')`,
-            }}
-            bgRepeat="no-repeat"
-            bgSize="cover"
-          >
-            <Hero />
-            <Box display={{ base: 'none', md: 'unset' }}>
-              <Why />
-            </Box>
-          </Box>
-          <Box display={{ base: 'unset', md: 'none' }}>
-            <Why />
-          </Box>
-          <Box
-            bgImage={`url('/assets/bg-features-plans.png')`}
-            bgRepeat="no-repeat"
-            bgSize="cover"
-            px={4}
-          >
+        <Box bg={'neutral.1000'} pb={36} fontWeight={500}>
+          <Hero />
+          <Why />
+          <Box px={5}>
             <Features />
-            <Plans />
           </Box>
-          <Box px={4}>
+          <Box px={5}>
             <Faq />
           </Box>
         </Box>

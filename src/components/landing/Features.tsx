@@ -1,10 +1,25 @@
 import 'swiper/css'
 import 'swiper/css/pagination'
 
-import { Box, Button, Heading, Text } from '@chakra-ui/react'
-import { useState } from 'react'
+import { ArrowForwardIcon } from '@chakra-ui/icons'
+import {
+  Box,
+  Button,
+  Grid,
+  Heading,
+  HStack,
+  Image,
+  Text,
+  VStack,
+} from '@chakra-ui/react'
+import router from 'next/router'
+import { useContext, useState } from 'react'
 import { Mousewheel, Pagination } from 'swiper'
 import { Swiper, SwiperSlide } from 'swiper/react'
+
+import { AccountContext } from '@/providers/AccountProvider'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { logEvent } from '@/utils/analytics'
 
 import { FeaturesMobileSlider } from './FeaturesMobileSlider'
 
@@ -96,107 +111,172 @@ const slides = [
   },
 ]
 
+const FEATURES = [
+  {
+    title: 'Group scheduling without back-and-forth',
+    image: 'time-discover.png',
+  },
+  {
+    title: 'Sync all your calendars in one place',
+    image: 'connect-calendar.png',
+  },
+  {
+    title: 'Discord-bot for instant scheduling',
+    image: 'discord-bot.png',
+  },
+  {
+    title: 'Token-gated and private meetings',
+    image: 'token-gates.png',
+  },
+  {
+    title: 'Integrates with Zoom, Google Meet, and Huddle01',
+    image: 'meeting-platform.png',
+  },
+  {
+    title: 'Receive notifications via Email or Discord',
+    image: 'notifications.png',
+  },
+]
+
 export function Features() {
   const [activeSlideNumber, setActiveSlideNumber] = useState(0)
-
+  const { currentAccount, loginIn } = useContext(AccountContext)
+  const { openConnection } = useContext(OnboardingModalContext)
+  const handleLogin = async () => {
+    if (!currentAccount) {
+      logEvent('Clicked to start on FREE plan')
+      openConnection()
+    } else {
+      await router.push('/dashboard')
+    }
+  }
   return (
     <Box
       maxW="1360px"
       mx="auto"
       px={{ sm: '2', md: '18', lg: '28' }}
-      py={{ base: 8, md: 16 }}
       id="features"
       scrollMarginTop={{ base: '60px', md: '20px' }}
     >
-      <Heading fontSize="5xl" color="primary.400" mb={8}>
-        Features
+      <Heading fontSize={'4xl'} textAlign="center" mb={8}>
+        Features That Make Scheduling Effortless
       </Heading>
       <Box
-        className="featuresSliderContainer"
-        height="312px"
-        w="100%"
-        overflow="hidden"
-        position="relative"
-        display={{ base: 'none', md: 'inline-block' }}
+        pos={'relative'}
+        borderLeftWidth={{ md: 1, base: 0 }}
+        borderRightWidth={{ md: 1, base: 0 }}
+        borderColor={'neutral.800'}
+        borderTopWidth={0}
       >
-        <Box position="absolute" top="160px">
-          <Text color="neutral.100" fontSize="xs">
-            <Text as="span" color="primary.400" display="block" fontSize="2xl">
-              {activeSlideNumber + 1}
-            </Text>
-            /{slides.length}
-          </Text>
-        </Box>
-        <Swiper
-          modules={[Pagination, Mousewheel]}
-          direction={'vertical'}
-          className="mySwiperTest"
-          slidesPerView={1}
-          mousewheel={true}
-          pagination={{
-            type: 'progressbar',
-          }}
-          onSlideChange={swiper => setActiveSlideNumber(swiper.activeIndex)}
+        <Box
+          borderWidth={1}
+          borderColor={'neutral.800'}
+          width="100%"
+          top={6}
+          pos={'absolute'}
+          display={{ md: 'block', base: 'none' }}
+        />
+        <Box
+          borderWidth={1}
+          borderColor={'neutral.800'}
+          width="100%"
+          bottom={6}
+          pos={'absolute'}
+          display={{ md: 'block', base: 'none' }}
+        />
+        <Box
+          w={5}
+          h={5}
+          pos={'absolute'}
+          top={6}
+          left={0}
+          bgColor={'neutral.800'}
+          display={{ md: 'block', base: 'none' }}
+        />
+        <Box
+          w={5}
+          h={5}
+          pos={'absolute'}
+          top={6}
+          right={0}
+          bgColor={'neutral.800'}
+          display={{ md: 'block', base: 'none' }}
+        />
+        <Box
+          w={5}
+          h={5}
+          pos={'absolute'}
+          bottom={6}
+          left={0}
+          bgColor={'neutral.800'}
+          display={{ md: 'block', base: 'none' }}
+        />
+        <Box
+          w={5}
+          h={5}
+          pos={'absolute'}
+          bottom={6}
+          right={0}
+          bgColor={'neutral.800'}
+          display={{ md: 'block', base: 'none' }}
+        />
+        <Grid
+          gridTemplateColumns={{ lg: '1fr 1fr', base: '1fr' }}
+          p={{ md: 16 }}
+          gap={5}
         >
-          {slides.map(slide => (
-            <SwiperSlide key={slide.id}>
+          {FEATURES.map(val => (
+            <VStack
+              key={val.title}
+              height={{ md: '388px', base: '290px' }}
+              bg={'neutral.900'}
+              p={10}
+              pb="0"
+              pos={'relative'}
+              overflowY="hidden"
+              rounded={10}
+            >
+              <Heading fontSize={'2xl'}>{val.title}</Heading>
+              <Image
+                src={`/assets/features/${val.image}`}
+                alt={val.title}
+                h="auto"
+                w="100%"
+                bottom={'0'}
+                mt={2}
+              />
               <Box
-                bg={
-                  activeSlideNumber === slides.indexOf(slide)
-                    ? 'rgba(251, 199, 183, .15)'
-                    : 'rgba(255, 255, 255, 0.05)'
-                }
-                backdropFilter="blur(12.5px)"
-                px={6}
-                py={6}
-                minH="211px"
-                w={
-                  activeSlideNumber === slides.indexOf(slide)
-                    ? '100%'
-                    : 'fit-content'
-                }
-              >
-                <Button
-                  mb={3}
-                  colorScheme="grayButton"
-                  display={
-                    activeSlideNumber === slides.indexOf(slide)
-                      ? 'block'
-                      : 'none'
-                  }
-                >
-                  {slide.price}
-                </Button>
-                <Text
-                  fontSize="lg"
-                  mb={3}
-                  color={
-                    activeSlideNumber === slides.indexOf(slide)
-                      ? 'primary.400'
-                      : 'neutral.100'
-                  }
-                >
-                  {slide.title}
-                </Text>
-                <Text
-                  w="90%"
-                  color="neutral.100"
-                  display={
-                    activeSlideNumber === slides.indexOf(slide)
-                      ? 'block'
-                      : 'none'
-                  }
-                >
-                  {slide.about}
-                </Text>
-              </Box>
-            </SwiperSlide>
+                className="image-back-drop"
+                h="100px"
+                w="100%"
+                left={0}
+                right={0}
+                bottom={0}
+                pos="absolute"
+              />
+            </VStack>
           ))}
-        </Swiper>
+        </Grid>
       </Box>
-      <Box display={{ base: 'inline-block', md: 'none' }}>
-        <FeaturesMobileSlider slides={slides} />
-      </Box>
+      <HStack
+        w="100%"
+        justifyContent="center"
+        mt={{ md: 14, base: 12 }}
+        mb={20}
+      >
+        <Button
+          colorScheme="orangeButton"
+          textColor={'white'}
+          rightIcon={<ArrowForwardIcon boxSize={4} />}
+          isLoading={loginIn}
+          onClick={() => handleLogin()}
+          mr={2}
+          px={4}
+          py={3}
+        >
+          Get started for FREE
+        </Button>
+      </HStack>
     </Box>
   )
 }
