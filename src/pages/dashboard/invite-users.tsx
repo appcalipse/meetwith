@@ -35,7 +35,7 @@ const InviteUsersPage = () => {
   const { groupName, groupId } = router.query
   return (
     <Flex direction="column" mb="169px">
-      <Box pt="160px" flex="1">
+      <Box mt={36} flex="1">
         <Flex direction="column" align="center">
           <Box width="500px">
             <VStack spacing={6} align="start">
