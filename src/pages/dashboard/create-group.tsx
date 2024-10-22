@@ -65,7 +65,7 @@ const CreateGroupPage = () => {
   }
 
   return (
-    <Flex direction="column" align="center" minH="100vh" pt="160px">
+    <Flex direction="column" align="center" minH="100vh" mt={36}>
       <Box maxW="400px" w="full" data-component="create-group-form">
         <VStack
           as="form"
