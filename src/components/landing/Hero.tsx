@@ -10,6 +10,7 @@ import {
   SlideFade,
   Stack,
   Text,
+  VStack,
 } from '@chakra-ui/react'
 import router from 'next/router'
 import { useContext } from 'react'
@@ -18,6 +19,8 @@ import { useInView } from 'react-intersection-observer'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
+
+import { Why } from './Why'
 
 export function Hero() {
   const { currentAccount, loginIn } = useContext(AccountContext)
@@ -40,161 +43,139 @@ export function Hero() {
   return (
     <Box
       ref={heroContainer}
-      color="neutral.100"
+      color="neutral.0"
       marginBottom={{ base: '10', md: '28' }}
       position="relative"
-      maxW="1360px"
       mx="auto"
       px={{ base: 2, md: 10 }}
-      pt="86px"
+      pt={32}
       id="home"
+      bgImage={{
+        base: `none`,
+        md: `url('/assets/bg-abstract.svg')`,
+      }}
+      bgRepeat="no-repeat"
+      bgSize="cover"
     >
       <Box
-        background={'rgba(255, 255, 255, 0.05)'}
-        position="absolute"
-        top={{ base: '91px', md: 0 }}
-        backdropFilter="blur(12.5px)"
-        h="540px"
-        w="calc(100% - 16px)"
-        display={{ base: 'inline-block', md: 'none' }}
-      ></Box>
-      <Box
-        bgImage={{ base: 'none', md: `url('/assets/glass-effect.svg')` }}
         bgRepeat="no-repeat"
         bgSize="cover"
-        backdropFilter={{ base: 'none', md: 'blur(12.5px)' }}
         px={{ base: 4, md: 16 }}
-        py={{ base: 9, md: 16 }}
-        mb={{ base: 12, md: 20 }}
+        pt={{ base: 9, md: 16 }}
+        maxW="1360px"
+        mx="auto"
+        zIndex={1}
+        pos={'relative'}
       >
-        <Stack
-          flexDirection={{ base: 'column', md: 'row' }}
-          position="relative"
-          justifyContent="space-between"
-        >
-          <Box>
-            <Heading
-              fontSize={{ base: '3xl', md: '5xl' }}
-              lineHeight="shorter"
-              marginBottom={6}
+        {' '}
+        <VStack position="relative" justifyContent="center" alignItems="center">
+          <Heading
+            fontSize={{ base: '3xl', md: '5xl' }}
+            lineHeight="shorter"
+            textAlign={'center'}
+            width={{ md: '75%', base: '100%', lg: '50%' }}
+          >
+            Save time, have more productive meetings
+          </Heading>
+          <Text
+            marginBottom={5}
+            flex={0}
+            display="inline"
+            textAlign={'center'}
+            width={{ md: '75%', base: '100%', lg: '50%' }}
+          >
+            Whether you&apos;re a consultant, freelancer, or board member,
+            Meetwith makes scheduling across multiple roles and teams a breeze.
+          </Text>
+          <HStack>
+            <Button
+              colorScheme="orangeButton"
+              textColor={'white'}
+              rightIcon={<ArrowForwardIcon boxSize={4} />}
+              isLoading={loginIn}
+              onClick={() => handleLogin()}
+              mr={2}
+              px={4}
+              py={3}
             >
-              Schedule meetings with full privacy in{' '}
-              <Text as="span" color="primary.400">
-                Web3
-              </Text>{' '}
-              style
-            </Heading>
-            <Text fontSize={{ base: 'lg', md: 'xl' }} marginBottom={4}>
-              The{' '}
-              <Text as="span" textDecoration="line-through">
-                future
-              </Text>{' '}
-              state of work is remote.
-            </Text>
-            <Text fontSize={{ base: 'lg', md: 'xl' }} marginBottom={10}>
-              <Text as="span" color="primary.400">
-                Meet With Wallet
-              </Text>{' '}
-              is a scheduling manager redefined for Web3. Take control of your
-              time, your privacy, your rules.
-            </Text>
-            <HStack display={{ base: 'none', md: 'inline-block' }}>
-              <Button
-                colorScheme="primary"
-                rightIcon={<ArrowForwardIcon boxSize={4} />}
-                isLoading={loginIn}
-                onClick={() => handleLogin()}
-                mr={2}
-              >
-                Try for FREE
-              </Button>
-              <Button colorScheme="grayButton" as="a" href="#plans">
-                See Plans
-              </Button>
-            </HStack>
-          </Box>
-          <SlideFade
-            in={isHeroContainerVisible}
-            delay={0.5}
-            offsetY={-50}
-            unmountOnExit={false}
-            reverse={false}
-          >
-            <Box minW="300px" display="flex" justifyContent="center">
-              <Image
-                width={{ base: '200px', md: '250px' }}
-                src={'/assets/frame.png'}
-                position={{ base: 'unset', md: 'absolute' }}
-                right={0}
-                top={0}
-              />
-            </Box>
-          </SlideFade>
-        </Stack>
-        <Box
-          display={{ base: 'flex', md: 'none' }}
-          flexDirection="column"
-          mt={{ base: '8', md: '0' }}
+              Get started for FREE
+            </Button>
+          </HStack>
+        </VStack>
+        <SlideFade
+          in={isHeroContainerVisible}
+          delay={0.5}
+          offsetY={-50}
+          unmountOnExit={false}
+          reverse={false}
         >
-          <Button
-            onClick={() => handleLogin()}
-            isLoading={loginIn}
-            colorScheme="primary"
-            rightIcon={<ArrowForwardIcon boxSize={4} />}
-            width="100%"
-            h={12}
-            mb={4}
-          >
-            Try for FREE
-          </Button>
-          <Button
-            colorScheme="grayButton"
-            width="100%"
-            h={12}
-            as="a"
-            href="#plans"
-          >
-            See Plans
-          </Button>
-        </Box>
+          <Image
+            width={'100%'}
+            src={'/assets/product-ui.png'}
+            alt="Product UI"
+            mt={10}
+          />
+        </SlideFade>
       </Box>
-
-      <Box px={{ base: '6', md: '0' }} maxW="4xl">
+      <Box
+        w="100%"
+        bg="neutral.1000"
+        backdropFilter="blur(100px)"
+        height={'380px'}
+        insetX={0}
+        bottom={0}
+        pos="absolute"
+        zIndex={0}
+      />
+      <VStack
+        px={{ base: '6', md: '0' }}
+        w="100%"
+        position="relative"
+        zIndex="20"
+        alignItems="center"
+      >
         <Heading
-          fontSize="2xl"
           fontWeight="bold"
-          color={{ base: 'primary.400', md: 'neutral.100' }}
+          fontSize={{ base: '2xl', md: '40px' }}
           marginBottom={{ base: '4', md: '2' }}
+          zIndex={1}
+          position="relative"
         >
           Our partners
         </Heading>
-        <Text fontSize="md" marginBottom={10}>
-          Web3 is built by collaborating, and we are proud to have incredible
-          partnerships and integrations with the following
+        <Text
+          marginBottom={10}
+          zIndex={1}
+          position="relative"
+          color="neutral.200"
+        >
+          Collaboration is at the core of what we do, and we are proud to have
+          incredible partnerships and integrations with the following.
         </Text>
         <Grid
           color="neutral.100"
-          marginBottom={10}
           gridTemplateColumns={{ base: '1fr 1fr 1fr', md: 'none' }}
           gridAutoFlow={{ base: 'none', md: 'column' }}
+          zIndex={1}
+          position="relative"
         >
-          <Link href="https://poap.xyz/">
+          <Link target="_blank" href="https://poap.xyz/">
             <Image src={'/assets/logo-poap.svg'} alt="POAP Logo" />
           </Link>
-          <Link href="http://huddle01.xyz/">
+          <Link target="_blank" href="http://huddle01.xyz/">
             <Image src={'/assets/logo-huddle01.svg'} alt="Huddle01 Logo" />
           </Link>
-          {/* <Link href="">
+          <Link target="_blank" href="">
             <Image src={'/assets/logo-e.svg'} alt="E Logo" />
-          </Link> */}
-          <Link href="https://unstoppabledomains.com/">
+          </Link>
+          <Link target="_blank" href="https://unstoppabledomains.com/">
             <Image src={'/assets/logo-u.svg'} alt="Unstoppable Domains Logo" />
           </Link>
-          <Link href="">
+          <Link target="_blank" href="">
             <Image src={'/assets/logo-triangle.svg'} alt="Triangle Logo" />
           </Link>
         </Grid>
-      </Box>
+      </VStack>
     </Box>
   )
 }
