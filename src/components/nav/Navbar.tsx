@@ -40,7 +40,7 @@ export const Navbar = () => {
 
   const [backdropFilterValue, setBackdropFilterValue] = useState<string>('0')
   const [activeLink, setActiveLink] = useState('')
-  const bgColor = useColorModeValue('transparent', 'neutral.1000')
+  const bgColor = useColorModeValue('transparent', 'neutral.900')
   const borderColor = useColorModeValue('neutral.300', 'neutral.800')
   function handleSetActiveLink(id: string) {
     if (id === '/') {
