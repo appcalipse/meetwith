@@ -16,7 +16,7 @@ const Home: NextPage = () => {
   return (
     <main data-testid="main-container">
       <DarkMode>
-        <Box bg={'neutral.1000'} pb={36} fontWeight={500}>
+        <Box bg={'neutral.900'} pb={36} fontWeight={500}>
           <Hero />
           <Why />
           <Box px={5}>

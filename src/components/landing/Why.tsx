@@ -50,7 +50,7 @@ export function Why() {
   return (
     <Box px={5}>
       <VStack
-        bg={'neutral.1000'}
+        bg={'neutral.900'}
         alignItems="center"
         borderWidth={1}
         borderColor="neutral.900"

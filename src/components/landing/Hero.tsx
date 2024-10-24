@@ -119,7 +119,7 @@ export function Hero() {
       </Box>
       <Box
         w="100%"
-        bg="neutral.1000"
+        bg="neutral.900"
         backdropFilter="blur(100px)"
         height={'380px'}
         insetX={0}
