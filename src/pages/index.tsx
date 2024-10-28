@@ -16,7 +16,7 @@ const Home: NextPage = () => {
   return (
     <main data-testid="main-container">
       <DarkMode>
-        <Box bg={'neutral.900'}>
+        <Box bg={'neutral.900'} mt={10}>
           <Box
             bgImage={{
               base: `url('/assets/bg-hero-why-mobile.png')`,
