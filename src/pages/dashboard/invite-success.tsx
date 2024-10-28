@@ -17,7 +17,7 @@ const InviteSuccessPage: NextPage<{ invitedCount: number }> = ({
   const router = useRouter()
 
   return (
-    <Flex direction="column" align="center" minH="100vh" pt="160px">
+    <Flex direction="column" align="center" minH="100vh" pt={36}>
       <VStack maxW="400px" w="full">
         <Box display="flex" justifyContent="center" width="full" mb="32px">
           <Image

@@ -87,6 +87,15 @@ export const Navbar = () => {
       backdropFilter={`blur(${backdropFilterValue}px)`}
       bg={'transparent'}
     >
+      <Box
+        bg="primary.500"
+        textAlign="center"
+        py={2.5}
+        fontWeight={600}
+        fontSize={'large'}
+      >
+        Meetwithwallet Rebranding - Coming soon
+      </Box>
       <Flex
         color={useColorModeValue('black', 'white')}
         minH={'60px'}
