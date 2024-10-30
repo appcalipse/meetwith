@@ -1,22 +1,30 @@
 import {
+  Box,
   Button,
+  Flex,
   FormControl,
   FormHelperText,
   FormLabel,
   Heading,
   HStack,
+  Icon,
   Input,
+  Link,
   Spacer,
   Spinner,
   Switch,
   Text,
+  useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { useEffect } from 'react'
+import { FaTelegram } from 'react-icons/fa'
 
 import { Account } from '@/types/Account'
+import { TelegramConnection } from '@/types/Telegram'
 
 import {
   AccountNotifications,
@@ -25,7 +33,9 @@ import {
 } from '../../types/AccountNotifications'
 import { logEvent } from '../../utils/analytics'
 import {
+  createTelegramHash,
   getNotificationSubscriptions,
+  getPendingTgConnection,
   setNotificationSubscriptions,
 } from '../../utils/api_helper'
 import { isValidEmail } from '../../utils/validations'
@@ -36,22 +46,39 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 }) => {
   const [loading, setLoading] = useState(false)
   const [loadingInitialInfo, setLoadingInitialInfo] = useState(true)
+
   const [email, setEmail] = useState('')
   const [emailNotifications, setEmailNotifications] = useState(false)
+  const [telegramNotificationConfigured, setTelegramNotificationConfigured] =
+    useState(false)
   const [discordNotificationConfig, setDiscordNotificationConfig] = useState(
     undefined as DiscordNotificationType | undefined
   )
+  const [connecting, setConnecting] = useState(false)
+  const [tgConnectionPending, setTgConnectionPending] = useState<
+    TelegramConnection | undefined
+  >(undefined)
 
+  const bgColor = useColorModeValue('gray.800', 'white')
+  const color = useColorModeValue('white', 'gray.800')
+  const { push } = useRouter()
   useEffect(() => {
     setLoadingInitialInfo(true)
     setEmailNotifications(false)
     setEmail('')
     fetchSubscriptions()
+    fetchPendingTgConnections()
     setDiscordNotificationConfig(undefined)
   }, [currentAccount])
-
+  const fetchPendingTgConnections = async () => {
+    const pendingConnection = await getPendingTgConnection()
+    if (pendingConnection) {
+      setTgConnectionPending(pendingConnection)
+    }
+  }
   const fetchSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()
+
     for (let i = 0; i < subs.notification_types.length; i++) {
       switch (subs.notification_types[i].channel) {
         case NotificationChannel.EMAIL:
@@ -63,6 +90,8 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             subs.notification_types[i] as DiscordNotificationType
           )
           break
+        case NotificationChannel.TELEGRAM:
+          setTelegramNotificationConfigured(true)
         default:
       }
     }
@@ -117,7 +146,30 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
     setLoading(false)
   }
+  const handleTgConnect = async () => {
+    setConnecting(true)
+    logEvent('Connect Telegram')
+    const hash = await createTelegramHash()
 
+    alert(hash.tg_id)
+    const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
+    push(url)
+    setConnecting(false)
+  }
+  const handleTgDisconnect = async () => {
+    setConnecting(true)
+    logEvent('Disconnect Telegram')
+    const sub = await getNotificationSubscriptions()
+    const newSubs = sub.notification_types.filter(
+      sub => sub.channel !== NotificationChannel.TELEGRAM
+    )
+    await setNotificationSubscriptions({
+      account_address: currentAccount!.address,
+      notification_types: newSubs,
+    })
+    setTelegramNotificationConfigured(false)
+    setConnecting(false)
+  }
   return (
     <VStack alignItems="start" flex={1} mb={8}>
       <Heading fontSize="2xl">Notifications</Heading>
@@ -159,7 +211,56 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             onDiscordNotificationChange={onDiscordNotificationChange}
             discordNotification={discordNotificationConfig}
           />
-
+          <HStack>
+            <Flex
+              width="22px"
+              height="22px"
+              bgColor={bgColor}
+              borderRadius="50%"
+              justifyContent="center"
+              alignItems="center"
+            >
+              <Icon as={FaTelegram} color={color} />
+            </Flex>
+            <Text fontSize="lg" fontWeight="bold">
+              Telegram
+            </Text>
+            {telegramNotificationConfigured ? (
+              <Button
+                variant="ghost"
+                colorScheme="primary"
+                isLoading={connecting}
+                onClick={handleTgDisconnect}
+              >
+                Disconnect
+              </Button>
+            ) : tgConnectionPending ? (
+              <Box>
+                <Text>
+                  Follow the{' '}
+                  <Link
+                    href={`https://t.me/MeetWithDEVBot?start=${tgConnectionPending.tg_id}`}
+                    target="_blank"
+                  >
+                    https://t.me/MeetWithDEVBot?start=
+                    {tgConnectionPending.tg_id}
+                  </Link>{' '}
+                  to connect or open the bot @MeetWithDEVBot and run the command
+                  `/set {tgConnectionPending.tg_id}`
+                </Text>
+              </Box>
+            ) : (
+              <Button
+                isLoading={connecting}
+                loadingText="Connecting"
+                variant="outline"
+                colorScheme="primary"
+                onClick={handleTgConnect}
+              >
+                Connect
+              </Button>
+            )}
+          </HStack>
           <Spacer />
           <Button
             isLoading={loading}
