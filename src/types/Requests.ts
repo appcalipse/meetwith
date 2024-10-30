@@ -102,7 +102,7 @@ export interface DiscordAccountInfoRequest {
 }
 export interface SetTelegramNotificationOptionRequest {
   chat_id: string
-  account_address: string
+  tg_id: string
 }
 
 export interface DiscordAccountInfoResponse {
