@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import CryptoJS, { enc, SHA1 } from 'crypto-js'
 import { addMinutes, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
@@ -61,6 +62,7 @@ import {
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
 import { GroupMembersRow, TablesInsert } from '@/types/supabase'
+import { TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
   GateUsage,
@@ -2424,13 +2426,80 @@ export async function createGroupInDB(
   }
 }
 
+const createTgConnection = async (
+  account_address: string
+): Promise<TelegramConnection> => {
+  const hash = CryptoJS.SHA1(account_address).toString(CryptoJS.enc.Hex)
+  const { error, data } = await db.supabase
+    .from('telegram_connections')
+    .insert([{ account_address, tg_id: hash }])
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data[0]
+}
+const getTgConnectionByTgId = async (
+  tg_id: string
+): Promise<TelegramConnection | null> => {
+  const { data, error } = await db.supabase
+    .from('telegram_connections')
+    .select()
+    .eq('tg_id', tg_id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data[0]
+}
+
+const deleteTgConnection = async (tg_id: string): Promise<void> => {
+  const { error } = await db.supabase
+    .from('telegram_connections')
+    .delete()
+    .eq('tg_id', tg_id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+const deleteAllTgConnections = async (
+  account_address: string
+): Promise<void> => {
+  const { error } = await db.supabase
+    .from('telegram_connections')
+    .delete()
+    .eq('account_address', account_address)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+const getTgConnection = async (
+  account_address: string
+): Promise<TelegramConnection> => {
+  const { data, error } = await db.supabase
+    .from('telegram_connections')
+    .select()
+    .eq('account_address', account_address)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data[0]
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
   connectedCalendarExists,
+  createTgConnection,
+  deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
+  deleteTgConnection,
   editGroup,
   getAccountFromDB,
   getAccountNonce,
@@ -2454,6 +2523,8 @@ export {
   getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
+  getTgConnection,
+  getTgConnectionByTgId,
   getUserGroups,
   initAccountDBForWallet,
   initDB,
