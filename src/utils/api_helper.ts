@@ -34,6 +34,7 @@ import {
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
+import { TelegramConnection } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { apiUrl } from './constants'
@@ -969,4 +970,22 @@ export const inviteUsers = async (
   payload: GroupInvitePayload
 ): Promise<void> => {
   await internalFetch<void>(`/secure/group/${groupId}/invite`, 'POST', payload)
+}
+
+export const createTelegramHash = async () => {
+  return (
+    await internalFetch<{ data: TelegramConnection }>(
+      '/secure/telegram',
+      'POST'
+    )
+  ).data
+}
+
+export const getPendingTgConnection = async () => {
+  return (
+    await internalFetch<{ data?: TelegramConnection }>(
+      '/secure/telegram',
+      'GET'
+    )
+  ).data
 }

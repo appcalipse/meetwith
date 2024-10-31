@@ -100,6 +100,10 @@ export interface DiscordAccountInfoRequest {
   scheduler_discord_id: string
   participantsDiscordIds: string[]
 }
+export interface SetTelegramNotificationOptionRequest {
+  chat_id: string
+  tg_id: string
+}
 
 export interface DiscordAccountInfoResponse {
   accounts: Account[]
