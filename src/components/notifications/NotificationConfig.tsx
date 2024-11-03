@@ -152,8 +152,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setConnecting(true)
     logEvent('Connect Telegram')
     const hash = await createTelegramHash()
-
-    alert(hash.tg_id)
     const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
     push(url)
     setConnecting(false)
