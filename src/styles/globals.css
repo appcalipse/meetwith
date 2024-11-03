@@ -170,7 +170,7 @@ a {
   );
 }
 .image-back-drop {
-  background: #551500;
-  filter: blur(30px);
+  background: #3e4c59;
+  filter: blur(40px);
   display: block;
 }
