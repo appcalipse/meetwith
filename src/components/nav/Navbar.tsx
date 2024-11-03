@@ -83,7 +83,7 @@ export const Navbar = () => {
       as="header"
       display={pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
       position="fixed"
-      width={{ md: '60%', base: isOpen ? '100%' : '90%' }}
+      width={{ base: isOpen ? '100%' : '90%', lg: '90%', xl: '60%' }}
       mx="auto"
       insetX={0}
       top={{
@@ -144,7 +144,7 @@ export const Navbar = () => {
               <Flex
                 display={{ base: 'none', lg: 'flex' }}
                 ml={10}
-                flexBasis={'75%'}
+                flexBasis={'65%'}
               >
                 <DesktopNav
                   pathname={pathname}
@@ -452,10 +452,6 @@ const NAV_ITEMS: Array<NavItem> = [
   {
     label: 'Features',
     href: '/#features',
-  },
-  {
-    label: 'Plans',
-    href: '/#plans',
   },
   {
     label: 'Discord bot',
