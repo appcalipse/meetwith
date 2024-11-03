@@ -66,7 +66,7 @@ export function Faq() {
       gap={10}
       alignItems="center"
       borderWidth={1}
-      borderColor="neutral.900"
+      borderColor="#2F3847"
       rounded={10}
       bg={{
         md: 'none',
