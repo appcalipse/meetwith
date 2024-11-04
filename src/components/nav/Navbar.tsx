@@ -15,7 +15,7 @@ import {
   useDisclosure,
 } from '@chakra-ui/react'
 import router, { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
+import { use, useContext, useEffect, useState } from 'react'
 import { BiMenuAltRight, BiWallet } from 'react-icons/bi'
 import { FaWallet } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
@@ -400,11 +400,12 @@ const MobileNavItem = ({
   activeLink: string
 }) => {
   const linkHoverColor = 'primary.500'
-
+  const bgColor = useColorModeValue('neutral.100', '#1F2933')
+  const color = useColorModeValue('neutral.800', 'neutral.0')
   return (
     <Stack spacing={4}>
       <Flex
-        bg="neutral.100"
+        bg={bgColor}
         py={3}
         as={Link}
         href={href ?? '#'}
@@ -422,7 +423,7 @@ const MobileNavItem = ({
           (shouldEnforceColorOnPath(pathname) && activeLink === href) ||
           (!shouldEnforceColorOnPath(pathname) && pathname.includes(href))
             ? linkHoverColor
-            : 'neutral.800'
+            : color
         }
       >
         <Text fontWeight={700}>{label}</Text>
