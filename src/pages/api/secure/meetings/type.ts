@@ -5,7 +5,6 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { MeetingType } from '@/types/Account'
 import {
   getAccountFromDB,
-  initDB,
   updateAccountPreferences,
   workMeetingTypeGates,
 } from '@/utils/database'
@@ -13,8 +12,6 @@ import { isProAccount } from '@/utils/subscription_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    initDB()
-
     const account_id = req.session.account!.address
 
     const account = await getAccountFromDB(account_id)
@@ -70,8 +67,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     return res.status(200).json(updatedAccount)
   } else if (req.method === 'DELETE') {
-    initDB()
-
     const account_id = req.session.account!.address
 
     const account = await getAccountFromDB(account_id)

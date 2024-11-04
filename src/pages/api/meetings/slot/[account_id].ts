@@ -1,13 +1,11 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { initDB, isSlotFree } from '@/utils/database'
+import { isSlotFree } from '@/utils/database'
 import { AccountNotFoundError } from '@/utils/errors'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    initDB()
-
     try {
       const free = await isSlotFree(
         req.query.account_id as string,

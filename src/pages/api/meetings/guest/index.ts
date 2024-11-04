@@ -5,7 +5,7 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { DBSlot, SchedulingType } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingCreationRequest } from '@/types/Requests'
-import { initDB, saveMeeting } from '@/utils/database'
+import { saveMeeting } from '@/utils/database'
 import {
   GateConditionNotValidError,
   MeetingCreationError,
@@ -14,8 +14,6 @@ import {
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    initDB()
-
     const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
     const guest = meeting.participants_mapping.filter(
       p => p.guest_email && p.type === ParticipantType.Scheduler

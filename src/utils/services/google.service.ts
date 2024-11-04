@@ -6,7 +6,7 @@ import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
-import { TimeSlotSource } from '@/types/Meeting'
+import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -142,129 +142,190 @@ export default class GoogleCalendarService implements CalendarService {
   getConnectedEmail(): string {
     return this.email
   }
+  async getEventById(
+    meeting_id: string,
+    _calendarId?: string
+  ): Promise<NewCalendarEventType | undefined> {
+    return new Promise(async (resolve, reject) => {
+      const auth = this.auth
+      const myGoogleAuth = await auth.getToken()
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
 
+      const calendarId = parseCalendarId(_calendarId)
+
+      calendar.events.get(
+        {
+          auth: myGoogleAuth,
+          calendarId,
+          eventId: meeting_id.replaceAll('-', ''),
+        },
+        function (err, event) {
+          if (err) {
+            console.error(
+              'There was an error contacting google calendar service: ',
+              err?.message
+            )
+            return resolve(undefined)
+          }
+          return resolve({
+            uid: meeting_id,
+            ...event?.data,
+            id: meeting_id,
+            additionalInfo: {
+              hangoutLink: event?.data.hangoutLink || '',
+            },
+            type: 'google_calendar',
+            password: '',
+            url: '',
+          })
+        }
+      )
+    })
+  }
   async createEvent(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    _calendarId?: string
+    _calendarId?: string,
+    shouldGenerateLink = true
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
-      this.auth.getToken().then(myGoogleAuth => {
-        const calendarId = parseCalendarId(_calendarId)
-        const participantsInfo: ParticipantInfo[] =
-          meetingDetails.participants.map(participant => ({
-            type: participant.type,
-            name: participant.name,
-            account_address: participant.account_address,
-            status: participant.status,
-            slot_id: '',
-            meeting_id: meetingDetails.meeting_id,
-          }))
+      this.auth
+        .getToken()
+        .then(async myGoogleAuth => {
+          const event = await this.getEventById(
+            meetingDetails.meeting_id,
+            _calendarId
+          )
+          if (event) {
+            return resolve(event)
+          }
+          const calendarId = parseCalendarId(_calendarId)
+          const participantsInfo: ParticipantInfo[] =
+            meetingDetails.participants.map(participant => ({
+              type: participant.type,
+              name: participant.name,
+              account_address: participant.account_address,
+              status: participant.status,
+              slot_id: '',
+              meeting_id: meetingDetails.meeting_id,
+            }))
 
-        const slot_id = meetingDetails.participants.filter(
-          p => p.account_address === calendarOwnerAccountAddress
-        )[0].slot_id
+          const slot_id = meetingDetails.participants.filter(
+            p => p.account_address === calendarOwnerAccountAddress
+          )[0].slot_id
 
-        const payload: calendar_v3.Schema$Event = {
-          // yes, google event ids allows only letters and numbers
-          id: meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
-          summary: CalendarServiceHelper.getMeetingTitle(
-            calendarOwnerAccountAddress,
-            participantsInfo,
-            meetingDetails.title
-          ),
-          description: CalendarServiceHelper.getMeetingSummary(
-            meetingDetails.content,
-            meetingDetails.meeting_url,
-            `${appUrl}/dashboard/meetings?slotId=${slot_id}`
-          ),
-          start: {
-            dateTime: new Date(meetingDetails.start).toISOString(),
-            timeZone: 'UTC',
-          },
-          end: {
-            dateTime: new Date(meetingDetails.end).toISOString(),
-            timeZone: 'UTC',
-          },
-          created: new Date(meeting_creation_time).toISOString(),
-          attendees: [],
-          reminders: {
-            useDefault: false,
-            overrides: [{ method: 'email', minutes: 10 }],
-          },
-          creator: {
-            displayName: 'Meet with Wallet',
-            email: NO_REPLY_EMAIL,
-          },
-          guestsCanModify: false,
-          conferenceData: {
-            entryPoints: [
-              {
-                entryPointType: 'video',
-                uri: meetingDetails.meeting_url,
-              },
-            ],
-          },
-          status: 'confirmed',
-        }
+          const payload: calendar_v3.Schema$Event = {
+            // yes, google event ids allows only letters and numbers
+            id: meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
+            summary: CalendarServiceHelper.getMeetingTitle(
+              calendarOwnerAccountAddress,
+              participantsInfo,
+              meetingDetails.title
+            ),
+            description: CalendarServiceHelper.getMeetingSummary(
+              meetingDetails.content,
+              meetingDetails.meeting_url,
+              `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+            ),
+            start: {
+              dateTime: new Date(meetingDetails.start).toISOString(),
+              timeZone: 'UTC',
+            },
+            end: {
+              dateTime: new Date(meetingDetails.end).toISOString(),
+              timeZone: 'UTC',
+            },
+            created: new Date(meeting_creation_time).toISOString(),
+            attendees: [],
+            reminders: {
+              useDefault: false,
+              overrides: [{ method: 'email', minutes: 10 }],
+            },
+            creator: {
+              displayName: 'Meet with Wallet',
+              email: NO_REPLY_EMAIL,
+            },
+            guestsCanModify: false,
+            location:
+              shouldGenerateLink &&
+              meetingDetails.meetingProvider !== MeetingProvider.GOOGLE_MEET
+                ? meetingDetails.meeting_url
+                : undefined,
+            conferenceData:
+              shouldGenerateLink &&
+              meetingDetails.meetingProvider == MeetingProvider.GOOGLE_MEET
+                ? {
+                    createRequest: {
+                      requestId: meetingDetails.meeting_id,
+                      conferenceSolutionKey: {
+                        type: 'hangoutsMeet',
+                      },
+                    },
+                  }
+                : undefined,
+            status: 'confirmed',
+          }
 
-        if (meetingDetails.meeting_url) {
-          payload['location'] = meetingDetails.meeting_url
-        }
-
-        const calendar = google.calendar({
-          version: 'v3',
-          auth: myGoogleAuth,
-        })
-
-        for (const participant of meetingDetails.participants) {
-          payload.attendees!.push({
-            email:
-              calendarOwnerAccountAddress === participant.account_address
-                ? this.getConnectedEmail()
-                : participant.guest_email ||
-                  noNoReplyEmailForAccount(participant.account_address!),
-            displayName: participant.name || participant.account_address,
-            responseStatus:
-              participant.status === ParticipationStatus.Accepted
-                ? 'accepted'
-                : participant.status === ParticipationStatus.Rejected
-                ? 'declined'
-                : 'needsAction',
-          })
-        }
-
-        calendar.events.insert(
-          {
+          const calendar = google.calendar({
+            version: 'v3',
             auth: myGoogleAuth,
-            calendarId,
-            requestBody: payload,
-            conferenceDataVersion: 1,
-          },
-          function (err, event) {
-            if (err || !event?.data) {
-              console.error(
-                'There was an error contacting google calendar service: ',
-                err
-              )
-              console.error(err)
-              return reject(err)
-            }
-            return resolve({
-              uid: meetingDetails.meeting_id,
-              ...event.data,
-              id: meetingDetails.meeting_id,
-              additionalInfo: {
-                hangoutLink: event.data.hangoutLink || '',
-              },
-              type: 'google_calendar',
-              password: '',
-              url: '',
+          })
+
+          for (const participant of meetingDetails.participants) {
+            payload.attendees!.push({
+              email:
+                calendarOwnerAccountAddress === participant.account_address
+                  ? this.getConnectedEmail()
+                  : participant.guest_email ||
+                    noNoReplyEmailForAccount(participant.account_address!),
+              displayName: participant.name || participant.account_address,
+              responseStatus:
+                participant.status === ParticipationStatus.Accepted
+                  ? 'accepted'
+                  : participant.status === ParticipationStatus.Rejected
+                  ? 'declined'
+                  : 'needsAction',
             })
           }
-        )
-      })
+
+          calendar.events.insert(
+            {
+              auth: myGoogleAuth,
+              calendarId,
+              requestBody: payload,
+              conferenceDataVersion: 1,
+            },
+            function (err, event) {
+              if (err || !event?.data) {
+                console.error(
+                  'There was an error contacting google calendar service: ',
+                  err
+                )
+                console.error(err)
+                return reject(err)
+              }
+              return resolve({
+                uid: meetingDetails.meeting_id,
+                ...event.data,
+                id: meetingDetails.meeting_id,
+                additionalInfo: {
+                  hangoutLink: event.data.hangoutLink || '',
+                },
+                type: 'google_calendar',
+                password: '',
+                url: '',
+              })
+            }
+          )
+        })
+        .catch(error => {
+          console.error(error)
+          reject(error)
+        })
     )
   }
 

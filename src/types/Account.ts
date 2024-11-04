@@ -1,4 +1,5 @@
 import { DiscordAccount } from './Discord'
+import { MeetingProvider } from './Meeting'
 import { Subscription } from './Subscription'
 
 export interface AuthToken {
@@ -59,6 +60,7 @@ export interface AccountPreferences {
   socialLinks?: SocialLink[]
   name?: string
   avatar?: string
+  meetingProviders: Array<MeetingProvider>
 }
 
 export enum SocialLinkType {
