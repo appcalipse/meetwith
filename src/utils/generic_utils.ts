@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import slugify from 'slugify'
 
+import { MeetingProvider } from '@/types/Meeting'
+
 export const zeroAddress = '0x0000000000000000000000000000000000000000' as const
 
 export function parseUnits(value: `${number}`, decimals: number) {
@@ -118,4 +120,19 @@ export const isJson = (str: string) => {
     return false
   }
   return true
+}
+
+export const renderProviderName = (provider: MeetingProvider) => {
+  switch (provider) {
+    case MeetingProvider.GOOGLE_MEET:
+      return 'Google Meet'
+    case MeetingProvider.ZOOM:
+      return 'Zoom'
+    case MeetingProvider.HUDDLE:
+      return 'Huddle01'
+    case MeetingProvider.JITSI_MEET:
+      return 'Jitsi Meet'
+    default:
+      return 'Custom'
+  }
 }
