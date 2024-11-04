@@ -99,15 +99,6 @@ export const Navbar = () => {
       borderColor={borderColor}
       justifyContent={'space-between'}
     >
-      <Box
-        bg="primary.500"
-        textAlign="center"
-        py={2.5}
-        fontWeight={600}
-        fontSize={'large'}
-      >
-        Meetwithwallet Rebranding - Coming soon
-      </Box>
       <Flex
         color={useColorModeValue('black', 'white')}
         minH={'60px'}
