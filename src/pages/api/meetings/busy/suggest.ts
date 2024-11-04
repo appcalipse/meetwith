@@ -4,7 +4,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { Account } from '@/types/Account'
 import { ConditionRelation } from '@/types/common'
-import { getAccountFromDB, initDB } from '@/utils/database'
+import { getAccountFromDB } from '@/utils/database'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 import {
   generateTimeSlots,
@@ -14,7 +14,6 @@ import { isValidEVMAddress } from '@/utils/validations'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    initDB()
     const { body } = req
 
     const addresses: string[] = Array.from(new Set<string>(body.addresses))

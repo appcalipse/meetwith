@@ -11,6 +11,8 @@ import {
   Heading,
   HStack,
   Input,
+  Radio,
+  RadioGroup,
   Select,
   Text,
   useColorModeValue,
@@ -29,8 +31,10 @@ import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal
 import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
+import { MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { renderProviderName } from '@/utils/generic_utils'
 import { isProAccount } from '@/utils/subscription_manager'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
@@ -50,6 +54,10 @@ const ScheduleBase = () => {
     pickedTime,
     handleTimePick,
     isScheduling,
+    meetingProvider,
+    meetingUrl,
+    setMeetingProvider,
+    setMeetingUrl,
   } = useContext(ScheduleContext)
   const {
     isOpen: isGroupModalOpen,
@@ -60,6 +68,9 @@ const ScheduleBase = () => {
   const [inputError, setInputError] = useState(
     undefined as ReactNode | undefined
   )
+  const meetingProviders = (
+    currentAccount?.preferences?.meetingProviders || []
+  ).concat(MeetingProvider.CUSTOM)
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
   const iconColor = useColorModeValue('gray.800', 'white')
   const onParticipantsChange = (_participants: Array<ParticipantInfo>) => {
@@ -75,6 +86,7 @@ const ScheduleBase = () => {
     }
     setParticipants(_participants)
   }
+
   return (
     <Box>
       <DiscoverATimeInfoModal
@@ -242,6 +254,43 @@ const ScheduleBase = () => {
             />
           </HStack>
         </FormControl>
+        <VStack alignItems="start" w={'100%'} gap={4}>
+          <Text fontSize="18px" fontWeight={500}>
+            Location
+          </Text>
+          <RadioGroup
+            onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+            value={meetingProvider}
+            w={'100%'}
+          >
+            <VStack w={'100%'} gap={4}>
+              {meetingProviders.map(provider => (
+                <Radio
+                  flexDirection="row-reverse"
+                  justifyContent="space-between"
+                  w="100%"
+                  colorScheme="primary"
+                  value={provider}
+                  key={provider}
+                >
+                  <Text fontWeight="600" color={'primary.200'} cursor="pointer">
+                    {renderProviderName(provider)}
+                  </Text>
+                </Radio>
+              ))}
+            </VStack>
+          </RadioGroup>
+          {meetingProvider === MeetingProvider.CUSTOM && (
+            <Input
+              type="text"
+              placeholder="insert a custom meeting url"
+              isDisabled={isScheduling}
+              my={4}
+              value={meetingUrl}
+              onChange={e => setMeetingUrl(e.target.value)}
+            />
+          )}
+        </VStack>
         <FormControl>
           <FormLabel htmlFor="info">Description (optional)</FormLabel>
           <RichTextEditor
