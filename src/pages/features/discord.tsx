@@ -23,15 +23,15 @@ const DiscordBot: NextPage = () => {
   return (
     <main>
       <Box
+        bg={'neutral.900'}
         bgImage={{
-          base: `url('/assets/bg-hero-why-mobile.png')`,
-          md: `url('/assets/bg-hero-why.png')`,
+          base: `none`,
+          md: `url('/assets/bg-abstract.svg')`,
         }}
         bgRepeat="no-repeat"
         bgSize="cover"
       >
         <Box
-          background="linear-gradient(359.95deg, rgba(31, 41, 51, 0.85) 0.04%, rgba(50, 63, 75, 0.85) 57.61%);"
           px={{ base: 2, md: 10 }}
           pt={{ base: '10', md: '20' }}
           color="neutral.100"
@@ -72,7 +72,7 @@ const DiscordBot: NextPage = () => {
               </Text>
             </VStack>
 
-            <Box mt={8} p={8} bgColor="rgba(255,255,255,0.05)">
+            <Box mt={8} p={8} bgColor="rgba(255,255,255,0.1)">
               <Flex
                 direction={{ base: 'column', lg: 'row' }}
                 gridGap={{ base: '1', md: '6' }}
@@ -118,14 +118,14 @@ const DiscordBot: NextPage = () => {
 
             <Box mt={8} w="100%">
               <Flex direction={{ base: 'column', lg: 'row' }} gridGap={6}>
-                <Box flex={1} p={8} bgColor="rgba(255,255,255,0.05)">
+                <Box flex={1} p={8} bgColor="rgba(255,255,255,0.1)">
                   <Icon as={FaShieldAlt} color="white" w={7} h={7} mb={2} />
                   <Text fontSize="2xl" fontWeight="500">
                     Our tool encrypts members&apos; data so their privacy is
                     fully protected.
                   </Text>
                 </Box>
-                <Box flex={1} p={8} bgColor="rgba(255,255,255,0.05)">
+                <Box flex={1} p={8} bgColor="rgba(255,255,255,0.1)">
                   <Icon as={FaCalendarCheck} color="white" w={7} h={7} mb={2} />
                   <Text fontSize="2xl" fontWeight="500">
                     Save time. Empower your community members with lightning
