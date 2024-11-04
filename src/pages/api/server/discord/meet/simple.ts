@@ -19,6 +19,7 @@ export default async function simpleDiscordMeet(
       accounts,
       duration,
       interval,
+      title,
       description,
       notBefore,
     } = req.body as DiscordMeetingRequest
@@ -86,7 +87,10 @@ export default async function simpleDiscordMeet(
         participants,
         MeetingProvider.HUDDLE,
         scheduler,
-        description
+        description,
+        undefined,
+        undefined,
+        title
       )
 
       return res.status(200).json(meeting)
