@@ -44,7 +44,6 @@ export function Hero() {
     <Box
       ref={heroContainer}
       color="neutral.0"
-      marginBottom={{ base: '10', md: '28' }}
       position="relative"
       mx="auto"
       px={{ base: 2, md: 10 }}
@@ -127,55 +126,6 @@ export function Hero() {
         pos="absolute"
         zIndex={0}
       />
-      <VStack
-        px={{ base: '6', md: '0' }}
-        w="100%"
-        position="relative"
-        zIndex="20"
-        alignItems="center"
-      >
-        <Heading
-          fontWeight="bold"
-          fontSize={{ base: '2xl', md: '40px' }}
-          marginBottom={{ base: '4', md: '2' }}
-          zIndex={1}
-          position="relative"
-        >
-          Our partners
-        </Heading>
-        <Text
-          marginBottom={10}
-          zIndex={1}
-          position="relative"
-          color="neutral.200"
-        >
-          Collaboration is at the core of what we do, and we are proud to have
-          incredible partnerships and integrations with the following.
-        </Text>
-        <Grid
-          color="neutral.100"
-          gridTemplateColumns={{ base: '1fr 1fr 1fr', md: 'none' }}
-          gridAutoFlow={{ base: 'none', md: 'column' }}
-          zIndex={1}
-          position="relative"
-        >
-          <Link target="_blank" href="https://poap.xyz/">
-            <Image src={'/assets/logo-poap.svg'} alt="POAP Logo" />
-          </Link>
-          <Link target="_blank" href="http://huddle01.xyz/">
-            <Image src={'/assets/logo-huddle01.svg'} alt="Huddle01 Logo" />
-          </Link>
-          <Link target="_blank" href="">
-            <Image src={'/assets/logo-e.svg'} alt="E Logo" />
-          </Link>
-          <Link target="_blank" href="https://unstoppabledomains.com/">
-            <Image src={'/assets/logo-u.svg'} alt="Unstoppable Domains Logo" />
-          </Link>
-          <Link target="_blank" href="">
-            <Image src={'/assets/logo-triangle.svg'} alt="Triangle Logo" />
-          </Link>
-        </Grid>
-      </VStack>
     </Box>
   )
 }
