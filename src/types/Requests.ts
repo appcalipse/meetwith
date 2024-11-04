@@ -6,6 +6,7 @@ import {
   ConferenceMeeting,
   GroupNotificationType,
   MeetingDecrypted,
+  MeetingProvider,
   NotBefore,
   ParticipantMappingType,
   SchedulingType,
@@ -29,13 +30,23 @@ export interface MeetingCreationRequest {
   meetingTypeId: string
   start: Date
   end: Date
+  meetingProvider: MeetingProvider
   content?: string
   title?: string
   meeting_url: string
   meeting_id: ConferenceMeeting['id']
   emailToSendReminders?: string
 }
-
+export interface UrlCreationRequest {
+  participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
+  start: Date
+  end: Date
+  meetingProvider: MeetingProvider
+  accounts?: Account[]
+  content?: string
+  title?: string
+  meeting_id: ConferenceMeeting['id']
+}
 export interface RequestParticipantMapping {
   account_address?: string
   slot_id?: string
@@ -73,6 +84,7 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   changes?: MeetingChange
   title?: string
   content?: string
+  meetingProvider: MeetingProvider
 }
 export interface GroupInviteNotifyRequest {
   group_id: string

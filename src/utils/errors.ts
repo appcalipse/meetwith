@@ -152,6 +152,13 @@ export class Huddle01ServiceUnavailable extends Error {
   }
 }
 
+export class ZoomServiceUnavailable extends Error {
+  constructor() {
+    super(`Zoom API is broken`)
+    this.name = 'ZoomServiceUnavailable'
+  }
+}
+
 export class GroupCreationError extends Error {
   details: string
 

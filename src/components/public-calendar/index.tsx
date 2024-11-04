@@ -48,6 +48,7 @@ import {
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
+  MeetingProvider,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -77,6 +78,7 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
+  ZoomServiceUnavailable,
 } from '@/utils/errors'
 import {
   getAvailabilitiesForWeekDay,
@@ -361,7 +363,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     content?: string,
     meetingUrl?: string,
     emailToSendReminders?: string,
-    title?: string
+    title?: string,
+    otherParticipants?: Array<ParticipantInfo>,
+    meetingProvider?: MeetingProvider
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
@@ -381,7 +385,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       name = getAccountDisplayName(currentAccount!)
     }
 
-    const participants: ParticipantInfo[] = []
+    const participants: ParticipantInfo[] = [...(otherParticipants || [])]
 
     if (CalendarType.REGULAR === calendarType) {
       participants.push({
@@ -459,6 +463,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         start,
         end,
         participants,
+        meetingProvider || MeetingProvider.HUDDLE,
         currentAccount,
         content,
         meetingUrl,
@@ -533,7 +538,17 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           position: 'top',
           isClosable: true,
         })
-      } else throw e
+      } else if (e instanceof ZoomServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
     }
     setIsScheduling(false)
     return false

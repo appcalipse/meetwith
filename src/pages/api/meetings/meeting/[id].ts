@@ -1,12 +1,10 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { getMeetingFromDB, initDB } from '@/utils/database'
+import { getMeetingFromDB } from '@/utils/database'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
-    initDB()
-
     if (!req.query.id) {
       return res.status(404).send('Id parameter required')
     }
