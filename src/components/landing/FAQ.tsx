@@ -1,4 +1,5 @@
-import { Link } from '@chakra-ui/react'
+import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons'
+import { Link, VStack } from '@chakra-ui/react'
 import {
   Accordion,
   AccordionButton,
@@ -9,6 +10,7 @@ import {
   Heading,
 } from '@chakra-ui/react'
 import { ReactElement } from 'react'
+import { BiCaretDown, BiCaretUp } from 'react-icons/bi'
 
 import { MWW_DISCORD_SERVER } from '@/utils/constants'
 
@@ -54,32 +56,61 @@ const faqs: Faq[] = [
 
 export function Faq() {
   return (
-    <Box
+    <VStack
       py={{ base: '10', md: '20' }}
-      px={{ base: 2, md: 40 }}
+      px={{ base: 6, md: 40 }}
       maxW="1360px"
       mx="auto"
       id="faq"
       scrollMarginTop={{ base: '60px', md: '20px' }}
+      gap={10}
+      alignItems="center"
+      borderWidth={1}
+      borderColor="#2F3847"
+      rounded={10}
+      bg={{
+        md: 'none',
+        base: 'neutral.900',
+      }}
     >
-      <Heading fontSize="5xl" color="primary.400" mb={10}>
-        FAQ
+      <Heading
+        fontSize={{
+          md: '4xl',
+          base: '2xl',
+        }}
+      >
+        Frequently Asked Questions
       </Heading>
-      <Accordion allowToggle>
+      <Accordion allowToggle w="100%">
         {faqs.map(faq => (
-          <AccordionItem mb={2} background="neutral.50" p={2} key={faq.title}>
-            <AccordionButton color="neutral.800">
-              <Box as="span" flex={1} textAlign="left">
-                <strong>{faq.title}</strong>
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel pb={2} color="neutral.800">
-              {faq.body}
-            </AccordionPanel>
+          <AccordionItem
+            mb={2}
+            background="neutral.800"
+            p={2}
+            key={faq.title}
+            w="100%"
+            rounded={10}
+          >
+            {({ isExpanded }) => (
+              <>
+                <AccordionButton color="neutral.100">
+                  <Box as="span" flex={1} textAlign="left">
+                    <strong>{faq.title}</strong>
+                  </Box>
+                  {!isExpanded ? (
+                    <BiCaretDown width={24} height={24} />
+                  ) : (
+                    <BiCaretUp width={24} height={24} />
+                  )}
+                </AccordionButton>
+                <AccordionPanel pb={2} color="neutral.100">
+                  {faq.body}
+                </AccordionPanel>
+              </>
+            )}
           </AccordionItem>
         ))}
       </Accordion>
-    </Box>
+    </VStack>
   )
 }
