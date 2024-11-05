@@ -392,7 +392,7 @@ export const getAccountPreferences = async (
 
     if (newPreferencesError) {
       console.error(newPreferences)
-      throw new Error('Error while completign empty preferences')
+      throw new Error('Error while completing empty preferences')
     }
 
     return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
@@ -405,9 +405,19 @@ const getExistingAccountsFromDB = async (
   addresses: string[],
   fullInformation?: boolean
 ): Promise<SimpleAccountInfo[] | Account[]> => {
+  let queryString = ` 
+      address,
+      internal_pub_key
+    `
+  if (fullInformation) {
+    queryString += `
+      ,calendars: connected_calendars(provider),
+      preferences: account_preferences(*)
+      `
+  }
   const { data, error } = await db.supabase
     .from('accounts')
-    .select('address, internal_pub_key')
+    .select(queryString)
     .in(
       'address',
       addresses.map(address => address.toLowerCase())
@@ -417,11 +427,10 @@ const getExistingAccountsFromDB = async (
     throw new Error(error.message)
   }
 
-  if (fullInformation) {
-    for (const account of data) {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
-      )
+  for (const account of data) {
+    if (account.calendars) {
+      account.isCalendarConnected = account?.calendars?.length > 0
+      delete account.calendars
     }
   }
 
