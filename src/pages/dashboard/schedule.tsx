@@ -79,6 +79,8 @@ interface IScheduleContext {
   setMeetingProvider: React.Dispatch<React.SetStateAction<MeetingProvider>>
   meetingUrl?: string
   setMeetingUrl: React.Dispatch<React.SetStateAction<string>>
+  currentSelectedDate: Date
+  setCurrentSelectedDate: React.Dispatch<React.SetStateAction<Date>>
 }
 
 export interface IGroupParticipant {
@@ -115,6 +117,8 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setMeetingProvider: () => {},
   meetingUrl: '',
   setMeetingUrl: () => {},
+  currentSelectedDate: new Date(),
+  setCurrentSelectedDate: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -137,6 +141,7 @@ const Schedule: NextPage = () => {
   const [pickedTime, setPickedTime] = useState<Date | number | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [isPrefetching, setIsPrefetching] = useState(false)
+  const [currentSelectedDate, setCurrentSelectedDate] = useState(new Date())
   const [timezone, setTimezone] = useState<string>(
     currentAccount?.preferences?.timezone ??
       Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -382,6 +387,8 @@ const Schedule: NextPage = () => {
     setMeetingProvider,
     meetingUrl,
     setMeetingUrl,
+    currentSelectedDate,
+    setCurrentSelectedDate,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -423,11 +430,14 @@ const Schedule: NextPage = () => {
       <Container
         maxW={{
           base: '100%',
-          '2xl': '7xl',
+          '2xl': '100%',
         }}
         mt={36}
         flex={1}
         pb={16}
+        px={{
+          md: 10,
+        }}
       >
         {isPrefetching ? (
           <Flex
