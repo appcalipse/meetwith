@@ -58,6 +58,7 @@ const ScheduleBase = () => {
     meetingUrl,
     setMeetingProvider,
     setMeetingUrl,
+    setGroupAvailability,
   } = useContext(ScheduleContext)
   const {
     isOpen: isGroupModalOpen,
@@ -85,6 +86,14 @@ const ScheduleBase = () => {
       return
     }
     setParticipants(_participants)
+    const key = 'no_group'
+    const addresses = _participants
+      .map(val => val.account_address)
+      .filter(val => val != undefined)
+    setGroupAvailability(prev => ({
+      ...prev,
+      [key]: addresses as string[],
+    }))
   }
 
   return (
