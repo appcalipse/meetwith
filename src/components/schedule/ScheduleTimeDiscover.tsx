@@ -46,7 +46,9 @@ const ScheduleTimeDiscover = () => {
       .filter(participant => participant !== undefined)
     const actualMembers = [
       ...new Set(
-        Object.values(groupParticipants).flat().concat(selectedParticipants)
+        Object.values(groupParticipants)
+          .flat()
+          .concat(selectedParticipants as string[])
       ),
     ]
     const members = await getExistingAccounts(actualMembers, false)
