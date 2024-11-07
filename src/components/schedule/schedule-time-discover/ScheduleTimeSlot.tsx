@@ -101,12 +101,6 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
           userAvailability.push(false)
         }
         const isInRange = []
-        if (
-          account_address === '0xbae723e409ec9e0337dd7facfacd47b73aa3b620' &&
-          date.getDay() === 0
-        ) {
-          console.log(timeRangesAsDates, date)
-        }
         for (const timeRange of timeRangesAsDates) {
           if (!isWithinInterval(interval.start, timeRange)) {
             isInRange.push(false)
