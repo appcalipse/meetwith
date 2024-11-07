@@ -11,13 +11,13 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import {
   chakraComponents,
   MultiValue,
   Select,
   SingleValue,
 } from 'chakra-react-select'
-import * as ct from 'countries-and-timezones'
 import {
   add,
   addDays,
@@ -29,19 +29,23 @@ import {
   startOfMonth,
   sub,
 } from 'date-fns'
-import React, { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import { SelectComponentsGeneric } from 'react-select/dist/declarations/src/components'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
-import { DayAvailability, TimeRange } from '@/types/Account'
+import { DayAvailability } from '@/types/Account'
+import { CustomTimeRange } from '@/types/common'
 import { TimeSlot } from '@/types/Meeting'
 import { fetchBusySlotsRawForMultipleAccounts } from '@/utils/api_helper'
+import { timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 
+import { MeetingMembers } from '../ScheduleTimeDiscover'
 import { ScheduleTimeSlot } from './ScheduleTimeSlot'
+
 const GUIDES = [
   {
     color: 'green.400',
@@ -60,20 +64,7 @@ const GUIDES = [
     description: 'No one is available',
   },
 ]
-const timezonesObj = ct.getAllTimezones()
-const timezonesKeys = Object.keys(timezonesObj) as Array<
-  keyof typeof timezonesObj
->
-const _timezones = timezonesKeys
-  .map(key => {
-    return {
-      name: `${key} (GMT${timezonesObj[key].dstOffsetStr})`,
-      tzCode: key,
-      offset: timezonesObj[key].utcOffset,
-    }
-  })
-  .sort((a, b) => a.offset - b.offset)
-const timezones = [..._timezones, { tzCode: 'UTC', name: '(UTC+00:00) UTC' }]
+
 const CLOCK = [
   {
     label: 'AM',
@@ -92,13 +83,15 @@ type Dates = {
     end: Date
   }>
   busySlots: Array<Array<TimeSlot>>
-  availabilities: Array<Record<string, Array<TimeRange>>>
+  availabilities: Array<Record<string, Array<CustomTimeRange>>>
 }
 interface SchedulePickTimeProps {
   accountAvailabilities: Record<string, Array<DayAvailability>>
+  meetingMembers: MeetingMembers[]
 }
 export function SchedulePickTime({
   accountAvailabilities,
+  meetingMembers,
 }: SchedulePickTimeProps) {
   const {
     groupAvailability,
@@ -249,19 +242,18 @@ export function SchedulePickTime({
           return isSameDay(slot.start, date)
         })
       })
-      const availabilities: Array<Record<string, Array<TimeRange>>> = []
+      const availabilities: Array<Record<string, Array<CustomTimeRange>>> = []
       const accounts = Object.values(groupAvailability).flat()
       for (const [key, entry] of Object.entries(accountAvailabilities)) {
+        const ranges = []
         for (const availability of entry) {
-          const day = new Date(date)
-          if (day.getDay() !== availability.weekday) {
-            continue
-          }
-          if (accounts.includes(key)) {
-            availabilities.push({
-              [key]: availability.ranges,
-            })
-          }
+          ranges.push(...(availability.ranges as Array<CustomTimeRange>))
+        }
+
+        if (accounts.includes(key)) {
+          availabilities.push({
+            [key]: ranges,
+          })
         }
       }
 
@@ -344,172 +336,211 @@ export function SchedulePickTime({
     }
   }
   const SLOTS = useMemo(
-    () => getEmptySlots(new Date()).map(val => format(val.start, 'HH:mm a')),
+    () =>
+      getEmptySlots(new Date()).map(val =>
+        format(val.start, clockValue?.value === 'AM' ? 'HH:mm a' : 'hh:mm a')
+      ),
     [clockValue]
   )
 
   return (
-    <VStack gap={4} w="100%" p={{ base: 4, md: 0 }}>
-      <Flex
-        w="100%"
-        alignItems={{ md: 'flex-end' }}
-        flexDir={{
-          base: 'column',
-          md: 'row',
-        }}
-        gap={4}
-      >
-        <VStack
-          gap={2}
-          alignItems={'flex-start'}
-          width="fit-content"
-          minW={'300px'}
-        >
-          <HStack width="fit-content" gap={0}>
-            <Heading fontSize="16px">Show times in</Heading>
-            <InfoTooltip text="the default timezone is based on your availability settings" />
-          </HStack>
-          <Select
-            value={tz}
-            colorScheme="primary"
-            onChange={_onChange}
-            className="noLeftBorder timezone-select"
-            options={tzs}
-            components={customComponents}
-          />
-        </VStack>
-        <VStack
-          gap={2}
-          alignItems={'flex-start'}
-          width="fit-content"
-          minW={'300px'}
-        >
-          <Heading fontSize="16px">Month</Heading>
-
-          <Select
-            value={monthValue}
-            colorScheme="primary"
-            onChange={newValue => _onChangeMonth(newValue)}
-            className="noLeftBorder timezone-select"
-            options={months}
-            components={customComponents}
-          />
-        </VStack>
-        <Grid
-          gridTemplateColumns={'1fr 1fr'}
-          justifyContent={'space-between'}
+    <Tooltip.Provider delayDuration={400}>
+      <VStack gap={4} w="100%">
+        <Flex
           w="100%"
-          gap={2}
+          alignItems={{ md: 'flex-end' }}
+          flexDir={{
+            base: 'column',
+            md: 'row',
+          }}
+          gap={4}
         >
-          {GUIDES.map((guide, index) => {
-            return (
-              <HStack key={index} gap={2}>
-                <Box w={5} h={5} bg={guide.color} borderRadius={4} />
-                <Text>{guide.description}</Text>
-              </HStack>
-            )
-          })}
-        </Grid>
-      </Flex>
+          <VStack
+            gap={2}
+            alignItems={'flex-start'}
+            width="fit-content"
+            minW={'300px'}
+          >
+            <HStack width="fit-content" gap={0}>
+              <Heading fontSize="16px">Show times in</Heading>
+              <InfoTooltip text="the default timezone is based on your availability settings" />
+            </HStack>
+            <Select
+              value={tz}
+              colorScheme="primary"
+              onChange={_onChange}
+              className="noLeftBorder timezone-select"
+              options={tzs}
+              components={customComponents}
+            />
+          </VStack>
+          <VStack
+            gap={2}
+            alignItems={'flex-start'}
+            width="fit-content"
+            minW={'300px'}
+          >
+            <Heading fontSize="16px">Month</Heading>
 
-      <VStack
-        gap={6}
-        w="100%"
-        borderWidth={1}
-        borderColor={'neutral.400'}
-        px={6}
-        py={4}
-        rounded={12}
-      >
-        <HStack w="100%" justify={'space-between'}>
-          <IconButton
-            aria-label={'left-icon'}
-            icon={<FaChevronLeft />}
-            onClick={handleScheduledTimeBack}
-            isDisabled={isBefore(currentSelectedDate, new Date()) || isLoading}
-          />
-          <Box maxW="350px" textAlign="center">
-            <Heading fontSize="16px">Available times</Heading>
-            <Text fontSize="12px">
-              All time slots shown below are the available times between you and
-              the required participants.
-            </Text>
-          </Box>
-          <IconButton
-            aria-label={'left-icon'}
-            icon={<FaChevronRight />}
-            onClick={handleScheduledTimeNext}
-          />
-        </HStack>
-        {isLoading ? (
-          <HStack>
-            <Loading />
-          </HStack>
-        ) : (
-          <HStack w="100%" justify={{ md: 'space-between' }} gap={0}>
-            <VStack align={'flex-start'} flex={1} justify={'flex-start'}>
-              <Select
-                value={clockValue}
-                colorScheme="primary"
-                onChange={_onChangeClock}
-                className="noLeftBorder date-select"
-                options={CLOCK}
-                components={customComponents}
-              />
-              <VStack align={'flex-start'} p={1}>
-                {SLOTS.map((slot, index) => {
-                  return (
-                    <HStack
-                      key={index}
-                      w="100%"
-                      justify={'center'}
-                      align={'center'}
-                      h={12}
-                    >
-                      <Text fontWeight={'500'}>{slot}</Text>
-                    </HStack>
-                  )
-                })}
-              </VStack>
-            </VStack>
-            {dates.map((date, index) => {
+            <Select
+              value={monthValue}
+              colorScheme="primary"
+              onChange={newValue => _onChangeMonth(newValue)}
+              className="noLeftBorder timezone-select"
+              options={months}
+              components={customComponents}
+            />
+          </VStack>
+          <Grid
+            gridTemplateColumns={'1fr 1fr'}
+            justifyContent={'space-between'}
+            w="100%"
+            gap={2}
+          >
+            {GUIDES.map((guide, index) => {
               return (
-                <SlideFade
-                  in={true}
-                  key={index + date.date.toDateString()}
-                  transition={{ exit: { delay: 0 }, enter: { duration: 1 } }}
-                  style={{ flex: 1 }}
-                >
-                  <VStack flex={1} align={'flex-start'} gap={0}>
-                    <VStack align={'center'} w="100%" h={12} gap={0}>
-                      <Text fontWeight={'700'}>{format(date.date, 'dd')}</Text>
-                      <Text fontWeight={'500'}>{format(date.date, 'EE')}</Text>
-                    </VStack>
-                    <VStack width="100%" align={'flex-start'} p={1}>
-                      {date.slots.map(slot => {
-                        return (
-                          <ScheduleTimeSlot
-                            key={format(slot.start, 'DDDD,MMMM,yyyy, hh:mm,a')}
-                            slot={slot}
-                            date={date.date}
-                            busySlots={date.busySlots}
-                            availabilities={date.availabilities}
-                            pickedTime={pickedTime}
-                            handleTimePick={time => {
-                              handleTimePick(time)
-                              handlePageSwitch(Page.SCHEDULE_DETAILS)
-                            }}
-                          />
-                        )
-                      })}
-                    </VStack>
-                  </VStack>
-                </SlideFade>
+                <HStack key={index} gap={2}>
+                  <Box w={5} h={5} bg={guide.color} borderRadius={4} />
+                  <Text>{guide.description}</Text>
+                </HStack>
               )
             })}
+          </Grid>
+        </Flex>
+
+        <VStack
+          gap={6}
+          w="100%"
+          borderWidth={1}
+          borderColor={'neutral.400'}
+          px={{ md: 6, base: 2 }}
+          py={4}
+          rounded={12}
+        >
+          <HStack w="100%" justify={'space-between'}>
+            <IconButton
+              aria-label={'left-icon'}
+              icon={<FaChevronLeft />}
+              onClick={handleScheduledTimeBack}
+              isDisabled={
+                isBefore(currentSelectedDate, new Date()) || isLoading
+              }
+            />
+            <Box maxW="350px" textAlign="center">
+              <Heading fontSize="16px">Available times</Heading>
+              <Text fontSize="12px">
+                All time slots shown below are the available times between you
+                and the required participants.
+              </Text>
+            </Box>
+            <IconButton
+              aria-label={'left-icon'}
+              icon={<FaChevronRight />}
+              onClick={handleScheduledTimeNext}
+            />
           </HStack>
-        )}
+          {isLoading ? (
+            <HStack>
+              <Loading />
+            </HStack>
+          ) : (
+            <HStack
+              w="100%"
+              justify={{ md: 'space-between' }}
+              gap={{ base: 1, md: 6 }}
+            >
+              <VStack
+                align={'flex-start'}
+                flex={1}
+                justify={'flex-start'}
+                gap={2}
+              >
+                <Select
+                  value={clockValue}
+                  colorScheme="primary"
+                  onChange={_onChangeClock}
+                  className="noLeftBorder date-select"
+                  options={CLOCK}
+                  components={customComponents}
+                />
+                <VStack align={'flex-start'} p={1}>
+                  {SLOTS.map((slot, index) => {
+                    return (
+                      <HStack
+                        key={index}
+                        w="100%"
+                        justify={'center'}
+                        align={'center'}
+                        h={12}
+                      >
+                        <Text
+                          fontWeight={'500'}
+                          fontSize={{
+                            base: 'small',
+                            md: 'medium',
+                          }}
+                        >
+                          {slot}
+                        </Text>
+                      </HStack>
+                    )
+                  })}
+                </VStack>
+              </VStack>
+              {dates.map((date, index) => {
+                return (
+                  <SlideFade
+                    in={true}
+                    key={index + date.date.toDateString()}
+                    transition={{ exit: { delay: 0 }, enter: { duration: 1 } }}
+                    style={{ flex: 1 }}
+                  >
+                    <VStack flex={1} align={'flex-start'} gap={2}>
+                      <VStack align={'center'} w="100%" h={12} gap={0}>
+                        <Text fontWeight={'700'}>
+                          {format(date.date, 'dd')}
+                        </Text>
+                        <Text fontWeight={'500'}>
+                          {format(date.date, 'EE')}
+                        </Text>
+                      </VStack>
+                      <VStack
+                        width="100%"
+                        align={'flex-start'}
+                        p={1}
+                        borderWidth={1}
+                        borderColor={'neutral.400'}
+                        borderRadius={5}
+                      >
+                        {date.slots.map(slot => {
+                          return (
+                            <ScheduleTimeSlot
+                              key={format(
+                                slot.start,
+                                'DDDD,MMMM,yyyy, hh:mm,a'
+                              )}
+                              slot={slot}
+                              date={date.date}
+                              busySlots={date.busySlots}
+                              availabilities={date.availabilities}
+                              pickedTime={pickedTime}
+                              meetingMembers={meetingMembers}
+                              handleTimePick={time => {
+                                handleTimePick(time)
+                                handlePageSwitch(Page.SCHEDULE_DETAILS)
+                              }}
+                            />
+                          )
+                        })}
+                      </VStack>
+                    </VStack>
+                  </SlideFade>
+                )
+              })}
+            </HStack>
+          )}
+        </VStack>
       </VStack>
-    </VStack>
+    </Tooltip.Provider>
   )
 }

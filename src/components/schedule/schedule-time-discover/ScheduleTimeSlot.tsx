@@ -1,25 +1,36 @@
-import { Box, Button, VStack } from '@chakra-ui/react'
+import {
+  Box,
+  Button,
+  HStack,
+  Text,
+  useColorModeValue,
+  VStack,
+} from '@chakra-ui/react'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import {
   add,
-  areIntervalsOverlapping,
+  format,
   Interval,
   isBefore,
   isSameMinute,
   isWithinInterval,
-  sub,
 } from 'date-fns'
-import React, { use, useEffect } from 'react'
+import React, { useEffect } from 'react'
 
-import { TimeRange } from '@/types/Account'
+import { CustomTimeRange } from '@/types/common'
 import { TimeSlot } from '@/types/Meeting'
+import { convertTimeRangesToDate } from '@/utils/date_helper'
+
+import { MeetingMembers } from '../ScheduleTimeDiscover'
 
 export interface ScheduleTimeSlotProps {
   date: Date
   slot: Interval
   busySlots: Array<Array<TimeSlot>>
-  availabilities: Array<Record<string, Array<TimeRange>>>
+  availabilities: Array<Record<string, Array<CustomTimeRange>>>
   pickedTime: Date | number | null
   handleTimePick?: (time: Date | number) => void
+  meetingMembers: MeetingMembers[]
 }
 enum State {
   ALL_AVAILABLE,
@@ -27,20 +38,21 @@ enum State {
   SOME_AVAILABLE,
   NONE_AVAILABLE,
 }
-const convertTimeRangesToDate = (timeRanges: TimeRange[], date: Date) => {
-  return timeRanges.map(timeRange => {
-    return {
-      start: new Date(`${date.toDateString()} ${timeRange.start}`),
-      end: new Date(`${date.toDateString()} ${timeRange.end}`),
-    }
-  })
+
+type UserState = {
+  state: boolean
+  displayName?: string
 }
 export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
   const { date, slot, busySlots, availabilities, pickedTime } = props
+  const itemsBgColor = useColorModeValue('white', 'gray.600')
   const [states, setState] = React.useState<Array<State>>([
     State.NONE_AVAILABLE,
     State.NONE_AVAILABLE,
   ])
+  const [userStates, setUserStates] = React.useState<Array<Array<UserState>>>(
+    []
+  )
   useEffect(() => {
     if (!date || !slot || !busySlots || !availabilities) return
 
@@ -55,11 +67,16 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
       },
     ]
     const isSlotAvailable = []
+    const states = []
     for (const interval of Interval) {
       const isIntervalAvailable = []
+      const userStates = []
       for (const availability of availabilities) {
         const userAvailability = []
         const [[account_address, timeRanges]] = Object.entries(availability)
+        const user = props.meetingMembers.find(
+          member => member.account_address === account_address
+        )
         const userBusySlots = busySlots
           .map(busySlot =>
             busySlot.filter(
@@ -83,16 +100,35 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
         if (timeRangesAsDates.length === 0) {
           userAvailability.push(false)
         }
+        const isInRange = []
+        if (
+          account_address === '0xbae723e409ec9e0337dd7facfacd47b73aa3b620' &&
+          date.getDay() === 0
+        ) {
+          console.log(timeRangesAsDates, date)
+        }
         for (const timeRange of timeRangesAsDates) {
           if (!isWithinInterval(interval.start, timeRange)) {
-            userAvailability.push(false)
-            break
+            isInRange.push(false)
+          } else {
+            isInRange.push(true)
           }
         }
+        if (isInRange.every(val => val === false)) {
+          userAvailability.push(false)
+        }
         isIntervalAvailable.push(userAvailability.length === 0)
+        if (user) {
+          userStates.push({
+            state: userAvailability.length === 0,
+            displayName: user.name,
+          })
+        }
       }
       isSlotAvailable.push(isIntervalAvailable)
+      states.push(userStates)
     }
+    setUserStates(states)
     const newStates = []
     for (const isAvailable of isSlotAvailable) {
       const numberOfAvailable = isAvailable.filter(val => val).length
@@ -145,30 +181,65 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
             )
           : false
         return (
-          <Button
-            key={index}
-            bg={getBgColor(state)}
-            w="100%"
-            h={6}
-            m={0}
-            borderTopRadius={index === 0 ? 4 : 0}
-            borderBottomRadius={4}
-            cursor={'pointer'}
-            onClick={() => handleTimePick(index)}
-            isActive={isActive}
-            borderColor={'gray.700'}
-            borderTopWidth={index === 0 ? 1 : 0}
-            borderBottomWidth={index === 0 ? 0 : 1}
-            _active={{
-              cursor: 'pointer',
-              color: 'white',
-              bgColor: 'primary.400',
-              borderColor: 'primary.500',
-            }}
-            _hover={{
-              border: '2px solid #F35826',
-            }}
-          />
+          <Tooltip.Root key={index}>
+            <Tooltip.Trigger asChild>
+              <Button
+                bg={getBgColor(state)}
+                w="100%"
+                h={6}
+                m={0}
+                borderTopRadius={index === 0 ? 4 : 0}
+                borderBottomRadius={4}
+                cursor={'pointer'}
+                onClick={() => handleTimePick(index)}
+                isActive={isActive}
+                borderColor={'gray.700'}
+                borderTopWidth={index === 0 ? 1 : 0}
+                borderBottomWidth={index === 0 ? 0 : 1}
+                data-state={state}
+                _active={{
+                  cursor: 'pointer',
+                  color: 'white',
+                  bgColor: 'primary.400',
+                  borderColor: 'primary.500',
+                }}
+                _hover={{
+                  border: '2px solid #F35826',
+                }}
+              />
+            </Tooltip.Trigger>
+            <Tooltip.Content style={{ zIndex: 10 }}>
+              <Box
+                p={2}
+                bg={itemsBgColor}
+                borderRadius={4}
+                boxShadow="md"
+                py={3}
+                px={4}
+              >
+                <Text mb={'7px'}>
+                  {format(
+                    index === 0 ? slot.start : add(slot.start, { minutes: 30 }),
+                    'E, do MMMM - h:mm a'
+                  )}
+                </Text>
+                <VStack w="fit-content" gap={1} align={'flex-start'}>
+                  {userStates?.[index]?.map((userState, index) => (
+                    <HStack key={index}>
+                      <Box
+                        w={4}
+                        h={4}
+                        rounded={999}
+                        bg={userState.state ? 'green.400' : 'neutral.0'}
+                      />
+                      <Text>{userState.displayName}</Text>
+                    </HStack>
+                  ))}
+                </VStack>
+              </Box>
+              <Tooltip.Arrow />
+            </Tooltip.Content>
+          </Tooltip.Root>
         )
       })}
     </VStack>
