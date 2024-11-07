@@ -19,9 +19,11 @@ import { MeetingMembers } from '../ScheduleTimeDiscover'
 
 interface ScheduleParticipantsProps {
   meetingMembers: MeetingMembers[]
+  isMobile?: boolean
 }
 export function ScheduleParticipants({
   meetingMembers,
+  isMobile,
 }: ScheduleParticipantsProps) {
   const { groupAvailability, setGroupAvailability } =
     useContext(ScheduleContext)
@@ -51,7 +53,7 @@ export function ScheduleParticipants({
   }
   return (
     <VStack
-      py={7}
+      py={isMobile ? 10 : 7}
       px={5}
       borderWidth={1}
       borderColor={'neutral.400'}
@@ -63,7 +65,7 @@ export function ScheduleParticipants({
       w="fit-content"
       minW={'410px'}
       display={{
-        base: 'none',
+        base: isMobile ? 'flex' : 'none',
         md: 'flex',
       }}
     >
