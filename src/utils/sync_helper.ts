@@ -27,19 +27,13 @@ const syncCreatedEventWithCalendar = async (
     for (const innerCalendar of calendar.calendars!) {
       if (innerCalendar.enabled && innerCalendar.sync) {
         promises.push(
-          new Promise<void>(async resolve => {
-            try {
-              await integration.createEvent(
-                targetAccount,
-                meetingDetails,
-                meetingDetails.created_at,
-                innerCalendar.calendarId
-              )
-            } catch (error) {
-              Sentry.captureException(error)
-            }
-            resolve()
-          })
+          integration.createEvent(
+            targetAccount,
+            meetingDetails,
+            meetingDetails.created_at,
+            innerCalendar.calendarId,
+            false
+          )
         )
       }
     }
