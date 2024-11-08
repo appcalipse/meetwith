@@ -27,7 +27,8 @@ export interface CalendarService {
     owner: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    calendarId: string
+    calendarId: string,
+    shouldGenerateLink?: boolean
   ): Promise<NewCalendarEventType>
 
   /**

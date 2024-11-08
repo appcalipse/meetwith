@@ -16,7 +16,7 @@ const Dashboard: NextPage<DashboardProps> = props => {
       px={8}
       maxW={{
         base: '100%',
-        '2xl': '7xl',
+        '2xl': '8xl',
       }}
       mt={36}
       flex={1}

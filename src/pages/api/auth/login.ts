@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { MeetingProvider } from '@/types/Meeting'
 
 import { checkSignature } from '../../../utils/cryptography'
 import { getAccountFromDB } from '../../../utils/database'
@@ -31,6 +32,7 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
         timezone: '',
         availableTypes: [],
         availabilities: [],
+        meetingProviders: [MeetingProvider.HUDDLE],
       }
       await req.session.save()
 
