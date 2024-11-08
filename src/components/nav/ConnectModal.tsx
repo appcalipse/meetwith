@@ -119,10 +119,9 @@ export const ConnectModal: React.FC = ({}) => {
           showAllWallets={false}
           onConnect={onConnect}
           appMetadata={{
-            name: 'Meet with Wallet',
+            name: 'Meetwith',
             url: 'https://meetwithwallet.xyz',
-            description:
-              'Meet with Wallet is the web3 tailored scheduling tool.',
+            description: 'Meetwith is the web3 tailored scheduling tool.',
             logoUrl: 'https://meetwithwallet.xyz/assets/logo.svg',
           }}
           walletConnect={{
@@ -134,9 +133,9 @@ export const ConnectModal: React.FC = ({}) => {
   ) : (
     <AutoConnect
       appMetadata={{
-        name: 'Meet with Wallet',
+        name: 'Meetwith',
         url: 'https://meetwithwallet.xyz',
-        description: 'Meet with Wallet is the web3 tailored scheduling tool.',
+        description: 'Meetwith is the web3 tailored scheduling tool.',
         logoUrl: 'https://meetwithwallet.xyz/assets/logo.svg',
       }}
       wallets={wallets}

@@ -269,7 +269,6 @@ export default class GoogleCalendarService implements CalendarService {
                 : undefined,
             status: 'confirmed',
           }
-
           const calendar = google.calendar({
             version: 'v3',
             auth: myGoogleAuth,

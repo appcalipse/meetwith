@@ -102,7 +102,7 @@ const DiscordNotificationConfig: React.FC<Props> = ({
           {!loading && discordConnected && !inMWWServer && (
             <>
               <Text>
-                Please join the Meet with Wallet server to receive your Discord
+                Please join the Meetwith server to receive your Discord
                 notifications
               </Text>
               <Button
