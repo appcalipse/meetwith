@@ -15,7 +15,7 @@ import {
   useDisclosure,
 } from '@chakra-ui/react'
 import router, { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
+import { use, useContext, useEffect, useState } from 'react'
 import { BiMenuAltRight, BiWallet } from 'react-icons/bi'
 import { FaWallet } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
@@ -120,7 +120,7 @@ export const Navbar = () => {
                   width={{ md: '100px', base: '75px' }}
                   p={2}
                   src="/assets/logo.svg"
-                  alt="Meet with Wallet"
+                  alt="Meetwith"
                 />
               </Flex>
             </Flex>
@@ -137,7 +137,7 @@ export const Navbar = () => {
                     width="100px"
                     p={2}
                     src="/assets/logo.svg"
-                    alt="Meet with Wallet"
+                    alt="Meetwith"
                   />
                 </HStack>
               </Link>
@@ -313,12 +313,7 @@ const MobileNav = ({
     >
       <Flex alignItems="center" justify="space-between" mb={2} width="100%">
         <Flex alignItems="center" cursor="pointer">
-          <Image
-            width="100px"
-            p={2}
-            src="/assets/logo.svg"
-            alt="Meet with Wallet"
-          />
+          <Image width="100px" p={2} src="/assets/logo.svg" alt="Meetwith" />
         </Flex>
 
         <Button
@@ -400,11 +395,12 @@ const MobileNavItem = ({
   activeLink: string
 }) => {
   const linkHoverColor = 'primary.500'
-
+  const bgColor = useColorModeValue('neutral.100', '#1F2933')
+  const color = useColorModeValue('neutral.800', 'neutral.0')
   return (
     <Stack spacing={4}>
       <Flex
-        bg="neutral.100"
+        bg={bgColor}
         py={3}
         as={Link}
         href={href ?? '#'}
@@ -422,7 +418,7 @@ const MobileNavItem = ({
           (shouldEnforceColorOnPath(pathname) && activeLink === href) ||
           (!shouldEnforceColorOnPath(pathname) && pathname.includes(href))
             ? linkHoverColor
-            : 'neutral.800'
+            : color
         }
       >
         <Text fontWeight={700}>{label}</Text>
