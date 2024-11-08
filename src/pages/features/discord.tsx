@@ -63,7 +63,7 @@ const DiscordBot: NextPage = () => {
                   as="a"
                   href="https://discord.com/oauth2/authorize?client_id=1039594066486247465&permissions=380104607744&redirect_uri=https%3A%2F%2Fmeetwithwallet.xyz%2Fdashboard%2Fdetails%3FdiscordResult%3Dtrue&scope=bot"
                 >
-                  Install Meet with Wallet bot
+                  Install Meetwith bot
                 </Button>
               </LightMode>
               <Text textAlign="center">
@@ -84,8 +84,8 @@ const DiscordBot: NextPage = () => {
                   <Text>
                     <OrderedList p={2} fontWeight="500" spacing={2}>
                       <ListItem>
-                        Install the Meet with Wallet bot to your community (you
-                        need admin rights on your Discord server to do it).
+                        Install the Meetwith bot to your community (you need
+                        admin rights on your Discord server to do it).
                       </ListItem>
                       <ListItem>
                         Go to Discord settings and give the bot access to the
@@ -143,7 +143,7 @@ const DiscordBot: NextPage = () => {
                   as="a"
                   href="https://discord.com/oauth2/authorize?client_id=1039594066486247465&permissions=380104607744&redirect_uri=https%3A%2F%2Fmeetwithwallet.xyz%2Fdashboard%2Fdetails%3FdiscordResult%3Dtrue&scope=bot"
                 >
-                  Install Meet with Wallet bot
+                  Install Meetwith bot
                 </Button>
               </LightMode>
               <Text mt={2}>
