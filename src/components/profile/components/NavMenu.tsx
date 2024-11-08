@@ -31,7 +31,6 @@ import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
-import { isProduction } from '@/utils/constants'
 import { getNotificationTime, saveNotificationTime } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -70,20 +69,19 @@ export const NavMenu: React.FC<{
         badge: noOfInvitedGroups,
       },
       {
+        name: 'Meeting Settings',
+        icon: FaCalendarWeek,
+        mode: EditMode.MEETING_SETTINGS,
+      },
+      {
         name: 'Availabilities',
         icon: FaCalendarAlt,
         mode: EditMode.AVAILABILITY,
       },
-      { name: 'Meeting Types', icon: FaCalendarWeek, mode: EditMode.TYPES },
       {
         name: 'Notifications',
         icon: FaBell,
         mode: EditMode.NOTIFICATIONS,
-      },
-      {
-        name: 'Token Gates',
-        icon: FaDoorClosed,
-        mode: EditMode.GATES,
       },
       {
         name: 'Connected Calendars',
@@ -198,7 +196,7 @@ export const NavMenu: React.FC<{
       void handleEmptyGroupCheck()
       saveNotificationTime(currentAccount?.address)
     }
-  }, [currentAccount])
+  }, [currentAccount?.address])
 
   if (!currentAccount) return null
 
