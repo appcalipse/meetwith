@@ -27,7 +27,7 @@ const PartnerLogin: NextPage<PartnerLoginProps> = ({ currentAccount }) => {
       display="flex"
     >
       <Box textAlign="center">
-        <Text mb={8}>Please connect to use Meet with Wallet</Text>
+        <Text mb={8}>Please connect to use Meetwith</Text>
         <Button
           colorScheme="primary"
           onClick={() => {
