@@ -18,7 +18,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             'x-api-key': process.env.HUDDLE_API_KEY!,
           },
           body: JSON.stringify({
-            title: title || 'Meet with Wallet Meeting',
+            title: title || 'Meetwith Meeting',
             roomLocked: false,
             hostDetails: [],
           }),
