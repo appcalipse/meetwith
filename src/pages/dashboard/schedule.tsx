@@ -369,7 +369,7 @@ const Schedule: NextPage = () => {
     duration,
     handleTitleChange: setTitle,
     handleContentChange: setContent,
-    handleDurationChange: setDuration,
+    handleDurationChange: (val: number) => val && setDuration(val),
     pickedTime,
     handleTimePick,
     currentMonth,
