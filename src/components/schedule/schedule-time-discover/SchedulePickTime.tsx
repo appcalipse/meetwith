@@ -46,21 +46,39 @@ import { handleApiError } from '@/utils/error_helper'
 import { MeetingMembers } from '../ScheduleTimeDiscover'
 import { ScheduleTimeSlot } from './ScheduleTimeSlot'
 
+export enum State {
+  ALL_AVAILABLE,
+  MOST_AVAILABLE,
+  SOME_AVAILABLE,
+  NONE_AVAILABLE,
+}
+export const getBgColor = (state: State) => {
+  switch (state) {
+    case State.ALL_AVAILABLE:
+      return 'green.400'
+    case State.MOST_AVAILABLE:
+      return 'green.300'
+    case State.SOME_AVAILABLE:
+      return 'green.200'
+    case State.NONE_AVAILABLE:
+      return 'neutral.0'
+  }
+}
 const GUIDES = [
   {
-    color: 'green.400',
+    color: getBgColor(State.ALL_AVAILABLE),
     description: 'Everyone is available',
   },
   {
-    color: 'green.200',
+    color: getBgColor(State.SOME_AVAILABLE),
     description: 'Some are available',
   },
   {
-    color: 'green.300',
+    color: getBgColor(State.MOST_AVAILABLE),
     description: 'Most are available',
   },
   {
-    color: 'neutral.0',
+    color: getBgColor(State.NONE_AVAILABLE),
     description: 'No one is available',
   },
 ]
