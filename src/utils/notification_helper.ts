@@ -11,6 +11,7 @@ import {
 import {
   GroupNotificationType,
   MeetingChangeType,
+  MeetingProvider,
   ParticipantMappingType,
 } from '../types/Meeting'
 import {
@@ -23,7 +24,6 @@ import { MeetingChange, RequestParticipantMapping } from '../types/Requests'
 import {
   dateToHumanReadable,
   durationToHumanReadable,
-  getAccountDomainUrl,
 } from './calendar_manager'
 import {
   getAccountFromDB,
@@ -124,8 +124,6 @@ export const notifyForMeetingCancellation = async (
       ''
     )
   )
-
-  return
 }
 
 export const notifyForOrUpdateNewMeeting = async (
@@ -138,7 +136,8 @@ export const notifyForOrUpdateNewMeeting = async (
   meeting_url: string,
   title?: string,
   description?: string,
-  changes?: MeetingChange
+  changes?: MeetingChange,
+  meetingProvider?: MeetingProvider
 ): Promise<void> => {
   const participantsInfo = await setupParticipants(participants)
 
@@ -153,11 +152,10 @@ export const notifyForOrUpdateNewMeeting = async (
       meeting_url,
       title,
       description,
-      changes
+      changes,
+      meetingProvider
     )
   )
-
-  return
 }
 
 const setupParticipants = async (
@@ -194,7 +192,8 @@ const workNotifications = async (
   meeting_url?: string,
   title?: string,
   description?: string,
-  changes?: MeetingChange
+  changes?: MeetingChange,
+  meetingProvider?: MeetingProvider
 ): Promise<Promise<boolean>[]> => {
   const promises: Promise<boolean>[] = []
 
@@ -216,7 +215,8 @@ const workNotifications = async (
             meeting_url,
             title,
             description,
-            changes
+            changes,
+            meetingProvider
           )
         )
       } else if (
@@ -358,7 +358,8 @@ const getEmailNotification = async (
   meeting_url?: string,
   title?: string,
   description?: string,
-  changes?: MeetingChange
+  changes?: MeetingChange,
+  meetingProvider?: MeetingProvider
 ): Promise<boolean> => {
   const toEmail =
     participant.guest_email ||
@@ -385,7 +386,8 @@ const getEmailNotification = async (
         meeting_url,
         title,
         description,
-        created_at
+        created_at,
+        meetingProvider
       )
     case MeetingChangeType.DELETE:
       const displayName = getParticipantActingDisplayName(
@@ -422,7 +424,8 @@ const getEmailNotification = async (
         title,
         description,
         created_at,
-        changes
+        changes,
+        meetingProvider
       )
     default:
   }

@@ -48,3 +48,6 @@ yarn-error.log*
 .idea
 bun.lockb
 package-lock.json
+
+# Zoom
+zoom-token.json

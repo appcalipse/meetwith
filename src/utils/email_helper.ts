@@ -5,7 +5,7 @@ import Email from 'email-templates'
 import path from 'path'
 
 import { Group } from '@/types/Group'
-import { MeetingChangeType } from '@/types/Meeting'
+import { MeetingChangeType, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingChange } from '@/types/Requests'
 import { getConnectedCalendars } from '@/utils/database'
@@ -100,7 +100,8 @@ export const newMeetingEmail = async (
   meetingUrl?: string,
   title?: string,
   description?: string,
-  created_at?: Date
+  created_at?: Date,
+  meetingProvider?: MeetingProvider
 ): Promise<boolean> => {
   const email = new Email()
 
@@ -133,8 +134,9 @@ export const newMeetingEmail = async (
     )}`,
     locals
   )
-  let hasCalendarSyncing = false
-  if (destinationAccountAddress) {
+  let hasCalendarSyncing = meetingProvider === MeetingProvider.GOOGLE_MEET
+
+  if (destinationAccountAddress && !hasCalendarSyncing) {
     const accountCalendar = await getConnectedCalendars(
       destinationAccountAddress,
       {
@@ -301,7 +303,8 @@ export const updateMeetingEmail = async (
   title?: string,
   description?: string,
   created_at?: Date,
-  changes?: MeetingChange
+  changes?: MeetingChange,
+  meetingProvider?: MeetingProvider
 ): Promise<boolean> => {
   if (!changes?.dateChange) {
     return true
@@ -352,8 +355,8 @@ export const updateMeetingEmail = async (
     `${path.resolve('src', 'emails', 'meeting_updated')}`,
     locals
   )
-  let hasCalendarSyncing = false
-  if (destinationAccountAddress) {
+  let hasCalendarSyncing = meetingProvider === MeetingProvider.GOOGLE_MEET
+  if (destinationAccountAddress && !hasCalendarSyncing) {
     const accountCalendar = await getConnectedCalendars(
       destinationAccountAddress,
       {
