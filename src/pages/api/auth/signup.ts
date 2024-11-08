@@ -45,7 +45,7 @@ const signupRoute = async (req: NextApiRequest, res: NextApiResponse) => {
     } catch (e: any) {
       Sentry.captureException(e)
       console.error(e)
-      return res.status(500).send('Internal server error' + e.message)
+      return res.status(500).send('Internal server error')
     }
   }
 
