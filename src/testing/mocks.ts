@@ -42,7 +42,7 @@ export const NFT_ELEMENT: TokenGateElement = {
 }
 
 export const POAP_MWW: TokenGateElement = {
-  itemName: 'Meet with Wallet early supporters',
+  itemName: 'Meetwith early supporters',
   itemId: '33550',
   itemSymbol: '',
   type: GateInterface.POAP,

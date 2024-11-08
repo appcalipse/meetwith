@@ -37,7 +37,7 @@ export const CalendarServiceHelper = {
     meetingChangeLink?: string
   ) {
     let message = `Your meeting will happen at ${
-      meeting_url ? meeting_url : 'Meet with Wallet'
+      meeting_url ? meeting_url : 'Meetwith'
     }`
     if (meetingChangeLink) {
       message += `\n\nTo reschedule or cancel the meeting, please go to ${meetingChangeLink}`

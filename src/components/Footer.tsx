@@ -27,7 +27,7 @@ import { MWW_DISCORD_SERVER } from '../utils/constants'
 const Logo = () => {
   return (
     <Link href={'/'}>
-      <Image boxSize="100px" src="/assets/logo.svg" alt="Meet with Wallet" />
+      <Image boxSize="100px" src="/assets/logo.svg" alt="Meetwith" />
     </Link>
   )
 }
@@ -93,7 +93,7 @@ export default function SmallWithLogoLeft() {
         <HStack gap={5} display={{ md: 'flex', base: 'none' }}>
           <Logo />
           <Text textAlign="center">
-            Meet with Wallet. Some rights reserved, maybe...
+            Meetwith. Some rights reserved, maybe...
           </Text>
         </HStack>
         <HStack gap={3}>
@@ -173,7 +173,7 @@ export default function SmallWithLogoLeft() {
               md: 'medium',
             }}
           >
-            Meet with Wallet. Some rights reserved, maybe...
+            Meetwith. Some rights reserved, maybe...
           </Text>
         </VStack>
         <HStack gap={3}>
