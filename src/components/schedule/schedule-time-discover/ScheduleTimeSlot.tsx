@@ -22,6 +22,7 @@ import { TimeSlot } from '@/types/Meeting'
 import { convertTimeRangesToDate } from '@/utils/date_helper'
 
 import { MeetingMembers } from '../ScheduleTimeDiscover'
+import { getBgColor, State } from './SchedulePickTime'
 
 export interface ScheduleTimeSlotProps {
   date: Date
@@ -31,12 +32,6 @@ export interface ScheduleTimeSlotProps {
   pickedTime: Date | number | null
   handleTimePick?: (time: Date | number) => void
   meetingMembers: MeetingMembers[]
-}
-enum State {
-  ALL_AVAILABLE,
-  MOST_AVAILABLE,
-  SOME_AVAILABLE,
-  NONE_AVAILABLE,
 }
 
 type UserState = {
@@ -138,18 +133,7 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
     }
     setState(newStates)
   }, [date, slot, busySlots, availabilities])
-  const getBgColor = (state: State) => {
-    switch (state) {
-      case State.ALL_AVAILABLE:
-        return 'green.400'
-      case State.MOST_AVAILABLE:
-        return 'green.300'
-      case State.SOME_AVAILABLE:
-        return 'green.200'
-      case State.NONE_AVAILABLE:
-        return 'neutral.0'
-    }
-  }
+
   const handleTimePick = (index: number) => {
     if (props.handleTimePick) {
       const time = index === 0 ? slot.start : add(slot.start, { minutes: 30 })
