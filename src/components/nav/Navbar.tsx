@@ -120,7 +120,7 @@ export const Navbar = () => {
                   width={{ md: '100px', base: '75px' }}
                   p={2}
                   src="/assets/logo.svg"
-                  alt="Meet with Wallet"
+                  alt="Meetwith"
                 />
               </Flex>
             </Flex>
@@ -137,7 +137,7 @@ export const Navbar = () => {
                     width="100px"
                     p={2}
                     src="/assets/logo.svg"
-                    alt="Meet with Wallet"
+                    alt="Meetwith"
                   />
                 </HStack>
               </Link>
@@ -313,12 +313,7 @@ const MobileNav = ({
     >
       <Flex alignItems="center" justify="space-between" mb={2} width="100%">
         <Flex alignItems="center" cursor="pointer">
-          <Image
-            width="100px"
-            p={2}
-            src="/assets/logo.svg"
-            alt="Meet with Wallet"
-          />
+          <Image width="100px" p={2} src="/assets/logo.svg" alt="Meetwith" />
         </Flex>
 
         <Button
