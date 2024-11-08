@@ -318,7 +318,7 @@ export default class Office365CalendarService implements CalendarService {
       },
       organizer: {
         emailAddress: {
-          name: 'Meet with Wallet',
+          name: 'Meetwith',
           address: NO_REPLY_EMAIL,
         },
       },

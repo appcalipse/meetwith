@@ -33,8 +33,8 @@ const faqs: Faq[] = [
     body: "Your public data consists of your account information (calendar URL, an optional description, any relevant links, meeting types and duration, an internal public key and an encoded private key - not your wallet's, we generate a pair for the application), and your meet slots (times that your account has some meeting, so no one else can schedule it). All other data regarding your meetings (participants, description/comments, meeting link, etc) are stored encrypted, encoded with your internal private key (that is only known by you, encrypted with your wallet signature). This means that only participants of a meeting know information about it and who are they meeting with - Yes, not even ourselves know about it.",
   },
   {
-    title: 'Is Meet with Wallet fully developed?',
-    body: 'Meet with Wallet is a new platform, and therefore there is still a lot of work to be done, including ensuring you will not encounter any bugs while using it. For this reason we are still considering it the product in its early stage. But, this does not means that it is not supposed to work properly. If you find any bugs, please report to us in our Discord.',
+    title: 'Is Meetwith fully developed?',
+    body: 'Meetwith is a new platform, and therefore there is still a lot of work to be done, including ensuring you will not encounter any bugs while using it. For this reason we are still considering it the product in its early stage. But, this does not means that it is not supposed to work properly. If you find any bugs, please report to us in our Discord.',
   },
   {
     title: 'How can I know what is coming next and collaborate?',
