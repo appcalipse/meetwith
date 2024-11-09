@@ -181,12 +181,7 @@ export function SchedulePickTime({
     value: String(currentMonth.getMonth()),
   })
 
-  const _onChangeMonth = (
-    newValue:
-      | SingleValue<{ label: string; value: string }>
-      | MultiValue<{ label: string; value: string }>,
-    newMonth?: Date
-  ) => {
+  const _onChangeMonth = (newValue: unknown, newMonth?: Date) => {
     if (Array.isArray(newValue)) {
       return
     }
@@ -200,11 +195,7 @@ export function SchedulePickTime({
     }
   }
 
-  const _onChangeClock = (
-    newValue:
-      | SingleValue<{ label: string; value: string }>
-      | MultiValue<{ label: string; value: string }>
-  ) => {
+  const _onChangeClock = (newValue: unknown) => {
     if (Array.isArray(newValue)) {
       return
     }
@@ -223,11 +214,7 @@ export function SchedulePickTime({
     tzs.filter(val => val.value === timezone)[0] || tzs[0]
   )
 
-  const _onChange = (
-    newValue:
-      | SingleValue<{ label: string; value: string }>
-      | MultiValue<{ label: string; value: string }>
-  ) => {
+  const _onChange = (newValue: unknown) => {
     if (Array.isArray(newValue)) {
       return
     }
