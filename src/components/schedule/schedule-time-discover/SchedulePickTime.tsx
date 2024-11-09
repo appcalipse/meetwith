@@ -15,6 +15,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import {
   chakraComponents,
   MultiValue,
+  Props,
   Select,
   SingleValue,
 } from 'chakra-react-select'
@@ -31,7 +32,6 @@ import {
 } from 'date-fns'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
-import { SelectComponentsGeneric } from 'react-select/dist/declarations/src/components'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
@@ -237,7 +237,7 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
-  const customComponents: Partial<SelectComponentsGeneric> = {
+  const customComponents: Props['components'] = {
     ClearIndicator: props => (
       <chakraComponents.ClearIndicator className="noBg" {...props}>
         <Icon as={FaChevronDown} w={4} h={4} />
