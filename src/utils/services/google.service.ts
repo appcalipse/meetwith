@@ -6,6 +6,7 @@ import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
+import { MeetingReminders } from '@/types/Dashboard'
 import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
@@ -185,6 +186,23 @@ export default class GoogleCalendarService implements CalendarService {
       )
     })
   }
+  private createReminder(indicator: MeetingReminders) {
+    switch (indicator) {
+      case MeetingReminders['15_MINUTES_BEFORE']:
+        return { minutes: 15, method: 'email' }
+      case MeetingReminders['30_MINUTES_BEFORE']:
+        return { minutes: 30, method: 'email' }
+      case MeetingReminders['1_HOUR_BEFORE']:
+        return { minutes: 60, method: 'email' }
+      case MeetingReminders['1_DAY_BEFORE']:
+        return { minutes: 1440, method: 'email' }
+      case MeetingReminders['1_WEEK_BEFORE']:
+        return { minutes: 10080, method: 'email' }
+      case MeetingReminders['10_MINUTES_BEFORE']:
+      default:
+        return { minutes: 10, method: 'email' }
+    }
+  }
   async createEvent(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
@@ -192,6 +210,7 @@ export default class GoogleCalendarService implements CalendarService {
     _calendarId?: string,
     shouldGenerateLink = true
   ): Promise<NewCalendarEventType> {
+    console.log(meetingDetails)
     return new Promise((resolve, reject) =>
       this.auth
         .getToken()
@@ -268,6 +287,12 @@ export default class GoogleCalendarService implements CalendarService {
                   }
                 : undefined,
             status: 'confirmed',
+          }
+          if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
+            payload.reminders.overrides = meetingDetails.meetingReminders.map(
+              this.createReminder
+            )
+            console.log(payload.reminders.overrides)
           }
 
           const calendar = google.calendar({
@@ -387,7 +412,12 @@ export default class GoogleCalendarService implements CalendarService {
       if (meetingDetails.meeting_url) {
         payload['location'] = meetingDetails.meeting_url
       }
-
+      if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
+        payload.reminders.overrides = meetingDetails.meetingReminders.map(
+          this.createReminder
+        )
+        console.log(payload.reminders.overrides)
+      }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
       )

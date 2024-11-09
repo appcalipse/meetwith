@@ -422,7 +422,6 @@ const getExistingAccountsFromDB = async (
       'address',
       addresses.map(address => address.toLowerCase())
     )
-
   if (error) {
     throw new Error(error.message)
   }
@@ -723,7 +722,6 @@ const saveMeeting = async (
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meeting.meetingProvider,
   })
-
   if (!createdRootMeeting) {
     throw new Error(
       'Could not create your meeting right now, get in touch with us if the problem persists'
@@ -835,6 +833,7 @@ const saveMeeting = async (
     title: meeting.title,
     content: meeting.content,
     meetingProvider: meeting.meetingProvider,
+    meetingReminders: meeting.meetingReminders,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -2263,6 +2262,7 @@ const updateMeeting = async (
     title: meetingUpdateRequest.title,
     content: meetingUpdateRequest.content,
     changes: changingTime ? { dateChange: changingTime } : undefined,
+    meetingReminders: meetingUpdateRequest.meetingReminders,
   }
 
   // Doing notifications and syncs asynchronously

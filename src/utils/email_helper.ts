@@ -4,6 +4,7 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
+import { MeetingReminders } from '@/types/Dashboard'
 import { Group } from '@/types/Group'
 import { MeetingChangeType, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
@@ -101,7 +102,8 @@ export const newMeetingEmail = async (
   title?: string,
   description?: string,
   created_at?: Date,
-  meetingProvider?: MeetingProvider
+  meetingProvider?: MeetingProvider,
+  meetingReminders?: Array<MeetingReminders>
 ): Promise<boolean> => {
   const email = new Email()
 
@@ -161,6 +163,7 @@ export const newMeetingEmail = async (
       related_slot_ids: [],
       meeting_info_encrypted: mockEncrypted,
       content: description,
+      reminders: meetingReminders,
     },
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
@@ -304,7 +307,8 @@ export const updateMeetingEmail = async (
   description?: string,
   created_at?: Date,
   changes?: MeetingChange,
-  meetingProvider?: MeetingProvider
+  meetingProvider?: MeetingProvider,
+  meetingReminders?: Array<MeetingReminders>
 ): Promise<boolean> => {
   if (!changes?.dateChange) {
     return true
@@ -380,6 +384,7 @@ export const updateMeetingEmail = async (
       version: 0,
       related_slot_ids: [],
       meeting_info_encrypted: mockEncrypted,
+      reminders: meetingReminders,
     },
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
