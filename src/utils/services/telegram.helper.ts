@@ -1,6 +1,10 @@
-const apiUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`
+const apiUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}`
 
 export const sendDm = async (chat_id: string, text: string) => {
+  console.log({
+    chat_id,
+    text,
+  })
   const response = await fetch(`${apiUrl}/sendMessage`, {
     method: 'POST',
     headers: {
@@ -12,5 +16,5 @@ export const sendDm = async (chat_id: string, text: string) => {
     }),
   })
 
-  return response.json()
+  return await response.json()
 }
