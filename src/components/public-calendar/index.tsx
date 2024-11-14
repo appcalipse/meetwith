@@ -978,9 +978,9 @@ const HeadMeta: React.FC<{
   const title = account
     ? `${getAccountDisplayName(
         account
-      )}'s calendar on Meet with Wallet - Schedule a meeting in #web3 style`
+      )}'s calendar on Meetwith - Schedule a meeting in #web3 style`
     : teamMeetingRequest?.title ||
-      'Meet with Wallet - Schedule a meeting in #web3 style'
+      'Meetwith - Schedule a meeting in #web3 style'
 
   const description =
     account?.preferences?.description ||

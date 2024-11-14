@@ -1,6 +1,6 @@
-# Meet with Wallet
+# Meetwith
 
-Meet with Wallet provides an easy way to share your (or your DAO's) calendar and schedule meetings without any hassle or back-and-forth communication. All possible by simply connecting your crypto wallet. No registration needed, no more emails (only if you want to) - Own your private data! You know Calendly right? Same thing here, but for web3!
+Meetwith provides an easy way to share your (or your DAO's) calendar and schedule meetings without any hassle or back-and-forth communication. All possible by simply connecting your crypto wallet. No registration needed, no more emails (only if you want to) - Own your private data! You know Calendly right? Same thing here, but for web3!
 
 ## Basic Setup
 

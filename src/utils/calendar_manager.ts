@@ -784,7 +784,7 @@ const generateIcs = (
     ],
     organizer: {
       // required by some services
-      name: 'Meet with Wallet',
+      name: 'Meetwith',
       email: NO_REPLY_EMAIL,
     },
     status:

@@ -292,9 +292,7 @@ export default class GoogleCalendarService implements CalendarService {
             payload.reminders.overrides = meetingDetails.meetingReminders.map(
               this.createReminder
             )
-            console.log(payload.reminders.overrides)
           }
-
           const calendar = google.calendar({
             version: 'v3',
             auth: myGoogleAuth,
