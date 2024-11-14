@@ -24,6 +24,7 @@ import {
   DBSlot,
   GroupMeetingRequest,
   MeetingDecrypted,
+  TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
 import {
@@ -143,7 +144,8 @@ export const getExistingAccountsSimple = async (
 }
 
 export const getExistingAccounts = async (
-  addresses: string[]
+  addresses: string[],
+  fullInformation = true
 ): Promise<Account[]> => {
   try {
     return (await internalFetch(`/accounts/existing`, 'POST', {
@@ -387,6 +389,28 @@ export const fetchBusySlotsForMultipleAccounts = async (
     limit,
     offset,
   })) as Interval[]
+
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
+export const fetchBusySlotsRawForMultipleAccounts = async (
+  addresses: string[],
+  start: Date,
+  end: Date,
+  limit?: number,
+  offset?: number
+): Promise<TimeSlot[]> => {
+  const response = (await internalFetch(`/meetings/busy/team`, 'POST', {
+    addresses,
+    start,
+    end,
+    limit,
+    offset,
+    isRaw: true,
+  })) as TimeSlot[]
 
   return response.map(slot => ({
     ...slot,

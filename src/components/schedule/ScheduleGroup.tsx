@@ -7,7 +7,7 @@ import {
   Switch,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useContext, useEffect, useState } from 'react'
+import React, { FC, useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 
 import { Availability } from '@/components/icons/Availability'
@@ -34,6 +34,15 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
     participants,
   } = useContext(ScheduleContext)
   const [collapsed, setCollapsed] = useState(true)
+  const isExpanded = useMemo(
+    () =>
+      participants.some(val => {
+        const groupData = val as IGroupParticipant
+        const isGroup = groupData.isGroup && groupData.id === props.id
+        return isGroup
+      }),
+    [participants, props.id]
+  )
   const fetchGroupMembers = async (reset?: boolean) => {
     setLoading(true)
     const fetchedGroupMembers = await getGroupsMembers(props.id)
@@ -41,6 +50,20 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
       .filter(val => !val.invitePending)
       .filter(val => !!val.address)
     setGroupsMembers(reset ? [] : actualMembers)
+    if (isExpanded) {
+      setGroupAvailability(prev => ({
+        ...prev,
+        [props.id]: actualMembers
+          .map(val => val.address)
+          .filter((val): val is string => typeof val === 'string'),
+      }))
+      setGroupParticipants(prev => ({
+        ...prev,
+        [props.id]: actualMembers
+          .map(val => val.address)
+          .filter((val): val is string => typeof val === 'string'),
+      }))
+    }
     setLoading(false)
   }
   useEffect(() => {
@@ -78,11 +101,6 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
       [props.id]: e.target.checked ? allAddresses : [],
     }))
   }
-  const isExpanded = participants.some(val => {
-    const groupData = val as IGroupParticipant
-    const isGroup = groupData.isGroup && groupData.id === props.id
-    return isGroup
-  })
   return (
     <VStack
       width="100%"
