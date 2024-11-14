@@ -29,7 +29,6 @@ import {
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
-  getGroup,
   getGroupInternal,
 } from './database'
 import {
@@ -40,6 +39,7 @@ import {
   updateMeetingEmail,
 } from './email_helper'
 import { dmAccount } from './services/discord.helper'
+import { sendDm } from './services/telegram.helper'
 import { isProAccount } from './subscription_manager'
 import { getAllParticipantsDisplayName } from './user_manager'
 
@@ -278,6 +278,19 @@ const workNotifications = async (
                     )
                   )
                 }
+                break
+              case NotificationChannel.TELEGRAM:
+                promises.push(
+                  getTelegramNotification(
+                    changeType,
+                    participantActing,
+                    participant,
+                    start,
+                    end,
+                    participantsInfo,
+                    changes
+                  )
+                )
                 break
               default:
             }
@@ -539,6 +552,94 @@ const getDiscordNotification = async (
     }
   }
   return Promise.resolve(false)
+}
+const getTelegramNotification = async (
+  _changeType: MeetingChangeType,
+  participantActing: ParticipantBaseInfo,
+  participant: ParticipantInfoForNotification,
+  start: Date,
+  end: Date,
+  participantsInfo?: ParticipantInfo[],
+  changes?: MeetingChange
+): Promise<boolean> => {
+  const changeType =
+    participant.mappingType === ParticipantMappingType.ADD
+      ? MeetingChangeType.CREATE
+      : _changeType
+  const destination = participant.notifications!.notification_types.filter(
+    n => n.channel === NotificationChannel.TELEGRAM
+  )[0].destination
+  console.log('destination', destination)
+  switch (changeType) {
+    case MeetingChangeType.CREATE:
+      return sendDm(
+        destination,
+        `New meeting scheduled. ${dateToHumanReadable(
+          start,
+          participant.timezone,
+          true
+        )} - ${getAllParticipantsDisplayName(
+          participantsInfo!,
+          participant.account_address
+        )}`
+      )
+    case MeetingChangeType.DELETE:
+      return sendDm(
+        destination,
+        `Canceled! The meeting at ${dateToHumanReadable(
+          changes?.dateChange?.oldStart || start,
+          participant.timezone,
+          true
+        )} has been canceled by ${getParticipantActingDisplayName(
+          participantActing,
+          participant
+        )}`
+      )
+    case MeetingChangeType.UPDATE:
+      if (!changes?.dateChange) {
+        return true
+      }
+      let message = `${getParticipantActingDisplayName(
+        participantActing,
+        participant
+      )} changed the meeting at ${dateToHumanReadable(
+        changes!.dateChange!.oldStart,
+        participant.timezone,
+        true
+      )}. It`
+      let added = false
+      if (
+        new Date(changes!.dateChange!.oldStart).getTime() !== start.getTime()
+      ) {
+        message += ` will be at ${dateToHumanReadable(
+          start,
+          participant.timezone,
+          true
+        )}`
+        added = true
+      }
+
+      const newDuration = differenceInMinutes(end, start)
+      const oldDuration = changes?.dateChange
+        ? differenceInMinutes(
+            new Date(changes?.dateChange?.oldEnd),
+            new Date(changes?.dateChange?.oldStart)
+          )
+        : null
+
+      if (oldDuration && newDuration !== oldDuration) {
+        if (added) {
+          message += ` and will last ${durationToHumanReadable(newDuration)}`
+        } else {
+          message += ` will now last ${durationToHumanReadable(
+            newDuration
+          )} instead of ${durationToHumanReadable(oldDuration)}`
+        }
+      }
+      return sendDm(destination, message)
+    default:
+      return Promise.resolve(false)
+  }
 }
 
 const getParticipantActingDisplayName = (
