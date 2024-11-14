@@ -120,6 +120,7 @@ export interface DiscordMeetingRequest {
   accounts: Account[]
   duration: number
   interval: number
+  title: string
   description: string
   notBefore?: NotBefore
 }

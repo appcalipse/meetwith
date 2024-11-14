@@ -21,7 +21,7 @@ import { appUrl } from './constants'
 import { mockEncrypted } from './cryptography'
 import { getAllParticipantsDisplayName } from './user_manager'
 
-const FROM = 'Meet with Wallet <no_reply@meetwithwallet.xyz>'
+const FROM = 'Meetwith <no_reply@meetwithwallet.xyz>'
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
 export const newGroupInviteEmail = async (
