@@ -3,17 +3,22 @@ import {
   Box,
   chakra,
   Container,
+  Flex,
   Heading,
+  HStack,
   Image,
   SimpleGrid,
   Stack,
   Text,
   useColorModeValue,
   VisuallyHidden,
+  VStack,
 } from '@chakra-ui/react'
+import textAlign from '@tiptap/extension-text-align'
 import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
+import { size } from 'viem'
 
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
 
@@ -22,7 +27,7 @@ import { MWW_DISCORD_SERVER } from '../utils/constants'
 const Logo = () => {
   return (
     <Link href={'/'}>
-      <Image boxSize="100px" src="/assets/logo.svg" alt="Meet with Wallet" />
+      <Image boxSize="100px" src="/assets/logo.svg" alt="Meetwith" />
     </Link>
   )
 }
@@ -39,9 +44,8 @@ const SocialButton = ({
   return (
     <chakra.button
       bg={useColorModeValue('blackAlpha.100', 'whiteAlpha.100')}
-      rounded={'full'}
-      w={8}
-      h={8}
+      w={10}
+      h={10}
       cursor={'pointer'}
       as={'a'}
       href={href}
@@ -62,108 +66,155 @@ const SocialButton = ({
 
 export default function SmallWithLogoLeft() {
   const router = useRouter()
-  const footerBg = useColorModeValue('#F8F8FA', 'gray.900')
-  const footerColor = useColorModeValue('gray.700', 'gray.200')
+  const footerBg = useColorModeValue('#F8F8FA', 'neutral.900')
+  const footerColor = useColorModeValue('gray.700', 'neutral.0')
 
   return (
     <Box
-      bg={shouldEnforceColorOnPath(router.pathname) ? 'gray.900' : footerBg}
+      bg={shouldEnforceColorOnPath(router.pathname) ? 'neutral.900' : footerBg}
       color={
-        shouldEnforceColorOnPath(router.pathname) ? 'gray.200' : footerColor
+        shouldEnforceColorOnPath(router.pathname) ? 'neutral.0' : footerColor
       }
       display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
-      pb={{ base: '8', md: '0' }}
+      py={{ base: 16, md: 4 }}
+      fontWeight={500}
     >
-      <Container
-        as={Stack}
-        maxW={'6xl'}
-        py={12}
-        direction={{ base: 'column', md: 'row' }}
-        spacing={4}
+      <Flex
+        direction={{
+          md: 'row',
+          base: 'column',
+        }}
+        w="100%"
         justify={{ base: 'center', md: 'space-between' }}
         align={{ base: 'center', md: 'center' }}
+        gap={8}
+        px={{ md: 10, base: 6 }}
       >
-        <SimpleGrid columns={[2, 3, 3]} spacing={10} width="100%">
-          <Box>
-            <Heading size={'sm'} pb={4}>
-              Product
-            </Heading>
-            <Text textAlign="justify">
-              <Link href="/#pricing">Pricing</Link>
-            </Text>
-            <Text textAlign="justify">
-              <Link href="mailto:contact@meetwithwallet.xyz" isExternal>
-                Roadmap
-              </Link>
-            </Text>
-            <Text textAlign="justify">
-              <Link href="/#faq">FAQ</Link>
-            </Text>
-          </Box>
-          <Box>
-            <Heading size={'sm'} pb={4}>
-              Community
-            </Heading>
-            <Text textAlign="justify">
-              <Link href={MWW_DISCORD_SERVER} target="_blank">
-                Discord
-              </Link>
-            </Text>
-            <Text textAlign="justify">
-              <Link href="mailto:support@meetwithwallet.xyz">Need Help</Link>
-            </Text>
-            <Text textAlign="justify">
-              <Link href="mailto:contact@meetwithwallet.xyz" isExternal>
-                Feature Requests
-              </Link>
-            </Text>
-          </Box>
-          <Box>
-            <Heading size={'sm'} pb={4}>
-              Legal
-            </Heading>
-            <Text textAlign="justify">
-              <Link href={'/legal/terms'}>Terms of Service</Link>
-            </Text>
-            <Text textAlign="justify">
-              <Link href={'/legal/privacy'}>Privacy Policy</Link>
-            </Text>
-            <Text textAlign="justify">
-              <Link href={'/legal/dpa'}>Data Protection</Link>
-            </Text>
-          </Box>
-        </SimpleGrid>
-      </Container>
-      <Container
-        as={Stack}
-        maxW={'6xl'}
-        direction={{ base: 'column', md: 'row' }}
-        spacing={4}
-        justify={{ base: 'center', md: 'space-between' }}
-        align={{ base: 'center', md: 'center' }}
-      >
-        <Logo />
-        <Text textAlign="center">
-          Meet with Wallet. Some rights reserved, maybe...
-        </Text>
+        <HStack gap={5} display={{ md: 'flex', base: 'none' }}>
+          <Logo />
+          <Text textAlign="center">
+            Meetwith. Some rights reserved, maybe...
+          </Text>
+        </HStack>
+        <HStack gap={3}>
+          <Text
+            textAlign="justify"
+            px={4}
+            fontSize={{
+              base: 'small',
+              md: 'medium',
+            }}
+          >
+            <Link
+              href="mailto:contact@meetwithwallet.xyz"
+              isExternal
+              color={'inherit'}
+            >
+              Plans
+            </Link>
+          </Text>
+          <Text
+            textAlign="justify"
+            px={4}
+            fontSize={{
+              base: 'small',
+              md: 'medium',
+            }}
+          >
+            <Link href="/#faq" color={'inherit'}>
+              FAQ
+            </Link>
+          </Text>
+          <Text
+            textAlign="justify"
+            px={4}
+            fontSize={{
+              base: 'small',
+              md: 'medium',
+            }}
+          >
+            <Link
+              href="mailto:contact@meetwithwallet.xyz"
+              color={'inherit'}
+              isExternal
+            >
+              Feature Requests
+            </Link>
+          </Text>
+        </HStack>
         <Stack direction={'row'} spacing={6}>
           <SocialButton
             label={'Eamil'}
             href={'mailto:contact@meetwithwallet.xyz'}
           >
-            <FaEnvelope />
+            <FaEnvelope size={22} />
           </SocialButton>
           <SocialButton
             label={'Twitter'}
             href={'https://twitter.com/meetwithwallet'}
           >
-            <FaTwitter />
+            <FaTwitter size={22} />
           </SocialButton>
           <SocialButton label={'Discord'} href={MWW_DISCORD_SERVER}>
-            <FaDiscord />
+            <FaDiscord size={22} />
           </SocialButton>
         </Stack>
-      </Container>
+        <VStack
+          gap={5}
+          display={{ base: 'flex', md: 'none' }}
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Logo />
+          <Text
+            textAlign="center"
+            fontSize={{
+              base: 'small',
+              md: 'medium',
+            }}
+          >
+            Meetwith. Some rights reserved, maybe...
+          </Text>
+        </VStack>
+        <HStack gap={3}>
+          <Text
+            textAlign="justify"
+            px={{ md: 4, base: 0 }}
+            fontSize={{
+              base: 'small',
+              md: 'medium',
+            }}
+          >
+            <Link href={'/legal/terms'} color={'inherit'}>
+              Terms of Service
+            </Link>
+          </Text>
+          <Text
+            textAlign="justify"
+            px={{ md: 4, base: 0 }}
+            fontSize={{
+              base: 'small',
+              md: 'medium',
+            }}
+          >
+            <Link href={'/legal/privacy'} color={'inherit'}>
+              Privacy Policy
+            </Link>
+          </Text>
+          <Text
+            textAlign="justify"
+            px={{ md: 4, base: 0 }}
+            fontSize={{
+              base: 'small',
+              md: 'medium',
+            }}
+          >
+            <Link href={'/legal/dpa'} color={'inherit'}>
+              Data Protection
+            </Link>
+          </Text>
+        </HStack>
+      </Flex>
     </Box>
   )
 }
