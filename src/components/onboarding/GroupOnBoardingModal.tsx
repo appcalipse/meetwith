@@ -222,7 +222,7 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
           <Image
             width="70px"
             src="/assets/logo.svg"
-            alt="Meet with Wallet"
+            alt="Meetwith"
             marginX="auto"
           />
         </VStack>
