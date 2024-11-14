@@ -473,7 +473,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         title,
         meetingReminders
       )
-      console.log(meeting)
       await updateSlots()
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
