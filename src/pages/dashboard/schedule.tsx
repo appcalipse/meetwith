@@ -369,7 +369,7 @@ const Schedule: NextPage = () => {
     duration,
     handleTitleChange: setTitle,
     handleContentChange: setContent,
-    handleDurationChange: setDuration,
+    handleDurationChange: (val: number) => val && setDuration(val),
     pickedTime,
     handleTimePick,
     currentMonth,
@@ -425,7 +425,7 @@ const Schedule: NextPage = () => {
           base: '100%',
           '2xl': '7xl',
         }}
-        mt={28}
+        mt={36}
         flex={1}
         pb={16}
       >

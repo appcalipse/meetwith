@@ -4,12 +4,12 @@
 }
 
 .mySwiperTest {
-  height: auto !important;
+  height: 388px !important;
   overflow: visible !important;
 }
 
 .mySwiperTest .swiper-wrapper {
-  max-height: 225px;
+  max-height: 388px;
   margin-left: 30px;
 }
 
