@@ -66,12 +66,7 @@ export default function LogoutPage() {
           p={6}
           borderRadius={6}
         >
-          <Image
-            width="100px"
-            p={2}
-            src="/assets/logo.svg"
-            alt="Meet with Wallet"
-          />
+          <Image width="100px" p={2} src="/assets/logo.svg" alt="Meetwith" />
           <Image
             src="/assets/join-illustration.svg"
             alt="Join illustration"

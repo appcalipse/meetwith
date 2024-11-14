@@ -18,7 +18,7 @@ const Loading: React.FC<{ label?: string }> = ({ label }) => {
         <Image
           boxSize="3rem"
           src="/assets/logo.svg"
-          alt="Meet with Wallet"
+          alt="Meetwith"
           position="absolute"
           left="1.5rem"
           top="1.5rem"

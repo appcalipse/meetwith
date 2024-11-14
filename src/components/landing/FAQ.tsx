@@ -1,4 +1,5 @@
-import { Link } from '@chakra-ui/react'
+import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons'
+import { Link, VStack } from '@chakra-ui/react'
 import {
   Accordion,
   AccordionButton,
@@ -9,6 +10,7 @@ import {
   Heading,
 } from '@chakra-ui/react'
 import { ReactElement } from 'react'
+import { BiCaretDown, BiCaretUp } from 'react-icons/bi'
 
 import { MWW_DISCORD_SERVER } from '@/utils/constants'
 
@@ -31,8 +33,8 @@ const faqs: Faq[] = [
     body: "Your public data consists of your account information (calendar URL, an optional description, any relevant links, meeting types and duration, an internal public key and an encoded private key - not your wallet's, we generate a pair for the application), and your meet slots (times that your account has some meeting, so no one else can schedule it). All other data regarding your meetings (participants, description/comments, meeting link, etc) are stored encrypted, encoded with your internal private key (that is only known by you, encrypted with your wallet signature). This means that only participants of a meeting know information about it and who are they meeting with - Yes, not even ourselves know about it.",
   },
   {
-    title: 'Is Meet with Wallet fully developed?',
-    body: 'Meet with Wallet is a new platform, and therefore there is still a lot of work to be done, including ensuring you will not encounter any bugs while using it. For this reason we are still considering it the product in its early stage. But, this does not means that it is not supposed to work properly. If you find any bugs, please report to us in our Discord.',
+    title: 'Is Meetwith fully developed?',
+    body: 'Meetwith is a new platform, and therefore there is still a lot of work to be done, including ensuring you will not encounter any bugs while using it. For this reason we are still considering it the product in its early stage. But, this does not means that it is not supposed to work properly. If you find any bugs, please report to us in our Discord.',
   },
   {
     title: 'How can I know what is coming next and collaborate?',
@@ -54,32 +56,61 @@ const faqs: Faq[] = [
 
 export function Faq() {
   return (
-    <Box
+    <VStack
       py={{ base: '10', md: '20' }}
-      px={{ base: 2, md: 40 }}
+      px={{ base: 6, md: 40 }}
       maxW="1360px"
       mx="auto"
       id="faq"
       scrollMarginTop={{ base: '60px', md: '20px' }}
+      gap={10}
+      alignItems="center"
+      borderWidth={1}
+      borderColor="#2F3847"
+      rounded={10}
+      bg={{
+        md: 'none',
+        base: 'neutral.900',
+      }}
     >
-      <Heading fontSize="5xl" color="primary.400" mb={10}>
-        FAQ
+      <Heading
+        fontSize={{
+          md: '4xl',
+          base: '2xl',
+        }}
+      >
+        Frequently Asked Questions
       </Heading>
-      <Accordion allowToggle>
+      <Accordion allowToggle w="100%">
         {faqs.map(faq => (
-          <AccordionItem mb={2} background="neutral.50" p={2} key={faq.title}>
-            <AccordionButton color="neutral.800">
-              <Box as="span" flex={1} textAlign="left">
-                <strong>{faq.title}</strong>
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-            <AccordionPanel pb={2} color="neutral.800">
-              {faq.body}
-            </AccordionPanel>
+          <AccordionItem
+            mb={2}
+            background="neutral.800"
+            p={2}
+            key={faq.title}
+            w="100%"
+            rounded={10}
+          >
+            {({ isExpanded }) => (
+              <>
+                <AccordionButton color="neutral.100">
+                  <Box as="span" flex={1} textAlign="left">
+                    <strong>{faq.title}</strong>
+                  </Box>
+                  {!isExpanded ? (
+                    <BiCaretDown width={24} height={24} />
+                  ) : (
+                    <BiCaretUp width={24} height={24} />
+                  )}
+                </AccordionButton>
+                <AccordionPanel pb={2} color="neutral.100">
+                  {faq.body}
+                </AccordionPanel>
+              </>
+            )}
           </AccordionItem>
         ))}
       </Accordion>
-    </Box>
+    </VStack>
   )
 }
