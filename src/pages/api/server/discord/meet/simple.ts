@@ -19,6 +19,7 @@ export default async function simpleDiscordMeet(
       accounts,
       duration,
       interval,
+      title,
       description,
       notBefore,
     } = req.body as DiscordMeetingRequest
@@ -29,7 +30,7 @@ export default async function simpleDiscordMeet(
       return res
         .status(404)
         .send(
-          "You don't have a Meet with Wallet account, or have not linked your Discord to it. Go to https://meetwithwallet.xyz to create or link it."
+          "You don't have a Meetwith account, or have not linked your Discord to it. Go to https://meetwithwallet.xyz to create or link it."
         )
     }
 
@@ -86,7 +87,10 @@ export default async function simpleDiscordMeet(
         participants,
         MeetingProvider.HUDDLE,
         scheduler,
-        description
+        description,
+        undefined,
+        undefined,
+        title
       )
 
       return res.status(200).json(meeting)

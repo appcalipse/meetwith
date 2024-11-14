@@ -153,7 +153,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
             isDisabled={isUpdating}
           ></Switch>
           <Text color={textColor}>
-            Add new Meet with Wallet events to this calendar
+            Add new Meetwith events to this calendar
           </Text>
           {isUpdating ? <Spinner /> : false}
         </HStack>
