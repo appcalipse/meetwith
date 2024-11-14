@@ -210,7 +210,6 @@ export default class GoogleCalendarService implements CalendarService {
     _calendarId?: string,
     shouldGenerateLink = true
   ): Promise<NewCalendarEventType> {
-    console.log(meetingDetails)
     return new Promise((resolve, reject) =>
       this.auth
         .getToken()
@@ -414,7 +413,6 @@ export default class GoogleCalendarService implements CalendarService {
         payload.reminders.overrides = meetingDetails.meetingReminders.map(
           this.createReminder
         )
-        console.log(payload.reminders.overrides)
       }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
