@@ -30,6 +30,7 @@ export const colors = {
     600: '#52606D',
     700: '#3E4C59',
     800: '#323F4B',
+    850: '#181F24',
     900: '#131A20',
   },
   green: {
@@ -55,7 +56,7 @@ const newTheme = {
   styles: {
     global: (props: ThemeProviderProps) => ({
       body: {
-        bg: mode('gray.50', '#131A20A0')(props),
+        bg: mode('gray.50', 'neutral.850')(props),
       },
       '*, *::before, &::after': {
         borderColor: mode('gray.300', 'whiteAlpha.300')(props),
