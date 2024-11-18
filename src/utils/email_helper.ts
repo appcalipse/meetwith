@@ -4,7 +4,7 @@ import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
 
-import { MeetingReminders } from '@/types/Dashboard'
+import { MeetingReminders } from '@/types/common'
 import { Group } from '@/types/Group'
 import { MeetingChangeType, MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'

@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 
-import { MeetingReminders } from '@/types/Dashboard'
+import { MeetingReminders } from '@/types/common'
 import { Group, MemberType } from '@/types/Group'
 import { appUrl } from '@/utils/constants'
 
