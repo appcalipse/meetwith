@@ -1,7 +1,7 @@
 import { Encrypted } from 'eth-crypto'
 
 import { Account } from './Account'
-import { MeetingReminders } from './Dashboard'
+import { MeetingReminders } from './common'
 import { MemberType } from './Group'
 import {
   ConferenceMeeting,
