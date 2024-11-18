@@ -105,6 +105,7 @@ a {
 /* Custom styled ends here */
 .hideBorder {
   border: 0 solid transparent;
+  box-shadow: none !important;
 }
 
 .hideBorder:focus-visible {
@@ -114,6 +115,7 @@ a {
 
 .hideBorder > div {
   border: 0 solid transparent;
+  box-shadow: none !important;
 }
 
 .hideBorder > div[data-focus-visible] {
