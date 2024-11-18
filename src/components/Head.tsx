@@ -10,9 +10,9 @@ interface HeadProps {
 const defaultProps: HeadProps = {
   title: 'Meeting scheduler for #web3 - Meetwith - meetwithwallet.xyz',
   description:
-    'Meet with wallet provides an easy way to share you calendar and let people find the perfect time to meet with you, always ensuring your data is private. Booking for FREE by simply connecting a crypto wallet (No transaction is needed).',
-  url: 'https://meetwithwallet.xyz/',
-  ogImage: 'https://meetwithwallet.xyz/assets/opengraph.jpg',
+    'Meetwith provides an easy way to share you calendar and let people find the perfect time to meet with you, always ensuring your data is private. Booking for FREE by simply connecting a crypto wallet (No transaction is needed).',
+  url: 'https://meetwith.xyz/',
+  ogImage: 'https://meetwith.xyz/assets/opengraph.png',
 }
 
 export const Head: React.FC<Partial<HeadProps>> = props => {
