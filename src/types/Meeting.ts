@@ -3,7 +3,7 @@ import { Encrypted } from 'eth-crypto'
 
 import { ConditionRelation } from '@/types/common'
 
-import { MeetingReminders } from './Dashboard'
+import { MeetingReminders } from './common'
 import { ParticipantInfo } from './ParticipantInfo'
 
 export enum SchedulingType {
