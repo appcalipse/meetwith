@@ -76,21 +76,21 @@ export default function SmallWithLogoLeft() {
         shouldEnforceColorOnPath(router.pathname) ? 'neutral.0' : footerColor
       }
       display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
-      py={{ base: 16, md: 4 }}
+      py={{ base: 16, md: 8, lg: 4 }}
       fontWeight={500}
     >
       <Flex
         direction={{
-          md: 'row',
+          lg: 'row',
           base: 'column',
         }}
         w="100%"
-        justify={{ base: 'center', md: 'space-between' }}
-        align={{ base: 'center', md: 'center' }}
+        justify={{ base: 'center', lg: 'space-between' }}
+        align={{ base: 'center', lg: 'center' }}
         gap={8}
         px={{ md: 10, base: 6 }}
       >
-        <HStack gap={5} display={{ md: 'flex', base: 'none' }}>
+        <HStack gap={5} display={{ lg: 'flex', base: 'none' }}>
           <Logo />
           <Text textAlign="center">
             Meetwith. Some rights reserved, maybe...
@@ -161,7 +161,7 @@ export default function SmallWithLogoLeft() {
         </Stack>
         <VStack
           gap={5}
-          display={{ base: 'flex', md: 'none' }}
+          display={{ base: 'flex', lg: 'none' }}
           alignItems="center"
           justifyContent="center"
         >
