@@ -22,8 +22,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         Number(req.query.limit as string),
         Number(req.query.offset as string)
       )
-      console.log(groups)
-      return res.status(200).json([])
+      return res.status(200).json(groups)
     } catch (e) {
       return res.status(500).send(e)
     }
