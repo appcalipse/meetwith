@@ -52,7 +52,7 @@ const newTheme = {
   styles: {
     global: (props: ThemeProviderProps) => ({
       body: {
-        bg: mode('gray.50', 'gray.700')(props),
+        bg: mode('gray.50', '#131A20A0')(props),
       },
       '*, *::before, &::after': {
         borderColor: mode('gray.300', 'whiteAlpha.300')(props),
