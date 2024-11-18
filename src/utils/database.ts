@@ -28,6 +28,7 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
+  GetGroupsFullResponse,
   Group,
   GroupInviteFilters,
   GroupInvites,
@@ -963,26 +964,70 @@ const getGroupsAndMembers = async (
   address: string,
   limit: number,
   offset: number
-) => {
+): Promise<Array<GetGroupsFullResponse>> => {
   const { data, error } = await db.supabase
-    .from('group')
+    .from('group_members')
     .select(
       `
-      id,
-      name,
-      slug,
-      members: group_members(*)
+      role,
+      group: groups( id, name, slug )
   `
     )
-    .eq('members.member_id', address.toLowerCase())
+    .eq('member_id', address.toLowerCase())
     .range(
       offset || 0,
       (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
     )
   if (error) {
+    console.log(error)
     throw new Error(error.message)
   }
-  return data
+  const groups = []
+  for (const group of data) {
+    const { data: membersData, error: membersError } = await db.supabase
+      .from('group_members')
+      .select()
+      .eq('group_id', group.group.id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    const addresses = membersData.map(
+      (member: GroupMemberQuery) => member.member_id
+    )
+    const { data: members, error } = await db.supabase
+      .from('accounts')
+      .select(
+        `
+         group_members: group_members(*),
+         preferences: account_preferences(name),
+         calendars: connected_calendars(calendars)
+    `
+      )
+      .in('address', addresses)
+      .filter('group_members.group_id', 'eq', group.group.id)
+      .range(
+        offset || 0,
+        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+      )
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (data) {
+      groups.push({
+        ...group.group,
+        members: members.map(member => ({
+          userId: member.group_members?.[0]?.id,
+          displayName: member.preferences?.name,
+          address: member.group_members?.[0]?.member_id as string,
+          role: member.group_members?.[0].role,
+          invitePending: false,
+          calendarConnected: !!member.calendars[0]?.calendars?.length,
+        })),
+      })
+    }
+  }
+  return groups
 }
 async function findGroupsWithSingleMember(
   groupIDs: Array<string>
