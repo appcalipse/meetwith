@@ -14,13 +14,3 @@ export enum EditMode {
 export enum Intents {
   JOIN = 'join',
 }
-
-export enum MeetingReminders {
-  '5_MINUTES_BEFORE',
-  '10_MINUTES_BEFORE',
-  '15_MINUTES_BEFORE',
-  '30_MINUTES_BEFORE',
-  '1_HOUR_BEFORE',
-  '1_DAY_BEFORE',
-  '1_WEEK_BEFORE',
-}

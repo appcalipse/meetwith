@@ -18,7 +18,7 @@ import {
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
-import { MeetingReminders } from '@/types/Dashboard'
+import { MeetingReminders } from '@/types/common'
 import {
   DBSlot,
   MeetingChangeType,
