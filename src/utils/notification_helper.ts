@@ -1,7 +1,9 @@
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 
-import { Group } from '@/types/Group'
+import { MeetingReminders } from '@/types/common'
+import { Group, MemberType } from '@/types/Group'
+import { appUrl } from '@/utils/constants'
 
 import {
   AccountNotifications,
@@ -136,7 +138,8 @@ export const notifyForOrUpdateNewMeeting = async (
   title?: string,
   description?: string,
   changes?: MeetingChange,
-  meetingProvider?: MeetingProvider
+  meetingProvider?: MeetingProvider,
+  meetingReminders?: Array<MeetingReminders>
 ): Promise<void> => {
   const participantsInfo = await setupParticipants(participants)
 
@@ -152,7 +155,8 @@ export const notifyForOrUpdateNewMeeting = async (
       title,
       description,
       changes,
-      meetingProvider
+      meetingProvider,
+      meetingReminders
     )
   )
 }
@@ -192,7 +196,8 @@ const workNotifications = async (
   title?: string,
   description?: string,
   changes?: MeetingChange,
-  meetingProvider?: MeetingProvider
+  meetingProvider?: MeetingProvider,
+  meetingReminders?: Array<MeetingReminders>
 ): Promise<Promise<boolean>[]> => {
   const promises: Promise<boolean>[] = []
 
@@ -215,7 +220,8 @@ const workNotifications = async (
             title,
             description,
             changes,
-            meetingProvider
+            meetingProvider,
+            meetingReminders
           )
         )
       } else if (
@@ -371,7 +377,8 @@ const getEmailNotification = async (
   title?: string,
   description?: string,
   changes?: MeetingChange,
-  meetingProvider?: MeetingProvider
+  meetingProvider?: MeetingProvider,
+  meetingReminders?: Array<MeetingReminders>
 ): Promise<boolean> => {
   const toEmail =
     participant.guest_email ||
@@ -399,7 +406,8 @@ const getEmailNotification = async (
         title,
         description,
         created_at,
-        meetingProvider
+        meetingProvider,
+        meetingReminders
       )
     case MeetingChangeType.DELETE:
       const displayName = getParticipantActingDisplayName(
@@ -437,7 +445,8 @@ const getEmailNotification = async (
         description,
         created_at,
         changes,
-        meetingProvider
+        meetingProvider,
+        meetingReminders
       )
     default:
   }

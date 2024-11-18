@@ -15,6 +15,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import {
   chakraComponents,
   MultiValue,
+  Props,
   Select,
   SingleValue,
 } from 'chakra-react-select'
@@ -31,7 +32,6 @@ import {
 } from 'date-fns'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
-import { SelectComponentsGeneric } from 'react-select/dist/declarations/src/components'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
@@ -181,12 +181,7 @@ export function SchedulePickTime({
     value: String(currentMonth.getMonth()),
   })
 
-  const _onChangeMonth = (
-    newValue:
-      | SingleValue<{ label: string; value: string }>
-      | MultiValue<{ label: string; value: string }>,
-    newMonth?: Date
-  ) => {
+  const _onChangeMonth = (newValue: unknown, newMonth?: Date) => {
     if (Array.isArray(newValue)) {
       return
     }
@@ -200,11 +195,7 @@ export function SchedulePickTime({
     }
   }
 
-  const _onChangeClock = (
-    newValue:
-      | SingleValue<{ label: string; value: string }>
-      | MultiValue<{ label: string; value: string }>
-  ) => {
+  const _onChangeClock = (newValue: unknown) => {
     if (Array.isArray(newValue)) {
       return
     }
@@ -223,11 +214,7 @@ export function SchedulePickTime({
     tzs.filter(val => val.value === timezone)[0] || tzs[0]
   )
 
-  const _onChange = (
-    newValue:
-      | SingleValue<{ label: string; value: string }>
-      | MultiValue<{ label: string; value: string }>
-  ) => {
+  const _onChange = (newValue: unknown) => {
     if (Array.isArray(newValue)) {
       return
     }
@@ -237,7 +224,7 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
-  const customComponents: Partial<SelectComponentsGeneric> = {
+  const customComponents: Props['components'] = {
     ClearIndicator: props => (
       <chakraComponents.ClearIndicator className="noBg" {...props}>
         <Icon as={FaChevronDown} w={4} h={4} />
