@@ -43,7 +43,7 @@ import { Account, MeetingType } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
-import { MeetingReminders } from '@/types/Dashboard'
+import { MeetingReminders } from '@/types/common'
 import {
   DBSlot,
   GroupMeetingRequest,

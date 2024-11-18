@@ -6,7 +6,7 @@ import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
-import { MeetingReminders } from '@/types/Dashboard'
+import { MeetingReminders } from '@/types/common'
 import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'

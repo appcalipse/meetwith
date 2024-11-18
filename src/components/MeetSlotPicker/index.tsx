@@ -48,7 +48,7 @@ import { IoMdCloseCircleOutline } from 'react-icons/io'
 import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
 import { AccountPreferences } from '@/types/Account'
-import { MeetingReminders } from '@/types/Dashboard'
+import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
 import { MeetingProvider, SchedulingType } from '../../types/Meeting'
