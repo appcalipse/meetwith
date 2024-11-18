@@ -83,7 +83,7 @@ export const Navbar = () => {
       as="header"
       display={pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
       position="fixed"
-      width={{ base: isOpen ? '100%' : '90%', lg: '90%', xl: '60%' }}
+      width={{ base: isOpen ? '100%' : '90%', lg: '95%', xl: '70%' }}
       mx="auto"
       insetX={0}
       top={{
@@ -144,7 +144,8 @@ export const Navbar = () => {
               <Flex
                 display={{ base: 'none', lg: 'flex' }}
                 ml={10}
-                flexBasis={'65%'}
+                flexBasis={'80%'}
+                justifyContent={'center'}
               >
                 <DesktopNav
                   pathname={pathname}
