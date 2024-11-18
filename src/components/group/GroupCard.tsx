@@ -44,9 +44,8 @@ import {
 } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
-import { appUrl, isProduction } from '@/utils/constants'
+import { isProduction } from '@/utils/constants'
 
-import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 import GroupMemberCard from './GroupMemberCard'
 
 export interface IGroupCard extends GetGroupsResponse {
@@ -76,8 +75,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
     setGroupName,
     pickGroupId,
     openNameEditModal,
-    pickGroupSlug,
-    openSlugEditModal,
+    openLeaveModal,
   } = useContext(GroupContext)
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
@@ -146,7 +144,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
           {
             label: 'Leave group',
             important: true,
-            link: '',
+            onClick: () => {
+              if (!props.id) return
+              pickGroupId(props.id)
+              openLeaveModal()
+            },
           },
         ]
       default:
