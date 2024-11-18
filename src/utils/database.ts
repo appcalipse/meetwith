@@ -959,7 +959,31 @@ const getUserGroups = async (
   }
   return []
 }
-
+const getGroupsAndMembers = async (
+  address: string,
+  limit: number,
+  offset: number
+) => {
+  const { data, error } = await db.supabase
+    .from('group')
+    .select(
+      `
+      id,
+      name,
+      slug,
+      members: group_members(*)
+  `
+    )
+    .eq('members.member_id', address.toLowerCase())
+    .range(
+      offset || 0,
+      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+    )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
 async function findGroupsWithSingleMember(
   groupIDs: Array<string>
 ): Promise<Array<EmptyGroupsResponse>> {
@@ -2525,6 +2549,7 @@ export {
   getGroupInternal,
   getGroupInvites,
   getGroupName,
+  getGroupsAndMembers,
   getGroupsEmpty,
   getGroupUsers,
   getGroupUsersInternal,
