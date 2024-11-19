@@ -13,6 +13,7 @@ import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
 import { AccountContext } from '@/providers/AccountProvider'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
+import { MeetingReminders } from '@/types/common'
 import { MeetingProvider, SchedulingType } from '@/types/Meeting'
 import {
   ParticipantInfo,
@@ -81,6 +82,18 @@ interface IScheduleContext {
   setMeetingUrl: React.Dispatch<React.SetStateAction<string>>
   currentSelectedDate: Date
   setCurrentSelectedDate: React.Dispatch<React.SetStateAction<Date>>
+  meetingNotification: Array<{
+    value: MeetingReminders
+    label?: string
+  }>
+  setMeetingNotification: React.Dispatch<
+    React.SetStateAction<
+      Array<{
+        value: MeetingReminders
+        label?: string
+      }>
+    >
+  >
 }
 
 export interface IGroupParticipant {
@@ -119,6 +132,8 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setMeetingUrl: () => {},
   currentSelectedDate: new Date(),
   setCurrentSelectedDate: () => {},
+  meetingNotification: [],
+  setMeetingNotification: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -158,6 +173,12 @@ const Schedule: NextPage = () => {
   const { query } = useRouter()
   const { groupId } = query as { groupId: string }
   const [isScheduling, setIsScheduling] = useState(false)
+  const [meetingNotification, setMeetingNotification] = useState<
+    Array<{
+      value: MeetingReminders
+      label?: string
+    }>
+  >([])
   const handleTimePick = (time: Date | number) => setPickedTime(time)
   const handleAddGroup = (group: IGroupParticipant) => {
     setParticipants(prev => {
@@ -283,7 +304,8 @@ const Schedule: NextPage = () => {
         content,
         meetingUrl,
         undefined,
-        title
+        title,
+        meetingNotification.map(n => n.value)
       )
       setCurrentPage(Page.COMPLETED)
     } catch (e: any) {
@@ -389,6 +411,8 @@ const Schedule: NextPage = () => {
     setMeetingUrl,
     currentSelectedDate,
     setCurrentSelectedDate,
+    meetingNotification,
+    setMeetingNotification,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
