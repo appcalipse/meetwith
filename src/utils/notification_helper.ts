@@ -569,7 +569,6 @@ const getTelegramNotification = async (
   const destination = participant.notifications!.notification_types.filter(
     n => n.channel === NotificationChannel.TELEGRAM
   )[0].destination
-  console.log('destination', destination)
   switch (changeType) {
     case MeetingChangeType.CREATE:
       return sendDm(
