@@ -100,6 +100,7 @@ export interface MeetingInfo {
   reminders?: Array<MeetingReminders>
   related_slot_ids: string[]
   meeting_id: ConferenceMeeting['id']
+  provider?: MeetingProvider
 }
 
 export interface MeetingDecrypted {

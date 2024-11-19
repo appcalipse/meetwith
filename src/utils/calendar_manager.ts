@@ -869,7 +869,7 @@ const decryptMeeting = async (
     end: new Date(meeting.end),
     version: meeting.version,
     reminders: meetingInfo.reminders,
-    provider: meetingInfo.provider,
+    provider: meetingInfo?.provider,
   }
 }
 
