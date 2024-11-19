@@ -11,20 +11,18 @@ import React, { FC, useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 
 import { Availability } from '@/components/icons/Availability'
-import Loading from '@/components/Loading'
 import ScheduleGroupMember from '@/components/schedule/ScheduleGroupMember'
 import { IGroupParticipant, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
-import { GetGroupsResponse, GroupMember } from '@/types/Group'
-import { getGroupsMembers } from '@/utils/api_helper'
+import { GetGroupsFullResponse, GroupMember } from '@/types/Group'
 
-type ScheduleGroupItemProps = GetGroupsResponse
+type ScheduleGroupItemProps = GetGroupsFullResponse
 
 // eslint-disable-next-line react/display-name
 const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
   const [groupMembers, setGroupsMembers] = useState<Array<GroupMember>>([])
   const { currentAccount } = useContext(AccountContext)
-  const [loading, setLoading] = useState(false)
+
   const {
     groupAvailability,
     setGroupAvailability,
@@ -43,13 +41,9 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
       }),
     [participants, props.id]
   )
-  const fetchGroupMembers = async (reset?: boolean) => {
-    setLoading(true)
-    const fetchedGroupMembers = await getGroupsMembers(props.id)
-    const actualMembers = fetchedGroupMembers
-      .filter(val => !val.invitePending)
-      .filter(val => !!val.address)
-    setGroupsMembers(reset ? [] : actualMembers)
+  const loadGroupMembers = () => {
+    const actualMembers = props.members
+    setGroupsMembers(actualMembers)
     if (isExpanded) {
       setGroupAvailability(prev => ({
         ...prev,
@@ -64,12 +58,9 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
           .filter((val): val is string => typeof val === 'string'),
       }))
     }
-    setLoading(false)
   }
   useEffect(() => {
-    if (props?.id) {
-      void fetchGroupMembers()
-    }
+    void loadGroupMembers()
   }, [])
   const handleToggleAllAvailabilities = () => {
     const allAddresses = groupMembers
@@ -180,21 +171,15 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
       {collapsed && (
         <Collapse in={isExpanded} style={{ width: '100%' }}>
           <VStack w={'100%'} maxH="600px" h="auto" overflowY="auto">
-            {loading ? (
-              <Box my={2}>
-                <Loading />
-              </Box>
-            ) : (
-              groupMembers.map(({ address, ...groupMember }) => (
-                <ScheduleGroupMember
-                  groupId={props.id}
-                  address={address as string}
-                  {...groupMember}
-                  key={groupMember.userId}
-                  currentAccount={currentAccount ?? null}
-                />
-              ))
-            )}
+            {groupMembers?.map(({ address, ...groupMember }) => (
+              <ScheduleGroupMember
+                groupId={props.id}
+                address={address as string}
+                {...groupMember}
+                key={groupMember.userId}
+                currentAccount={currentAccount ?? null}
+              />
+            ))}
           </VStack>
         </Collapse>
       )}
