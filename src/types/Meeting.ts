@@ -100,6 +100,7 @@ export interface MeetingInfo {
   reminders?: Array<MeetingReminders>
   related_slot_ids: string[]
   meeting_id: ConferenceMeeting['id']
+  provider: MeetingProvider
 }
 
 export interface MeetingDecrypted {
@@ -116,6 +117,7 @@ export interface MeetingDecrypted {
   version: DBSlot['version']
   reminders?: Array<MeetingReminders>
   meeting_info_encrypted: Encrypted
+  provider: MeetingProvider
 }
 
 export enum GroupMeetingType {
