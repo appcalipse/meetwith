@@ -120,7 +120,16 @@ const ScheduleBase = () => {
         onClose={() => setOpenWhatIsThis(false)}
       />
       <ScheduleGroupModal onClose={closeGroupModal} isOpen={isGroupModalOpen} />
-      <VStack gap={6} width="fit-content" m="auto" alignItems="flex-start">
+      <VStack
+        gap={6}
+        width="fit-content"
+        maxW={{
+          base: '100%',
+          md: '600px',
+        }}
+        m="auto"
+        alignItems="flex-start"
+      >
         <Heading fontSize="x-large">Schedule new meeting</Heading>
         <VStack width="100%" gap={4}>
           <Flex width="100%" gap={4}>
@@ -158,12 +167,12 @@ const ScheduleBase = () => {
               </Select>
             </FormControl>
           </Flex>
-          <FormControl>
+          <FormControl w="100%" maxW="100%">
             <FormLabel htmlFor="participants">
               Participants{' '}
               <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
             </FormLabel>
-            <Box>
+            <Box w="100%" maxW="100%">
               <ChipInput
                 currentItems={participants}
                 placeholder="Enter participants"
