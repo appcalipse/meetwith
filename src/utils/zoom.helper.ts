@@ -2,6 +2,8 @@ import { promises } from 'fs'
 import path from 'path'
 
 import { Credentials } from '@/types/Zoom'
+
+import { isJson } from './generic_utils'
 export const ZOOM_API_URL = 'https://api.zoom.us/v2'
 export const ZOOM_AUTH_URL = 'https://zoom.us/oauth/token'
 const ONE_HOUR_IN_MILLI_SECONDS = 3_600_000
@@ -11,7 +13,7 @@ export const getAccessToken = async () => {
   const content = await promises.readFile(TOKEN_PATH, {
     encoding: 'utf-8',
   })
-  const credentials = JSON.parse(content)
+  const credentials = isJson(content) ? JSON.parse(content) : {}
   if (credentials.expires_at > Date.now()) {
     return credentials.access_token
   } else {
