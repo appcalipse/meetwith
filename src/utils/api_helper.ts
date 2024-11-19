@@ -14,6 +14,7 @@ import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
   EmptyGroupsResponse,
+  GetGroupsFullResponse,
   GetGroupsResponse,
   Group,
   GroupInvitePayload,
@@ -442,9 +443,18 @@ export const getGroups = async (
   limit?: number,
   offset?: number
 ): Promise<Array<GetGroupsResponse>> => {
-  const response = (await internalFetch(
+  const response = await internalFetch<Array<GetGroupsResponse>>(
     `/secure/group/user?limit=${limit}&offset=${offset}`
-  )) as Array<GetGroupsResponse>
+  )
+  return response
+}
+export const getGroupsFull = async (
+  limit?: number,
+  offset?: number
+): Promise<Array<GetGroupsFullResponse>> => {
+  const response = await internalFetch<Array<GetGroupsFullResponse>>(
+    `/secure/group/full?limit=${limit}&offset=${offset}`
+  )
   return response
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
