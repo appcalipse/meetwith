@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { format } from 'date-fns-tz'
+import { format } from 'date-fns'
 
 import {
   CalendarSyncInfo,
@@ -368,15 +368,9 @@ export default class Office365CalendarService implements CalendarService {
           type = Office365RecurrenceType.RELATIVE_MONTHLY
           break
       }
-      const timeZone =
-        details.participants.find(
-          val =>
-            val.account_address?.toLowerCase() ===
-            details.participantActing?.account_address?.toLowerCase()
-        )?.timeZone || 'UTC'
 
       const meetingDate = new Date(details.start)
-      const daysOfWeek = format(meetingDate, 'eeee', { timeZone })
+      const daysOfWeek = format(meetingDate, 'eeee').toLowerCase()
       payload['recurrence'] = {
         type,
         interval: 1,
