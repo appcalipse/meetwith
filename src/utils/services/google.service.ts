@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
+import { format, getWeekOfMonth } from 'date-fns'
 import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
 import { Auth, calendar_v3, google } from 'googleapis'
 
@@ -296,9 +297,22 @@ export default class GoogleCalendarService implements CalendarService {
             meetingDetails.meetingRepeat &&
             meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
           ) {
-            payload.recurrence = [
-              `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`,
-            ]
+            let RRULE = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()};INTERVAL=1`
+            const dayOfWeek = format(
+              meetingDetails.start,
+              'eeeeee'
+            ).toUpperCase()
+            const weekOfMonth = getWeekOfMonth(meetingDetails.start)
+
+            switch (meetingDetails.meetingRepeat) {
+              case MeetingRepeat.WEEKLY:
+                RRULE += `;BYDAY=${dayOfWeek}`
+                break
+              case MeetingRepeat.MONTHLY:
+                RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+                break
+            }
+            payload.recurrence = [RRULE]
           }
           const calendar = google.calendar({
             version: 'v3',
