@@ -7,7 +7,7 @@ import {
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
-import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
+import { MeetingProvider, MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -292,6 +292,14 @@ export default class GoogleCalendarService implements CalendarService {
               this.createReminder
             )
           }
+          if (
+            meetingDetails.meetingRepeat &&
+            meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+          ) {
+            payload.recurrence = [
+              `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`,
+            ]
+          }
           const calendar = google.calendar({
             version: 'v3',
             auth: myGoogleAuth,
@@ -358,7 +366,7 @@ export default class GoogleCalendarService implements CalendarService {
     _calendarId: string
   ): Promise<NewCalendarEventType> {
     return new Promise(async (resolve, reject) => {
-      const auth = await this.auth
+      const auth = this.auth
       const myGoogleAuth = await auth.getToken()
       const calendarId = parseCalendarId(_calendarId)
 
@@ -413,6 +421,14 @@ export default class GoogleCalendarService implements CalendarService {
         payload.reminders.overrides = meetingDetails.meetingReminders.map(
           this.createReminder
         )
+      }
+      if (
+        meetingDetails.meetingRepeat &&
+        meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+      ) {
+        payload.recurrence = [
+          `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`,
+        ]
       }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
