@@ -76,8 +76,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
     setGroupName,
     pickGroupId,
     openNameEditModal,
-    pickGroupSlug,
-    openSlugEditModal,
+    openLeaveModal,
   } = useContext(GroupContext)
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
@@ -146,7 +145,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
           {
             label: 'Leave group',
             important: true,
-            link: '',
+            onClick: () => {
+              if (!props.id) return
+              pickGroupId(props.id)
+              openLeaveModal()
+            },
           },
         ]
       default:

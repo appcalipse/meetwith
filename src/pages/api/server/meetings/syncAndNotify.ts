@@ -32,7 +32,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         request.title,
         request.content,
         undefined,
-        request.meetingProvider
+        request.meetingProvider,
+        request.meetingReminders
       )
     } catch (error) {
       Sentry.captureException(error)
