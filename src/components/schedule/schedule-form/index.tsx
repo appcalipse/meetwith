@@ -1,3 +1,4 @@
+/* eslint-disable tailwindcss/no-custom-classname */
 import { Radio, RadioGroup } from '@chakra-ui/react'
 import {
   Button,
@@ -14,9 +15,9 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { chakraComponents, Props, Select } from 'chakra-react-select'
+import { Select } from 'chakra-react-select'
 import { useContext, useEffect, useState } from 'react'
-import { FaChevronDown, FaInfo } from 'react-icons/fa'
+import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
@@ -28,7 +29,10 @@ import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
-import { customSelectComponents } from '@/utils/constants/select'
+import {
+  customSelectComponents,
+  MeetingRemindersComponent,
+} from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
@@ -39,14 +43,7 @@ import {
   SchedulingType,
 } from '../../../types/Meeting'
 import { isEmptyString, isValidEmail } from '../../../utils/validations'
-export const MeetingRemindersComponent: Props['components'] = {
-  ClearIndicator: () => null,
-  DropdownIndicator: props => (
-    <chakraComponents.DropdownIndicator className="noBg" {...props}>
-      <Icon as={FaChevronDown} />
-    </chakraComponents.DropdownIndicator>
-  ),
-}
+
 interface ScheduleFormProps {
   pickedTime: Date
   isSchedulingExternal: boolean
@@ -64,7 +61,8 @@ interface ScheduleFormProps {
     title?: string,
     participants?: Array<ParticipantInfo>,
     meetingProvider?: MeetingProvider,
-    meetingReminders?: Array<MeetingReminders>
+    meetingReminders?: Array<MeetingReminders>,
+    meetingRepeat?: MeetingRepeat
   ) => Promise<boolean>
   notificationsSubs?: number
   meetingProviders?: Array<MeetingProvider>
@@ -93,6 +91,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       label?: string
     }>
   >([])
+
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
     label: 'No repeat',
@@ -187,7 +186,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         title,
         participants,
         meetingProvider,
-        meetingNotification.map(n => n.value as MeetingReminders)
+        meetingNotification.map(n => n.value as MeetingReminders),
+        meetingRepeat.value
       )
 
       willStartScheduling(!success)
@@ -375,6 +375,20 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           className="noLeftBorder timezone-select"
           options={MeetingRepeatOptions}
           components={customSelectComponents}
+          chakraStyles={{
+            placeholder: provided => ({
+              ...provided,
+              textAlign: 'left',
+            }),
+            input: provided => ({
+              ...provided,
+              textAlign: 'left',
+            }),
+            control: provided => ({
+              ...provided,
+              textAlign: 'left',
+            }),
+          }}
         />
       </FormControl>
       <FormControl textAlign="left" w="100%" maxW="100%">
