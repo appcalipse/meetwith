@@ -105,7 +105,7 @@ const MultipleCalendarList: React.FC<MultipleCalendarListProps> = props => {
                 mr={{ base: 0, md: 4 }}
                 align={{ base: 'left', md: 'end' }}
               >
-                Add new Meet with wallet meetings to this calendar
+                Add new Meetwith meetings to this calendar
               </Text>
               <Switch
                 size="md"
