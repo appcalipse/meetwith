@@ -49,12 +49,10 @@ const GroupInviteForm: FC<InviteModalProps> = ({
   const blurredColor = useColorModeValue('neutral.400', 'neutral.400')
   const focusedColor = useColorModeValue('neutral.800', 'white')
   const [message, setMessage] = useState<string>(
-    `Come join our scheduling group "${groupName}" on Meet With Wallet!`
+    `Come join our scheduling group "${groupName}" on Meetwith!`
   )
   useEffect(() => {
-    setMessage(
-      `Come join our scheduling group "${groupName}" on Meet With Wallet!`
-    )
+    setMessage(`Come join our scheduling group "${groupName}" on Meetwith!`)
   }, [groupName])
   const [isMessageFocused, setIsMessageFocused] = useState<boolean>(false)
 
