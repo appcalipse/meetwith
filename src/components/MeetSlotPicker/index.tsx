@@ -1,18 +1,13 @@
 import {
-  Box,
-  Button,
   Flex,
   Heading,
   HStack,
   Icon,
-  Text,
   useColorModeValue,
-  useMediaQuery,
   VStack,
 } from '@chakra-ui/react'
 import {
   chakraComponents,
-  MultiValue,
   Props,
   Select,
   SingleValue,
@@ -24,7 +19,6 @@ import {
   areIntervalsOverlapping,
   differenceInDays,
   eachMinuteOfInterval,
-  format,
   isBefore,
   isFuture,
   isSameDay,
@@ -35,23 +29,19 @@ import {
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import React, { useEffect, useState } from 'react'
-import { AiFillCaretDown } from 'react-icons/ai'
-import {
-  FaArrowRight,
-  FaCalendar,
-  FaChevronDown,
-  FaClock,
-  FaGlobe,
-} from 'react-icons/fa'
+import { FaChevronDown, FaGlobe } from 'react-icons/fa'
 import { FaArrowLeft } from 'react-icons/fa6'
-import { IoMdCloseCircleOutline } from 'react-icons/io'
 import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
 import { AccountPreferences } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
-import { MeetingProvider, SchedulingType } from '../../types/Meeting'
+import {
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+} from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
 import Loading from '../Loading'
 import { ScheduleForm } from '../schedule/schedule-form'
@@ -80,7 +70,8 @@ interface MeetSlotPickerProps {
     title?: string,
     participants?: Array<ParticipantInfo>,
     meetingProvider?: MeetingProvider,
-    meetingReminders?: Array<MeetingReminders>
+    meetingReminders?: Array<MeetingReminders>,
+    meetingRepeat?: MeetingRepeat
   ) => Promise<boolean>
   preferences?: AccountPreferences
   reset: boolean
