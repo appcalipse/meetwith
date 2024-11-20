@@ -722,6 +722,8 @@ const saveMeeting = async (
     meeting_url: meeting.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meeting.meetingProvider,
+    reminders: meeting.meetingReminders,
+    recurrence: meeting.meetingRepeat,
   })
   if (!createdRootMeeting) {
     throw new Error(
@@ -792,6 +794,7 @@ const saveMeeting = async (
         account_address: account.address,
         version: 0,
         meeting_info_encrypted: participant.privateInfo,
+        recurrence: meeting.meetingRepeat,
       }
 
       slots.push(dbSlot)
@@ -835,6 +838,7 @@ const saveMeeting = async (
     content: meeting.content,
     meetingProvider: meeting.meetingProvider,
     meetingReminders: meeting.meetingReminders,
+    meetingRepeat: meeting.meetingRepeat,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -2252,6 +2256,7 @@ const updateMeeting = async (
         account_address: account.address,
         version: meetingUpdateRequest.version,
         meeting_info_encrypted: participant.privateInfo,
+        recurrence: meetingUpdateRequest.meetingRepeat,
       }
 
       slots.push(dbSlot)
@@ -2311,6 +2316,7 @@ const updateMeeting = async (
     meeting_url: meetingUpdateRequest.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meetingProvider,
+    recurrence: meetingUpdateRequest.meetingRepeat,
   })
 
   if (!createdRootMeeting)
@@ -2332,6 +2338,7 @@ const updateMeeting = async (
     content: meetingUpdateRequest.content,
     changes: changingTime ? { dateChange: changingTime } : undefined,
     meetingReminders: meetingUpdateRequest.meetingReminders,
+    meetingRepeat: meetingUpdateRequest.meetingRepeat,
   }
 
   // Doing notifications and syncs asynchronously
