@@ -264,7 +264,7 @@ export default class GoogleCalendarService implements CalendarService {
               overrides: [{ method: 'email', minutes: 10 }],
             },
             creator: {
-              displayName: 'Meet with Wallet',
+              displayName: 'Meetwith',
               email: NO_REPLY_EMAIL,
             },
             guestsCanModify: false,
@@ -402,7 +402,7 @@ export default class GoogleCalendarService implements CalendarService {
           overrides: [{ method: 'email', minutes: 10 }],
         },
         creator: {
-          displayName: 'Meet With Wallet',
+          displayName: 'Meetwith',
         },
       }
 
