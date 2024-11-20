@@ -1,9 +1,17 @@
 import * as ct from 'countries-and-timezones'
-import { setDay } from 'date-fns'
+import {
+  add,
+  differenceInMinutes,
+  endOfMonth,
+  getWeekOfMonth,
+  setDay,
+  startOfMonth,
+} from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 
 import { TimeRange } from '@/types/Account'
 import { CustomTimeRange } from '@/types/common'
+import { MeetingRepeat } from '@/types/Meeting'
 const timezonesObj = ct.getAllTimezones()
 const timezonesKeys = Object.keys(timezonesObj) as Array<
   keyof typeof timezonesObj
@@ -49,4 +57,46 @@ export const convertTimeRangesToDate = (
       timeRange.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
     ),
   }))
+}
+
+export const addRecurrence = (
+  start: Date,
+  end: Date,
+  recurrence: MeetingRepeat
+) => {
+  const diffMinutes = differenceInMinutes(end, start)
+  let newStart: Date
+
+  switch (recurrence) {
+    case MeetingRepeat.DAILY:
+      newStart = add(start, { days: 1 })
+      break
+
+    case MeetingRepeat.WEEKLY:
+      newStart = add(start, { weeks: 1 })
+      break
+    case MeetingRepeat.MONTHLY:
+      const dayOfWeek = new Date(start).getDay()
+      const weekOfMonth = getWeekOfMonth(start)
+
+      const nextMonth = add(start, { months: 1 })
+      const monthStart = startOfMonth(nextMonth)
+
+      newStart = setDay(monthStart, dayOfWeek)
+
+      for (let i = 1; i < weekOfMonth; i++) {
+        newStart = add(newStart, { weeks: 1 })
+        if (newStart > endOfMonth(nextMonth)) {
+          newStart = add(newStart, { weeks: -1 })
+          break
+        }
+      }
+      break
+    default:
+      newStart = add(start, { days: 1 })
+      break
+  }
+  const newEnd = add(newStart, { minutes: diffMinutes })
+
+  return { start: newStart, end: newEnd }
 }
