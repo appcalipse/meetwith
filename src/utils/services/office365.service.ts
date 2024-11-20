@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { format, utcToZonedTime } from 'date-fns-tz'
+import { format } from 'date-fns-tz'
 
 import {
   CalendarSyncInfo,
