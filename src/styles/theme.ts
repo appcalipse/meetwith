@@ -30,10 +30,14 @@ export const colors = {
     600: '#52606D',
     700: '#3E4C59',
     800: '#323F4B',
+    850: '#181F24',
     900: '#131A20',
   },
   green: {
     500: '#34C759',
+    400: '#00ce5d',
+    300: '#55de93',
+    200: '#ccf5df',
   },
   orangeButton: {
     200: '#F46739',
@@ -52,7 +56,7 @@ const newTheme = {
   styles: {
     global: (props: ThemeProviderProps) => ({
       body: {
-        bg: mode('gray.50', 'gray.700')(props),
+        bg: mode('gray.50', 'neutral.850')(props),
       },
       '*, *::before, &::after': {
         borderColor: mode('gray.300', 'whiteAlpha.300')(props),
