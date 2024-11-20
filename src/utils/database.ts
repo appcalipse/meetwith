@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import CryptoJS, { enc, SHA1 } from 'crypto-js'
-import { addMinutes, isAfter } from 'date-fns'
+import { addMinutes, differenceInMinutes, isAfter, isBefore } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
@@ -10,6 +10,7 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
+import Identifier from '@/pages/api/accounts/[identifier]'
 import {
   Account,
   AccountPreferences,
@@ -46,6 +47,7 @@ import {
   GroupNotificationType,
   MeetingAccessType,
   MeetingProvider,
+  MeetingRepeat,
   ParticipantMappingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -92,8 +94,10 @@ import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
 } from './calendar_manager'
+import { diff } from './collections'
 import { apiUrl } from './constants'
 import { encryptContent } from './cryptography'
+import { addRecurrence } from './date_helper'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
@@ -497,6 +501,35 @@ const getSlotsForAccount = async (
   }
 
   return data || []
+}
+const updateRecurringSlots = async (identifier: string) => {
+  const account = await getAccountFromDB(identifier)
+  const _end = new Date().toISOString()
+  const { data: allSlots, error } = await db.supabase
+    .from('slots')
+    .select()
+    .eq('account_address', account.address)
+    .lte('end', _end)
+    .neq('recurrence', MeetingRepeat.NO_REPEAT)
+  if (error) {
+    return
+  }
+  if (allSlots) {
+    const toUpdate = []
+    for (const data of allSlots) {
+      const slot = data as DBSlot
+      const interval = addRecurrence(
+        new Date(slot.start),
+        new Date(slot.end),
+        slot.recurrence
+      )
+      const newSlot = { ...slot, start: interval.start, end: interval.end }
+      toUpdate.push(newSlot)
+    }
+    if (toUpdate.length > 0) {
+      await db.supabase.from('slots').upsert(toUpdate)
+    }
+  }
 }
 
 const getSlotsForDashboard = async (
@@ -983,7 +1016,6 @@ const getGroupsAndMembers = async (
       (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
     )
   if (error) {
-    console.log(error)
     throw new Error(error.message)
   }
   const groups = []
@@ -2630,6 +2662,7 @@ export {
   updateAccountFromInvite,
   updateAccountPreferences,
   updateMeeting,
+  updateRecurringSlots,
   upsertGateCondition,
   workMeetingTypeGates,
 }
