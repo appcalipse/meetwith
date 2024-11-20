@@ -24,13 +24,22 @@ import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { MeetingNotificationOptions } from '@/utils/constants/schedule'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
+import { customSelectComponents } from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
-import { MeetingProvider, SchedulingType } from '../../../types/Meeting'
+import {
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+} from '../../../types/Meeting'
 import { isEmptyString, isValidEmail } from '../../../utils/validations'
+
 const components: Props['components'] = {
   ClearIndicator: () => null,
   DropdownIndicator: props => (
@@ -85,6 +94,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       label?: string
     }>
   >([])
+  const [meetingRepeat, setMeetingRepeat] = useState({
+    value: MeetingRepeat['NO_REPEAT'],
+    label: 'No repeat',
+  })
   const [content, setContent] = useState('')
   const [name, setName] = useState(currentAccount?.preferences?.name || '')
   const [title, setTitle] = useState('')
@@ -345,6 +358,17 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               textAlign: 'left',
             }),
           }}
+        />
+      </FormControl>
+      <FormControl w="100%" maxW="100%">
+        <FormLabel>Meeting Repeat</FormLabel>
+        <Select
+          value={meetingRepeat}
+          colorScheme="primary"
+          onChange={newValue => setMeetingRepeat(newValue)}
+          className="noLeftBorder timezone-select"
+          options={MeetingRepeatOptions}
+          components={customSelectComponents}
         />
       </FormControl>
       <FormControl textAlign="left" w="100%" maxW="100%">
