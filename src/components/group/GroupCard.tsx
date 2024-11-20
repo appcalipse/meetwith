@@ -247,8 +247,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                     bgColor={itemsBgColor}
                     shadow="lg"
                   >
-                    At least 1 eternal calendar connected to Meet With Wallet
-                    platform.
+                    At least 1 eternal calendar connected to Meetwith platform.
                   </Text>
                   <Tooltip.Arrow />
                 </Tooltip.Content>
