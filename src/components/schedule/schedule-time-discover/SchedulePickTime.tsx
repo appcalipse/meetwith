@@ -5,20 +5,13 @@ import {
   Grid,
   Heading,
   HStack,
-  Icon,
   IconButton,
   SlideFade,
   Text,
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import {
-  chakraComponents,
-  MultiValue,
-  Props,
-  Select,
-  SingleValue,
-} from 'chakra-react-select'
+import { Select, SingleValue } from 'chakra-react-select'
 import {
   add,
   addDays,
@@ -31,7 +24,7 @@ import {
   sub,
 } from 'date-fns'
 import { useContext, useEffect, useMemo, useState } from 'react'
-import { FaChevronDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
@@ -40,6 +33,7 @@ import { DayAvailability } from '@/types/Account'
 import { CustomTimeRange } from '@/types/common'
 import { TimeSlot } from '@/types/Meeting'
 import { fetchBusySlotsRawForMultipleAccounts } from '@/utils/api_helper'
+import { customSelectComponents } from '@/utils/constants/select'
 import { timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 
@@ -224,18 +218,7 @@ export function SchedulePickTime({
       timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
   }
-  const customComponents: Props['components'] = {
-    ClearIndicator: props => (
-      <chakraComponents.ClearIndicator className="noBg" {...props}>
-        <Icon as={FaChevronDown} w={4} h={4} />
-      </chakraComponents.ClearIndicator>
-    ),
-    DropdownIndicator: props => (
-      <chakraComponents.DropdownIndicator className="noBg" {...props}>
-        <Icon as={FaChevronDown} w={4} h={4} />
-      </chakraComponents.DropdownIndicator>
-    ),
-  }
+
   const getDates = (accountSlots: Array<TimeSlot[]>) => {
     const days = Array.from({ length: 7 }, (v, k) => k)
       .map(k => addDays(currentSelectedDate, k))
@@ -376,7 +359,7 @@ export function SchedulePickTime({
               onChange={_onChange}
               className="noLeftBorder timezone-select"
               options={tzs}
-              components={customComponents}
+              components={customSelectComponents}
             />
           </VStack>
           <VStack
@@ -393,7 +376,7 @@ export function SchedulePickTime({
               onChange={newValue => _onChangeMonth(newValue)}
               className="noLeftBorder timezone-select"
               options={months}
-              components={customComponents}
+              components={customSelectComponents}
             />
           </VStack>
           <Grid
@@ -466,7 +449,7 @@ export function SchedulePickTime({
                   onChange={_onChangeClock}
                   className="noLeftBorder date-select"
                   options={CLOCK}
-                  components={customComponents}
+                  components={customSelectComponents}
                 />
                 <VStack align={'flex-start'} p={1}>
                   {SLOTS.map((slot, index) => {
