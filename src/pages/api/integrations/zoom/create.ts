@@ -1,6 +1,8 @@
 import * as Sentry from '@sentry/node'
+import { utcToZonedTime } from 'date-fns-tz'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { MeetingRepeat } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { UrlCreationRequest } from '@/types/Requests'
 import { getAccountsNotificationSubscriptionEmails } from '@/utils/database'
@@ -53,7 +55,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         ) || meeting.accounts?.[0]
       const numberRegex = /\d+/g
       const code = meeting.meeting_id.match(numberRegex)?.join('') || Date.now()
-      const payload = {
+      const payload: Record<string, any> = {
         agenda: meeting.content || meeting.title,
         created_at: new Date(),
         duration,
@@ -93,10 +95,45 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           device_testing: false,
         },
         start_time: meeting.start,
-        timezone: acccount?.preferences.timezone,
+        timezone: acccount?.preferences?.timezone || 'UTC',
         topic: meeting.title,
         type: 2,
         dynamic_host_key: code.toString().substring(0, 6),
+      }
+      if (
+        meeting.meetingRepeat &&
+        meeting?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+      ) {
+        let type!: number
+        switch (meeting.meetingRepeat) {
+          case MeetingRepeat.DAILY:
+            type = 1
+            break
+          case MeetingRepeat.WEEKLY:
+            type = 2
+            break
+          case MeetingRepeat.MONTHLY:
+            type = 3
+            break
+          default:
+            type = 1
+            break
+        }
+        payload['recurrence'] = {
+          type,
+          repeat_interval: 1,
+        }
+        if (type === 2) {
+          const meetingDate = new Date(meeting.start)
+
+          const timeZone = acccount?.preferences.timezone || 'UTC'
+
+          const zonedDate = utcToZonedTime(meetingDate, timeZone)
+
+          const day_of_week = zonedDate.getDay() + 1
+
+          payload['recurrence']['weekly_days'] = day_of_week
+        }
       }
       const raw = JSON.stringify(payload)
 
