@@ -1,11 +1,5 @@
 import { Icon } from '@chakra-ui/react'
-import {
-  chakraComponents,
-  MultiValue,
-  Props,
-  Select,
-  SingleValue,
-} from 'chakra-react-select'
+import { chakraComponents, Props } from 'chakra-react-select'
 import { FaChevronDown } from 'react-icons/fa'
 export const customSelectComponents: Props['components'] = {
   ClearIndicator: props => (
@@ -16,6 +10,15 @@ export const customSelectComponents: Props['components'] = {
   DropdownIndicator: props => (
     <chakraComponents.DropdownIndicator className="noBg" {...props}>
       <Icon as={FaChevronDown} w={4} h={4} />
+    </chakraComponents.DropdownIndicator>
+  ),
+}
+
+export const MeetingRemindersComponent: Props['components'] = {
+  ClearIndicator: () => null,
+  DropdownIndicator: props => (
+    <chakraComponents.DropdownIndicator className="noBg" {...props}>
+      <Icon as={FaChevronDown} />
     </chakraComponents.DropdownIndicator>
   ),
 }
