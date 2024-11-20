@@ -278,6 +278,7 @@ const buildMeetingData = async (
     related_slot_ids: [],
     meeting_id: meetingId,
     reminders: meetingReminders,
+    provider: meetingProvider,
   }
 
   // first pass to make sure that we are keeping the existing slot id
@@ -372,7 +373,8 @@ const updateMeeting = async (
   content: string,
   meetingUrl: string,
   meetingProvider: MeetingProvider,
-  meetingTitle?: string
+  meetingTitle?: string,
+  meetingReminders?: Array<MeetingReminders>
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -490,7 +492,8 @@ const updateMeeting = async (
     content,
     meetingUrl,
     rootMeetingId,
-    meetingTitle
+    meetingTitle,
+    meetingReminders
   )
   const payload = {
     ...meetingData,
@@ -755,7 +758,7 @@ const generateIcs = (
       getHours(meeting.start),
       getMinutes(meeting.start),
     ],
-    productId: '-//MEET WITH WALLET//EN',
+    productId: '-//Meetwith//EN',
     end: [
       getYear(meeting.end),
       getMonth(meeting.end) + 1,
@@ -849,7 +852,6 @@ const decryptMeeting = async (
     signature || getSignature(account!.address)!,
     meeting?.meeting_info_encrypted
   )
-
   if (!content) return null
 
   const meetingInfo = JSON.parse(content) as MeetingInfo
@@ -866,6 +868,8 @@ const decryptMeeting = async (
     start: new Date(meeting.start),
     end: new Date(meeting.end),
     version: meeting.version,
+    reminders: meetingInfo.reminders,
+    provider: meetingInfo?.provider,
   }
 }
 
