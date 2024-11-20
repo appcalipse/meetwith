@@ -166,7 +166,7 @@ export enum NotBefore {
   NextWeek = 1000,
 }
 export enum MeetingRepeat {
-  NO_REPEAT = 'no_repeat',
+  NO_REPEAT = 'no-repeat',
   DAILY = 'daily',
   WEEKLY = 'weekly',
   MONTHLY = 'monthly',
