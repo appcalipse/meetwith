@@ -699,7 +699,7 @@ const generateIcs = (
       getHours(meeting.start),
       getMinutes(meeting.start),
     ],
-    productId: '-//MEET WITH WALLET//EN',
+    productId: '-//Meetwith//EN',
     end: [
       getYear(meeting.end),
       getMonth(meeting.end) + 1,
