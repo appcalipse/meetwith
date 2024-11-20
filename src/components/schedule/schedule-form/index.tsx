@@ -39,8 +39,7 @@ import {
   SchedulingType,
 } from '../../../types/Meeting'
 import { isEmptyString, isValidEmail } from '../../../utils/validations'
-
-const components: Props['components'] = {
+export const MeetingRemindersComponent: Props['components'] = {
   ClearIndicator: () => null,
   DropdownIndicator: props => (
     <chakraComponents.DropdownIndicator className="noBg" {...props}>
@@ -318,7 +317,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         />
       </FormControl>
       <FormControl w="100%" maxW="100%">
-        <FormLabel>Meeting reminders</FormLabel>
+        <FormLabel>Meeting reminders (optional)</FormLabel>
         <Select
           value={meetingNotification}
           colorScheme="gray"
@@ -338,7 +337,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           isMulti
           tagVariant={'solid'}
           options={MeetingNotificationOptions}
-          components={components}
+          components={MeetingRemindersComponent}
           chakraStyles={{
             container: provided => ({
               ...provided,
