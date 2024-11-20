@@ -4,6 +4,7 @@ import {
   getHours,
   getMinutes,
   getMonth,
+  getWeekOfMonth,
   getYear,
 } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
@@ -811,7 +812,19 @@ const generateIcs = (
     event.alarms = meeting.reminders.map(createAlarm)
   }
   if (meeting.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT) {
-    event.recurrenceRule = `FREQ=${meeting.recurrence.toUpperCase()}`
+    let RRULE = `FREQ=${meeting.recurrence?.toUpperCase()};INTERVAL=1`
+    const dayOfWeek = format(meeting.start, 'eeeeee').toUpperCase()
+    const weekOfMonth = getWeekOfMonth(meeting.start)
+
+    switch (meeting.recurrence) {
+      case MeetingRepeat.WEEKLY:
+        RRULE += `;BYDAY=${dayOfWeek}`
+        break
+      case MeetingRepeat.MONTHLY:
+        RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+        break
+    }
+    event.recurrenceRule = RRULE
   }
   event.attendees = []
   if (!removeAttendess) {
