@@ -13,6 +13,7 @@ import {
   GroupNotificationType,
   MeetingChangeType,
   MeetingProvider,
+  MeetingRepeat,
   ParticipantMappingType,
 } from '../types/Meeting'
 import {
@@ -139,7 +140,8 @@ export const notifyForOrUpdateNewMeeting = async (
   description?: string,
   changes?: MeetingChange,
   meetingProvider?: MeetingProvider,
-  meetingReminders?: Array<MeetingReminders>
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat?: MeetingRepeat
 ): Promise<void> => {
   const participantsInfo = await setupParticipants(participants)
 
@@ -156,7 +158,8 @@ export const notifyForOrUpdateNewMeeting = async (
       description,
       changes,
       meetingProvider,
-      meetingReminders
+      meetingReminders,
+      meetingRepeat
     )
   )
 }
@@ -197,7 +200,8 @@ const workNotifications = async (
   description?: string,
   changes?: MeetingChange,
   meetingProvider?: MeetingProvider,
-  meetingReminders?: Array<MeetingReminders>
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat?: MeetingRepeat
 ): Promise<Promise<boolean>[]> => {
   const promises: Promise<boolean>[] = []
 
@@ -221,7 +225,8 @@ const workNotifications = async (
             description,
             changes,
             meetingProvider,
-            meetingReminders
+            meetingReminders,
+            meetingRepeat
           )
         )
       } else if (
@@ -252,7 +257,10 @@ const workNotifications = async (
                     meeting_url,
                     title,
                     description,
-                    changes
+                    changes,
+                    meetingProvider,
+                    meetingReminders,
+                    meetingRepeat
                   )
                 )
                 break
@@ -378,7 +386,8 @@ const getEmailNotification = async (
   description?: string,
   changes?: MeetingChange,
   meetingProvider?: MeetingProvider,
-  meetingReminders?: Array<MeetingReminders>
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat?: MeetingRepeat
 ): Promise<boolean> => {
   const toEmail =
     participant.guest_email ||
@@ -407,7 +416,8 @@ const getEmailNotification = async (
         description,
         created_at,
         meetingProvider,
-        meetingReminders
+        meetingReminders,
+        meetingRepeat
       )
     case MeetingChangeType.DELETE:
       const displayName = getParticipantActingDisplayName(
@@ -446,7 +456,8 @@ const getEmailNotification = async (
         created_at,
         changes,
         meetingProvider,
-        meetingReminders
+        meetingReminders,
+        meetingRepeat
       )
     default:
   }
