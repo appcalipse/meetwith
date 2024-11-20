@@ -25,6 +25,7 @@ import {
   MeetingDecrypted,
   MeetingInfo,
   MeetingProvider,
+  MeetingRepeat,
   ParticipantMappingType,
   SchedulingType,
 } from '@/types/Meeting'
@@ -254,7 +255,8 @@ const buildMeetingData = async (
   meetingUrl = '',
   meetingId = '',
   meetingTitle = 'No Title',
-  meetingReminders?: Array<MeetingReminders>
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -279,6 +281,7 @@ const buildMeetingData = async (
     meeting_id: meetingId,
     reminders: meetingReminders,
     provider: meetingProvider,
+    recurrence: meetingRepeat,
   }
 
   // first pass to make sure that we are keeping the existing slot id
@@ -347,6 +350,7 @@ const buildMeetingData = async (
     title: privateInfo['title'],
     meetingProvider,
     meetingReminders,
+    meetingRepeat,
   }
 }
 
@@ -374,7 +378,8 @@ const updateMeeting = async (
   meetingUrl: string,
   meetingProvider: MeetingProvider,
   meetingTitle?: string,
-  meetingReminders?: Array<MeetingReminders>
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -493,7 +498,8 @@ const updateMeeting = async (
     meetingUrl,
     rootMeetingId,
     meetingTitle,
-    meetingReminders
+    meetingReminders,
+    meetingRepeat
   )
   const payload = {
     ...meetingData,
@@ -576,7 +582,8 @@ const scheduleMeeting = async (
   meetingUrl?: string,
   emailToSendReminders?: string,
   meetingTitle?: string,
-  meetingReminders?: Array<MeetingReminders>
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
@@ -594,6 +601,7 @@ const scheduleMeeting = async (
         accounts: participantData.allAccounts,
         content: meetingContent,
         meetingReminders,
+        meetingRepeat,
       })
     ).url
   const meeting = await buildMeetingData(
@@ -610,7 +618,8 @@ const scheduleMeeting = async (
     meeting_url,
     newMeetingId,
     meetingTitle,
-    meetingReminders
+    meetingReminders,
+    meetingRepeat
   )
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = []
@@ -801,7 +810,9 @@ const generateIcs = (
   if (meeting.reminders) {
     event.alarms = meeting.reminders.map(createAlarm)
   }
-
+  if (meeting.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT) {
+    event.recurrenceRule = `FREQ=${meeting.recurrence.toUpperCase()}`
+  }
   event.attendees = []
   if (!removeAttendess) {
     for (const participant of meeting.participants) {
@@ -870,6 +881,7 @@ const decryptMeeting = async (
     version: meeting.version,
     reminders: meetingInfo.reminders,
     provider: meetingInfo?.provider,
+    recurrence: meetingInfo?.recurrence,
   }
 }
 
