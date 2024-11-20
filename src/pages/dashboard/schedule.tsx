@@ -14,7 +14,7 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import { MeetingReminders } from '@/types/common'
-import { MeetingProvider, SchedulingType } from '@/types/Meeting'
+import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
@@ -94,6 +94,16 @@ interface IScheduleContext {
       }>
     >
   >
+  meetingRepeat: {
+    value: MeetingRepeat
+    label: string
+  }
+  setMeetingRepeat: React.Dispatch<
+    React.SetStateAction<{
+      value: MeetingRepeat
+      label: string
+    }>
+  >
 }
 
 export interface IGroupParticipant {
@@ -134,6 +144,11 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setCurrentSelectedDate: () => {},
   meetingNotification: [],
   setMeetingNotification: () => {},
+  meetingRepeat: {
+    value: MeetingRepeat.NO_REPEAT,
+    label: 'No repeat',
+  },
+  setMeetingRepeat: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -179,6 +194,10 @@ const Schedule: NextPage = () => {
       label?: string
     }>
   >([])
+  const [meetingRepeat, setMeetingRepeat] = useState({
+    value: MeetingRepeat['NO_REPEAT'],
+    label: 'No repeat',
+  })
   const handleTimePick = (time: Date | number) => setPickedTime(time)
   const handleAddGroup = (group: IGroupParticipant) => {
     setParticipants(prev => {
@@ -305,7 +324,8 @@ const Schedule: NextPage = () => {
         meetingUrl,
         undefined,
         title,
-        meetingNotification.map(n => n.value)
+        meetingNotification.map(n => n.value),
+        meetingRepeat.value
       )
       setCurrentPage(Page.COMPLETED)
     } catch (e: any) {
@@ -413,6 +433,8 @@ const Schedule: NextPage = () => {
     setCurrentSelectedDate,
     meetingNotification,
     setMeetingNotification,
+    meetingRepeat,
+    setMeetingRepeat,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
