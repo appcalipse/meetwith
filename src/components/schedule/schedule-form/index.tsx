@@ -365,7 +365,14 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         <Select
           value={meetingRepeat}
           colorScheme="primary"
-          onChange={newValue => setMeetingRepeat(newValue)}
+          onChange={newValue =>
+            setMeetingRepeat(
+              newValue as {
+                value: MeetingRepeat
+                label: string
+              }
+            )
+          }
           className="noLeftBorder timezone-select"
           options={MeetingRepeatOptions}
           components={customSelectComponents}
