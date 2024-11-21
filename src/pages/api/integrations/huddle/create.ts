@@ -31,7 +31,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const huddleMeeting = await huddleResponse.json()
       if (huddleMeeting) {
         return res.json({
-          url: huddleMeeting.meetingLink,
+          url: huddleMeeting.data.meetingLink,
         })
       }
     } catch (e) {
