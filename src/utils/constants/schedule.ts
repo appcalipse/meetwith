@@ -35,7 +35,7 @@ export const MeetingNotificationOptions = [
 export const MeetingRepeatOptions = [
   {
     value: MeetingRepeat['NO_REPEAT'],
-    label: 'No repeat',
+    label: 'Does not repeat',
   },
   {
     value: MeetingRepeat['DAILY'],
