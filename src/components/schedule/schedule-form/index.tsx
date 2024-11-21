@@ -94,7 +94,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
-    label: 'No repeat',
+    label: 'Does not repeat',
   })
   const [content, setContent] = useState('')
   const [name, setName] = useState(currentAccount?.preferences?.name || '')
