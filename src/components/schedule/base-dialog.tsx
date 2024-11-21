@@ -163,7 +163,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       val => decryptedMeeting?.recurrence === val.value
     ) || {
       value: MeetingRepeat['NO_REPEAT'],
-      label: 'No repeat',
+      label: 'Does not repeat',
     }
   )
   const meetingId = decryptedMeeting?.id

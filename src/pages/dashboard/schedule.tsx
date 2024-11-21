@@ -146,7 +146,7 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setMeetingNotification: () => {},
   meetingRepeat: {
     value: MeetingRepeat.NO_REPEAT,
-    label: 'No repeat',
+    label: 'Does not repeat',
   },
   setMeetingRepeat: () => {},
 }
@@ -196,7 +196,7 @@ const Schedule: NextPage = () => {
   >([])
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
-    label: 'No repeat',
+    label: 'Does not repeat',
   })
   const handleTimePick = (time: Date | number) => setPickedTime(time)
   const handleAddGroup = (group: IGroupParticipant) => {
