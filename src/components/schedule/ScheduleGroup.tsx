@@ -7,24 +7,22 @@ import {
   Switch,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useContext, useEffect, useState } from 'react'
+import React, { FC, useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 
 import { Availability } from '@/components/icons/Availability'
-import Loading from '@/components/Loading'
 import ScheduleGroupMember from '@/components/schedule/ScheduleGroupMember'
 import { IGroupParticipant, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
-import { GetGroupsResponse, GroupMember } from '@/types/Group'
-import { getGroupsMembers } from '@/utils/api_helper'
+import { GetGroupsFullResponse, GroupMember } from '@/types/Group'
 
-type ScheduleGroupItemProps = GetGroupsResponse
+type ScheduleGroupItemProps = GetGroupsFullResponse
 
 // eslint-disable-next-line react/display-name
 const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
   const [groupMembers, setGroupsMembers] = useState<Array<GroupMember>>([])
   const { currentAccount } = useContext(AccountContext)
-  const [loading, setLoading] = useState(false)
+
   const {
     groupAvailability,
     setGroupAvailability,
@@ -34,19 +32,35 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
     participants,
   } = useContext(ScheduleContext)
   const [collapsed, setCollapsed] = useState(true)
-  const fetchGroupMembers = async (reset?: boolean) => {
-    setLoading(true)
-    const fetchedGroupMembers = await getGroupsMembers(props.id)
-    const actualMembers = fetchedGroupMembers
-      .filter(val => !val.invitePending)
-      .filter(val => !!val.address)
-    setGroupsMembers(reset ? [] : actualMembers)
-    setLoading(false)
+  const isExpanded = useMemo(
+    () =>
+      participants.some(val => {
+        const groupData = val as IGroupParticipant
+        const isGroup = groupData.isGroup && groupData.id === props.id
+        return isGroup
+      }),
+    [participants, props.id]
+  )
+  const loadGroupMembers = () => {
+    const actualMembers = props.members
+    setGroupsMembers(actualMembers)
+    if (isExpanded) {
+      setGroupAvailability(prev => ({
+        ...prev,
+        [props.id]: actualMembers
+          .map(val => val.address)
+          .filter((val): val is string => typeof val === 'string'),
+      }))
+      setGroupParticipants(prev => ({
+        ...prev,
+        [props.id]: actualMembers
+          .map(val => val.address)
+          .filter((val): val is string => typeof val === 'string'),
+      }))
+    }
   }
   useEffect(() => {
-    if (props?.id) {
-      void fetchGroupMembers()
-    }
+    void loadGroupMembers()
   }, [])
   const handleToggleAllAvailabilities = () => {
     const allAddresses = groupMembers
@@ -78,11 +92,6 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
       [props.id]: e.target.checked ? allAddresses : [],
     }))
   }
-  const isExpanded = participants.some(val => {
-    const groupData = val as IGroupParticipant
-    const isGroup = groupData.isGroup && groupData.id === props.id
-    return isGroup
-  })
   return (
     <VStack
       width="100%"
@@ -162,21 +171,15 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
       {collapsed && (
         <Collapse in={isExpanded} style={{ width: '100%' }}>
           <VStack w={'100%'} maxH="600px" h="auto" overflowY="auto">
-            {loading ? (
-              <Box my={2}>
-                <Loading />
-              </Box>
-            ) : (
-              groupMembers.map(({ address, ...groupMember }) => (
-                <ScheduleGroupMember
-                  groupId={props.id}
-                  address={address as string}
-                  {...groupMember}
-                  key={groupMember.userId}
-                  currentAccount={currentAccount ?? null}
-                />
-              ))
-            )}
+            {groupMembers?.map(({ address, ...groupMember }) => (
+              <ScheduleGroupMember
+                groupId={props.id}
+                address={address as string}
+                {...groupMember}
+                key={groupMember.userId}
+                currentAccount={currentAccount ?? null}
+              />
+            ))}
           </VStack>
         </Collapse>
       )}

@@ -163,6 +163,7 @@ export default class CaldavCalendarService implements CalendarService {
             version: 0,
             related_slot_ids: [],
             meeting_info_encrypted: mockEncrypted,
+            reminders: meetingDetails.meetingReminders,
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,

@@ -22,6 +22,7 @@ export interface Account {
   subscriptions: Subscription[]
   discord_account?: DiscordAccount
   signedUp?: boolean
+  isCalendarConnected?: boolean
 }
 
 export interface SimpleAccountInfo {
