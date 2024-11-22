@@ -4,6 +4,7 @@ import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
+import { MeetingReminders } from '@/types/common'
 import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
@@ -268,7 +269,23 @@ export default class Office365CalendarService implements CalendarService {
       throw error
     }
   }
-
+  private createReminder(indicator: MeetingReminders) {
+    switch (indicator) {
+      case MeetingReminders['15_MINUTES_BEFORE']:
+        return 15
+      case MeetingReminders['30_MINUTES_BEFORE']:
+        return 30
+      case MeetingReminders['1_HOUR_BEFORE']:
+        return 60
+      case MeetingReminders['1_DAY_BEFORE']:
+        return 1440
+      case MeetingReminders['1_WEEK_BEFORE']:
+        return 10080
+      case MeetingReminders['10_MINUTES_BEFORE']:
+      default:
+        return 10
+    }
+  }
   private translateEvent = (
     calendarOwnerAccountAddress: string,
     details: MeetingCreationSyncRequest,
@@ -290,7 +307,7 @@ export default class Office365CalendarService implements CalendarService {
       p => p.account_address === calendarOwnerAccountAddress
     )[0].slot_id
 
-    const payload = {
+    const payload: Record<string, any> = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
         participantsInfo,
@@ -326,7 +343,13 @@ export default class Office365CalendarService implements CalendarService {
       allowNewTimeProposals: false,
       transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
     }
-
+    if (details.meetingReminders) {
+      payload.isReminderOn = true
+      const lowestReminder = details.meetingReminders.reduce((prev, current) =>
+        prev < current ? prev : current
+      )
+      payload.reminderMinutesBeforeStart = this.createReminder(lowestReminder)
+    }
     for (const participant of details.participants) {
       ;(payload.attendees as any).push({
         emailAddress: {

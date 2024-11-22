@@ -10,6 +10,7 @@ import {
   FormLabel,
   Heading,
   HStack,
+  Icon,
   Input,
   Radio,
   RadioGroup,
@@ -19,8 +20,14 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import {
+  chakraComponents,
+  Props,
+  Select as ChakraSelect,
+} from 'chakra-react-select'
 import { format } from 'date-fns'
 import React, { ReactNode, useContext, useState } from 'react'
+import { FaChevronDown } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
@@ -31,13 +38,22 @@ import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal
 import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
+import { MeetingReminders } from '@/types/common'
 import { MeetingProvider } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { MeetingNotificationOptions } from '@/utils/constants/schedule'
 import { renderProviderName } from '@/utils/generic_utils'
 import { isProAccount } from '@/utils/subscription_manager'
 import { ellipsizeAddress } from '@/utils/user_manager'
-
+const components: Props['components'] = {
+  ClearIndicator: () => null,
+  DropdownIndicator: props => (
+    <chakraComponents.DropdownIndicator className="noBg" {...props}>
+      <Icon as={FaChevronDown} />
+    </chakraComponents.DropdownIndicator>
+  ),
+}
 const ScheduleBase = () => {
   const { currentAccount } = useContext(AccountContext)
   const {
@@ -58,13 +74,15 @@ const ScheduleBase = () => {
     meetingUrl,
     setMeetingProvider,
     setMeetingUrl,
+    setGroupAvailability,
+    meetingNotification,
+    setMeetingNotification,
   } = useContext(ScheduleContext)
   const {
     isOpen: isGroupModalOpen,
     onOpen: openGroupModal,
     onClose: closeGroupModal,
   } = useDisclosure()
-
   const [inputError, setInputError] = useState(
     undefined as ReactNode | undefined
   )
@@ -85,6 +103,14 @@ const ScheduleBase = () => {
       return
     }
     setParticipants(_participants)
+    const key = 'no_group'
+    const addresses = _participants
+      .map(val => val.account_address)
+      .filter(val => val != undefined)
+    setGroupAvailability(prev => ({
+      ...prev,
+      [key]: addresses as string[],
+    }))
   }
 
   return (
@@ -94,7 +120,16 @@ const ScheduleBase = () => {
         onClose={() => setOpenWhatIsThis(false)}
       />
       <ScheduleGroupModal onClose={closeGroupModal} isOpen={isGroupModalOpen} />
-      <VStack gap={6} width="fit-content" m="auto" alignItems="flex-start">
+      <VStack
+        gap={6}
+        width="fit-content"
+        maxW={{
+          base: '100%',
+          md: '600px',
+        }}
+        m="auto"
+        alignItems="flex-start"
+      >
         <Heading fontSize="x-large">Schedule new meeting</Heading>
         <VStack width="100%" gap={4}>
           <Flex width="100%" gap={4}>
@@ -132,12 +167,12 @@ const ScheduleBase = () => {
               </Select>
             </FormControl>
           </Flex>
-          <FormControl>
+          <FormControl w="100%" maxW="100%">
             <FormLabel htmlFor="participants">
               Participants{' '}
               <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
             </FormLabel>
-            <Box>
+            <Box w="100%" maxW="100%">
               <ChipInput
                 currentItems={participants}
                 placeholder="Enter participants"
@@ -291,6 +326,49 @@ const ScheduleBase = () => {
             />
           )}
         </VStack>
+        <FormControl w="100%" maxW="100%">
+          <FormLabel>Meeting reminders</FormLabel>
+          <ChakraSelect
+            value={meetingNotification}
+            colorScheme="gray"
+            onChange={val => {
+              const meetingNotification = val as Array<{
+                value: MeetingReminders
+                label?: string
+              }>
+              // can't select more than 5 notifications
+              if (meetingNotification.length > 5) {
+                return
+              }
+              setMeetingNotification(meetingNotification)
+            }}
+            className="hideBorder"
+            placeholder="Select Notification Alerts"
+            isMulti
+            tagVariant={'solid'}
+            options={MeetingNotificationOptions}
+            components={components}
+            chakraStyles={{
+              container: provided => ({
+                ...provided,
+                border: '1px solid',
+                borderTopColor: 'currentColor',
+                borderLeftColor: 'currentColor',
+                borderRightColor: 'currentColor',
+                borderBottomColor: 'currentColor',
+                borderColor: 'inherit',
+                borderRadius: 'md',
+                maxW: '100%',
+                display: 'block',
+              }),
+
+              placeholder: provided => ({
+                ...provided,
+                textAlign: 'left',
+              }),
+            }}
+          />
+        </FormControl>
         <FormControl>
           <FormLabel htmlFor="info">Description (optional)</FormLabel>
           <RichTextEditor

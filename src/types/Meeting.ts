@@ -3,6 +3,7 @@ import { Encrypted } from 'eth-crypto'
 
 import { ConditionRelation } from '@/types/common'
 
+import { MeetingReminders } from './common'
 import { ParticipantInfo } from './ParticipantInfo'
 
 export enum SchedulingType {
@@ -84,6 +85,7 @@ export interface ConferenceMeeting {
   title?: string
   access_type: MeetingAccessType
   provider: MeetingProvider
+  reminders?: Array<MeetingReminders>
   meeting_url: string
   created_at: Date
 }
@@ -95,8 +97,10 @@ export interface MeetingInfo {
   meeting_url: string
   participants: ParticipantInfo[]
   change_history_paths: string[]
+  reminders?: Array<MeetingReminders>
   related_slot_ids: string[]
   meeting_id: ConferenceMeeting['id']
+  provider?: MeetingProvider
 }
 
 export interface MeetingDecrypted {
@@ -111,7 +115,9 @@ export interface MeetingDecrypted {
   content?: string
   related_slot_ids: string[]
   version: DBSlot['version']
+  reminders?: Array<MeetingReminders>
   meeting_info_encrypted: Encrypted
+  provider?: MeetingProvider
 }
 
 export enum GroupMeetingType {
