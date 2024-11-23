@@ -59,12 +59,32 @@ const TEST_INTERVALS = [
   },
 ]
 describe('', () => {
-  test('is interval on same day', () => {
+  test('is intervals on same day', () => {
     expect(
       convertTimeRangesToDate(TEST_INTERVALS, new Date('2024-11-23')).every(
         val => isSameDay(val.start, val.end)
       )
     ).toBe(true)
+  })
+  test('is interval on same day', () => {
+    expect(
+      convertTimeRangesToDate(
+        [
+          {
+            start: '00:00',
+            end: '24:00',
+            timezone: 'UTC',
+            weekday: 6,
+          },
+        ],
+        new Date('2024-11-23')
+      )
+    ).toStrictEqual([
+      {
+        start: new Date('2024-11-23T00:00:00.000Z'),
+        end: new Date('2024-11-23T23:59:00.000Z'),
+      },
+    ])
   })
   test('is timezone applied', () => {
     expect(
