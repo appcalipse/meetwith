@@ -33,14 +33,15 @@ export const convertTimeRangesToDate = (
     }
     const timezone =
       timeRange.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+    const options = {
+      weekStartsOn: timeRange.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+    }
     return {
       start: zonedTimeToUtc(
         setDay(
           new Date(`${date.toDateString()} ${timeRange.start}`),
           timeRange.weekday,
-          {
-            weekStartsOn: timeRange.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-          }
+          options
         ),
         timezone
       ),
@@ -48,9 +49,7 @@ export const convertTimeRangesToDate = (
         setDay(
           new Date(`${date.toDateString()} ${timeRange.end}`),
           timeRange.weekday,
-          {
-            weekStartsOn: timeRange.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-          }
+          options
         ),
         timezone
       ),
