@@ -14,21 +14,31 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { chakraComponents, Props, Select } from 'chakra-react-select'
 import { useContext, useEffect, useState } from 'react'
-import { FaInfo } from 'react-icons/fa'
+import { FaChevronDown, FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences } from '@/types/Account'
+import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { MeetingNotificationOptions } from '@/utils/constants/schedule'
 import { renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import { MeetingProvider, SchedulingType } from '../../../types/Meeting'
 import { isEmptyString, isValidEmail } from '../../../utils/validations'
-
+export const MeetingRemindersComponent: Props['components'] = {
+  ClearIndicator: () => null,
+  DropdownIndicator: props => (
+    <chakraComponents.DropdownIndicator className="noBg" {...props}>
+      <Icon as={FaChevronDown} />
+    </chakraComponents.DropdownIndicator>
+  ),
+}
 interface ScheduleFormProps {
   pickedTime: Date
   isSchedulingExternal: boolean
@@ -45,7 +55,8 @@ interface ScheduleFormProps {
     emailToSendReminders?: string,
     title?: string,
     participants?: Array<ParticipantInfo>,
-    meetingProvider?: MeetingProvider
+    meetingProvider?: MeetingProvider,
+    meetingReminders?: Array<MeetingReminders>
   ) => Promise<boolean>
   notificationsSubs?: number
   meetingProviders?: Array<MeetingProvider>
@@ -68,6 +79,12 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       ? MeetingProvider.HUDDLE
       : MeetingProvider.CUSTOM
   )
+  const [meetingNotification, setMeetingNotification] = useState<
+    Array<{
+      value: MeetingReminders
+      label?: string
+    }>
+  >([])
   const [content, setContent] = useState('')
   const [name, setName] = useState(currentAccount?.preferences?.name || '')
   const [title, setTitle] = useState('')
@@ -157,7 +174,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         doSendEmailReminders ? userEmail : undefined,
         title,
         participants,
-        meetingProvider
+        meetingProvider,
+        meetingNotification.map(n => n.value as MeetingReminders)
       )
 
       willStartScheduling(!success)
@@ -183,7 +201,16 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const iconColor = useColorModeValue('gray.600', 'white')
 
   return (
-    <Flex direction="column" gap={4} paddingTop={3}>
+    <Flex
+      direction="column"
+      gap={4}
+      paddingTop={3}
+      w="100%"
+      maxW={{
+        base: '100%',
+        md: '550px',
+      }}
+    >
       <FormControl isInvalid={isNameEmpty}>
         <FormLabel>Name</FormLabel>
         <Input
@@ -275,6 +302,49 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           onChange={e => setTitle(e.target.value)}
           type="text"
           placeholder="Give a title for your meeting"
+        />
+      </FormControl>
+      <FormControl w="100%" maxW="100%">
+        <FormLabel>Meeting reminders (optional)</FormLabel>
+        <Select
+          value={meetingNotification}
+          colorScheme="gray"
+          onChange={val => {
+            const meetingNotification = val as Array<{
+              value: MeetingReminders
+              label?: string
+            }>
+            // can't select more than 5 notifications
+            if (meetingNotification.length > 5) {
+              return
+            }
+            setMeetingNotification(meetingNotification)
+          }}
+          className="hideBorder"
+          placeholder="Select Notification Alerts"
+          isMulti
+          tagVariant={'solid'}
+          options={MeetingNotificationOptions}
+          components={MeetingRemindersComponent}
+          chakraStyles={{
+            container: provided => ({
+              ...provided,
+              border: '1px solid',
+              borderTopColor: 'currentColor',
+              borderLeftColor: 'currentColor',
+              borderRightColor: 'currentColor',
+              borderBottomColor: 'currentColor',
+              borderColor: 'inherit',
+              borderRadius: 'md',
+              maxW: '100%',
+              display: 'block',
+            }),
+
+            placeholder: provided => ({
+              ...provided,
+              textAlign: 'left',
+            }),
+          }}
         />
       </FormControl>
       <FormControl textAlign="left" w="100%" maxW="100%">
