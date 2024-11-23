@@ -79,7 +79,6 @@ export const handleMeetingSchedule = async (
                         end: new Date(meeting.end),
                         created_at: new Date(),
                         timezone: account.preferences.timezone,
-                        meetingReminders: meeting.meetingReminders,
                       },
                       new Date(),
                       innerCalendar.calendarId
