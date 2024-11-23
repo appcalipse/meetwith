@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import CryptoJS, { enc, SHA1 } from 'crypto-js'
 import { addMinutes, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
@@ -27,6 +28,7 @@ import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
+  GetGroupsFullResponse,
   Group,
   GroupInviteFilters,
   GroupInvites,
@@ -61,6 +63,7 @@ import {
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
 import { GroupMembersRow, TablesInsert } from '@/types/supabase'
+import { TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
   GateUsage,
@@ -390,7 +393,7 @@ export const getAccountPreferences = async (
 
     if (newPreferencesError) {
       console.error(newPreferences)
-      throw new Error('Error while completign empty preferences')
+      throw new Error('Error while completing empty preferences')
     }
 
     return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
@@ -403,23 +406,31 @@ const getExistingAccountsFromDB = async (
   addresses: string[],
   fullInformation?: boolean
 ): Promise<SimpleAccountInfo[] | Account[]> => {
+  let queryString = ` 
+      address,
+      internal_pub_key
+    `
+  if (fullInformation) {
+    queryString += `
+      ,calendars: connected_calendars(provider),
+      preferences: account_preferences(*)
+      `
+  }
   const { data, error } = await db.supabase
     .from('accounts')
-    .select('address, internal_pub_key')
+    .select(queryString)
     .in(
       'address',
       addresses.map(address => address.toLowerCase())
     )
-
   if (error) {
     throw new Error(error.message)
   }
 
-  if (fullInformation) {
-    for (const account of data) {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
-      )
+  for (const account of data) {
+    if (account.calendars) {
+      account.isCalendarConnected = account?.calendars?.length > 0
+      delete account.calendars
     }
   }
 
@@ -712,7 +723,6 @@ const saveMeeting = async (
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meeting.meetingProvider,
   })
-
   if (!createdRootMeeting) {
     throw new Error(
       'Could not create your meeting right now, get in touch with us if the problem persists'
@@ -824,6 +834,7 @@ const saveMeeting = async (
     title: meeting.title,
     content: meeting.content,
     meetingProvider: meeting.meetingProvider,
+    meetingReminders: meeting.meetingReminders,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -949,7 +960,75 @@ const getUserGroups = async (
   }
   return []
 }
+const getGroupsAndMembers = async (
+  address: string,
+  limit: number,
+  offset: number
+): Promise<Array<GetGroupsFullResponse>> => {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('member_id', address.toLowerCase())
+    .range(
+      offset || 0,
+      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+    )
+  if (error) {
+    console.log(error)
+    throw new Error(error.message)
+  }
+  const groups = []
+  for (const group of data) {
+    const { data: membersData, error: membersError } = await db.supabase
+      .from('group_members')
+      .select()
+      .eq('group_id', group.group.id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    const addresses = membersData.map(
+      (member: GroupMemberQuery) => member.member_id
+    )
+    const { data: members, error } = await db.supabase
+      .from('accounts')
+      .select(
+        `
+         group_members: group_members(*),
+         preferences: account_preferences(name),
+         calendars: connected_calendars(calendars)
+    `
+      )
+      .in('address', addresses)
+      .filter('group_members.group_id', 'eq', group.group.id)
+      .range(
+        offset || 0,
+        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+      )
+    if (error) {
+      throw new Error(error.message)
+    }
 
+    if (data) {
+      groups.push({
+        ...group.group,
+        members: members.map(member => ({
+          userId: member.group_members?.[0]?.id,
+          displayName: member.preferences?.name,
+          address: member.group_members?.[0]?.member_id as string,
+          role: member.group_members?.[0].role,
+          invitePending: false,
+          calendarConnected: !!member.calendars[0]?.calendars?.length,
+        })),
+      })
+    }
+  }
+  return groups
+}
 async function findGroupsWithSingleMember(
   groupIDs: Array<string>
 ): Promise<Array<EmptyGroupsResponse>> {
@@ -2252,6 +2331,7 @@ const updateMeeting = async (
     title: meetingUpdateRequest.title,
     content: meetingUpdateRequest.content,
     changes: changingTime ? { dateChange: changingTime } : undefined,
+    meetingReminders: meetingUpdateRequest.meetingReminders,
   }
 
   // Doing notifications and syncs asynchronously
@@ -2424,13 +2504,80 @@ export async function createGroupInDB(
   }
 }
 
+const createTgConnection = async (
+  account_address: string
+): Promise<TelegramConnection> => {
+  const hash = CryptoJS.SHA1(account_address).toString(CryptoJS.enc.Hex)
+  const { error, data } = await db.supabase
+    .from('telegram_connections')
+    .insert([{ account_address, tg_id: hash }])
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data[0]
+}
+const getTgConnectionByTgId = async (
+  tg_id: string
+): Promise<TelegramConnection | null> => {
+  const { data, error } = await db.supabase
+    .from('telegram_connections')
+    .select()
+    .eq('tg_id', tg_id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data[0]
+}
+
+const deleteTgConnection = async (tg_id: string): Promise<void> => {
+  const { error } = await db.supabase
+    .from('telegram_connections')
+    .delete()
+    .eq('tg_id', tg_id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+const deleteAllTgConnections = async (
+  account_address: string
+): Promise<void> => {
+  const { error } = await db.supabase
+    .from('telegram_connections')
+    .delete()
+    .eq('account_address', account_address)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+const getTgConnection = async (
+  account_address: string
+): Promise<TelegramConnection> => {
+  const { data, error } = await db.supabase
+    .from('telegram_connections')
+    .select()
+    .eq('account_address', account_address)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data[0]
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
   connectedCalendarExists,
+  createTgConnection,
+  deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
+  deleteTgConnection,
   editGroup,
   getAccountFromDB,
   getAccountNonce,
@@ -2447,6 +2594,7 @@ export {
   getGroupInternal,
   getGroupInvites,
   getGroupName,
+  getGroupsAndMembers,
   getGroupsEmpty,
   getGroupUsers,
   getGroupUsersInternal,
@@ -2454,6 +2602,8 @@ export {
   getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
+  getTgConnection,
+  getTgConnectionByTgId,
   getUserGroups,
   initAccountDBForWallet,
   initDB,
