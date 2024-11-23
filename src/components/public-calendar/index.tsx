@@ -43,7 +43,6 @@ import { Account, MeetingType } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
-import { MeetingReminders } from '@/types/common'
 import {
   DBSlot,
   GroupMeetingRequest,
@@ -366,8 +365,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     emailToSendReminders?: string,
     title?: string,
     otherParticipants?: Array<ParticipantInfo>,
-    meetingProvider?: MeetingProvider,
-    meetingReminders?: Array<MeetingReminders>
+    meetingProvider?: MeetingProvider
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
@@ -470,8 +468,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         content,
         meetingUrl,
         emailToSendReminders,
-        title,
-        meetingReminders
+        title
       )
       await updateSlots()
       currentAccount && saveMeetingsScheduled(currentAccount!.address)

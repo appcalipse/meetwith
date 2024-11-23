@@ -16,8 +16,8 @@ import React, { FC, useEffect, useState } from 'react'
 import Loading from '@/components/Loading'
 import ScheduleGroup from '@/components/schedule/ScheduleGroup'
 import { EditMode } from '@/types/Dashboard'
-import { GetGroupsFullResponse } from '@/types/Group'
-import { getGroupsFull } from '@/utils/api_helper'
+import { GetGroupsResponse } from '@/types/Group'
+import { getGroups } from '@/utils/api_helper'
 
 interface IScheduleGroupModal {
   onClose: () => void
@@ -25,19 +25,17 @@ interface IScheduleGroupModal {
 }
 
 const ScheduleGroupModal: FC<IScheduleGroupModal> = props => {
-  const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
+  const [groups, setGroups] = useState<Array<GetGroupsResponse>>([])
   const [loading, setLoading] = useState(false)
-  const fetchGroups = async () => {
+  const fetchGroups = async (reset?: boolean) => {
     setLoading(true)
-    const fetchedGroups = await getGroupsFull(undefined, undefined)
-    setGroups(fetchedGroups)
+    const fetchedGroups = await getGroups(undefined, undefined)
+    setGroups(reset ? [] : fetchedGroups.filter(val => !val.invitePending))
     setLoading(false)
   }
-
   useEffect(() => {
     void fetchGroups()
   }, [])
-
   return (
     <Modal
       isOpen={props.isOpen}
