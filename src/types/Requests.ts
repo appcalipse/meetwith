@@ -1,7 +1,6 @@
 import { Encrypted } from 'eth-crypto'
 
 import { Account } from './Account'
-import { MeetingReminders } from './common'
 import { MemberType } from './Group'
 import {
   ConferenceMeeting,
@@ -37,7 +36,6 @@ export interface MeetingCreationRequest {
   meeting_url: string
   meeting_id: ConferenceMeeting['id']
   emailToSendReminders?: string
-  meetingReminders?: Array<MeetingReminders>
 }
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
@@ -48,7 +46,6 @@ export interface UrlCreationRequest {
   content?: string
   title?: string
   meeting_id: ConferenceMeeting['id']
-  meetingReminders?: Array<MeetingReminders>
 }
 export interface RequestParticipantMapping {
   account_address?: string
@@ -88,7 +85,6 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   title?: string
   content?: string
   meetingProvider: MeetingProvider
-  meetingReminders?: Array<MeetingReminders>
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
@@ -103,10 +99,6 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
 export interface DiscordAccountInfoRequest {
   scheduler_discord_id: string
   participantsDiscordIds: string[]
-}
-export interface SetTelegramNotificationOptionRequest {
-  chat_id: string
-  tg_id: string
 }
 
 export interface DiscordAccountInfoResponse {

@@ -13,7 +13,6 @@ import {
 import {
   chakraComponents,
   MultiValue,
-  Props,
   Select,
   SingleValue,
 } from 'chakra-react-select'
@@ -45,10 +44,10 @@ import {
 } from 'react-icons/fa'
 import { FaArrowLeft } from 'react-icons/fa6'
 import { IoMdCloseCircleOutline } from 'react-icons/io'
+import { SelectComponentsGeneric } from 'react-select/dist/declarations/src/components'
 import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
 import { AccountPreferences } from '@/types/Account'
-import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
 import { MeetingProvider, SchedulingType } from '../../types/Meeting'
@@ -79,8 +78,7 @@ interface MeetSlotPickerProps {
     emailToSendReminders?: string,
     title?: string,
     participants?: Array<ParticipantInfo>,
-    meetingProvider?: MeetingProvider,
-    meetingReminders?: Array<MeetingReminders>
+    meetingProvider?: MeetingProvider
   ) => Promise<boolean>
   preferences?: AccountPreferences
   reset: boolean
@@ -141,7 +139,12 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     )[0] || tzs[0]
   )
 
-  const _onChange = (newValue: unknown, actionMeta: ActionMeta<unknown>) => {
+  const _onChange = (
+    newValue:
+      | SingleValue<{ label: string; value: string }>
+      | MultiValue<{ label: string; value: string }>,
+    actionMeta: ActionMeta<any>
+  ) => {
     if (Array.isArray(newValue)) {
       return
     }
@@ -382,7 +385,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       )
     }
   }
-  const customComponents: Props['components'] = {
+  const customComponents: Partial<SelectComponentsGeneric> = {
     Control: props => (
       <chakraComponents.Control {...props}>
         <FaGlobe size={24} /> {props.children}
@@ -447,8 +450,8 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               </HStack>
               <Select
                 value={tz}
-                onChange={_onChange}
                 colorScheme="primary"
+                onChange={_onChange}
                 className="hideBorder"
                 options={tzs}
                 components={customComponents}

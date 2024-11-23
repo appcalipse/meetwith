@@ -35,9 +35,6 @@ export const colors = {
   },
   green: {
     500: '#34C759',
-    400: '#00ce5d',
-    300: '#55de93',
-    200: '#ccf5df',
   },
   orangeButton: {
     200: '#F46739',
