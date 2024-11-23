@@ -119,8 +119,7 @@ export const CalendarBackendHelper = {
     account_addresses: string[],
     relation: ConditionRelation,
     startDate: Date,
-    endDate: Date,
-    isRaw = false
+    endDate: Date
   ): Promise<Interval[]> => {
     const busySlots =
       await CalendarBackendHelper.getBusySlotsForMultipleAccounts(
@@ -129,10 +128,6 @@ export const CalendarBackendHelper = {
         endDate
       )
 
-    if (isRaw) {
-      busySlots.sort((a, b) => compareAsc(a.start, b.start))
-      return busySlots
-    }
     if (relation === ConditionRelation.AND) {
       return CalendarBackendHelper.mergeSlotsUnion(busySlots)
     } else {

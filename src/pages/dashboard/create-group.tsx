@@ -5,13 +5,17 @@ import {
   FormControl,
   FormLabel,
   Heading,
+  HStack,
   Input,
+  InputGroup,
+  InputLeftAddon,
   useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { useState } from 'react'
 
+import InfoTooltip from '@/components/profile/components/Tooltip'
 import { createGroup } from '@/utils/api_helper'
 import { isJson } from '@/utils/generic_utils'
 

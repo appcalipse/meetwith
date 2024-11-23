@@ -8,17 +8,10 @@ import {
 } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import { Encrypted, encryptWithPublicKey } from 'eth-crypto'
-import {
-  Alarm,
-  Attendee,
-  createEvent,
-  EventAttributes,
-  ReturnObject,
-} from 'ics'
+import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
-import { MeetingReminders } from '@/types/common'
 import {
   DBSlot,
   MeetingChangeType,
@@ -253,8 +246,7 @@ const buildMeetingData = async (
   meetingContent?: string,
   meetingUrl = '',
   meetingId = '',
-  meetingTitle = 'No Title',
-  meetingReminders?: Array<MeetingReminders>
+  meetingTitle = 'No Title'
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -277,8 +269,6 @@ const buildMeetingData = async (
     change_history_paths: [],
     related_slot_ids: [],
     meeting_id: meetingId,
-    reminders: meetingReminders,
-    provider: meetingProvider,
   }
 
   // first pass to make sure that we are keeping the existing slot id
@@ -346,7 +336,6 @@ const buildMeetingData = async (
     content: privateInfo['content'],
     title: privateInfo['title'],
     meetingProvider,
-    meetingReminders,
   }
 }
 
@@ -373,8 +362,7 @@ const updateMeeting = async (
   content: string,
   meetingUrl: string,
   meetingProvider: MeetingProvider,
-  meetingTitle?: string,
-  meetingReminders?: Array<MeetingReminders>
+  meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -492,8 +480,7 @@ const updateMeeting = async (
     content,
     meetingUrl,
     rootMeetingId,
-    meetingTitle,
-    meetingReminders
+    meetingTitle
   )
   const payload = {
     ...meetingData,
@@ -575,8 +562,7 @@ const scheduleMeeting = async (
   meetingContent?: string,
   meetingUrl?: string,
   emailToSendReminders?: string,
-  meetingTitle?: string,
-  meetingReminders?: Array<MeetingReminders>
+  meetingTitle?: string
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
@@ -593,7 +579,6 @@ const scheduleMeeting = async (
         participants_mapping: participantData.sanitizedParticipants,
         accounts: participantData.allAccounts,
         content: meetingContent,
-        meetingReminders,
       })
     ).url
   const meeting = await buildMeetingData(
@@ -609,8 +594,7 @@ const scheduleMeeting = async (
     meetingContent,
     meeting_url,
     newMeetingId,
-    meetingTitle,
-    meetingReminders
+    meetingTitle
   )
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = []
@@ -693,49 +677,6 @@ const scheduleMeeting = async (
     throw error
   }
 }
-const createAlarm = (indicator: MeetingReminders): Alarm => {
-  switch (indicator) {
-    case MeetingReminders['15_MINUTES_BEFORE']:
-      return {
-        action: 'display',
-        description: 'Reminder',
-        trigger: { minutes: 15, before: true },
-      }
-
-    case MeetingReminders['30_MINUTES_BEFORE']:
-      return {
-        action: 'display',
-        description: 'Reminder',
-        trigger: { minutes: 30, before: true },
-      }
-
-    case MeetingReminders['1_HOUR_BEFORE']:
-      return {
-        action: 'display',
-        description: 'Reminder',
-        trigger: { hours: 1, before: true },
-      }
-    case MeetingReminders['1_DAY_BEFORE']:
-      return {
-        action: 'display',
-        description: 'Reminder',
-        trigger: { days: 1, before: true },
-      }
-    case MeetingReminders['1_WEEK_BEFORE']:
-      return {
-        action: 'display',
-        description: 'Reminder',
-        trigger: { weeks: 1, before: true },
-      }
-    case MeetingReminders['10_MINUTES_BEFORE']:
-    default:
-      return {
-        action: 'display',
-        description: 'Reminder',
-        trigger: { minutes: 10, before: true },
-      }
-  }
-}
 const generateIcs = (
   meeting: MeetingDecrypted,
   ownerAddress: string,
@@ -798,9 +739,6 @@ const generateIcs = (
     event.transp = 'OPAQUE'
     event.classification = 'PUBLIC'
   }
-  if (meeting.reminders) {
-    event.alarms = meeting.reminders.map(createAlarm)
-  }
 
   event.attendees = []
   if (!removeAttendess) {
@@ -852,6 +790,7 @@ const decryptMeeting = async (
     signature || getSignature(account!.address)!,
     meeting?.meeting_info_encrypted
   )
+
   if (!content) return null
 
   const meetingInfo = JSON.parse(content) as MeetingInfo
@@ -868,8 +807,6 @@ const decryptMeeting = async (
     start: new Date(meeting.start),
     end: new Date(meeting.end),
     version: meeting.version,
-    reminders: meetingInfo.reminders,
-    provider: meetingInfo?.provider,
   }
 }
 

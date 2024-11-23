@@ -14,7 +14,6 @@ import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
   EmptyGroupsResponse,
-  GetGroupsFullResponse,
   GetGroupsResponse,
   Group,
   GroupInvitePayload,
@@ -25,7 +24,6 @@ import {
   DBSlot,
   GroupMeetingRequest,
   MeetingDecrypted,
-  TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
 import {
@@ -36,7 +34,6 @@ import {
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { TelegramConnection } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
 import { apiUrl } from './constants'
@@ -145,8 +142,7 @@ export const getExistingAccountsSimple = async (
 }
 
 export const getExistingAccounts = async (
-  addresses: string[],
-  fullInformation = true
+  addresses: string[]
 ): Promise<Account[]> => {
   try {
     return (await internalFetch(`/accounts/existing`, 'POST', {
@@ -397,28 +393,6 @@ export const fetchBusySlotsForMultipleAccounts = async (
     end: new Date(slot.end),
   }))
 }
-export const fetchBusySlotsRawForMultipleAccounts = async (
-  addresses: string[],
-  start: Date,
-  end: Date,
-  limit?: number,
-  offset?: number
-): Promise<TimeSlot[]> => {
-  const response = (await internalFetch(`/meetings/busy/team`, 'POST', {
-    addresses,
-    start,
-    end,
-    limit,
-    offset,
-    isRaw: true,
-  })) as TimeSlot[]
-
-  return response.map(slot => ({
-    ...slot,
-    start: new Date(slot.start),
-    end: new Date(slot.end),
-  }))
-}
 
 export const getMeetingsForDashboard = async (
   accountIdentifier: string,
@@ -443,18 +417,9 @@ export const getGroups = async (
   limit?: number,
   offset?: number
 ): Promise<Array<GetGroupsResponse>> => {
-  const response = await internalFetch<Array<GetGroupsResponse>>(
+  const response = (await internalFetch(
     `/secure/group/user?limit=${limit}&offset=${offset}`
-  )
-  return response
-}
-export const getGroupsFull = async (
-  limit?: number,
-  offset?: number
-): Promise<Array<GetGroupsFullResponse>> => {
-  const response = await internalFetch<Array<GetGroupsFullResponse>>(
-    `/secure/group/full?limit=${limit}&offset=${offset}`
-  )
+  )) as Array<GetGroupsResponse>
   return response
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
@@ -1004,22 +969,4 @@ export const inviteUsers = async (
   payload: GroupInvitePayload
 ): Promise<void> => {
   await internalFetch<void>(`/secure/group/${groupId}/invite`, 'POST', payload)
-}
-
-export const createTelegramHash = async () => {
-  return (
-    await internalFetch<{ data: TelegramConnection }>(
-      '/secure/telegram',
-      'POST'
-    )
-  ).data
-}
-
-export const getPendingTgConnection = async () => {
-  return (
-    await internalFetch<{ data?: TelegramConnection }>(
-      '/secure/telegram',
-      'GET'
-    )
-  ).data
 }

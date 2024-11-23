@@ -10,12 +10,6 @@ export interface GetGroupsResponse {
   role: MemberType
   invitePending: boolean
 }
-export interface GetGroupsFullResponse {
-  id: string
-  name: string
-  slug: string
-  members: Array<GroupMember>
-}
 
 export interface CreateGroupsResponse {
   id: string
