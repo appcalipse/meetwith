@@ -7,7 +7,6 @@ export enum NotificationChannel {
   EMAIL = 'email',
   EPNS = 'epns',
   DISCORD = 'discord',
-  TELEGRAM = 'telegram',
 }
 
 export interface NotificationType {

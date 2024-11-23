@@ -105,7 +105,6 @@ a {
 /* Custom styled ends here */
 .hideBorder {
   border: 0 solid transparent;
-  box-shadow: none !important;
 }
 
 .hideBorder:focus-visible {
@@ -115,7 +114,6 @@ a {
 
 .hideBorder > div {
   border: 0 solid transparent;
-  box-shadow: none !important;
 }
 
 .hideBorder > div[data-focus-visible] {
@@ -131,18 +129,16 @@ a {
   left: -7px;
 }
 
-.timezone-select > div > div > hr,
-.date-select > div > div > hr,
 .hideBorder > div > div > hr {
+  display: none;
+}
+
+.timezone-select > div > div > hr {
   display: none;
 }
 
 .timezone-select {
   min-width: 200px;
-}
-.date-select {
-  max-width: 200px;
-  height: 48px;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */

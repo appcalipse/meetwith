@@ -12,14 +12,9 @@ import {
   RadioGroup,
   VStack,
 } from '@chakra-ui/react'
-import {
-  chakraComponents,
-  Props,
-  Select as ChakraSelect,
-} from 'chakra-react-select'
 import { format } from 'date-fns'
 import React, { useContext, useEffect, useState } from 'react'
-import { FaCalendar, FaChevronDown, FaClock } from 'react-icons/fa'
+import { FaCalendar, FaClock } from 'react-icons/fa'
 import { FaArrowLeft, FaUserGroup } from 'react-icons/fa6'
 import { IoMdTimer } from 'react-icons/io'
 
@@ -31,7 +26,6 @@ import {
   ScheduleContext,
 } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
-import { MeetingReminders } from '@/types/common'
 import { MeetingProvider } from '@/types/Meeting'
 import {
   ParticipantInfo,
@@ -39,17 +33,9 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { getExistingAccounts } from '@/utils/api_helper'
-import { MeetingNotificationOptions } from '@/utils/constants/schedule'
 import { renderProviderName } from '@/utils/generic_utils'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
-const components: Props['components'] = {
-  ClearIndicator: () => null,
-  DropdownIndicator: props => (
-    <chakraComponents.DropdownIndicator className="noBg" {...props}>
-      <Icon as={FaChevronDown} />
-    </chakraComponents.DropdownIndicator>
-  ),
-}
+
 const ScheduleDetails = () => {
   const {
     handlePageSwitch,
@@ -68,8 +54,6 @@ const ScheduleDetails = () => {
     meetingUrl,
     setMeetingProvider,
     setMeetingUrl,
-    meetingNotification,
-    setMeetingNotification,
   } = useContext(ScheduleContext)
   const { currentAccount } = useContext(AccountContext)
   const [groupMembers, setGroupsMembers] = useState<Array<ParticipantInfo>>([])
@@ -248,49 +232,6 @@ const ScheduleDetails = () => {
               />
             )}
           </VStack>
-          <FormControl w="100%" maxW="100%">
-            <FormLabel>Meeting reminders</FormLabel>
-            <ChakraSelect
-              value={meetingNotification}
-              colorScheme="gray"
-              onChange={val => {
-                const meetingNotification = val as Array<{
-                  value: MeetingReminders
-                  label?: string
-                }>
-                // can't select more than 5 notifications
-                if (meetingNotification.length > 5) {
-                  return
-                }
-                setMeetingNotification(meetingNotification)
-              }}
-              className="hideBorder"
-              placeholder="Select Notification Alerts"
-              isMulti
-              tagVariant={'solid'}
-              options={MeetingNotificationOptions}
-              components={components}
-              chakraStyles={{
-                container: provided => ({
-                  ...provided,
-                  border: '1px solid',
-                  borderTopColor: 'currentColor',
-                  borderLeftColor: 'currentColor',
-                  borderRightColor: 'currentColor',
-                  borderBottomColor: 'currentColor',
-                  borderColor: 'inherit',
-                  borderRadius: 'md',
-                  maxW: '100%',
-                  display: 'block',
-                }),
-
-                placeholder: provided => ({
-                  ...provided,
-                  textAlign: 'left',
-                }),
-              }}
-            />
-          </FormControl>
           <FormControl
             w={{
               base: '100%',
