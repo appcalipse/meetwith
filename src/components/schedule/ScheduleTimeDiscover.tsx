@@ -109,7 +109,7 @@ const ScheduleTimeDiscover = () => {
           h={8}
           onClick={() => setIsOpen(!isOpen)}
           cursor={'pointer'}
-          display={{ base: 'block', md: 'none' }}
+          display={{ base: 'block', lg: 'none' }}
         />
       </HStack>
       {loading ? (
