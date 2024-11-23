@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { ConditionRelation } from '@/types/common'
-import { TimeSlot } from '@/types/Meeting'
 import { initDB } from '@/utils/database'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 import { isValidEVMAddress } from '@/utils/validations'
@@ -16,19 +15,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const startDate = new Date(body.start)
       const endDate = new Date(body.end)
       const relation: ConditionRelation = body.relation
-      const isRaw = body.isRaw
 
       const sanitizedAddresses = addresses.filter(address =>
         isValidEVMAddress(address)
       )
 
-      const busySlots: Array<Interval | TimeSlot> =
+      const busySlots: Interval[] =
         await CalendarBackendHelper.getMergedBusySlotsForMultipleAccounts(
           sanitizedAddresses,
           relation,
           startDate,
-          endDate,
-          isRaw
+          endDate
         )
 
       return res.status(200).json(busySlots)
