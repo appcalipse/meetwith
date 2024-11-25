@@ -327,26 +327,7 @@ export default class GoogleCalendarService implements CalendarService {
                 console.error(err)
                 return reject(err)
               }
-              if (
-                shouldGenerateLink &&
-                meetingDetails.meetingProvider == MeetingProvider.GOOGLE_MEET &&
-                event.data.hangoutLink
-              ) {
-                payload.location = event.data.hangoutLink
-                payload.description = CalendarServiceHelper.getMeetingSummary(
-                  meetingDetails.content,
-                  event.data.hangoutLink || meetingDetails.meeting_url,
-                  `${appUrl}/dashboard/meetings?slotId=${slot_id}`
-                )
-                // Don't wait for meeting to update
-                calendar.events.update({
-                  auth: myGoogleAuth,
-                  calendarId,
-                  eventId: meetingDetails.meeting_id.replaceAll('-', ''),
-                  sendNotifications: false,
-                  requestBody: payload,
-                })
-              }
+
               return resolve({
                 uid: meetingDetails.meeting_id,
                 ...event.data,
