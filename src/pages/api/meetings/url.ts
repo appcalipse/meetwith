@@ -6,6 +6,7 @@ import { ParticipantType } from '@/types/ParticipantInfo'
 import { RequestParticipantMapping, UrlCreationRequest } from '@/types/Requests'
 import { createHuddleRoom, createZoomMeeting } from '@/utils/api_helper'
 import { getAccountFromDB, getConnectedCalendars } from '@/utils/database'
+import { UrlCreationError } from '@/utils/errors'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -88,9 +89,11 @@ export const handleMeetingSchedule = async (
                 }
               }
               const results = await Promise.all(promises)
-              url = results[0].additionalInfo.hangoutLink
-              eventAdded = true
-              break
+              if (results.length > 0) {
+                url = results[0].additionalInfo.hangoutLink
+                eventAdded = true
+                break
+              }
             }
           }
           break
@@ -108,11 +111,15 @@ export const handleMeetingSchedule = async (
         default:
           break
       }
+      if (!url) {
+        throw new UrlCreationError()
+      }
 
       return res.status(200).json({
         url,
       })
     } catch (e) {
+      console.error(e)
       return res.status(500).send(e)
     }
   }

@@ -24,6 +24,7 @@ import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { selectDefaultProvider } from '@/utils/calendar_manager'
 import { MeetingNotificationOptions } from '@/utils/constants/schedule'
 import { renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -75,9 +76,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const toast = useToast()
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    preferences?.meetingProviders?.includes(MeetingProvider.HUDDLE)
-      ? MeetingProvider.HUDDLE
-      : MeetingProvider.CUSTOM
+    selectDefaultProvider(preferences?.meetingProviders)
   )
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{
