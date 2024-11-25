@@ -52,6 +52,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   TimeNotAvailableError,
+  UrlCreationError,
   UserInvitationError,
   ZoomServiceUnavailable,
 } from './errors'
@@ -955,6 +956,9 @@ export const generateMeetingUrl = async (
     if (e instanceof ApiFetchError) {
       if (e.status === 503) {
         throw new Huddle01ServiceUnavailable()
+      }
+      if (e.message === '"UrlCreationError"') {
+        throw new UrlCreationError()
       }
     }
     throw e
