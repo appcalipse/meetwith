@@ -79,6 +79,7 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
+  UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
 import {
@@ -546,6 +547,16 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           title: 'Failed to create video meeting',
           description:
             'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof UrlCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue generating a meeting url for your meeting. try using a different location',
           status: 'error',
           duration: 5000,
           position: 'top',

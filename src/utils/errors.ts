@@ -178,3 +178,10 @@ export class UserInvitationError extends Error {
     this.status = status
   }
 }
+
+export class UrlCreationError extends Error {
+  constructor() {
+    super(`Error creating URL`)
+    this.name = 'UrlCreationError'
+  }
+}
