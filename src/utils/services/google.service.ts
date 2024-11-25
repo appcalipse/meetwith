@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
 import { Auth, calendar_v3, google } from 'googleapis'
+import { v4 as uuidv4 } from 'uuid'
 
 import {
   CalendarSyncInfo,
@@ -16,7 +17,6 @@ import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
-
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
 export class MWWGoogleAuth extends google.auth.OAuth2 {
@@ -278,7 +278,10 @@ export default class GoogleCalendarService implements CalendarService {
               meetingDetails.meetingProvider == MeetingProvider.GOOGLE_MEET
                 ? {
                     createRequest: {
-                      requestId: meetingDetails.meeting_id,
+                      requestId: uuidv4(),
+                      conferenceSolutionKey: {
+                        type: 'hangoutsMeet',
+                      },
                     },
                   }
                 : undefined,
