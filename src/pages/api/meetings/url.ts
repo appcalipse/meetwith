@@ -118,9 +118,16 @@ export const handleMeetingSchedule = async (
       return res.status(200).json({
         url,
       })
-    } catch (e) {
-      console.error(e)
-      return res.status(500).send(e)
+    } catch (error) {
+      if (error instanceof UrlCreationError) {
+        return res.status(500).json({ error: error.message })
+      } else {
+        Sentry.captureException(error)
+        return res.status(500).json({
+          error: 'Internal server error',
+          details: (error as Error).message,
+        })
+      }
     }
   }
 
