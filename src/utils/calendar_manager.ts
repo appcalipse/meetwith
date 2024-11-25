@@ -596,6 +596,7 @@ const scheduleMeeting = async (
         meetingReminders,
       })
     ).url
+
   const meeting = await buildMeetingData(
     schedulingType,
     meetingTypeId,
