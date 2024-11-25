@@ -5,7 +5,10 @@ import { MeetingProvider, SchedulingType } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { DiscordMeetingRequest } from '@/types/Requests'
 import { getSuggestedSlots } from '@/utils/api_helper'
-import { scheduleMeeting } from '@/utils/calendar_manager'
+import {
+  scheduleMeeting,
+  selectDefaultProvider,
+} from '@/utils/calendar_manager'
 import { getAccountFromDiscordId } from '@/utils/database'
 import { findStartDateForNotBefore } from '@/utils/time.helper'
 
@@ -56,26 +59,9 @@ export default async function simpleDiscordMeet(
     }
     let selected_provider = provider
     if (!provider) {
-      switch (true) {
-        case scheduler.preferences.meetingProviders?.includes(
-          MeetingProvider.GOOGLE_MEET
-        ):
-          selected_provider = MeetingProvider.GOOGLE_MEET
-          break
-        case scheduler.preferences.meetingProviders?.includes(
-          MeetingProvider.ZOOM
-        ):
-          selected_provider = MeetingProvider.ZOOM
-          break
-        case scheduler.preferences.meetingProviders?.includes(
-          MeetingProvider.JITSI_MEET
-        ):
-          selected_provider = MeetingProvider.JITSI_MEET
-          break
-        default:
-          selected_provider = MeetingProvider.HUDDLE
-          break
-      }
+      selected_provider = selectDefaultProvider(
+        scheduler?.preferences.meetingProviders
+      )
     }
     const suggestions = await getSuggestedSlots(
       accounts.map(p => p.address),
