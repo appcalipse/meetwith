@@ -120,7 +120,7 @@ export const handleMeetingSchedule = async (
       })
     } catch (error) {
       if (error instanceof UrlCreationError) {
-        return res.status(500).json({ error: error.message })
+        return res.status(500).json(error.name)
       } else {
         Sentry.captureException(error)
         return res.status(500).json({
