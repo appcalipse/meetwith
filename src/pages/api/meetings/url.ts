@@ -123,10 +123,7 @@ export const handleMeetingSchedule = async (
         return res.status(500).json(error.name)
       } else {
         Sentry.captureException(error)
-        return res.status(500).json({
-          error: 'Internal server error',
-          details: (error as Error).message,
-        })
+        return res.status(500).json(error)
       }
     }
   }
