@@ -25,7 +25,10 @@ import {
   getGroup,
   getGroupsMembers,
 } from '@/utils/api_helper'
-import { scheduleMeeting } from '@/utils/calendar_manager'
+import {
+  scheduleMeeting,
+  selectDefaultProvider,
+} from '@/utils/calendar_manager'
 import { handleApiError } from '@/utils/error_helper'
 import {
   GateConditionNotValidError,
@@ -34,6 +37,7 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
+  UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
@@ -162,11 +166,7 @@ const Schedule: NextPage = () => {
       Intl.DateTimeFormat().resolvedOptions().timeZone
   )
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    currentAccount?.preferences.meetingProviders?.includes(
-      MeetingProvider.HUDDLE
-    )
-      ? MeetingProvider.HUDDLE
-      : MeetingProvider.CUSTOM
+    selectDefaultProvider(currentAccount?.preferences.meetingProviders)
   )
   const [meetingUrl, setMeetingUrl] = useState('')
   const toast = useToast()
@@ -370,6 +370,16 @@ const Schedule: NextPage = () => {
           title: 'Failed to create video meeting',
           description:
             'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof UrlCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue generating a meeting url for your meeting. try using a different location',
           status: 'error',
           duration: 5000,
           position: 'top',

@@ -63,7 +63,11 @@ import {
   getExistingAccountsSimple,
   getSuggestedSlots,
 } from '@/utils/api_helper'
-import { scheduleMeeting, updateMeeting } from '@/utils/calendar_manager'
+import {
+  scheduleMeeting,
+  selectDefaultProvider,
+  updateMeeting,
+} from '@/utils/calendar_manager'
 import { MeetingNotificationOptions } from '@/utils/constants/schedule'
 import {
   GateConditionNotValidError,
@@ -156,13 +160,10 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     )
   )
   const meetingId = decryptedMeeting?.id
+  const defaultProvider = selectDefaultProvider(
+    currentAccount?.preferences?.meetingProviders
+  )
 
-  const defaultProvider =
-    currentAccount?.preferences?.meetingProviders?.includes(
-      MeetingProvider.HUDDLE
-    )
-      ? MeetingProvider.HUDDLE
-      : MeetingProvider.CUSTOM
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
     decryptedMeeting?.provider || defaultProvider
   )
