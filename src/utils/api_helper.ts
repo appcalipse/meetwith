@@ -927,6 +927,20 @@ export const createHuddleRoom = async (
     throw e
   }
 }
+export const createGoogleRoom = async (): Promise<{ url: string }> => {
+  try {
+    return (await internalFetch('/integrations/google/create', 'POST', {})) as {
+      url: string
+    }
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 503) {
+        throw new Huddle01ServiceUnavailable()
+      }
+    }
+    throw e
+  }
+}
 export const createZoomMeeting = async (
   payload: UrlCreationRequest
 ): Promise<{ url: string }> => {
