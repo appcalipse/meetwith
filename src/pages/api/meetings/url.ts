@@ -10,7 +10,12 @@ import {
   createZoomMeeting,
 } from '@/utils/api_helper'
 import { getAccountFromDB, getConnectedCalendars } from '@/utils/database'
-import { UrlCreationError } from '@/utils/errors'
+import {
+  GoogleServiceUnavailable,
+  Huddle01ServiceUnavailable,
+  UrlCreationError,
+  ZoomServiceUnavailable,
+} from '@/utils/errors'
 import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -54,11 +59,20 @@ export const handleMeetingSchedule = async (
         url,
       })
     } catch (error) {
+      if (error instanceof Huddle01ServiceUnavailable) {
+        return res.status(503).send(error.name)
+      }
+      if (error instanceof GoogleServiceUnavailable) {
+        return res.status(503).send(error.name)
+      }
+      if (error instanceof ZoomServiceUnavailable) {
+        return res.status(503).send(error.name)
+      }
       if (error instanceof UrlCreationError) {
-        return res.status(500).json(error.name)
+        return res.status(500).send(error.name)
       } else {
         Sentry.captureException(error)
-        return res.status(500).json(error)
+        return res.status(500).send(error)
       }
     }
   }
