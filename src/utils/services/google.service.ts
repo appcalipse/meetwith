@@ -17,7 +17,6 @@ import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
 export type EventBusyDate = Record<'start' | 'end', Date | string>
-import { GoogleConfigurable, meet } from '@googleapis/meet'
 
 export class MWWGoogleAuth extends google.auth.OAuth2 {
   constructor(client_id: string, client_secret: string, redirect_uri?: string) {
