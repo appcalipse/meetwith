@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/nextjs'
-import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
 import { Auth, calendar_v3, google } from 'googleapis'
 
 import {
@@ -7,7 +6,7 @@ import {
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
-import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
+import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -74,20 +73,19 @@ export default class GoogleCalendarService implements CalendarService {
     const refreshAccessToken = () =>
       myGoogleAuth
         .refreshToken(googleCredentials.refresh_token)
-        .then((res: GetTokenResponse) => {
+        .then(async res => {
           const token = res.res?.data
           googleCredentials.access_token = token.access_token
           googleCredentials.expiry_date = token.expiry_date
 
-          return updateCalendarPayload(
+          await updateCalendarPayload(
             address,
             email,
             TimeSlotSource.GOOGLE,
             googleCredentials
-          ).then(() => {
-            myGoogleAuth.setCredentials(googleCredentials)
-            return myGoogleAuth
-          })
+          )
+          myGoogleAuth.setCredentials(googleCredentials)
+          return myGoogleAuth
         })
         .catch(err => {
           Sentry.captureException(err)
