@@ -74,6 +74,7 @@ import {
 } from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
+  GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
   InvalidURL,
   MeetingCreationError,
@@ -547,6 +548,16 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           title: 'Failed to create video meeting',
           description:
             'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GoogleServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Google seems to be offline. Please select a different meeting location, or try again.',
           status: 'error',
           duration: 5000,
           position: 'top',
