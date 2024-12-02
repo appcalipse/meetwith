@@ -50,6 +50,7 @@ import {
   GroupMeetingType,
   MeetingDecrypted,
   MeetingProvider,
+  MeetingRepeat,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -369,7 +370,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     title?: string,
     otherParticipants?: Array<ParticipantInfo>,
     meetingProvider?: MeetingProvider,
-    meetingReminders?: Array<MeetingReminders>
+    meetingReminders?: Array<MeetingReminders>,
+    meetingRepeat?: MeetingRepeat
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
@@ -473,7 +475,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         meetingUrl,
         emailToSendReminders,
         title,
-        meetingReminders
+        meetingReminders,
+        meetingRepeat
       )
       await updateSlots()
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
