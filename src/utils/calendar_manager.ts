@@ -838,7 +838,9 @@ const generateIcs = (
           destination.accountAddress === participant.account_address
             ? destination.email
             : participant.guest_email ||
-              noNoReplyEmailForAccount(participant.account_address!),
+              noNoReplyEmailForAccount(
+                (participant.name || participant.account_address)!
+              ),
         rsvp: participant.status === ParticipationStatus.Accepted,
         partstat: participantStatusToICSStatus(participant.status),
         role: 'REQ-PARTICIPANT',
@@ -1014,9 +1016,14 @@ const generateAllSlots = () => {
   allSlots.push('24:00')
   return allSlots
 }
-
+const sanitizeContent = (email: string): string => {
+  return email.replace(/[^a-zA-Z0-9._%+-@]/g, '')
+}
 const noNoReplyEmailForAccount = (account_address: string): string => {
-  return `no_reply_${account_address}@meetwithwallet.xyz`
+  const content = sanitizeContent(
+    account_address.replaceAll(' ', '_').toLowerCase()
+  )
+  return `no_reply_${content}@meetwithwallet.xyz`
 }
 
 const decodeMeeting = async (
