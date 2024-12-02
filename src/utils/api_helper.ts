@@ -45,6 +45,7 @@ import {
   ApiFetchError,
   GateConditionNotValidError,
   GateInUseError,
+  GoogleServiceUnavailable,
   GroupCreationError,
   Huddle01ServiceUnavailable,
   InvalidSessionError,
@@ -52,6 +53,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   TimeNotAvailableError,
+  UrlCreationError,
   UserInvitationError,
   ZoomServiceUnavailable,
 } from './errors'
@@ -926,6 +928,20 @@ export const createHuddleRoom = async (
     throw e
   }
 }
+export const createGoogleRoom = async (): Promise<{ url: string }> => {
+  try {
+    return (await internalFetch('/integrations/google/create', 'POST', {})) as {
+      url: string
+    }
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 503) {
+        throw new GoogleServiceUnavailable()
+      }
+    }
+    throw e
+  }
+}
 export const createZoomMeeting = async (
   payload: UrlCreationRequest
 ): Promise<{ url: string }> => {
@@ -953,8 +969,17 @@ export const generateMeetingUrl = async (
     }
   } catch (e) {
     if (e instanceof ApiFetchError) {
-      if (e.status === 503) {
+      if (e.message === GoogleServiceUnavailable.name) {
+        throw new GoogleServiceUnavailable()
+      }
+      if (e.message === ZoomServiceUnavailable.name) {
+        throw new ZoomServiceUnavailable()
+      }
+      if (e.message === Huddle01ServiceUnavailable.name) {
         throw new Huddle01ServiceUnavailable()
+      }
+      if (e.message === 'UrlCreationError') {
+        throw new UrlCreationError()
       }
     }
     throw e

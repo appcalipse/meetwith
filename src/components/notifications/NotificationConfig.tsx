@@ -25,9 +25,9 @@ import { FaTelegram } from 'react-icons/fa'
 
 import { Account } from '@/types/Account'
 import { TelegramConnection } from '@/types/Telegram'
+import { isProduction } from '@/utils/constants'
 
 import {
-  AccountNotifications,
   DiscordNotificationType,
   NotificationChannel,
 } from '../../types/AccountNotifications'
@@ -67,7 +67,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setEmailNotifications(false)
     setEmail('')
     fetchSubscriptions()
-    fetchPendingTgConnections()
+    // fetchPendingTgConnections()
     setDiscordNotificationConfig(undefined)
   }, [currentAccount])
   const fetchPendingTgConnections = async () => {
@@ -211,57 +211,61 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             onDiscordNotificationChange={onDiscordNotificationChange}
             discordNotification={discordNotificationConfig}
           />
-          <HStack>
-            <Flex
-              width="22px"
-              height="22px"
-              bgColor={bgColor}
-              borderRadius="50%"
-              justifyContent="center"
-              alignItems="center"
-            >
-              <Icon as={FaTelegram} color={color} />
-            </Flex>
-            <Text fontSize="lg" fontWeight="bold">
-              Telegram
-            </Text>
-            {telegramNotificationConfigured ? (
-              <Button
-                variant="ghost"
-                colorScheme="primary"
-                isLoading={connecting}
-                onClick={handleTgDisconnect}
-              >
-                Disconnect
-              </Button>
-            ) : tgConnectionPending ? (
-              <Box>
-                <Text>
-                  Follow the{' '}
-                  <Link
-                    href={`https://t.me/MeetWithDEVBot?start=${tgConnectionPending.tg_id}`}
-                    target="_blank"
-                  >
-                    https://t.me/MeetWithDEVBot?start=
-                    {tgConnectionPending.tg_id}
-                  </Link>{' '}
-                  to connect or open the bot @MeetWithDEVBot and run the command
-                  `/set {tgConnectionPending.tg_id}`
+          {!isProduction && (
+            <>
+              <HStack>
+                <Flex
+                  width="22px"
+                  height="22px"
+                  bgColor={bgColor}
+                  borderRadius="50%"
+                  justifyContent="center"
+                  alignItems="center"
+                >
+                  <Icon as={FaTelegram} color={color} />
+                </Flex>
+                <Text fontSize="lg" fontWeight="bold">
+                  Telegram
                 </Text>
-              </Box>
-            ) : (
-              <Button
-                isLoading={connecting}
-                loadingText="Connecting"
-                variant="outline"
-                colorScheme="primary"
-                onClick={handleTgConnect}
-              >
-                Connect
-              </Button>
-            )}
-          </HStack>
-          <Spacer />
+                {telegramNotificationConfigured ? (
+                  <Button
+                    variant="ghost"
+                    colorScheme="primary"
+                    isLoading={connecting}
+                    onClick={handleTgDisconnect}
+                  >
+                    Disconnect
+                  </Button>
+                ) : tgConnectionPending ? (
+                  <Box>
+                    <Text>
+                      Follow the{' '}
+                      <Link
+                        href={`https://t.me/MeetWithDEVBot?start=${tgConnectionPending.tg_id}`}
+                        target="_blank"
+                      >
+                        https://t.me/MeetWithDEVBot?start=
+                        {tgConnectionPending.tg_id}
+                      </Link>{' '}
+                      to connect or open the bot @MeetWithDEVBot and run the
+                      command `/set {tgConnectionPending.tg_id}`
+                    </Text>
+                  </Box>
+                ) : (
+                  <Button
+                    isLoading={connecting}
+                    loadingText="Connecting"
+                    variant="outline"
+                    colorScheme="primary"
+                    onClick={handleTgConnect}
+                  >
+                    Connect
+                  </Button>
+                )}
+              </HStack>
+              <Spacer />
+            </>
+          )}
           <Button
             isLoading={loading}
             alignSelf="start"
