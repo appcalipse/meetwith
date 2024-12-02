@@ -69,8 +69,6 @@ const loginOrSignup = async (
 ): Promise<Account> => {
   let account: Account
 
-  await new Promise(resolve => setTimeout(resolve, 3000))
-
   const generateSignature = async () => {
     const nonce = Number(Math.random().toString(8).substring(2, 10))
 
@@ -79,30 +77,24 @@ const loginOrSignup = async (
   }
 
   let signedUp = false
-
+  const walletAccount = wallet.getAccount()
+  if (!walletAccount) {
+    throw new Error('Account not found')
+  }
+  const address = walletAccount.address.toLowerCase()
   try {
     // preload account data
-    account = await getAccount(wallet.getAccount()!.address.toLowerCase())
+    account = await getAccount(address)
 
     if (account.is_invited) {
       const { signature, nonce } = await generateSignature()
 
-      account = await signup(
-        wallet.getAccount()!.address.toLowerCase(),
-        signature,
-        timezone,
-        nonce
-      )
+      account = await signup(address, signature, timezone, nonce)
     }
   } catch (e) {
     if (e instanceof AccountNotFoundError) {
       const { signature, nonce } = await generateSignature()
-      account = await signup(
-        wallet.getAccount()!.address.toLowerCase(),
-        signature,
-        timezone,
-        nonce
-      )
+      account = await signup(address, signature, timezone, nonce)
       signedUp = true
     } else {
       throw e

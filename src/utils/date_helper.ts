@@ -27,26 +27,32 @@ export const convertTimeRangesToDate = (
   timeRanges: CustomTimeRange[],
   date: Date
 ) => {
-  return timeRanges.map(timeRange => ({
-    start: zonedTimeToUtc(
-      setDay(
-        new Date(`${date.toDateString()} ${timeRange.start}`),
-        timeRange.weekday,
-        {
-          weekStartsOn: timeRange.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-        }
-      ),
+  return timeRanges.map(timeRange => {
+    if (timeRange.end === '24:00') {
+      timeRange.end = '23:59'
+    }
+    const timezone =
       timeRange.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
-    ),
-    end: zonedTimeToUtc(
-      setDay(
-        new Date(`${date.toDateString()} ${timeRange.end}`),
-        timeRange.weekday,
-        {
-          weekStartsOn: timeRange.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-        }
+    const options = {
+      weekStartsOn: timeRange.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+    }
+    return {
+      start: zonedTimeToUtc(
+        setDay(
+          new Date(`${date.toDateString()} ${timeRange.start}`),
+          timeRange.weekday,
+          options
+        ),
+        timezone
       ),
-      timeRange.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
-    ),
-  }))
+      end: zonedTimeToUtc(
+        setDay(
+          new Date(`${date.toDateString()} ${timeRange.end}`),
+          timeRange.weekday,
+          options
+        ),
+        timezone
+      ),
+    }
+  })
 }
