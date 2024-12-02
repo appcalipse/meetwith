@@ -1,4 +1,5 @@
 import { MeetingReminders } from '@/types/common'
+import { MeetingRepeat } from '@/types/Meeting'
 
 export const MeetingNotificationOptions = [
   {
@@ -28,5 +29,24 @@ export const MeetingNotificationOptions = [
   {
     value: MeetingReminders['1_WEEK_BEFORE'],
     label: '1 week before',
+  },
+]
+
+export const MeetingRepeatOptions = [
+  {
+    value: MeetingRepeat['NO_REPEAT'],
+    label: 'Does not repeat',
+  },
+  {
+    value: MeetingRepeat['DAILY'],
+    label: 'Daily',
+  },
+  {
+    value: MeetingRepeat['WEEKLY'],
+    label: 'Weekly',
+  },
+  {
+    value: MeetingRepeat['MONTHLY'],
+    label: 'Monthly',
   },
 ]
