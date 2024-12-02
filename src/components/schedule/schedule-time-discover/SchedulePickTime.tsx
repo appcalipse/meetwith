@@ -187,14 +187,6 @@ export function SchedulePickTime({
     }
   }
 
-  const _onChangeClock = (newValue: unknown) => {
-    if (Array.isArray(newValue)) {
-      return
-    }
-    const clock = newValue as SingleValue<{ label: string; value: string }>
-    setClockValue(clock)
-  }
-
   const tzs = timezones.map(tz => {
     return {
       value: String(tz.tzCode),
