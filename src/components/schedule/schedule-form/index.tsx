@@ -25,7 +25,7 @@ import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-
+import { selectDefaultProvider } from '@/utils/calendar_manager'
 import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
@@ -34,8 +34,6 @@ import {
   customSelectComponents,
   MeetingRemindersComponent,
 } from '@/utils/constants/select'
-import { selectDefaultProvider } from '@/utils/calendar_manager'
-        
 import { renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
