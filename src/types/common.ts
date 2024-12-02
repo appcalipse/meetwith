@@ -9,7 +9,7 @@ export interface SuccessResponse {
 }
 
 export interface CustomTimeRange extends TimeRange {
-  timezone: string
+  timezone?: string
   weekday: number
 }
 

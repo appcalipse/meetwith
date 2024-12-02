@@ -596,6 +596,7 @@ const scheduleMeeting = async (
         meetingReminders,
       })
     ).url
+
   const meeting = await buildMeetingData(
     schedulingType,
     meetingTypeId,
@@ -1086,6 +1087,19 @@ const generateOffice365CalendarUrl = (
   return baseUrl
 }
 const allSlots = generateAllSlots()
+
+const selectDefaultProvider = (providers?: Array<MeetingProvider>) => {
+  switch (true) {
+    case providers?.includes(MeetingProvider.GOOGLE_MEET):
+      return MeetingProvider.GOOGLE_MEET
+    case providers?.includes(MeetingProvider.ZOOM):
+      return MeetingProvider.ZOOM
+    case providers?.includes(MeetingProvider.JITSI_MEET):
+      return MeetingProvider.JITSI_MEET
+    default:
+      return MeetingProvider.HUDDLE
+  }
+}
 export {
   allSlots,
   cancelMeeting,
@@ -1107,5 +1121,6 @@ export {
   noNoReplyEmailForAccount,
   outLookUrlParsedDate,
   scheduleMeeting,
+  selectDefaultProvider,
   updateMeeting,
 }
