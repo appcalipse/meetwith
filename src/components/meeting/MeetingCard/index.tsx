@@ -45,6 +45,7 @@ import {
   DBSlot,
   MeetingChangeType,
   MeetingDecrypted,
+  MeetingRepeat,
 } from '../../../types/Meeting'
 import { logEvent } from '../../../utils/analytics'
 
@@ -211,6 +212,8 @@ const MeetingCard = ({
     isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
     isAfter(meeting.start, new Date())
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
+  const isRecurring =
+    meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
   return (
     <>
       {loading ? (
@@ -230,7 +233,7 @@ const MeetingCard = ({
             md: label ? 1.5 : 0,
           }}
         >
-          {label && (
+          {label ? (
             <Badge
               borderRadius={0}
               borderBottomRightRadius={4}
@@ -244,8 +247,24 @@ const MeetingCard = ({
             >
               {label.text}
             </Badge>
+          ) : (
+            isRecurring && (
+              <Badge
+                borderRadius={0}
+                borderBottomRightRadius={4}
+                px={2}
+                py={1}
+                colorScheme={'gray'}
+                alignSelf="flex-end"
+                position="absolute"
+                right={0}
+                top={0}
+              >
+                Recurrence: {meeting?.recurrence}
+              </Badge>
+            )
           )}
-          <Box p="24px" maxWidth="100%">
+          <Box p={6} pt={isRecurring ? 8 : 6} maxWidth="100%">
             <VStack alignItems="start" position="relative" gap={6}>
               <Flex
                 alignItems="start"

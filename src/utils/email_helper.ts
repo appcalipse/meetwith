@@ -6,7 +6,11 @@ import path from 'path'
 
 import { MeetingReminders } from '@/types/common'
 import { Group } from '@/types/Group'
-import { MeetingChangeType, MeetingProvider } from '@/types/Meeting'
+import {
+  MeetingChangeType,
+  MeetingProvider,
+  MeetingRepeat,
+} from '@/types/Meeting'
 import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingChange } from '@/types/Requests'
 import { getConnectedCalendars } from '@/utils/database'
@@ -103,7 +107,8 @@ export const newMeetingEmail = async (
   description?: string,
   created_at?: Date,
   meetingProvider?: MeetingProvider,
-  meetingReminders?: Array<MeetingReminders>
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat?: MeetingRepeat
 ): Promise<boolean> => {
   const email = new Email()
 
@@ -164,6 +169,7 @@ export const newMeetingEmail = async (
       meeting_info_encrypted: mockEncrypted,
       content: description,
       reminders: meetingReminders,
+      recurrence: meetingRepeat,
     },
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
@@ -308,7 +314,8 @@ export const updateMeetingEmail = async (
   created_at?: Date,
   changes?: MeetingChange,
   meetingProvider?: MeetingProvider,
-  meetingReminders?: Array<MeetingReminders>
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat?: MeetingRepeat
 ): Promise<boolean> => {
   if (!changes?.dateChange) {
     return true
@@ -385,6 +392,7 @@ export const updateMeetingEmail = async (
       related_slot_ids: [],
       meeting_info_encrypted: mockEncrypted,
       reminders: meetingReminders,
+      recurrence: meetingRepeat,
     },
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
