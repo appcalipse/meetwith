@@ -386,7 +386,9 @@ export default class Office365CalendarService implements CalendarService {
             calendarOwnerAccountAddress === participant.account_address
               ? this.getConnectedEmail()
               : participant.guest_email ||
-                noNoReplyEmailForAccount(participant.account_address!),
+                noNoReplyEmailForAccount(
+                  (participant.name || participant.account_address)!
+                ),
         },
       })
     }
