@@ -1,7 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-
 import { format, getWeekOfMonth } from 'date-fns'
-import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
 import { Auth, calendar_v3, google } from 'googleapis'
 
 import {
@@ -9,9 +7,7 @@ import {
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
-
-import { MeetingProvider, MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
-
+import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -209,8 +205,7 @@ export default class GoogleCalendarService implements CalendarService {
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    _calendarId?: string,
-    shouldGenerateLink = true
+    _calendarId?: string
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth

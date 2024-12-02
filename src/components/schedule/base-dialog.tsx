@@ -62,6 +62,11 @@ import {
   getSuggestedSlots,
 } from '@/utils/api_helper'
 import {
+  scheduleMeeting,
+  selectDefaultProvider,
+  updateMeeting,
+} from '@/utils/calendar_manager'
+import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
@@ -69,11 +74,6 @@ import {
   customSelectComponents,
   MeetingRemindersComponent,
 } from '@/utils/constants/select'
-import {
-  scheduleMeeting,
-  selectDefaultProvider,
-  updateMeeting,
-} from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
   Huddle01ServiceUnavailable,
