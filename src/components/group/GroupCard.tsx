@@ -44,9 +44,8 @@ import {
 } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
-import { appUrl, isProduction } from '@/utils/constants'
+import { isProduction } from '@/utils/constants'
 
-import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 import GroupMemberCard from './GroupMemberCard'
 
 export interface IGroupCard extends GetGroupsResponse {
