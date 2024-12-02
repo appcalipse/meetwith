@@ -336,10 +336,10 @@ export function SchedulePickTime({
       <VStack gap={4} w="100%">
         <Flex
           w="100%"
-          alignItems={{ md: 'flex-end' }}
+          alignItems={{ lg: 'flex-end' }}
           flexDir={{
             base: 'column',
-            md: 'row',
+            lg: 'row',
           }}
           gap={4}
         >

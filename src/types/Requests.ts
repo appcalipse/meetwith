@@ -127,6 +127,8 @@ export interface DiscordMeetingRequest {
   title: string
   description: string
   notBefore?: NotBefore
+  provider: MeetingProvider
+  reminder?: Array<MeetingReminders>
 }
 
 export interface ChangeGroupAdminRequest {
