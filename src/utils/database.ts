@@ -531,6 +531,33 @@ const updateRecurringSlots = async (identifier: string) => {
     }
   }
 }
+const updateAllRecurringSlots = async () => {
+  const _end = new Date().toISOString()
+  const { data: allSlots, error } = await db.supabase
+    .from('slots')
+    .select()
+    .lte('end', _end)
+    .neq('recurrence', MeetingRepeat.NO_REPEAT)
+  if (error) {
+    return
+  }
+  if (allSlots) {
+    const toUpdate = []
+    for (const data of allSlots) {
+      const slot = data as DBSlot
+      const interval = addRecurrence(
+        new Date(slot.start),
+        new Date(slot.end),
+        slot.recurrence
+      )
+      const newSlot = { ...slot, start: interval.start, end: interval.end }
+      toUpdate.push(newSlot)
+    }
+    if (toUpdate.length > 0) {
+      await db.supabase.from('slots').upsert(toUpdate)
+    }
+  }
+}
 
 const getSlotsForDashboard = async (
   identifier: string,
@@ -2661,6 +2688,7 @@ export {
   setAccountNotificationSubscriptions,
   updateAccountFromInvite,
   updateAccountPreferences,
+  updateAllRecurringSlots,
   updateMeeting,
   updateRecurringSlots,
   upsertGateCondition,
