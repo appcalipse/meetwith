@@ -1,14 +1,12 @@
 import * as Sentry from '@sentry/nextjs'
-import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
 import { Auth, calendar_v3, google } from 'googleapis'
-import { v4 as uuidv4 } from 'uuid'
 
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
-import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
+import { TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -75,20 +73,19 @@ export default class GoogleCalendarService implements CalendarService {
     const refreshAccessToken = () =>
       myGoogleAuth
         .refreshToken(googleCredentials.refresh_token)
-        .then((res: GetTokenResponse) => {
+        .then(async res => {
           const token = res.res?.data
           googleCredentials.access_token = token.access_token
           googleCredentials.expiry_date = token.expiry_date
 
-          return updateCalendarPayload(
+          await updateCalendarPayload(
             address,
             email,
             TimeSlotSource.GOOGLE,
             googleCredentials
-          ).then(() => {
-            myGoogleAuth.setCredentials(googleCredentials)
-            return myGoogleAuth
-          })
+          )
+          myGoogleAuth.setCredentials(googleCredentials)
+          return myGoogleAuth
         })
         .catch(err => {
           Sentry.captureException(err)
@@ -268,23 +265,7 @@ export default class GoogleCalendarService implements CalendarService {
               email: NO_REPLY_EMAIL,
             },
             guestsCanModify: false,
-            location:
-              shouldGenerateLink &&
-              meetingDetails.meetingProvider !== MeetingProvider.GOOGLE_MEET
-                ? meetingDetails.meeting_url
-                : undefined,
-            conferenceData:
-              shouldGenerateLink &&
-              meetingDetails.meetingProvider == MeetingProvider.GOOGLE_MEET
-                ? {
-                    createRequest: {
-                      requestId: uuidv4(),
-                      conferenceSolutionKey: {
-                        type: 'hangoutsMeet',
-                      },
-                    },
-                  }
-                : undefined,
+            location: meetingDetails.meeting_url,
             status: 'confirmed',
           }
           if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
@@ -359,7 +340,7 @@ export default class GoogleCalendarService implements CalendarService {
     _calendarId: string
   ): Promise<NewCalendarEventType> {
     return new Promise(async (resolve, reject) => {
-      const auth = await this.auth
+      const auth = this.auth
       const myGoogleAuth = await auth.getToken()
       const calendarId = parseCalendarId(_calendarId)
 
@@ -484,7 +465,7 @@ export default class GoogleCalendarService implements CalendarService {
 
   async deleteEvent(meeting_id: string, _calendarId: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
-      const auth = await this.auth
+      const auth = this.auth
       const myGoogleAuth = await auth.getToken()
       const calendar = google.calendar({
         version: 'v3',
