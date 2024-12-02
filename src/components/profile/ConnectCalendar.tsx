@@ -146,16 +146,9 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
     )
   }
 
-  const isPro = isProAccount(currentAccount!)
+  const activeCalendarConnections = calendarConnections
 
-  const hasReachedConnectionCountLimit =
-    !isPro && calendarConnections.length > 0
-
-  const activeCalendarConnections = isPro
-    ? calendarConnections
-    : calendarConnections.slice(0, 1)
-
-  const disabledCalendarConnections = isPro ? [] : calendarConnections.slice(1)
+  const disabledCalendarConnections: Array<ConnectedCalendarCore> = []
 
   return (
     <Box mb={8}>
@@ -175,8 +168,6 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
 
       <ConnectCalendarModal isOpen={isOpen} onClose={onClose} />
 
-      {hasReachedConnectionCountLimit && <GoProCTA />}
-
       <Button
         onClick={onOpen}
         colorScheme="primary"
@@ -184,7 +175,6 @@ const ConnectCalendar: React.FC<{ currentAccount: Account }> = ({
         mt={4}
         alignSelf="flex-start"
         leftIcon={<FaPlus />}
-        isDisabled={hasReachedConnectionCountLimit}
       >
         Add calendar connection
       </Button>
