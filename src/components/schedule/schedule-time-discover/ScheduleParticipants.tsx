@@ -66,7 +66,7 @@ export function ScheduleParticipants({
       minW={'410px'}
       display={{
         base: isMobile ? 'flex' : 'none',
-        md: 'flex',
+        lg: 'flex',
       }}
     >
       <HStack gap={9} w="100%" justify={'space-between'}>

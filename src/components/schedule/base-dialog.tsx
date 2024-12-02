@@ -61,7 +61,6 @@ import {
   getExistingAccountsSimple,
   getSuggestedSlots,
 } from '@/utils/api_helper'
-import { scheduleMeeting, updateMeeting } from '@/utils/calendar_manager'
 import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
@@ -70,6 +69,11 @@ import {
   customSelectComponents,
   MeetingRemindersComponent,
 } from '@/utils/constants/select'
+import {
+  scheduleMeeting,
+  selectDefaultProvider,
+  updateMeeting,
+} from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
   Huddle01ServiceUnavailable,
@@ -167,13 +171,10 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     }
   )
   const meetingId = decryptedMeeting?.id
+  const defaultProvider = selectDefaultProvider(
+    currentAccount?.preferences?.meetingProviders
+  )
 
-  const defaultProvider =
-    currentAccount?.preferences?.meetingProviders?.includes(
-      MeetingProvider.HUDDLE
-    )
-      ? MeetingProvider.HUDDLE
-      : MeetingProvider.CUSTOM
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
     decryptedMeeting?.provider || defaultProvider
   )
