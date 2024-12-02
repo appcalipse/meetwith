@@ -3,6 +3,7 @@ import { useContext, useEffect, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
+import { AccountContext } from '@/providers/AccountProvider'
 import { CustomDayAvailability } from '@/types/common'
 import {
   ParticipantInfo,
@@ -22,6 +23,7 @@ export type MeetingMembers = ParticipantInfo & { isCalendarConnected?: boolean }
 const ScheduleTimeDiscover = () => {
   const { handlePageSwitch } = useContext(ScheduleContext)
   const [isOpen, setIsOpen] = useState(false)
+  const { currentAccount } = useContext(AccountContext)
   const handleClose = () => {
     handlePageSwitch(Page.SCHEDULE)
   }
@@ -48,7 +50,9 @@ const ScheduleTimeDiscover = () => {
       ...new Set(
         Object.values(groupParticipants)
           .flat()
-          .concat(selectedParticipants as string[])
+          .concat(selectedParticipants as string[], [
+            currentAccount?.address as string,
+          ])
       ),
     ]
     const members = await getExistingAccounts(actualMembers, false)

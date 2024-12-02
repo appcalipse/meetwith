@@ -92,16 +92,6 @@ const ScheduleBase = () => {
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
   const iconColor = useColorModeValue('gray.800', 'white')
   const onParticipantsChange = (_participants: Array<ParticipantInfo>) => {
-    if (!isProAccount(currentAccount!) && _participants.length > 1) {
-      setInputError(
-        <Text>
-          <Link href="/dashboard/details#subscriptions">Go PRO</Link> to be able
-          to schedule meetings with more than one invitee
-        </Text>
-      )
-      participants.length == 0 && setParticipants([_participants[0]])
-      return
-    }
     setParticipants(_participants)
     const key = 'no_group'
     const addresses = _participants
