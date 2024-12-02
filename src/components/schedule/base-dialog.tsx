@@ -19,11 +19,8 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  Radio,
-  RadioGroup,
   Select,
   Text,
-  useColorModeValue,
   useDisclosure,
   useToast,
   VStack,
@@ -39,7 +36,7 @@ import {
   startOfDay,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import { ReactNode, useContext, useEffect, useState } from 'react'
+import { ReactNode, useContext, useState } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
@@ -50,6 +47,7 @@ import {
   DBSlot,
   MeetingChangeType,
   MeetingProvider,
+  MeetingRepeat,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -68,7 +66,14 @@ import {
   selectDefaultProvider,
   updateMeeting,
 } from '@/utils/calendar_manager'
-import { MeetingNotificationOptions } from '@/utils/constants/schedule'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
+import {
+  customSelectComponents,
+  MeetingRemindersComponent,
+} from '@/utils/constants/select'
 import {
   GateConditionNotValidError,
   Huddle01ServiceUnavailable,
@@ -78,7 +83,6 @@ import {
   MeetingWithYourselfError,
   TimeNotAvailableError,
 } from '@/utils/errors'
-import { renderProviderName } from '@/utils/generic_utils'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
 import { getSignature } from '@/utils/storage'
 import { isProAccount } from '@/utils/subscription_manager'
@@ -89,7 +93,6 @@ import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 import RichTextEditor from '../profile/components/RichTextEditor'
 import { CancelMeetingDialog } from './cancel-dialog'
 import { MeetingDialogState } from './meeting.dialog.hook'
-import { MeetingRemindersComponent } from './schedule-form'
 
 export interface BaseMeetingDialogProps extends MeetingDialogState {
   isDialogOpen: boolean
@@ -158,6 +161,14 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     MeetingNotificationOptions.filter(val =>
       decryptedMeeting?.reminders?.includes(val.value)
     )
+  )
+  const [meetingRepeat, setMeetingRepeat] = useState(
+    MeetingRepeatOptions?.find(
+      val => decryptedMeeting?.recurrence === val.value
+    ) || {
+      value: MeetingRepeat['NO_REPEAT'],
+      label: 'Does not repeat',
+    }
   )
   const meetingId = decryptedMeeting?.id
   const defaultProvider = selectDefaultProvider(
@@ -416,7 +427,8 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           meetingUrl,
           meetingProvider,
           title,
-          meetingNotification.map(mn => mn.value)
+          meetingNotification.map(mn => mn.value),
+          meetingRepeat.value
         )
         logEvent('Updated a meeting', {
           fromDashboard: true,
@@ -436,6 +448,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           source: TimeSlotSource.MWW,
           meeting_info_encrypted: meetingResult?.meeting_info_encrypted,
           version: meetingResult.version,
+          recurrence: meetingResult.recurrence || MeetingRepeat.NO_REPEAT,
         }
       )
       return true
@@ -709,6 +722,38 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                 }),
 
                 placeholder: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+              }}
+            />
+          </FormControl>
+          <FormControl w="100%" maxW="100%">
+            <FormLabel>Meeting Repeat</FormLabel>
+            <ChakraSelect
+              value={meetingRepeat}
+              colorScheme="primary"
+              onChange={newValue =>
+                setMeetingRepeat(
+                  newValue as {
+                    value: MeetingRepeat
+                    label: string
+                  }
+                )
+              }
+              className="noLeftBorder timezone-select"
+              options={MeetingRepeatOptions}
+              components={customSelectComponents}
+              chakraStyles={{
+                placeholder: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+                input: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+                control: provided => ({
                   ...provided,
                   textAlign: 'left',
                 }),
