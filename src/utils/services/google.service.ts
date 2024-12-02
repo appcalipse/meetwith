@@ -284,7 +284,9 @@ export default class GoogleCalendarService implements CalendarService {
                 calendarOwnerAccountAddress === participant.account_address
                   ? this.getConnectedEmail()
                   : participant.guest_email ||
-                    noNoReplyEmailForAccount(participant.account_address!),
+                    noNoReplyEmailForAccount(
+                      (participant.name || participant.account_address)!
+                    ),
               displayName: participant.name || participant.account_address,
               responseStatus:
                 participant.status === ParticipationStatus.Accepted
@@ -414,7 +416,9 @@ export default class GoogleCalendarService implements CalendarService {
             calendarOwnerAccountAddress === participant.account_address
               ? this.getConnectedEmail()
               : participant.guest_email ||
-                noNoReplyEmailForAccount(participant.account_address!),
+                noNoReplyEmailForAccount(
+                  (participant.name || participant.account_address)!
+                ),
           displayName: participant.name || participant.account_address,
           responseStatus:
             participant.status === ParticipationStatus.Accepted
