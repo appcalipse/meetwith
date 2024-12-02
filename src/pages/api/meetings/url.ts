@@ -1,22 +1,19 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantType } from '@/types/ParticipantInfo'
-import { RequestParticipantMapping, UrlCreationRequest } from '@/types/Requests'
+import { MeetingProvider } from '@/types/Meeting'
+import { UrlCreationRequest } from '@/types/Requests'
 import {
   createGoogleRoom,
   createHuddleRoom,
   createZoomMeeting,
 } from '@/utils/api_helper'
-import { getAccountFromDB, getConnectedCalendars } from '@/utils/database'
 import {
   GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
-import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   const meeting: UrlCreationRequest = req.body as UrlCreationRequest
