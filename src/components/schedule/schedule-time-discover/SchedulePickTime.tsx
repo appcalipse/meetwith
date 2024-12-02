@@ -126,12 +126,6 @@ export function SchedulePickTime({
 
   const [accountSlots, setAccountSlots] = useState<Array<TimeSlot[]>>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [clockValue, setClockValue] = useState<
-    SingleValue<{ label: string; value: string }>
-  >({
-    label: format(pickedTime || new Date(), 'a').toUpperCase(),
-    value: format(pickedTime || new Date(), 'a').toUpperCase(),
-  })
 
   const getMonthsForYear = () => {
     const year = currentMonth.getFullYear()
@@ -152,9 +146,7 @@ export function SchedulePickTime({
   }
   const getEmptySlots = (date: Date) => {
     const slots = []
-    const startRange = clockValue?.value === 'AM' ? 0 : 12
-    const endRange = clockValue?.value === 'AM' ? 12 : 24
-    for (let i = startRange; i < endRange; i++) {
+    for (let i = 0; i < 24; i++) {
       const start = new Date(date)
       start.setHours(i)
       start.setMinutes(0)
@@ -297,7 +289,7 @@ export function SchedulePickTime({
   }, [groupAvailability, currentMonth])
   useEffect(() => {
     setDates(getDates(accountSlots))
-  }, [currentSelectedDate, clockValue])
+  }, [currentSelectedDate])
   const handleScheduledTimeBack = () => {
     const currentDay = currentSelectedDate.getDate()
     if (currentDay === 1) {
@@ -340,12 +332,15 @@ export function SchedulePickTime({
       setCurrentSelectedDate(addDays(currentSelectedDate, 7))
     }
   }
+  const isAm = (val: Date) => {
+    return format(val, 'a').toLowerCase() === 'am'
+  }
   const SLOTS = useMemo(
     () =>
       getEmptySlots(new Date()).map(val =>
-        format(val.start, clockValue?.value === 'AM' ? 'HH:mm a' : 'hh:mm a')
+        format(val.start, isAm(val.start) ? 'HH:mm a' : 'hh:mm a')
       ),
-    [clockValue]
+    []
   )
 
   return (
@@ -460,14 +455,7 @@ export function SchedulePickTime({
                 justify={'flex-start'}
                 gap={2}
               >
-                <Select
-                  value={clockValue}
-                  colorScheme="primary"
-                  onChange={_onChangeClock}
-                  className="noLeftBorder date-select"
-                  options={CLOCK}
-                  components={customComponents}
-                />
+                <Box h={'48px'} width={'100%'} />
                 <VStack align={'flex-start'} p={1}>
                   {SLOTS.map((slot, index) => {
                     return (
