@@ -151,6 +151,12 @@ export class Huddle01ServiceUnavailable extends Error {
     this.name = 'Huddle01ServiceUnavailable'
   }
 }
+export class GoogleServiceUnavailable extends Error {
+  constructor() {
+    super(`Google API is unavailable`)
+    this.name = 'GoogleServiceUnavailable'
+  }
+}
 
 export class ZoomServiceUnavailable extends Error {
   constructor() {

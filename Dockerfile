@@ -48,6 +48,8 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/zoom-token.json ./zoom-token.json
+COPY --from=builder --chown=nextjs:nodejs /app/credentials.json ./credentials.json
+COPY --from=builder --chown=nextjs:nodejs /app/google-master-token.json ./google-master-token.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/src/emails ./src/emails
