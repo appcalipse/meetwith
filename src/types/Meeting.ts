@@ -36,6 +36,7 @@ export interface DBSlot extends TimeSlot {
   created_at?: Date
   version: number
   meeting_info_encrypted: Encrypted
+  recurrence: MeetingRepeat
 }
 
 /**
@@ -86,6 +87,7 @@ export interface ConferenceMeeting {
   access_type: MeetingAccessType
   provider: MeetingProvider
   reminders?: Array<MeetingReminders>
+  recurrence?: MeetingRepeat
   meeting_url: string
   created_at: Date
 }
@@ -101,6 +103,7 @@ export interface MeetingInfo {
   related_slot_ids: string[]
   meeting_id: ConferenceMeeting['id']
   provider?: MeetingProvider
+  recurrence?: MeetingRepeat
 }
 
 export interface MeetingDecrypted {
@@ -118,6 +121,7 @@ export interface MeetingDecrypted {
   reminders?: Array<MeetingReminders>
   meeting_info_encrypted: Encrypted
   provider?: MeetingProvider
+  recurrence?: MeetingRepeat
 }
 
 export enum GroupMeetingType {
@@ -160,4 +164,10 @@ export enum NotBefore {
   TwelveHours = 12,
   Tomorrow = 500,
   NextWeek = 1000,
+}
+export enum MeetingRepeat {
+  NO_REPEAT = 'no-repeat',
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly',
 }
