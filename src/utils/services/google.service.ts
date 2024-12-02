@@ -76,7 +76,7 @@ export default class GoogleCalendarService implements CalendarService {
     const refreshAccessToken = () =>
       myGoogleAuth
         .refreshToken(googleCredentials.refresh_token)
-        .then((res: GetTokenResponse) => {
+        .then(res => {
           const token = res.res?.data
           googleCredentials.access_token = token.access_token
           googleCredentials.expiry_date = token.expiry_date
