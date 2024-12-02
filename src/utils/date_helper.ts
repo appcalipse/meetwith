@@ -4,6 +4,7 @@ import {
   differenceInMinutes,
   endOfMonth,
   getWeekOfMonth,
+  isBefore,
   setDay,
   startOfMonth,
 } from 'date-fns'
@@ -65,38 +66,38 @@ export const addRecurrence = (
   recurrence: MeetingRepeat
 ) => {
   const diffMinutes = differenceInMinutes(end, start)
-  let newStart: Date
+  let newStart: Date = start
+  while (isBefore(newStart, new Date())) {
+    switch (recurrence) {
+      case MeetingRepeat.DAILY:
+        newStart = add(newStart, { days: 1 })
+        break
 
-  switch (recurrence) {
-    case MeetingRepeat.DAILY:
-      newStart = add(start, { days: 1 })
-      break
-
-    case MeetingRepeat.WEEKLY:
-      newStart = add(start, { weeks: 1 })
-      break
-    case MeetingRepeat.MONTHLY:
-      const dayOfWeek = new Date(start).getDay()
-      const weekOfMonth = getWeekOfMonth(start)
-
-      const nextMonth = add(start, { months: 1 })
-      const monthStart = startOfMonth(nextMonth)
-
-      newStart = setDay(monthStart, dayOfWeek)
-
-      for (let i = 1; i < weekOfMonth; i++) {
+      case MeetingRepeat.WEEKLY:
         newStart = add(newStart, { weeks: 1 })
-        if (newStart > endOfMonth(nextMonth)) {
-          newStart = add(newStart, { weeks: -1 })
-          break
+        break
+      case MeetingRepeat.MONTHLY:
+        const dayOfWeek = new Date(newStart).getDay()
+        const weekOfMonth = getWeekOfMonth(newStart)
+
+        const nextMonth = add(newStart, { months: 1 })
+        const monthStart = startOfMonth(nextMonth)
+
+        newStart = setDay(monthStart, dayOfWeek)
+
+        for (let i = 1; i < weekOfMonth; i++) {
+          newStart = add(newStart, { weeks: 1 })
+          if (newStart > endOfMonth(nextMonth)) {
+            newStart = add(newStart, { weeks: -1 })
+            break
+          }
         }
-      }
-      break
-    default:
-      newStart = add(start, { days: 1 })
-      break
+        break
+      default:
+        newStart = add(newStart, { days: 1 })
+        break
+    }
   }
   const newEnd = add(newStart, { minutes: diffMinutes })
-
   return { start: newStart, end: newEnd }
 }
