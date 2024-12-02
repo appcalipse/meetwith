@@ -8,7 +8,7 @@ export default async function recurrenceSync(
 ) {
   if (req.method === 'POST') {
     try {
-      await updateAllRecurringSlots(req.query.identifier as string)
+      await updateAllRecurringSlots()
       return res.status(200).json({
         success: true,
         message: 'recurring slot added successfully',
