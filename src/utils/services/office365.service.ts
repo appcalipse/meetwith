@@ -1,11 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
+import { format } from 'date-fns'
 
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
+  Office365RecurrenceType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
-import { TimeSlotSource } from '@/types/Meeting'
+import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -349,6 +351,32 @@ export default class Office365CalendarService implements CalendarService {
         prev < current ? prev : current
       )
       payload.reminderMinutesBeforeStart = this.createReminder(lowestReminder)
+    }
+    if (
+      details.meetingRepeat &&
+      details?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+    ) {
+      let type!: Office365RecurrenceType
+      switch (details.meetingRepeat) {
+        case MeetingRepeat.DAILY:
+          type = Office365RecurrenceType.DAILY
+          break
+        case MeetingRepeat.WEEKLY:
+          type = Office365RecurrenceType.WEEKLY
+          break
+        case MeetingRepeat.MONTHLY:
+          type = Office365RecurrenceType.RELATIVE_MONTHLY
+          break
+      }
+
+      const meetingDate = new Date(details.start)
+      const daysOfWeek = format(meetingDate, 'eeee').toLowerCase()
+      payload['recurrence'] = {
+        type,
+        interval: 1,
+        daysOfWeek,
+        firstDayOfWeek: 'sunday',
+      }
     }
     for (const participant of details.participants) {
       ;(payload.attendees as any).push({
