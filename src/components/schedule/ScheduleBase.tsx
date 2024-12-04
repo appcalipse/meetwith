@@ -10,7 +10,6 @@ import {
   FormLabel,
   Heading,
   HStack,
-  Icon,
   Input,
   Radio,
   RadioGroup,
@@ -20,14 +19,9 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import {
-  chakraComponents,
-  Props,
-  Select as ChakraSelect,
-} from 'chakra-react-select'
+import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
 import React, { ReactNode, useContext, useState } from 'react'
-import { FaChevronDown } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
@@ -39,21 +33,21 @@ import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MeetingReminders } from '@/types/common'
-import { MeetingProvider } from '@/types/Meeting'
+import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
-import { MeetingNotificationOptions } from '@/utils/constants/schedule'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
+import {
+  customSelectComponents,
+  MeetingRemindersComponent,
+} from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
 import { isProAccount } from '@/utils/subscription_manager'
 import { ellipsizeAddress } from '@/utils/user_manager'
-const components: Props['components'] = {
-  ClearIndicator: () => null,
-  DropdownIndicator: props => (
-    <chakraComponents.DropdownIndicator className="noBg" {...props}>
-      <Icon as={FaChevronDown} />
-    </chakraComponents.DropdownIndicator>
-  ),
-}
+
 const ScheduleBase = () => {
   const { currentAccount } = useContext(AccountContext)
   const {
@@ -77,6 +71,8 @@ const ScheduleBase = () => {
     setGroupAvailability,
     meetingNotification,
     setMeetingNotification,
+    meetingRepeat,
+    setMeetingRepeat,
   } = useContext(ScheduleContext)
   const {
     isOpen: isGroupModalOpen,
@@ -337,7 +333,7 @@ const ScheduleBase = () => {
             isMulti
             tagVariant={'solid'}
             options={MeetingNotificationOptions}
-            components={components}
+            components={MeetingRemindersComponent}
             chakraStyles={{
               container: provided => ({
                 ...provided,
@@ -353,6 +349,38 @@ const ScheduleBase = () => {
               }),
 
               placeholder: provided => ({
+                ...provided,
+                textAlign: 'left',
+              }),
+            }}
+          />
+        </FormControl>
+        <FormControl w="100%" maxW="100%">
+          <FormLabel>Meeting Repeat</FormLabel>
+          <ChakraSelect
+            value={meetingRepeat}
+            colorScheme="primary"
+            onChange={newValue =>
+              setMeetingRepeat(
+                newValue as {
+                  value: MeetingRepeat
+                  label: string
+                }
+              )
+            }
+            className="noLeftBorder timezone-select"
+            options={MeetingRepeatOptions}
+            components={customSelectComponents}
+            chakraStyles={{
+              placeholder: provided => ({
+                ...provided,
+                textAlign: 'left',
+              }),
+              input: provided => ({
+                ...provided,
+                textAlign: 'left',
+              }),
+              control: provided => ({
                 ...provided,
                 textAlign: 'left',
               }),
