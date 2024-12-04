@@ -8,6 +8,7 @@ import {
   GroupNotificationType,
   MeetingDecrypted,
   MeetingProvider,
+  MeetingRepeat,
   NotBefore,
   ParticipantMappingType,
   SchedulingType,
@@ -38,6 +39,7 @@ export interface MeetingCreationRequest {
   meeting_id: ConferenceMeeting['id']
   emailToSendReminders?: string
   meetingReminders?: Array<MeetingReminders>
+  meetingRepeat: MeetingRepeat
 }
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
@@ -49,6 +51,7 @@ export interface UrlCreationRequest {
   title?: string
   meeting_id: ConferenceMeeting['id']
   meetingReminders?: Array<MeetingReminders>
+  meetingRepeat?: MeetingRepeat
 }
 export interface RequestParticipantMapping {
   account_address?: string
@@ -89,6 +92,7 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   content?: string
   meetingProvider: MeetingProvider
   meetingReminders?: Array<MeetingReminders>
+  meetingRepeat?: MeetingRepeat
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
