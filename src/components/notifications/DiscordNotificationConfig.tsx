@@ -10,7 +10,6 @@ import {
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import { getDiscordInfo } from '@/utils/api_helper'
 import { MWW_DISCORD_SERVER } from '@/utils/constants'
-import { isProAccount } from '@/utils/subscription_manager'
 
 interface Props {
   account: Account

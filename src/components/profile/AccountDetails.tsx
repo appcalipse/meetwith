@@ -365,20 +365,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     sub => sub.plan_id === Plan.PRO
   )?.[0]
 
-  const [googleConnected, setGoogleConnected] = useState(false)
-
-  async function checkGoogleCalendarIsConnected() {
-    const calendars = await listConnectedCalendars()
-    const isGoogleConnected = calendars.some(
-      calendar => calendar.provider === TimeSlotSource.GOOGLE
-    )
-    setGoogleConnected(isGoogleConnected)
-  }
-
-  useEffect(() => {
-    checkGoogleCalendarIsConnected()
-  }, [currentAccount])
-
   return (
     <VStack gap={4} mb={8} alignItems="start" flex={1}>
       <Block>
@@ -408,7 +394,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                   borderLeftColor="transparent"
                   value={newProDomain}
                   type="text"
-                  disabled={!subscription}
                   placeholder={
                     subscription
                       ? 'your_custom_link'
@@ -422,21 +407,13 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                 isLoading={loading}
                 colorScheme="primary"
                 variant="outline"
-                isDisabled={!subscription}
                 onClick={changeDomain}
               >
                 Update
               </Button>
             </HStack>
             <FormHelperText>
-              {subscription ? (
-                'There is a gas fee associated with each link change.'
-              ) : (
-                <>
-                  Unlock custom calendar link with PRO{' '}
-                  <Link href="#subscriptions">here</Link>.
-                </>
-              )}
+              {'There is a gas fee associated with each link change.'}
             </FormHelperText>
           </FormControl>
 
