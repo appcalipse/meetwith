@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
+import { format, getWeekOfMonth } from 'date-fns'
 import { Auth, calendar_v3, google } from 'googleapis'
 
 import {
@@ -6,7 +7,7 @@ import {
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
-import { TimeSlotSource } from '@/types/Meeting'
+import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -204,8 +205,7 @@ export default class GoogleCalendarService implements CalendarService {
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    _calendarId?: string,
-    shouldGenerateLink = true
+    _calendarId?: string
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth
@@ -272,6 +272,27 @@ export default class GoogleCalendarService implements CalendarService {
             payload.reminders.overrides = meetingDetails.meetingReminders.map(
               this.createReminder
             )
+          }
+          if (
+            meetingDetails.meetingRepeat &&
+            meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+          ) {
+            let RRULE = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()};INTERVAL=1`
+            const dayOfWeek = format(
+              meetingDetails.start,
+              'eeeeee'
+            ).toUpperCase()
+            const weekOfMonth = getWeekOfMonth(meetingDetails.start)
+
+            switch (meetingDetails.meetingRepeat) {
+              case MeetingRepeat.WEEKLY:
+                RRULE += `;BYDAY=${dayOfWeek}`
+                break
+              case MeetingRepeat.MONTHLY:
+                RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+                break
+            }
+            payload.recurrence = [RRULE]
           }
           const calendar = google.calendar({
             version: 'v3',
@@ -397,6 +418,14 @@ export default class GoogleCalendarService implements CalendarService {
         payload.reminders.overrides = meetingDetails.meetingReminders.map(
           this.createReminder
         )
+      }
+      if (
+        meetingDetails.meetingRepeat &&
+        meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+      ) {
+        payload.recurrence = [
+          `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`,
+        ]
       }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
