@@ -343,7 +343,7 @@ export default class Office365CalendarService implements CalendarService {
       },
       attendees: [],
       allowNewTimeProposals: false,
-      transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
+      transactionId: meeting_id.replaceAll('-', ''), // avoid duplicating the event if we make more than one request with the same transactionId
     }
     if (details.meetingReminders) {
       payload.isReminderOn = true

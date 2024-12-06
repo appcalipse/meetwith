@@ -606,9 +606,7 @@ const isSlotFree = async (
     return false
   }
 
-  return (
-    (await (await getSlotsForAccount(account_address, start, end)).length) == 0
-  )
+  return (await getSlotsForAccount(account_address, start, end)).length == 0
 }
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {

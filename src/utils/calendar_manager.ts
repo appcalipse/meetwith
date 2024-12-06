@@ -761,7 +761,7 @@ const generateIcs = (
     url = 'https://meetwithwallet.xyz'
   }
   const event: EventAttributes = {
-    uid: meeting.id,
+    uid: meeting.id.replaceAll('-', ''),
     start: [
       getYear(meeting.start),
       getMonth(meeting.start) + 1,
