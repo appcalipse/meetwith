@@ -1906,7 +1906,6 @@ const addOrUpdateConnectedCalendar = async (
   if (error) {
     throw new Error(error.message)
   }
-  console.log(data)
 
   return data[0] as ConnectedCalendar
 }
