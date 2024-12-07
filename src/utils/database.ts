@@ -1831,7 +1831,7 @@ const connectedCalendarExists = async (
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
-    .eq('email', email.toLowerCase())
+    .ilike('email', email.toLowerCase())
     .eq('provider', provider)
 
   if (error) {
@@ -1851,7 +1851,7 @@ export const updateCalendarPayload = async (
     .from('connected_calendars')
     .update({ payload, updated: new Date() })
     .eq('account_address', address.toLowerCase())
-    .eq('email', email.toLowerCase())
+    .ilike('email', email.toLowerCase())
     .eq('provider', provider)
 
   if (error) {
@@ -1884,7 +1884,7 @@ const addOrUpdateConnectedCalendar = async (
         updated: new Date(),
       })
       .eq('account_address', address.toLowerCase())
-      .eq('email', email.toLowerCase())
+      .ilike('email', email.toLowerCase())
       .eq('provider', provider)
   } else {
     if (calendars.filter(c => c.enabled).length === 0) {
@@ -1906,6 +1906,7 @@ const addOrUpdateConnectedCalendar = async (
   if (error) {
     throw new Error(error.message)
   }
+  console.log(data)
 
   return data[0] as ConnectedCalendar
 }
@@ -1919,7 +1920,7 @@ const removeConnectedCalendar = async (
     .from<ConnectedCalendar>('connected_calendars')
     .delete()
     .eq('account_address', address.toLowerCase())
-    .eq('email', email.toLowerCase())
+    .ilike('email', email.toLowerCase())
     .eq('provider', provider)
 
   if (error) {
