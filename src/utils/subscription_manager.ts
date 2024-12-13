@@ -253,7 +253,7 @@ export const subscribeToPlan = async (
         })
       }
 
-      const transaction = await prepareContractCall({
+      const transaction = prepareContractCall({
         contract,
         method:
           'function purchaseWithToken(address tokenAddress, uint8 planId, address planOwner, uint256 duration, string memory domain, string memory ipfsHash)',
