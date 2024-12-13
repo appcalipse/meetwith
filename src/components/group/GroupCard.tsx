@@ -311,7 +311,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
     <AccordionItem
       width="100%"
       key={`${id}-${props.id}`}
-      p={8}
+      px={8}
+      py={4}
       border={0}
       borderRadius="lg"
       mt={6}
