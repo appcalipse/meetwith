@@ -357,13 +357,20 @@ const buildMeetingData = async (
 
 /**
  *
- * @param owner
+ * @param ignoreAvailabilities
+ * @param currentAccountAddress
  * @param meetingTypeId
  * @param startTime
  * @param endTime
  * @param decryptedMeeting
  * @param signature
  * @param participants
+ * @param content
+ * @param meetingUrl
+ * @param meetingProvider
+ * @param meetingTitle
+ * @param meetingReminders
+ * @param meetingRepeat
  * @returns
  */
 const updateMeeting = async (
