@@ -24,6 +24,7 @@ import * as Sentry from '@sentry/nextjs'
 import { format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
+import { useActiveWallet } from 'thirdweb/react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
@@ -40,7 +41,7 @@ import {
 import { appUrl } from '@/utils/constants'
 import { getLensHandlesForAddress } from '@/utils/lens.helper'
 import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
-import { isProAccount } from '@/utils/subscription_manager'
+import { changeDomainOnChain, isProAccount } from '@/utils/subscription_manager'
 import { isValidSlug } from '@/utils/validations'
 
 import Block from './components/Block'
@@ -90,7 +91,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         }
       : undefined
   )
-
+  const wallet = useActiveWallet()
   const [twitter, setTwitter] = useState(
     socialLinks.filter(
       (link: SocialLink) => link.type === SocialLinkType.TWITTER
@@ -307,6 +308,12 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     }
 
     try {
+      await changeDomainOnChain(
+        currentAccount.address,
+        proDomain,
+        newProDomain,
+        wallet!
+      )
       await updateAccountSubs()
       toast({
         title: 'Calendar link updated',

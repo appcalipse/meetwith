@@ -7,6 +7,8 @@ import {
   IconButton,
   Image,
   Input,
+  InputGroup,
+  InputLeftAddon,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -36,7 +38,11 @@ import {
 } from '../../types/chains'
 import { Plan, Subscription } from '../../types/Subscription'
 import { logEvent } from '../../utils/analytics'
-import { isProduction, YEAR_DURATION_IN_SECONDS } from '../../utils/constants'
+import {
+  appUrl,
+  isProduction,
+  YEAR_DURATION_IN_SECONDS,
+} from '../../utils/constants'
 import { checkValidDomain } from '../../utils/rpc_helper_front'
 import {
   approveTokenSpending,
@@ -112,7 +118,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const [duration, setDuration] = useState(1)
   const inputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
-
+  const [couponCode, setCouponCode] = useState('')
   const wallet = useActiveWallet()
 
   const changeDuration = (duration: number) => {
@@ -120,7 +126,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   const updateDomain = async () => {
-    setDomain((await getActiveProSubscription(currentAccount!))?.domain || '')
+    setDomain(getActiveProSubscription(currentAccount!)?.domain || '')
   }
 
   const updateSubscriptionDetails = async () => {
@@ -285,13 +291,56 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const chains = supportedChains.filter(chain =>
     isProduction ? !chain.testnet : chain.testnet
   )
-
+  const renderCouponInput = () => {
+    if (_currentSubscription) return null
+    return (
+      <FormControl>
+        <Text pt={2}>Enter coupon code</Text>
+        <InputGroup mt={'2'}>
+          <Input
+            placeholder="Coupon code"
+            value={couponCode}
+            onChange={e => setCouponCode(e.target.value)}
+          />
+        </InputGroup>
+        <FormHelperText>
+          Use the coupon code to claim offers from Meetwith.
+        </FormHelperText>
+      </FormControl>
+    )
+  }
   const renderBookingLink = () => {
     if (_currentSubscription) {
       return (
         <FormControl>
           <Text pt={2}>Booking link</Text>
-          <Input value={domain} type="text" disabled />
+          <InputGroup mt={'2'}>
+            <InputLeftAddon
+              border={'1px solid #7B8794'}
+              bg="transparent"
+              borderRightWidth={0}
+              borderColor="neutral.400 !important"
+              pr={0}
+            >
+              {appUrl}/
+            </InputLeftAddon>
+            <Input
+              placeholder="my-group-name"
+              value={domain}
+              outline="none"
+              _focusVisible={{
+                borderColor: 'neutral.400',
+                boxShadow: 'none',
+              }}
+              borderColor="neutral.400"
+              borderLeftWidth={0}
+              pl={0}
+              _placeholder={{
+                color: 'neutral.400',
+              }}
+              disabled
+            />
+          </InputGroup>
         </FormControl>
       )
     }
@@ -299,26 +348,46 @@ const SubscriptionDialog: React.FC<IProps> = ({
     return (
       <FormControl>
         <Text pt={2}>Booking link</Text>
-        <Input
-          value={domain}
-          ref={inputRef}
-          type="text"
-          placeholder="your.custom.link"
-          onChange={e =>
-            setDomain(
-              e.target.value
-                .replace(/ /g, '')
-                .replace(/[^\w.]/gi, '')
-                .toLowerCase()
-            )
-          }
-        />
+        <InputGroup mt="2">
+          <InputLeftAddon
+            border={'1px solid #7B8794'}
+            bg="transparent"
+            borderRightWidth={0}
+            borderColor="neutral.400 !important"
+            pr={0}
+          >
+            {appUrl}/
+          </InputLeftAddon>
+          <Input
+            placeholder="your.custom.link"
+            value={domain}
+            ref={inputRef}
+            outline="none"
+            _focusVisible={{
+              borderColor: 'neutral.400',
+              boxShadow: 'none',
+            }}
+            borderColor="neutral.400"
+            borderLeftWidth={0}
+            pl={0}
+            _placeholder={{
+              color: 'neutral.400',
+            }}
+            onChange={e =>
+              setDomain(
+                e.target.value
+                  .replace(/ /g, '')
+                  .replace(/[^\w.]/gi, '')
+                  .toLowerCase()
+              )
+            }
+          />
+        </InputGroup>
         <FormHelperText>
           This is the link you will share with others, instead of your wallet
           address. It can&apos;t contain spaces or special characters. You can
           change it later on. Your calendar page will be available at
-          https://meetwithwallet.xyz/
-          {domain || 'your.custom.link'}
+          {appUrl}/{domain || 'your.custom.link'}
         </FormHelperText>
       </FormControl>
     )
@@ -396,6 +465,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
+          {renderCouponInput()}
           {renderBookingLink()}
           {renderChainInfo()}
           {currentChain && (
