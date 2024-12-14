@@ -2,7 +2,10 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { BlockchainSubscription, Subscription } from '@/types/Subscription'
-import { updateAccountSubscriptions } from '@/utils/database'
+import {
+  getSubscriptionFromDBForAccount,
+  updateAccountSubscriptions,
+} from '@/utils/database'
 import { getBlockchainSubscriptionsForAccount } from '@/utils/rpc_helper'
 import { convertBlockchainSubscriptionToSubscription } from '@/utils/subscription_manager'
 
@@ -15,7 +18,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const dbSubs: Subscription[] = subs.map(sub => {
       return convertBlockchainSubscriptionToSubscription(sub)
     })
-
+    const activePro = dbSubs.filter(
+      sub => new Date(sub.expiry_time) > new Date()
+    )
+    if (activePro.length === 0) {
+      return res.send(await getSubscriptionFromDBForAccount(account_address))
+    }
     return res.send(
       await updateAccountSubscriptions(dbSubs.filter(sub => !!sub.plan_id))
     )
