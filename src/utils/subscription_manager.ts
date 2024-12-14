@@ -34,7 +34,7 @@ export const getActiveProSubscription = (
   account?: Account
 ): Subscription | undefined => {
   return account?.subscriptions?.find(
-    sub => sub.plan_id === Plan.PRO && new Date(sub.expiry_time) > new Date()
+    sub => new Date(sub.expiry_time) > new Date()
   )
 }
 
