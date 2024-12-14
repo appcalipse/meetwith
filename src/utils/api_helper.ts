@@ -43,6 +43,9 @@ import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
   ApiFetchError,
+  CouponAlreadyUsed,
+  CouponExpired,
+  CouponNotValid,
   GateConditionNotValidError,
   GateInUseError,
   GoogleServiceUnavailable,
@@ -1047,4 +1050,27 @@ export const getPendingTgConnection = async () => {
       'GET'
     )
   ).data
+}
+
+export const subscribeWithCoupon = async (
+  coupon: string,
+  domain?: string
+): Promise<Subscription> => {
+  try {
+    return (await internalFetch(`/secure/subscriptions/coupon`, 'POST', {
+      coupon,
+      domain,
+    })) as Subscription
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 400) {
+        throw new CouponNotValid()
+      } else if (e.status && e.status === 410) {
+        throw new CouponExpired()
+      } else if (e.status && e.status === 409) {
+        throw new CouponAlreadyUsed()
+      }
+    }
+    throw e
+  }
 }
