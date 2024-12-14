@@ -1,7 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import CryptoJS, { enc, SHA1 } from 'crypto-js'
-import { addMinutes, differenceInMinutes, isAfter, isBefore } from 'date-fns'
+import {
+  addMinutes,
+  addMonths,
+  differenceInMinutes,
+  isAfter,
+  isBefore,
+} from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
@@ -10,7 +16,6 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import Identifier from '@/pages/api/accounts/[identifier]'
 import {
   Account,
   AccountPreferences,
@@ -64,7 +69,7 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { GroupMembersRow, TablesInsert } from '@/types/supabase'
+import { GroupMembersRow, Row, TablesInsert } from '@/types/supabase'
 import { TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
@@ -75,6 +80,9 @@ import {
   AccountNotFoundError,
   AdminBelowOneError,
   AlreadyGroupMemberError,
+  CouponAlreadyUsed,
+  CouponExpired,
+  CouponNotValid,
   GateConditionNotValidError,
   GateInUseError,
   GroupCreationError,
@@ -2554,7 +2562,7 @@ export async function createGroupInDB(
     role: MemberType.ADMIN,
   }
   const members = [admin]
-  const { data: memberData, error: memberError } = await db.supabase
+  const { error: memberError } = await db.supabase
     .from('group_members')
     .insert(members)
   if (memberError) {
@@ -2566,7 +2574,7 @@ export async function createGroupInDB(
   return {
     id: newGroup.id,
     name: newGroup.name,
-    slug: newGroup.slug,
+    slug: newGroup.slug!,
   }
 }
 
@@ -2634,6 +2642,55 @@ const getTgConnection = async (
 
   return data[0]
 }
+
+const subscribeWithCoupon = async (
+  coupon_code: string,
+  account_address: string,
+  domain?: string
+) => {
+  const { data, error } = await db.supabase
+    .from('coupons')
+    .select()
+    .ilike('code', coupon_code.toLowerCase())
+  if (error) {
+    throw new Error(error.message)
+  }
+  console.log({ data, coupon_code, error })
+  const coupon = data?.[0]
+  if (!coupon) {
+    throw new CouponNotValid()
+  }
+  if (isBefore(new Date(coupon?.expires_at), new Date())) {
+    throw new CouponExpired()
+  }
+  const { data: subscriptionData, error: subscriptionError } = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .select()
+    .eq('owner_account', account_address)
+    .eq('plan_id', coupon.plan_id)
+  if (subscriptionError) {
+    throw new Error(subscriptionError.message)
+  }
+  if ((subscriptionData?.length ?? 0) > 0) {
+    throw new CouponAlreadyUsed()
+  }
+  const { data: planData, error: planError } = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .insert([
+      {
+        plan_id: coupon.plan_id,
+        owner_account: account_address,
+        domain,
+        chain: 'CUSTOM',
+        expiry_time: addMonths(new Date(), coupon.period).toISOString(),
+        registered_at: new Date().toISOString(),
+      },
+    ])
+  if (planError) {
+    throw new Error(planError.message)
+  }
+  return planData[0]
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
@@ -2686,6 +2743,7 @@ export {
   saveMeeting,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
+  subscribeWithCoupon,
   updateAccountFromInvite,
   updateAccountPreferences,
   updateAllRecurringSlots,
