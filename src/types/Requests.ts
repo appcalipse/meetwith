@@ -137,3 +137,8 @@ export interface ChangeGroupAdminRequest {
   invitePending: boolean
   role: MemberType
 }
+
+export interface CouponSubscriptionRequest {
+  coupon: string
+  domain?: string
+}
