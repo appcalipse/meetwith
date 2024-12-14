@@ -161,8 +161,8 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         return
       }
       const domains = currentAccount?.subscriptions
-        .filter(sub => sub.plan_id === Plan.PRO)
-        .map(sub => sub.domain)
+        .filter(sub => !!sub.plan_id)
+        .map(sub => sub?.domain)
       if (domains) {
         handles = handles.concat(
           domains.map(domain => {
@@ -356,10 +356,13 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
 
   const subsRef = useRef(null)
 
-  const subsPurchased = (sub: Subscription) => {
-    setPurchased(sub)
+  const subsPurchased = (sub: Subscription, isCoupon = false) => {
+    if (!isCoupon) {
+      setPurchased(sub)
+    } else {
+    }
     setCurrentPlan(sub.plan_id)
-    setNewProDomain(sub.domain)
+    setNewProDomain(sub?.domain)
     updateAccountSubs()
     setTimeout(
       () => window.scrollTo(0, (subsRef.current as any).offsetTop - 60),
@@ -369,22 +372,8 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   }
 
   const subscription = currentAccount?.subscriptions?.filter(
-    sub => sub.plan_id === Plan.PRO
+    sub => new Date(sub.expiry_time) > new Date()
   )?.[0]
-
-  const [googleConnected, setGoogleConnected] = useState(false)
-
-  async function checkGoogleCalendarIsConnected() {
-    const calendars = await listConnectedCalendars()
-    const isGoogleConnected = calendars.some(
-      calendar => calendar.provider === TimeSlotSource.GOOGLE
-    )
-    setGoogleConnected(isGoogleConnected)
-  }
-
-  useEffect(() => {
-    checkGoogleCalendarIsConnected()
-  }, [currentAccount])
 
   return (
     <VStack gap={4} mb={8} alignItems="start" flex={1}>
@@ -519,7 +508,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           <Alert status="success">
             <AlertIcon />
             Subscription successful. Enjoy your{' '}
-            {getPlanInfo(purchased!.plan_id)!.name} Plan
+            {/* {getPlanInfo(purchased!.plan_id)!.name} Plan */}
           </Alert>
         )}
 
