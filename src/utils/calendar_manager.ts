@@ -979,8 +979,12 @@ const dateToLocalizedRange = (
 
 const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
   if (isProAccount(account)) {
-    return account.subscriptions?.filter(sub => sub.plan_id === Plan.PRO)[0]
-      .domain
+    const domain = account.subscriptions?.filter(
+      sub => sub.plan_id === Plan.PRO
+    )[0]?.domain
+    if (domain) {
+      return domain
+    }
   }
   return `address/${
     ellipsize ? ellipsizeAddress(account!.address) : account!.address
