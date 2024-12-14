@@ -3,6 +3,7 @@ import {
   Flex,
   FormControl,
   FormHelperText,
+  Heading,
   HStack,
   IconButton,
   Image,
@@ -24,7 +25,12 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { FaMinus, FaPlus } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
 
-import { syncSubscriptions } from '@/utils/api_helper'
+import { subscribeWithCoupon, syncSubscriptions } from '@/utils/api_helper'
+import {
+  CouponAlreadyUsed,
+  CouponExpired,
+  CouponNotValid,
+} from '@/utils/errors'
 import { zeroAddress } from '@/utils/generic_utils'
 
 import { AccountContext } from '../../providers/AccountProvider'
@@ -112,7 +118,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
     AcceptedTokenInfo | undefined
   >(undefined)
   const [checkingCanSubscribe, setCheckingCanSubscribe] = useState(false)
-  const [needsApproval, setNeedsAproval] = useState(false)
+  const [needsApproval, setNeedsApproval] = useState(false)
   const [waitingConfirmation, setWaitingConfirmation] = useState(false)
   const [txRunning, setTxRunning] = useState(false)
   const [duration, setDuration] = useState(1)
@@ -120,7 +126,6 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const toast = useToast()
   const [couponCode, setCouponCode] = useState('')
   const wallet = useActiveWallet()
-
   const changeDuration = (duration: number) => {
     setDuration(duration)
   }
@@ -130,7 +135,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   const updateSubscriptionDetails = async () => {
-    setNeedsAproval(false)
+    setNeedsApproval(false)
     setCheckingCanSubscribe(false)
     if (currentToken && currentToken.contractAddress !== zeroAddress) {
       setCheckingCanSubscribe(true)
@@ -144,7 +149,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
           wallet!
         )
         if (neededApproval != 0n) {
-          setNeedsAproval(true)
+          setNeedsApproval(true)
         }
       } catch (e: any) {
         toast({
@@ -159,10 +164,97 @@ const SubscriptionDialog: React.FC<IProps> = ({
       setCheckingCanSubscribe(false)
     }
   }
-
+  const handleCouponSubscribe = async () => {
+    setCheckingCanSubscribe(true)
+    try {
+      logEvent('Started Coupon subscription', {
+        address: currentAccount!.address,
+        domain,
+        couponCode,
+      })
+      if (!couponCode) {
+        toast({
+          title: 'Invalid Coupon',
+          description: 'The coupon you entered is not valid',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+        setCheckingCanSubscribe(false)
+        return
+      }
+      if (domain && (await checkValidDomain(domain, currentAccount!.address))) {
+        toast({
+          title: 'You are not the owner of this domain',
+          description:
+            'To use ENS, Lens, Unstoppable domain, or other name services as your name you need to be the owner of it',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+        setCheckingCanSubscribe(false)
+        return
+      }
+      setCheckingCanSubscribe(false)
+      setWaitingConfirmation(true)
+      const sub = await subscribeWithCoupon(couponCode, domain)
+      setWaitingConfirmation(false)
+      onSuccessPurchase && onSuccessPurchase(sub!)
+      logEvent('Coupon Subscription', {
+        address: currentAccount!.address,
+        domain,
+        couponCode,
+      })
+    } catch (e) {
+      if (e instanceof CouponNotValid) {
+        toast({
+          title: 'Invalid Coupon',
+          description: 'The coupon you entered is not valid',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof CouponExpired) {
+        toast({
+          title: 'Expired Coupon',
+          description: 'The coupon you entered has expired',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof CouponAlreadyUsed) {
+        toast({
+          title: 'Coupon already used',
+          description: 'The coupon you entered has already been used',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description:
+            'An error occurred while trying to subscribe with coupon',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
+    }
+    setCheckingCanSubscribe(false)
+    setWaitingConfirmation(false)
+  }
   const subscribe = async () => {
     setCheckingCanSubscribe(true)
-
+    if (couponCode) {
+      return handleCouponSubscribe()
+    }
     if (!currentChain || !currentToken) {
       toast({
         title: 'Missing information',
@@ -207,12 +299,13 @@ const SubscriptionDialog: React.FC<IProps> = ({
         isClosable: true,
       })
       setCheckingCanSubscribe(false)
+
       return
     }
 
     logEvent('Started subscription', { currentChain, currentToken, domain })
 
-    setNeedsAproval(false)
+    setNeedsApproval(false)
 
     try {
       if (currentToken && currentToken.contractAddress !== zeroAddress) {
@@ -225,14 +318,14 @@ const SubscriptionDialog: React.FC<IProps> = ({
           wallet!
         )
         if (neededApproval != 0n) {
-          setNeedsAproval(true)
+          setNeedsApproval(true)
           await approveTokenSpending(
             currentChain!.chain,
             currentToken!.token,
             neededApproval,
             wallet!
           )
-          setNeedsAproval(false)
+          setNeedsApproval(false)
         }
       }
 
@@ -259,7 +352,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
     } catch (e: any) {
       setTxRunning(false)
       setWaitingConfirmation(false)
-      setNeedsAproval(false)
+      setNeedsApproval(false)
       setCheckingCanSubscribe(false)
       toast({
         title: 'Error',
@@ -285,7 +378,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }, [isDialogOpen])
 
   useEffect(() => {
-    updateSubscriptionDetails()
+    void updateSubscriptionDetails()
   }, [currentToken, currentChain, duration])
 
   const chains = supportedChains.filter(chain =>
@@ -294,16 +387,32 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const renderCouponInput = () => {
     if (_currentSubscription) return null
     return (
-      <FormControl>
+      <FormControl textColor={'inherit'}>
         <Text pt={2}>Enter coupon code</Text>
         <InputGroup mt={'2'}>
           <Input
             placeholder="Coupon code"
+            borderColor="neutral.400 !important"
             value={couponCode}
             onChange={e => setCouponCode(e.target.value)}
+            _placeholder={{
+              color: 'neutral.400',
+            }}
           />
+          <Button
+            variant={'link'}
+            position={'absolute'}
+            insetY={0}
+            right={2}
+            color="primary.500"
+            onClick={handleCouponSubscribe}
+            isLoading={checkingCanSubscribe || waitingConfirmation}
+            zIndex={10}
+          >
+            Apply
+          </Button>
         </InputGroup>
-        <FormHelperText>
+        <FormHelperText textColor={'inherit'}>
           Use the coupon code to claim offers from Meetwith.
         </FormHelperText>
       </FormControl>
@@ -312,7 +421,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const renderBookingLink = () => {
     if (_currentSubscription) {
       return (
-        <FormControl>
+        <FormControl textColor={'inherit'}>
           <Text pt={2}>Booking link</Text>
           <InputGroup mt={'2'}>
             <InputLeftAddon
@@ -346,7 +455,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
     }
 
     return (
-      <FormControl>
+      <FormControl textColor={'inherit'}>
         <Text pt={2}>Booking link</Text>
         <InputGroup mt="2">
           <InputLeftAddon
@@ -383,11 +492,13 @@ const SubscriptionDialog: React.FC<IProps> = ({
             }
           />
         </InputGroup>
-        <FormHelperText>
+        <FormHelperText textColor={'inherit'}>
           This is the link you will share with others, instead of your wallet
           address. It can&apos;t contain spaces or special characters. You can
-          change it later on. Your calendar page will be available at
-          {appUrl}/{domain || 'your.custom.link'}
+          change it later on. Your calendar page will be available at{' '}
+          <Text display={'inline'} textDecoration={'underline'}>
+            {appUrl}/{domain || 'your.custom.link'}
+          </Text>
         </FormHelperText>
       </FormControl>
     )
@@ -417,9 +528,15 @@ const SubscriptionDialog: React.FC<IProps> = ({
     } else {
       return (
         <>
+          <Heading size={'lg'}>Price summary</Heading>
+          <Spacer />
+
+          <DurationSelector duration={duration} onChange={changeDuration} />
+
+          <Heading size={'lg'}>Payment method</Heading>
           <FormControl>
             <Text pt={5}>Which chain do you want your subscription at?</Text>
-            <FormHelperText>
+            <FormHelperText textColor={'inherit'}>
               This is the chain where your subscription will live, be paid from
               and where you will be able to make changes to it. It also is the
               chain where your paid meeting will accept payments from.
@@ -459,7 +576,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
       initialFocusRef={inputRef}
     >
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent backgroundColor={'neutral.900'} color={'neutral.200'}>
         <ModalHeader>
           {_currentSubscription ? 'Extend Subscription' : 'Subscribe to Pro'}
         </ModalHeader>
@@ -493,13 +610,6 @@ const SubscriptionDialog: React.FC<IProps> = ({
               </HStack>
             </>
           )}
-
-          {currentChain && currentToken && (
-            <>
-              <Spacer />
-              <DurationSelector duration={duration} onChange={changeDuration} />
-            </>
-          )}
         </ModalBody>
 
         <ModalFooter justifyContent="center">
@@ -511,7 +621,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
                 ? waitingConfirmation
                   ? 'Waiting confirmation'
                   : 'Sending transaction'
-                : ''
+                : 'Confirming Coupon'
             }
             ref={cancelDialogRef}
             onClick={subscribe}
@@ -561,6 +671,7 @@ const DurationSelector: React.FC<DurationSelectorProps> = ({
         aria-label="Decrease"
         icon={<FaMinus />}
         onClick={() => changeInternal(false)}
+        rounded={'100%'}
       />
       <Spacer />
       <Input
@@ -579,6 +690,7 @@ const DurationSelector: React.FC<DurationSelectorProps> = ({
         aria-label="Increase"
         icon={<FaPlus />}
         onClick={() => changeInternal(true)}
+        rounded={'100%'}
       />
       <Spacer />
       {/* <Text colorScheme="gray">aprox $30 subscription + $0.14 gas fees</Text> */}
