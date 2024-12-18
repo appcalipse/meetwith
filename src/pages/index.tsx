@@ -3,6 +3,7 @@ import { getIronSession } from 'iron-session'
 import type { NextPage } from 'next'
 import React from 'react'
 
+import ProAccessPopUp from '@/components/landing/ProAccessPopUp'
 import { sessionOptions } from '@/middleware'
 import redirectTo from '@/utils/redirect'
 
@@ -18,6 +19,7 @@ const Home: NextPage = () => {
       <DarkMode>
         <Box bg={'neutral.900'} pb={36} fontWeight={500}>
           <Hero />
+          <ProAccessPopUp onDialogClose={() => {}} isDialogOpen />
           <Why />
           <Box px={5}>
             <Features />
