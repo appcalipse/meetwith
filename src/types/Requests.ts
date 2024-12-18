@@ -142,3 +142,7 @@ export interface CouponSubscriptionRequest {
   coupon: string
   domain?: string
 }
+
+export interface SubscriptionUpdateRequest {
+  domain: string
+}
