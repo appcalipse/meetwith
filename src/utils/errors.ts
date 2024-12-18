@@ -210,3 +210,17 @@ export class CouponAlreadyUsed extends Error {
     this.name = 'CouponAlreadyUsed'
   }
 }
+
+export class NoActiveSubscription extends Error {
+  constructor() {
+    super(`No active subscription found`)
+    this.name = 'NoActiveSubscription'
+  }
+}
+
+export class SubscriptionNotCustom extends Error {
+  constructor() {
+    super(`Subscription is not custom`)
+    this.name = 'SubscriptionNotCustom'
+  }
+}
