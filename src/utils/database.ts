@@ -30,6 +30,7 @@ import {
   CalendarSyncInfo,
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
+import { SupportedChain } from '@/types/chains'
 import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
@@ -91,8 +92,10 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
+  SubscriptionNotCustom,
   TimeNotAvailableError,
   UnauthorizedError,
 } from '@/utils/errors'
@@ -1938,14 +1941,18 @@ const removeConnectedCalendar = async (
 }
 
 export const getSubscriptionFromDBForAccount = async (
-  accountAddress: string
+  accountAddress: string,
+  chain?: SupportedChain
 ): Promise<Subscription[]> => {
-  const { data, error } = await db.supabase
+  const query = db.supabase
     .from<Subscription>('subscriptions')
     .select()
     .gt('expiry_time', new Date().toISOString())
     .eq('owner_account', accountAddress.toLowerCase())
-
+  if (chain) {
+    query.eq('chain', chain)
+  }
+  const { data, error } = await query
   if (error) {
     throw new Error(error.message)
   }
@@ -2655,7 +2662,6 @@ const subscribeWithCoupon = async (
   if (error) {
     throw new Error(error.message)
   }
-  console.log({ data, coupon_code, error })
   const coupon = data?.[0]
   if (!coupon) {
     throw new CouponNotValid()
@@ -2681,7 +2687,7 @@ const subscribeWithCoupon = async (
         plan_id: coupon.plan_id,
         owner_account: account_address,
         domain,
-        chain: 'CUSTOM',
+        chain: SupportedChain.CUSTOM,
         expiry_time: addMonths(new Date(), coupon.period).toISOString(),
         registered_at: new Date().toISOString(),
       },
@@ -2690,6 +2696,36 @@ const subscribeWithCoupon = async (
     throw new Error(planError.message)
   }
   return planData[0]
+}
+const updateCustomSubscriptionDomain = async (
+  account_address: string,
+  domain: string
+) => {
+  const { data: subscriptionData, error: subscriptionError } = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .select()
+    .eq('owner_account', account_address)
+    .gte('expiry_time', new Date().toISOString())
+  if (subscriptionError) {
+    throw new Error(subscriptionError.message)
+  }
+  const subscription = subscriptionData[0]
+  if (!subscription) {
+    throw new NoActiveSubscription()
+  }
+  if (subscription.chain !== SupportedChain.CUSTOM) {
+    throw new SubscriptionNotCustom()
+  }
+  const { error, data } = await db.supabase
+    .from('subscriptions')
+    .update({ domain })
+    .eq('owner_account', account_address)
+    .gte('expiry_time', new Date().toISOString())
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
 }
 export {
   addOrUpdateConnectedCalendar,
@@ -2747,6 +2783,7 @@ export {
   updateAccountFromInvite,
   updateAccountPreferences,
   updateAllRecurringSlots,
+  updateCustomSubscriptionDomain,
   updateMeeting,
   updateRecurringSlots,
   upsertGateCondition,
