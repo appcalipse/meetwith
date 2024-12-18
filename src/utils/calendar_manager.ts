@@ -979,9 +979,9 @@ const dateToLocalizedRange = (
 
 const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
   if (isProAccount(account)) {
-    const domain = account.subscriptions?.filter(
-      sub => sub.plan_id === Plan.PRO
-    )[0]?.domain
+    const domain = account.subscriptions?.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )?.domain
     if (domain) {
       return domain
     }
