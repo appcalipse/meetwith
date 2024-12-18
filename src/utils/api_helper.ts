@@ -55,6 +55,8 @@ import {
   IsGroupAdminError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  NoActiveSubscription,
+  SubscriptionNotCustom,
   TimeNotAvailableError,
   UrlCreationError,
   UserInvitationError,
@@ -1057,7 +1059,7 @@ export const subscribeWithCoupon = async (
   domain?: string
 ): Promise<Subscription> => {
   try {
-    return (await internalFetch(`/secure/subscriptions/coupon`, 'POST', {
+    return (await internalFetch(`/secure/subscriptions/custom`, 'POST', {
       coupon,
       domain,
     })) as Subscription
@@ -1069,6 +1071,25 @@ export const subscribeWithCoupon = async (
         throw new CouponExpired()
       } else if (e.status && e.status === 409) {
         throw new CouponAlreadyUsed()
+      }
+    }
+    throw e
+  }
+}
+
+export const updateCustomSubscriptionDomain = async (
+  domain: string
+): Promise<Subscription> => {
+  try {
+    return (await internalFetch(`/secure/subscriptions/custom`, 'PATCH', {
+      domain,
+    })) as Subscription
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 400) {
+        throw new NoActiveSubscription()
+      } else if (e.status && e.status === 410) {
+        throw new SubscriptionNotCustom()
       }
     }
     throw e
