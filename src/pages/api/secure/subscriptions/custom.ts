@@ -1,18 +1,26 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { CouponSubscriptionRequest } from '@/types/Requests'
-import { subscribeWithCoupon } from '@/utils/database'
+import {
+  CouponSubscriptionRequest,
+  SubscriptionUpdateRequest,
+} from '@/types/Requests'
+import {
+  subscribeWithCoupon,
+  updateCustomSubscriptionDomain,
+} from '@/utils/database'
 import {
   CouponAlreadyUsed,
   CouponExpired,
   CouponNotValid,
+  NoActiveSubscription,
+  SubscriptionNotCustom,
 } from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
+  const account_address = req.session.account!.address
   if (req.method === 'POST') {
     try {
-      const account_address = req.session.account!.address
       const { coupon, domain } = req.body as CouponSubscriptionRequest
       const subscription = await subscribeWithCoupon(
         coupon,
@@ -27,6 +35,25 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(410).json({ error: e.message })
       } else if (e instanceof CouponAlreadyUsed) {
         return res.status(409).json({ error: e.message })
+      } else if (e instanceof Error) {
+        return res.status(500).json({ error: e.message })
+      } else {
+        return res.status(500).json({ error: 'Unknown error' })
+      }
+    }
+  } else if (req.method === 'PATCH') {
+    try {
+      const { domain } = req.body as SubscriptionUpdateRequest
+      const subscription = await updateCustomSubscriptionDomain(
+        account_address,
+        domain
+      )
+      return res.status(201).json(subscription)
+    } catch (e: unknown) {
+      if (e instanceof NoActiveSubscription) {
+        return res.status(400).json({ error: e.message })
+      } else if (e instanceof SubscriptionNotCustom) {
+        return res.status(410).json({ error: e.message })
       } else if (e instanceof Error) {
         return res.status(500).json({ error: e.message })
       } else {
