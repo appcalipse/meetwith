@@ -17,11 +17,12 @@ import {
   ListItem,
   UnorderedList,
   useColorModeValue,
+  useDisclosure,
   useToast,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
 import * as Sentry from '@sentry/nextjs'
-import { format } from 'date-fns'
+import { differenceInMonths, format } from 'date-fns'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
@@ -29,14 +30,14 @@ import { useActiveWallet } from 'thirdweb/react'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account, SocialLink, SocialLinkType } from '@/types/Account'
-import { TimeSlotSource } from '@/types/Meeting'
+import { SupportedChain } from '@/types/chains'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
 import {
   getUnstoppableDomainsForAddress,
-  listConnectedCalendars,
   saveAccountChanges,
   syncSubscriptions,
+  updateCustomSubscriptionDomain,
 } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { getLensHandlesForAddress } from '@/utils/lens.helper'
@@ -45,6 +46,7 @@ import { changeDomainOnChain, isProAccount } from '@/utils/subscription_manager'
 import { isValidSlug } from '@/utils/validations'
 
 import Block from './components/Block'
+import CouponUsedModal from './components/CouponUsedModal'
 import HandlePicker, {
   DisplayName,
   ProfileInfoProvider,
@@ -81,7 +83,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const [newProDomain, setNewProDomain] = useState<string>(
     currentAccount.subscriptions?.[0]?.domain ?? ''
   )
-
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [couponCode, setCouponCode] = useState('')
+  const [couponDuration, setCouponDuration] = useState(0)
   const [name, setName] = useState<DisplayName | undefined>(
     currentAccount?.preferences?.name
       ? {
@@ -93,29 +97,28 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   )
   const wallet = useActiveWallet()
   const [twitter, setTwitter] = useState(
-    socialLinks.filter(
-      (link: SocialLink) => link.type === SocialLinkType.TWITTER
-    )[0]?.url || ''
+    socialLinks.find((link: SocialLink) => link.type === SocialLinkType.TWITTER)
+      ?.url || ''
   )
 
   const [telegram, setTelegram] = useState(
-    socialLinks.filter(
+    socialLinks.find(
       (link: SocialLink) => link.type === SocialLinkType.TELEGRAM
-    )[0]?.url || ''
+    )?.url || ''
   )
 
   const updateAccountInfo = () => {
     const socialLinks = currentAccount?.preferences?.socialLinks || []
 
     setTwitter(
-      socialLinks.filter(
+      socialLinks.find(
         (link: SocialLink) => link.type === SocialLinkType.TWITTER
-      )[0]?.url || ''
+      )?.url || ''
     )
     setTelegram(
-      socialLinks.filter(
+      socialLinks.find(
         (link: SocialLink) => link.type === SocialLinkType.TELEGRAM
-      )[0]?.url || ''
+      )?.url || ''
     )
 
     setDescription(currentAccount?.preferences?.description || '')
@@ -308,12 +311,19 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     }
 
     try {
-      await changeDomainOnChain(
-        currentAccount.address,
-        proDomain,
-        newProDomain,
-        wallet!
+      const subscription = currentAccount?.subscriptions?.find(
+        sub => new Date(sub.expiry_time) > new Date()
       )
+      if (subscription?.chain === SupportedChain.CUSTOM) {
+        await updateCustomSubscriptionDomain(newProDomain)
+      } else {
+        await changeDomainOnChain(
+          currentAccount.address,
+          proDomain,
+          newProDomain,
+          wallet!
+        )
+      }
       await updateAccountSubs()
       toast({
         title: 'Calendar link updated',
@@ -356,11 +366,18 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
 
   const subsRef = useRef(null)
 
-  const subsPurchased = (sub: Subscription, isCoupon = false) => {
-    if (!isCoupon) {
-      setPurchased(sub)
-    } else {
+  const subsPurchased = (sub: Subscription, couponCode?: string) => {
+    if (couponCode) {
+      setCouponCode(couponCode)
+      const couponExpiryDate = new Date(sub.expiry_time)
+      const couponDuration = differenceInMonths(
+        couponExpiryDate,
+        new Date().setHours(0, 0, 0, 0)
+      )
+      setCouponDuration(couponDuration)
+      onOpen()
     }
+    setPurchased(sub)
     setCurrentPlan(sub.plan_id)
     setNewProDomain(sub?.domain)
     updateAccountSubs()
@@ -371,9 +388,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     setTimeout(() => setPurchased(undefined), 10000)
   }
 
-  const subscription = currentAccount?.subscriptions?.filter(
+  const subscription = currentAccount?.subscriptions?.find(
     sub => new Date(sub.expiry_time) > new Date()
-  )?.[0]
+  )
 
   return (
     <VStack gap={4} mb={8} alignItems="start" flex={1}>
@@ -504,11 +521,11 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           Subscription
         </Heading>
 
-        {purchased && (
+        {purchased && !isOpen && (
           <Alert status="success">
             <AlertIcon />
             Subscription successful. Enjoy your{' '}
-            {/* {getPlanInfo(purchased!.plan_id)!.name} Plan */}
+            {getPlanInfo(purchased!.plan_id)!.name} Plan
           </Alert>
         )}
 
@@ -518,11 +535,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           gridGap={2}
         >
           <SubscriptionCard
-            subscription={
-              currentAccount?.subscriptions?.filter(
-                sub => sub.plan_id === Plan.PRO
-              )[0]
-            }
+            subscription={currentAccount?.subscriptions?.find(
+              sub => new Date(sub.expiry_time) > new Date()
+            )}
             planInfo={getPlanInfo(Plan.PRO)}
             onClick={() => setIsDialogOpen(true)}
             active={currentPlan === Plan.PRO}
@@ -553,6 +568,12 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           cancelDialogRef={cancelDialogRef}
           onSuccessPurchase={subsPurchased}
           currentSubscription={currentAccount?.subscriptions?.[0]}
+        />
+        <CouponUsedModal
+          couponCode={couponCode}
+          couponDuration={couponDuration}
+          isDialogOpen={isOpen}
+          onDialogClose={onClose}
         />
       </Block>
     </VStack>
