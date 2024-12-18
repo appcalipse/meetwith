@@ -62,7 +62,7 @@ interface IProps {
   isDialogOpen: boolean
   cancelDialogRef: React.MutableRefObject<any>
   onDialogClose: () => void
-  onSuccessPurchase?: (sub: Subscription) => void
+  onSuccessPurchase?: (sub: Subscription, couponCode?: string) => void
 }
 export const getChainIcon = (chain: SupportedChain) => {
   switch (chain) {
@@ -184,7 +184,10 @@ const SubscriptionDialog: React.FC<IProps> = ({
         setCheckingCanSubscribe(false)
         return
       }
-      if (domain && (await checkValidDomain(domain, currentAccount!.address))) {
+      if (
+        domain &&
+        !(await checkValidDomain(domain, currentAccount!.address))
+      ) {
         toast({
           title: 'You are not the owner of this domain',
           description:
@@ -201,7 +204,8 @@ const SubscriptionDialog: React.FC<IProps> = ({
       setWaitingConfirmation(true)
       const sub = await subscribeWithCoupon(couponCode, domain)
       setWaitingConfirmation(false)
-      onSuccessPurchase && onSuccessPurchase(sub!)
+      onSuccessPurchase && onSuccessPurchase(sub!, couponCode)
+      onDialogClose()
       logEvent('Coupon Subscription', {
         address: currentAccount!.address,
         domain,
@@ -247,8 +251,10 @@ const SubscriptionDialog: React.FC<IProps> = ({
         })
       }
     }
-    setCheckingCanSubscribe(false)
     setWaitingConfirmation(false)
+    setNeedsApproval(false)
+    setCheckingCanSubscribe(false)
+    updateSubscriptionDetails()
   }
   const subscribe = async () => {
     setCheckingCanSubscribe(true)
@@ -506,12 +512,15 @@ const SubscriptionDialog: React.FC<IProps> = ({
 
   const renderChainInfo = () => {
     if (_currentSubscription) {
-      return (
+      return _currentSubscription.chain === SupportedChain.CUSTOM ? (
+        <Text mt="4">
+          You are currently subscribed using a coupon, you can&apos;t change.
+        </Text>
+      ) : (
         <>
           <FormControl>
             <Text pt={5}>You subscription lives in</Text>
           </FormControl>
-
           <HStack justify="flex-start" pt={4}>
             <Button
               key={_currentSubscription.chain}
@@ -528,7 +537,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
     } else {
       return (
         <>
-          <Heading size={'lg'}>Price summary</Heading>
+          <Heading mt={4} size={'lg'}>
+            Price summary
+          </Heading>
           <Spacer />
 
           <DurationSelector duration={duration} onChange={changeDuration} />
@@ -628,7 +639,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
             display={currentChain && currentToken ? 'flex' : 'none'}
             isLoading={checkingCanSubscribe}
           >
-            {needsApproval
+            {couponCode
+              ? 'Apply Coupon'
+              : needsApproval
               ? `Approve ${currentToken?.token} to be spent`
               : _currentSubscription
               ? 'Extend'
