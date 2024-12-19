@@ -35,7 +35,8 @@ import {
   MeetingUpdateRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
-import { Subscription } from '@/types/Subscription'
+import { Coupon, Subscription } from '@/types/Subscription'
+import { Row } from '@/types/supabase'
 import { TelegramConnection } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
@@ -1081,9 +1082,13 @@ export const updateCustomSubscriptionDomain = async (
   domain: string
 ): Promise<Subscription> => {
   try {
-    return (await internalFetch(`/secure/subscriptions/custom`, 'PATCH', {
-      domain,
-    })) as Subscription
+    return await internalFetch<Subscription>(
+      `/secure/subscriptions/custom`,
+      'PATCH',
+      {
+        domain,
+      }
+    )
   } catch (e: unknown) {
     if (e instanceof ApiFetchError) {
       if (e.status && e.status === 400) {
@@ -1094,4 +1099,8 @@ export const updateCustomSubscriptionDomain = async (
     }
     throw e
   }
+}
+
+export const getNewestCoupon = async (): Promise<Coupon> => {
+  return await internalFetch<Coupon>(`/subscriptions/custom`)
 }

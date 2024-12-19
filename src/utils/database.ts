@@ -2649,7 +2649,13 @@ const getTgConnection = async (
 
   return data[0]
 }
-
+const getNumberOfCouponClaimed = async (plan_id: string) => {
+  const couponUsageData = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .select('id', { count: 'exact' })
+    .eq('plan_id', plan_id)
+  return couponUsageData.count ?? 0
+}
 const subscribeWithCoupon = async (
   coupon_code: string,
   account_address: string,
@@ -2666,9 +2672,11 @@ const subscribeWithCoupon = async (
   if (!coupon) {
     throw new CouponNotValid()
   }
-  if (isBefore(new Date(coupon?.expires_at), new Date())) {
+  const couponUses = getNumberOfCouponClaimed(coupon.plan_id)
+  if (couponUses >= coupon.max_uses) {
     throw new CouponExpired()
   }
+
   const { data: subscriptionData, error: subscriptionError } = await db.supabase
     .from<Row<'subscriptions'>>('subscriptions')
     .select()
@@ -2727,6 +2735,23 @@ const updateCustomSubscriptionDomain = async (
   }
   return data
 }
+const getNewestCoupon = async () => {
+  const { data, error } = await db.supabase
+    .from('coupons')
+    .select()
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const coupon = data[0]
+  if (coupon) {
+    coupon.claims = await getNumberOfCouponClaimed(coupon.plan_id)
+  }
+  return coupon
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
@@ -2758,6 +2783,7 @@ export {
   getGroupUsers,
   getGroupUsersInternal,
   getMeetingFromDB,
+  getNewestCoupon,
   getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
