@@ -2,27 +2,21 @@ import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   chakra,
-  Container,
   Flex,
-  Heading,
   HStack,
   Image,
-  SimpleGrid,
   Stack,
   Text,
   useColorModeValue,
   VisuallyHidden,
   VStack,
 } from '@chakra-ui/react'
-import textAlign from '@tiptap/extension-text-align'
 import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
-import { size } from 'viem'
 
+import { MWW_DISCORD_SERVER } from '@/utils/constants'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
-
-import { MWW_DISCORD_SERVER } from '../utils/constants'
 
 const Logo = () => {
   return (
@@ -149,10 +143,7 @@ export default function SmallWithLogoLeft() {
           >
             <FaEnvelope size={22} />
           </SocialButton>
-          <SocialButton
-            label={'Twitter'}
-            href={'https://twitter.com/meetwithwallet'}
-          >
+          <SocialButton label={'Twitter'} href={'https://x.com/meetwithhq'}>
             <FaTwitter size={22} />
           </SocialButton>
           <SocialButton label={'Discord'} href={MWW_DISCORD_SERVER}>

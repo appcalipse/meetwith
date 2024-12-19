@@ -1,23 +1,47 @@
-import { Box, DarkMode } from '@chakra-ui/react'
+import { Box, DarkMode, useDisclosure } from '@chakra-ui/react'
 import { getIronSession } from 'iron-session'
 import type { NextPage } from 'next'
-import React from 'react'
+import React, { useContext, useEffect } from 'react'
 
+import ProAccessPopUp from '@/components/landing/ProAccessPopUp'
 import { sessionOptions } from '@/middleware'
+import { AccountContext } from '@/providers/AccountProvider'
+import { Coupon } from '@/types/Subscription'
+import { getNewestCoupon } from '@/utils/api_helper'
 import redirectTo from '@/utils/redirect'
+import { isProAccount } from '@/utils/subscription_manager'
 
 import { Faq } from '../components/landing/FAQ'
 import { Features } from '../components/landing/Features'
 import { Hero } from '../components/landing/Hero'
-import { Plans } from '../components/landing/Plans'
 import { Why } from '../components/landing/Why'
 
 const Home: NextPage = () => {
+  const [coupon, setCoupon] = React.useState<Coupon | undefined>(undefined)
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const { logged, currentAccount } = useContext(AccountContext)
+  const fetchCoupon = async () => {
+    const data = await getNewestCoupon()
+    setCoupon(data)
+    onOpen()
+  }
+  useEffect(() => {
+    if (logged && isProAccount(currentAccount ?? undefined)) {
+      onClose()
+      return
+    }
+    void fetchCoupon()
+  }, [currentAccount])
   return (
     <main data-testid="main-container">
       <DarkMode>
         <Box bg={'neutral.900'} pb={36} fontWeight={500}>
           <Hero />
+          <ProAccessPopUp
+            onDialogClose={onClose}
+            isDialogOpen={isOpen}
+            coupon={coupon}
+          />
           <Why />
           <Box px={5}>
             <Features />
