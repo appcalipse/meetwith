@@ -163,24 +163,24 @@ export type Database = {
         Row: {
           code: string
           created_at: string
-          expires_at: string
           id: number
+          max_users: number
           period: number
           plan_id: number
         }
         Insert: {
           code: string
           created_at?: string
-          expires_at: string
           id?: number
+          max_users?: number
           period: number
           plan_id?: number
         }
         Update: {
           code?: string
           created_at?: string
-          expires_at?: string
           id?: number
+          max_users?: number
           period?: number
           plan_id?: number
         }
@@ -779,6 +779,7 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema['CompositeTypes']
   ? PublicSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
   : never
+
 export type GroupMembersRow =
   Database['public']['Tables']['group_members']['Row']
 export type Row<T extends keyof Database['public']['Tables']> =

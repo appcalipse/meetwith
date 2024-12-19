@@ -1,6 +1,7 @@
 import { isProduction } from '@/utils/constants'
 
 import { SupportedChain } from './chains'
+import { Row } from './supabase'
 export interface PlanInfo {
   plan: Plan
   usdPrice: number
@@ -41,4 +42,7 @@ export interface BlockchainSubscription {
   configIpfsHash: string
   registeredAt: bigint
   chain: SupportedChain
+}
+export interface Coupon extends Row<'coupons'> {
+  claims: number
 }
