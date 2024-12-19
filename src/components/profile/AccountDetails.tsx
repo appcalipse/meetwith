@@ -23,6 +23,7 @@ import {
 import { Textarea } from '@chakra-ui/textarea'
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMonths, format } from 'date-fns'
+import { useRouter } from 'next/router'
 import { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
@@ -31,6 +32,7 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account, SocialLink, SocialLinkType } from '@/types/Account'
 import { SupportedChain } from '@/types/chains'
+import { EditMode, Intents } from '@/types/Dashboard'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
 import {
@@ -75,7 +77,8 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const [description, setDescription] = useState(
     currentAccount?.preferences?.description || ''
   )
-
+  const { query, push } = useRouter()
+  const { intent, coupon } = query
   const [nameOptions, setNameOptions] = useState<DisplayName[]>([])
   const [proDomain, setProDomain] = useState<string>(
     currentAccount.subscriptions?.[0]?.domain || ''
@@ -387,7 +390,15 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     )
     setTimeout(() => setPurchased(undefined), 10000)
   }
-
+  useEffect(() => {
+    if (intent === Intents.USE_COUPON) {
+      if (!isProAccount(currentAccount!)) {
+        setIsDialogOpen(true)
+      } else {
+        push(`/dashboard/${EditMode.DETAILS}`)
+      }
+    }
+  }, [intent, currentAccount])
   const subscription = currentAccount?.subscriptions?.find(
     sub => new Date(sub.expiry_time) > new Date()
   )
@@ -525,7 +536,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           <Alert status="success">
             <AlertIcon />
             Subscription successful. Enjoy your{' '}
-            {getPlanInfo(purchased!.plan_id)!.name} Plan
+            {getPlanInfo(purchased!.plan_id)?.name} Plan
           </Alert>
         )}
 
@@ -568,6 +579,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           cancelDialogRef={cancelDialogRef}
           onSuccessPurchase={subsPurchased}
           currentSubscription={currentAccount?.subscriptions?.[0]}
+          defaultCoupon={coupon}
         />
         <CouponUsedModal
           couponCode={couponCode}
