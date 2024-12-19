@@ -579,7 +579,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           cancelDialogRef={cancelDialogRef}
           onSuccessPurchase={subsPurchased}
           currentSubscription={currentAccount?.subscriptions?.[0]}
-          defaultCoupon={coupon}
+          defaultCoupon={Array.isArray(coupon) ? coupon[0] : coupon}
         />
         <CouponUsedModal
           couponCode={couponCode}
