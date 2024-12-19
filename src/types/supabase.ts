@@ -41,33 +41,39 @@ export type Database = {
           availableTypes: Json[] | null
           description: string | null
           id: string
+          meetingProviders:
+            | Database['public']['Enums']['MeetingProvider'][]
+            | null
           name: string | null
           owner_account_address: string
           socialLinks: Json[]
-          timezone: string | null
-          videoMeeting: Database['public']['Enums']['VideoMeeting']
+          timezone: string
         }
         Insert: {
           availabilities?: Json
           availableTypes?: Json[] | null
           description?: string | null
           id?: string
+          meetingProviders?:
+            | Database['public']['Enums']['MeetingProvider'][]
+            | null
           name?: string | null
           owner_account_address: string
           socialLinks: Json[]
-          timezone?: string | null
-          videoMeeting?: Database['public']['Enums']['VideoMeeting']
+          timezone?: string
         }
         Update: {
           availabilities?: Json
           availableTypes?: Json[] | null
           description?: string | null
           id?: string
+          meetingProviders?:
+            | Database['public']['Enums']['MeetingProvider'][]
+            | null
           name?: string | null
           owner_account_address?: string
           socialLinks?: Json[]
-          timezone?: string | null
-          videoMeeting?: Database['public']['Enums']['VideoMeeting']
+          timezone?: string
         }
         Relationships: [
           {
@@ -152,6 +158,33 @@ export type Database = {
             referencedColumns: ['address']
           }
         ]
+      }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          id: number
+          max_users: number
+          period: number
+          plan_id: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: number
+          max_users?: number
+          period: number
+          plan_id?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: number
+          max_users?: number
+          period?: number
+          plan_id?: number
+        }
+        Relationships: []
       }
       discord_accounts: {
         Row: {
@@ -377,21 +410,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          slug: string
+          slug: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          slug: string
+          slug?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          slug?: string
+          slug?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -434,6 +467,8 @@ export type Database = {
           id: string
           meeting_url: string | null
           provider: string | null
+          recurrence: Database['public']['Enums']['MeetingRepeat']
+          reminders: Json[] | null
           start: string | null
         }
         Insert: {
@@ -443,6 +478,8 @@ export type Database = {
           id: string
           meeting_url?: string | null
           provider?: string | null
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          reminders?: Json[] | null
           start?: string | null
         }
         Update: {
@@ -452,6 +489,8 @@ export type Database = {
           id?: string
           meeting_url?: string | null
           provider?: string | null
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
+          reminders?: Json[] | null
           start?: string | null
         }
         Relationships: []
@@ -478,6 +517,7 @@ export type Database = {
           end: string | null
           id: string
           meeting_info_encrypted: Json | null
+          recurrence: Database['public']['Enums']['MeetingRepeat']
           start: string | null
           version: number | null
         }
@@ -487,6 +527,7 @@ export type Database = {
           end?: string | null
           id: string
           meeting_info_encrypted?: Json | null
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
           start?: string | null
           version?: number | null
         }
@@ -496,6 +537,7 @@ export type Database = {
           end?: string | null
           id?: string
           meeting_info_encrypted?: Json | null
+          recurrence?: Database['public']['Enums']['MeetingRepeat']
           start?: string | null
           version?: number | null
         }
@@ -550,6 +592,35 @@ export type Database = {
           }
         ]
       }
+      telegram_connections: {
+        Row: {
+          account_address: string
+          created_at: string
+          id: number
+          tg_id: string
+        }
+        Insert: {
+          account_address: string
+          created_at?: string
+          id?: number
+          tg_id: string
+        }
+        Update: {
+          account_address?: string
+          created_at?: string
+          id?: number
+          tg_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'pending_connections_account_address_fkey'
+            columns: ['account_address']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['address']
+          }
+        ]
+      }
       video_meeting: {
         Row: {
           id: string
@@ -597,6 +668,13 @@ export type Database = {
     }
     Enums: {
       GroupRole: 'admin' | 'member'
+      MeetingProvider:
+        | 'huddle01'
+        | 'google-meet'
+        | 'zoom'
+        | 'jitsi-meet'
+        | 'custom'
+      MeetingRepeat: 'no-repeat' | 'daily' | 'weekly' | 'monthly'
       VideoMeeting: 'None' | 'GoogleMeet'
     }
     CompositeTypes: {
@@ -687,5 +765,22 @@ export type Enums<
   ? PublicSchema['Enums'][PublicEnumNameOrOptions]
   : never
 
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema['CompositeTypes']
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    : never = never
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema['CompositeTypes']
+  ? PublicSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  : never
+
 export type GroupMembersRow =
   Database['public']['Tables']['group_members']['Row']
+export type Row<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Row']

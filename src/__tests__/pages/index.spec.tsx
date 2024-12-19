@@ -9,6 +9,17 @@ jest.mock('thirdweb/react', () => ({
   __esModule: true,
   default: jest.fn(),
 }))
+jest.mock('next/router', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    events: {
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+    },
+    isFallback: false,
+  }),
+}))
 describe('ThemeSwitcher', () => {
   it('should react to theme mode switch', () => {
     // givens

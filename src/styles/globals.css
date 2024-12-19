@@ -178,3 +178,32 @@ a {
   filter: blur(40px);
   display: block;
 }
+
+.gradient-border {
+  position: relative;
+  overflow: hidden;
+  background-color: #1f2933;
+  padding: 5px; /* Adjust padding as needed */
+  border-radius: 10px;
+  z-index: 1;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  z-index: 0;
+  background: linear-gradient(
+    -49deg,
+    #f35826 0%,
+    #00ce5d 31%,
+    #e8420d 65%,
+    #80e6ae 100%
+  );
+  border-radius: inherit;
+  padding: 2px;
+  background-clip: padding-box;
+}

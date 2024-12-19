@@ -35,7 +35,8 @@ import {
   MeetingUpdateRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
-import { Subscription } from '@/types/Subscription'
+import { Coupon, Subscription } from '@/types/Subscription'
+import { Row } from '@/types/supabase'
 import { TelegramConnection } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
@@ -43,6 +44,9 @@ import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
   ApiFetchError,
+  CouponAlreadyUsed,
+  CouponExpired,
+  CouponNotValid,
   GateConditionNotValidError,
   GateInUseError,
   GoogleServiceUnavailable,
@@ -52,6 +56,8 @@ import {
   IsGroupAdminError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  NoActiveSubscription,
+  SubscriptionNotCustom,
   TimeNotAvailableError,
   UrlCreationError,
   UserInvitationError,
@@ -1047,4 +1053,54 @@ export const getPendingTgConnection = async () => {
       'GET'
     )
   ).data
+}
+
+export const subscribeWithCoupon = async (
+  coupon: string,
+  domain?: string
+): Promise<Subscription> => {
+  try {
+    return (await internalFetch(`/secure/subscriptions/custom`, 'POST', {
+      coupon,
+      domain,
+    })) as Subscription
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 400) {
+        throw new CouponNotValid()
+      } else if (e.status && e.status === 410) {
+        throw new CouponExpired()
+      } else if (e.status && e.status === 409) {
+        throw new CouponAlreadyUsed()
+      }
+    }
+    throw e
+  }
+}
+
+export const updateCustomSubscriptionDomain = async (
+  domain: string
+): Promise<Subscription> => {
+  try {
+    return await internalFetch<Subscription>(
+      `/secure/subscriptions/custom`,
+      'PATCH',
+      {
+        domain,
+      }
+    )
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 400) {
+        throw new NoActiveSubscription()
+      } else if (e.status && e.status === 410) {
+        throw new SubscriptionNotCustom()
+      }
+    }
+    throw e
+  }
+}
+
+export const getNewestCoupon = async (): Promise<Coupon> => {
+  return await internalFetch<Coupon>(`/subscriptions/custom`)
 }
