@@ -63,6 +63,7 @@ interface IProps {
   cancelDialogRef: React.MutableRefObject<any>
   onDialogClose: () => void
   onSuccessPurchase?: (sub: Subscription, couponCode?: string) => void
+  defaultCoupon?: string
 }
 export const getChainIcon = (chain: SupportedChain) => {
   switch (chain) {
@@ -102,6 +103,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   cancelDialogRef,
   onDialogClose,
   onSuccessPurchase,
+  defaultCoupon,
 }) => {
   const _currentSubscription = currentSubscription
     ? new Date(currentSubscription?.expiry_time) > new Date()
@@ -124,7 +126,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const [duration, setDuration] = useState(1)
   const inputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
-  const [couponCode, setCouponCode] = useState('')
+  const [couponCode, setCouponCode] = useState(defaultCoupon || '')
   const wallet = useActiveWallet()
   const changeDuration = (duration: number) => {
     setDuration(duration)
@@ -513,9 +515,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const renderChainInfo = () => {
     if (_currentSubscription) {
       return _currentSubscription.chain === SupportedChain.CUSTOM ? (
-        <Text mt="4">
-          You are currently subscribed using a coupon, you can&apos;t change.
-        </Text>
+        <Text mt="4">You are currently subscribed using a coupon.</Text>
       ) : (
         <>
           <FormControl>
@@ -636,7 +636,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
             }
             ref={cancelDialogRef}
             onClick={subscribe}
-            display={currentChain && currentToken ? 'flex' : 'none'}
+            display={
+              (currentChain && currentToken) || couponCode ? 'flex' : 'none'
+            }
             isLoading={checkingCanSubscribe}
           >
             {couponCode
