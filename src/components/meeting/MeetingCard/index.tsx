@@ -23,12 +23,22 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { isAfter, isWithinInterval } from 'date-fns'
+import { useRouter } from 'next/router'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import React from 'react'
 import { FaEdit, FaEllipsisV, FaRegCopy, FaTrash } from 'react-icons/fa'
 import sanitizeHtml from 'sanitize-html'
 
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
+import { AccountContext } from '@/providers/AccountProvider'
+import { Intents } from '@/types/Dashboard'
+import {
+  DBSlot,
+  MeetingChangeType,
+  MeetingDecrypted,
+  MeetingRepeat,
+} from '@/types/Meeting'
+import { logEvent } from '@/utils/analytics'
 import {
   dateToLocalizedRange,
   decodeMeeting,
@@ -39,15 +49,6 @@ import {
 import { appUrl, isProduction } from '@/utils/constants'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
-
-import { AccountContext } from '../../../providers/AccountProvider'
-import {
-  DBSlot,
-  MeetingChangeType,
-  MeetingDecrypted,
-  MeetingRepeat,
-} from '../../../types/Meeting'
-import { logEvent } from '../../../utils/analytics'
 
 interface MeetingCardProps {
   meeting: DBSlot
@@ -101,7 +102,7 @@ const MeetingCard = ({
   )
   const [loading, setLoading] = useState(true)
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
-
+  const { push } = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const decodeData = async () => {
     const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
@@ -324,7 +325,9 @@ const MeetingCard = ({
                           icon={<FaEdit size={16} />}
                           onClick={() => {
                             if (decryptedMeeting)
-                              onClickToOpen(meeting, decryptedMeeting, timezone)
+                              void push(
+                                `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
+                              )
                           }}
                         />
                         <IconButton
