@@ -1,5 +1,5 @@
 import { Container, Flex, useToast } from '@chakra-ui/react'
-import { addMinutes } from 'date-fns'
+import { addMinutes, differenceInMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
@@ -14,27 +14,42 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import { MeetingReminders } from '@/types/common'
-import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
+import { Intents } from '@/types/Dashboard'
+import {
+  MeetingDecrypted,
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+} from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
+import { logEvent } from '@/utils/analytics'
 import {
   getExistingAccounts,
   getGroup,
   getGroupsMembers,
+  getMeeting,
 } from '@/utils/api_helper'
 import {
+  decodeMeeting,
   scheduleMeeting,
   selectDefaultProvider,
+  updateMeeting,
 } from '@/utils/calendar_manager'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
 import { handleApiError } from '@/utils/error_helper'
 import {
   GateConditionNotValidError,
   GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
   InvalidURL,
+  MeetingChangeConflictError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
@@ -42,6 +57,7 @@ import {
   ZoomServiceUnavailable,
 } from '@/utils/errors'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
+import { getSignature } from '@/utils/storage'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 export enum Page {
@@ -185,9 +201,15 @@ const Schedule: NextPage = () => {
     selectDefaultProvider(currentAccount?.preferences.meetingProviders)
   )
   const [meetingUrl, setMeetingUrl] = useState('')
+  const [decryptedMeeting, setDecryptedMeeting] =
+    useState<MeetingDecrypted | null>(null)
   const toast = useToast()
   const { query } = useRouter()
-  const { groupId } = query as { groupId: string }
+  const { groupId, intent, meetingId } = query as {
+    groupId: string
+    intent: Intents
+    meetingId: string
+  }
   const [isScheduling, setIsScheduling] = useState(false)
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{
@@ -288,13 +310,20 @@ const Schedule: NextPage = () => {
         ),
       ]
       const _participants = await parseAccounts(allParticipants)
-      _participants.valid.push({
-        account_address: currentAccount!.address,
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Accepted,
-        slot_id: '',
-        meeting_id: '',
-      })
+      const userData = currentParticipant.find(
+        val => val.account_address === currentAccount!.address
+      )
+      if (userData) {
+        _participants.valid.push(userData)
+      } else {
+        _participants.valid.push({
+          account_address: currentAccount!.address,
+          type: ParticipantType.Scheduler,
+          status: ParticipationStatus.Accepted,
+          slot_id: '',
+          meeting_id: '',
+        })
+      }
       if (_participants.invalid.length > 0) {
         toast({
           title: 'Invalid invitees',
@@ -312,22 +341,45 @@ const Schedule: NextPage = () => {
       if (!pickedTime) return
       const start = zonedTimeToUtc(pickedTime as Date, timezone)
       const end = addMinutes(new Date(start), duration)
-      await scheduleMeeting(
-        true,
-        SchedulingType.REGULAR,
-        'no_type',
-        start,
-        end,
-        _participants.valid,
-        meetingProvider || MeetingProvider.HUDDLE,
-        currentAccount,
-        content,
-        meetingUrl,
-        undefined,
-        title,
-        meetingNotification.map(n => n.value),
-        meetingRepeat.value
-      )
+      if (meetingId && intent === Intents.UPDATE_MEETING) {
+        await updateMeeting(
+          true,
+          currentAccount!.address,
+          'no_type',
+          start,
+          end,
+          decryptedMeeting!,
+          getSignature(currentAccount!.address) || '',
+          _participants.valid,
+          content,
+          meetingUrl,
+          meetingProvider,
+          title,
+          meetingNotification.map(mn => mn.value),
+          meetingRepeat.value
+        )
+        logEvent('Updated a meeting', {
+          fromDashboard: true,
+          participantsSize: _participants.valid.length,
+        })
+      } else {
+        await scheduleMeeting(
+          true,
+          SchedulingType.REGULAR,
+          'no_type',
+          start,
+          end,
+          _participants.valid,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          undefined,
+          title,
+          meetingNotification.map(n => n.value),
+          meetingRepeat.value
+        )
+      }
       setCurrentPage(Page.COMPLETED)
     } catch (e: any) {
       if (e instanceof MeetingWithYourselfError) {
@@ -362,6 +414,16 @@ const Schedule: NextPage = () => {
           title: 'Failed to schedule meeting',
           description:
             'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingChangeConflictError) {
+        toast({
+          title: 'Failed to update meeting',
+          description:
+            'Someone else has updated this meeting. Please reload and try again.',
           status: 'error',
           duration: 5000,
           position: 'top',
@@ -490,8 +552,84 @@ const Schedule: NextPage = () => {
     setIsPrefetching(false)
   }
   useEffect(() => {
-    handleGroupPrefetch()
+    if (groupId) {
+      void handleGroupPrefetch()
+    }
   }, [groupId])
+  const handleFetchMeetingInformation = async () => {
+    if (!meetingId) return
+    setIsPrefetching(true)
+    try {
+      const meeting = await getMeeting(meetingId)
+      const decryptedMeeting = await decodeMeeting(meeting, currentAccount!)
+      if (!decryptedMeeting) {
+        setIsPrefetching(false)
+        return
+      }
+      setDecryptedMeeting(decryptedMeeting)
+      const participants = decryptedMeeting.participants.map(val => ({
+        account_address: val.account_address,
+        name: val.name,
+        status: val.status,
+        type: val.type,
+        slot_id: val.slot_id,
+        meeting_id: val.meeting_id,
+      }))
+      const allAddresses = participants
+        .map(val => val.account_address)
+        .filter(Boolean) as string[]
+      setGroupAvailability({
+        no_group: allAddresses,
+      })
+      const start = zonedTimeToUtc(meeting.start, timezone)
+      const end = zonedTimeToUtc(meeting.end, timezone)
+      const diffInMinutes = differenceInMinutes(end, start)
+      setParticipants(participants)
+
+      setTitle(decryptedMeeting.title || '')
+      setContent(decryptedMeeting.content || '')
+      setDuration(diffInMinutes)
+      setPickedTime(start)
+      setMeetingProvider(
+        decryptedMeeting.provider ||
+          selectDefaultProvider(currentAccount?.preferences.meetingProviders)
+      )
+      setMeetingUrl(decryptedMeeting.meeting_url)
+      setMeetingNotification(
+        decryptedMeeting.reminders?.map(val => {
+          const option = MeetingNotificationOptions.find(
+            opt => opt.value === val
+          )
+          return {
+            value: val,
+            label: option?.label,
+          }
+        }) || []
+      )
+      setMeetingRepeat(
+        decryptedMeeting.recurrence
+          ? {
+              value: decryptedMeeting.recurrence,
+              label:
+                MeetingRepeatOptions.find(
+                  val => val.value === decryptedMeeting.recurrence
+                )?.label || '',
+            }
+          : {
+              value: MeetingRepeat['NO_REPEAT'],
+              label: 'Does not repeat',
+            }
+      )
+    } catch (error: any) {
+      handleApiError('Error fetching meeting information.', error)
+    }
+    setIsPrefetching(false)
+  }
+  useEffect(() => {
+    if (intent === Intents.UPDATE_MEETING && meetingId) {
+      void handleFetchMeetingInformation()
+    }
+  }, [intent, meetingId])
   return (
     <ScheduleContext.Provider value={context}>
       <Container
