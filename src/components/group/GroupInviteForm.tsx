@@ -146,7 +146,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       id: invitedUsers.length,
       account_address: !isEmail ? enteredIdentifier : '',
       email: isEmail ? enteredIdentifier : '',
-      role: MemberType.MEMBER,
+      role: MemberType.ADMIN,
       groupId,
       userId: '',
       name: enteredIdentifier,
