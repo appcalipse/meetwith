@@ -10,6 +10,7 @@ import {
   ConnectResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
+import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
@@ -36,7 +37,6 @@ import {
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
-import { Row } from '@/types/supabase'
 import { TelegramConnection } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
@@ -60,7 +60,6 @@ import {
   SubscriptionNotCustom,
   TimeNotAvailableError,
   UrlCreationError,
-  UserInvitationError,
   ZoomServiceUnavailable,
 } from './errors'
 import QueryKeys from './query_keys'
@@ -501,10 +500,14 @@ export const updateGroupRole = async (
   return !!response?.success
 }
 
-export const joinGroup = async (group_id: string, email_address?: string) => {
+export const joinGroup = async (
+  group_id: string,
+  email_address?: string,
+  type?: InviteType
+) => {
   const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/join${
-      email_address ? `?email_address=${email_address}` : ''
+    `/secure/group/${group_id}/join?type=${type || InviteType.PRIVATE}${
+      email_address ? `&email_address=${email_address}` : ''
     }`,
     'POST'
   )
