@@ -27,7 +27,7 @@ import RemoveGroupMemberModal from '@/components/group/RemoveGroupMemberModal'
 import ModalLoading from '@/components/Loading/ModalLoading'
 import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
 import { Account } from '@/types/Account'
-import { Intents } from '@/types/Dashboard'
+import { Intents, InviteType } from '@/types/Dashboard'
 import {
   GetGroupsResponse,
   Group as GroupResponse,
@@ -83,7 +83,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   >(undefined)
   const [inviteDataIsLoading, setInviteDataIsLoading] = useState(false)
   const router = useRouter()
-  const { join, intent, groupId, email } = useRouter().query
+  const { join, intent, groupId, email, type } = useRouter().query
   const { isOpen, onOpen, onClose } = useDisclosure()
   const {
     isOpen: isOnboardingOpened,
@@ -165,6 +165,9 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setInviteDataIsLoading(true)
     const connectedCalendars = await listConnectedCalendars()
     const nameExists = currentAccount.preferences?.name
+    const timeZoneIsSet = currentAccount.preferences?.timezone
+    const availabilityNotSet =
+      (currentAccount.preferences?.availabilities?.length || 0) === 0
     const group_id = Array.isArray(groupId) ? groupId[0] : groupId
     if (!group_id) {
       setInviteDataIsLoading(false)
@@ -176,7 +179,12 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
       setSelectedGroupName(group.name)
     }
 
-    if (!nameExists || connectedCalendars.length === 0) {
+    if (
+      !nameExists ||
+      connectedCalendars.length === 0 ||
+      !timeZoneIsSet ||
+      availabilityNotSet
+    ) {
       onboardingOnOpen()
     } else {
       setInviteGroupData(group)
@@ -212,7 +220,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     if (intent === Intents.JOIN) {
       checkAccount()
     }
-  }, [intent, currentAccount, groupId])
+  }, [intent, groupId])
   const handleAddNewMember = (groupId: string, groupName: string) => {
     setSelectedGroupId(groupId)
     setSelectedGroupName(groupName)
@@ -346,6 +354,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           onClose={() => setInviteGroupData(undefined)}
           resetState={resetState}
           inviteEmail={email as string}
+          type={type as InviteType}
         />
         <GroupOnBoardingModal
           isOnboardingOpened={isOnboardingOpened}
