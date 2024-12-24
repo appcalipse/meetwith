@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   Circle,
   Divider,
@@ -24,9 +23,12 @@ import { useRouter } from 'next/router'
 import React, { FC, useContext, useEffect, useState } from 'react'
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
+import { WeekdayConfig } from '@/components/availabilities/weekday-config'
 import WebDavDetailsPanel from '@/components/ConnectedCalendars/WebDavCalendarDetail'
 import InfoTooltip from '@/components/profile/components/Tooltip'
+import TimezoneSelector from '@/components/TimezoneSelector'
 import { AccountContext } from '@/providers/AccountProvider'
+import { TimeRange } from '@/types/Account'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
@@ -37,6 +39,7 @@ import {
   saveAccountChanges,
   updateConnectedCalendar,
 } from '@/utils/api_helper'
+import { generateDefaultAvailabilities } from '@/utils/calendar_manager'
 import { queryClient } from '@/utils/react_query'
 
 interface IGroupOnBoardingModalProps {
@@ -68,6 +71,10 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
       ? JSON.parse(Buffer.from(state as string, 'base64').toString())
       : {}
   const [name, setName] = useState<string>(stateObject.name || '')
+  const [timezone, setTimezone] = useState<string | undefined | null>(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
+
   const {
     activeStep,
     goToNext: goToNextStep,
@@ -77,7 +84,9 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
     index: 0,
     count: 3,
   })
-
+  const [availabilities, setInitialAvailabilities] = useState(
+    generateDefaultAvailabilities()
+  )
   const {
     data: calendarConnectionsData,
     isFetching: isFetchingCalendarConnections,
@@ -123,6 +132,7 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
   }
   useEffect(() => {
     if (currentAccount?.preferences?.name) {
+      setName(currentAccount.preferences.name)
       setActiveStep(1)
     }
   }, [currentAccount])
@@ -176,24 +186,29 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
   }
 
   const calendarIsConnected = calendarConnections.length > 0
+  const onChange = (day: number, ranges: TimeRange[] | null) => {
+    const newAvailabilities = [...availabilities]
+    newAvailabilities[day] = { weekday: day, ranges: ranges ?? [] }
+    setInitialAvailabilities(newAvailabilities)
+  }
+
   const handleSave = async () => {
-    if (!currentAccount?.preferences) return
-    if (currentAccount?.preferences.name) {
-      handleClose()
-      return
-    }
+    console.log('saving....')
+    if (!currentAccount?.preferences || !timezone) return
     setLoadingSave(true)
     const updatedAccount = await saveAccountChanges({
       ...currentAccount,
       preferences: {
         ...currentAccount.preferences,
         name: name,
+        timezone,
+        availabilities,
       },
     })
     logEvent('Updated account details')
     login(updatedAccount)
     setLoadingSave(false)
-    handleClose()
+    if (activeStep === 2) handleClose()
   }
   return (
     <Modal
@@ -551,8 +566,36 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
             </Flex>
           </Flex>
         )}
+        {activeStep === 2 && (
+          <Flex marginTop={6} direction="column" gap={2}>
+            <Flex direction="column" gap={4}>
+              <Heading>Set your availabilities</Heading>
+              <Text>
+                Define ranges of time when you are available. You can also
+                customize all of this later.
+              </Text>
+            </Flex>
+            <FormControl isInvalid={!timezone}>
+              <FormLabel>Timezone</FormLabel>
+              <TimezoneSelector
+                value={timezone}
+                onChange={tz => setTimezone(tz)}
+              />
+            </FormControl>
+            <Flex direction="column" justifyContent="center">
+              {availabilities.map((availability, index) => (
+                <WeekdayConfig
+                  key={`${currentAccount?.address}:${index}`}
+                  dayAvailability={availability}
+                  onChange={onChange}
+                />
+              ))}
+            </Flex>
+          </Flex>
+        )}
         <Flex gap={5} mt={10}>
-          {activeStep > 0 && !currentAccount?.preferences.name && (
+          {((activeStep > 0 && !currentAccount?.preferences.name) ||
+            activeStep === 2) && (
             <Button
               variant="outline"
               colorScheme="primary"
@@ -566,16 +609,10 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
           <Button
             flex={1}
             colorScheme="primary"
-            onClick={
-              calendarIsConnected || currentAccount?.preferences.name
-                ? handleSave
-                : goToNextStep
-            }
+            onClick={activeStep !== 1 ? handleSave : goToNextStep}
             isLoading={isFetchingCalendarConnections || loadingSave}
           >
-            {calendarIsConnected || currentAccount?.preferences.name
-              ? 'Confirm'
-              : 'Next'}
+            {activeStep === 2 ? 'Confirm' : 'Next'}
           </Button>
         </Flex>
       </ModalContent>
