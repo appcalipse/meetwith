@@ -35,7 +35,7 @@ export default function LogoutPage() {
   }
   useEffect(() => {
     if (logged) {
-      push(
+      void push(
         `/dashboard/${EditMode.GROUPS}?${queryString}&intent=${Intents.JOIN}`
       )
     }
