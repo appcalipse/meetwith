@@ -595,7 +595,6 @@ const SubscriptionDialog: React.FC<IProps> = ({
         <ModalBody>
           {renderCouponInput()}
           {renderBookingLink()}
-          {renderChainInfo()}
           {currentChain && (
             <>
               <Text pt={5} pb={5}>
