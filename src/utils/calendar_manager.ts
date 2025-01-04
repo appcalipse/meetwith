@@ -357,13 +357,20 @@ const buildMeetingData = async (
 
 /**
  *
- * @param owner
+ * @param ignoreAvailabilities
+ * @param currentAccountAddress
  * @param meetingTypeId
  * @param startTime
  * @param endTime
  * @param decryptedMeeting
  * @param signature
  * @param participants
+ * @param content
+ * @param meetingUrl
+ * @param meetingProvider
+ * @param meetingTitle
+ * @param meetingReminders
+ * @param meetingRepeat
  * @returns
  */
 const updateMeeting = async (
@@ -972,8 +979,12 @@ const dateToLocalizedRange = (
 
 const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
   if (isProAccount(account)) {
-    return account.subscriptions?.filter(sub => sub.plan_id === Plan.PRO)[0]
-      .domain
+    const domain = account.subscriptions?.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )?.domain
+    if (domain) {
+      return domain
+    }
   }
   return `address/${
     ellipsize ? ellipsizeAddress(account!.address) : account!.address

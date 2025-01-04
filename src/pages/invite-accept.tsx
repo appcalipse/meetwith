@@ -26,7 +26,7 @@ export default function LogoutPage() {
   const { query, push } = useRouter()
   const groupId = query.groupId
   const params = new URLSearchParams(query as Record<string, string>)
-  const { currentAccount, logged } = useContext(AccountContext)
+  const { logged } = useContext(AccountContext)
   const queryString = params.toString()
   const fetchGroup = async (groupId: string) => {
     const groupData = await getGroupExternal(groupId)

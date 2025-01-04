@@ -92,5 +92,7 @@ export const getNativeTokenInfo = (chain: SupportedChain): TokenGateElement => {
         minimumBalance: 0n,
         decimals: getNativeDecimals(chain),
       }
+    default:
+      return DummyGateElement
   }
 }

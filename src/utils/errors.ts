@@ -191,3 +191,36 @@ export class UrlCreationError extends Error {
     this.name = 'UrlCreationError'
   }
 }
+
+export class CouponExpired extends Error {
+  constructor() {
+    super(`Coupon has expired`)
+    this.name = 'CouponExpired'
+  }
+}
+export class CouponNotValid extends Error {
+  constructor() {
+    super(`Coupon is not valid`)
+    this.name = 'CouponNotValid'
+  }
+}
+export class CouponAlreadyUsed extends Error {
+  constructor() {
+    super(`Coupon has already been used`)
+    this.name = 'CouponAlreadyUsed'
+  }
+}
+
+export class NoActiveSubscription extends Error {
+  constructor() {
+    super(`No active subscription found`)
+    this.name = 'NoActiveSubscription'
+  }
+}
+
+export class SubscriptionNotCustom extends Error {
+  constructor() {
+    super(`Subscription is not custom`)
+    this.name = 'SubscriptionNotCustom'
+  }
+}

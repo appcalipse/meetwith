@@ -13,4 +13,5 @@ export enum EditMode {
 
 export enum Intents {
   JOIN = 'join',
+  USE_COUPON = 'use-coupon',
 }
