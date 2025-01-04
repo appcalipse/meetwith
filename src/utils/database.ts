@@ -1,7 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import CryptoJS, { enc, SHA1 } from 'crypto-js'
-import { addMinutes, differenceInMinutes, isAfter, isBefore } from 'date-fns'
+import {
+  addMinutes,
+  addMonths,
+  differenceInMinutes,
+  isAfter,
+  isBefore,
+} from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
@@ -10,7 +16,6 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { validate } from 'uuid'
 
-import Identifier from '@/pages/api/accounts/[identifier]'
 import {
   Account,
   AccountPreferences,
@@ -25,6 +30,7 @@ import {
   CalendarSyncInfo,
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
+import { SupportedChain } from '@/types/chains'
 import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
@@ -64,7 +70,7 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { GroupMembersRow, TablesInsert } from '@/types/supabase'
+import { GroupMembersRow, Row, TablesInsert } from '@/types/supabase'
 import { TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
@@ -75,6 +81,9 @@ import {
   AccountNotFoundError,
   AdminBelowOneError,
   AlreadyGroupMemberError,
+  CouponAlreadyUsed,
+  CouponExpired,
+  CouponNotValid,
   GateConditionNotValidError,
   GateInUseError,
   GroupCreationError,
@@ -83,8 +92,10 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
+  SubscriptionNotCustom,
   TimeNotAvailableError,
   UnauthorizedError,
 } from '@/utils/errors'
@@ -1930,14 +1941,18 @@ const removeConnectedCalendar = async (
 }
 
 export const getSubscriptionFromDBForAccount = async (
-  accountAddress: string
+  accountAddress: string,
+  chain?: SupportedChain
 ): Promise<Subscription[]> => {
-  const { data, error } = await db.supabase
+  const query = db.supabase
     .from<Subscription>('subscriptions')
     .select()
     .gt('expiry_time', new Date().toISOString())
     .eq('owner_account', accountAddress.toLowerCase())
-
+  if (chain) {
+    query.eq('chain', chain)
+  }
+  const { data, error } = await query
   if (error) {
     throw new Error(error.message)
   }
@@ -2554,7 +2569,7 @@ export async function createGroupInDB(
     role: MemberType.ADMIN,
   }
   const members = [admin]
-  const { data: memberData, error: memberError } = await db.supabase
+  const { error: memberError } = await db.supabase
     .from('group_members')
     .insert(members)
   if (memberError) {
@@ -2566,7 +2581,7 @@ export async function createGroupInDB(
   return {
     id: newGroup.id,
     name: newGroup.name,
-    slug: newGroup.slug,
+    slug: newGroup.slug!,
   }
 }
 
@@ -2634,6 +2649,109 @@ const getTgConnection = async (
 
   return data[0]
 }
+const getNumberOfCouponClaimed = async (plan_id: string) => {
+  const couponUsageData = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .select('id', { count: 'exact' })
+    .eq('plan_id', plan_id)
+  return couponUsageData.count ?? 0
+}
+const subscribeWithCoupon = async (
+  coupon_code: string,
+  account_address: string,
+  domain?: string
+) => {
+  const { data, error } = await db.supabase
+    .from('coupons')
+    .select()
+    .ilike('code', coupon_code.toLowerCase())
+  if (error) {
+    throw new Error(error.message)
+  }
+  const coupon = data?.[0]
+  if (!coupon) {
+    throw new CouponNotValid()
+  }
+  const couponUses = getNumberOfCouponClaimed(coupon.plan_id)
+  if (couponUses >= coupon.max_uses) {
+    throw new CouponExpired()
+  }
+
+  const { data: subscriptionData, error: subscriptionError } = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .select()
+    .eq('owner_account', account_address)
+    .eq('plan_id', coupon.plan_id)
+  if (subscriptionError) {
+    throw new Error(subscriptionError.message)
+  }
+  if ((subscriptionData?.length ?? 0) > 0) {
+    throw new CouponAlreadyUsed()
+  }
+  const { data: planData, error: planError } = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .insert([
+      {
+        plan_id: coupon.plan_id,
+        owner_account: account_address,
+        domain,
+        chain: SupportedChain.CUSTOM,
+        expiry_time: addMonths(new Date(), coupon.period).toISOString(),
+        registered_at: new Date().toISOString(),
+      },
+    ])
+  if (planError) {
+    throw new Error(planError.message)
+  }
+  return planData[0]
+}
+const updateCustomSubscriptionDomain = async (
+  account_address: string,
+  domain: string
+) => {
+  const { data: subscriptionData, error: subscriptionError } = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .select()
+    .eq('owner_account', account_address)
+    .gte('expiry_time', new Date().toISOString())
+  if (subscriptionError) {
+    throw new Error(subscriptionError.message)
+  }
+  const subscription = subscriptionData[0]
+  if (!subscription) {
+    throw new NoActiveSubscription()
+  }
+  if (subscription.chain !== SupportedChain.CUSTOM) {
+    throw new SubscriptionNotCustom()
+  }
+  const { error, data } = await db.supabase
+    .from('subscriptions')
+    .update({ domain })
+    .eq('owner_account', account_address)
+    .gte('expiry_time', new Date().toISOString())
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const getNewestCoupon = async () => {
+  const { data, error } = await db.supabase
+    .from('coupons')
+    .select()
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const coupon = data[0]
+  if (coupon) {
+    coupon.claims = await getNumberOfCouponClaimed(coupon.plan_id)
+  }
+  return coupon
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
@@ -2665,6 +2783,7 @@ export {
   getGroupUsers,
   getGroupUsersInternal,
   getMeetingFromDB,
+  getNewestCoupon,
   getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
@@ -2686,9 +2805,11 @@ export {
   saveMeeting,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
+  subscribeWithCoupon,
   updateAccountFromInvite,
   updateAccountPreferences,
   updateAllRecurringSlots,
+  updateCustomSubscriptionDomain,
   updateMeeting,
   updateRecurringSlots,
   upsertGateCondition,
