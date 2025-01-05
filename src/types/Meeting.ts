@@ -37,6 +37,7 @@ export interface DBSlot extends TimeSlot {
   version: number
   meeting_info_encrypted: Encrypted
   recurrence: MeetingRepeat
+  public_decrypted_data?: MeetingDecrypted
 }
 
 /**
