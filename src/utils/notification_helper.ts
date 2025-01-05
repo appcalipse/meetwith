@@ -88,7 +88,8 @@ export const notifyForMeetingCancellation = async (
   start: Date,
   end: Date,
   created_at: Date,
-  timezone: string
+  timezone: string,
+  reason?: string
 ): Promise<void> => {
   const participantsInfo: ParticipantInfoForNotification[] = []
 
@@ -123,7 +124,8 @@ export const notifyForMeetingCancellation = async (
       start,
       end,
       created_at!,
-      ''
+      '',
+      reason
     )
   )
 }
@@ -437,7 +439,8 @@ const getEmailNotification = async (
         participant.meeting_id,
         participant.account_address,
         '',
-        created_at
+        created_at,
+        title // reason for cancelling meeting if any
       )
     case MeetingChangeType.UPDATE:
       return updateMeetingEmail(
