@@ -591,10 +591,16 @@ export const subscribeToWaitlist = async (
   return !!result?.success
 }
 
-export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
+export const getMeeting = async (
+  slot_id: string,
+  is_guest?: boolean
+): Promise<DBSlot> => {
   const response = await queryClient.fetchQuery(
     QueryKeys.meeting(slot_id),
-    () => internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlot>
+    () =>
+      internalFetch(
+        `/meetings/meeting/${slot_id}` + (is_guest ? 'is_guest=true' : '')
+      ) as Promise<DBSlot>
   )
   return {
     ...response,
