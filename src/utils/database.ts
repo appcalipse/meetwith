@@ -691,7 +691,8 @@ const deleteMeetingFromDB = async (
   slotIds: string[],
   guestsToRemove: ParticipantInfo[],
   meeting_id: string,
-  timezone: string
+  timezone: string,
+  reason?: string
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
@@ -714,6 +715,7 @@ const deleteMeetingFromDB = async (
     end: new Date(oldSlots[0].end),
     created_at: new Date(oldSlots[0].created_at!),
     timezone,
+    reason,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
