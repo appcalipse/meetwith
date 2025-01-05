@@ -8,7 +8,11 @@ import {
   getYear,
 } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
-import { Encrypted, encryptWithPublicKey } from 'eth-crypto'
+import {
+  decryptWithPrivateKey,
+  Encrypted,
+  encryptWithPublicKey,
+} from 'eth-crypto'
 import {
   Alarm,
   Attendee,
