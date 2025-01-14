@@ -40,6 +40,7 @@ export interface MeetingCreationRequest {
   emailToSendReminders?: string
   meetingReminders?: Array<MeetingReminders>
   meetingRepeat: MeetingRepeat
+  allSlotIds?: Array<string>
 }
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
