@@ -11,12 +11,15 @@ global.fetch = jest.fn().mockImplementation(path => {
     status: 200,
     json: () =>
       Promise.resolve([
-        path.indexOf(POAP_MWW.itemId) === -1
+        typeof POAP_MWW !== 'undefined' && path.indexOf(POAP_MWW.itemId) === -1
           ? null
           : {
               event: {},
               tokenId: 'string',
-              chain: SupportedChain.POLYGON_MATIC,
+              chain:
+                typeof POAP_MWW !== 'undefined'
+                  ? SupportedChain.POLYGON_MATIC
+                  : '',
               created: 'YYYY-MM-DD HH:mm:ss',
             },
       ]),
