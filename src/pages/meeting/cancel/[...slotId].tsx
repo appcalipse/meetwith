@@ -4,41 +4,43 @@ import {
   Container,
   Flex,
   Heading,
+  HStack,
   Image,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
   Spacer,
   Text,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
+import { Textarea } from '@chakra-ui/textarea'
 import * as Sentry from '@sentry/nextjs'
-import { decryptWithPrivateKey } from 'eth-crypto'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
-import { BiWallet } from 'react-icons/bi'
+import React, { useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
-import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { useLogin } from '@/session/login'
-import {
-  ConferenceMeeting,
-  DBSlot,
-  MeetingAccessType,
-  MeetingInfo,
-} from '@/types/Meeting'
-import { getConferenceMeeting, getMeeting } from '@/utils/api_helper'
+import { DBSlot } from '@/types/Meeting'
+import { getMeetingGuest, guestMeetingCancel } from '@/utils/api_helper'
+import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
 
-const JoinMeetingPage: NextPage = () => {
+const CancelMeetingPage: NextPage = () => {
   const router = useRouter()
-  const { meetingId } = router.query
+  const { slotId, metadata } = router.query
   const [loading, setLoading] = useState(true)
   const [meeting, setMeeting] = useState<DBSlot>()
-
-  const { openConnection } = useContext(OnboardingModalContext)
-  const { currentAccount, loginIn } = useLogin()
+  const [isCancelling, setIsCancelling] = useState(false)
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const [reason, setReason] = useState('')
+  const toast = useToast()
   const loadMeetingData = async () => {
     try {
       setLoading(true)
-      const data = await getMeeting(meetingId as string, true)
+      const data = await getMeetingGuest(slotId as string)
       setMeeting(data)
     } catch (error) {
       Sentry.captureException(error)
@@ -48,14 +50,61 @@ const JoinMeetingPage: NextPage = () => {
     }
   }
   useEffect(() => {
-    if (meetingId) {
+    if (slotId) {
       void loadMeetingData()
     }
   }, [])
-  const handleCancelMeeting = () => {}
+  const handleCancelMeeting = async () => {
+    setIsCancelling(true)
+    try {
+      const response = await guestMeetingCancel(slotId as string, {
+        metadata: metadata as string,
+        currentTimezone: timeZone,
+        reason,
+      })
+      if (response?.success) {
+        toast({
+          title: 'Meeting cancelled',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+          description: 'The meeting has been successfully cancelled',
+        })
+        void router.push('/')
+      }
+    } catch (error) {
+      console.log(error)
+      if (error instanceof MeetingNotFoundError) {
+        toast({
+          title: 'Meeting not found',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          description: 'The meeting you are trying to cancel was not found',
+        })
+      } else if (error instanceof UnauthorizedError) {
+        toast({
+          title: 'Invalid Cancel Url',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          description: 'The cancel url is invalid',
+        })
+      } else if (error instanceof Error) {
+        toast({
+          title: 'Error cancelling meeting',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          description: error.message,
+        })
+      }
+    }
+    setIsCancelling(false)
+  }
   if (loading) {
     return (
-      <Container>
+      <Container minH="100vh">
         <Flex
           width="100%"
           height="100%"
@@ -72,7 +121,7 @@ const JoinMeetingPage: NextPage = () => {
 
   if (!meeting) {
     return (
-      <Container>
+      <Container minH="100vh">
         <Flex
           width="100%"
           height="100%"
@@ -110,7 +159,7 @@ const JoinMeetingPage: NextPage = () => {
     )
   }
   return (
-    <Container>
+    <Container minH="100vh">
       <Flex
         width="100%"
         height="100%"
@@ -120,13 +169,43 @@ const JoinMeetingPage: NextPage = () => {
       >
         <VStack>
           <Loading label="" />
-          <Text>
-            Everything is fine, we will redirect you to the meeting...
-          </Text>
         </VStack>
+        <Modal isOpen onClose={() => router.push('/')} isCentered size="xl">
+          <ModalOverlay />
+          <ModalContent p="6">
+            <ModalHeader
+              p={'0'}
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <ModalCloseButton />
+            </ModalHeader>
+            <ModalBody p={'10'} mt={'6'}>
+              <VStack alignItems="flex-start">
+                <Heading>Cancel meeting</Heading>
+                <Text>Leave a message to the other participants</Text>
+                <Textarea
+                  rows={8}
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                />
+                <HStack w={'fit-content'} mt={'6'} gap={'4'}>
+                  <Button
+                    onClick={handleCancelMeeting}
+                    isLoading={isCancelling}
+                    colorScheme="primary"
+                  >
+                    Cancel Meeting
+                  </Button>
+                </HStack>
+              </VStack>
+            </ModalBody>
+          </ModalContent>
+        </Modal>
       </Flex>
     </Container>
   )
 }
 
-export default JoinMeetingPage
+export default CancelMeetingPage
