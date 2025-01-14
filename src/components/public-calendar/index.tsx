@@ -277,7 +277,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       day = addDays(day, 1)
     }
     setBlockedDates(unavailableDate)
-  }, [currentMonth, selectedType, busySlots])
+  }, [currentMonth, selectedType, busySlots, account])
 
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
