@@ -14,4 +14,10 @@ export enum EditMode {
 export enum Intents {
   JOIN = 'join',
   USE_COUPON = 'use-coupon',
+  UPDATE_MEETING = 'update-meeting',
+}
+
+export enum InviteType {
+  PUBLIC = 'public',
+  PRIVATE = 'private',
 }

@@ -1255,6 +1255,22 @@ const getGroupInvites = async ({
     }
   }
 }
+const publicGroupJoin = async (group_id: string, address: string) => {
+  const groupUsers = await getGroupMembersInternal(group_id)
+  if (groupUsers.map(val => val.member_id).includes(address.toLowerCase())) {
+    throw new AlreadyGroupMemberError()
+  }
+  const { error: memberError } = await db.supabase
+    .from('group_members')
+    .insert({
+      group_id,
+      member_id: address.toLowerCase(),
+      role: MemberType.MEMBER,
+    })
+  if (memberError) {
+    throw new Error(memberError.message)
+  }
+}
 
 const manageGroupInvite = async (
   group_id: string,
@@ -2797,6 +2813,7 @@ export {
   isSlotFree,
   leaveGroup,
   manageGroupInvite,
+  publicGroupJoin,
   rejectGroupInvite,
   removeConnectedCalendar,
   removeMember,

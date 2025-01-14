@@ -289,21 +289,24 @@ const GroupCard: React.FC<IGroupCard> = props => {
             Load more
           </Button>
         )}
-        <Spacer />
-
-        <Button
-          mt={3}
-          variant="ghost"
-          leftIcon={<Icon as={IoMdPersonAdd} h={25} />}
-          color="white"
-          px={1.5}
-          height="fit-content !important"
-          mr="auto"
-          py={1}
-          onClick={() => props.onAddNewMember(props.id, props.name)}
-        >
-          Add new member
-        </Button>
+        {isAdmin && (
+          <>
+            <Spacer />
+            <Button
+              mt={3}
+              variant="ghost"
+              leftIcon={<Icon as={IoMdPersonAdd} h={25} />}
+              color="white"
+              px={1.5}
+              height="fit-content !important"
+              mr="auto"
+              py={1}
+              onClick={() => props.onAddNewMember(props.id, props.name)}
+            >
+              Add new member
+            </Button>
+          </>
+        )}
       </VStack>
     )
   }
@@ -347,12 +350,14 @@ const GroupCard: React.FC<IGroupCard> = props => {
               >
                 Schedule
               </Button>
-              <IconButton
-                aria-label="Add Contact"
-                p={'8px 16px'}
-                icon={<IoMdPersonAdd size={20} />}
-                onClick={() => props.onAddNewMember(props.id, props.name)}
-              />
+              {isAdmin && (
+                <IconButton
+                  aria-label="Add Contact"
+                  p={'8px 16px'}
+                  icon={<IoMdPersonAdd size={20} />}
+                  onClick={() => props.onAddNewMember(props.id, props.name)}
+                />
+              )}
               <Menu>
                 <MenuButton
                   as={IconButton}
