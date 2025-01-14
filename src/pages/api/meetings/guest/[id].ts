@@ -45,7 +45,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       await handleGuestCancel(metadata, slotId, currentTimezone, reason)
       return res.status(200).send({ success: true })
     } catch (e) {
-      console.log(e)
       Sentry.captureException(e)
       if (e instanceof MeetingNotFoundError) {
         return res.status(404).send(e.message)

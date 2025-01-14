@@ -12,7 +12,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       return res.json({ url: link })
     } catch (e) {
-      console.log(e)
       Sentry.captureException(e)
       return res.status(503).send('Google Meet Unavailable')
     }
