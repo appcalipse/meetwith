@@ -2,11 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { GuestMeetingCancel } from '@/types/Meeting'
-import {
-  getConferenceDataBySlotId,
-  getMeetingFromDB,
-  handleGuestCancel,
-} from '@/utils/database'
+import { getConferenceDataBySlotId, handleGuestCancel } from '@/utils/database'
 import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
