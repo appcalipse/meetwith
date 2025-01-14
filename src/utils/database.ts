@@ -1009,16 +1009,6 @@ const saveMeeting = async (
         }
       }
       i++
-    } else {
-      // const dbSlot: DBSlot = {
-      //   id: participant.slot_id,
-      //   start: meeting.start,
-      //   end: meeting.end,
-      //   account_address: account.address,
-      //   version: 0,
-      //   meeting_info_encrypted: participant.privateInfo,
-      //   recurrence: meeting.meetingRepeat,
-      // }
     }
   }
 
