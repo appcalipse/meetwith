@@ -108,7 +108,8 @@ export const newMeetingEmail = async (
   created_at?: Date,
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat?: MeetingRepeat
+  meetingRepeat?: MeetingRepeat,
+  guestInfoEncrypted?: string
 ): Promise<boolean> => {
   const email = new Email()
 
@@ -126,7 +127,9 @@ export const newMeetingEmail = async (
     },
     changeUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
-      : undefined,
+      : `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
+          guestInfoEncrypted || ''
+        )}`,
   }
 
   const isScheduler =
@@ -235,7 +238,7 @@ export const cancelledMeetingEmail = async (
       title,
       start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
-      cancellationReason: reason,
+      reason: reason,
     },
   }
 
