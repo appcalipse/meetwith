@@ -91,6 +91,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       end,
       created_at,
       timezone,
+      reason,
     } = req.body as MeetingCancelSyncRequest
 
     for (const address of addressesToRemove) {
@@ -110,7 +111,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         new Date(start),
         new Date(end),
         new Date(created_at),
-        timezone
+        timezone,
+        reason
       )
     } catch (error) {
       Sentry.captureException(error)
