@@ -2101,12 +2101,13 @@ export const getSubscriptionFromDBForAccount = async (
 
   if (data && data.length > 0) {
     let subscriptions = data as Subscription[]
-
+    const collidingDomains = subscriptions.map(s => s.domain).filter(s => s)
+    if (collidingDomains.length === 0) return subscriptions
     const collisionExists = await db.supabase
       .from('subscriptions')
       .select()
       .neq('owner_account', accountAddress.toLowerCase())
-      .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
+      .or(collidingDomains.map(domain => `domain.ilike.${domain}`).join(','))
 
     if (collisionExists.error) {
       throw new Error(collisionExists.error.message)
@@ -2116,6 +2117,7 @@ export const getSubscriptionFromDBForAccount = async (
     // on the blockchain, but such domain already existed for someone
     // else and is not expired, we remove it here.
     for (const collision of collisionExists.data) {
+      if (!collision.domain) continue
       if (
         (collision as Subscription).registered_at <
         subscriptions.find(s => s.domain === collision.domain)!.registered_at
