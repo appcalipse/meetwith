@@ -10,6 +10,7 @@ import {
 } from 'thirdweb'
 import { TransactionReceipt } from 'thirdweb/dist/types/transaction/types'
 import { Wallet } from 'thirdweb/wallets'
+import { Address } from 'viem'
 
 import { MWWDomain, MWWRegister } from '../abis/mww'
 import { Account } from '../types/Account'
@@ -80,8 +81,8 @@ export const checkAllowance = async (
       contract,
       method: 'allowance',
       params: [
-        accountAddress.toLowerCase(),
-        chainInfo!.registarContractAddress,
+        accountAddress.toLowerCase() as Address,
+        chainInfo!.registarContractAddress as Address,
       ],
     })
 
@@ -130,7 +131,7 @@ export const approveTokenSpending = async (
   const tokenTransaction = await prepareContractCall({
     contract,
     method: 'approve',
-    params: [chainInfo!.registarContractAddress, amount],
+    params: [chainInfo!.registarContractAddress as Address, amount],
   })
 
   const { transactionHash: tokenHash } = await sendTransaction({
@@ -238,7 +239,10 @@ export const subscribeToPlan = async (
         const tokenTransaction = await prepareContractCall({
           contract: tokenContract,
           method: 'approve',
-          params: [chainInfo!.registarContractAddress, neededApproval],
+          params: [
+            chainInfo!.registarContractAddress as Address,
+            neededApproval,
+          ],
         })
 
         const { transactionHash: tokenHash } = await sendTransaction({
@@ -258,9 +262,9 @@ export const subscribeToPlan = async (
         method:
           'function purchaseWithToken(address tokenAddress, uint8 planId, address planOwner, uint256 duration, string memory domain, string memory ipfsHash)',
         params: [
-          tokenInfo.contractAddress,
+          tokenInfo.contractAddress as Address,
           plan,
-          accountAddress.toLocaleLowerCase(),
+          accountAddress.toLocaleLowerCase() as Address,
           BigInt(duration),
           domain,
           '',
@@ -300,7 +304,7 @@ export const subscribeToPlan = async (
           'function purchaseWithNative(uint8 planId, address planOwner, uint256 duration, string memory domain, string memory ipfsHash)',
         params: [
           plan,
-          accountAddress.toLocaleLowerCase(),
+          accountAddress.toLocaleLowerCase() as Address,
           BigInt(duration),
           domain,
           '',
