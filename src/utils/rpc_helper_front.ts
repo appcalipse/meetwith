@@ -6,6 +6,7 @@ import {
   resolveName,
 } from 'thirdweb/extensions/ens'
 import { Wallet } from 'thirdweb/wallets'
+import { Address } from 'viem'
 
 import { getChainInfo, SupportedChain } from '@/types/chains'
 
@@ -28,7 +29,7 @@ export const resolveENS = async (
 ): Promise<AccountExtraProps | undefined> => {
   try {
     const name = await resolveName({
-      address: address,
+      address: address as Address,
       client: thirdWebClient,
     })
 
