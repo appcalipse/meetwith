@@ -25,7 +25,14 @@ function Root({
 }) {
   const { openConnection } = useContext(OnboardingModalContext)
   const { currentAccount } = useContext(AccountContext)
-  const timeSlots = generateTimeSlots(pickedDay, slotSizeMinutes, false)
+  const endingOfDay = new Date(pickedDay)
+  endingOfDay.setHours(23, 59, 59, 999)
+  const timeSlots = generateTimeSlots(
+    pickedDay,
+    slotSizeMinutes,
+    false,
+    endingOfDay
+  )
   const filtered = timeSlots.filter(slot => {
     return validator ? validator(slot.start) : true
   })
