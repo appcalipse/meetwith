@@ -23,6 +23,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { isAfter, isWithinInterval } from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import React from 'react'
@@ -68,14 +69,10 @@ interface Label {
 
 const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-10-21')
 
-const MeetingCard = ({
-  meeting,
-  timezone,
-  onCancel,
-  onClickToOpen,
-}: MeetingCardProps) => {
+const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const defineLabel = (start: Date, end: Date): Label | null => {
-    const now = new Date()
+    const now = utcToZonedTime(new Date(), timezone)
+    console.log({ start, end, now })
     if (isWithinInterval(now, { start, end })) {
       return {
         color: 'yellow',
@@ -288,7 +285,8 @@ const MeetingCard = ({
                       {dateToLocalizedRange(
                         meeting.start as Date,
                         meeting.end as Date,
-                        timezone
+                        timezone,
+                        true
                       )}
                     </strong>
                   </Text>
