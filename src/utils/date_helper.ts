@@ -9,6 +9,9 @@ import {
   startOfMonth,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
+import { DateTime, WeekdayNumbers } from 'luxon'
+import spacetime from 'spacetime'
+import soft from 'timezone-soft'
 
 import { TimeRange } from '@/types/Account'
 import { CustomTimeRange } from '@/types/common'
@@ -17,20 +20,25 @@ const timezonesObj = ct.getAllTimezones()
 const timezonesKeys = Object.keys(timezonesObj) as Array<
   keyof typeof timezonesObj
 >
-const _timezones = timezonesKeys
+export const timezones = timezonesKeys
   .map(key => {
+    const timeInfo = timezonesObj[key]
+    const display = soft(key)[0]
+    let show = timeInfo.utcOffsetStr
+    let offset = timeInfo.utcOffset
+    // are we in standard time, or daylight time?
+    const s = spacetime.now(display?.iana)
+    if (display?.daylight && s.isDST()) {
+      show = timeInfo.dstOffsetStr
+      offset = timeInfo.dstOffset
+    }
     return {
-      name: `${key} (GMT${timezonesObj[key].dstOffsetStr})`,
+      name: `${key} (UTC${show})`,
       tzCode: key,
-      offset: timezonesObj[key].utcOffset,
+      offset,
     }
   })
   .sort((a, b) => a.offset - b.offset)
-
-export const timezones = [
-  ..._timezones,
-  { tzCode: 'UTC', name: '(UTC+00:00) UTC' },
-]
 
 export const convertTimeRangesToDate = (
   timeRanges: CustomTimeRange[],
@@ -42,26 +50,53 @@ export const convertTimeRangesToDate = (
     }
     const timezone =
       timeRange.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
-    const options = {
-      weekStartsOn: timeRange.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+    const [startHours, startMinutes] = timeRange.start.split(':').map(Number)
+    const [endHours, endMinutes] = timeRange.end.split(':').map(Number)
+    const baseOptions = {
+      day: date.getDay(),
+      month: date.getMonth(),
+      year: date.getFullYear(),
+      weekday: (timeRange.weekday + 1) as WeekdayNumbers,
+    }
+    const startTime = DateTime.local()
+      .setZone(timezone)
+      .set({
+        hour: startHours,
+        minute: startMinutes,
+        ...baseOptions,
+      })
+      .toJSDate()
+    const endTime = DateTime.local()
+      .setZone(timezone)
+      .set({
+        hour: endHours,
+        minute: endMinutes,
+        ...baseOptions,
+      })
+      .toJSDate()
+    if (
+      date.getDay() === 4 &&
+      timezone === 'Pacific/Kiritimati' &&
+      timeRange.weekday === 4
+    ) {
+      console.log({
+        date: date.toLocaleDateString('en', {
+          timeZone: timezone,
+          hour: 'numeric',
+          dateStyle: 'full',
+        }),
+        start: startTime.toLocaleDateString('en', {
+          timeZone: timezone,
+        }),
+        end: endTime.toLocaleDateString('en', {
+          timeZone: timezone,
+        }),
+        timeRange,
+      })
     }
     return {
-      start: zonedTimeToUtc(
-        setDay(
-          new Date(`${date.toDateString()} ${timeRange.start}`),
-          timeRange.weekday,
-          options
-        ),
-        timezone
-      ),
-      end: zonedTimeToUtc(
-        setDay(
-          new Date(`${date.toDateString()} ${timeRange.end}`),
-          timeRange.weekday,
-          options
-        ),
-        timezone
-      ),
+      start: startTime,
+      end: endTime,
     }
   })
 }
@@ -106,4 +141,12 @@ export const addRecurrence = (
   }
   const newEnd = add(newStart, { minutes: diffMinutes })
   return { start: newStart, end: newEnd }
+}
+
+function getDateInTimezone(timezone: string) {
+  const timezoneOffset =
+    timezones.find(tz => tz.tzCode === timezone)?.offset || 0
+  const date = new Date()
+  const utc = date.getTime() + date.getTimezoneOffset() * 60000 // Convert to UTC
+  return new Date(utc + timezoneOffset * 3600000) // Apply timezone offset
 }
