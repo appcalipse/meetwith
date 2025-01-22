@@ -15,6 +15,7 @@ import {
   isSameMinute,
   isWithinInterval,
 } from 'date-fns'
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
 import React, { useEffect } from 'react'
 
 import { CustomTimeRange } from '@/types/common'
@@ -32,6 +33,7 @@ export interface ScheduleTimeSlotProps {
   pickedTime: Date | number | null
   handleTimePick?: (time: Date | number) => void
   meetingMembers: MeetingMembers[]
+  timezone: string
 }
 
 type UserState = {
@@ -86,12 +88,13 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
             break
           }
         }
-        if (isBefore(interval.start, new Date())) {
+        if (
+          isBefore(interval.start, utcToZonedTime(new Date(), props.timezone))
+        ) {
           userAvailability.push(false)
         }
 
         const timeRangesAsDates = convertTimeRangesToDate(timeRanges, date)
-
         if (timeRangesAsDates.length === 0) {
           userAvailability.push(false)
         }
@@ -137,7 +140,7 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
   const handleTimePick = (index: number) => {
     if (props.handleTimePick) {
       const time = index === 0 ? slot.start : add(slot.start, { minutes: 30 })
-      if (isBefore(time, new Date())) return
+      if (isBefore(time, utcToZonedTime(new Date(), props.timezone))) return
       props.handleTimePick(time)
     }
   }
@@ -196,10 +199,12 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
                 px={4}
               >
                 <Text mb={'7px'}>
-                  {format(
+                  {formatInTimeZone(
                     index === 0 ? slot.start : add(slot.start, { minutes: 30 }),
+                    props.timezone,
                     'E, do MMMM - h:mm a'
-                  )}
+                  )}{' '}
+                  ({props.timezone})
                 </Text>
                 <VStack w="fit-content" gap={1} align={'flex-start'}>
                   {userStates?.[index]?.map((userState, index) => (
