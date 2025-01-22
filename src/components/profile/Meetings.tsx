@@ -11,6 +11,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { addHours } from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
@@ -31,8 +32,10 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
   const { push } = useRouter()
-  const endToFetch = addHours(new Date(), -1)
-
+  const timezone =
+    currentAccount?.preferences?.timezone ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  const endToFetch = addHours(utcToZonedTime(new Date(), timezone), -1)
   const { slotId } = useRouter().query
 
   const fetchMeetings = async (reset?: boolean) => {
@@ -91,7 +94,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
           <MeetingCard
             key={meeting.id}
             meeting={meeting}
-            timezone={Intl.DateTimeFormat().resolvedOptions().timeZone}
+            timezone={timezone}
             onCancel={removed =>
               afterClose(MeetingChangeType.DELETE, undefined, removed)
             }
@@ -193,7 +196,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
         <Heading flex={1} fontSize="2xl">
           My Meetings
           <Text fontSize="sm" fontWeight={100} mt={1}>
-            Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+            Timezone: {currentAccount.preferences.timezone}
           </Text>
         </Heading>
         <Button
