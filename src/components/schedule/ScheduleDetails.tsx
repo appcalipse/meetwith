@@ -14,6 +14,7 @@ import {
 } from '@chakra-ui/react'
 import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import React, { useContext, useEffect, useState } from 'react'
 import { FaCalendar, FaClock } from 'react-icons/fa'
 import { FaArrowLeft, FaUserGroup } from 'react-icons/fa6'
@@ -171,7 +172,8 @@ const ScheduleDetails = () => {
             <HStack gap={3}>
               <FaClock size={24} />
               <Text fontWeight="700">
-                {format(pickedTime!, 'hh:mm a')} ({timezone})
+                {formatInTimeZone(pickedTime!, timezone, 'hh:mm a')} ({timezone}
+                )
               </Text>
             </HStack>
             <HStack gap={3}>
