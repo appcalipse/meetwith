@@ -1,4 +1,5 @@
 import { AddIcon, InfoIcon } from '@chakra-ui/icons'
+import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
@@ -20,7 +21,6 @@ import {
 } from '@chakra-ui/react'
 import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
-import { useRouter } from 'next/router'
 import React, { ReactNode, useContext, useState } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
@@ -33,7 +33,6 @@ import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MeetingReminders } from '@/types/common'
-import { Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
@@ -46,10 +45,10 @@ import {
   MeetingRemindersComponent,
 } from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
+import { isProAccount } from '@/utils/subscription_manager'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 const ScheduleBase = () => {
-  const { query } = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const {
     participants,
@@ -117,11 +116,7 @@ const ScheduleBase = () => {
         m="auto"
         alignItems="flex-start"
       >
-        <Heading fontSize="x-large">
-          {query.intent === Intents.UPDATE_MEETING
-            ? 'Update meeting'
-            : 'Schedule new meeting'}
-        </Heading>
+        <Heading fontSize="x-large">Schedule new meeting</Heading>
         <VStack width="100%" gap={4}>
           <Flex width="100%" gap={4}>
             <FormControl>
