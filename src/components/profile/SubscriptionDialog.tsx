@@ -256,7 +256,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
     setWaitingConfirmation(false)
     setNeedsApproval(false)
     setCheckingCanSubscribe(false)
-    updateSubscriptionDetails()
+    void updateSubscriptionDetails()
   }
   const subscribe = async () => {
     setCheckingCanSubscribe(true)
@@ -512,7 +512,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
     )
   }
 
-  const renderChainInfo = () => {
+  const renderChainInfo = (showInfo = false) => {
     if (_currentSubscription) {
       return _currentSubscription.chain === SupportedChain.CUSTOM ? (
         <Text mt="4">You are currently subscribed using a coupon.</Text>
@@ -534,7 +534,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
           </HStack>
         </>
       )
-    } else {
+    } else if (showInfo) {
       return (
         <>
           <Heading mt={4} size={'lg'}>
@@ -627,6 +627,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
           <Button
             colorScheme="primary"
             alignSelf="flex-center"
+            hidden={_currentSubscription?.chain === SupportedChain.CUSTOM}
             loadingText={
               txRunning
                 ? waitingConfirmation

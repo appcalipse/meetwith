@@ -10,6 +10,7 @@ import {
   ConnectResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
+import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
@@ -24,7 +25,9 @@ import {
   ConferenceMeeting,
   DBSlot,
   GroupMeetingRequest,
+  GuestMeetingCancel,
   MeetingDecrypted,
+  MeetingInfo,
   TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -36,7 +39,6 @@ import {
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
-import { Row } from '@/types/supabase'
 import { TelegramConnection } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
@@ -56,11 +58,12 @@ import {
   IsGroupAdminError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  MeetingNotFoundError,
   NoActiveSubscription,
   SubscriptionNotCustom,
   TimeNotAvailableError,
+  UnauthorizedError,
   UrlCreationError,
-  UserInvitationError,
   ZoomServiceUnavailable,
 } from './errors'
 import QueryKeys from './query_keys'
@@ -446,7 +449,15 @@ export const getMeetingsForDashboard = async (
     created_at: slot.created_at ? new Date(slot.created_at) : undefined,
   }))
 }
-
+export const syncMeeting = async (
+  decryptedMeetingData: MeetingInfo
+): Promise<void> => {
+  try {
+    await internalFetch(`/secure/meetings/sync`, 'PATCH', {
+      decryptedMeetingData,
+    })
+  } catch (e) {}
+}
 export const getGroups = async (
   limit?: number,
   offset?: number
@@ -501,10 +512,14 @@ export const updateGroupRole = async (
   return !!response?.success
 }
 
-export const joinGroup = async (group_id: string, email_address?: string) => {
+export const joinGroup = async (
+  group_id: string,
+  email_address?: string,
+  type?: InviteType
+) => {
   const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/join${
-      email_address ? `?email_address=${email_address}` : ''
+    `/secure/group/${group_id}/join?type=${type || InviteType.PRIVATE}${
+      email_address ? `&email_address=${email_address}` : ''
     }`,
     'POST'
   )
@@ -597,6 +612,41 @@ export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
     ...response,
     start: new Date(response.start),
     end: new Date(response.end),
+  }
+}
+export const getMeetingGuest = async (slot_id: string): Promise<DBSlot> => {
+  const response = await queryClient.fetchQuery(
+    QueryKeys.meeting(slot_id),
+    () => internalFetch(`/meetings/guest/${slot_id}`) as Promise<DBSlot>
+  )
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
+  }
+}
+
+export const guestMeetingCancel = async (
+  slot_id: string,
+  payload: GuestMeetingCancel
+) => {
+  try {
+    const response = await internalFetch<{ success: true }>(
+      `/meetings/guest/${slot_id}`,
+      'DELETE',
+      payload
+    )
+    return response
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        throw new MeetingNotFoundError(slot_id)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      } else {
+        throw e
+      }
+    }
   }
 }
 
