@@ -72,7 +72,7 @@ const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-10-21')
 const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const defineLabel = (start: Date, end: Date): Label | null => {
     const now = utcToZonedTime(new Date(), timezone)
-    console.log({ start, end, now })
+
     if (isWithinInterval(now, { start, end })) {
       return {
         color: 'yellow',
