@@ -85,6 +85,7 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
         for (const busySlot of userBusySlots) {
           if (isWithinInterval(interval.start, busySlot)) {
             userAvailability.push(false)
+
             break
           }
         }
@@ -94,16 +95,24 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
           userAvailability.push(false)
         }
 
-        const timeRangesAsDates = convertTimeRangesToDate(timeRanges, date)
+        const timeRangesAsDates = convertTimeRangesToDate(
+          timeRanges,
+          interval.start as Date
+        )
+
         if (timeRangesAsDates.length === 0) {
           userAvailability.push(false)
         }
         const isInRange = []
         for (const timeRange of timeRangesAsDates) {
-          if (!isWithinInterval(interval.start, timeRange)) {
-            isInRange.push(false)
-          } else {
-            isInRange.push(true)
+          try {
+            if (!isWithinInterval(interval.start, timeRange)) {
+              isInRange.push(false)
+            } else {
+              isInRange.push(true)
+            }
+          } catch (e) {
+            console.error(e)
           }
         }
         if (isInRange.every(val => val === false)) {
@@ -135,7 +144,7 @@ export function ScheduleTimeSlot(props: ScheduleTimeSlotProps) {
       }
     }
     setState(newStates)
-  }, [date, slot, busySlots, availabilities])
+  }, [date, slot, busySlots, availabilities, props.timezone])
 
   const handleTimePick = (index: number) => {
     if (props.handleTimePick) {
