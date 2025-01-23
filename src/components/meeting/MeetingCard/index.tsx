@@ -54,11 +54,6 @@ interface MeetingCardProps {
   meeting: DBSlot
   timezone: string
   onCancel: (removed: string[]) => void
-  onClickToOpen: (
-    meeting: DBSlot,
-    decryptedMeeting: MeetingDecrypted,
-    timezone: string
-  ) => void
 }
 
 interface Label {
@@ -68,12 +63,7 @@ interface Label {
 
 const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-10-21')
 
-const MeetingCard = ({
-  meeting,
-  timezone,
-  onCancel,
-  onClickToOpen,
-}: MeetingCardProps) => {
+const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const defineLabel = (start: Date, end: Date): Label | null => {
     const now = new Date()
     if (isWithinInterval(now, { start, end })) {
