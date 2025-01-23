@@ -1,19 +1,22 @@
 import * as ct from 'countries-and-timezones'
 import {
   add,
+  addDays,
   differenceInMinutes,
   endOfMonth,
+  endOfWeek,
   getWeekOfMonth,
   isBefore,
   setDay,
+  setHours,
+  setMinutes,
   startOfMonth,
+  startOfWeek,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import { DateTime, WeekdayNumbers } from 'luxon'
 import spacetime from 'spacetime'
 import soft from 'timezone-soft'
 
-import { TimeRange } from '@/types/Account'
 import { CustomTimeRange } from '@/types/common'
 import { MeetingRepeat } from '@/types/Meeting'
 const timezonesObj = ct.getAllTimezones()
@@ -45,58 +48,68 @@ export const convertTimeRangesToDate = (
   date: Date
 ) => {
   return timeRanges.map(timeRange => {
-    if (timeRange.end === '24:00') {
-      timeRange.end = '23:59'
-    }
     const timezone =
       timeRange.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
     const [startHours, startMinutes] = timeRange.start.split(':').map(Number)
     const [endHours, endMinutes] = timeRange.end.split(':').map(Number)
-    const baseOptions = {
-      day: date.getDay(),
-      month: date.getMonth(),
-      year: date.getFullYear(),
-      weekday: (timeRange.weekday + 1) as WeekdayNumbers,
+
+    const startOfWeekDate = startOfWeek(date, {
+      weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
+    }) // Adjust week start if needed
+    const endOfWeekDate = endOfWeek(date, {
+      weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
+    })
+
+    // Calculate the start and end dates based on the provided time range
+    let startDate = setMinutes(
+      setHours(
+        setDay(startOfWeekDate, timeRange.weekday, {
+          weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
+        }),
+        startHours
+      ),
+      startMinutes
+    )
+    let endDate = setMinutes(
+      setHours(
+        setDay(startOfWeekDate, timeRange.weekday, {
+          weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
+        }),
+        endHours
+      ),
+      endMinutes
+    )
+
+    // Handle 24:00 case
+    if (endHours === 24) {
+      endDate = addDays(
+        setMinutes(
+          setHours(
+            setDay(startOfWeekDate, timeRange.weekday, {
+              weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
+            }),
+            0
+          ),
+          0
+        ),
+        1
+      )
     }
-    const startTime = DateTime.local()
-      .setZone(timezone)
-      .set({
-        hour: startHours,
-        minute: startMinutes,
-        ...baseOptions,
-      })
-      .toJSDate()
-    const endTime = DateTime.local()
-      .setZone(timezone)
-      .set({
-        hour: endHours,
-        minute: endMinutes,
-        ...baseOptions,
-      })
-      .toJSDate()
-    if (
-      date.getDay() === 4 &&
-      timezone === 'Pacific/Kiritimati' &&
-      timeRange.weekday === 4
-    ) {
-      console.log({
-        date: date.toLocaleDateString('en', {
-          timeZone: timezone,
-          hour: 'numeric',
-          dateStyle: 'full',
-        }),
-        start: startTime.toLocaleDateString('en', {
-          timeZone: timezone,
-        }),
-        end: endTime.toLocaleDateString('en', {
-          timeZone: timezone,
-        }),
-        timeRange,
-      })
+
+    // Ensure dates are within the same week
+    if (startDate > endOfWeekDate) {
+      startDate = addDays(startDate, -7)
     }
+    if (endDate > endOfWeekDate) {
+      endDate = addDays(endDate, -7)
+    }
+
+    // Convert to timezone if provided
+    startDate = zonedTimeToUtc(startDate, timezone)
+    endDate = zonedTimeToUtc(endDate, timezone)
     return {
-      start: startTime,
-      end: endTime,
+      start: startDate,
+      end: endDate,
     }
   })
 }
