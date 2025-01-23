@@ -12,14 +12,16 @@ import {
 } from '@chakra-ui/react'
 import { addHours } from 'date-fns'
 import { useRouter } from 'next/router'
-import { ReactNode, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
 import { Account } from '@/types/Account'
+import { decodeMeeting } from '@/utils/calendar_manager'
 
 import { DBSlot, MeetingChangeType } from '../../types/Meeting'
-import { getMeetingsForDashboard } from '../../utils/api_helper'
+import { getMeeting, getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
+import { useMeetingDialog } from '../schedule/meeting.dialog.hook'
 
 const Meetings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
@@ -30,6 +32,8 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const [firstFetch, setFirstFetch] = useState(true)
   const { push } = useRouter()
   const endToFetch = addHours(new Date(), -1)
+
+  const { slotId } = useRouter().query
 
   const fetchMeetings = async (reset?: boolean) => {
     const PAGE_SIZE = 5
@@ -59,7 +63,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
     resetState()
   }, [currentAccount?.address])
 
-  let content: ReactNode
+  let content: any
 
   if (firstFetch) {
     content = (
@@ -91,6 +95,9 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
             onCancel={removed =>
               afterClose(MeetingChangeType.DELETE, undefined, removed)
             }
+            onClickToOpen={(meeting, decryptedMeeting, timezone) =>
+              openMeetingDialog(meeting, decryptedMeeting, timezone, afterClose)
+            }
           />
         ))}
         {!noMoreFetch && !firstFetch && (
@@ -109,6 +116,12 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
       </VStack>
     )
   }
+
+  const [MeetingDialog, openMeetingDialog] = useMeetingDialog()
+
+  useEffect(() => {
+    slotId && fillMeeting()
+  }, [slotId])
 
   const afterClose = (
     changeType: MeetingChangeType,
@@ -161,6 +174,17 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
     }
   }
 
+  const fillMeeting = async () => {
+    const meeting = await getMeeting(slotId as string)
+    const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
+    openMeetingDialog(
+      meeting,
+      decodedMeeting,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      afterClose
+    )
+  }
+
   const toast = useToast()
 
   return (
@@ -193,6 +217,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
         New meeting
       </Button>
       {content}
+      <MeetingDialog />
     </Flex>
   )
 }
