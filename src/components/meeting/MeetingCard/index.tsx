@@ -55,11 +55,6 @@ interface MeetingCardProps {
   meeting: DBSlot
   timezone: string
   onCancel: (removed: string[]) => void
-  onClickToOpen: (
-    meeting: DBSlot,
-    decryptedMeeting: MeetingDecrypted,
-    timezone: string
-  ) => void
 }
 
 interface Label {
