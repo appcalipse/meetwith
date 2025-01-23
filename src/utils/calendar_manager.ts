@@ -7,7 +7,7 @@ import {
   getWeekOfMonth,
   getYear,
 } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
 import { Encrypted, encryptWithPublicKey } from 'eth-crypto'
 import {
   Alarm,
@@ -993,11 +993,12 @@ const dateToLocalizedRange = (
   timezone: string,
   includeTimezone?: boolean
 ): string => {
-  const start = `${format(
-    utcToZonedTime(start_date, timezone),
+  const start = `${formatInTimeZone(
+    start_date,
+    timezone,
     'eeee, LLL d • p - '
   )}`
-  let end = `${format(utcToZonedTime(end_date, timezone), 'p')}`
+  let end = `${formatInTimeZone(end_date, timezone, 'p')}`
   if (includeTimezone) {
     end += ` (${timezone})`
   }
@@ -1083,9 +1084,11 @@ const decodeMeeting = async (
   }
   return null
 }
-const googleUrlParsedDate = (date: Date) => format(date, "yyyyMMdd'T'HHmmSS'Z'")
+const googleUrlParsedDate = (date: Date) =>
+  formatInTimeZone(date.getTime(), 'UTC', "yyyyMMdd'T'HHmmSS'Z'")
+
 const outLookUrlParsedDate = (date: Date) =>
-  format(date, "yyyy-MM-dd:HH:mm:SS'Z'")
+  formatInTimeZone(date, 'UTC', "yyyy-MM-dd:HH:mm:SS'Z'")
 const generateGoogleCalendarUrl = (
   start?: Date | number,
   end?: Date | number,
