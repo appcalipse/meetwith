@@ -151,13 +151,20 @@ export function SchedulePickTime({
       end.setHours(i + 1)
       end.setMinutes(0)
       end.setSeconds(0)
+      const startZoned = utcToZonedTime(start, timezone)
+      const endZoned = utcToZonedTime(end, timezone)
+
       const slot = {
-        start: utcToZonedTime(start, timezone),
-        end: utcToZonedTime(end, timezone),
+        start: startZoned,
+        end: endZoned,
       }
       slots.push(slot)
     }
-    return slots.sort((a, b) => a.start.getTime() - b.start.getTime())
+    return slots.sort((a, b) => {
+      const AhourInTimeZone = Number(formatInTimeZone(a.start, timezone, 'HH'))
+      const BhourInTimeZone = Number(formatInTimeZone(b.start, timezone, 'HH'))
+      return AhourInTimeZone - BhourInTimeZone
+    })
   }
   const months = useMemo(() => getMonthsForYear(), [currentMonth])
   const [dates, setDates] = useState<Array<Dates>>([])
