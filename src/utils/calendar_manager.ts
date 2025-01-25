@@ -7,7 +7,7 @@ import {
   getWeekOfMonth,
   getYear,
 } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
 import { Encrypted, encryptWithPublicKey } from 'eth-crypto'
 import {
   Alarm,
@@ -22,11 +22,13 @@ import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import {
   DBSlot,
+  ExtendedDBSlot,
   MeetingChangeType,
   MeetingDecrypted,
   MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
+  MeetingVersion,
   ParticipantMappingType,
   SchedulingType,
 } from '@/types/Meeting'
@@ -39,7 +41,6 @@ import {
   MeetingCreationRequest,
   RequestParticipantMapping,
 } from '@/types/Requests'
-import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
   generateMeetingUrl,
@@ -50,6 +51,7 @@ import {
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
   scheduleMeetingFromServer,
+  syncMeeting,
   updateMeeting as apiUpdateMeeting,
 } from '@/utils/api_helper'
 
@@ -129,21 +131,21 @@ export const sanitizeParticipants = (
       )
 
       if (elementsByEmail.length > 1) {
-        const toPickIfScheduler = elementsByEmail.filter(
+        const toPickIfScheduler = elementsByEmail.find(
           p =>
             p.guest_email === participant.guest_email &&
             p.type === ParticipantType.Scheduler
         )
-        if (!added && toPickIfScheduler[0]) {
-          sanitized.push(toPickIfScheduler[0])
+        if (!added && toPickIfScheduler) {
+          sanitized.push(toPickIfScheduler)
           added = true
         }
 
-        const toPick = elementsByEmail.filter(
+        const toPick = elementsByEmail.find(
           p => p.guest_email === participant.guest_email && p.name
         )
-        if (!added && toPick[0] && toPick[0].name) {
-          sanitized.push(toPick[0])
+        if (!added && toPick && toPick.name) {
+          sanitized.push(toPick)
           added = true
         }
       }
@@ -291,9 +293,15 @@ const buildMeetingData = async (
     participant.slot_id = existingSlotId || participant.slot_id
   }
 
-  const allSlotIds = sanitizedParticipants
+  const allAccountSlotIds = sanitizedParticipants
     .filter(p => p.account_address)
     .map(it => it.slot_id)
+    .filter(val => val !== undefined) as string[]
+
+  const allSlotIds = sanitizedParticipants
+    .map(it => it.slot_id!)
+    .filter(val => val !== undefined)
+
   const participantsMappings = []
 
   for (const participant of sanitizedParticipants) {
@@ -309,7 +317,9 @@ const buildMeetingData = async (
     const privateInfoComplete = JSON.stringify({
       ...privateInfo,
       // we need to store the other related slots in other to update the meeting later
-      related_slot_ids: allSlotIds.filter(id => id !== participant.slot_id),
+      related_slot_ids: allAccountSlotIds.filter(
+        id => id !== participant.slot_id
+      ),
     } as MeetingInfo)
 
     const participantMapping: RequestParticipantMapping = {
@@ -352,6 +362,7 @@ const buildMeetingData = async (
     meetingProvider,
     meetingReminders,
     meetingRepeat,
+    allSlotIds,
   }
 }
 
@@ -877,7 +888,7 @@ const participantStatusToICSStatus = (status: ParticipationStatus) => {
 }
 
 const decryptMeeting = async (
-  meeting: DBSlot,
+  meeting: ExtendedDBSlot,
   account: Account,
   signature?: string
 ): Promise<MeetingDecrypted | null> => {
@@ -889,6 +900,23 @@ const decryptMeeting = async (
   if (!content) return null
 
   const meetingInfo = JSON.parse(content) as MeetingInfo
+  if (
+    meeting?.conferenceData &&
+    meeting?.conferenceData.version === MeetingVersion.V2
+  ) {
+    if (
+      meeting.conferenceData.slots.length !== meetingInfo.participants.length
+    ) {
+      void syncMeeting(meetingInfo)
+      // Hide the removed participants from the UI while they're being removed from the backend
+      meetingInfo.related_slot_ids = meetingInfo.related_slot_ids.filter(id =>
+        meeting.conferenceData?.slots.includes(id)
+      )
+      meetingInfo.participants = meetingInfo.participants.filter(p =>
+        meeting.conferenceData?.slots.includes(p.slot_id!)
+      )
+    }
+  }
   return {
     id: meeting.id!,
     ...meeting,
@@ -965,11 +993,12 @@ const dateToLocalizedRange = (
   timezone: string,
   includeTimezone?: boolean
 ): string => {
-  const start = `${format(
-    utcToZonedTime(start_date, timezone),
+  const start = `${formatInTimeZone(
+    start_date,
+    timezone,
     'eeee, LLL d • p - '
   )}`
-  let end = `${format(utcToZonedTime(end_date, timezone), 'p')}`
+  let end = `${formatInTimeZone(end_date, timezone, 'p')}`
   if (includeTimezone) {
     end += ` (${timezone})`
   }
@@ -1055,9 +1084,11 @@ const decodeMeeting = async (
   }
   return null
 }
-const googleUrlParsedDate = (date: Date) => format(date, "yyyyMMdd'T'HHmmSS'Z'")
+const googleUrlParsedDate = (date: Date) =>
+  formatInTimeZone(date.getTime(), 'UTC', "yyyyMMdd'T'HHmmSS'Z'")
+
 const outLookUrlParsedDate = (date: Date) =>
-  format(date, "yyyy-MM-dd:HH:mm:SS'Z'")
+  formatInTimeZone(date, 'UTC', "yyyy-MM-dd:HH:mm:SS'Z'")
 const generateGoogleCalendarUrl = (
   start?: Date | number,
   end?: Date | number,
