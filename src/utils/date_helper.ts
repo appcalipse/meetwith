@@ -78,12 +78,9 @@ export const convertTimeRangesToDate = (
 
     // Handle 24:00 case
     if (endHours === 24) {
-      endDate = addDays(
-        setMinutes(
-          setHours(setDay(startOfWeekDate, timeRange.weekday, weekOptions), 0),
-          0
-        ),
-        1
+      endDate = setMinutes(
+        setHours(setDay(startOfWeekDate, timeRange.weekday, weekOptions), 23),
+        59
       )
     }
 
