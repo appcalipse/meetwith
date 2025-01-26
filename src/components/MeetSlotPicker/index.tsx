@@ -405,7 +405,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             validator={validator}
             monthChanged={onMonthChange}
             pickDay={handlePickDay}
-            pickedDay={pickedDay || new Date()}
+            pickedDay={pickedDay}
             selectedMonth={selectedMonth}
             setSelectedMonth={setSelectedMonth}
           />
@@ -451,7 +451,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               </Flex>
             ) : (
               <TimeSlots
-                pickedDay={pickedDay || new Date()}
+                pickedDay={pickedDay}
                 slotSizeMinutes={slotDurationInMinutes}
                 validator={timeSlotAvailability}
                 selfAvailabilityCheck={selfAvailabilityCheck}

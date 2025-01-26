@@ -37,11 +37,8 @@ export interface DBSlot extends TimeSlot {
   version: number
   meeting_info_encrypted: Encrypted
   recurrence: MeetingRepeat
-  public_decrypted_data?: MeetingDecrypted
 }
-export interface ExtendedDBSlot extends DBSlot {
-  conferenceData?: ConferenceMeeting
-}
+
 /**
  * Meetings providers list
  */
@@ -81,10 +78,7 @@ export enum MeetingAccessType {
    */
   PAID_MEETING = 'paid-meeting',
 }
-export enum MeetingVersion {
-  V1 = 'V1',
-  V2 = 'V2',
-}
+
 export interface ConferenceMeeting {
   id: string
   start: Date
@@ -96,8 +90,6 @@ export interface ConferenceMeeting {
   recurrence?: MeetingRepeat
   meeting_url: string
   created_at: Date
-  slots: Array<string>
-  version: MeetingVersion
 }
 
 export interface MeetingInfo {
@@ -178,14 +170,4 @@ export enum MeetingRepeat {
   DAILY = 'daily',
   WEEKLY = 'weekly',
   MONTHLY = 'monthly',
-}
-
-export interface GuestMeetingCancel {
-  metadata: string
-  currentTimezone: string
-  reason?: string
-}
-
-export interface MeetingCancelSyncRequest {
-  decryptedMeetingData: MeetingDecrypted
 }
