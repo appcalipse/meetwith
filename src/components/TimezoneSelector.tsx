@@ -1,25 +1,13 @@
 import { Select, SingleValue } from 'chakra-react-select'
-import * as ct from 'countries-and-timezones'
 import { useState } from 'react'
+
+import { timezones } from '@/utils/date_helper'
 
 interface TimezoneProps {
   value?: string | null
   onChange: (timezone?: string | null) => void
 }
-const timezonesObj = ct.getAllTimezones()
-const timezonesKeys = Object.keys(timezonesObj) as Array<
-  keyof typeof timezonesObj
->
-const _timezones = timezonesKeys
-  .map(key => {
-    return {
-      name: `${key} (GMT${timezonesObj[key].dstOffsetStr})`,
-      tzCode: key,
-      offset: timezonesObj[key].utcOffset,
-    }
-  })
-  .sort((a, b) => a.offset - b.offset)
-const timezones = [..._timezones, { tzCode: 'UTC', name: '(UTC+00:00) UTC' }]
+
 const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
   const tzs = timezones.map(tz => {
     return {
