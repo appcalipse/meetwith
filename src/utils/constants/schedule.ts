@@ -1,5 +1,6 @@
 import { MeetingReminders } from '@/types/common'
 import { MeetingRepeat } from '@/types/Meeting'
+
 export const MeetingNotificationOptions = [
   {
     value: MeetingReminders['5_MINUTES_BEFORE'],

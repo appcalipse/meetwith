@@ -16,6 +16,7 @@ async function loadSavedCredentialsIfExist(): Promise<
     const credentials = JSON.parse(content)
     return auth.fromJSON(credentials)
   } catch (err) {
+    console.log(err)
     return null
   }
 }

@@ -40,7 +40,6 @@ export interface MeetingCreationRequest {
   emailToSendReminders?: string
   meetingReminders?: Array<MeetingReminders>
   meetingRepeat: MeetingRepeat
-  allSlotIds?: Array<string>
 }
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
@@ -72,10 +71,7 @@ export interface MeetingCancelRequest {
   meeting: MeetingDecrypted
   currentTimezone: string
 }
-export interface GuestMeetingCancelRequest extends MeetingCancelRequest {
-  guest_email: string
-  reason: string
-}
+
 export interface MeetingSyncRequest {
   participantActing: ParticipantBaseInfo
   meeting_id: string
@@ -106,7 +102,6 @@ export interface GroupInviteNotifyRequest {
 export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   addressesToRemove: string[]
   guestsToRemove: ParticipantInfo[]
-  reason?: string
 }
 
 export interface DiscordAccountInfoRequest {

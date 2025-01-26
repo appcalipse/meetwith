@@ -1,7 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
-import CryptoJS from 'crypto-js'
-import { addMinutes, addMonths, isAfter } from 'date-fns'
+import CryptoJS, { enc, SHA1 } from 'crypto-js'
+import {
+  addMinutes,
+  addMonths,
+  differenceInMinutes,
+  isAfter,
+  isBefore,
+} from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
@@ -43,14 +49,11 @@ import {
 import {
   ConferenceMeeting,
   DBSlot,
-  ExtendedDBSlot,
   GroupMeetingRequest,
   GroupNotificationType,
   MeetingAccessType,
-  MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
-  MeetingVersion,
   ParticipantMappingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -96,14 +99,15 @@ import {
   TimeNotAvailableError,
   UnauthorizedError,
 } from '@/utils/errors'
-import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
+import { GateCondition } from '../types/TokenGating'
 import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
 } from './calendar_manager'
+import { diff } from './collections'
 import { apiUrl } from './constants'
-import { decryptContent, encryptContent } from './cryptography'
+import { encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
@@ -571,7 +575,7 @@ const getSlotsForDashboard = async (
   end: Date,
   limit: number,
   offset: number
-): Promise<ExtendedDBSlot[]> => {
+): Promise<DBSlot[]> => {
   const account = await getAccountFromDB(identifier)
 
   const _end = end.toISOString()
@@ -588,22 +592,7 @@ const getSlotsForDashboard = async (
     throw new Error(error.message)
     // //TODO: handle error
   }
-  for (const slot of data) {
-    if (!slot.id) continue
-    const conferenceMeeting = await getConferenceDataBySlotId(slot.id)
-    slot.conferenceData = conferenceMeeting
-  }
-  return data || []
-}
-const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
-  const { data, error } = await db.supabase
-    .from('slots')
-    .select()
-    .in('id', slotIds)
 
-  if (error) {
-    throw new Error(error.message)
-  }
   return data || []
 }
 
@@ -696,125 +685,13 @@ const getMeetingsFromDB = async (slotIds: string[]): Promise<DBSlot[]> => {
 
   return meetings
 }
-const getConferenceDataBySlotId = async (
-  slotId: string
-): Promise<ConferenceMeeting> => {
-  const { data, error } = await db.supabase
-    .from<ConferenceMeeting>('meetings')
-    .select('*')
-    .filter('slots', 'cs', [`{${slotId}}`])
-  if (error) {
-    throw new Error(error.message)
-  }
 
-  return data[0]
-}
-const handleGuestCancel = async (
-  metadata: string,
-  slotId: string,
-  timezone: string,
-  reason?: string
-) => {
-  metadata = decryptContent(process.env.NEXT_PUBLIC_SERVER_PUB_KEY!, metadata)
-  const participantGuestInfo: ParticipantInfoForNotification[] =
-    JSON.parse(metadata)
-  const actingGuest = participantGuestInfo.find(p => p.slot_id === slotId)
-  if (!actingGuest) {
-    throw new UnauthorizedError()
-  }
-
-  const conferenceMeeting = await getConferenceDataBySlotId(slotId)
-  if (!conferenceMeeting) {
-    throw new MeetingNotFoundError(slotId)
-  }
-  let addressesToRemove: Array<string> = []
-  let guestsToRemove: Array<ParticipantInfo> = []
-  let slotsToRemove: Array<string> = [slotId]
-  // If the guest scheduled the meeting cancel for all invitee
-  // For one on one meetings cancel meetings entirely for other user
-  if (
-    actingGuest.type === ParticipantType.Scheduler ||
-    conferenceMeeting.slots?.length <= 2
-  ) {
-    const slotData = await getSlotsByIds(
-      conferenceMeeting.slots.filter(s => s !== slotId)
-    )
-    addressesToRemove = slotData.map(s => s.account_address)
-    await db.supabase.from('slots').delete().in('id', conferenceMeeting.slots)
-    slotsToRemove = conferenceMeeting.slots
-    guestsToRemove = participantGuestInfo
-  }
-  await saveConferenceMeetingToDB({
-    ...conferenceMeeting,
-    slots: conferenceMeeting.slots.filter(s => slotsToRemove.includes(s)),
-  })
-
-  const body: MeetingCancelSyncRequest = {
-    participantActing: actingGuest,
-    addressesToRemove,
-    guestsToRemove,
-    meeting_id: conferenceMeeting.id,
-    start: new Date(conferenceMeeting.start),
-    end: new Date(conferenceMeeting.end),
-    created_at: new Date(conferenceMeeting.created_at!),
-    timezone,
-    reason,
-  }
-  // Doing notifications and syncs asynchronously
-  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
-    method: 'DELETE',
-    body: JSON.stringify(body),
-    headers: {
-      'X-Server-Secret': process.env.SERVER_SECRET!,
-      'Content-Type': 'application/json',
-    },
-  })
-}
-const handleMeetingCancelSync = async (
-  decryptedMeetingData: MeetingDecrypted
-) => {
-  const conferenceMeeting = await getConferenceMeetingFromDB(
-    decryptedMeetingData.meeting_id
-  )
-  if (!conferenceMeeting) {
-    throw new MeetingNotFoundError(decryptedMeetingData.meeting_id)
-  }
-  decryptedMeetingData.related_slot_ids =
-    decryptedMeetingData.related_slot_ids.filter(id =>
-      conferenceMeeting?.slots.includes(id)
-    )
-  decryptedMeetingData.participants = decryptedMeetingData.participants.filter(
-    p => conferenceMeeting?.slots.includes(p.slot_id!)
-  )
-  const { error, data: oldSlots } = await db.supabase
-    .from<DBSlot>('slots')
-    .select()
-    .in('id', conferenceMeeting.slots)
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  for (const slot of oldSlots) {
-    const account = await getAccountFromDB(slot.account_address)
-    await db.supabase
-      .from('slots')
-      .update({
-        meeting_info_encrypted: await encryptWithPublicKey(
-          account.internal_pub_key,
-          JSON.stringify(decryptedMeetingData)
-        ),
-        version: slot.version + 1,
-      })
-      .eq('id', slot.id)
-  }
-}
 const deleteMeetingFromDB = async (
   participantActing: ParticipantBaseInfo,
   slotIds: string[],
   guestsToRemove: ParticipantInfo[],
   meeting_id: string,
-  timezone: string,
-  reason?: string
+  timezone: string
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
@@ -837,7 +714,6 @@ const deleteMeetingFromDB = async (
     end: new Date(oldSlots[0].end),
     created_at: new Date(oldSlots[0].created_at!),
     timezone,
-    reason,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -919,8 +795,6 @@ const saveMeeting = async (
     provider: meeting.meetingProvider,
     reminders: meeting.meetingReminders,
     recurrence: meeting.meetingRepeat,
-    version: MeetingVersion.V2,
-    slots: meeting.allSlotIds || [],
   })
   if (!createdRootMeeting) {
     throw new Error(
@@ -2525,9 +2399,7 @@ const updateMeeting = async (
   if (meetingUpdateRequest.meeting_url.includes('huddle')) {
     meetingProvider = MeetingProvider.HUDDLE
   }
-  const meeting = await getConferenceMeetingFromDB(
-    meetingUpdateRequest.meeting_id
-  )
+
   // now that everything happened without error, it is safe to update the root meeting data
   const createdRootMeeting = await saveConferenceMeetingToDB({
     id: meetingUpdateRequest.meeting_id,
@@ -2537,10 +2409,6 @@ const updateMeeting = async (
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meetingProvider,
     recurrence: meetingUpdateRequest.meetingRepeat,
-    version: MeetingVersion.V2,
-    slots: meeting.slots?.filter(
-      val => !meetingUpdateRequest.slotsToRemove.includes(val)
-    ),
   })
 
   if (!createdRootMeeting)
@@ -2919,7 +2787,6 @@ export {
   getAccountNotificationSubscriptions,
   getAccountsNotificationSubscriptionEmails,
   getAppToken,
-  getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
   getExistingAccountsFromDB,
@@ -2941,8 +2808,6 @@ export {
   getTgConnection,
   getTgConnectionByTgId,
   getUserGroups,
-  handleGuestCancel,
-  handleMeetingCancelSync,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
