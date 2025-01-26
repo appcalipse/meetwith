@@ -73,7 +73,6 @@ const CancelMeetingPage: NextPage = () => {
         void router.push('/')
       }
     } catch (error) {
-      console.log(error)
       if (error instanceof MeetingNotFoundError) {
         toast({
           title: 'Meeting not found',
