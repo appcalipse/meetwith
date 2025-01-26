@@ -23,7 +23,6 @@ import {
   startOfMonth,
   sub,
 } from 'date-fns'
-import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
@@ -146,25 +145,16 @@ export function SchedulePickTime({
       start.setHours(i)
       start.setMinutes(0)
       start.setSeconds(0)
-
       const end = new Date(date)
       end.setHours(i + 1)
       end.setMinutes(0)
       end.setSeconds(0)
-      const startZoned = utcToZonedTime(start, timezone)
-      const endZoned = utcToZonedTime(end, timezone)
-
-      const slot = {
-        start: startZoned,
-        end: endZoned,
-      }
-      slots.push(slot)
+      slots.push({
+        start,
+        end,
+      })
     }
-    return slots.sort((a, b) => {
-      const AhourInTimeZone = Number(formatInTimeZone(a.start, timezone, 'HH'))
-      const BhourInTimeZone = Number(formatInTimeZone(b.start, timezone, 'HH'))
-      return AhourInTimeZone - BhourInTimeZone
-    })
+    return slots
   }
   const months = useMemo(() => getMonthsForYear(), [currentMonth])
   const [dates, setDates] = useState<Array<Dates>>([])
@@ -271,10 +261,10 @@ export function SchedulePickTime({
 
   useEffect(() => {
     handleSlotLoad()
-  }, [groupAvailability, currentMonth, timezone])
+  }, [groupAvailability, currentMonth])
   useEffect(() => {
     setDates(getDates(accountSlots))
-  }, [currentSelectedDate, timezone])
+  }, [currentSelectedDate])
   const handleScheduledTimeBack = () => {
     const currentDay = currentSelectedDate.getDate()
     if (currentDay === 1) {
@@ -318,16 +308,12 @@ export function SchedulePickTime({
     }
   }
   const isAm = (val: Date) => {
-    return formatInTimeZone(val, timezone, 'a').toLowerCase() === 'am'
+    return format(val, 'a').toLowerCase() === 'am'
   }
   const SLOTS = useMemo(
     () =>
       getEmptySlots(new Date()).map(val =>
-        formatInTimeZone(
-          val.start,
-          timezone,
-          isAm(val.start) ? 'HH:mm a' : 'hh:mm a'
-        )
+        format(val.start, isAm(val.start) ? 'HH:mm a' : 'hh:mm a')
       ),
     []
   )
@@ -412,10 +398,7 @@ export function SchedulePickTime({
               icon={<FaChevronLeft />}
               onClick={handleScheduledTimeBack}
               isDisabled={
-                isBefore(
-                  currentSelectedDate,
-                  utcToZonedTime(new Date(), timezone)
-                ) || isLoading
+                isBefore(currentSelectedDate, new Date()) || isLoading
               }
             />
             <Box maxW="350px" textAlign="center">
@@ -483,10 +466,10 @@ export function SchedulePickTime({
                     <VStack flex={1} align={'flex-start'} gap={2}>
                       <VStack align={'center'} w="100%" h={12} gap={0}>
                         <Text fontWeight={'700'}>
-                          {formatInTimeZone(date.date, timezone, 'dd')}
+                          {format(date.date, 'dd')}
                         </Text>
                         <Text fontWeight={'500'}>
-                          {formatInTimeZone(date.date, timezone, 'EE')}
+                          {format(date.date, 'EE')}
                         </Text>
                       </VStack>
                       <VStack
@@ -500,9 +483,8 @@ export function SchedulePickTime({
                         {date.slots.map(slot => {
                           return (
                             <ScheduleTimeSlot
-                              key={formatInTimeZone(
+                              key={format(
                                 slot.start,
-                                timezone,
                                 'DDDD,MMMM,yyyy, hh:mm,a'
                               )}
                               slot={slot}
@@ -515,7 +497,6 @@ export function SchedulePickTime({
                                 handleTimePick(time)
                                 handlePageSwitch(Page.SCHEDULE_DETAILS)
                               }}
-                              timezone={timezone}
                             />
                           )
                         })}

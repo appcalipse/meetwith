@@ -193,6 +193,7 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
   }
 
   const handleSave = async () => {
+    console.log('saving....')
     if (!currentAccount?.preferences || !timezone) return
     setLoadingSave(true)
     const updatedAccount = await saveAccountChanges({
