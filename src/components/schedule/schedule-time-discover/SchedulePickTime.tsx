@@ -15,15 +15,20 @@ import { Select, SingleValue } from 'chakra-react-select'
 import {
   add,
   addDays,
+  addHours,
   endOfMonth,
   format,
   isBefore,
   isSameDay,
   isSameMonth,
+  setHours,
+  setMinutes,
+  setSeconds,
   startOfMonth,
   sub,
 } from 'date-fns'
-import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
+import { formatInTimeZone, utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
+import { DateTime } from 'luxon'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
@@ -139,32 +144,26 @@ export function SchedulePickTime({
     }
     return months
   }
-  const getEmptySlots = (date: Date) => {
+  const getEmptySlots = (time: Date) => {
     const slots = []
+
     for (let i = 0; i < 24; i++) {
-      const start = new Date(date)
-      start.setHours(i)
-      start.setMinutes(0)
-      start.setSeconds(0)
-
-      const end = new Date(date)
-      end.setHours(i + 1)
-      end.setMinutes(0)
-      end.setSeconds(0)
-      const startZoned = utcToZonedTime(start, timezone)
-      const endZoned = utcToZonedTime(end, timezone)
-
+      const start = DateTime.fromJSDate(time)
+        .setZone(timezone)
+        .set({
+          hour: i,
+          minute: 0,
+          second: 0,
+        })
+        .toJSDate()
+      const end = zonedTimeToUtc(addHours(start, 1), timezone)
       const slot = {
-        start: startZoned,
-        end: endZoned,
+        start,
+        end,
       }
       slots.push(slot)
     }
-    return slots.sort((a, b) => {
-      const AhourInTimeZone = Number(formatInTimeZone(a.start, timezone, 'HH'))
-      const BhourInTimeZone = Number(formatInTimeZone(b.start, timezone, 'HH'))
-      return AhourInTimeZone - BhourInTimeZone
-    })
+    return slots
   }
   const months = useMemo(() => getMonthsForYear(), [currentMonth])
   const [dates, setDates] = useState<Array<Dates>>([])
