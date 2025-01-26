@@ -339,7 +339,7 @@ const Schedule: NextPage = () => {
         return
       }
       if (!pickedTime) return
-      const start = zonedTimeToUtc(pickedTime as Date, timezone)
+      const start = new Date(pickedTime)
       const end = addMinutes(new Date(start), duration)
       if (meetingId && intent === Intents.UPDATE_MEETING) {
         await updateMeeting(
