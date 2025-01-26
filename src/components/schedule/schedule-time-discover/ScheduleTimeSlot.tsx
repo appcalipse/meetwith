@@ -9,7 +9,6 @@ import {
 import * as Tooltip from '@radix-ui/react-tooltip'
 import {
   add,
-  format,
   Interval,
   isBefore,
   isSameMinute,
