@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import crypto from 'crypto'
 import * as react from 'react'
 
@@ -21,7 +21,7 @@ jest.mock('next/router', () => ({
   }),
 }))
 describe('ThemeSwitcher', () => {
-  it('should react to theme mode switch', () => {
+  it('should react to theme mode switch', async () => {
     // givens
     // mock forwardRef and display name
     // jest.spyOn(react, 'forwardRef').mockImplementation((props, ref) => {
@@ -30,7 +30,9 @@ describe('ThemeSwitcher', () => {
 
     const rawComponent = <Home />
     // when
-    render(rawComponent, { wrapper: ChakraTestWrapper })
+    await act(async () => {
+      render(rawComponent, { wrapper: ChakraTestWrapper })
+    })
 
     // then
     expect(screen.getByTestId('main-container')).toBeInTheDocument()
