@@ -28,6 +28,10 @@ import { getAllParticipantsDisplayName } from './user_manager'
 const FROM = 'Meetwith <no_reply@meetwithwallet.xyz>'
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
+const trackingSettings = {
+  clickTracking: { enable: false },
+  openTracking: { enable: false },
+}
 export const newGroupInviteEmail = async (
   toEmail: string,
   participant: ParticipantInfoForInviteNotification,
@@ -51,6 +55,7 @@ export const newGroupInviteEmail = async (
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
+    trackingSettings,
   }
   try {
     await sgMail.send(msg)
@@ -83,6 +88,7 @@ export const newGroupRejectEmail = async (
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
+    trackingSettings,
   }
   try {
     await sgMail.send(msg)
@@ -207,6 +213,7 @@ export const newMeetingEmail = async (
         disposition: 'attachment',
       },
     ],
+    trackingSettings,
   }
 
   try {
@@ -291,6 +298,7 @@ export const cancelledMeetingEmail = async (
         disposition: 'attachment',
       },
     ],
+    trackingSettings,
   }
 
   try {
@@ -433,6 +441,7 @@ export const updateMeetingEmail = async (
         disposition: 'attachment',
       },
     ],
+    trackingSettings,
   }
 
   try {
@@ -487,6 +496,7 @@ export const sendInvitationEmail = async (
       subject: subject,
       html: rendered,
       text: `${inviterName} invited you to join ${group.name}. Accept your invite here: ${invitationLink}`,
+      trackingSettings,
     }
 
     await sgMail.send(msg)
