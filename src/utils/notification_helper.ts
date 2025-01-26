@@ -4,7 +4,6 @@ import { differenceInMinutes } from 'date-fns'
 import { MeetingReminders } from '@/types/common'
 import { Group, MemberType } from '@/types/Group'
 import { appUrl } from '@/utils/constants'
-import { encryptContent } from '@/utils/cryptography'
 
 import {
   AccountNotifications,
@@ -89,8 +88,7 @@ export const notifyForMeetingCancellation = async (
   start: Date,
   end: Date,
   created_at: Date,
-  timezone: string,
-  reason?: string
+  timezone: string
 ): Promise<void> => {
   const participantsInfo: ParticipantInfoForNotification[] = []
 
@@ -125,8 +123,7 @@ export const notifyForMeetingCancellation = async (
       start,
       end,
       created_at!,
-      '',
-      reason
+      ''
     )
   )
 }
@@ -213,11 +210,6 @@ const workNotifications = async (
       const participant = participantsInfo[i]
 
       if (participant.guest_email) {
-        const guestInfo = participantsInfo.filter(p => p.guest_email)
-        const guestInfoEncrypted = encryptContent(
-          process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
-          JSON.stringify(guestInfo)
-        )
         promises.push(
           getEmailNotification(
             changeType,
@@ -234,8 +226,7 @@ const workNotifications = async (
             changes,
             meetingProvider,
             meetingReminders,
-            meetingRepeat,
-            guestInfoEncrypted
+            meetingRepeat
           )
         )
       } else if (
@@ -396,8 +387,7 @@ const getEmailNotification = async (
   changes?: MeetingChange,
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat?: MeetingRepeat,
-  guestInfoEncrypted?: string
+  meetingRepeat?: MeetingRepeat
 ): Promise<boolean> => {
   const toEmail =
     participant.guest_email ||
@@ -427,8 +417,7 @@ const getEmailNotification = async (
         created_at,
         meetingProvider,
         meetingReminders,
-        meetingRepeat,
-        guestInfoEncrypted
+        meetingRepeat
       )
     case MeetingChangeType.DELETE:
       const displayName = getParticipantActingDisplayName(
@@ -448,8 +437,7 @@ const getEmailNotification = async (
         participant.meeting_id,
         participant.account_address,
         '',
-        created_at,
-        title // reason for cancelling meeting if any
+        created_at
       )
     case MeetingChangeType.UPDATE:
       return updateMeetingEmail(
