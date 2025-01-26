@@ -13,7 +13,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { zonedTimeToUtc } from 'date-fns-tz'
+import { formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz'
 import spacetime from 'spacetime'
 import soft from 'timezone-soft'
 
@@ -52,29 +52,25 @@ export const convertTimeRangesToDate = (
       timeRange.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
     const [startHours, startMinutes] = timeRange.start.split(':').map(Number)
     const [endHours, endMinutes] = timeRange.end.split(':').map(Number)
-
-    const startOfWeekDate = startOfWeek(date, {
+    const weekOptions = {
       weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
-    }) // Adjust week start if needed
-    const endOfWeekDate = endOfWeek(date, {
-      weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
-    })
+    } as {
+      weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
+    }
+    const startOfWeekDate = startOfWeek(date, weekOptions) // Adjust week start if needed
+    const endOfWeekDate = endOfWeek(date, weekOptions)
 
     // Calculate the start and end dates based on the provided time range
     let startDate = setMinutes(
       setHours(
-        setDay(startOfWeekDate, timeRange.weekday, {
-          weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
-        }),
+        setDay(startOfWeekDate, timeRange.weekday, weekOptions),
         startHours
       ),
       startMinutes
     )
     let endDate = setMinutes(
       setHours(
-        setDay(startOfWeekDate, timeRange.weekday, {
-          weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
-        }),
+        setDay(startOfWeekDate, timeRange.weekday, weekOptions),
         endHours
       ),
       endMinutes
@@ -84,12 +80,7 @@ export const convertTimeRangesToDate = (
     if (endHours === 24) {
       endDate = addDays(
         setMinutes(
-          setHours(
-            setDay(startOfWeekDate, timeRange.weekday, {
-              weekStartsOn: timeRange.weekday === 0 ? 6 : 0,
-            }),
-            0
-          ),
+          setHours(setDay(startOfWeekDate, timeRange.weekday, weekOptions), 0),
           0
         ),
         1
@@ -154,12 +145,4 @@ export const addRecurrence = (
   }
   const newEnd = add(newStart, { minutes: diffMinutes })
   return { start: newStart, end: newEnd }
-}
-
-function getDateInTimezone(timezone: string) {
-  const timezoneOffset =
-    timezones.find(tz => tz.tzCode === timezone)?.offset || 0
-  const date = new Date()
-  const utc = date.getTime() + date.getTimezoneOffset() * 60000 // Convert to UTC
-  return new Date(utc + timezoneOffset * 3600000) // Apply timezone offset
 }
