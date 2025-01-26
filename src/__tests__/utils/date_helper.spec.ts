@@ -108,7 +108,7 @@ describe('', () => {
   })
   test('all ranges are converted to dates', () => {
     expect(
-      convertTimeRangesToDate(TEST_INTERVALS, new Date('2024-11-23'))
+      convertTimeRangesToDate(TEST_INTERVALS, new Date('2024-11-17'))
     ).toStrictEqual([
       {
         start: new Date('2024-11-17T17:00:00.000Z'),
