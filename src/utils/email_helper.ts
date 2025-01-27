@@ -5,6 +5,7 @@ import Email from 'email-templates'
 import path from 'path'
 
 import { MeetingReminders } from '@/types/common'
+import { Intents } from '@/types/Dashboard'
 import { Group } from '@/types/Group'
 import {
   MeetingChangeType,
@@ -132,7 +133,7 @@ export const newMeetingEmail = async (
       description,
     },
     changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
       : `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
           guestInfoEncrypted || ''
         )}`,
