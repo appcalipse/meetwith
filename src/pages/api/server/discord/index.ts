@@ -20,7 +20,7 @@ export default async function discordInfo(
       return res
         .status(404)
         .send(
-          "You don't have a MWW account, or have not linked to your Discord one. Go to https://meetwithwallet.xyz to create or link it."
+          "You don't have a MWW account, or have not linked to your Discord one. Go to https://meetwith.xyz to create or link it."
         )
     }
 
