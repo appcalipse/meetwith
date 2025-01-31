@@ -26,7 +26,7 @@ import { mockEncrypted } from './cryptography'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = 'Meetwith <notifications@meetwith.xyz>'
-import { writeFileSync } from 'fs'
+
 import { CreateEmailOptions, Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -207,8 +207,6 @@ export const newMeetingEmail = async (
     Sentry.captureException(icsFile.error)
     return false
   }
-  writeFileSync('./html.txt', rendered.html!)
-  writeFileSync('./text.txt', rendered.text!)
   const msg: CreateEmailOptions = {
     to: toEmail,
     from: FROM,
