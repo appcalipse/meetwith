@@ -159,7 +159,7 @@ export const newMeetingEmail = async (
     )}`,
     locals
   )
-  let hasCalendarSyncing = meetingProvider === MeetingProvider.GOOGLE_MEET
+  let hasCalendarSyncing = false
 
   if (destinationAccountAddress && !hasCalendarSyncing) {
     const accountCalendar = await getConnectedCalendars(
