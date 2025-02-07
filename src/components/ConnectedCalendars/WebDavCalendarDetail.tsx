@@ -130,7 +130,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           calendars: calendars.map((calendar, index: number) => {
             return {
               calendarId: calendar.url,
-              sync: false,
+              sync: true,
               enabled: index === 0,
               name:
                 typeof calendar.displayName === 'string'
@@ -162,7 +162,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           calendars: calendars.map((calendar, index: number) => {
             return {
               calendarId: calendar.url,
-              sync: false,
+              sync: true,
               enabled: index === 0,
               name:
                 typeof calendar.displayName === 'string'
