@@ -7,14 +7,14 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
+import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
-
-import { apiUrl, OnboardingSubject } from '../../../../../utils/constants'
+import { apiUrl, OnboardingSubject } from '@/utils/constants'
 import {
   addOrUpdateConnectedCalendar,
   getAccountNotificationSubscriptions,
   setAccountNotificationSubscriptions,
-} from '../../../../../utils/database'
+} from '@/utils/database'
 
 const credentials = {
   client_id: process.env.GOOGLE_CLIENT_ID,
@@ -83,14 +83,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const calendar = google.calendar({ version: 'v3', auth: oAuth2Client })
 
-  let calendars = []
+  let calendars: Array<CalendarSyncInfo>
   try {
     calendars = (await calendar.calendarList.list()).data.items!.map(c => {
       return {
         calendarId: c.id!,
         name: c.summary!,
         color: c.backgroundColor || undefined,
-        sync: false,
+        sync: true,
         enabled: Boolean(c.primary),
       }
     })
@@ -105,7 +105,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         calendarId: user.email!,
         name: user.email!,
         color: undefined,
-        sync: false,
+        sync: true,
         enabled: true,
       },
     ]
