@@ -6,13 +6,12 @@ import {
   NotificationChannel,
 } from '@/types/AccountNotifications'
 import { TimeSlotSource } from '@/types/Meeting'
-
-import { apiUrl, OnboardingSubject } from '../../../../../utils/constants'
+import { apiUrl, OnboardingSubject } from '@/utils/constants'
 import {
   addOrUpdateConnectedCalendar,
   getAccountNotificationSubscriptions,
   setAccountNotificationSubscriptions,
-} from '../../../../../utils/database'
+} from '@/utils/database'
 
 const credentials = {
   client_id: process.env.MS_GRAPH_CLIENT_ID!,
@@ -108,7 +107,7 @@ async function handler(
         return {
           calendarId: c.id,
           name: c.name,
-          sync: false,
+          sync: true,
           enabled: c.isDefaultCalendar,
           color: c.hexColor,
         }
