@@ -182,7 +182,7 @@ const initAccountDBForWallet = async (
     availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
-    meetingProviders: [MeetingProvider.HUDDLE],
+    meetingProviders: [MeetingProvider.GOOGLE_MEET],
   }
 
   if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
