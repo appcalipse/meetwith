@@ -153,7 +153,16 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     logEvent('Connect Telegram')
     const hash = await createTelegramHash()
     const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
-    push(url) // should take user to new page
+    // push(url) // should take user to new page
+    window.open(url, '_blank')
+
+    setTimeout(async () => {
+      const pendingConnection = await getPendingTgConnection()
+      if (pendingConnection) {
+        window.location.reload()
+      }
+    }, 5000)
+
     setConnecting(false)
   }
   const handleTgDisconnect = async () => {
@@ -211,56 +220,29 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             onDiscordNotificationChange={onDiscordNotificationChange}
             discordNotification={discordNotificationConfig}
           />
-          <HStack>
-            <Flex
-              width="22px"
-              height="22px"
-              bgColor={bgColor}
-              borderRadius="50%"
-              justifyContent="center"
-              alignItems="center"
-            >
-              <Icon as={FaTelegram} color={color} />
-            </Flex>
+          <VStack>
+            <Switch
+              colorScheme="primary"
+              size="md"
+              isChecked={telegramNotificationConfigured}
+              onChange={e => {
+                if (e.target.checked) {
+                  handleTgConnect()
+                } else {
+                  handleTgDisconnect()
+                }
+              }}
+              isDisabled={connecting}
+            /> 
             <Text fontSize="lg" fontWeight="bold">
               Telegram
             </Text>
-            {telegramNotificationConfigured ? (
-              <Button
-                variant="ghost"
-                colorScheme="primary"
-                isLoading={connecting}
-                onClick={handleTgDisconnect}
-              >
-                Disconnect
-              </Button>
-            ) : tgConnectionPending ? (
-              <Box>
-                <Text>
-                  Follow the{' '}
-                  <Link
-                    href={`https://t.me/MeetWithDEVBot?start=${tgConnectionPending.tg_id}`}
-                    target="_blank"
-                  >
-                    https://t.me/MeetWithDEVBot?start=
-                    {tgConnectionPending.tg_id}
-                  </Link>{' '}
-                  to connect or open the bot @MeetWithDEVBot and run the command
-                  `/set {tgConnectionPending.tg_id}`
-                </Text>
-              </Box>
-            ) : (
-              <Button
-                isLoading={connecting}
-                loadingText="Connecting"
-                variant="outline"
-                colorScheme="primary"
-                onClick={handleTgConnect}
-              >
-                Connect
-              </Button>
+            {tgConnectionPending && (
+              <Text fontSize="sm" color="gray.500">
+                (Pending connection)
+              </Text>
             )}
-          </HStack>
+          </VStack>
           <Spacer />
           <Button
             isLoading={loading}
