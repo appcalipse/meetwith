@@ -10,6 +10,7 @@ import { MeetingReminders } from '@/types/common'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
+import { encryptContent } from '@/utils/cryptography'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
@@ -225,7 +226,6 @@ export default class GoogleCalendarService implements CalendarService {
               name: participant.name,
               account_address: participant.account_address,
               status: participant.status,
-              slot_id: '',
               meeting_id: meetingDetails.meeting_id,
             }))
 
@@ -347,6 +347,23 @@ export default class GoogleCalendarService implements CalendarService {
                 url: '',
               })
             }
+          )
+          calendar.events.watch(
+            {
+              calendarId,
+              iCalUID: meetingDetails.meeting_id.replaceAll('-', ''),
+              requestBody: {
+                type: 'webhook',
+                address:
+                  'https://0424-89-39-107-190.ngrok-free.app/api/webhook/google',
+                resourceId: meetingDetails.meeting_id,
+                token: encryptContent(
+                  process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
+                  JSON.stringify({ slotId: '' })
+                ),
+              },
+            },
+            {}
           )
         })
         .catch(error => {

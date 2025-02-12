@@ -2,15 +2,15 @@ import * as Sentry from '@sentry/nextjs'
 import { NextPage } from 'next'
 import React from 'react'
 
+import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
+import { Account } from '@/types/Account'
+import { getAccount } from '@/utils/api_helper'
+import { AccountNotFoundError } from '@/utils/errors'
 import redirectTo from '@/utils/redirect'
+import { isProAccount } from '@/utils/subscription_manager'
+import { isValidEVMAddress } from '@/utils/validations'
 
 import PublicCalendar from '../components/public-calendar'
-import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
-import { Account } from '../types/Account'
-import { getAccount } from '../utils/api_helper'
-import { AccountNotFoundError } from '../utils/errors'
-import { isProAccount } from '../utils/subscription_manager'
-import { isValidEVMAddress } from '../utils/validations'
 
 interface ScheduleProps {
   currentUrl: string
