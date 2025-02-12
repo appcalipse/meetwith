@@ -74,6 +74,7 @@ const ScheduleBase = () => {
     setMeetingNotification,
     meetingRepeat,
     setMeetingRepeat,
+    handleCancel,
   } = useContext(ScheduleContext)
   const {
     isOpen: isGroupModalOpen,
@@ -401,20 +402,35 @@ const ScheduleBase = () => {
             placeholder="Any information you want to share prior to the meeting?"
           />
         </FormControl>
-        <Button
-          w="100%"
-          py={3}
-          h={'auto'}
-          variant="outline"
-          colorScheme="primary"
-          onClick={handleSchedule}
-          isLoading={isScheduling}
-          isDisabled={
-            participants.length === 0 || !title || !duration || !pickedTime
-          }
-        >
-          Schedule now
-        </Button>
+        <HStack w="100%">
+          <Button
+            w="100%"
+            py={3}
+            h={'auto'}
+            variant="outline"
+            colorScheme="primary"
+            onClick={handleSchedule}
+            isLoading={isScheduling}
+            isDisabled={
+              participants.length === 0 || !title || !duration || !pickedTime
+            }
+          >
+            {query.intent === Intents.UPDATE_MEETING
+              ? 'Update Meeting'
+              : 'Schedule now'}
+          </Button>
+          {query.intent === Intents.UPDATE_MEETING && (
+            <Button
+              w="100%"
+              py={3}
+              h={'auto'}
+              colorScheme="primary"
+              onClick={handleCancel}
+            >
+              Cancel Meeting
+            </Button>
+          )}
+        </HStack>
       </VStack>
     </Box>
   )
