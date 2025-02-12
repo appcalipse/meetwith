@@ -123,7 +123,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
     meeting?: DBSlot,
     removedSlots?: string[]
   ) => {
-    // not using router API to avoid re-rendinreing component
+    // not using router API to avoid re-rendering component
     history.pushState(null, '', window.location.pathname)
 
     if (meeting || removedSlots) {
