@@ -15,6 +15,7 @@ import {
 import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
+import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import { FaCalendar, FaClock } from 'react-icons/fa'
 import { FaArrowLeft, FaUserGroup } from 'react-icons/fa6'
@@ -29,6 +30,7 @@ import {
 } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MeetingReminders } from '@/types/common'
+import { Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import {
   ParticipantInfo,
@@ -71,6 +73,7 @@ const ScheduleDetails = () => {
     setMeetingRepeat,
   } = useContext(ScheduleContext)
   const { currentAccount } = useContext(AccountContext)
+  const { query } = useRouter()
   const [groupMembers, setGroupsMembers] = useState<Array<ParticipantInfo>>([])
   const [loading, setLoading] = useState(false)
   const meetingProviders = (
@@ -345,7 +348,9 @@ const ScheduleDetails = () => {
             isLoading={isScheduling}
             onClick={handleSchedule}
           >
-            Schedule
+            {query.intent === Intents.UPDATE_MEETING
+              ? 'Update Meeting'
+              : 'Schedule'}
           </Button>
         </VStack>
       )}
