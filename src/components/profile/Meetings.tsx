@@ -16,10 +16,12 @@ import { useRouter } from 'next/router'
 import { ReactNode, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 
+import { useMeetingDialog } from '@/components/schedule/meeting.dialog.hook'
 import { Account } from '@/types/Account'
+import { DBSlot, MeetingChangeType } from '@/types/Meeting'
+import { getMeeting, getMeetingsForDashboard } from '@/utils/api_helper'
+import { decodeMeeting } from '@/utils/calendar_manager'
 
-import { DBSlot, MeetingChangeType } from '../../types/Meeting'
-import { getMeetingsForDashboard } from '../../utils/api_helper'
 import MeetingCard from '../meeting/MeetingCard'
 
 const Meetings: React.FC<{ currentAccount: Account }> = ({
@@ -29,7 +31,9 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const [loading, setLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
-  const { push } = useRouter()
+  const { push, query } = useRouter()
+  const { slotId } = query
+
   const timezone =
     currentAccount?.preferences?.timezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -56,11 +60,11 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const resetState = async () => {
     setFirstFetch(true)
     setNoMoreFetch(false)
-    fetchMeetings(true)
+    void fetchMeetings(true)
   }
 
   useEffect(() => {
-    resetState()
+    void resetState()
   }, [currentAccount?.address])
 
   let content: ReactNode
@@ -119,7 +123,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
     meeting?: DBSlot,
     removedSlots?: string[]
   ) => {
-    // not using router API to avoid re-rendinreing component
+    // not using router API to avoid re-rendering component
     history.pushState(null, '', window.location.pathname)
 
     if (meeting || removedSlots) {
@@ -166,6 +170,20 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   }
 
   const toast = useToast()
+  const [MeetingDialog, openMeetingDialog] = useMeetingDialog()
+  const fillMeeting = async () => {
+    const meeting = await getMeeting(slotId as string)
+    const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
+    openMeetingDialog(
+      meeting,
+      decodedMeeting,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      afterClose
+    )
+  }
+  useEffect(() => {
+    slotId && fillMeeting()
+  }, [slotId])
 
   return (
     <Flex direction={'column'} maxWidth="100%">
@@ -197,6 +215,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
         New meeting
       </Button>
       {content}
+      <MeetingDialog />
     </Flex>
   )
 }
