@@ -153,7 +153,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     logEvent('Connect Telegram')
     const hash = await createTelegramHash()
     const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
-    // push(url) // should take user to new page
     window.open(url, '_blank')
 
     setTimeout(async () => {
