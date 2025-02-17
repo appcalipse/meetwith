@@ -59,7 +59,7 @@ const DiscordNotificationConfig: React.FC<Props> = ({
   }, [])
 
   return (
-    <VStack alignItems="start" flex={1} mb={8}>
+    <VStack alignItems="start" flex={1}>
       <HStack py={4}>
         <Switch
           colorScheme="primary"
