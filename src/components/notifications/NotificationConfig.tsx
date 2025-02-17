@@ -219,7 +219,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             onDiscordNotificationChange={onDiscordNotificationChange}
             discordNotification={discordNotificationConfig}
           />
-          <VStack>
+          <HStack>
             <Switch
               colorScheme="primary"
               size="md"
@@ -241,7 +241,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
                 (Pending connection)
               </Text>
             )}
-          </VStack>
+          </HStack>
           <Spacer />
           <Button
             isLoading={loading}
