@@ -157,10 +157,10 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
     setTimeout(async () => {
       const pendingConnection = await getPendingTgConnection()
-      if (pendingConnection) {
-        window.location.reload()
-      }
-    }, 5000)
+    if (!pendingConnection) {
+      setTelegramNotificationConfigured(true)
+    }   
+   }, 5000)
 
     setConnecting(false)
   }
@@ -236,6 +236,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             <Text fontSize="lg" fontWeight="bold">
               Telegram
             </Text>
+            {connecting && <Spinner size="sm" ml={2} />}
             {tgConnectionPending && (
               <Text fontSize="sm" color="gray.500">
                 (Pending connection)
