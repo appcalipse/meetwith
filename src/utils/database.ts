@@ -922,6 +922,7 @@ const saveMeeting = async (
     recurrence: meeting.meetingRepeat,
     version: MeetingVersion.V2,
     slots: meeting.allSlotIds || [],
+    title: meeting.title,
   })
   if (!createdRootMeeting) {
     throw new Error(
@@ -2539,6 +2540,7 @@ const updateMeeting = async (
     provider: meetingProvider,
     recurrence: meetingUpdateRequest.meetingRepeat,
     version: MeetingVersion.V2,
+    title: meetingUpdateRequest.title,
     slots: meeting.slots?.filter(
       val => !meetingUpdateRequest.slotsToRemove.includes(val)
     ),
