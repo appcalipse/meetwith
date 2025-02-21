@@ -155,14 +155,14 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
     window.open(url, '_blank')
 
-    setTimeout(async () => {
-      const pendingConnection = await getPendingTgConnection()
+  const intervalId = setInterval(async () => {
+    const pendingConnection = await getPendingTgConnection()
     if (!pendingConnection) {
       setTelegramNotificationConfigured(true)
-    }   
-   }, 5000)
-
-    setConnecting(false)
+      clearInterval(intervalId)
+      setConnecting(false)
+      }
+    }, 5000)
   }
   const handleTgDisconnect = async () => {
     setConnecting(true)
