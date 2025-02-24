@@ -23,12 +23,23 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { isAfter, isWithinInterval } from 'date-fns'
+import { utcToZonedTime } from 'date-fns-tz'
+import { useRouter } from 'next/router'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import React from 'react'
 import { FaEdit, FaEllipsisV, FaRegCopy, FaTrash } from 'react-icons/fa'
 import sanitizeHtml from 'sanitize-html'
 
 import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
+import { AccountContext } from '@/providers/AccountProvider'
+import { Intents } from '@/types/Dashboard'
+import {
+  DBSlot,
+  MeetingChangeType,
+  MeetingDecrypted,
+  MeetingRepeat,
+} from '@/types/Meeting'
+import { logEvent } from '@/utils/analytics'
 import {
   dateToLocalizedRange,
   decodeMeeting,
@@ -40,23 +51,10 @@ import { appUrl, isProduction } from '@/utils/constants'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
-import { AccountContext } from '../../../providers/AccountProvider'
-import {
-  DBSlot,
-  MeetingChangeType,
-  MeetingDecrypted,
-} from '../../../types/Meeting'
-import { logEvent } from '../../../utils/analytics'
-
 interface MeetingCardProps {
   meeting: DBSlot
   timezone: string
   onCancel: (removed: string[]) => void
-  onClickToOpen: (
-    meeting: DBSlot,
-    decryptedMeeting: MeetingDecrypted,
-    timezone: string
-  ) => void
 }
 
 interface Label {
@@ -66,14 +64,10 @@ interface Label {
 
 const LIMIT_DATE_TO_SHOW_UPDATE = new Date('2022-10-21')
 
-const MeetingCard = ({
-  meeting,
-  timezone,
-  onCancel,
-  onClickToOpen,
-}: MeetingCardProps) => {
+const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const defineLabel = (start: Date, end: Date): Label | null => {
-    const now = new Date()
+    const now = utcToZonedTime(new Date(), timezone)
+
     if (isWithinInterval(now, { start, end })) {
       return {
         color: 'yellow',
@@ -100,7 +94,7 @@ const MeetingCard = ({
   )
   const [loading, setLoading] = useState(true)
   const [copyFeedbackOpen, setCopyFeedbackOpen] = useState(false)
-
+  const { push } = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const decodeData = async () => {
     const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
@@ -211,6 +205,8 @@ const MeetingCard = ({
     isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
     isAfter(meeting.start, new Date())
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
+  const isRecurring =
+    meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
   return (
     <>
       {loading ? (
@@ -230,7 +226,7 @@ const MeetingCard = ({
             md: label ? 1.5 : 0,
           }}
         >
-          {label && (
+          {label ? (
             <Badge
               borderRadius={0}
               borderBottomRightRadius={4}
@@ -244,8 +240,24 @@ const MeetingCard = ({
             >
               {label.text}
             </Badge>
+          ) : (
+            isRecurring && (
+              <Badge
+                borderRadius={0}
+                borderBottomRightRadius={4}
+                px={2}
+                py={1}
+                colorScheme={'gray'}
+                alignSelf="flex-end"
+                position="absolute"
+                right={0}
+                top={0}
+              >
+                Recurrence: {meeting?.recurrence}
+              </Badge>
+            )
           )}
-          <Box p="24px" maxWidth="100%">
+          <Box p={6} pt={isRecurring ? 8 : 6} maxWidth="100%">
             <VStack alignItems="start" position="relative" gap={6}>
               <Flex
                 alignItems="start"
@@ -268,7 +280,8 @@ const MeetingCard = ({
                       {dateToLocalizedRange(
                         meeting.start as Date,
                         meeting.end as Date,
-                        timezone
+                        timezone,
+                        true
                       )}
                     </strong>
                   </Text>
@@ -305,7 +318,9 @@ const MeetingCard = ({
                           icon={<FaEdit size={16} />}
                           onClick={() => {
                             if (decryptedMeeting)
-                              onClickToOpen(meeting, decryptedMeeting, timezone)
+                              void push(
+                                `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
+                              )
                           }}
                         />
                         <IconButton
@@ -453,7 +468,7 @@ const MeetingCard = ({
       <CancelMeetingDialog
         isOpen={isOpen}
         onClose={onClose}
-        decriptedMeeting={decryptedMeeting}
+        decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}
       />

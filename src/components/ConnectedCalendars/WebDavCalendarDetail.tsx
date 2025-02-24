@@ -63,18 +63,41 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
   const toast = useToast()
 
   const checkWebDav = async () => {
-    const calendars = await validateWebdav(url!, username!, password!)
-    if (!calendars) {
+    if (!url || !username || !password) {
+      toast({
+        title: 'URL, Username and Password are required.',
+        description: 'Please enter your WebDAV URL, username and password.',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      setLoading(false)
+    }
+    try {
+      const calendars = await validateWebdav(url!, username!, password!)
+      if (!calendars) {
+        toast({
+          title: 'Something went wrong',
+          description: 'Invalid credentials provided.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
+      return calendars
+    } catch (e: unknown) {
+      const error = e as Error
       toast({
         title: 'Something went wrong',
-        description: 'Invalid credentials provided.',
+        description: error.message || 'Invalid credentials provided.',
         status: 'error',
         duration: 5000,
         position: 'top',
         isClosable: true,
       })
     }
-    return calendars
   }
 
   const onSaveOrUpdate = async () => {
@@ -107,7 +130,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           calendars: calendars.map((calendar, index: number) => {
             return {
               calendarId: calendar.url,
-              sync: false,
+              sync: true,
               enabled: index === 0,
               name:
                 typeof calendar.displayName === 'string'
@@ -139,7 +162,7 @@ const WebDavDetailsPanel: React.FC<WebDavDetailsPanelProps> = ({
           calendars: calendars.map((calendar, index: number) => {
             return {
               calendarId: calendar.url,
-              sync: false,
+              sync: true,
               enabled: index === 0,
               name:
                 typeof calendar.displayName === 'string'

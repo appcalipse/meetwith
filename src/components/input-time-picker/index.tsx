@@ -100,13 +100,18 @@ export const InputTimePicker: React.FC<InputTimePickerProps> = ({
         </InputGroup>
       </PopoverTrigger>
 
-      <PopoverContent>
+      <PopoverContent maxWidth={'200px'}>
         <PopoverArrow />
         <PopoverBody>
-          <VStack sx={{ maxHeight: '300px', overflowY: 'scroll' }}>
+          <VStack
+            sx={{ maxHeight: '300px', overflowY: 'scroll' }}
+            alignItems="flex-start"
+            justifyContent="flex-start"
+            width={'100%'}
+            pl={2}
+          >
             {times.map(it => (
               <Button
-                width="100%"
                 variant="ghost"
                 isDisabled={isBefore(it, new Date())}
                 key={it.toString()}

@@ -1,12 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
-import { GetTokenResponse } from 'google-auth-library/build/src/auth/oauth2client'
+import { format, getWeekOfMonth } from 'date-fns'
 import { Auth, calendar_v3, google } from 'googleapis'
 
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
-import { MeetingProvider, TimeSlotSource } from '@/types/Meeting'
+import { MeetingReminders } from '@/types/common'
+import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -15,7 +16,6 @@ import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
-
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
 export class MWWGoogleAuth extends google.auth.OAuth2 {
@@ -74,20 +74,19 @@ export default class GoogleCalendarService implements CalendarService {
     const refreshAccessToken = () =>
       myGoogleAuth
         .refreshToken(googleCredentials.refresh_token)
-        .then((res: GetTokenResponse) => {
+        .then(async res => {
           const token = res.res?.data
           googleCredentials.access_token = token.access_token
           googleCredentials.expiry_date = token.expiry_date
 
-          return updateCalendarPayload(
+          await updateCalendarPayload(
             address,
             email,
             TimeSlotSource.GOOGLE,
             googleCredentials
-          ).then(() => {
-            myGoogleAuth.setCredentials(googleCredentials)
-            return myGoogleAuth
-          })
+          )
+          myGoogleAuth.setCredentials(googleCredentials)
+          return myGoogleAuth
         })
         .catch(err => {
           Sentry.captureException(err)
@@ -185,12 +184,28 @@ export default class GoogleCalendarService implements CalendarService {
       )
     })
   }
+  private createReminder(indicator: MeetingReminders) {
+    switch (indicator) {
+      case MeetingReminders['15_MINUTES_BEFORE']:
+        return { minutes: 15, method: 'email' }
+      case MeetingReminders['30_MINUTES_BEFORE']:
+        return { minutes: 30, method: 'email' }
+      case MeetingReminders['1_HOUR_BEFORE']:
+        return { minutes: 60, method: 'email' }
+      case MeetingReminders['1_DAY_BEFORE']:
+        return { minutes: 1440, method: 'email' }
+      case MeetingReminders['1_WEEK_BEFORE']:
+        return { minutes: 10080, method: 'email' }
+      case MeetingReminders['10_MINUTES_BEFORE']:
+      default:
+        return { minutes: 10, method: 'email' }
+    }
+  }
   async createEvent(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
     meeting_creation_time: Date,
-    _calendarId?: string,
-    shouldGenerateLink = true
+    _calendarId?: string
   ): Promise<NewCalendarEventType> {
     return new Promise((resolve, reject) =>
       this.auth
@@ -246,28 +261,38 @@ export default class GoogleCalendarService implements CalendarService {
               overrides: [{ method: 'email', minutes: 10 }],
             },
             creator: {
-              displayName: 'Meet with Wallet',
+              displayName: 'Meetwith',
               email: NO_REPLY_EMAIL,
             },
             guestsCanModify: false,
-            location:
-              shouldGenerateLink &&
-              meetingDetails.meetingProvider !== MeetingProvider.GOOGLE_MEET
-                ? meetingDetails.meeting_url
-                : undefined,
-            conferenceData:
-              shouldGenerateLink &&
-              meetingDetails.meetingProvider == MeetingProvider.GOOGLE_MEET
-                ? {
-                    createRequest: {
-                      requestId: meetingDetails.meeting_id,
-                      conferenceSolutionKey: {
-                        type: 'hangoutsMeet',
-                      },
-                    },
-                  }
-                : undefined,
+            location: meetingDetails.meeting_url,
             status: 'confirmed',
+          }
+          if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
+            payload.reminders.overrides = meetingDetails.meetingReminders.map(
+              this.createReminder
+            )
+          }
+          if (
+            meetingDetails.meetingRepeat &&
+            meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+          ) {
+            let RRULE = `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()};INTERVAL=1`
+            const dayOfWeek = format(
+              meetingDetails.start,
+              'eeeeee'
+            ).toUpperCase()
+            const weekOfMonth = getWeekOfMonth(meetingDetails.start)
+
+            switch (meetingDetails.meetingRepeat) {
+              case MeetingRepeat.WEEKLY:
+                RRULE += `;BYDAY=${dayOfWeek}`
+                break
+              case MeetingRepeat.MONTHLY:
+                RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+                break
+            }
+            payload.recurrence = [RRULE]
           }
           const calendar = google.calendar({
             version: 'v3',
@@ -280,7 +305,9 @@ export default class GoogleCalendarService implements CalendarService {
                 calendarOwnerAccountAddress === participant.account_address
                   ? this.getConnectedEmail()
                   : participant.guest_email ||
-                    noNoReplyEmailForAccount(participant.account_address!),
+                    noNoReplyEmailForAccount(
+                      (participant.name || participant.account_address)!
+                    ),
               displayName: participant.name || participant.account_address,
               responseStatus:
                 participant.status === ParticipationStatus.Accepted
@@ -307,6 +334,7 @@ export default class GoogleCalendarService implements CalendarService {
                 console.error(err)
                 return reject(err)
               }
+
               return resolve({
                 uid: meetingDetails.meeting_id,
                 ...event.data,
@@ -335,7 +363,7 @@ export default class GoogleCalendarService implements CalendarService {
     _calendarId: string
   ): Promise<NewCalendarEventType> {
     return new Promise(async (resolve, reject) => {
-      const auth = await this.auth
+      const auth = this.auth
       const myGoogleAuth = await auth.getToken()
       const calendarId = parseCalendarId(_calendarId)
 
@@ -379,14 +407,26 @@ export default class GoogleCalendarService implements CalendarService {
           overrides: [{ method: 'email', minutes: 10 }],
         },
         creator: {
-          displayName: 'Meet With Wallet',
+          displayName: 'Meetwith',
         },
       }
 
       if (meetingDetails.meeting_url) {
         payload['location'] = meetingDetails.meeting_url
       }
-
+      if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
+        payload.reminders.overrides = meetingDetails.meetingReminders.map(
+          this.createReminder
+        )
+      }
+      if (
+        meetingDetails.meetingRepeat &&
+        meetingDetails?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+      ) {
+        payload.recurrence = [
+          `RRULE:FREQ=${meetingDetails.meetingRepeat?.toUpperCase()}`,
+        ]
+      }
       const guest = meetingDetails.participants.find(
         participant => participant.guest_email
       )
@@ -405,7 +445,9 @@ export default class GoogleCalendarService implements CalendarService {
             calendarOwnerAccountAddress === participant.account_address
               ? this.getConnectedEmail()
               : participant.guest_email ||
-                noNoReplyEmailForAccount(participant.account_address!),
+                noNoReplyEmailForAccount(
+                  (participant.name || participant.account_address)!
+                ),
           displayName: participant.name || participant.account_address,
           responseStatus:
             participant.status === ParticipationStatus.Accepted
@@ -456,7 +498,7 @@ export default class GoogleCalendarService implements CalendarService {
 
   async deleteEvent(meeting_id: string, _calendarId: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
-      const auth = await this.auth
+      const auth = this.auth
       const myGoogleAuth = await auth.getToken()
       const calendar = google.calendar({
         version: 'v3',

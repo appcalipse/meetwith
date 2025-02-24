@@ -25,9 +25,9 @@ import { FaTelegram } from 'react-icons/fa'
 
 import { Account } from '@/types/Account'
 import { TelegramConnection } from '@/types/Telegram'
+import { isProduction } from '@/utils/constants'
 
 import {
-  AccountNotifications,
   DiscordNotificationType,
   NotificationChannel,
 } from '../../types/AccountNotifications'
@@ -67,7 +67,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setEmailNotifications(false)
     setEmail('')
     fetchSubscriptions()
-    fetchPendingTgConnections()
+    // fetchPendingTgConnections()
     setDiscordNotificationConfig(undefined)
   }, [currentAccount])
   const fetchPendingTgConnections = async () => {
@@ -219,7 +219,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             onDiscordNotificationChange={onDiscordNotificationChange}
             discordNotification={discordNotificationConfig}
           />
-          <HStack>
+          {!isProduction && (<HStack>
             <Switch
               colorScheme="primary"
               size="md"
@@ -242,7 +242,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
                 (Pending connection)
               </Text>
             )}
-          </HStack>
+          </HStack>)}
           <Spacer />
           <Button
             isLoading={loading}

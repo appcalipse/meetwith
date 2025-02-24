@@ -1,37 +1,10 @@
-import {
-  Box,
-  Button,
-  Flex,
-  FormControl,
-  FormLabel,
-  Heading,
-  Input,
-  Text,
-  Textarea,
-  useToast,
-  VStack,
-} from '@chakra-ui/react'
+import { Box, Flex, Heading, Text, VStack } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
-import React, { useEffect, useRef, useState } from 'react'
 
 import GroupInviteForm from '@/components/group/GroupInviteForm'
-import InvitedUsersCard from '@/components/group/InvitedUsersCard'
-import InvitedUsersList from '@/components/group/InvitedUsersList'
-import InfoTooltip from '@/components/profile/components/Tooltip'
-import { MemberType } from '@/types/Group'
-import { InvitedUser } from '@/types/ParticipantInfo'
-import { getExistingAccounts, inviteUsers } from '@/utils/api_helper'
-import {
-  isEmptyString,
-  isEthereumAddressOrDomain,
-  isValidEmail,
-  isValidEVMAddress,
-} from '@/utils/validations'
 
 const InviteUsersPage = () => {
   const router = useRouter()
-  const toast = useToast()
-  const toastShown = useRef(false)
   const { groupName, groupId } = router.query
   return (
     <Flex direction="column" mb="169px">

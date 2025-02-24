@@ -1,11 +1,12 @@
-import { Container, Flex, useToast } from '@chakra-ui/react'
-import { addMinutes } from 'date-fns'
+import { Container, Flex, useDisclosure, useToast } from '@chakra-ui/react'
+import { addMinutes, differenceInMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
+import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import ScheduleBase from '@/components/schedule/ScheduleBase'
 import ScheduleCompleted from '@/components/schedule/ScheduleCompleted'
 import ScheduleDetails from '@/components/schedule/ScheduleDetails'
@@ -13,29 +14,51 @@ import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
 import { AccountContext } from '@/providers/AccountProvider'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
-import { MeetingProvider, SchedulingType } from '@/types/Meeting'
+import { MeetingReminders } from '@/types/common'
+import { EditMode, Intents } from '@/types/Dashboard'
+import {
+  MeetingDecrypted,
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+} from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
+import { logEvent } from '@/utils/analytics'
 import {
   getExistingAccounts,
   getGroup,
   getGroupsMembers,
+  getMeeting,
 } from '@/utils/api_helper'
-import { scheduleMeeting } from '@/utils/calendar_manager'
+import {
+  decodeMeeting,
+  scheduleMeeting,
+  selectDefaultProvider,
+  updateMeeting,
+} from '@/utils/calendar_manager'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
 import { handleApiError } from '@/utils/error_helper'
 import {
   GateConditionNotValidError,
+  GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
   InvalidURL,
+  MeetingChangeConflictError,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
+  UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
+import { getSignature } from '@/utils/storage'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 export enum Page {
@@ -74,11 +97,36 @@ interface IScheduleContext {
   timezone: string
   setTimezone: React.Dispatch<React.SetStateAction<string>>
   handleSchedule: () => void
+  handleCancel: () => void
   isScheduling: boolean
   meetingProvider: MeetingProvider
   setMeetingProvider: React.Dispatch<React.SetStateAction<MeetingProvider>>
   meetingUrl?: string
   setMeetingUrl: React.Dispatch<React.SetStateAction<string>>
+  currentSelectedDate: Date
+  setCurrentSelectedDate: React.Dispatch<React.SetStateAction<Date>>
+  meetingNotification: Array<{
+    value: MeetingReminders
+    label?: string
+  }>
+  setMeetingNotification: React.Dispatch<
+    React.SetStateAction<
+      Array<{
+        value: MeetingReminders
+        label?: string
+      }>
+    >
+  >
+  meetingRepeat: {
+    value: MeetingRepeat
+    label: string
+  }
+  setMeetingRepeat: React.Dispatch<
+    React.SetStateAction<{
+      value: MeetingRepeat
+      label: string
+    }>
+  >
 }
 
 export interface IGroupParticipant {
@@ -110,17 +158,28 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   timezone: '',
   setTimezone: () => {},
   handleSchedule: () => {},
+  handleCancel: () => {},
   isScheduling: false,
   meetingProvider: MeetingProvider.HUDDLE,
   setMeetingProvider: () => {},
   meetingUrl: '',
   setMeetingUrl: () => {},
+  currentSelectedDate: new Date(),
+  setCurrentSelectedDate: () => {},
+  meetingNotification: [],
+  setMeetingNotification: () => {},
+  meetingRepeat: {
+    value: MeetingRepeat.NO_REPEAT,
+    label: 'Does not repeat',
+  },
+  setMeetingRepeat: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
 
 const Schedule: NextPage = () => {
   const { currentAccount } = useContext(AccountContext)
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const [participants, setParticipants] = useState<
     Array<ParticipantInfo | IGroupParticipant>
   >([])
@@ -137,22 +196,36 @@ const Schedule: NextPage = () => {
   const [pickedTime, setPickedTime] = useState<Date | number | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [isPrefetching, setIsPrefetching] = useState(false)
+  const [currentSelectedDate, setCurrentSelectedDate] = useState(new Date())
   const [timezone, setTimezone] = useState<string>(
     currentAccount?.preferences?.timezone ??
       Intl.DateTimeFormat().resolvedOptions().timeZone
   )
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    currentAccount?.preferences.meetingProviders?.includes(
-      MeetingProvider.HUDDLE
-    )
-      ? MeetingProvider.HUDDLE
-      : MeetingProvider.CUSTOM
+    selectDefaultProvider(currentAccount?.preferences.meetingProviders)
   )
   const [meetingUrl, setMeetingUrl] = useState('')
+  const [decryptedMeeting, setDecryptedMeeting] = useState<
+    MeetingDecrypted | undefined
+  >(undefined)
   const toast = useToast()
-  const { query } = useRouter()
-  const { groupId } = query as { groupId: string }
+  const { query, push } = useRouter()
+  const { groupId, intent, meetingId } = query as {
+    groupId: string
+    intent: Intents
+    meetingId: string
+  }
   const [isScheduling, setIsScheduling] = useState(false)
+  const [meetingNotification, setMeetingNotification] = useState<
+    Array<{
+      value: MeetingReminders
+      label?: string
+    }>
+  >([])
+  const [meetingRepeat, setMeetingRepeat] = useState({
+    value: MeetingRepeat['NO_REPEAT'],
+    label: 'Does not repeat',
+  })
   const handleTimePick = (time: Date | number) => setPickedTime(time)
   const handleAddGroup = (group: IGroupParticipant) => {
     setParticipants(prev => {
@@ -242,13 +315,20 @@ const Schedule: NextPage = () => {
         ),
       ]
       const _participants = await parseAccounts(allParticipants)
-      _participants.valid.push({
-        account_address: currentAccount!.address,
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Accepted,
-        slot_id: '',
-        meeting_id: '',
-      })
+      const userData = currentParticipant.find(
+        val => val.account_address === currentAccount!.address
+      )
+      if (userData) {
+        _participants.valid.push(userData)
+      } else {
+        _participants.valid.push({
+          account_address: currentAccount!.address,
+          type: ParticipantType.Scheduler,
+          status: ParticipationStatus.Accepted,
+          slot_id: '',
+          meeting_id: '',
+        })
+      }
       if (_participants.invalid.length > 0) {
         toast({
           title: 'Invalid invitees',
@@ -264,22 +344,47 @@ const Schedule: NextPage = () => {
         return
       }
       if (!pickedTime) return
-      const start = zonedTimeToUtc(pickedTime as Date, timezone)
+      const start = new Date(pickedTime)
       const end = addMinutes(new Date(start), duration)
-      await scheduleMeeting(
-        true,
-        SchedulingType.REGULAR,
-        'no_type',
-        start,
-        end,
-        _participants.valid,
-        meetingProvider || MeetingProvider.HUDDLE,
-        currentAccount,
-        content,
-        meetingUrl,
-        undefined,
-        title
-      )
+      if (meetingId && intent === Intents.UPDATE_MEETING) {
+        await updateMeeting(
+          true,
+          currentAccount!.address,
+          'no_type',
+          start,
+          end,
+          decryptedMeeting!,
+          getSignature(currentAccount!.address) || '',
+          _participants.valid,
+          content,
+          meetingUrl,
+          meetingProvider,
+          title,
+          meetingNotification.map(mn => mn.value),
+          meetingRepeat.value
+        )
+        logEvent('Updated a meeting', {
+          fromDashboard: true,
+          participantsSize: _participants.valid.length,
+        })
+      } else {
+        await scheduleMeeting(
+          true,
+          SchedulingType.REGULAR,
+          'no_type',
+          start,
+          end,
+          _participants.valid,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          undefined,
+          title,
+          meetingNotification.map(n => n.value),
+          meetingRepeat.value
+        )
+      }
       setCurrentPage(Page.COMPLETED)
     } catch (e: any) {
       if (e instanceof MeetingWithYourselfError) {
@@ -319,6 +424,16 @@ const Schedule: NextPage = () => {
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof MeetingChangeConflictError) {
+        toast({
+          title: 'Failed to update meeting',
+          description:
+            'Someone else has updated this meeting. Please reload and try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else if (e instanceof InvalidURL) {
         toast({
           title: 'Failed to schedule meeting',
@@ -348,12 +463,34 @@ const Schedule: NextPage = () => {
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof GoogleServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Google seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof UrlCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue generating a meeting url for your meeting. try using a different location',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else {
         handleApiError('Error scheduling meeting', e)
       }
     }
     setIsScheduling(false)
   }
+  const handleRedirect = () => push(`/dashboard/${EditMode.MEETINGS}`)
+  const handleCancel = () => onOpen()
   const context: IScheduleContext = {
     groupParticipants,
     groupAvailability,
@@ -382,6 +519,13 @@ const Schedule: NextPage = () => {
     setMeetingProvider,
     meetingUrl,
     setMeetingUrl,
+    currentSelectedDate,
+    setCurrentSelectedDate,
+    meetingNotification,
+    setMeetingNotification,
+    meetingRepeat,
+    setMeetingRepeat,
+    handleCancel,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -416,18 +560,97 @@ const Schedule: NextPage = () => {
     setIsPrefetching(false)
   }
   useEffect(() => {
-    handleGroupPrefetch()
+    if (groupId) {
+      void handleGroupPrefetch()
+    }
   }, [groupId])
+  const handleFetchMeetingInformation = async () => {
+    if (!meetingId) return
+    setIsPrefetching(true)
+    try {
+      const meeting = await getMeeting(meetingId)
+      const decryptedMeeting = await decodeMeeting(meeting, currentAccount!)
+      if (!decryptedMeeting) {
+        setIsPrefetching(false)
+        return
+      }
+      setDecryptedMeeting(decryptedMeeting)
+      const participants = decryptedMeeting.participants.map(val => ({
+        account_address: val.account_address,
+        name: val.name,
+        status: val.status,
+        type: val.type,
+        slot_id: val.slot_id,
+        meeting_id: val.meeting_id,
+      }))
+      const allAddresses = participants
+        .map(val => val.account_address)
+        .filter(Boolean) as string[]
+      setGroupAvailability({
+        no_group: allAddresses,
+      })
+      const start = zonedTimeToUtc(meeting.start, timezone)
+      const end = zonedTimeToUtc(meeting.end, timezone)
+      const diffInMinutes = differenceInMinutes(end, start)
+      setParticipants(participants)
+
+      setTitle(decryptedMeeting.title || '')
+      setContent(decryptedMeeting.content || '')
+      setDuration(diffInMinutes)
+      setPickedTime(start)
+      setMeetingProvider(
+        decryptedMeeting.provider ||
+          selectDefaultProvider(currentAccount?.preferences.meetingProviders)
+      )
+      setMeetingUrl(decryptedMeeting.meeting_url)
+      setMeetingNotification(
+        decryptedMeeting.reminders?.map(val => {
+          const option = MeetingNotificationOptions.find(
+            opt => opt.value === val
+          )
+          return {
+            value: val,
+            label: option?.label,
+          }
+        }) || []
+      )
+      setMeetingRepeat(
+        decryptedMeeting.recurrence
+          ? {
+              value: decryptedMeeting.recurrence,
+              label:
+                MeetingRepeatOptions.find(
+                  val => val.value === decryptedMeeting.recurrence
+                )?.label || '',
+            }
+          : {
+              value: MeetingRepeat['NO_REPEAT'],
+              label: 'Does not repeat',
+            }
+      )
+    } catch (error: any) {
+      handleApiError('Error fetching meeting information.', error)
+    }
+    setIsPrefetching(false)
+  }
+  useEffect(() => {
+    if (intent === Intents.UPDATE_MEETING && meetingId) {
+      void handleFetchMeetingInformation()
+    }
+  }, [intent, meetingId])
   return (
     <ScheduleContext.Provider value={context}>
       <Container
         maxW={{
           base: '100%',
-          '2xl': '7xl',
+          '2xl': '100%',
         }}
         mt={36}
         flex={1}
         pb={16}
+        px={{
+          md: 10,
+        }}
       >
         {isPrefetching ? (
           <Flex
@@ -442,6 +665,13 @@ const Schedule: NextPage = () => {
         ) : (
           renderCurrentPage()
         )}
+        <CancelMeetingDialog
+          isOpen={isOpen}
+          onClose={onClose}
+          decryptedMeeting={decryptedMeeting}
+          currentAccount={currentAccount}
+          afterCancel={handleRedirect}
+        />
       </Container>
     </ScheduleContext.Provider>
   )

@@ -5,7 +5,10 @@ import { MeetingProvider, SchedulingType } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { DiscordMeetingRequest } from '@/types/Requests'
 import { getSuggestedSlots } from '@/utils/api_helper'
-import { scheduleMeeting } from '@/utils/calendar_manager'
+import {
+  scheduleMeeting,
+  selectDefaultProvider,
+} from '@/utils/calendar_manager'
 import { getAccountFromDiscordId } from '@/utils/database'
 import { findStartDateForNotBefore } from '@/utils/time.helper'
 
@@ -22,6 +25,8 @@ export default async function simpleDiscordMeet(
       title,
       description,
       notBefore,
+      provider,
+      reminder,
     } = req.body as DiscordMeetingRequest
 
     const scheduler = await getAccountFromDiscordId(schedulerDiscordId)
@@ -30,7 +35,7 @@ export default async function simpleDiscordMeet(
       return res
         .status(404)
         .send(
-          "You don't have a Meetwith account, or have not linked your Discord to it. Go to https://meetwithwallet.xyz to create or link it."
+          "You don't have a Meetwith account, or have not linked your Discord to it. Go to https://meetwith.xyz to create or link it."
         )
     }
 
@@ -42,7 +47,22 @@ export default async function simpleDiscordMeet(
         scheduler.preferences?.timezone || 'UTC'
       )
     }
-
+    if (
+      provider &&
+      !scheduler.preferences.meetingProviders.includes(provider)
+    ) {
+      res
+        .status(400)
+        .send(
+          "You don't have the selected location enabled. Go to https://meetwith.xyz/dashboard/meeting-settings to enable it."
+        )
+    }
+    let selected_provider = provider
+    if (!provider) {
+      selected_provider = selectDefaultProvider(
+        scheduler?.preferences.meetingProviders
+      )
+    }
     const suggestions = await getSuggestedSlots(
       accounts.map(p => p.address),
       startDate,
@@ -85,12 +105,13 @@ export default async function simpleDiscordMeet(
         new Date(slot.start),
         new Date(slot.end),
         participants,
-        MeetingProvider.HUDDLE,
+        selected_provider,
         scheduler,
         description,
         undefined,
         undefined,
-        title
+        title,
+        reminder
       )
 
       return res.status(200).json(meeting)

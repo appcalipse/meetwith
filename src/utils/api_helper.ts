@@ -10,10 +10,12 @@ import {
   ConnectResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
+import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import {
   EmptyGroupsResponse,
+  GetGroupsFullResponse,
   GetGroupsResponse,
   Group,
   GroupInvitePayload,
@@ -23,7 +25,10 @@ import {
   ConferenceMeeting,
   DBSlot,
   GroupMeetingRequest,
+  GuestMeetingCancel,
   MeetingDecrypted,
+  MeetingInfo,
+  TimeSlot,
   TimeSlotSource,
 } from '@/types/Meeting'
 import {
@@ -33,7 +38,7 @@ import {
   MeetingUpdateRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
-import { Subscription } from '@/types/Subscription'
+import { Coupon, Subscription } from '@/types/Subscription'
 import { TelegramConnection } from '@/types/Telegram'
 import { GateConditionObject } from '@/types/TokenGating'
 
@@ -41,16 +46,24 @@ import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
   ApiFetchError,
+  CouponAlreadyUsed,
+  CouponExpired,
+  CouponNotValid,
   GateConditionNotValidError,
   GateInUseError,
+  GoogleServiceUnavailable,
   GroupCreationError,
   Huddle01ServiceUnavailable,
   InvalidSessionError,
   IsGroupAdminError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  MeetingNotFoundError,
+  NoActiveSubscription,
+  SubscriptionNotCustom,
   TimeNotAvailableError,
-  UserInvitationError,
+  UnauthorizedError,
+  UrlCreationError,
   ZoomServiceUnavailable,
 } from './errors'
 import QueryKeys from './query_keys'
@@ -143,7 +156,8 @@ export const getExistingAccountsSimple = async (
 }
 
 export const getExistingAccounts = async (
-  addresses: string[]
+  addresses: string[],
+  fullInformation = true
 ): Promise<Account[]> => {
   try {
     return (await internalFetch(`/accounts/existing`, 'POST', {
@@ -394,6 +408,28 @@ export const fetchBusySlotsForMultipleAccounts = async (
     end: new Date(slot.end),
   }))
 }
+export const fetchBusySlotsRawForMultipleAccounts = async (
+  addresses: string[],
+  start: Date,
+  end: Date,
+  limit?: number,
+  offset?: number
+): Promise<TimeSlot[]> => {
+  const response = (await internalFetch(`/meetings/busy/team`, 'POST', {
+    addresses,
+    start,
+    end,
+    limit,
+    offset,
+    isRaw: true,
+  })) as TimeSlot[]
+
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
 
 export const getMeetingsForDashboard = async (
   accountIdentifier: string,
@@ -413,14 +449,31 @@ export const getMeetingsForDashboard = async (
     created_at: slot.created_at ? new Date(slot.created_at) : undefined,
   }))
 }
-
+export const syncMeeting = async (
+  decryptedMeetingData: MeetingInfo
+): Promise<void> => {
+  try {
+    await internalFetch(`/secure/meetings/sync`, 'PATCH', {
+      decryptedMeetingData,
+    })
+  } catch (e) {}
+}
 export const getGroups = async (
   limit?: number,
   offset?: number
 ): Promise<Array<GetGroupsResponse>> => {
-  const response = (await internalFetch(
+  const response = await internalFetch<Array<GetGroupsResponse>>(
     `/secure/group/user?limit=${limit}&offset=${offset}`
-  )) as Array<GetGroupsResponse>
+  )
+  return response
+}
+export const getGroupsFull = async (
+  limit?: number,
+  offset?: number
+): Promise<Array<GetGroupsFullResponse>> => {
+  const response = await internalFetch<Array<GetGroupsFullResponse>>(
+    `/secure/group/full?limit=${limit}&offset=${offset}`
+  )
   return response
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
@@ -459,10 +512,14 @@ export const updateGroupRole = async (
   return !!response?.success
 }
 
-export const joinGroup = async (group_id: string, email_address?: string) => {
+export const joinGroup = async (
+  group_id: string,
+  email_address?: string,
+  type?: InviteType
+) => {
   const response = await internalFetch<{ success: true }>(
-    `/secure/group/${group_id}/join${
-      email_address ? `?email_address=${email_address}` : ''
+    `/secure/group/${group_id}/join?type=${type || InviteType.PRIVATE}${
+      email_address ? `&email_address=${email_address}` : ''
     }`,
     'POST'
   )
@@ -555,6 +612,41 @@ export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
     ...response,
     start: new Date(response.start),
     end: new Date(response.end),
+  }
+}
+export const getMeetingGuest = async (slot_id: string): Promise<DBSlot> => {
+  const response = await queryClient.fetchQuery(
+    QueryKeys.meeting(slot_id),
+    () => internalFetch(`/meetings/guest/${slot_id}`) as Promise<DBSlot>
+  )
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
+  }
+}
+
+export const guestMeetingCancel = async (
+  slot_id: string,
+  payload: GuestMeetingCancel
+) => {
+  try {
+    const response = await internalFetch<{ success: true }>(
+      `/meetings/guest/${slot_id}`,
+      'DELETE',
+      payload
+    )
+    return response
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 404) {
+        throw new MeetingNotFoundError(slot_id)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      } else {
+        throw e
+      }
+    }
   }
 }
 
@@ -892,6 +984,20 @@ export const createHuddleRoom = async (
     throw e
   }
 }
+export const createGoogleRoom = async (): Promise<{ url: string }> => {
+  try {
+    return (await internalFetch('/integrations/google/create', 'POST', {})) as {
+      url: string
+    }
+  } catch (e) {
+    if (e instanceof ApiFetchError) {
+      if (e.status === 503) {
+        throw new GoogleServiceUnavailable()
+      }
+    }
+    throw e
+  }
+}
 export const createZoomMeeting = async (
   payload: UrlCreationRequest
 ): Promise<{ url: string }> => {
@@ -919,8 +1025,17 @@ export const generateMeetingUrl = async (
     }
   } catch (e) {
     if (e instanceof ApiFetchError) {
-      if (e.status === 503) {
+      if (e.message === GoogleServiceUnavailable.name) {
+        throw new GoogleServiceUnavailable()
+      }
+      if (e.message === ZoomServiceUnavailable.name) {
+        throw new ZoomServiceUnavailable()
+      }
+      if (e.message === Huddle01ServiceUnavailable.name) {
         throw new Huddle01ServiceUnavailable()
+      }
+      if (e.message === 'UrlCreationError') {
+        throw new UrlCreationError()
       }
     }
     throw e
@@ -988,4 +1103,54 @@ export const getPendingTgConnection = async () => {
       'GET'
     )
   ).data
+}
+
+export const subscribeWithCoupon = async (
+  coupon: string,
+  domain?: string
+): Promise<Subscription> => {
+  try {
+    return (await internalFetch(`/secure/subscriptions/custom`, 'POST', {
+      coupon,
+      domain,
+    })) as Subscription
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 400) {
+        throw new CouponNotValid()
+      } else if (e.status && e.status === 410) {
+        throw new CouponExpired()
+      } else if (e.status && e.status === 409) {
+        throw new CouponAlreadyUsed()
+      }
+    }
+    throw e
+  }
+}
+
+export const updateCustomSubscriptionDomain = async (
+  domain: string
+): Promise<Subscription> => {
+  try {
+    return await internalFetch<Subscription>(
+      `/secure/subscriptions/custom`,
+      'PATCH',
+      {
+        domain,
+      }
+    )
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 400) {
+        throw new NoActiveSubscription()
+      } else if (e.status && e.status === 410) {
+        throw new SubscriptionNotCustom()
+      }
+    }
+    throw e
+  }
+}
+
+export const getNewestCoupon = async (): Promise<Coupon> => {
+  return await internalFetch<Coupon>(`/subscriptions/custom`)
 }

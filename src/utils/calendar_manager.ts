@@ -4,20 +4,31 @@ import {
   getHours,
   getMinutes,
   getMonth,
+  getWeekOfMonth,
   getYear,
 } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
 import { Encrypted, encryptWithPublicKey } from 'eth-crypto'
-import { Attendee, createEvent, EventAttributes, ReturnObject } from 'ics'
+import {
+  Alarm,
+  Attendee,
+  createEvent,
+  EventAttributes,
+  ReturnObject,
+} from 'ics'
 import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
+import { MeetingReminders } from '@/types/common'
 import {
   DBSlot,
+  ExtendedDBSlot,
   MeetingChangeType,
   MeetingDecrypted,
   MeetingInfo,
   MeetingProvider,
+  MeetingRepeat,
+  MeetingVersion,
   ParticipantMappingType,
   SchedulingType,
 } from '@/types/Meeting'
@@ -30,7 +41,6 @@ import {
   MeetingCreationRequest,
   RequestParticipantMapping,
 } from '@/types/Requests'
-import { Plan } from '@/types/Subscription'
 import {
   cancelMeeting as apiCancelMeeting,
   generateMeetingUrl,
@@ -41,6 +51,7 @@ import {
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
   scheduleMeetingFromServer,
+  syncMeeting,
   updateMeeting as apiUpdateMeeting,
 } from '@/utils/api_helper'
 
@@ -120,21 +131,21 @@ export const sanitizeParticipants = (
       )
 
       if (elementsByEmail.length > 1) {
-        const toPickIfScheduler = elementsByEmail.filter(
+        const toPickIfScheduler = elementsByEmail.find(
           p =>
             p.guest_email === participant.guest_email &&
             p.type === ParticipantType.Scheduler
         )
-        if (!added && toPickIfScheduler[0]) {
-          sanitized.push(toPickIfScheduler[0])
+        if (!added && toPickIfScheduler) {
+          sanitized.push(toPickIfScheduler)
           added = true
         }
 
-        const toPick = elementsByEmail.filter(
+        const toPick = elementsByEmail.find(
           p => p.guest_email === participant.guest_email && p.name
         )
-        if (!added && toPick[0] && toPick[0].name) {
-          sanitized.push(toPick[0])
+        if (!added && toPick && toPick.name) {
+          sanitized.push(toPick)
           added = true
         }
       }
@@ -246,7 +257,9 @@ const buildMeetingData = async (
   meetingContent?: string,
   meetingUrl = '',
   meetingId = '',
-  meetingTitle = 'No Title'
+  meetingTitle = 'No Title',
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -269,6 +282,9 @@ const buildMeetingData = async (
     change_history_paths: [],
     related_slot_ids: [],
     meeting_id: meetingId,
+    reminders: meetingReminders,
+    provider: meetingProvider,
+    recurrence: meetingRepeat,
   }
 
   // first pass to make sure that we are keeping the existing slot id
@@ -277,9 +293,15 @@ const buildMeetingData = async (
     participant.slot_id = existingSlotId || participant.slot_id
   }
 
-  const allSlotIds = sanitizedParticipants
+  const allAccountSlotIds = sanitizedParticipants
     .filter(p => p.account_address)
     .map(it => it.slot_id)
+    .filter(val => val !== undefined) as string[]
+
+  const allSlotIds = sanitizedParticipants
+    .map(it => it.slot_id!)
+    .filter(val => val !== undefined)
+
   const participantsMappings = []
 
   for (const participant of sanitizedParticipants) {
@@ -295,7 +317,9 @@ const buildMeetingData = async (
     const privateInfoComplete = JSON.stringify({
       ...privateInfo,
       // we need to store the other related slots in other to update the meeting later
-      related_slot_ids: allSlotIds.filter(id => id !== participant.slot_id),
+      related_slot_ids: allAccountSlotIds.filter(
+        id => id !== participant.slot_id
+      ),
     } as MeetingInfo)
 
     const participantMapping: RequestParticipantMapping = {
@@ -336,18 +360,28 @@ const buildMeetingData = async (
     content: privateInfo['content'],
     title: privateInfo['title'],
     meetingProvider,
+    meetingReminders,
+    meetingRepeat,
+    allSlotIds,
   }
 }
 
 /**
  *
- * @param owner
+ * @param ignoreAvailabilities
+ * @param currentAccountAddress
  * @param meetingTypeId
  * @param startTime
  * @param endTime
  * @param decryptedMeeting
  * @param signature
  * @param participants
+ * @param content
+ * @param meetingUrl
+ * @param meetingProvider
+ * @param meetingTitle
+ * @param meetingReminders
+ * @param meetingRepeat
  * @returns
  */
 const updateMeeting = async (
@@ -362,7 +396,9 @@ const updateMeeting = async (
   content: string,
   meetingUrl: string,
   meetingProvider: MeetingProvider,
-  meetingTitle?: string
+  meetingTitle?: string,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -480,7 +516,9 @@ const updateMeeting = async (
     content,
     meetingUrl,
     rootMeetingId,
-    meetingTitle
+    meetingTitle,
+    meetingReminders,
+    meetingRepeat
   )
   const payload = {
     ...meetingData,
@@ -562,7 +600,9 @@ const scheduleMeeting = async (
   meetingContent?: string,
   meetingUrl?: string,
   emailToSendReminders?: string,
-  meetingTitle?: string
+  meetingTitle?: string,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
@@ -579,8 +619,11 @@ const scheduleMeeting = async (
         participants_mapping: participantData.sanitizedParticipants,
         accounts: participantData.allAccounts,
         content: meetingContent,
+        meetingReminders,
+        meetingRepeat,
       })
     ).url
+
   const meeting = await buildMeetingData(
     schedulingType,
     meetingTypeId,
@@ -594,7 +637,9 @@ const scheduleMeeting = async (
     meetingContent,
     meeting_url,
     newMeetingId,
-    meetingTitle
+    meetingTitle,
+    meetingReminders,
+    meetingRepeat
   )
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = []
@@ -677,6 +722,49 @@ const scheduleMeeting = async (
     throw error
   }
 }
+const createAlarm = (indicator: MeetingReminders): Alarm => {
+  switch (indicator) {
+    case MeetingReminders['15_MINUTES_BEFORE']:
+      return {
+        action: 'display',
+        description: 'Reminder',
+        trigger: { minutes: 15, before: true },
+      }
+
+    case MeetingReminders['30_MINUTES_BEFORE']:
+      return {
+        action: 'display',
+        description: 'Reminder',
+        trigger: { minutes: 30, before: true },
+      }
+
+    case MeetingReminders['1_HOUR_BEFORE']:
+      return {
+        action: 'display',
+        description: 'Reminder',
+        trigger: { hours: 1, before: true },
+      }
+    case MeetingReminders['1_DAY_BEFORE']:
+      return {
+        action: 'display',
+        description: 'Reminder',
+        trigger: { days: 1, before: true },
+      }
+    case MeetingReminders['1_WEEK_BEFORE']:
+      return {
+        action: 'display',
+        description: 'Reminder',
+        trigger: { weeks: 1, before: true },
+      }
+    case MeetingReminders['10_MINUTES_BEFORE']:
+    default:
+      return {
+        action: 'display',
+        description: 'Reminder',
+        trigger: { minutes: 10, before: true },
+      }
+  }
+}
 const generateIcs = (
   meeting: MeetingDecrypted,
   ownerAddress: string,
@@ -688,7 +776,7 @@ const generateIcs = (
 ): ReturnObject => {
   let url = meeting.meeting_url.trim()
   if (!isValidUrl(url)) {
-    url = 'https://meetwithwallet.xyz'
+    url = 'https://meetwith.xyz'
   }
   const event: EventAttributes = {
     uid: meeting.id,
@@ -699,7 +787,7 @@ const generateIcs = (
       getHours(meeting.start),
       getMinutes(meeting.start),
     ],
-    productId: '-//MEET WITH WALLET//EN',
+    productId: '-//Meetwith//EN',
     end: [
       getYear(meeting.end),
       getMonth(meeting.end) + 1,
@@ -739,7 +827,24 @@ const generateIcs = (
     event.transp = 'OPAQUE'
     event.classification = 'PUBLIC'
   }
+  if (meeting.reminders) {
+    event.alarms = meeting.reminders.map(createAlarm)
+  }
+  if (meeting.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT) {
+    let RRULE = `FREQ=${meeting.recurrence?.toUpperCase()};INTERVAL=1`
+    const dayOfWeek = format(meeting.start, 'eeeeee').toUpperCase()
+    const weekOfMonth = getWeekOfMonth(meeting.start)
 
+    switch (meeting.recurrence) {
+      case MeetingRepeat.WEEKLY:
+        RRULE += `;BYDAY=${dayOfWeek}`
+        break
+      case MeetingRepeat.MONTHLY:
+        RRULE += `;BYSETPOS=${weekOfMonth};BYDAY=${dayOfWeek}`
+        break
+    }
+    event.recurrenceRule = RRULE
+  }
   event.attendees = []
   if (!removeAttendess) {
     for (const participant of meeting.participants) {
@@ -751,7 +856,9 @@ const generateIcs = (
           destination.accountAddress === participant.account_address
             ? destination.email
             : participant.guest_email ||
-              noNoReplyEmailForAccount(participant.account_address!),
+              noNoReplyEmailForAccount(
+                (participant.name || participant.account_address)!
+              ),
         rsvp: participant.status === ParticipationStatus.Accepted,
         partstat: participantStatusToICSStatus(participant.status),
         role: 'REQ-PARTICIPANT',
@@ -781,7 +888,7 @@ const participantStatusToICSStatus = (status: ParticipationStatus) => {
 }
 
 const decryptMeeting = async (
-  meeting: DBSlot,
+  meeting: ExtendedDBSlot,
   account: Account,
   signature?: string
 ): Promise<MeetingDecrypted | null> => {
@@ -790,10 +897,26 @@ const decryptMeeting = async (
     signature || getSignature(account!.address)!,
     meeting?.meeting_info_encrypted
   )
-
   if (!content) return null
 
   const meetingInfo = JSON.parse(content) as MeetingInfo
+  if (
+    meeting?.conferenceData &&
+    meeting?.conferenceData.version === MeetingVersion.V2
+  ) {
+    if (
+      meeting.conferenceData.slots.length !== meetingInfo.participants.length
+    ) {
+      void syncMeeting(meetingInfo)
+      // Hide the removed participants from the UI while they're being removed from the backend
+      meetingInfo.related_slot_ids = meetingInfo.related_slot_ids.filter(id =>
+        meeting.conferenceData?.slots.includes(id)
+      )
+      meetingInfo.participants = meetingInfo.participants.filter(p =>
+        meeting.conferenceData?.slots.includes(p.slot_id!)
+      )
+    }
+  }
   return {
     id: meeting.id!,
     ...meeting,
@@ -807,6 +930,9 @@ const decryptMeeting = async (
     start: new Date(meeting.start),
     end: new Date(meeting.end),
     version: meeting.version,
+    reminders: meetingInfo.reminders,
+    provider: meetingInfo?.provider,
+    recurrence: meetingInfo?.recurrence,
   }
 }
 
@@ -867,11 +993,12 @@ const dateToLocalizedRange = (
   timezone: string,
   includeTimezone?: boolean
 ): string => {
-  const start = `${format(
-    utcToZonedTime(start_date, timezone),
+  const start = `${formatInTimeZone(
+    start_date,
+    timezone,
     'eeee, LLL d • p - '
   )}`
-  let end = `${format(utcToZonedTime(end_date, timezone), 'p')}`
+  let end = `${formatInTimeZone(end_date, timezone, 'p')}`
   if (includeTimezone) {
     end += ` (${timezone})`
   }
@@ -881,8 +1008,12 @@ const dateToLocalizedRange = (
 
 const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
   if (isProAccount(account)) {
-    return account.subscriptions?.filter(sub => sub.plan_id === Plan.PRO)[0]
-      .domain
+    const domain = account.subscriptions?.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )?.domain
+    if (domain) {
+      return domain
+    }
   }
   return `address/${
     ellipsize ? ellipsizeAddress(account!.address) : account!.address
@@ -925,9 +1056,14 @@ const generateAllSlots = () => {
   allSlots.push('24:00')
   return allSlots
 }
-
+const sanitizeContent = (email: string): string => {
+  return email.replace(/[^a-zA-Z0-9._%+-@]/g, '')
+}
 const noNoReplyEmailForAccount = (account_address: string): string => {
-  return `no_reply_${account_address}@meetwithwallet.xyz`
+  const content = sanitizeContent(
+    account_address.replaceAll(' ', '_').toLowerCase()
+  )
+  return `no_reply_${content}@meetwith.xyz`
 }
 
 const decodeMeeting = async (
@@ -948,9 +1084,11 @@ const decodeMeeting = async (
   }
   return null
 }
-const googleUrlParsedDate = (date: Date) => format(date, "yyyyMMdd'T'HHmmSS'Z'")
+const googleUrlParsedDate = (date: Date) =>
+  formatInTimeZone(date.getTime(), 'UTC', "yyyyMMdd'T'HHmmSS'Z'")
+
 const outLookUrlParsedDate = (date: Date) =>
-  format(date, "yyyy-MM-dd:HH:mm:SS'Z'")
+  formatInTimeZone(date, 'UTC', "yyyy-MM-dd:HH:mm:SS'Z'")
 const generateGoogleCalendarUrl = (
   start?: Date | number,
   end?: Date | number,
@@ -1023,6 +1161,19 @@ const generateOffice365CalendarUrl = (
   return baseUrl
 }
 const allSlots = generateAllSlots()
+
+const selectDefaultProvider = (providers?: Array<MeetingProvider>) => {
+  switch (true) {
+    case providers?.includes(MeetingProvider.GOOGLE_MEET):
+      return MeetingProvider.GOOGLE_MEET
+    case providers?.includes(MeetingProvider.ZOOM):
+      return MeetingProvider.ZOOM
+    case providers?.includes(MeetingProvider.JITSI_MEET):
+      return MeetingProvider.JITSI_MEET
+    default:
+      return MeetingProvider.HUDDLE
+  }
+}
 export {
   allSlots,
   cancelMeeting,
@@ -1044,5 +1195,6 @@ export {
   noNoReplyEmailForAccount,
   outLookUrlParsedDate,
   scheduleMeeting,
+  selectDefaultProvider,
   updateMeeting,
 }

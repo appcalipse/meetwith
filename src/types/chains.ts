@@ -32,6 +32,7 @@ export enum SupportedChain {
   POLYGON_AMOY = 'POLYGON_AMOI',
   SEPOLIA = 'SEPOLIA',
   METIS_ANDROMEDA = 'METIS_ANDROMEDA',
+  CUSTOM = 'CUSTOM',
 }
 
 export enum AcceptedToken {

@@ -15,7 +15,7 @@ import { MeetingDecrypted } from '@/types/Meeting'
 import { cancelMeeting } from '@/utils/calendar_manager'
 
 interface CancelMeetingDialogProps {
-  decriptedMeeting?: MeetingDecrypted
+  decryptedMeeting?: MeetingDecrypted
   currentAccount?: Account | null
   onCancelChange?: (isCancelling: boolean) => void
   afterCancel?: (slotsRemoved: string[]) => void
@@ -24,7 +24,7 @@ interface CancelMeetingDialogProps {
 }
 
 export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
-  decriptedMeeting,
+  decryptedMeeting,
   currentAccount,
   onCancelChange,
   afterCancel,
@@ -63,7 +63,7 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
               colorScheme="red"
               onClick={() => {
                 setCancelling(true)
-                cancelMeeting(currentAccount!.address, decriptedMeeting!)
+                cancelMeeting(currentAccount!.address, decryptedMeeting!)
                   .then(({ removed }) => {
                     setCancelling(false)
                     afterCancel && afterCancel(removed)

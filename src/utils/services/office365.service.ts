@@ -1,10 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
+import { format } from 'date-fns'
 
 import {
   CalendarSyncInfo,
   NewCalendarEventType,
+  Office365RecurrenceType,
 } from '@/types/CalendarConnections'
-import { TimeSlotSource } from '@/types/Meeting'
+import { MeetingReminders } from '@/types/common'
+import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -268,7 +271,23 @@ export default class Office365CalendarService implements CalendarService {
       throw error
     }
   }
-
+  private createReminder(indicator: MeetingReminders) {
+    switch (indicator) {
+      case MeetingReminders['15_MINUTES_BEFORE']:
+        return 15
+      case MeetingReminders['30_MINUTES_BEFORE']:
+        return 30
+      case MeetingReminders['1_HOUR_BEFORE']:
+        return 60
+      case MeetingReminders['1_DAY_BEFORE']:
+        return 1440
+      case MeetingReminders['1_WEEK_BEFORE']:
+        return 10080
+      case MeetingReminders['10_MINUTES_BEFORE']:
+      default:
+        return 10
+    }
+  }
   private translateEvent = (
     calendarOwnerAccountAddress: string,
     details: MeetingCreationSyncRequest,
@@ -290,7 +309,7 @@ export default class Office365CalendarService implements CalendarService {
       p => p.account_address === calendarOwnerAccountAddress
     )[0].slot_id
 
-    const payload = {
+    const payload: Record<string, any> = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
         participantsInfo,
@@ -326,7 +345,39 @@ export default class Office365CalendarService implements CalendarService {
       allowNewTimeProposals: false,
       transactionId: meeting_id, // avoid duplicating the event if we make more than one request with the same transactionId
     }
+    if (details.meetingReminders) {
+      payload.isReminderOn = true
+      const lowestReminder = details.meetingReminders.reduce((prev, current) =>
+        prev < current ? prev : current
+      )
+      payload.reminderMinutesBeforeStart = this.createReminder(lowestReminder)
+    }
+    if (
+      details.meetingRepeat &&
+      details?.meetingRepeat !== MeetingRepeat.NO_REPEAT
+    ) {
+      let type!: Office365RecurrenceType
+      switch (details.meetingRepeat) {
+        case MeetingRepeat.DAILY:
+          type = Office365RecurrenceType.DAILY
+          break
+        case MeetingRepeat.WEEKLY:
+          type = Office365RecurrenceType.WEEKLY
+          break
+        case MeetingRepeat.MONTHLY:
+          type = Office365RecurrenceType.RELATIVE_MONTHLY
+          break
+      }
 
+      const meetingDate = new Date(details.start)
+      const daysOfWeek = format(meetingDate, 'eeee').toLowerCase()
+      payload['recurrence'] = {
+        type,
+        interval: 1,
+        daysOfWeek,
+        firstDayOfWeek: 'sunday',
+      }
+    }
     for (const participant of details.participants) {
       ;(payload.attendees as any).push({
         emailAddress: {
@@ -335,7 +386,9 @@ export default class Office365CalendarService implements CalendarService {
             calendarOwnerAccountAddress === participant.account_address
               ? this.getConnectedEmail()
               : participant.guest_email ||
-                noNoReplyEmailForAccount(participant.account_address!),
+                noNoReplyEmailForAccount(
+                  (participant.name || participant.account_address)!
+                ),
         },
       })
     }

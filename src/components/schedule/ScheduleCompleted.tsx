@@ -1,13 +1,15 @@
 import { Box, Button, Heading, Image, Text, VStack } from '@chakra-ui/react'
 import { format } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext } from 'react'
 
 import { ScheduleContext } from '@/pages/dashboard/schedule'
-import { EditMode } from '@/types/Dashboard'
+import { EditMode, Intents } from '@/types/Dashboard'
 
 const ScheduleCompleted = () => {
   const router = useRouter()
+  const { intent } = router.query
   const { title, pickedTime, timezone } = useContext(ScheduleContext)
   return (
     <VStack maxW={{ base: '300px', md: '400px' }} w="fit-content" m="auto">
@@ -44,11 +46,13 @@ const ScheduleCompleted = () => {
         fontFamily="'DM Sans', sans-serif"
       >
         Your meeting <b>{title}</b> on{' '}
-        <b>{format(pickedTime as Date, 'MMM d, yyyy')}</b> at{' '}
+        <b>{formatInTimeZone(pickedTime as Date, timezone, 'MMM d, yyyy')}</b>{' '}
+        at{' '}
         <b>
-          {format(pickedTime as Date, 'hh:mm a')} ({timezone})
+          {formatInTimeZone(pickedTime as Date, timezone, 'hh:mm a')} (
+          {timezone})
         </b>{' '}
-        has been scheduled.
+        has been {intent === Intents.UPDATE_MEETING ? 'updated' : 'scheduled'}.
       </Text>
       <Button
         onClick={() => router.push(`/dashboard/${EditMode.MEETINGS}`)}
@@ -59,7 +63,7 @@ const ScheduleCompleted = () => {
         w="full"
         mb="8px"
       >
-        View/edit meeting
+        View meetings
       </Button>
       {router.query?.ref === 'group' && (
         <Button
