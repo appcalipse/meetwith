@@ -106,7 +106,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
             userEmail,
             inviterName,
             message ||
-              `Come join our scheduling group "${group.name}" on Meet With Wallet!`,
+              `Come join our scheduling group "${group.name}" on Meetwith!`,
             groupId,
             group,
             inviteLink

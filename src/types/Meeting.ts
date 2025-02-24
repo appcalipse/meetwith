@@ -3,6 +3,7 @@ import { Encrypted } from 'eth-crypto'
 
 import { ConditionRelation } from '@/types/common'
 
+import { MeetingReminders } from './common'
 import { ParticipantInfo } from './ParticipantInfo'
 
 export enum SchedulingType {
@@ -35,8 +36,12 @@ export interface DBSlot extends TimeSlot {
   created_at?: Date
   version: number
   meeting_info_encrypted: Encrypted
+  recurrence: MeetingRepeat
+  public_decrypted_data?: MeetingDecrypted
 }
-
+export interface ExtendedDBSlot extends DBSlot {
+  conferenceData?: ConferenceMeeting
+}
 /**
  * Meetings providers list
  */
@@ -76,7 +81,10 @@ export enum MeetingAccessType {
    */
   PAID_MEETING = 'paid-meeting',
 }
-
+export enum MeetingVersion {
+  V1 = 'V1',
+  V2 = 'V2',
+}
 export interface ConferenceMeeting {
   id: string
   start: Date
@@ -84,8 +92,12 @@ export interface ConferenceMeeting {
   title?: string
   access_type: MeetingAccessType
   provider: MeetingProvider
+  reminders?: Array<MeetingReminders>
+  recurrence?: MeetingRepeat
   meeting_url: string
   created_at: Date
+  slots: Array<string>
+  version: MeetingVersion
 }
 
 export interface MeetingInfo {
@@ -95,8 +107,11 @@ export interface MeetingInfo {
   meeting_url: string
   participants: ParticipantInfo[]
   change_history_paths: string[]
+  reminders?: Array<MeetingReminders>
   related_slot_ids: string[]
   meeting_id: ConferenceMeeting['id']
+  provider?: MeetingProvider
+  recurrence?: MeetingRepeat
 }
 
 export interface MeetingDecrypted {
@@ -111,7 +126,10 @@ export interface MeetingDecrypted {
   content?: string
   related_slot_ids: string[]
   version: DBSlot['version']
+  reminders?: Array<MeetingReminders>
   meeting_info_encrypted: Encrypted
+  provider?: MeetingProvider
+  recurrence?: MeetingRepeat
 }
 
 export enum GroupMeetingType {
@@ -154,4 +172,20 @@ export enum NotBefore {
   TwelveHours = 12,
   Tomorrow = 500,
   NextWeek = 1000,
+}
+export enum MeetingRepeat {
+  NO_REPEAT = 'no-repeat',
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly',
+}
+
+export interface GuestMeetingCancel {
+  metadata: string
+  currentTimezone: string
+  reason?: string
+}
+
+export interface MeetingCancelSyncRequest {
+  decryptedMeetingData: MeetingDecrypted
 }

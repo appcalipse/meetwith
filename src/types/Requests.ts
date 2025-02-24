@@ -1,12 +1,14 @@
 import { Encrypted } from 'eth-crypto'
 
 import { Account } from './Account'
+import { MeetingReminders } from './common'
 import { MemberType } from './Group'
 import {
   ConferenceMeeting,
   GroupNotificationType,
   MeetingDecrypted,
   MeetingProvider,
+  MeetingRepeat,
   NotBefore,
   ParticipantMappingType,
   SchedulingType,
@@ -36,6 +38,9 @@ export interface MeetingCreationRequest {
   meeting_url: string
   meeting_id: ConferenceMeeting['id']
   emailToSendReminders?: string
+  meetingReminders?: Array<MeetingReminders>
+  meetingRepeat: MeetingRepeat
+  allSlotIds?: Array<string>
 }
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
@@ -46,6 +51,8 @@ export interface UrlCreationRequest {
   content?: string
   title?: string
   meeting_id: ConferenceMeeting['id']
+  meetingReminders?: Array<MeetingReminders>
+  meetingRepeat?: MeetingRepeat
 }
 export interface RequestParticipantMapping {
   account_address?: string
@@ -65,7 +72,10 @@ export interface MeetingCancelRequest {
   meeting: MeetingDecrypted
   currentTimezone: string
 }
-
+export interface GuestMeetingCancelRequest extends MeetingCancelRequest {
+  guest_email: string
+  reason: string
+}
 export interface MeetingSyncRequest {
   participantActing: ParticipantBaseInfo
   meeting_id: string
@@ -85,6 +95,8 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   title?: string
   content?: string
   meetingProvider: MeetingProvider
+  meetingReminders?: Array<MeetingReminders>
+  meetingRepeat?: MeetingRepeat
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
@@ -94,6 +106,7 @@ export interface GroupInviteNotifyRequest {
 export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   addressesToRemove: string[]
   guestsToRemove: ParticipantInfo[]
+  reason?: string
 }
 
 export interface DiscordAccountInfoRequest {
@@ -119,6 +132,8 @@ export interface DiscordMeetingRequest {
   title: string
   description: string
   notBefore?: NotBefore
+  provider: MeetingProvider
+  reminder?: Array<MeetingReminders>
 }
 
 export interface ChangeGroupAdminRequest {
@@ -126,4 +141,13 @@ export interface ChangeGroupAdminRequest {
   userId?: string
   invitePending: boolean
   role: MemberType
+}
+
+export interface CouponSubscriptionRequest {
+  coupon: string
+  domain?: string
+}
+
+export interface SubscriptionUpdateRequest {
+  domain: string
 }

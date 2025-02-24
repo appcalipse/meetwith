@@ -44,9 +44,8 @@ import {
 } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
-import { appUrl, isProduction } from '@/utils/constants'
+import { isProduction } from '@/utils/constants'
 
-import { CopyLinkButton } from '../profile/components/CopyLinkButton'
 import GroupMemberCard from './GroupMemberCard'
 
 export interface IGroupCard extends GetGroupsResponse {
@@ -76,8 +75,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
     setGroupName,
     pickGroupId,
     openNameEditModal,
-    pickGroupSlug,
-    openSlugEditModal,
+    openLeaveModal,
   } = useContext(GroupContext)
   const fetchMembers = async (reset?: boolean) => {
     const PAGE_SIZE = 10
@@ -146,7 +144,11 @@ const GroupCard: React.FC<IGroupCard> = props => {
           {
             label: 'Leave group',
             important: true,
-            link: '',
+            onClick: () => {
+              if (!props.id) return
+              pickGroupId(props.id)
+              openLeaveModal()
+            },
           },
         ]
       default:
@@ -247,8 +249,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
                     bgColor={itemsBgColor}
                     shadow="lg"
                   >
-                    At least 1 eternal calendar connected to Meet With Wallet
-                    platform.
+                    At least 1 eternal calendar connected to Meetwith platform.
                   </Text>
                   <Tooltip.Arrow />
                 </Tooltip.Content>
@@ -288,21 +289,24 @@ const GroupCard: React.FC<IGroupCard> = props => {
             Load more
           </Button>
         )}
-        <Spacer />
-
-        <Button
-          mt={3}
-          variant="ghost"
-          leftIcon={<Icon as={IoMdPersonAdd} h={25} />}
-          color="white"
-          px={1.5}
-          height="fit-content !important"
-          mr="auto"
-          py={1}
-          onClick={() => props.onAddNewMember(props.id, props.name)}
-        >
-          Add new member
-        </Button>
+        {isAdmin && (
+          <>
+            <Spacer />
+            <Button
+              mt={3}
+              variant="ghost"
+              leftIcon={<Icon as={IoMdPersonAdd} h={25} />}
+              color="white"
+              px={1.5}
+              height="fit-content !important"
+              mr="auto"
+              py={1}
+              onClick={() => props.onAddNewMember(props.id, props.name)}
+            >
+              Add new member
+            </Button>
+          </>
+        )}
       </VStack>
     )
   }
@@ -310,7 +314,8 @@ const GroupCard: React.FC<IGroupCard> = props => {
     <AccordionItem
       width="100%"
       key={`${id}-${props.id}`}
-      p={8}
+      px={8}
+      py={4}
       border={0}
       borderRadius="lg"
       mt={6}
@@ -337,23 +342,21 @@ const GroupCard: React.FC<IGroupCard> = props => {
               </Heading>
             </VStack>
             <HStack gap={3} width="fit-content">
-              {props.role === MemberType.ADMIN && (
-                <>
-                  <Button
-                    colorScheme="primary"
-                    onClick={() =>
-                      push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
-                    }
-                  >
-                    Schedule
-                  </Button>
-                  <IconButton
-                    aria-label="Add Contact"
-                    p={'8px 16px'}
-                    icon={<IoMdPersonAdd size={20} />}
-                    onClick={() => props.onAddNewMember(props.id, props.name)}
-                  />
-                </>
+              <Button
+                colorScheme="primary"
+                onClick={() =>
+                  push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
+                }
+              >
+                Schedule
+              </Button>
+              {isAdmin && (
+                <IconButton
+                  aria-label="Add Contact"
+                  p={'8px 16px'}
+                  icon={<IoMdPersonAdd size={20} />}
+                  onClick={() => props.onAddNewMember(props.id, props.name)}
+                />
               )}
               <Menu>
                 <MenuButton

@@ -6,6 +6,7 @@ import { Account } from '@/types/Account'
 import {
   MeetingInfo,
   MeetingProvider,
+  MeetingRepeat,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -42,7 +43,7 @@ const mockAccount = (internal_pub_key: string, address: string): Account => {
       description: faker.datatype.string(),
       availabilities: [],
       socialLinks: [],
-      meetingProviders: [MeetingProvider.HUDDLE],
+      meetingProviders: [MeetingProvider.GOOGLE_MEET],
     },
   }
 }
@@ -216,6 +217,7 @@ describe('calendar manager', () => {
       version: 0,
       created_at: new Date(),
       source: TimeSlotSource.MWW,
+      recurrence: MeetingRepeat.NO_REPEAT,
     }
     jest.spyOn(helper, 'scheduleMeeting').mockResolvedValue(data)
 
@@ -336,6 +338,7 @@ describe('calendar manager', () => {
       version: 0,
       created_at: mockedContent.created_at,
       source: TimeSlotSource.MWW,
+      recurrence: MeetingRepeat.NO_REPEAT,
     })
 
     // when
@@ -434,6 +437,7 @@ describe('calendar manager', () => {
       version: 0,
       created_at: new Date(),
       source: TimeSlotSource.MWW,
+      recurrence: MeetingRepeat.NO_REPEAT,
     })
 
     // when

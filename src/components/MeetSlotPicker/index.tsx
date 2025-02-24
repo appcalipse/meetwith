@@ -1,18 +1,14 @@
 import {
-  Box,
-  Button,
   Flex,
   Heading,
   HStack,
   Icon,
-  Text,
   useColorModeValue,
-  useMediaQuery,
   VStack,
 } from '@chakra-ui/react'
 import {
   chakraComponents,
-  MultiValue,
+  Props,
   Select,
   SingleValue,
 } from 'chakra-react-select'
@@ -23,7 +19,6 @@ import {
   areIntervalsOverlapping,
   differenceInDays,
   eachMinuteOfInterval,
-  format,
   isBefore,
   isFuture,
   isSameDay,
@@ -34,23 +29,19 @@ import {
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import React, { useEffect, useState } from 'react'
-import { AiFillCaretDown } from 'react-icons/ai'
-import {
-  FaArrowRight,
-  FaCalendar,
-  FaChevronDown,
-  FaClock,
-  FaGlobe,
-} from 'react-icons/fa'
+import { FaChevronDown, FaGlobe } from 'react-icons/fa'
 import { FaArrowLeft } from 'react-icons/fa6'
-import { IoMdCloseCircleOutline } from 'react-icons/io'
-import { SelectComponentsGeneric } from 'react-select/dist/declarations/src/components'
 import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
 import { AccountPreferences } from '@/types/Account'
+import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
-import { MeetingProvider, SchedulingType } from '../../types/Meeting'
+import {
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+} from '../../types/Meeting'
 import { logEvent } from '../../utils/analytics'
 import Loading from '../Loading'
 import { ScheduleForm } from '../schedule/schedule-form'
@@ -78,7 +69,9 @@ interface MeetSlotPickerProps {
     emailToSendReminders?: string,
     title?: string,
     participants?: Array<ParticipantInfo>,
-    meetingProvider?: MeetingProvider
+    meetingProvider?: MeetingProvider,
+    meetingReminders?: Array<MeetingReminders>,
+    meetingRepeat?: MeetingRepeat
   ) => Promise<boolean>
   preferences?: AccountPreferences
   reset: boolean
@@ -139,12 +132,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     )[0] || tzs[0]
   )
 
-  const _onChange = (
-    newValue:
-      | SingleValue<{ label: string; value: string }>
-      | MultiValue<{ label: string; value: string }>,
-    actionMeta: ActionMeta<any>
-  ) => {
+  const _onChange = (newValue: unknown, actionMeta: ActionMeta<unknown>) => {
     if (Array.isArray(newValue)) {
       return
     }
@@ -385,7 +373,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       )
     }
   }
-  const customComponents: Partial<SelectComponentsGeneric> = {
+  const customComponents: Props['components'] = {
     Control: props => (
       <chakraComponents.Control {...props}>
         <FaGlobe size={24} /> {props.children}
@@ -417,7 +405,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             validator={validator}
             monthChanged={onMonthChange}
             pickDay={handlePickDay}
-            pickedDay={pickedDay}
+            pickedDay={pickedDay || new Date()}
             selectedMonth={selectedMonth}
             setSelectedMonth={setSelectedMonth}
           />
@@ -450,8 +438,8 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               </HStack>
               <Select
                 value={tz}
-                colorScheme="primary"
                 onChange={_onChange}
+                colorScheme="primary"
                 className="hideBorder"
                 options={tzs}
                 components={customComponents}
@@ -463,7 +451,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               </Flex>
             ) : (
               <TimeSlots
-                pickedDay={pickedDay}
+                pickedDay={pickedDay || new Date()}
                 slotSizeMinutes={slotDurationInMinutes}
                 validator={timeSlotAvailability}
                 selfAvailabilityCheck={selfAvailabilityCheck}

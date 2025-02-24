@@ -12,7 +12,10 @@ import {
   RadioGroup,
   VStack,
 } from '@chakra-ui/react'
+import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
+import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import { FaCalendar, FaClock } from 'react-icons/fa'
 import { FaArrowLeft, FaUserGroup } from 'react-icons/fa6'
@@ -26,13 +29,23 @@ import {
   ScheduleContext,
 } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
-import { MeetingProvider } from '@/types/Meeting'
+import { MeetingReminders } from '@/types/common'
+import { Intents } from '@/types/Dashboard'
+import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { getExistingAccounts } from '@/utils/api_helper'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
+import {
+  customSelectComponents,
+  MeetingRemindersComponent,
+} from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
@@ -54,8 +67,13 @@ const ScheduleDetails = () => {
     meetingUrl,
     setMeetingProvider,
     setMeetingUrl,
+    meetingNotification,
+    setMeetingNotification,
+    meetingRepeat,
+    setMeetingRepeat,
   } = useContext(ScheduleContext)
   const { currentAccount } = useContext(AccountContext)
+  const { query } = useRouter()
   const [groupMembers, setGroupsMembers] = useState<Array<ParticipantInfo>>([])
   const [loading, setLoading] = useState(false)
   const meetingProviders = (
@@ -157,7 +175,8 @@ const ScheduleDetails = () => {
             <HStack gap={3}>
               <FaClock size={24} />
               <Text fontWeight="700">
-                {format(pickedTime!, 'hh:mm a')} ({timezone})
+                {formatInTimeZone(pickedTime!, timezone, 'hh:mm a')} ({timezone}
+                )
               </Text>
             </HStack>
             <HStack gap={3}>
@@ -232,6 +251,81 @@ const ScheduleDetails = () => {
               />
             )}
           </VStack>
+          <FormControl w="100%" maxW="100%">
+            <FormLabel>Meeting reminders</FormLabel>
+            <ChakraSelect
+              value={meetingNotification}
+              colorScheme="gray"
+              onChange={val => {
+                const meetingNotification = val as Array<{
+                  value: MeetingReminders
+                  label?: string
+                }>
+                // can't select more than 5 notifications
+                if (meetingNotification.length > 5) {
+                  return
+                }
+                setMeetingNotification(meetingNotification)
+              }}
+              className="hideBorder"
+              placeholder="Select Notification Alerts"
+              isMulti
+              tagVariant={'solid'}
+              options={MeetingNotificationOptions}
+              components={MeetingRemindersComponent}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  border: '1px solid',
+                  borderTopColor: 'currentColor',
+                  borderLeftColor: 'currentColor',
+                  borderRightColor: 'currentColor',
+                  borderBottomColor: 'currentColor',
+                  borderColor: 'inherit',
+                  borderRadius: 'md',
+                  maxW: '100%',
+                  display: 'block',
+                }),
+
+                placeholder: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+              }}
+            />
+          </FormControl>
+          <FormControl w="100%" maxW="100%">
+            <FormLabel>Meeting Repeat</FormLabel>
+            <ChakraSelect
+              value={meetingRepeat}
+              colorScheme="primary"
+              onChange={newValue =>
+                setMeetingRepeat(
+                  newValue as {
+                    value: MeetingRepeat
+                    label: string
+                  }
+                )
+              }
+              className="noLeftBorder timezone-select"
+              options={MeetingRepeatOptions}
+              components={customSelectComponents}
+              chakraStyles={{
+                placeholder: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+                input: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+                control: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+              }}
+            />
+          </FormControl>
           <FormControl
             w={{
               base: '100%',
@@ -254,7 +348,9 @@ const ScheduleDetails = () => {
             isLoading={isScheduling}
             onClick={handleSchedule}
           >
-            Schedule
+            {query.intent === Intents.UPDATE_MEETING
+              ? 'Update Meeting'
+              : 'Schedule'}
           </Button>
         </VStack>
       )}

@@ -2,6 +2,7 @@ import { erc20Abi } from 'abitype/abis'
 import { Abi } from 'abitype/zod'
 import { getContract, readContract } from 'thirdweb'
 import { viemAdapter } from 'thirdweb/adapters/viem'
+import { Address } from 'viem'
 
 import { ERC721 } from '@/abis/erc721'
 import { getChainInfo, SupportedChain, TokenMeta } from '@/types/chains'
@@ -24,7 +25,7 @@ export const getTokenBalance = async (
   const balance = await readContract({
     contract,
     method: 'balanceOf',
-    params: [walletAddress],
+    params: [walletAddress as Address],
   })
 
   return balance

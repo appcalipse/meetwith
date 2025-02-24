@@ -43,12 +43,14 @@ import { Account, MeetingType } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { ConditionRelation } from '@/types/common'
+import { MeetingReminders } from '@/types/common'
 import {
   DBSlot,
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
   MeetingProvider,
+  MeetingRepeat,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -73,11 +75,13 @@ import {
 } from '@/utils/calendar_manager'
 import {
   GateConditionNotValidError,
+  GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
   InvalidURL,
   MeetingCreationError,
   MeetingWithYourselfError,
   TimeNotAvailableError,
+  UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
 import {
@@ -273,7 +277,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       day = addDays(day, 1)
     }
     setBlockedDates(unavailableDate)
-  }, [currentMonth, selectedType, busySlots])
+  }, [currentMonth, selectedType, busySlots, account])
 
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
@@ -365,7 +369,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     emailToSendReminders?: string,
     title?: string,
     otherParticipants?: Array<ParticipantInfo>,
-    meetingProvider?: MeetingProvider
+    meetingProvider?: MeetingProvider,
+    meetingReminders?: Array<MeetingReminders>,
+    meetingRepeat?: MeetingRepeat
   ): Promise<boolean> => {
     setUnloggedSchedule(null)
     setIsScheduling(true)
@@ -468,7 +474,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         content,
         meetingUrl,
         emailToSendReminders,
-        title
+        title,
+        meetingReminders,
+        meetingRepeat
       )
       await updateSlots()
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
@@ -543,6 +551,26 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           title: 'Failed to create video meeting',
           description:
             'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GoogleServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Google seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof UrlCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue generating a meeting url for your meeting. try using a different location',
           status: 'error',
           duration: 5000,
           position: 'top',
