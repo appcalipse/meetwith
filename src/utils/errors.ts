@@ -151,6 +151,12 @@ export class Huddle01ServiceUnavailable extends Error {
     this.name = 'Huddle01ServiceUnavailable'
   }
 }
+export class GoogleServiceUnavailable extends Error {
+  constructor() {
+    super(`Google API is unavailable`)
+    this.name = 'GoogleServiceUnavailable'
+  }
+}
 
 export class ZoomServiceUnavailable extends Error {
   constructor() {
@@ -176,5 +182,45 @@ export class UserInvitationError extends Error {
     super(message)
     this.name = 'UserInvitationError'
     this.status = status
+  }
+}
+
+export class UrlCreationError extends Error {
+  constructor() {
+    super(`Error creating URL`)
+    this.name = 'UrlCreationError'
+  }
+}
+
+export class CouponExpired extends Error {
+  constructor() {
+    super(`Coupon has expired`)
+    this.name = 'CouponExpired'
+  }
+}
+export class CouponNotValid extends Error {
+  constructor() {
+    super(`Coupon is not valid`)
+    this.name = 'CouponNotValid'
+  }
+}
+export class CouponAlreadyUsed extends Error {
+  constructor() {
+    super(`Coupon has already been used`)
+    this.name = 'CouponAlreadyUsed'
+  }
+}
+
+export class NoActiveSubscription extends Error {
+  constructor() {
+    super(`No active subscription found`)
+    this.name = 'NoActiveSubscription'
+  }
+}
+
+export class SubscriptionNotCustom extends Error {
+  constructor() {
+    super(`Subscription is not custom`)
+    this.name = 'SubscriptionNotCustom'
   }
 }

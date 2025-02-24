@@ -3,7 +3,6 @@ import {
   Alert,
   AlertDescription,
   AlertIcon,
-  AlertTitle,
   Box,
   Button,
   Flex,
@@ -12,9 +11,7 @@ import {
   FormLabel,
   Heading,
   HStack,
-  Icon,
   Input,
-  Link as ChakraLink,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -23,14 +20,12 @@ import {
   ModalHeader,
   ModalOverlay,
   Select,
-  Switch,
   Text,
-  useColorModeValue,
   useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import * as Tooltip from '@radix-ui/react-tooltip'
+import { Select as ChakraSelect } from 'chakra-react-select'
 import {
   addDays,
   addMinutes,
@@ -42,16 +37,17 @@ import {
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { ReactNode, useContext, useState } from 'react'
-import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
 import { InputTimePicker } from '@/components/input-time-picker'
 import { AccountContext } from '@/providers/AccountProvider'
+import { MeetingReminders } from '@/types/common'
 import {
   DBSlot,
   MeetingChangeType,
   MeetingProvider,
+  MeetingRepeat,
   SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -65,7 +61,19 @@ import {
   getExistingAccountsSimple,
   getSuggestedSlots,
 } from '@/utils/api_helper'
-import { scheduleMeeting, updateMeeting } from '@/utils/calendar_manager'
+import {
+  scheduleMeeting,
+  selectDefaultProvider,
+  updateMeeting,
+} from '@/utils/calendar_manager'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
+import {
+  customSelectComponents,
+  MeetingRemindersComponent,
+} from '@/utils/constants/select'
 import {
   GateConditionNotValidError,
   Huddle01ServiceUnavailable,
@@ -104,12 +112,6 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
   decryptedMeeting,
 }) => {
   const { currentAccount } = useContext(AccountContext)
-
-  const [useHuddle, setHuddle] = useState(
-    decryptedMeeting
-      ? decryptedMeeting.meeting_url.includes('huddle01.com')
-      : true
-  )
 
   const toast = useToast()
 
@@ -150,9 +152,32 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
   const [groupTimes, setGroupTimes] = useState<Interval[] | undefined>(
     undefined
   )
-
+  const [meetingNotification, setMeetingNotification] = useState<
+    Array<{
+      value: MeetingReminders
+      label?: string
+    }>
+  >(
+    MeetingNotificationOptions.filter(val =>
+      decryptedMeeting?.reminders?.includes(val.value)
+    )
+  )
+  const [meetingRepeat, setMeetingRepeat] = useState(
+    MeetingRepeatOptions?.find(
+      val => decryptedMeeting?.recurrence === val.value
+    ) || {
+      value: MeetingRepeat['NO_REPEAT'],
+      label: 'Does not repeat',
+    }
+  )
   const meetingId = decryptedMeeting?.id
+  const defaultProvider = selectDefaultProvider(
+    currentAccount?.preferences?.meetingProviders
+  )
 
+  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
+    decryptedMeeting?.provider || defaultProvider
+  )
   if (meetingId) {
     if (window.location.search.indexOf(meetingId) === -1) {
       // not using router API to avoid re-rendering components
@@ -286,7 +311,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
   }
 
   const scheduleOrUpdate = async (ignoreAvailabilities: boolean) => {
-    if (!useHuddle && !meetingUrl) {
+    if (meetingProvider === MeetingProvider.CUSTOM && !meetingUrl) {
       toast({
         title: 'Missing information',
         description: 'Please provide a meeting link for participants to join',
@@ -400,8 +425,10 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           _participants.valid,
           content,
           meetingUrl,
-          MeetingProvider.HUDDLE,
-          title
+          meetingProvider,
+          title,
+          meetingNotification.map(mn => mn.value),
+          meetingRepeat.value
         )
         logEvent('Updated a meeting', {
           fromDashboard: true,
@@ -421,6 +448,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           source: TimeSlotSource.MWW,
           meeting_info_encrypted: meetingResult?.meeting_info_encrypted,
           version: meetingResult.version,
+          recurrence: meetingResult.recurrence || MeetingRepeat.NO_REPEAT,
         }
       )
       return true
@@ -494,10 +522,6 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
   const cancelMeeting = () => {
     onOpen()
   }
-
-  const bgColor = useColorModeValue('white', 'gray.600')
-  const iconColor = useColorModeValue('gray.600', 'white')
-
   return (
     <Modal
       onClose={() => onDialogClose(MeetingChangeType.CREATE)}
@@ -509,7 +533,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       <ModalOverlay />
       <ModalContent maxW="45rem">
         <ModalHeader>
-          <Heading size={'md'}>Schedule a new meeting</Heading>
+          <Heading size={'md'}>Update meeting</Heading>
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody>
@@ -661,6 +685,81 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               )}
             </FormControl>
           )}
+          <FormControl w="100%" maxW="100%">
+            <FormLabel>Meeting reminders (optional)</FormLabel>
+            <ChakraSelect
+              value={meetingNotification}
+              colorScheme="gray"
+              onChange={val => {
+                const meetingNotification = val as Array<{
+                  value: MeetingReminders
+                  label?: string
+                }>
+                // can't select more than 5 notifications
+                if (meetingNotification.length > 5) {
+                  return
+                }
+                setMeetingNotification(meetingNotification)
+              }}
+              className="hideBorder"
+              placeholder="Select Notification Alerts"
+              isMulti
+              tagVariant={'solid'}
+              options={MeetingNotificationOptions}
+              components={MeetingRemindersComponent}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  border: '1px solid',
+                  borderTopColor: 'currentColor',
+                  borderLeftColor: 'currentColor',
+                  borderRightColor: 'currentColor',
+                  borderBottomColor: 'currentColor',
+                  borderColor: 'inherit',
+                  borderRadius: 'md',
+                  maxW: '100%',
+                  display: 'block',
+                }),
+
+                placeholder: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+              }}
+            />
+          </FormControl>
+          <FormControl w="100%" maxW="100%">
+            <FormLabel>Meeting Repeat</FormLabel>
+            <ChakraSelect
+              value={meetingRepeat}
+              colorScheme="primary"
+              onChange={newValue =>
+                setMeetingRepeat(
+                  newValue as {
+                    value: MeetingRepeat
+                    label: string
+                  }
+                )
+              }
+              className="noLeftBorder timezone-select"
+              options={MeetingRepeatOptions}
+              components={customSelectComponents}
+              chakraStyles={{
+                placeholder: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+                input: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+                control: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+              }}
+            />
+          </FormControl>
           <FormControl mt={4}>
             <FormLabel htmlFor="info">Information (optional)</FormLabel>
             <RichTextEditor
@@ -668,78 +767,6 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               value={content}
               onValueChange={setContent}
               placeholder="Any information you want to share prior to the meeting?"
-            />
-          </FormControl>
-          <FormControl mt={{ base: 0, md: 8 }}>
-            <FormLabel>Meeting link</FormLabel>
-            <FormControl display="flex" alignItems="center">
-              <HStack alignItems="center">
-                <Switch
-                  display="flex"
-                  id="video-conference"
-                  colorScheme="primary"
-                  defaultChecked={useHuddle}
-                  isChecked={useHuddle}
-                  onChange={() => setHuddle(value => !value)}
-                />
-                <FormLabel
-                  htmlFor="video-conference"
-                  mb="0"
-                  alignItems="end"
-                  sx={{ paddingLeft: '16px', fontWeight: 'normal' }}
-                >
-                  <Text>
-                    Use{' '}
-                    <ChakraLink
-                      isExternal
-                      href="https://huddle01.com/?utm_source=mww"
-                    >
-                      Huddle01
-                    </ChakraLink>{' '}
-                    for your meeting
-                  </Text>
-                </FormLabel>
-
-                <Tooltip.Provider delayDuration={400}>
-                  <Tooltip.Root>
-                    <Tooltip.Trigger>
-                      <Flex
-                        w="16px"
-                        h="16px"
-                        borderRadius="50%"
-                        bgColor={iconColor}
-                        justifyContent="center"
-                        alignItems="center"
-                        ml={1}
-                      >
-                        <Icon w={1} color={bgColor} as={FaInfo} />
-                      </Flex>
-                    </Tooltip.Trigger>
-                    <Tooltip.Content>
-                      <Text
-                        fontSize="sm"
-                        p={4}
-                        maxW="200px"
-                        bgColor={bgColor}
-                        shadow="lg"
-                      >
-                        Huddle01 is a web3-powered video conferencing tailored
-                        for DAOs and NFT communities.
-                      </Text>
-                      <Tooltip.Arrow />
-                    </Tooltip.Content>
-                  </Tooltip.Root>
-                </Tooltip.Provider>
-              </HStack>
-            </FormControl>
-            <Input
-              mt="24px"
-              display={useHuddle ? 'none' : 'inherit'}
-              id="meeting-link"
-              type="text"
-              value={meetingUrl}
-              onChange={e => setMeetingUrl(e.target.value)}
-              placeholder="Please insert meeting link"
             />
           </FormControl>
         </ModalBody>
@@ -809,7 +836,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       <CancelMeetingDialog
         isOpen={isOpen}
         onClose={onClose}
-        decriptedMeeting={decryptedMeeting}
+        decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         onCancelChange={setIsCancelling}
         afterCancel={removed =>

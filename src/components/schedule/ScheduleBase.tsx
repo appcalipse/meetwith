@@ -1,5 +1,4 @@
 import { AddIcon, InfoIcon } from '@chakra-ui/icons'
-import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
@@ -19,7 +18,9 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
+import { useRouter } from 'next/router'
 import React, { ReactNode, useContext, useState } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
@@ -31,14 +32,24 @@ import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal
 import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
-import { MeetingProvider } from '@/types/Meeting'
+import { MeetingReminders } from '@/types/common'
+import { Intents } from '@/types/Dashboard'
+import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
+import {
+  customSelectComponents,
+  MeetingRemindersComponent,
+} from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
-import { isProAccount } from '@/utils/subscription_manager'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 const ScheduleBase = () => {
+  const { query } = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const {
     participants,
@@ -58,13 +69,18 @@ const ScheduleBase = () => {
     meetingUrl,
     setMeetingProvider,
     setMeetingUrl,
+    setGroupAvailability,
+    meetingNotification,
+    setMeetingNotification,
+    meetingRepeat,
+    setMeetingRepeat,
+    handleCancel,
   } = useContext(ScheduleContext)
   const {
     isOpen: isGroupModalOpen,
     onOpen: openGroupModal,
     onClose: closeGroupModal,
   } = useDisclosure()
-
   const [inputError, setInputError] = useState(
     undefined as ReactNode | undefined
   )
@@ -74,17 +90,15 @@ const ScheduleBase = () => {
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
   const iconColor = useColorModeValue('gray.800', 'white')
   const onParticipantsChange = (_participants: Array<ParticipantInfo>) => {
-    if (!isProAccount(currentAccount!) && _participants.length > 1) {
-      setInputError(
-        <Text>
-          <Link href="/dashboard/details#subscriptions">Go PRO</Link> to be able
-          to schedule meetings with more than one invitee
-        </Text>
-      )
-      participants.length == 0 && setParticipants([_participants[0]])
-      return
-    }
     setParticipants(_participants)
+    const key = 'no_group'
+    const addresses = _participants
+      .map(val => val.account_address)
+      .filter(val => val != undefined)
+    setGroupAvailability(prev => ({
+      ...prev,
+      [key]: addresses as string[],
+    }))
   }
 
   return (
@@ -94,8 +108,21 @@ const ScheduleBase = () => {
         onClose={() => setOpenWhatIsThis(false)}
       />
       <ScheduleGroupModal onClose={closeGroupModal} isOpen={isGroupModalOpen} />
-      <VStack gap={6} width="fit-content" m="auto" alignItems="flex-start">
-        <Heading fontSize="x-large">Schedule new meeting</Heading>
+      <VStack
+        gap={6}
+        width="fit-content"
+        maxW={{
+          base: '100%',
+          md: '600px',
+        }}
+        m="auto"
+        alignItems="flex-start"
+      >
+        <Heading fontSize="x-large">
+          {query.intent === Intents.UPDATE_MEETING
+            ? 'Update meeting'
+            : 'Schedule new meeting'}
+        </Heading>
         <VStack width="100%" gap={4}>
           <Flex width="100%" gap={4}>
             <FormControl>
@@ -132,12 +159,12 @@ const ScheduleBase = () => {
               </Select>
             </FormControl>
           </Flex>
-          <FormControl>
+          <FormControl w="100%" maxW="100%">
             <FormLabel htmlFor="participants">
               Participants{' '}
               <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
             </FormLabel>
-            <Box>
+            <Box w="100%" maxW="100%">
               <ChipInput
                 currentItems={participants}
                 placeholder="Enter participants"
@@ -291,6 +318,81 @@ const ScheduleBase = () => {
             />
           )}
         </VStack>
+        <FormControl w="100%" maxW="100%">
+          <FormLabel>Meeting reminders</FormLabel>
+          <ChakraSelect
+            value={meetingNotification}
+            colorScheme="gray"
+            onChange={val => {
+              const meetingNotification = val as Array<{
+                value: MeetingReminders
+                label?: string
+              }>
+              // can't select more than 5 notifications
+              if (meetingNotification.length > 5) {
+                return
+              }
+              setMeetingNotification(meetingNotification)
+            }}
+            className="hideBorder"
+            placeholder="Select Notification Alerts"
+            isMulti
+            tagVariant={'solid'}
+            options={MeetingNotificationOptions}
+            components={MeetingRemindersComponent}
+            chakraStyles={{
+              container: provided => ({
+                ...provided,
+                border: '1px solid',
+                borderTopColor: 'currentColor',
+                borderLeftColor: 'currentColor',
+                borderRightColor: 'currentColor',
+                borderBottomColor: 'currentColor',
+                borderColor: 'inherit',
+                borderRadius: 'md',
+                maxW: '100%',
+                display: 'block',
+              }),
+
+              placeholder: provided => ({
+                ...provided,
+                textAlign: 'left',
+              }),
+            }}
+          />
+        </FormControl>
+        <FormControl w="100%" maxW="100%">
+          <FormLabel>Meeting Repeat</FormLabel>
+          <ChakraSelect
+            value={meetingRepeat}
+            colorScheme="primary"
+            onChange={newValue =>
+              setMeetingRepeat(
+                newValue as {
+                  value: MeetingRepeat
+                  label: string
+                }
+              )
+            }
+            className="noLeftBorder timezone-select"
+            options={MeetingRepeatOptions}
+            components={customSelectComponents}
+            chakraStyles={{
+              placeholder: provided => ({
+                ...provided,
+                textAlign: 'left',
+              }),
+              input: provided => ({
+                ...provided,
+                textAlign: 'left',
+              }),
+              control: provided => ({
+                ...provided,
+                textAlign: 'left',
+              }),
+            }}
+          />
+        </FormControl>
         <FormControl>
           <FormLabel htmlFor="info">Description (optional)</FormLabel>
           <RichTextEditor
@@ -300,20 +402,35 @@ const ScheduleBase = () => {
             placeholder="Any information you want to share prior to the meeting?"
           />
         </FormControl>
-        <Button
-          w="100%"
-          py={3}
-          h={'auto'}
-          variant="outline"
-          colorScheme="primary"
-          onClick={handleSchedule}
-          isLoading={isScheduling}
-          isDisabled={
-            participants.length === 0 || !title || !duration || !pickedTime
-          }
-        >
-          Schedule now
-        </Button>
+        <HStack w="100%">
+          <Button
+            w="100%"
+            py={3}
+            h={'auto'}
+            variant="outline"
+            colorScheme="primary"
+            onClick={handleSchedule}
+            isLoading={isScheduling}
+            isDisabled={
+              participants.length === 0 || !title || !duration || !pickedTime
+            }
+          >
+            {query.intent === Intents.UPDATE_MEETING
+              ? 'Update Meeting'
+              : 'Schedule now'}
+          </Button>
+          {query.intent === Intents.UPDATE_MEETING && (
+            <Button
+              w="100%"
+              py={3}
+              h={'auto'}
+              colorScheme="primary"
+              onClick={handleCancel}
+            >
+              Cancel Meeting
+            </Button>
+          )}
+        </HStack>
       </VStack>
     </Box>
   )

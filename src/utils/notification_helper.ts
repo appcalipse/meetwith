@@ -1,7 +1,10 @@
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 
-import { Group } from '@/types/Group'
+import { MeetingReminders } from '@/types/common'
+import { Group, MemberType } from '@/types/Group'
+import { appUrl } from '@/utils/constants'
+import { encryptContent } from '@/utils/cryptography'
 
 import {
   AccountNotifications,
@@ -11,6 +14,7 @@ import {
   GroupNotificationType,
   MeetingChangeType,
   MeetingProvider,
+  MeetingRepeat,
   ParticipantMappingType,
 } from '../types/Meeting'
 import {
@@ -85,7 +89,8 @@ export const notifyForMeetingCancellation = async (
   start: Date,
   end: Date,
   created_at: Date,
-  timezone: string
+  timezone: string,
+  reason?: string
 ): Promise<void> => {
   const participantsInfo: ParticipantInfoForNotification[] = []
 
@@ -120,7 +125,8 @@ export const notifyForMeetingCancellation = async (
       start,
       end,
       created_at!,
-      ''
+      '',
+      reason
     )
   )
 }
@@ -136,7 +142,9 @@ export const notifyForOrUpdateNewMeeting = async (
   title?: string,
   description?: string,
   changes?: MeetingChange,
-  meetingProvider?: MeetingProvider
+  meetingProvider?: MeetingProvider,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat?: MeetingRepeat
 ): Promise<void> => {
   const participantsInfo = await setupParticipants(participants)
 
@@ -152,7 +160,9 @@ export const notifyForOrUpdateNewMeeting = async (
       title,
       description,
       changes,
-      meetingProvider
+      meetingProvider,
+      meetingReminders,
+      meetingRepeat
     )
   )
 }
@@ -192,7 +202,9 @@ const workNotifications = async (
   title?: string,
   description?: string,
   changes?: MeetingChange,
-  meetingProvider?: MeetingProvider
+  meetingProvider?: MeetingProvider,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat?: MeetingRepeat
 ): Promise<Promise<boolean>[]> => {
   const promises: Promise<boolean>[] = []
 
@@ -201,6 +213,11 @@ const workNotifications = async (
       const participant = participantsInfo[i]
 
       if (participant.guest_email) {
+        const guestInfo = participantsInfo.filter(p => p.guest_email)
+        const guestInfoEncrypted = encryptContent(
+          process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
+          JSON.stringify(guestInfo)
+        )
         promises.push(
           getEmailNotification(
             changeType,
@@ -215,7 +232,10 @@ const workNotifications = async (
             title,
             description,
             changes,
-            meetingProvider
+            meetingProvider,
+            meetingReminders,
+            meetingRepeat,
+            guestInfoEncrypted
           )
         )
       } else if (
@@ -246,7 +266,10 @@ const workNotifications = async (
                     meeting_url,
                     title,
                     description,
-                    changes
+                    changes,
+                    meetingProvider,
+                    meetingReminders,
+                    meetingRepeat
                   )
                 )
                 break
@@ -371,7 +394,10 @@ const getEmailNotification = async (
   title?: string,
   description?: string,
   changes?: MeetingChange,
-  meetingProvider?: MeetingProvider
+  meetingProvider?: MeetingProvider,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat?: MeetingRepeat,
+  guestInfoEncrypted?: string
 ): Promise<boolean> => {
   const toEmail =
     participant.guest_email ||
@@ -399,7 +425,10 @@ const getEmailNotification = async (
         title,
         description,
         created_at,
-        meetingProvider
+        meetingProvider,
+        meetingReminders,
+        meetingRepeat,
+        guestInfoEncrypted
       )
     case MeetingChangeType.DELETE:
       const displayName = getParticipantActingDisplayName(
@@ -419,7 +448,8 @@ const getEmailNotification = async (
         participant.meeting_id,
         participant.account_address,
         '',
-        created_at
+        created_at,
+        title // reason for cancelling meeting if any
       )
     case MeetingChangeType.UPDATE:
       return updateMeetingEmail(
@@ -437,7 +467,9 @@ const getEmailNotification = async (
         description,
         created_at,
         changes,
-        meetingProvider
+        meetingProvider,
+        meetingReminders,
+        meetingRepeat
       )
     default:
   }
@@ -560,7 +592,6 @@ const getTelegramNotification = async (
   const destination = participant.notifications!.notification_types.filter(
     n => n.channel === NotificationChannel.TELEGRAM
   )[0].destination
-  console.log('destination', destination)
   switch (changeType) {
     case MeetingChangeType.CREATE:
       return sendDm(

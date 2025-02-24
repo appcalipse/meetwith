@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
-import CryptoJS, { enc, SHA1 } from 'crypto-js'
-import { addMinutes, isAfter } from 'date-fns'
+import CryptoJS from 'crypto-js'
+import { addMinutes, addMonths, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
@@ -24,10 +24,12 @@ import {
   CalendarSyncInfo,
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
+import { SupportedChain } from '@/types/chains'
 import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
   EmptyGroupsResponse,
+  GetGroupsFullResponse,
   Group,
   GroupInviteFilters,
   GroupInvites,
@@ -41,10 +43,14 @@ import {
 import {
   ConferenceMeeting,
   DBSlot,
+  ExtendedDBSlot,
   GroupMeetingRequest,
   GroupNotificationType,
   MeetingAccessType,
+  MeetingDecrypted,
   MeetingProvider,
+  MeetingRepeat,
+  MeetingVersion,
   ParticipantMappingType,
   TimeSlotSource,
 } from '@/types/Meeting'
@@ -61,7 +67,7 @@ import {
   MeetingUpdateRequest,
 } from '@/types/Requests'
 import { Subscription } from '@/types/Subscription'
-import { GroupMembersRow, TablesInsert } from '@/types/supabase'
+import { GroupMembersRow, Row, TablesInsert } from '@/types/supabase'
 import { TelegramConnection } from '@/types/Telegram'
 import {
   GateConditionObject,
@@ -72,6 +78,9 @@ import {
   AccountNotFoundError,
   AdminBelowOneError,
   AlreadyGroupMemberError,
+  CouponAlreadyUsed,
+  CouponExpired,
+  CouponNotValid,
   GateConditionNotValidError,
   GateInUseError,
   GroupCreationError,
@@ -80,19 +89,22 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
+  SubscriptionNotCustom,
   TimeNotAvailableError,
   UnauthorizedError,
 } from '@/utils/errors'
+import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
-import { GateCondition } from '../types/TokenGating'
 import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
 } from './calendar_manager'
 import { apiUrl } from './constants'
-import { encryptContent } from './cryptography'
+import { decryptContent, encryptContent } from './cryptography'
+import { addRecurrence } from './date_helper'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
@@ -166,7 +178,7 @@ const initAccountDBForWallet = async (
     availabilities: defaultAvailabilities,
     socialLinks: [],
     timezone,
-    meetingProviders: [MeetingProvider.HUDDLE],
+    meetingProviders: [MeetingProvider.GOOGLE_MEET],
   }
 
   if (!createdUserAccount.data || createdUserAccount.data.length === 0) {
@@ -392,7 +404,7 @@ export const getAccountPreferences = async (
 
     if (newPreferencesError) {
       console.error(newPreferences)
-      throw new Error('Error while completign empty preferences')
+      throw new Error('Error while completing empty preferences')
     }
 
     return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
@@ -405,23 +417,31 @@ const getExistingAccountsFromDB = async (
   addresses: string[],
   fullInformation?: boolean
 ): Promise<SimpleAccountInfo[] | Account[]> => {
+  let queryString = ` 
+      address,
+      internal_pub_key
+    `
+  if (fullInformation) {
+    queryString += `
+      ,calendars: connected_calendars(provider),
+      preferences: account_preferences(*)
+      `
+  }
   const { data, error } = await db.supabase
     .from('accounts')
-    .select('address, internal_pub_key')
+    .select(queryString)
     .in(
       'address',
       addresses.map(address => address.toLowerCase())
     )
-
   if (error) {
     throw new Error(error.message)
   }
 
-  if (fullInformation) {
-    for (const account of data) {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
-      )
+  for (const account of data) {
+    if (account.calendars) {
+      account.isCalendarConnected = account?.calendars?.length > 0
+      delete account.calendars
     }
   }
 
@@ -489,13 +509,69 @@ const getSlotsForAccount = async (
 
   return data || []
 }
+const updateRecurringSlots = async (identifier: string) => {
+  const account = await getAccountFromDB(identifier)
+  const _end = new Date().toISOString()
+  const { data: allSlots, error } = await db.supabase
+    .from('slots')
+    .select()
+    .eq('account_address', account.address)
+    .lte('end', _end)
+    .neq('recurrence', MeetingRepeat.NO_REPEAT)
+  if (error) {
+    return
+  }
+  if (allSlots) {
+    const toUpdate = []
+    for (const data of allSlots) {
+      const slot = data as DBSlot
+      const interval = addRecurrence(
+        new Date(slot.start),
+        new Date(slot.end),
+        slot.recurrence
+      )
+      const newSlot = { ...slot, start: interval.start, end: interval.end }
+      toUpdate.push(newSlot)
+    }
+    if (toUpdate.length > 0) {
+      await db.supabase.from('slots').upsert(toUpdate)
+    }
+  }
+}
+const updateAllRecurringSlots = async () => {
+  const _end = new Date().toISOString()
+  const { data: allSlots, error } = await db.supabase
+    .from('slots')
+    .select()
+    .lte('end', _end)
+    .neq('recurrence', MeetingRepeat.NO_REPEAT)
+  if (error) {
+    return
+  }
+  if (allSlots) {
+    const toUpdate = []
+    for (const data of allSlots) {
+      const slot = data as DBSlot
+      const interval = addRecurrence(
+        new Date(slot.start),
+        new Date(slot.end),
+        slot.recurrence
+      )
+      const newSlot = { ...slot, start: interval.start, end: interval.end }
+      toUpdate.push(newSlot)
+    }
+    if (toUpdate.length > 0) {
+      await db.supabase.from('slots').upsert(toUpdate)
+    }
+  }
+}
 
 const getSlotsForDashboard = async (
   identifier: string,
   end: Date,
   limit: number,
   offset: number
-): Promise<DBSlot[]> => {
+): Promise<ExtendedDBSlot[]> => {
   const account = await getAccountFromDB(identifier)
 
   const _end = end.toISOString()
@@ -512,7 +588,22 @@ const getSlotsForDashboard = async (
     throw new Error(error.message)
     // //TODO: handle error
   }
+  for (const slot of data) {
+    if (!slot.id) continue
+    const conferenceMeeting = await getConferenceDataBySlotId(slot.id)
+    slot.conferenceData = conferenceMeeting
+  }
+  return data || []
+}
+const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
+  const { data, error } = await db.supabase
+    .from('slots')
+    .select()
+    .in('id', slotIds)
 
+  if (error) {
+    throw new Error(error.message)
+  }
   return data || []
 }
 
@@ -605,13 +696,125 @@ const getMeetingsFromDB = async (slotIds: string[]): Promise<DBSlot[]> => {
 
   return meetings
 }
+const getConferenceDataBySlotId = async (
+  slotId: string
+): Promise<ConferenceMeeting> => {
+  const { data, error } = await db.supabase
+    .from<ConferenceMeeting>('meetings')
+    .select('*')
+    .filter('slots', 'cs', [`{${slotId}}`])
+  if (error) {
+    throw new Error(error.message)
+  }
 
+  return data[0]
+}
+const handleGuestCancel = async (
+  metadata: string,
+  slotId: string,
+  timezone: string,
+  reason?: string
+) => {
+  metadata = decryptContent(process.env.NEXT_PUBLIC_SERVER_PUB_KEY!, metadata)
+  const participantGuestInfo: ParticipantInfoForNotification[] =
+    JSON.parse(metadata)
+  const actingGuest = participantGuestInfo.find(p => p.slot_id === slotId)
+  if (!actingGuest) {
+    throw new UnauthorizedError()
+  }
+
+  const conferenceMeeting = await getConferenceDataBySlotId(slotId)
+  if (!conferenceMeeting) {
+    throw new MeetingNotFoundError(slotId)
+  }
+  let addressesToRemove: Array<string> = []
+  let guestsToRemove: Array<ParticipantInfo> = []
+  let slotsToRemove: Array<string> = [slotId]
+  // If the guest scheduled the meeting cancel for all invitee
+  // For one on one meetings cancel meetings entirely for other user
+  if (
+    actingGuest.type === ParticipantType.Scheduler ||
+    conferenceMeeting.slots?.length <= 2
+  ) {
+    const slotData = await getSlotsByIds(
+      conferenceMeeting.slots.filter(s => s !== slotId)
+    )
+    addressesToRemove = slotData.map(s => s.account_address)
+    await db.supabase.from('slots').delete().in('id', conferenceMeeting.slots)
+    slotsToRemove = conferenceMeeting.slots
+    guestsToRemove = participantGuestInfo
+  }
+  await saveConferenceMeetingToDB({
+    ...conferenceMeeting,
+    slots: conferenceMeeting.slots.filter(s => slotsToRemove.includes(s)),
+  })
+
+  const body: MeetingCancelSyncRequest = {
+    participantActing: actingGuest,
+    addressesToRemove,
+    guestsToRemove,
+    meeting_id: conferenceMeeting.id,
+    start: new Date(conferenceMeeting.start),
+    end: new Date(conferenceMeeting.end),
+    created_at: new Date(conferenceMeeting.created_at!),
+    timezone,
+    reason,
+  }
+  // Doing notifications and syncs asynchronously
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'DELETE',
+    body: JSON.stringify(body),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
+    },
+  })
+}
+const handleMeetingCancelSync = async (
+  decryptedMeetingData: MeetingDecrypted
+) => {
+  const conferenceMeeting = await getConferenceMeetingFromDB(
+    decryptedMeetingData.meeting_id
+  )
+  if (!conferenceMeeting) {
+    throw new MeetingNotFoundError(decryptedMeetingData.meeting_id)
+  }
+  decryptedMeetingData.related_slot_ids =
+    decryptedMeetingData.related_slot_ids.filter(id =>
+      conferenceMeeting?.slots.includes(id)
+    )
+  decryptedMeetingData.participants = decryptedMeetingData.participants.filter(
+    p => conferenceMeeting?.slots.includes(p.slot_id!)
+  )
+  const { error, data: oldSlots } = await db.supabase
+    .from<DBSlot>('slots')
+    .select()
+    .in('id', conferenceMeeting.slots)
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  for (const slot of oldSlots) {
+    const account = await getAccountFromDB(slot.account_address)
+    await db.supabase
+      .from('slots')
+      .update({
+        meeting_info_encrypted: await encryptWithPublicKey(
+          account.internal_pub_key,
+          JSON.stringify(decryptedMeetingData)
+        ),
+        version: slot.version + 1,
+      })
+      .eq('id', slot.id)
+  }
+}
 const deleteMeetingFromDB = async (
   participantActing: ParticipantBaseInfo,
   slotIds: string[],
   guestsToRemove: ParticipantInfo[],
   meeting_id: string,
-  timezone: string
+  timezone: string,
+  reason?: string
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
@@ -634,6 +837,7 @@ const deleteMeetingFromDB = async (
     end: new Date(oldSlots[0].end),
     created_at: new Date(oldSlots[0].created_at!),
     timezone,
+    reason,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -713,8 +917,11 @@ const saveMeeting = async (
     meeting_url: meeting.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meeting.meetingProvider,
+    reminders: meeting.meetingReminders,
+    recurrence: meeting.meetingRepeat,
+    version: MeetingVersion.V2,
+    slots: meeting.allSlotIds || [],
   })
-
   if (!createdRootMeeting) {
     throw new Error(
       'Could not create your meeting right now, get in touch with us if the problem persists'
@@ -784,6 +991,7 @@ const saveMeeting = async (
         account_address: account.address,
         version: 0,
         meeting_info_encrypted: participant.privateInfo,
+        recurrence: meeting.meetingRepeat,
       }
 
       slots.push(dbSlot)
@@ -826,6 +1034,8 @@ const saveMeeting = async (
     title: meeting.title,
     content: meeting.content,
     meetingProvider: meeting.meetingProvider,
+    meetingReminders: meeting.meetingReminders,
+    meetingRepeat: meeting.meetingRepeat,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -951,7 +1161,74 @@ const getUserGroups = async (
   }
   return []
 }
+const getGroupsAndMembers = async (
+  address: string,
+  limit: number,
+  offset: number
+): Promise<Array<GetGroupsFullResponse>> => {
+  const { data, error } = await db.supabase
+    .from('group_members')
+    .select(
+      `
+      role,
+      group: groups( id, name, slug )
+  `
+    )
+    .eq('member_id', address.toLowerCase())
+    .range(
+      offset || 0,
+      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+    )
+  if (error) {
+    throw new Error(error.message)
+  }
+  const groups = []
+  for (const group of data) {
+    const { data: membersData, error: membersError } = await db.supabase
+      .from('group_members')
+      .select()
+      .eq('group_id', group.group.id)
+    if (membersError) {
+      throw new Error(membersError.message)
+    }
+    const addresses = membersData.map(
+      (member: GroupMemberQuery) => member.member_id
+    )
+    const { data: members, error } = await db.supabase
+      .from('accounts')
+      .select(
+        `
+         group_members: group_members(*),
+         preferences: account_preferences(name),
+         calendars: connected_calendars(calendars)
+    `
+      )
+      .in('address', addresses)
+      .filter('group_members.group_id', 'eq', group.group.id)
+      .range(
+        offset || 0,
+        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+      )
+    if (error) {
+      throw new Error(error.message)
+    }
 
+    if (data) {
+      groups.push({
+        ...group.group,
+        members: members.map(member => ({
+          userId: member.group_members?.[0]?.id,
+          displayName: member.preferences?.name,
+          address: member.group_members?.[0]?.member_id as string,
+          role: member.group_members?.[0].role,
+          invitePending: false,
+          calendarConnected: !!member.calendars[0]?.calendars?.length,
+        })),
+      })
+    }
+  }
+  return groups
+}
 async function findGroupsWithSingleMember(
   groupIDs: Array<string>
 ): Promise<Array<EmptyGroupsResponse>> {
@@ -1102,6 +1379,22 @@ const getGroupInvites = async ({
       console.error('Unexpected error in getGroupInvites function:', error)
       throw new Error('An unexpected error occurred')
     }
+  }
+}
+const publicGroupJoin = async (group_id: string, address: string) => {
+  const groupUsers = await getGroupMembersInternal(group_id)
+  if (groupUsers.map(val => val.member_id).includes(address.toLowerCase())) {
+    throw new AlreadyGroupMemberError()
+  }
+  const { error: memberError } = await db.supabase
+    .from('group_members')
+    .insert({
+      group_id,
+      member_id: address.toLowerCase(),
+      role: MemberType.MEMBER,
+    })
+  if (memberError) {
+    throw new Error(memberError.message)
   }
 }
 
@@ -1691,7 +1984,7 @@ const connectedCalendarExists = async (
     .from('connected_calendars')
     .select()
     .eq('account_address', address.toLowerCase())
-    .eq('email', email.toLowerCase())
+    .ilike('email', email.toLowerCase())
     .eq('provider', provider)
 
   if (error) {
@@ -1711,7 +2004,7 @@ export const updateCalendarPayload = async (
     .from('connected_calendars')
     .update({ payload, updated: new Date() })
     .eq('account_address', address.toLowerCase())
-    .eq('email', email.toLowerCase())
+    .ilike('email', email.toLowerCase())
     .eq('provider', provider)
 
   if (error) {
@@ -1744,7 +2037,7 @@ const addOrUpdateConnectedCalendar = async (
         updated: new Date(),
       })
       .eq('account_address', address.toLowerCase())
-      .eq('email', email.toLowerCase())
+      .ilike('email', email.toLowerCase())
       .eq('provider', provider)
   } else {
     if (calendars.filter(c => c.enabled).length === 0) {
@@ -1779,7 +2072,7 @@ const removeConnectedCalendar = async (
     .from<ConnectedCalendar>('connected_calendars')
     .delete()
     .eq('account_address', address.toLowerCase())
-    .eq('email', email.toLowerCase())
+    .ilike('email', email.toLowerCase())
     .eq('provider', provider)
 
   if (error) {
@@ -1790,26 +2083,31 @@ const removeConnectedCalendar = async (
 }
 
 export const getSubscriptionFromDBForAccount = async (
-  accountAddress: string
+  accountAddress: string,
+  chain?: SupportedChain
 ): Promise<Subscription[]> => {
-  const { data, error } = await db.supabase
+  const query = db.supabase
     .from<Subscription>('subscriptions')
     .select()
     .gt('expiry_time', new Date().toISOString())
     .eq('owner_account', accountAddress.toLowerCase())
-
+  if (chain) {
+    query.eq('chain', chain)
+  }
+  const { data, error } = await query
   if (error) {
     throw new Error(error.message)
   }
 
   if (data && data.length > 0) {
     let subscriptions = data as Subscription[]
-
+    const collidingDomains = subscriptions.map(s => s.domain).filter(s => s)
+    if (collidingDomains.length === 0) return subscriptions
     const collisionExists = await db.supabase
       .from('subscriptions')
       .select()
       .neq('owner_account', accountAddress.toLowerCase())
-      .or(subscriptions.map(s => `domain.ilike.${s.domain}`).join(','))
+      .or(collidingDomains.map(domain => `domain.ilike.${domain}`).join(','))
 
     if (collisionExists.error) {
       throw new Error(collisionExists.error.message)
@@ -1819,6 +2117,7 @@ export const getSubscriptionFromDBForAccount = async (
     // on the blockchain, but such domain already existed for someone
     // else and is not expired, we remove it here.
     for (const collision of collisionExists.data) {
+      if (!collision.domain) continue
       if (
         (collision as Subscription).registered_at <
         subscriptions.find(s => s.domain === collision.domain)!.registered_at
@@ -2175,6 +2474,7 @@ const updateMeeting = async (
         account_address: account.address,
         version: meetingUpdateRequest.version,
         meeting_info_encrypted: participant.privateInfo,
+        recurrence: meetingUpdateRequest.meetingRepeat,
       }
 
       slots.push(dbSlot)
@@ -2225,7 +2525,9 @@ const updateMeeting = async (
   if (meetingUpdateRequest.meeting_url.includes('huddle')) {
     meetingProvider = MeetingProvider.HUDDLE
   }
-
+  const meeting = await getConferenceMeetingFromDB(
+    meetingUpdateRequest.meeting_id
+  )
   // now that everything happened without error, it is safe to update the root meeting data
   const createdRootMeeting = await saveConferenceMeetingToDB({
     id: meetingUpdateRequest.meeting_id,
@@ -2234,6 +2536,11 @@ const updateMeeting = async (
     meeting_url: meetingUpdateRequest.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meetingProvider,
+    recurrence: meetingUpdateRequest.meetingRepeat,
+    version: MeetingVersion.V2,
+    slots: meeting.slots?.filter(
+      val => !meetingUpdateRequest.slotsToRemove.includes(val)
+    ),
   })
 
   if (!createdRootMeeting)
@@ -2254,6 +2561,8 @@ const updateMeeting = async (
     title: meetingUpdateRequest.title,
     content: meetingUpdateRequest.content,
     changes: changingTime ? { dateChange: changingTime } : undefined,
+    meetingReminders: meetingUpdateRequest.meetingReminders,
+    meetingRepeat: meetingUpdateRequest.meetingRepeat,
   }
 
   // Doing notifications and syncs asynchronously
@@ -2410,7 +2719,7 @@ export async function createGroupInDB(
     role: MemberType.ADMIN,
   }
   const members = [admin]
-  const { data: memberData, error: memberError } = await db.supabase
+  const { error: memberError } = await db.supabase
     .from('group_members')
     .insert(members)
   if (memberError) {
@@ -2422,7 +2731,7 @@ export async function createGroupInDB(
   return {
     id: newGroup.id,
     name: newGroup.name,
-    slug: newGroup.slug,
+    slug: newGroup.slug!,
   }
 }
 
@@ -2490,6 +2799,109 @@ const getTgConnection = async (
 
   return data[0]
 }
+const getNumberOfCouponClaimed = async (plan_id: string) => {
+  const couponUsageData = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .select('id', { count: 'exact' })
+    .eq('plan_id', plan_id)
+  return couponUsageData.count ?? 0
+}
+const subscribeWithCoupon = async (
+  coupon_code: string,
+  account_address: string,
+  domain?: string
+) => {
+  const { data, error } = await db.supabase
+    .from('coupons')
+    .select()
+    .ilike('code', coupon_code.toLowerCase())
+  if (error) {
+    throw new Error(error.message)
+  }
+  const coupon = data?.[0]
+  if (!coupon) {
+    throw new CouponNotValid()
+  }
+  const couponUses = getNumberOfCouponClaimed(coupon.plan_id)
+  if (couponUses >= coupon.max_uses) {
+    throw new CouponExpired()
+  }
+
+  const { data: subscriptionData, error: subscriptionError } = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .select()
+    .eq('owner_account', account_address)
+    .eq('plan_id', coupon.plan_id)
+  if (subscriptionError) {
+    throw new Error(subscriptionError.message)
+  }
+  if ((subscriptionData?.length ?? 0) > 0) {
+    throw new CouponAlreadyUsed()
+  }
+  const { data: planData, error: planError } = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .insert([
+      {
+        plan_id: coupon.plan_id,
+        owner_account: account_address,
+        domain,
+        chain: SupportedChain.CUSTOM,
+        expiry_time: addMonths(new Date(), coupon.period).toISOString(),
+        registered_at: new Date().toISOString(),
+      },
+    ])
+  if (planError) {
+    throw new Error(planError.message)
+  }
+  return planData[0]
+}
+const updateCustomSubscriptionDomain = async (
+  account_address: string,
+  domain: string
+) => {
+  const { data: subscriptionData, error: subscriptionError } = await db.supabase
+    .from<Row<'subscriptions'>>('subscriptions')
+    .select()
+    .eq('owner_account', account_address)
+    .gte('expiry_time', new Date().toISOString())
+  if (subscriptionError) {
+    throw new Error(subscriptionError.message)
+  }
+  const subscription = subscriptionData[0]
+  if (!subscription) {
+    throw new NoActiveSubscription()
+  }
+  if (subscription.chain !== SupportedChain.CUSTOM) {
+    throw new SubscriptionNotCustom()
+  }
+  const { error, data } = await db.supabase
+    .from('subscriptions')
+    .update({ domain })
+    .eq('owner_account', account_address)
+    .gte('expiry_time', new Date().toISOString())
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const getNewestCoupon = async () => {
+  const { data, error } = await db.supabase
+    .from('coupons')
+    .select()
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const coupon = data[0]
+  if (coupon) {
+    coupon.claims = await getNumberOfCouponClaimed(coupon.plan_id)
+  }
+  return coupon
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
@@ -2507,6 +2919,7 @@ export {
   getAccountNotificationSubscriptions,
   getAccountsNotificationSubscriptionEmails,
   getAppToken,
+  getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
   getExistingAccountsFromDB,
@@ -2516,16 +2929,20 @@ export {
   getGroupInternal,
   getGroupInvites,
   getGroupName,
+  getGroupsAndMembers,
   getGroupsEmpty,
   getGroupUsers,
   getGroupUsersInternal,
   getMeetingFromDB,
+  getNewestCoupon,
   getOfficeEventMappingId,
   getSlotsForAccount,
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
   getUserGroups,
+  handleGuestCancel,
+  handleMeetingCancelSync,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
@@ -2533,6 +2950,7 @@ export {
   isSlotFree,
   leaveGroup,
   manageGroupInvite,
+  publicGroupJoin,
   rejectGroupInvite,
   removeConnectedCalendar,
   removeMember,
@@ -2541,9 +2959,13 @@ export {
   saveMeeting,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
+  subscribeWithCoupon,
   updateAccountFromInvite,
   updateAccountPreferences,
+  updateAllRecurringSlots,
+  updateCustomSubscriptionDomain,
   updateMeeting,
+  updateRecurringSlots,
   upsertGateCondition,
   workMeetingTypeGates,
 }

@@ -2,27 +2,21 @@ import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   chakra,
-  Container,
   Flex,
-  Heading,
   HStack,
   Image,
-  SimpleGrid,
   Stack,
   Text,
   useColorModeValue,
   VisuallyHidden,
   VStack,
 } from '@chakra-ui/react'
-import textAlign from '@tiptap/extension-text-align'
 import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { FaDiscord, FaEnvelope, FaTwitter } from 'react-icons/fa'
-import { size } from 'viem'
 
+import { MWW_DISCORD_SERVER } from '@/utils/constants'
 import { shouldEnforceColorOnPath } from '@/utils/generic_utils'
-
-import { MWW_DISCORD_SERVER } from '../utils/constants'
 
 const Logo = () => {
   return (
@@ -76,21 +70,21 @@ export default function SmallWithLogoLeft() {
         shouldEnforceColorOnPath(router.pathname) ? 'neutral.0' : footerColor
       }
       display={router.pathname.split('/')[1] === 'embed' ? 'none' : 'block'}
-      py={{ base: 16, md: 4 }}
+      py={{ base: 16, md: 8, lg: 4 }}
       fontWeight={500}
     >
       <Flex
         direction={{
-          md: 'row',
+          lg: 'row',
           base: 'column',
         }}
         w="100%"
-        justify={{ base: 'center', md: 'space-between' }}
-        align={{ base: 'center', md: 'center' }}
+        justify={{ base: 'center', lg: 'space-between' }}
+        align={{ base: 'center', lg: 'center' }}
         gap={8}
         px={{ md: 10, base: 6 }}
       >
-        <HStack gap={5} display={{ md: 'flex', base: 'none' }}>
+        <HStack gap={5} display={{ lg: 'flex', base: 'none' }}>
           <Logo />
           <Text textAlign="center">
             Meetwith. Some rights reserved, maybe...
@@ -149,10 +143,7 @@ export default function SmallWithLogoLeft() {
           >
             <FaEnvelope size={22} />
           </SocialButton>
-          <SocialButton
-            label={'Twitter'}
-            href={'https://twitter.com/meetwithwallet'}
-          >
+          <SocialButton label={'Twitter'} href={'https://x.com/meetwithhq'}>
             <FaTwitter size={22} />
           </SocialButton>
           <SocialButton label={'Discord'} href={MWW_DISCORD_SERVER}>
@@ -161,7 +152,7 @@ export default function SmallWithLogoLeft() {
         </Stack>
         <VStack
           gap={5}
-          display={{ base: 'flex', md: 'none' }}
+          display={{ base: 'flex', lg: 'none' }}
           alignItems="center"
           justifyContent="center"
         >

@@ -40,8 +40,8 @@ const DiscoverATimeInfoModal: FC<IDiscoverATimeInfoModal> = props => {
         <ModalBody p={'0'} mt={'6'}>
           <VStack>
             <Text size={'base'}>
-              Discover available time slots based on other Meet With Wallet
-              users&apos; availability.
+              Discover available time slots based on other Meetwith users&apos;
+              availability.
             </Text>
 
             <Text size={'base'}>
