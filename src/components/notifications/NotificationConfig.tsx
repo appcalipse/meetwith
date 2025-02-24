@@ -155,12 +155,12 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
     window.open(url, '_blank')
 
-  const intervalId = setInterval(async () => {
-    const pendingConnection = await getPendingTgConnection()
-    if (!pendingConnection) {
-      setTelegramNotificationConfigured(true)
-      clearInterval(intervalId)
-      setConnecting(false)
+    const intervalId = setInterval(async () => {
+      const pendingConnection = await getPendingTgConnection()
+      if (!pendingConnection) {
+        setTelegramNotificationConfigured(true)
+        clearInterval(intervalId)
+        setConnecting(false)
       }
     }, 5000)
   }
@@ -219,30 +219,32 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             onDiscordNotificationChange={onDiscordNotificationChange}
             discordNotification={discordNotificationConfig}
           />
-          {!isProduction && (<HStack>
-            <Switch
-              colorScheme="primary"
-              size="md"
-              isChecked={telegramNotificationConfigured}
-              onChange={e => {
-                if (e.target.checked) {
-                  handleTgConnect()
-                } else {
-                  handleTgDisconnect()
-                }
-              }}
-              isDisabled={connecting}
-            /> 
-            <Text fontSize="lg" fontWeight="bold">
-              Telegram
-            </Text>
-            {connecting && <Spinner size="sm" ml={2} />}
-            {tgConnectionPending && (
-              <Text fontSize="sm" color="gray.500">
-                (Pending connection)
+          {!isProduction && (
+            <HStack>
+              <Switch
+                colorScheme="primary"
+                size="md"
+                isChecked={telegramNotificationConfigured}
+                onChange={e => {
+                  if (e.target.checked) {
+                    handleTgConnect()
+                  } else {
+                    handleTgDisconnect()
+                  }
+                }}
+                isDisabled={connecting}
+              />
+              <Text fontSize="lg" fontWeight="bold">
+                Telegram
               </Text>
-            )}
-          </HStack>)}
+              {connecting && <Spinner size="sm" ml={2} />}
+              {tgConnectionPending && (
+                <Text fontSize="sm" color="gray.500">
+                  (Pending connection)
+                </Text>
+              )}
+            </HStack>
+          )}
           <Spacer />
           <Button
             isLoading={loading}
