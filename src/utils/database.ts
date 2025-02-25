@@ -15,6 +15,7 @@ import {
   AccountPreferences,
   MeetingType,
   SimpleAccountInfo,
+  TgConnectedAccounts,
 } from '@/types/Account'
 import {
   AccountNotifications,
@@ -491,7 +492,6 @@ const getSlotsForAccount = async (
 
   const _start = start ? start.toISOString() : '1970-01-01'
   const _end = end ? end.toISOString() : '2500-01-01'
-
   const { data, error } = await db.supabase
     .from('slots')
     .select()
@@ -921,6 +921,7 @@ const saveMeeting = async (
     recurrence: meeting.meetingRepeat,
     version: MeetingVersion.V2,
     slots: meeting.allSlotIds || [],
+    title: meeting.title,
   })
   if (!createdRootMeeting) {
     throw new Error(
@@ -2538,6 +2539,7 @@ const updateMeeting = async (
     provider: meetingProvider,
     recurrence: meetingUpdateRequest.meetingRepeat,
     version: MeetingVersion.V2,
+    title: meetingUpdateRequest.title,
     slots: meeting.slots?.filter(
       val => !meetingUpdateRequest.slotsToRemove.includes(val)
     ),
@@ -2902,6 +2904,17 @@ const getNewestCoupon = async () => {
   }
   return coupon
 }
+const getAccountsWithTgConnected = async (): Promise<
+  Array<TgConnectedAccounts>
+> => {
+  const { data, error } = await db.supabase.rpc<TgConnectedAccounts>(
+    'get_telegram_notifications'
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
@@ -2918,6 +2931,7 @@ export {
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
   getAccountsNotificationSubscriptionEmails,
+  getAccountsWithTgConnected,
   getAppToken,
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
