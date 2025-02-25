@@ -74,3 +74,8 @@ export interface SocialLink {
   type: SocialLinkType
   url: string
 }
+
+export interface TgConnectedAccounts {
+  telegram_id: string
+  account_address: string
+}
