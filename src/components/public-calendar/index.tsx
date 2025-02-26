@@ -904,6 +904,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                           ? selectedType.duration
                           : teamMeetingRequest!.duration_in_minutes
                       }
+                      selectedType={selectedType}
                       checkingSlots={checkingSlots}
                       timeSlotAvailability={validateSlot}
                       selfAvailabilityCheck={selfAvailabilityCheck}
