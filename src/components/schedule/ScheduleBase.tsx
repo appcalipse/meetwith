@@ -21,7 +21,13 @@ import {
 import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
-import React, { ReactNode, useContext, useState } from 'react'
+import React, {
+  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
@@ -100,7 +106,22 @@ const ScheduleBase = () => {
       [key]: addresses as string[],
     }))
   }
-
+  const type = useMemo(
+    () =>
+      currentAccount?.preferences.availableTypes.find(
+        type => type.duration === duration
+      ),
+    [duration]
+  )
+  useEffect(() => {
+    const type = currentAccount?.preferences.availableTypes.find(
+      type => type.duration === duration
+    )
+    if (type?.customLink) {
+      setMeetingProvider(MeetingProvider.CUSTOM)
+      setMeetingUrl(type.customLink)
+    }
+  }, [currentAccount, duration])
   return (
     <Box>
       <DiscoverATimeInfoModal
@@ -281,43 +302,49 @@ const ScheduleBase = () => {
             />
           </HStack>
         </FormControl>
-        <VStack alignItems="start" w={'100%'} gap={4}>
-          <Text fontSize="18px" fontWeight={500}>
-            Location
-          </Text>
-          <RadioGroup
-            onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-            value={meetingProvider}
-            w={'100%'}
-          >
-            <VStack w={'100%'} gap={4}>
-              {meetingProviders.map(provider => (
-                <Radio
-                  flexDirection="row-reverse"
-                  justifyContent="space-between"
-                  w="100%"
-                  colorScheme="primary"
-                  value={provider}
-                  key={provider}
-                >
-                  <Text fontWeight="600" color={'primary.200'} cursor="pointer">
-                    {renderProviderName(provider)}
-                  </Text>
-                </Radio>
-              ))}
-            </VStack>
-          </RadioGroup>
-          {meetingProvider === MeetingProvider.CUSTOM && (
-            <Input
-              type="text"
-              placeholder="insert a custom meeting url"
-              isDisabled={isScheduling}
-              my={4}
-              value={meetingUrl}
-              onChange={e => setMeetingUrl(e.target.value)}
-            />
-          )}
-        </VStack>
+        {!type?.fixedLink && (
+          <VStack alignItems="start" w={'100%'} gap={4}>
+            <Text fontSize="18px" fontWeight={500}>
+              Location
+            </Text>
+            <RadioGroup
+              onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+              value={meetingProvider}
+              w={'100%'}
+            >
+              <VStack w={'100%'} gap={4}>
+                {meetingProviders.map(provider => (
+                  <Radio
+                    flexDirection="row-reverse"
+                    justifyContent="space-between"
+                    w="100%"
+                    colorScheme="primary"
+                    value={provider}
+                    key={provider}
+                  >
+                    <Text
+                      fontWeight="600"
+                      color={'primary.200'}
+                      cursor="pointer"
+                    >
+                      {renderProviderName(provider)}
+                    </Text>
+                  </Radio>
+                ))}
+              </VStack>
+            </RadioGroup>
+            {meetingProvider === MeetingProvider.CUSTOM && (
+              <Input
+                type="text"
+                placeholder="insert a custom meeting url"
+                isDisabled={isScheduling}
+                my={4}
+                value={meetingUrl}
+                onChange={e => setMeetingUrl(e.target.value)}
+              />
+            )}
+          </VStack>
+        )}
         <FormControl w="100%" maxW="100%">
           <FormLabel>Meeting reminders</FormLabel>
           <ChakraSelect

@@ -16,7 +16,7 @@ import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 import { FaCalendar, FaClock } from 'react-icons/fa'
 import { FaArrowLeft, FaUserGroup } from 'react-icons/fa6'
 import { IoMdTimer } from 'react-icons/io'
@@ -124,6 +124,22 @@ const ScheduleDetails = () => {
   const optionalGroupMembers = groupMembers.filter(
     val => !allAvailabilities.includes(val.account_address || '')
   )
+  const type = useMemo(
+    () =>
+      currentAccount?.preferences.availableTypes.find(
+        type => type.duration === duration
+      ),
+    [duration]
+  )
+  useEffect(() => {
+    const type = currentAccount?.preferences.availableTypes.find(
+      type => type.duration === duration
+    )
+    if (type?.customLink) {
+      setMeetingProvider(MeetingProvider.CUSTOM)
+      setMeetingUrl(type.customLink)
+    }
+  }, [currentAccount, duration])
   return (
     <Flex
       width="fit-content"
@@ -210,47 +226,49 @@ const ScheduleDetails = () => {
               )}
             </HStack>
           </VStack>
-          <VStack alignItems="start" w={'100%'} gap={4}>
-            <Text fontSize="18px" fontWeight={500}>
-              Location
-            </Text>
-            <RadioGroup
-              onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-              value={meetingProvider}
-              w={'100%'}
-            >
-              <VStack w={'100%'} gap={4}>
-                {meetingProviders.map(provider => (
-                  <Radio
-                    flexDirection="row-reverse"
-                    justifyContent="space-between"
-                    w="100%"
-                    colorScheme="primary"
-                    value={provider}
-                    key={provider}
-                  >
-                    <Text
-                      fontWeight="600"
-                      color={'primary.200'}
-                      cursor="pointer"
+          {!type?.fixedLink && (
+            <VStack alignItems="start" w={'100%'} gap={4}>
+              <Text fontSize="18px" fontWeight={500}>
+                Location
+              </Text>
+              <RadioGroup
+                onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+                value={meetingProvider}
+                w={'100%'}
+              >
+                <VStack w={'100%'} gap={4}>
+                  {meetingProviders.map(provider => (
+                    <Radio
+                      flexDirection="row-reverse"
+                      justifyContent="space-between"
+                      w="100%"
+                      colorScheme="primary"
+                      value={provider}
+                      key={provider}
                     >
-                      {renderProviderName(provider)}
-                    </Text>
-                  </Radio>
-                ))}
-              </VStack>
-            </RadioGroup>
-            {meetingProvider === MeetingProvider.CUSTOM && (
-              <Input
-                type="text"
-                placeholder="insert a custom meeting url"
-                isDisabled={isScheduling}
-                my={4}
-                value={meetingUrl}
-                onChange={e => setMeetingUrl(e.target.value)}
-              />
-            )}
-          </VStack>
+                      <Text
+                        fontWeight="600"
+                        color={'primary.200'}
+                        cursor="pointer"
+                      >
+                        {renderProviderName(provider)}
+                      </Text>
+                    </Radio>
+                  ))}
+                </VStack>
+              </RadioGroup>
+              {meetingProvider === MeetingProvider.CUSTOM && (
+                <Input
+                  type="text"
+                  placeholder="insert a custom meeting url"
+                  isDisabled={isScheduling}
+                  my={4}
+                  value={meetingUrl}
+                  onChange={e => setMeetingUrl(e.target.value)}
+                />
+              )}
+            </VStack>
+          )}
           <FormControl w="100%" maxW="100%">
             <FormLabel>Meeting reminders</FormLabel>
             <ChakraSelect
