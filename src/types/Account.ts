@@ -38,6 +38,8 @@ export interface MeetingType {
   description?: string
   minAdvanceTime: number
   scheduleGate?: string
+  customLink?: string
+  fixedLink?: boolean
   deleted?: boolean
   private?: boolean
 }
