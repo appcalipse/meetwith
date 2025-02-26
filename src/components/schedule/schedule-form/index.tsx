@@ -16,7 +16,7 @@ import {
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Select } from 'chakra-react-select'
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
