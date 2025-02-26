@@ -12,7 +12,6 @@ import {
   Select,
   SingleValue,
 } from 'chakra-react-select'
-import * as ct from 'countries-and-timezones'
 import {
   addDays,
   addMinutes,
@@ -36,6 +35,7 @@ import { ActionMeta } from 'react-select/dist/declarations/src/types'
 import { AccountPreferences, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { timezones } from '@/utils/date_helper'
 
 import {
   MeetingProvider,
@@ -84,20 +84,6 @@ interface MeetSlotPickerProps {
   isMobile: boolean
 }
 
-const timezonesObj = ct.getAllTimezones()
-const timezonesKeys = Object.keys(timezonesObj) as Array<
-  keyof typeof timezonesObj
->
-const _timezones = timezonesKeys
-  .map(key => {
-    return {
-      name: `${String(key)} (GMT${timezonesObj[key].dstOffsetStr})`,
-      tzCode: key,
-      offset: timezonesObj[key].utcOffset,
-    }
-  })
-  .sort((a, b) => a.offset - b.offset)
-const timezones = [..._timezones, { tzCode: 'UTC', name: '(UTC+00:00) UTC' }]
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   availabilityInterval,
   blockedDates,
