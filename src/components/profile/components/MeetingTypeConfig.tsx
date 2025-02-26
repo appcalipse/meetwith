@@ -68,6 +68,12 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
   >(undefined)
   const [meetingGate, setMeetingGate] = useState<string>('')
   const [loadingGates, setLoadingGates] = useState<boolean>(true)
+  const [customLink, setCustomLink] = useState<string>(
+    props.selectedType?.customLink || ''
+  )
+  const [fixedLink, setFixedLink] = useState<boolean>(
+    props.selectedType?.fixedLink || false
+  )
   const [isPrivate, setPrivate] = useState<boolean>(
     props.selectedType?.private || false
   )
@@ -147,6 +153,8 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
           : 60 * 24),
       scheduleGate: meetingGate,
       private: isPrivate,
+      customLink,
+      fixedLink,
     }
 
     const account = await saveMeetingType(meetingType)
@@ -194,6 +202,25 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
           <option value="45">45 min</option>
           <option value="60">60 min</option>
         </Select>
+      </FormControl>
+      <FormControl pt={5}>
+        <Text>Custom Meeting location</Text>
+        <Input
+          width={'345px'}
+          type="text"
+          placeholder="Google Meet, Zoom, Discord anywhere"
+          value={customLink}
+          onChange={e => setCustomLink(e.target.value)}
+        />
+        <HStack py={4}>
+          <Switch
+            colorScheme="primary"
+            size="md"
+            isChecked={fixedLink}
+            onChange={e => setFixedLink(e.target.checked)}
+          />
+          <Text>Allow scheduler to edit custom meeting location</Text>
+        </HStack>
       </FormControl>
       <FormControl pt={5}>
         <Text>Minimum Notice Time</Text>
