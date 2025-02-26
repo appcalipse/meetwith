@@ -33,7 +33,7 @@ import { FaChevronDown, FaGlobe } from 'react-icons/fa'
 import { FaArrowLeft } from 'react-icons/fa6'
 import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
-import { AccountPreferences } from '@/types/Account'
+import { AccountPreferences, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
@@ -56,6 +56,7 @@ interface MeetSlotPickerProps {
   isGateValid: boolean
   isSchedulingExternal: boolean
   notificationsSubs?: number
+  selectedType?: MeetingType
   onDayChange?: (day?: Date) => void
   onMonthChange?: (day: Date) => void
   onTimeChange?: (time?: Date) => void
@@ -113,6 +114,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   selfAvailabilityCheck,
   showSelfAvailability,
   slotDurationInMinutes,
+  selectedType,
   timeSlotAvailability,
   willStartScheduling,
   isMobile,
@@ -482,6 +484,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               notificationsSubs={notificationsSubs}
               preferences={preferences}
               meetingProviders={preferences?.meetingProviders}
+              selectedType={selectedType}
             />
           </Popup>
         )}
