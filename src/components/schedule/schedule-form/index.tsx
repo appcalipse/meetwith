@@ -16,13 +16,13 @@ import {
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Select } from 'chakra-react-select'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { AccountPreferences } from '@/types/Account'
+import { AccountPreferences, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { selectDefaultProvider } from '@/utils/calendar_manager'
@@ -50,6 +50,7 @@ interface ScheduleFormProps {
   isSchedulingExternal: boolean
   willStartScheduling: (isScheduling: boolean) => void
   isGateValid: boolean
+  selectedType?: MeetingType
   preferences?: AccountPreferences
   onConfirm: (
     scheduleType: SchedulingType,
@@ -77,6 +78,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   onConfirm,
   notificationsSubs,
   preferences,
+  selectedType,
 }) => {
   const { currentAccount, logged } = useContext(AccountContext)
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
@@ -125,7 +127,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       setScheduleType(SchedulingType.GUEST)
     }
   }, [logged])
-
   const handleConfirm = async () => {
     if (meetingProvider === MeetingProvider.CUSTOM && !meetingUrl) {
       toast({
@@ -399,7 +400,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           onValueChange={setContent}
         />
       </FormControl>
-      {scheduleType !== undefined && (
+      {scheduleType !== undefined && !selectedType?.fixedLink && (
         <VStack alignItems="start">
           <Text fontSize="18px" fontWeight={500}>
             Location
