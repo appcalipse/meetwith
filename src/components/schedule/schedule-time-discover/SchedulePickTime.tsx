@@ -17,13 +17,9 @@ import {
   addDays,
   addHours,
   endOfMonth,
-  format,
   isBefore,
   isSameDay,
   isSameMonth,
-  setHours,
-  setMinutes,
-  setSeconds,
   startOfMonth,
   sub,
 } from 'date-fns'
@@ -80,17 +76,6 @@ const GUIDES = [
   {
     color: getBgColor(State.NONE_AVAILABLE),
     description: 'No one is available',
-  },
-]
-
-const CLOCK = [
-  {
-    label: 'AM',
-    value: 'AM',
-  },
-  {
-    label: 'PM',
-    value: 'PM',
   },
 ]
 
