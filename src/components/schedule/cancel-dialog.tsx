@@ -6,13 +6,16 @@ import {
   AlertDialogHeader,
   AlertDialogOverlay,
   Button,
+  Text,
   useToast,
 } from '@chakra-ui/react'
+import { differenceInMinutes } from 'date-fns'
 import React, { useState } from 'react'
 
 import { Account } from '@/types/Account'
 import { MeetingDecrypted } from '@/types/Meeting'
 import { cancelMeeting } from '@/utils/calendar_manager'
+import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 interface CancelMeetingDialogProps {
   decryptedMeeting?: MeetingDecrypted
@@ -38,6 +41,12 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
     _setCancelling(isCancelling)
   }
   const toast = useToast()
+  const getNamesDisplay = (meeting: MeetingDecrypted) => {
+    return getAllParticipantsDisplayName(
+      meeting.participants,
+      currentAccount!.address
+    )
+  }
 
   return (
     <AlertDialog
@@ -50,7 +59,22 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
           <AlertDialogHeader fontSize="lg" fontWeight="bold">
             Cancel meeting
           </AlertDialogHeader>
-
+          <Text>{decryptedMeeting?.title || 'No Title'}</Text>
+          {decryptedMeeting?.end && (
+            <Text>
+              {differenceInMinutes(
+                decryptedMeeting?.end,
+                decryptedMeeting?.start
+              )}{' '}
+              Minutes
+            </Text>
+          )}
+          {decryptedMeeting && (
+            <Text display="inline" width="100%" whiteSpace="balance">
+              <strong>Participants: </strong>
+              {getNamesDisplay(decryptedMeeting)}
+            </Text>
+          )}
           <AlertDialogBody>
             Are you sure? You can&apos;t undo this action afterwards.
           </AlertDialogBody>
