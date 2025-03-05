@@ -133,7 +133,7 @@ export interface DiscordMeetingRequest {
   description: string
   notBefore?: NotBefore
   provider: MeetingProvider
-  reminder?: Array<MeetingReminders>
+  reminder?: MeetingReminders
 }
 
 export interface ChangeGroupAdminRequest {
