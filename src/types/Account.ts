@@ -38,6 +38,8 @@ export interface MeetingType {
   description?: string
   minAdvanceTime: number
   scheduleGate?: string
+  customLink?: string
+  fixedLink?: boolean
   deleted?: boolean
   private?: boolean
 }
@@ -73,4 +75,9 @@ export enum SocialLinkType {
 export interface SocialLink {
   type: SocialLinkType
   url: string
+}
+
+export interface TgConnectedAccounts {
+  telegram_id: string
+  account_address: string
 }

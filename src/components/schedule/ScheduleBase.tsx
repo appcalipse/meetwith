@@ -21,7 +21,13 @@ import {
 import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
-import React, { ReactNode, useContext, useState } from 'react'
+import React, {
+  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
@@ -74,6 +80,7 @@ const ScheduleBase = () => {
     setMeetingNotification,
     meetingRepeat,
     setMeetingRepeat,
+    handleCancel,
   } = useContext(ScheduleContext)
   const {
     isOpen: isGroupModalOpen,
@@ -99,7 +106,22 @@ const ScheduleBase = () => {
       [key]: addresses as string[],
     }))
   }
-
+  const type = useMemo(
+    () =>
+      currentAccount?.preferences.availableTypes.find(
+        type => type.duration === duration
+      ),
+    [duration]
+  )
+  useEffect(() => {
+    const type = currentAccount?.preferences.availableTypes.find(
+      type => type.duration === duration
+    )
+    if (type?.customLink) {
+      setMeetingProvider(MeetingProvider.CUSTOM)
+      setMeetingUrl(type.customLink)
+    }
+  }, [currentAccount, duration])
   return (
     <Box>
       <DiscoverATimeInfoModal
@@ -280,43 +302,49 @@ const ScheduleBase = () => {
             />
           </HStack>
         </FormControl>
-        <VStack alignItems="start" w={'100%'} gap={4}>
-          <Text fontSize="18px" fontWeight={500}>
-            Location
-          </Text>
-          <RadioGroup
-            onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-            value={meetingProvider}
-            w={'100%'}
-          >
-            <VStack w={'100%'} gap={4}>
-              {meetingProviders.map(provider => (
-                <Radio
-                  flexDirection="row-reverse"
-                  justifyContent="space-between"
-                  w="100%"
-                  colorScheme="primary"
-                  value={provider}
-                  key={provider}
-                >
-                  <Text fontWeight="600" color={'primary.200'} cursor="pointer">
-                    {renderProviderName(provider)}
-                  </Text>
-                </Radio>
-              ))}
-            </VStack>
-          </RadioGroup>
-          {meetingProvider === MeetingProvider.CUSTOM && (
-            <Input
-              type="text"
-              placeholder="insert a custom meeting url"
-              isDisabled={isScheduling}
-              my={4}
-              value={meetingUrl}
-              onChange={e => setMeetingUrl(e.target.value)}
-            />
-          )}
-        </VStack>
+        {!type?.fixedLink && (
+          <VStack alignItems="start" w={'100%'} gap={4}>
+            <Text fontSize="18px" fontWeight={500}>
+              Location
+            </Text>
+            <RadioGroup
+              onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+              value={meetingProvider}
+              w={'100%'}
+            >
+              <VStack w={'100%'} gap={4}>
+                {meetingProviders.map(provider => (
+                  <Radio
+                    flexDirection="row-reverse"
+                    justifyContent="space-between"
+                    w="100%"
+                    colorScheme="primary"
+                    value={provider}
+                    key={provider}
+                  >
+                    <Text
+                      fontWeight="600"
+                      color={'primary.200'}
+                      cursor="pointer"
+                    >
+                      {renderProviderName(provider)}
+                    </Text>
+                  </Radio>
+                ))}
+              </VStack>
+            </RadioGroup>
+            {meetingProvider === MeetingProvider.CUSTOM && (
+              <Input
+                type="text"
+                placeholder="insert a custom meeting url"
+                isDisabled={isScheduling}
+                my={4}
+                value={meetingUrl}
+                onChange={e => setMeetingUrl(e.target.value)}
+              />
+            )}
+          </VStack>
+        )}
         <FormControl w="100%" maxW="100%">
           <FormLabel>Meeting reminders</FormLabel>
           <ChakraSelect
@@ -401,20 +429,35 @@ const ScheduleBase = () => {
             placeholder="Any information you want to share prior to the meeting?"
           />
         </FormControl>
-        <Button
-          w="100%"
-          py={3}
-          h={'auto'}
-          variant="outline"
-          colorScheme="primary"
-          onClick={handleSchedule}
-          isLoading={isScheduling}
-          isDisabled={
-            participants.length === 0 || !title || !duration || !pickedTime
-          }
-        >
-          Schedule now
-        </Button>
+        <HStack w="100%">
+          <Button
+            w="100%"
+            py={3}
+            h={'auto'}
+            variant="outline"
+            colorScheme="primary"
+            onClick={handleSchedule}
+            isLoading={isScheduling}
+            isDisabled={
+              participants.length === 0 || !title || !duration || !pickedTime
+            }
+          >
+            {query.intent === Intents.UPDATE_MEETING
+              ? 'Update Meeting'
+              : 'Schedule now'}
+          </Button>
+          {query.intent === Intents.UPDATE_MEETING && (
+            <Button
+              w="100%"
+              py={3}
+              h={'auto'}
+              colorScheme="primary"
+              onClick={handleCancel}
+            >
+              Cancel Meeting
+            </Button>
+          )}
+        </HStack>
       </VStack>
     </Box>
   )

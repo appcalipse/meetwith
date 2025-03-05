@@ -12,7 +12,6 @@ import {
   Select,
   SingleValue,
 } from 'chakra-react-select'
-import * as ct from 'countries-and-timezones'
 import {
   addDays,
   addMinutes,
@@ -33,9 +32,10 @@ import { FaChevronDown, FaGlobe } from 'react-icons/fa'
 import { FaArrowLeft } from 'react-icons/fa6'
 import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
-import { AccountPreferences } from '@/types/Account'
+import { AccountPreferences, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { timezones } from '@/utils/date_helper'
 
 import {
   MeetingProvider,
@@ -56,6 +56,7 @@ interface MeetSlotPickerProps {
   isGateValid: boolean
   isSchedulingExternal: boolean
   notificationsSubs?: number
+  selectedType?: MeetingType
   onDayChange?: (day?: Date) => void
   onMonthChange?: (day: Date) => void
   onTimeChange?: (time?: Date) => void
@@ -83,20 +84,6 @@ interface MeetSlotPickerProps {
   isMobile: boolean
 }
 
-const timezonesObj = ct.getAllTimezones()
-const timezonesKeys = Object.keys(timezonesObj) as Array<
-  keyof typeof timezonesObj
->
-const _timezones = timezonesKeys
-  .map(key => {
-    return {
-      name: `${String(key)} (GMT${timezonesObj[key].dstOffsetStr})`,
-      tzCode: key,
-      offset: timezonesObj[key].utcOffset,
-    }
-  })
-  .sort((a, b) => a.offset - b.offset)
-const timezones = [..._timezones, { tzCode: 'UTC', name: '(UTC+00:00) UTC' }]
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   availabilityInterval,
   blockedDates,
@@ -113,6 +100,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   selfAvailabilityCheck,
   showSelfAvailability,
   slotDurationInMinutes,
+  selectedType,
   timeSlotAvailability,
   willStartScheduling,
   isMobile,
@@ -482,6 +470,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               notificationsSubs={notificationsSubs}
               preferences={preferences}
               meetingProviders={preferences?.meetingProviders}
+              selectedType={selectedType}
             />
           </Popup>
         )}
