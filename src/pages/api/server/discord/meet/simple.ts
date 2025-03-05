@@ -111,7 +111,7 @@ export default async function simpleDiscordMeet(
         undefined,
         undefined,
         title,
-        reminder
+        reminder ? [reminder] : []
       )
 
       return res.status(200).json(meeting)
