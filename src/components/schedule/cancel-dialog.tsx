@@ -5,9 +5,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogOverlay,
+  Box,
   Button,
   Text,
   useToast,
+  VStack,
 } from '@chakra-ui/react'
 import { differenceInMinutes } from 'date-fns'
 import React, { useState } from 'react'
@@ -56,25 +58,28 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
     >
       <AlertDialogOverlay>
         <AlertDialogContent>
-          <AlertDialogHeader fontSize="lg" fontWeight="bold">
-            Cancel meeting
-          </AlertDialogHeader>
-          <Text>{decryptedMeeting?.title || 'No Title'}</Text>
-          {decryptedMeeting?.end && (
+          <VStack p={6} pb={1} alignItems="flex-start" gap={3}>
             <Text>
-              {differenceInMinutes(
-                decryptedMeeting?.end,
-                decryptedMeeting?.start
-              )}{' '}
-              Minutes
+              <strong> Meeting Title:</strong>{' '}
+              {decryptedMeeting?.title || 'No Title'}
             </Text>
-          )}
-          {decryptedMeeting && (
-            <Text display="inline" width="100%" whiteSpace="balance">
-              <strong>Participants: </strong>
-              {getNamesDisplay(decryptedMeeting)}
-            </Text>
-          )}
+            {decryptedMeeting?.end && (
+              <Text>
+                <strong>Meeting Duration: </strong>
+                {differenceInMinutes(
+                  decryptedMeeting?.end,
+                  decryptedMeeting?.start
+                )}{' '}
+                Minutes
+              </Text>
+            )}
+            {decryptedMeeting && (
+              <Text display="inline" width="100%" whiteSpace="balance">
+                <strong>Participants: </strong>
+                {getNamesDisplay(decryptedMeeting)}
+              </Text>
+            )}
+          </VStack>
           <AlertDialogBody>
             Are you sure? You can&apos;t undo this action afterwards.
           </AlertDialogBody>
