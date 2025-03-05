@@ -836,7 +836,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       <CancelMeetingDialog
         isOpen={isOpen}
         onClose={onClose}
-        decriptedMeeting={decryptedMeeting}
+        decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         onCancelChange={setIsCancelling}
         afterCancel={removed =>

@@ -1,4 +1,3 @@
-import sgMail from '@sendgrid/mail'
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
@@ -26,13 +25,12 @@ import { appUrl } from './constants'
 import { mockEncrypted } from './cryptography'
 import { getAllParticipantsDisplayName } from './user_manager'
 
-const FROM = 'Meetwith <no_reply@meetwithwallet.xyz>'
+const FROM = 'Meetwith <notifications@meetwith.xyz>'
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
-const trackingSettings = {
-  clickTracking: { enable: false },
-  openTracking: { enable: false },
-}
+import { CreateEmailOptions, Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
 export const newGroupInviteEmail = async (
   toEmail: string,
   participant: ParticipantInfoForInviteNotification,
@@ -50,16 +48,21 @@ export const newGroupInviteEmail = async (
     locals
   )
 
-  const msg: sgMail.MailDataRequired = {
+  const msg: CreateEmailOptions = {
     to: toEmail,
     from: FROM,
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
-    trackingSettings,
+    tags: [
+      {
+        name: 'group',
+        value: 'invite',
+      },
+    ],
   }
   try {
-    await sgMail.send(msg)
+    await resend.emails.send(msg)
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
@@ -83,16 +86,21 @@ export const newGroupRejectEmail = async (
     locals
   )
 
-  const msg: sgMail.MailDataRequired = {
+  const msg: CreateEmailOptions = {
     to: toEmail,
     from: FROM,
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
-    trackingSettings,
+    tags: [
+      {
+        name: 'group',
+        value: 'reject',
+      },
+    ],
   }
   try {
-    await sgMail.send(msg)
+    await resend.emails.send(msg)
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
@@ -134,9 +142,11 @@ export const newMeetingEmail = async (
     },
     changeUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
+      : guestInfoEncrypted
+      ? `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
           guestInfoEncrypted || ''
-        )}`,
+        )}`
+      : undefined,
   }
 
   const isScheduler =
@@ -199,8 +209,7 @@ export const newMeetingEmail = async (
     Sentry.captureException(icsFile.error)
     return false
   }
-
-  const msg: sgMail.MailDataRequired = {
+  const msg: CreateEmailOptions = {
     to: toEmail,
     from: FROM,
     subject: rendered.subject!,
@@ -210,15 +219,19 @@ export const newMeetingEmail = async (
       {
         content: Buffer.from(icsFile.value!).toString('base64'),
         filename: `meeting_${meeting_id}.ics`,
-        type: 'text/plain',
-        disposition: 'attachment',
+        contentType: 'text/plain',
       },
     ],
-    trackingSettings,
+    tags: [
+      {
+        name: 'meeting',
+        value: 'new',
+      },
+    ],
   }
 
   try {
-    await sgMail.send(msg)
+    await resend.emails.send(msg)
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
@@ -285,7 +298,7 @@ export const cancelledMeetingEmail = async (
     locals
   )
 
-  const msg: sgMail.MailDataRequired = {
+  const msg: CreateEmailOptions = {
     to: toEmail,
     from: FROM,
     subject: rendered.subject!,
@@ -295,15 +308,19 @@ export const cancelledMeetingEmail = async (
       {
         content: Buffer.from(icsFile.value!).toString('base64'),
         filename: `meeting_${meeting_id}.ics`,
-        type: 'text/plain',
-        disposition: 'attachment',
+        contentType: 'text/plain',
       },
     ],
-    trackingSettings,
+    tags: [
+      {
+        name: 'meeting',
+        value: 'cancelled',
+      },
+    ],
   }
 
   try {
-    await sgMail.send(msg)
+    await resend.emails.send(msg)
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
@@ -329,7 +346,8 @@ export const updateMeetingEmail = async (
   changes?: MeetingChange,
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat?: MeetingRepeat
+  meetingRepeat?: MeetingRepeat,
+  guestInfoEncrypted?: string
 ): Promise<boolean> => {
   if (!changes?.dateChange) {
     return true
@@ -357,7 +375,11 @@ export const updateMeetingEmail = async (
       description,
     },
     changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      : guestInfoEncrypted
+      ? `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
+          guestInfoEncrypted || ''
+        )}`
       : undefined,
     changes: {
       oldStart:
@@ -428,7 +450,7 @@ export const updateMeetingEmail = async (
     return false
   }
 
-  const msg: sgMail.MailDataRequired = {
+  const msg: CreateEmailOptions = {
     to: toEmail,
     from: FROM,
     subject: rendered.subject!,
@@ -438,15 +460,19 @@ export const updateMeetingEmail = async (
       {
         content: Buffer.from(icsFile.value!).toString('base64'),
         filename: `meeting_${meeting_id}.ics`,
-        type: 'text/plain',
-        disposition: 'attachment',
+        contentType: 'text/plain',
       },
     ],
-    trackingSettings,
+    tags: [
+      {
+        name: 'meeting',
+        value: 'updated',
+      },
+    ],
   }
 
   try {
-    await sgMail.send(msg)
+    await resend.emails.send(msg)
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
@@ -491,16 +517,21 @@ export const sendInvitationEmail = async (
     const rendered = await email.render('html', locals)
     const subject = await email.render('subject', locals)
 
-    const msg = {
+    const msg: CreateEmailOptions = {
       to: toEmail,
       from: FROM,
       subject: subject,
       html: rendered,
       text: `${inviterName} invited you to join ${group.name}. Accept your invite here: ${invitationLink}`,
-      trackingSettings,
+      tags: [
+        {
+          name: 'group',
+          value: 'invite',
+        },
+      ],
     }
 
-    await sgMail.send(msg)
+    await resend.emails.send(msg)
   } catch (err) {
     console.error(err)
     Sentry.captureException(err)
