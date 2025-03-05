@@ -15,8 +15,8 @@ import {
   useDisclosure,
 } from '@chakra-ui/react'
 import router, { useRouter } from 'next/router'
-import { use, useContext, useEffect, useState } from 'react'
-import { BiMenuAltRight, BiWallet } from 'react-icons/bi'
+import { useContext, useEffect, useState } from 'react'
+import { BiMenuAltRight } from 'react-icons/bi'
 import { FaWallet } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
 
@@ -42,6 +42,9 @@ export const Navbar = () => {
   const [activeLink, setActiveLink] = useState('')
   const bgColor = useColorModeValue('transparent', 'neutral.900')
   const borderColor = useColorModeValue('neutral.300', 'neutral.800')
+  const signInButtonColor = useColorModeValue('primary.600', 'white')
+  const signInBorderColor = useColorModeValue('primary.600', 'transparent')
+
   function handleSetActiveLink(id: string) {
     if (id === '/') {
       setActiveLink('/#home')
@@ -172,8 +175,10 @@ export const Navbar = () => {
                   onClick={handleConnectionOpen}
                   isLoading={loginIn}
                   colorScheme="orangeButton"
-                  color={'white'}
-                  leftIcon={<FaWallet color="white" />}
+                  color={signInButtonColor}
+                  borderWidth={1}
+                  borderColor={signInBorderColor}
+                  leftIcon={<FaWallet />}
                 >
                   Sign in
                   <Box display={{ base: 'none', md: 'flex' }} as="span">
@@ -289,6 +294,8 @@ const MobileNav = ({
   const { currentAccount, logged, loginIn } = useLogin()
   const { logout } = useContext(AccountContext)
   const wallet = useActiveWallet()
+  const signInButtonColor = useColorModeValue('primary.600', 'white')
+  const signInBorderColor = useColorModeValue('primary.600', 'transparent')
 
   const doLogout = async () => {
     logout(wallet!)
@@ -369,8 +376,10 @@ const MobileNav = ({
             size="md"
             onClick={() => onOpenModal()}
             isLoading={loginIn}
-            color={'white'}
-            leftIcon={<FaWallet color="white" />}
+            leftIcon={<FaWallet />}
+            color={signInButtonColor}
+            borderWidth={1}
+            borderColor={signInBorderColor}
           >
             Sign in
             <Box display={{ base: 'none', md: 'flex' }} as="span">
@@ -427,7 +436,6 @@ const MobileNavItem = ({
     </Stack>
   )
 }
-
 type NavItem = {
   label: string
   href: string
