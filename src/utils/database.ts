@@ -917,7 +917,7 @@ const saveMeeting = async (
     meeting_url: meeting.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meeting.meetingProvider,
-    reminders: meeting.meetingReminders,
+    reminders: meeting.meetingReminders || [],
     recurrence: meeting.meetingRepeat,
     version: MeetingVersion.V2,
     slots: meeting.allSlotIds || [],
