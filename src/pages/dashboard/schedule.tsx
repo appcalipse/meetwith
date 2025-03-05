@@ -1,4 +1,4 @@
-import { Container, Flex, useToast } from '@chakra-ui/react'
+import { Container, Flex, useDisclosure, useToast } from '@chakra-ui/react'
 import { addMinutes, differenceInMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { NextPage } from 'next'
@@ -6,6 +6,7 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
+import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import ScheduleBase from '@/components/schedule/ScheduleBase'
 import ScheduleCompleted from '@/components/schedule/ScheduleCompleted'
 import ScheduleDetails from '@/components/schedule/ScheduleDetails'
@@ -14,7 +15,7 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import { MeetingReminders } from '@/types/common'
-import { Intents } from '@/types/Dashboard'
+import { EditMode, Intents } from '@/types/Dashboard'
 import {
   MeetingDecrypted,
   MeetingProvider,
@@ -96,6 +97,7 @@ interface IScheduleContext {
   timezone: string
   setTimezone: React.Dispatch<React.SetStateAction<string>>
   handleSchedule: () => void
+  handleCancel: () => void
   isScheduling: boolean
   meetingProvider: MeetingProvider
   setMeetingProvider: React.Dispatch<React.SetStateAction<MeetingProvider>>
@@ -156,6 +158,7 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   timezone: '',
   setTimezone: () => {},
   handleSchedule: () => {},
+  handleCancel: () => {},
   isScheduling: false,
   meetingProvider: MeetingProvider.HUDDLE,
   setMeetingProvider: () => {},
@@ -176,6 +179,7 @@ export const ScheduleContext =
 
 const Schedule: NextPage = () => {
   const { currentAccount } = useContext(AccountContext)
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const [participants, setParticipants] = useState<
     Array<ParticipantInfo | IGroupParticipant>
   >([])
@@ -201,10 +205,11 @@ const Schedule: NextPage = () => {
     selectDefaultProvider(currentAccount?.preferences.meetingProviders)
   )
   const [meetingUrl, setMeetingUrl] = useState('')
-  const [decryptedMeeting, setDecryptedMeeting] =
-    useState<MeetingDecrypted | null>(null)
+  const [decryptedMeeting, setDecryptedMeeting] = useState<
+    MeetingDecrypted | undefined
+  >(undefined)
   const toast = useToast()
-  const { query } = useRouter()
+  const { query, push } = useRouter()
   const { groupId, intent, meetingId } = query as {
     groupId: string
     intent: Intents
@@ -484,6 +489,8 @@ const Schedule: NextPage = () => {
     }
     setIsScheduling(false)
   }
+  const handleRedirect = () => push(`/dashboard/${EditMode.MEETINGS}`)
+  const handleCancel = () => onOpen()
   const context: IScheduleContext = {
     groupParticipants,
     groupAvailability,
@@ -518,6 +525,7 @@ const Schedule: NextPage = () => {
     setMeetingNotification,
     meetingRepeat,
     setMeetingRepeat,
+    handleCancel,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -657,6 +665,13 @@ const Schedule: NextPage = () => {
         ) : (
           renderCurrentPage()
         )}
+        <CancelMeetingDialog
+          isOpen={isOpen}
+          onClose={onClose}
+          decryptedMeeting={decryptedMeeting}
+          currentAccount={currentAccount}
+          afterCancel={handleRedirect}
+        />
       </Container>
     </ScheduleContext.Provider>
   )
