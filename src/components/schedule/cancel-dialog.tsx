@@ -5,14 +5,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogOverlay,
+  Box,
   Button,
+  Text,
   useToast,
+  VStack,
 } from '@chakra-ui/react'
+import { differenceInMinutes } from 'date-fns'
 import React, { useState } from 'react'
 
 import { Account } from '@/types/Account'
 import { MeetingDecrypted } from '@/types/Meeting'
 import { cancelMeeting } from '@/utils/calendar_manager'
+import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 interface CancelMeetingDialogProps {
   decryptedMeeting?: MeetingDecrypted
@@ -38,6 +43,12 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
     _setCancelling(isCancelling)
   }
   const toast = useToast()
+  const getNamesDisplay = (meeting: MeetingDecrypted) => {
+    return getAllParticipantsDisplayName(
+      meeting.participants,
+      currentAccount!.address
+    )
+  }
 
   return (
     <AlertDialog
@@ -47,10 +58,28 @@ export const CancelMeetingDialog: React.FC<CancelMeetingDialogProps> = ({
     >
       <AlertDialogOverlay>
         <AlertDialogContent>
-          <AlertDialogHeader fontSize="lg" fontWeight="bold">
-            Cancel meeting
-          </AlertDialogHeader>
-
+          <VStack p={6} pb={1} alignItems="flex-start" gap={3}>
+            <Text>
+              <strong> Meeting Title:</strong>{' '}
+              {decryptedMeeting?.title || 'No Title'}
+            </Text>
+            {decryptedMeeting?.end && (
+              <Text>
+                <strong>Meeting Duration: </strong>
+                {differenceInMinutes(
+                  decryptedMeeting?.end,
+                  decryptedMeeting?.start
+                )}{' '}
+                Minutes
+              </Text>
+            )}
+            {decryptedMeeting && (
+              <Text display="inline" width="100%" whiteSpace="balance">
+                <strong>Participants: </strong>
+                {getNamesDisplay(decryptedMeeting)}
+              </Text>
+            )}
+          </VStack>
           <AlertDialogBody>
             Are you sure? You can&apos;t undo this action afterwards.
           </AlertDialogBody>
