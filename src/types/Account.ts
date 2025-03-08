@@ -79,3 +79,8 @@ export interface TgConnectedAccounts {
   telegram_id: string
   account_address: string
 }
+
+export interface DiscordConnectedAccounts {
+  discord_id: string
+  account_address: string
+}
