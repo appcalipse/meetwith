@@ -13,6 +13,7 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
+  DiscordConnectedAccounts,
   MeetingType,
   SimpleAccountInfo,
   TgConnectedAccounts,
@@ -2915,6 +2916,17 @@ const getAccountsWithTgConnected = async (): Promise<
   }
   return data
 }
+const getDiscordAccounts = async (): Promise<
+  Array<DiscordConnectedAccounts>
+> => {
+  const { data, error } = await db.supabase.rpc<DiscordConnectedAccounts>(
+    'get_discord_notifications'
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
@@ -2936,6 +2948,7 @@ export {
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
+  getDiscordAccounts,
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
