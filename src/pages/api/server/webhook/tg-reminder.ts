@@ -12,7 +12,6 @@ import { sendDm } from '@/utils/services/telegram.helper'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    console.clear()
     try {
       const tgConnectedAccounts = await getAccountsWithTgConnected()
       const currentTime = new Date()
