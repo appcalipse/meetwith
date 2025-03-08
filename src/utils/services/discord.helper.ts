@@ -22,6 +22,7 @@ let ready = false
 
 client.on('ready', () => {
   ready = true
+  // eslint-disable-next-line no-restricted-syntax
   !isProduction && console.log(`Logged in as ${client.user?.tag}!`)
 })
 

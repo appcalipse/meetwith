@@ -4,18 +4,18 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { MeetingRepeatIntervals } from '@/utils/constants/schedule'
 import {
-  getAccountsWithTgConnected,
   getConferenceDataBySlotId,
+  getDiscordAccounts,
   getSlotsForAccount,
 } from '@/utils/database'
-import { sendDm } from '@/utils/services/telegram.helper'
+import { dmAccount } from '@/utils/services/discord.helper'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     try {
-      const tgConnectedAccounts = await getAccountsWithTgConnected()
+      const discordAccounts = await getDiscordAccounts()
       const currentTime = new Date()
-      for (const account of tgConnectedAccounts) {
+      for (const account of discordAccounts) {
         const slots = await getSlotsForAccount(
           account.account_address,
           currentTime
@@ -47,7 +47,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               new Date(slot.start),
               'HH:mm'
             )}\n Meeting Link: ${meeting.meeting_url}`
-            await sendDm(account.telegram_id, message)
+            await dmAccount(
+              account.account_address,
+              account.discord_id,
+              message
+            )
             break
           }
         }
