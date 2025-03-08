@@ -34,6 +34,13 @@
     "simple-import-sort/exports": "error",
     "jsx-a11y/accessible-emoji": "off",
     "jsx-a11y/click-events-have-key-events": "off",
-    "react-hooks/exhaustive-deps": "off"
+    "react-hooks/exhaustive-deps": "off",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.object.name='console'][callee.property.name!=/^(warn|error|info|trace)$/]",
+        "message": "Unexpected property on console object was called"
+      }
+    ]
   }
 }
