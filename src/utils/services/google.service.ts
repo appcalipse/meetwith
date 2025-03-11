@@ -187,18 +187,18 @@ export default class GoogleCalendarService implements CalendarService {
   private createReminder(indicator: MeetingReminders) {
     switch (indicator) {
       case MeetingReminders['15_MINUTES_BEFORE']:
-        return { minutes: 15, method: 'email' }
+        return { minutes: 15, method: 'popup' }
       case MeetingReminders['30_MINUTES_BEFORE']:
-        return { minutes: 30, method: 'email' }
+        return { minutes: 30, method: 'popup' }
       case MeetingReminders['1_HOUR_BEFORE']:
-        return { minutes: 60, method: 'email' }
+        return { minutes: 60, method: 'popup' }
       case MeetingReminders['1_DAY_BEFORE']:
-        return { minutes: 1440, method: 'email' }
+        return { minutes: 1440, method: 'popup' }
       case MeetingReminders['1_WEEK_BEFORE']:
-        return { minutes: 10080, method: 'email' }
+        return { minutes: 10080, method: 'popup' }
       case MeetingReminders['10_MINUTES_BEFORE']:
       default:
-        return { minutes: 10, method: 'email' }
+        return { minutes: 10, method: 'popup' }
     }
   }
   async createEvent(
@@ -258,7 +258,7 @@ export default class GoogleCalendarService implements CalendarService {
             attendees: [],
             reminders: {
               useDefault: false,
-              overrides: [{ method: 'email', minutes: 10 }],
+              overrides: [{ method: 'popup', minutes: 10 }],
             },
             creator: {
               displayName: 'Meetwith',
@@ -404,7 +404,7 @@ export default class GoogleCalendarService implements CalendarService {
         attendees: [],
         reminders: {
           useDefault: false,
-          overrides: [{ method: 'email', minutes: 10 }],
+          overrides: [{ method: 'popup', minutes: 10 }],
         },
         creator: {
           displayName: 'Meetwith',
