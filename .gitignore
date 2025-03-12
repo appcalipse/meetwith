@@ -51,3 +51,4 @@ package-lock.json
 
 # Zoom
 zoom-token.json
+.qodo
