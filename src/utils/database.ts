@@ -171,11 +171,11 @@ const initAccountDBForWallet = async (
   if (createdUserAccount.error) {
     throw new Error(createdUserAccount.error.message)
   }
-  const defaultMeetingType = generateDefaultMeetingType()
+  const defaultMeetingTypes = generateDefaultMeetingType()
   const defaultAvailabilities = generateEmptyAvailabilities()
 
   const preferences: AccountPreferences = {
-    availableTypes: [defaultMeetingType],
+    availableTypes: defaultMeetingTypes,
     description: '',
     availabilities: defaultAvailabilities,
     socialLinks: [],
@@ -475,6 +475,21 @@ const getAccountFromDB = async (
 
       account.discord_account = discord_account
     }
+
+    // If the account is pro, default meeting types are added to the available types
+    if (isProAccount(account)) {
+      const defaultMeetingTypes = generateDefaultMeetingType()
+      account.preferences.availableTypes = [
+        ...defaultMeetingTypes,
+        ...account.preferences.availableTypes,
+      ]
+        .sort((a, b) => a.duration - b.duration)
+        .filter(
+          (type, index, array) =>
+            array.findIndex(t => t.duration === type.duration) === index
+        )
+    }
+
     return account
   } else if (error) {
     throw new Error(error.message)
