@@ -302,7 +302,7 @@ const ScheduleBase = () => {
             />
           </HStack>
         </FormControl>
-        {!type?.fixedLink && (
+        {(type?.fixedLink || !type?.customLink) && (
           <VStack alignItems="start" w={'100%'} gap={4}>
             <Text fontSize="18px" fontWeight={500}>
               Location
