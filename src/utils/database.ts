@@ -376,9 +376,9 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 }
 
 export const getAccountPreferences = async (
-  account: Account
+  owner_account_address: string
 ): Promise<AccountPreferences> => {
-  const owner_account_address = account.address.toLowerCase()
+  const account = await getAccountFromDB(owner_account_address)
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
       .from<AccountPreferences>('account_preferences')
@@ -407,14 +407,18 @@ export const getAccountPreferences = async (
   // add the missing ones by updating the database
   if (
     isProAccount(account) &&
-    account.preferences.availableTypes.length <= defaultMeetingTypes.length
+    ((account.preferences &&
+      account.preferences.availableTypes.length <=
+        defaultMeetingTypes.length) ||
+      !account.preferences)
   ) {
     // combine the default meeting types with the existing ones
     // sort and remove duplicates
-    const availableTypes = [
-      ...defaultMeetingTypes,
-      ...account.preferences.availableTypes,
-    ]
+    const availableTypes = [...defaultMeetingTypes]
+    if (account.preferences) {
+      availableTypes.push(...account.preferences.availableTypes)
+    }
+    availableTypes
       .sort((a, b) => a.duration - b.duration)
       .filter(
         (type, index, array) =>
@@ -492,7 +496,7 @@ const getAccountFromDB = async (
   if (data) {
     const account = Array.isArray(data) ? data[0] : data
     try {
-      account.preferences = await getAccountPreferences(account)
+      account.preferences = await getAccountPreferences(account.address)
     } catch (e) {
       Sentry.captureException(e)
       throw new Error("Couldn't get account's preferences")
