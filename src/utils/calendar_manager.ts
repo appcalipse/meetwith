@@ -1042,7 +1042,7 @@ const generateDefaultMeetingType = (): MeetingType[] => {
       title,
       url: getSlugFromText(title),
       duration,
-      minAdvanceTime: 60 - duration,
+      minAdvanceTime: 60,
     }
     return meetingType
   })

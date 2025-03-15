@@ -376,13 +376,14 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 }
 
 export const getAccountPreferences = async (
-  owner_account_address: string
+  account: Account
 ): Promise<AccountPreferences> => {
+  const owner_account_address = account.address.toLowerCase()
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
       .from<AccountPreferences>('account_preferences')
       .select()
-      .match({ owner_account_address: owner_account_address.toLowerCase() })
+      .match({ owner_account_address })
 
   if (
     account_preferences_error ||
@@ -393,26 +394,57 @@ export const getAccountPreferences = async (
     throw new Error("Couldn't get account's preferences")
   }
 
+  const defaultMeetingTypes = generateDefaultMeetingType()
+  const updates: Partial<AccountPreferences> = {}
+
   // fix badly migrated accounts - should be removed at some point in the future
   if (account_preferences[0].availabilities.length === 0) {
     const defaultAvailabilities = generateEmptyAvailabilities()
+    updates.availabilities = defaultAvailabilities
+  }
+
+  // If the account is pro and the account has less than 4 default meeting types,
+  // add the missing ones by updating the database
+  if (
+    isProAccount(account) &&
+    account.preferences.availableTypes.length <= defaultMeetingTypes.length
+  ) {
+    // combine the default meeting types with the existing ones
+    // sort and remove duplicates
+    const availableTypes = [
+      ...defaultMeetingTypes,
+      ...account.preferences.availableTypes,
+    ]
+      .sort((a, b) => a.duration - b.duration)
+      .filter(
+        (type, index, array) =>
+          array.findIndex(t => t.duration === type.duration) === index
+      )
+
+    updates.availableTypes = availableTypes
+  }
+
+  // If there are updates for availabilities or available types
+  // Update the database and use the values from the database
+  if (Object.keys(updates).length > 0) {
     const { data: newPreferences, error: newPreferencesError } =
       await db.supabase
         .from<AccountPreferences>('account_preferences')
-        .update({
-          availabilities: defaultAvailabilities,
-        })
-        .match({ owner_account_address: owner_account_address.toLowerCase() })
+        .update(updates)
+        .match({ owner_account_address: account.address.toLowerCase() })
 
+    // throw error if the update fails
     if (newPreferencesError) {
       console.error(newPreferences)
-      throw new Error('Error while completing empty preferences')
+      throw new Error('Error while updating default/empty preferences')
     }
 
+    // update the account preferences with the new values from the database
     return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
+  } else {
+    // return the account preferences from the database as is if no updates are present
+    return account_preferences[0]
   }
-
-  return account_preferences[0]
 }
 
 const getExistingAccountsFromDB = async (
@@ -460,9 +492,7 @@ const getAccountFromDB = async (
   if (data) {
     const account = Array.isArray(data) ? data[0] : data
     try {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
-      )
+      account.preferences = await getAccountPreferences(account)
     } catch (e) {
       Sentry.captureException(e)
       throw new Error("Couldn't get account's preferences")
@@ -474,20 +504,6 @@ const getAccountFromDB = async (
       const discord_account = await getDiscordAccount(account.address)
 
       account.discord_account = discord_account
-    }
-
-    // If the account is pro, default meeting types are added to the available types
-    if (isProAccount(account)) {
-      const defaultMeetingTypes = generateDefaultMeetingType()
-      account.preferences.availableTypes = [
-        ...defaultMeetingTypes,
-        ...account.preferences.availableTypes,
-      ]
-        .sort((a, b) => a.duration - b.duration)
-        .filter(
-          (type, index, array) =>
-            array.findIndex(t => t.duration === type.duration) === index
-        )
     }
 
     return account
