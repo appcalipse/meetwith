@@ -51,7 +51,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               account.account_address,
               account.discord_id,
               message
-            ).then(console.log)
+            )
             break
           }
         }
