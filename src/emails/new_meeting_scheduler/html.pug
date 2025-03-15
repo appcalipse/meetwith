@@ -243,7 +243,7 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                             p(style='font-size: 24px; line-height: 1.2; word-break: break-word; text-align: left; mso-line-height-alt: 29px; margin: 0;')
                               span(style='font-size: 24px; color: #d93f0c;')
                                 strong
-                                | You scheduled a meeting
+                                | Your meeting has been successfully scheduled! Here are the details:
                         //if mso
                         //if mso
                           table(width='100%', cellpadding='0', cellspacing='0', border='0')
@@ -276,16 +276,28 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                             if meeting.url
                               p(style='line-height: 1.5; word-break: break-word; font-family: inherit; font-size: 16px; mso-line-height-alt: 24px; margin: 0;')
                                 span(style='font-size: 16px;')
-                                  strong Link
+                                  strong Meeting Link
                                   | : <a href="#{meeting.url}">#{meeting.url}</a>
                             if meeting.description
                               p(style='line-height: 1.5; font-family: inherit; word-break: break-word; font-size: 16px; mso-line-height-alt: 24px; margin-top: 16px;')
                                 span(style='font-size: 16px;')
                                   != meeting.description
-                            if changeUrl
+
+                            if changeUrl && cancelUrl
+                              p(style='line-height: 1.5; font-family: inherit; word-break: break-word; font-size: 16px; mso-line-height-alt: 24px; margin-top: 16px;')
+                                  div(style='font-size: 16px;')
+                                    strong Reschedule Meeting
+                                      | : <a href="#{changeUrl}">#{changeUrl}</a>
+                                  div(style='font-size: 16px;')
+                                    strong Cancel Meeting
+                                      | : <a href="#{cancelUrl}">#{cancelUrl}</a>
+                            else if cancelUrl 
                               p(style='line-height: 1.5; font-family: inherit; word-break: break-word; font-size: 16px; mso-line-height-alt: 24px; margin-top: 16px;')
                                 span(style='font-size: 16px;')  
-                                | To reschedule or cancel this meeting, please go to <a href="#{changeUrl}">#{changeUrl}</a>
+                                  | If you need to cancel this meeting, you can do so here: 
+                                div(style='font-size: 16px;')
+                                  strong Cancel Meeting
+                                    | : <a href="#{cancelUrl}">#{cancelUrl}</a>
 
                         //if mso
                         table.divider(border='0', cellpadding='0', cellspacing='0', role='presentation', style='table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; min-width: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;', valign='top', width='100%')
