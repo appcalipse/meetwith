@@ -113,6 +113,12 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const meetingProviders = (preferences?.meetingProviders || []).concat(
     MeetingProvider.CUSTOM
   )
+  useEffect(() => {
+    if (selectedType?.customLink) {
+      setMeetingProvider(MeetingProvider.CUSTOM)
+      setMeetingUrl(selectedType.customLink)
+    }
+  }, [selectedType])
   const handleScheduleWithWallet = async () => {
     if (!logged && scheduleType === SchedulingType.REGULAR) {
       await handleScheduleType(SchedulingType.REGULAR)
@@ -400,86 +406,93 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           onValueChange={setContent}
         />
       </FormControl>
-      {scheduleType !== undefined && !selectedType?.fixedLink && (
-        <VStack alignItems="start">
-          <Text fontSize="18px" fontWeight={500}>
-            Location
-          </Text>
-          <RadioGroup
-            onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-            value={meetingProvider}
-            w={'100%'}
-          >
-            <VStack w={'100%'} gap={4}>
-              {meetingProviders.map(provider => (
-                <Radio
-                  flexDirection="row-reverse"
-                  justifyContent="space-between"
-                  w="100%"
-                  colorScheme="primary"
-                  value={provider}
-                  key={provider}
-                >
-                  <Text fontWeight="600" color={'primary.200'} cursor="pointer">
-                    {renderProviderName(provider)}
-                  </Text>
-                </Radio>
-              ))}
-            </VStack>
-          </RadioGroup>
-          {meetingProvider === MeetingProvider.CUSTOM && (
-            <Input
-              type="text"
-              placeholder="insert a custom meeting url"
-              isDisabled={isSchedulingExternal}
-              my={4}
-              value={meetingUrl}
-              onChange={e => setMeetingUrl(e.target.value)}
-            />
-          )}
-          {scheduleType === SchedulingType.REGULAR &&
-            (!notificationsSubs || notificationsSubs === 0) && (
-              <>
-                <HStack alignItems="center">
-                  <Switch
-                    display="flex"
+      {scheduleType !== undefined &&
+        (selectedType?.fixedLink || !selectedType?.customLink) && (
+          <VStack alignItems="start">
+            <Text fontSize="18px" fontWeight={500}>
+              Location
+            </Text>
+            <RadioGroup
+              onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+              value={meetingProvider}
+              w={'100%'}
+            >
+              <VStack w={'100%'} gap={4}>
+                {meetingProviders.map(provider => (
+                  <Radio
+                    flexDirection="row-reverse"
+                    justifyContent="space-between"
+                    w="100%"
                     colorScheme="primary"
-                    size="md"
-                    mr={4}
-                    isDisabled={isSchedulingExternal}
-                    defaultChecked={doSendEmailReminders}
-                    onChange={e => {
-                      setSendEmailReminders(e.target.checked)
-                      isUserEmailValid() ? setIsFirstUserEmailValid(true) : null
-                    }}
-                  />
-                  <FormLabel mb="0">
-                    <Text>Send me email reminders</Text>
-                  </FormLabel>
-                </HStack>
-                {doSendEmailReminders === true && (
-                  <FormControl
-                    isInvalid={!isFirstUserEmailValid && !isUserEmailValid()}
+                    value={provider}
+                    key={provider}
                   >
-                    <Input
-                      type="email"
-                      placeholder="Insert your email"
+                    <Text
+                      fontWeight="600"
+                      color={'primary.200'}
+                      cursor="pointer"
+                    >
+                      {renderProviderName(provider)}
+                    </Text>
+                  </Radio>
+                ))}
+              </VStack>
+            </RadioGroup>
+            {meetingProvider === MeetingProvider.CUSTOM && (
+              <Input
+                type="text"
+                placeholder="insert a custom meeting url"
+                isDisabled={isSchedulingExternal}
+                my={4}
+                value={meetingUrl}
+                onChange={e => setMeetingUrl(e.target.value)}
+              />
+            )}
+            {scheduleType === SchedulingType.REGULAR &&
+              (!notificationsSubs || notificationsSubs === 0) && (
+                <>
+                  <HStack alignItems="center">
+                    <Switch
+                      display="flex"
+                      colorScheme="primary"
+                      size="md"
+                      mr={4}
                       isDisabled={isSchedulingExternal}
-                      value={userEmail}
-                      onKeyDown={event =>
-                        event.key === 'Enter' && handleConfirm()
-                      }
+                      defaultChecked={doSendEmailReminders}
                       onChange={e => {
-                        setUserEmail(e.target.value)
-                        setIsFirstUserEmailValid(false)
+                        setSendEmailReminders(e.target.checked)
+                        isUserEmailValid()
+                          ? setIsFirstUserEmailValid(true)
+                          : null
                       }}
                     />
-                  </FormControl>
-                )}
-              </>
-            )}
-        </VStack>
-      )}
+                    <FormLabel mb="0">
+                      <Text>Send me email reminders</Text>
+                    </FormLabel>
+                  </HStack>
+                  {doSendEmailReminders === true && (
+                    <FormControl
+                      isInvalid={!isFirstUserEmailValid && !isUserEmailValid()}
+                    >
+                      <Input
+                        type="email"
+                        placeholder="Insert your email"
+                        isDisabled={isSchedulingExternal}
+                        value={userEmail}
+                        onKeyDown={event =>
+                          event.key === 'Enter' && handleConfirm()
+                        }
+                        onChange={e => {
+                          setUserEmail(e.target.value)
+                          setIsFirstUserEmailValid(false)
+                        }}
+                      />
+                    </FormControl>
+                  )}
+                </>
+              )}
+          </VStack>
+        )}
       {!addGuest ? (
         <Button
           colorScheme="orangeButton"
