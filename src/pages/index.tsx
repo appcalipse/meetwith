@@ -1,4 +1,4 @@
-import { Box, DarkMode, useDisclosure } from '@chakra-ui/react'
+import { Box, DarkMode, useColorMode, useDisclosure } from '@chakra-ui/react'
 import { getIronSession } from 'iron-session'
 import type { NextPage } from 'next'
 import React, { useContext, useEffect } from 'react'
@@ -20,6 +20,14 @@ const Home: NextPage = () => {
   const [coupon, setCoupon] = React.useState<Coupon | undefined>(undefined)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { logged, currentAccount } = useContext(AccountContext)
+  const { colorMode, setColorMode } = useColorMode()
+
+  useEffect(() => {
+    // Forcefully set the theme to dark mode
+    if (colorMode !== 'dark') {
+      setColorMode('dark')
+    }
+  }, [colorMode, setColorMode])
   const fetchCoupon = async () => {
     const data = await getNewestCoupon()
     setCoupon(data)

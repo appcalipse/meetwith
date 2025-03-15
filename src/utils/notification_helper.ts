@@ -469,7 +469,8 @@ const getEmailNotification = async (
         changes,
         meetingProvider,
         meetingReminders,
-        meetingRepeat
+        meetingRepeat,
+        guestInfoEncrypted
       )
     default:
   }

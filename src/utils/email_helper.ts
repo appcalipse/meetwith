@@ -142,9 +142,14 @@ export const newMeetingEmail = async (
     },
     changeUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
+      : undefined,
+    cancelUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
+      : guestInfoEncrypted
+      ? `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
           guestInfoEncrypted || ''
-        )}`,
+        )}`
+      : undefined,
   }
 
   const isScheduler =
@@ -344,7 +349,8 @@ export const updateMeetingEmail = async (
   changes?: MeetingChange,
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat?: MeetingRepeat
+  meetingRepeat?: MeetingRepeat,
+  guestInfoEncrypted?: string
 ): Promise<boolean> => {
   if (!changes?.dateChange) {
     return true
@@ -372,7 +378,14 @@ export const updateMeetingEmail = async (
       description,
     },
     changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      : undefined,
+    cancelUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
+      : guestInfoEncrypted
+      ? `${appUrl}/meeting/cancel/${slot_id}?metadata=${encodeURIComponent(
+          guestInfoEncrypted || ''
+        )}`
       : undefined,
     changes: {
       oldStart:
