@@ -45,7 +45,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               meeting.title || 'No Title'
             }) starting in ${interval.label} \n Start time: ${format(
               new Date(slot.start),
-              'HH:mm'
+              'HH:mm a'
             )}\n Meeting Link: ${meeting.meeting_url}`
             await dmAccount(
               account.account_address,
