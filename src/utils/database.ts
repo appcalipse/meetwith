@@ -378,12 +378,11 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 export const getAccountPreferences = async (
   owner_account_address: string
 ): Promise<AccountPreferences> => {
-  const account = await getAccountFromDB(owner_account_address)
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
       .from<AccountPreferences>('account_preferences')
       .select()
-      .match({ owner_account_address })
+      .match({ owner_account_address: owner_account_address.toLowerCase() })
 
   if (
     account_preferences_error ||
@@ -406,17 +405,16 @@ export const getAccountPreferences = async (
   // If the account is pro and the account has less than 4 default meeting types,
   // add the missing ones by updating the database
   if (
-    isProAccount(account) &&
-    ((account.preferences &&
-      account.preferences.availableTypes.length <=
+    (account_preferences.length > 0 &&
+      account_preferences[0].availableTypes.length <=
         defaultMeetingTypes.length) ||
-      !account.preferences)
+    account_preferences.length === 0
   ) {
     // combine the default meeting types with the existing ones
     // sort and remove duplicates
     const availableTypes = [...defaultMeetingTypes]
-    if (account.preferences) {
-      availableTypes.push(...account.preferences.availableTypes)
+    if (account_preferences.length > 0) {
+      availableTypes.push(...account_preferences[0].availableTypes)
     }
     availableTypes
       .sort((a, b) => a.duration - b.duration)
@@ -435,7 +433,7 @@ export const getAccountPreferences = async (
       await db.supabase
         .from<AccountPreferences>('account_preferences')
         .update(updates)
-        .match({ owner_account_address: account.address.toLowerCase() })
+        .match({ owner_account_address: owner_account_address.toLowerCase() })
 
     // throw error if the update fails
     if (newPreferencesError) {
@@ -496,7 +494,9 @@ const getAccountFromDB = async (
   if (data) {
     const account = Array.isArray(data) ? data[0] : data
     try {
-      account.preferences = await getAccountPreferences(account.address)
+      account.preferences = await getAccountPreferences(
+        account.address.toLowerCase()
+      )
     } catch (e) {
       Sentry.captureException(e)
       throw new Error("Couldn't get account's preferences")
