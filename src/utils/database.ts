@@ -406,7 +406,7 @@ export const getAccountPreferences = async (
   const defaultMeetingTypes = generateDefaultMeetingType()
   if (
     account_preferences.length > 0 &&
-    account_preferences[0].availableTypes.length <= defaultMeetingTypes.length
+    account_preferences[0].availableTypes.length < defaultMeetingTypes.length
   ) {
     // combine the default meeting types with the existing ones
     // sort and remove duplicates
