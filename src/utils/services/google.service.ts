@@ -351,21 +351,22 @@ export default class GoogleCalendarService implements CalendarService {
           calendar.events.watch(
             {
               calendarId,
-              iCalUID: meetingDetails.meeting_id.replaceAll('-', ''),
+              // iCalUID: meetingDetails.meeting_id.replaceAll('-', ''),
+              showDeleted: true,
+              auth: myGoogleAuth,
+              fields: 'id',
+
               requestBody: {
-                type: 'webhook',
+                id: meetingDetails.meeting_id,
+                type: 'web_hook',
                 address:
-                  'https://0424-89-39-107-190.ngrok-free.app/api/webhook/google',
-                resourceId: meetingDetails.meeting_id,
-                token: encryptContent(
-                  process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
-                  JSON.stringify({ slotId: '' })
-                ),
+                  'https://webhook.site/3afe689a-ac7c-42ba-8bd3-029760819dfe',
               },
             },
             {}
           )
         })
+        .then(console.log)
         .catch(error => {
           console.error(error)
           reject(error)
