@@ -403,6 +403,7 @@ export const getAccountPreferences = async (
   }
 
   // If the account is pro and the account has less than 4 default meeting types,
+  const defaultMeetingTypes = generateDefaultMeetingType()
   if (
     (account_preferences.length > 0 &&
       account_preferences[0].availableTypes.length <=
@@ -411,7 +412,7 @@ export const getAccountPreferences = async (
   ) {
     // combine the default meeting types with the existing ones
     // sort and remove duplicates
-    const availableTypes =  generateDefaultMeetingType()
+    const availableTypes = [...defaultMeetingTypes]
     if (account_preferences.length > 0) {
       availableTypes.push(...account_preferences[0].availableTypes)
     }
@@ -1662,7 +1663,7 @@ const changeGroupRole = async (
   }
   const query = db.supabase
     .from(invitePending ? 'group_invites' : 'group_members')
-    .({ role: newRole })
+    .update({ role: newRole })
     .eq('group_id', groupId)
   if (invitePending) {
     query.eq('id', userIdentifier)
