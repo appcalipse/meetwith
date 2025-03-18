@@ -405,18 +405,16 @@ export const getAccountPreferences = async (
   // If the account is pro and the account has less than 4 default meeting types,
   const defaultMeetingTypes = generateDefaultMeetingType()
   if (
-    (account_preferences.length > 0 &&
-      account_preferences[0].availableTypes.length <=
-        defaultMeetingTypes.length) ||
-    account_preferences.length === 0
+    account_preferences.length > 0 &&
+    account_preferences[0].availableTypes.length <= defaultMeetingTypes.length
   ) {
     // combine the default meeting types with the existing ones
     // sort and remove duplicates
-    const availableTypes = [...defaultMeetingTypes]
+    let availableTypes = [...defaultMeetingTypes]
     if (account_preferences.length > 0) {
       availableTypes.push(...account_preferences[0].availableTypes)
     }
-    availableTypes
+    availableTypes = availableTypes
       .sort((a, b) => a.duration - b.duration)
       .filter(
         (type, index, array) =>
