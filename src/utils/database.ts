@@ -376,8 +376,7 @@ const getAccountNonce = async (identifier: string): Promise<number> => {
 }
 
 export const getAccountPreferences = async (
-  owner_account_address: string,
-  enableDefaultAvTypes = true
+  owner_account_address: string
 ): Promise<AccountPreferences> => {
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
@@ -394,7 +393,7 @@ export const getAccountPreferences = async (
     throw new Error("Couldn't get account's preferences")
   }
 
-  const defaultMeetingTypes = generateDefaultMeetingType()
+  // Updates variable for the account preferences
   const updates: Partial<AccountPreferences> = {}
 
   // fix badly migrated accounts - should be removed at some point in the future
@@ -404,12 +403,12 @@ export const getAccountPreferences = async (
   }
 
   // If the account is pro and the account has less than 4 default meeting types,
+  const defaultMeetingTypes = generateDefaultMeetingType()
   if (
-    enableDefaultAvTypes &&
-    ((account_preferences.length > 0 &&
+    (account_preferences.length > 0 &&
       account_preferences[0].availableTypes.length <=
         defaultMeetingTypes.length) ||
-      account_preferences.length === 0)
+    account_preferences.length === 0
   ) {
     // combine the default meeting types with the existing ones
     // sort and remove duplicates
