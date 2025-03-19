@@ -409,7 +409,11 @@ export const getAccountPreferences = async (
   if (account_preferences.length > 0) {
     const availableTypes = account_preferences[0].availableTypes
 
-    if (availableTypes.length <= 7) {
+    const uniqueDurations = Array.from(
+      new Set(availableTypes.map(type => type.duration))
+    )
+
+    if (uniqueDurations.length <= 7) {
       const defaultAvailableTypes = generateDefaultMeetingType()
       let newAvailableTypes = [...availableTypes, ...defaultAvailableTypes]
 
