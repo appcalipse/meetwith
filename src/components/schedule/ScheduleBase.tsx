@@ -38,6 +38,7 @@ import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import {
+  DEFAULT_GROUP_SCHEDULING_DURATION,
   MeetingNotificationOptions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
@@ -51,6 +52,9 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 const ScheduleBase = () => {
   const { query } = useRouter()
   const { currentAccount } = useContext(AccountContext)
+  const [isTitleValid, setIsTitleValid] = useState(true)
+  const [isDurationValid, setIsDurationValid] = useState(true)
+  const [isParticipantsValid, setIsParticipantsValid] = useState(true)
   const {
     participants,
     setParticipants,
@@ -75,14 +79,33 @@ const ScheduleBase = () => {
     meetingRepeat,
     setMeetingRepeat,
   } = useContext(ScheduleContext)
+  console.log({ isParticipantsValid })
+  const handleSubmit = () => {
+    if (!title) {
+      setIsTitleValid(false)
+    } else {
+      setIsTitleValid(true)
+    }
+    if (!duration) {
+      setIsDurationValid(false)
+    } else {
+      setIsDurationValid(true)
+    }
+    if (participants.length === 0) {
+      setIsParticipantsValid(false)
+    } else {
+      setIsParticipantsValid(true)
+    }
+    if (!title || !duration || participants.length === 0) {
+      return
+    }
+    handlePageSwitch(Page.SCHEDULE_TIME)
+  }
   const {
     isOpen: isGroupModalOpen,
     onOpen: openGroupModal,
     onClose: closeGroupModal,
   } = useDisclosure()
-  const [inputError, setInputError] = useState(
-    undefined as ReactNode | undefined
-  )
   const meetingProviders = (
     currentAccount?.preferences?.meetingProviders || []
   ).concat(MeetingProvider.CUSTOM)
@@ -124,8 +147,13 @@ const ScheduleBase = () => {
         </Heading>
         <VStack width="100%" gap={4}>
           <Flex width="100%" gap={4}>
-            <FormControl>
-              <FormLabel>Title</FormLabel>
+            <FormControl isInvalid={!isTitleValid}>
+              <FormLabel color={isTitleValid ? undefined : 'red.500'}>
+                Title
+                <Text color="red.500" display="inline">
+                  *
+                </Text>
+              </FormLabel>
               <Input
                 placeholder="Enter meeting title"
                 _placeholder={{
@@ -135,10 +163,22 @@ const ScheduleBase = () => {
                 disabled={isScheduling}
                 value={title}
                 onChange={e => handleTitleChange(e.target.value)}
+                errorBorderColor="red.500"
+                isInvalid={!isTitleValid}
               />
+              {!isTitleValid && (
+                <FormHelperText color="red.500">
+                  Title is required
+                </FormHelperText>
+              )}
             </FormControl>
             <FormControl w={'max-content'}>
-              <FormLabel htmlFor="date">Duration</FormLabel>
+              <FormLabel htmlFor="date">
+                Duration
+                <Text color="red.500" display="inline">
+                  *
+                </Text>
+              </FormLabel>
               <Select
                 id="duration"
                 placeholder="Duration"
@@ -147,20 +187,28 @@ const ScheduleBase = () => {
                 borderColor="neutral.400"
                 width={'max-content'}
                 maxW="350px"
+                isInvalid={!isDurationValid}
+                errorBorderColor="red.500"
               >
-                {currentAccount!.preferences.availableTypes
-                  .filter(type => !type.deleted && !type.private)
-                  .map(type => (
-                    <option key={type.id} value={type.duration}>
-                      {durationToHumanReadable(type.duration)}
-                    </option>
-                  ))}
+                {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
+                  <option key={type.id} value={type.duration}>
+                    {durationToHumanReadable(type.duration)}
+                  </option>
+                ))}
               </Select>
+              {!isDurationValid && (
+                <FormHelperText color="red.500">
+                  Duration is required
+                </FormHelperText>
+              )}
             </FormControl>
           </Flex>
           <FormControl w="100%" maxW="100%">
             <FormLabel htmlFor="participants">
-              Participants{' '}
+              Participants
+              <Text color="red.500" display="inline">
+                *
+              </Text>{' '}
               <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
             </FormLabel>
             <Box w="100%" maxW="100%">
@@ -181,6 +229,8 @@ const ScheduleBase = () => {
                 }}
                 inputProps={{
                   pr: 14,
+                  isInvalid: true,
+                  errorBorderColor: 'red.500',
                 }}
                 button={
                   <Button
@@ -200,14 +250,14 @@ const ScheduleBase = () => {
                 }
               />
             </Box>
-            <FormHelperText>
-              {inputError ? (
-                inputError
-              ) : (
+            <FormHelperText minW={{ md: '600px' }}>
+              {isParticipantsValid ? (
                 <Text>
                   Separate participants by comma. You will be added
                   automatically, no need to insert yourself
                 </Text>
+              ) : (
+                <Text color="red.500">Participants are required</Text>
               )}
             </FormHelperText>
           </FormControl>
@@ -224,8 +274,7 @@ const ScheduleBase = () => {
             py={3}
             h={'auto'}
             colorScheme="primary"
-            onClick={() => handlePageSwitch(Page.SCHEDULE_TIME)}
-            isDisabled={participants.length === 0 || !title || !duration}
+            onClick={handleSubmit}
           >
             Discover a time
           </Button>
