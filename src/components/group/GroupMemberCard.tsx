@@ -131,6 +131,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       userId: props.userId,
       calendarConnected: props.calendarConnected,
       invitePending: props.invitePending,
+      domain: props.domain,
     })
     openRemoveModal()
   }
@@ -154,9 +155,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           </Heading>
           {!props.invitePending ? (
             <CopyLinkButton
-              url={`${appUrl}/${props.address}`}
+              url={`${appUrl}/${props.domain || props.address}`}
               size="md"
-              label={`${appUrl}/${props.address}`}
+              label={`${appUrl}/${props.domain || props.address}`}
               withIcon
               design_type="link"
               pl={0}
