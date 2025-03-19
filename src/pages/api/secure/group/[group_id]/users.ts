@@ -38,6 +38,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
                 role: group.group_members?.[0].role,
                 invitePending: false,
                 calendarConnected: !!group.calendars[0]?.calendars?.length,
+                domain: group.subscriptions?.find(
+                  sub => new Date(sub.expiry_time) > new Date()
+                )?.domain,
               }
             : {
                 displayName: group.preferences?.name,
