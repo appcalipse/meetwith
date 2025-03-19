@@ -1612,7 +1612,8 @@ const getGroupUsers = async (
       group_members: group_members(*),
       group_invites: group_invites(*),
       preferences: account_preferences(name),
-      calendars: connected_calendars(calendars)
+      calendars: connected_calendars(calendars),
+      subscriptions: subscriptions(*) 
     `
       )
       .in('address', addresses)
