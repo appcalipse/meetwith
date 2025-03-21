@@ -19,9 +19,9 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { Select as ChakraSelect } from 'chakra-react-select'
-import { format } from 'date-fns'
+import { format, set } from 'date-fns'
 import { useRouter } from 'next/router'
-import React, { ReactNode, useContext, useState } from 'react'
+import React, { ReactNode, useContext, useEffect, useState } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
@@ -79,7 +79,6 @@ const ScheduleBase = () => {
     meetingRepeat,
     setMeetingRepeat,
   } = useContext(ScheduleContext)
-  console.log({ isParticipantsValid })
   const handleSubmit = () => {
     if (!title) {
       setIsTitleValid(false)
@@ -113,6 +112,9 @@ const ScheduleBase = () => {
   const iconColor = useColorModeValue('gray.800', 'white')
   const onParticipantsChange = (_participants: Array<ParticipantInfo>) => {
     setParticipants(_participants)
+    if (_participants.length) {
+      setIsParticipantsValid(true)
+    }
     const key = 'no_group'
     const addresses = _participants
       .map(val => val.account_address)
@@ -122,7 +124,11 @@ const ScheduleBase = () => {
       [key]: addresses as string[],
     }))
   }
-
+  useEffect(() => {
+    if (participants.length > 0) {
+      setIsParticipantsValid(true)
+    }
+  }, [participants])
   return (
     <Box>
       <DiscoverATimeInfoModal
@@ -162,7 +168,12 @@ const ScheduleBase = () => {
                 borderColor="neutral.400"
                 disabled={isScheduling}
                 value={title}
-                onChange={e => handleTitleChange(e.target.value)}
+                onChange={e => {
+                  if (!isTitleValid && e.target.value) {
+                    setIsTitleValid(true)
+                  }
+                  return handleTitleChange(e.target.value)
+                }}
                 errorBorderColor="red.500"
                 isInvalid={!isTitleValid}
               />
@@ -229,7 +240,7 @@ const ScheduleBase = () => {
                 }}
                 inputProps={{
                   pr: 14,
-                  isInvalid: true,
+                  isInvalid: !isParticipantsValid,
                   errorBorderColor: 'red.500',
                 }}
                 button={
