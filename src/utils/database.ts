@@ -171,11 +171,11 @@ const initAccountDBForWallet = async (
   if (createdUserAccount.error) {
     throw new Error(createdUserAccount.error.message)
   }
-  const defaultMeetingTypes = generateDefaultMeetingType()
+  const defaultMeetingType = generateDefaultMeetingType()
   const defaultAvailabilities = generateEmptyAvailabilities()
 
   const preferences: AccountPreferences = {
-    availableTypes: defaultMeetingTypes,
+    availableTypes: [defaultMeetingType],
     description: '',
     availabilities: defaultAvailabilities,
     socialLinks: [],
@@ -393,62 +393,26 @@ export const getAccountPreferences = async (
     throw new Error("Couldn't get account's preferences")
   }
 
-  // Updates variable for the account preferences
-  const updates: Partial<AccountPreferences> = {}
-
   // fix badly migrated accounts - should be removed at some point in the future
   if (account_preferences[0].availabilities.length === 0) {
     const defaultAvailabilities = generateEmptyAvailabilities()
-    updates.availabilities = defaultAvailabilities
-  }
-
-  // If the account is pro and the account has less than 4 default meeting types,
-  // combine the default meeting types with the existing ones
-  // sort and remove duplicates
-
-  if (account_preferences.length > 0) {
-    const availableTypes = account_preferences[0].availableTypes
-
-    const uniqueDurations = Array.from(
-      new Set(availableTypes.map(type => type.duration))
-    )
-
-    if (uniqueDurations.length <= 7) {
-      const defaultAvailableTypes = generateDefaultMeetingType()
-      let newAvailableTypes = [...availableTypes, ...defaultAvailableTypes]
-
-      newAvailableTypes = newAvailableTypes
-        .sort((a, b) => a.duration - b.duration)
-        .filter(
-          (type, index, array) =>
-            array.findIndex(t => t.duration === type.duration) === index
-        )
-
-      updates.availableTypes = newAvailableTypes
-    }
-  }
-
-  // If there are updates for availabilities or available types
-  // Update the database and use the values from the database
-  if (Object.keys(updates).length > 0) {
     const { data: newPreferences, error: newPreferencesError } =
       await db.supabase
         .from<AccountPreferences>('account_preferences')
-        .update(updates)
+        .update({
+          availabilities: defaultAvailabilities,
+        })
         .match({ owner_account_address: owner_account_address.toLowerCase() })
 
-    // throw error if the update fails
     if (newPreferencesError) {
       console.error(newPreferences)
-      throw new Error('Error while updating default/empty preferences')
+      throw new Error('Error while completing empty preferences')
     }
 
-    // update the account preferences with the new values from the database
     return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
-  } else {
-    // return the account preferences from the database as is if no updates are present
-    return account_preferences[0]
   }
+
+  return account_preferences[0]
 }
 
 const getExistingAccountsFromDB = async (
@@ -511,7 +475,6 @@ const getAccountFromDB = async (
 
       account.discord_account = discord_account
     }
-
     return account
   } else if (error) {
     throw new Error(error.message)
