@@ -1031,22 +1031,17 @@ const getCalendarRegularUrl = (account_address: string) => {
   return `${appUrl}/address/${account_address}`
 }
 
-// Default Meeting types have 4 durations: 15, 30, 45, 60 minutes
-const generateDefaultMeetingType = (): MeetingType[] => {
-  const durations = [15, 30, 45, 60]
+const generateDefaultMeetingType = (): MeetingType => {
+  const title = '30 minutes meeting'
+  const meetingType: MeetingType = {
+    id: uuidv4(),
+    title,
+    url: getSlugFromText(title),
+    duration: 30,
+    minAdvanceTime: 60,
+  }
 
-  const meetingTypes = durations.map(duration => {
-    const title = `${duration} minutes meeting`
-    const meetingType: MeetingType = {
-      id: uuidv4(),
-      title,
-      url: getSlugFromText(title),
-      duration,
-      minAdvanceTime: 60,
-    }
-    return meetingType
-  })
-  return meetingTypes
+  return meetingType
 }
 
 const generateAllSlots = () => {
