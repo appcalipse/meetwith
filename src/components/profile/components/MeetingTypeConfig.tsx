@@ -201,10 +201,6 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
           <option value="30">30 min</option>
           <option value="45">45 min</option>
           <option value="60">60 min</option>
-          <option value="90">90 min</option>
-          <option value="120">120 min</option>
-          <option value="150">150 min</option>
-          <option value="180">180 min</option>
         </Select>
       </FormControl>
       <FormControl pt={5}>
