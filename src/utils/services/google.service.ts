@@ -348,23 +348,20 @@ export default class GoogleCalendarService implements CalendarService {
               })
             }
           )
-          calendar.events.watch(
-            {
+
+          calendar.events
+            .watch({
               calendarId,
-              // iCalUID: meetingDetails.meeting_id.replaceAll('-', ''),
               showDeleted: true,
               auth: myGoogleAuth,
-              fields: 'id',
-
               requestBody: {
                 id: meetingDetails.meeting_id,
                 type: 'web_hook',
                 address:
-                  'https://webhook.site/3afe689a-ac7c-42ba-8bd3-029760819dfe',
+                  'https://webhook.site/3afe689a-ac7c-42ba-8bd3-029760819dfe', //`${apiUrl}/webhooks/calendar/google/{calendar_owner_address}`,
               },
-            },
-            {}
-          )
+            })
+            .then(console.log)
         })
         .then(console.log)
         .catch(error => {
