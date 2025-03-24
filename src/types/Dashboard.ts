@@ -3,6 +3,7 @@ export enum EditMode {
   AVAILABILITY = 'availability',
   MEETING_SETTINGS = 'meeting-settings',
   GROUPS = 'groups',
+  CONTACTS = 'contacts',
   DETAILS = 'details',
   TYPES = 'types',
   CALENDARS = 'calendars',
