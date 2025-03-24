@@ -1,11 +1,19 @@
 import {
+  Badge,
+  Box,
   Button,
   Flex,
   Heading,
   HStack,
+  Input,
+  Tab,
   Table,
   TableCaption,
   TableContainer,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   Tbody,
   Td,
   Text,
@@ -47,22 +55,112 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           Create new contact
         </Button>
       </HStack>
-      <TableContainer>
-        <Table variant="simple">
-          <TableCaption>Imperial to metric conversion factors</TableCaption>
-          <Thead>
-            <Tr>
-              <Th>User</Th>
-              <Th>Description</Th>
-              <Th>Account ID</Th>
-              <Th>Email address</Th>
-              <Th>Schedule</Th>
-              <Th>Action</Th>
-            </Tr>
-          </Thead>
-          <Tbody></Tbody>
-        </Table>
-      </TableContainer>
+
+      <Tabs variant="unstyled" bg="neutral.900">
+        <HStack justifyContent="space-between" mb={4} p={5}>
+          <Input w="fit-content" />
+
+          <TabList
+            w="auto"
+            bg="neutral.850"
+            p={1}
+            borderWidth={1}
+            borderColor="neutral.400"
+            rounded={1.5}
+          >
+            <Tab
+              rounded={4}
+              fontWeight={700}
+              _selected={{
+                color: 'neutral.900',
+                bg: 'primary.200',
+              }}
+            >
+              Contact list
+            </Tab>
+            <Tab
+              rounded={4}
+              fontWeight={700}
+              _selected={{
+                color: 'neutral.900',
+                bg: 'primary.200',
+              }}
+            >
+              Requests received
+              <Badge
+                colorScheme="primary"
+                color="neutral.900"
+                bg="primary.200"
+                ml={2}
+                px={1.5}
+              >
+                2
+              </Badge>
+            </Tab>
+          </TabList>
+          <Button
+            onClick={() => {}}
+            flexShrink={0}
+            colorScheme="primary"
+            display={{ base: 'none', md: 'flex' }}
+            mt={{ base: 4, md: 0 }}
+            mb={4}
+            leftIcon={<FaPlus />}
+          >
+            Add new contact
+          </Button>
+        </HStack>
+        <TableContainer>
+          <TabPanels>
+            <TabPanel>
+              <Table variant="unstyled" colorScheme="whiteAlpha">
+                <Thead bg="neutral.900">
+                  <Tr color="white">
+                    <Th color="inherit">User</Th>
+                    <Th>Description</Th>
+                    <Th>Account ID</Th>
+                    <Th>Email address</Th>
+                    <Th>Schedule</Th>
+                    <Th>Action</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  <Tr color="white">
+                    <Th justifyContent="center" colSpan={6}>
+                      <Text textAlign="center" w="100%" mx="auto">
+                        No Contacts
+                      </Text>
+                    </Th>
+                  </Tr>
+                </Tbody>
+              </Table>
+            </TabPanel>
+            <TabPanel>
+              <Table variant="unstyled" colorScheme="whiteAlpha">
+                <Thead bg="neutral.900">
+                  <Tr color="white">
+                    <Th color="inherit">User</Th>
+                    <Th>Description</Th>
+                    <Th>Account ID</Th>
+                    <Th>Email address</Th>
+                    <Th>Schedule</Th>
+                    <Th>Action</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  <Tr color="white">
+                    <Th justifyContent="center" colSpan={6}>
+                      <Text textAlign="center" w="100%" mx="auto">
+                        No Contacts
+                      </Text>
+                    </Th>
+                  </Tr>
+                </Tbody>
+              </Table>
+            </TabPanel>
+          </TabPanels>
+        </TableContainer>
+      </Tabs>
     </Flex>
   )
 }
