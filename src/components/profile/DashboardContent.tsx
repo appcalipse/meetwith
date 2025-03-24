@@ -12,6 +12,7 @@ import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
 import { NavMenu } from './components/NavMenu'
 import ConnectCalendar from './ConnectCalendar'
+import Contact from './Contact'
 import Meetings from './Meetings'
 import MeetingSettings from './MeetingSettings'
 
@@ -28,6 +29,8 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         return <Meetings currentAccount={currentAccount!} />
       case EditMode.GROUPS:
         return <GroupWithNoSSR currentAccount={currentAccount!} />
+      case EditMode.CONTACTS:
+        return <Contact currentAccount={currentAccount!} />
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig currentAccount={currentAccount!} />
       case EditMode.DETAILS:
