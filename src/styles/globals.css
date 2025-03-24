@@ -207,3 +207,11 @@ a {
   padding: 2px;
   background-clip: padding-box;
 }
+th {
+  color: inherit !important;
+  font-weight: 500 !important;
+}
+thead tr th {
+  border-color: #7b8794 !important;
+  border-bottom-width: 2px;
+}
