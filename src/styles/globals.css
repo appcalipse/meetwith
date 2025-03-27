@@ -215,3 +215,9 @@ thead tr th {
   border-color: #7b8794 !important;
   border-bottom-width: 2px;
 }
+
+.contact-avatar {
+  width: 35px;
+  height: 35px;
+  margin-right: 10px;
+}
