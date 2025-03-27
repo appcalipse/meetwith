@@ -1,8 +1,10 @@
+import { Search2Icon, SearchIcon } from '@chakra-ui/icons'
 import {
   Badge,
   Box,
   Button,
   Flex,
+  FormLabel,
   Heading,
   HStack,
   Input,
@@ -21,15 +23,20 @@ import {
   Th,
   Thead,
   Tr,
+  useDisclosure,
 } from '@chakra-ui/react'
 import React from 'react'
 import { FaPlus } from 'react-icons/fa'
 
 import { Account } from '@/types/Account'
 
+import ContactModal from '../contact/ContactModal'
+
 const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
+  const { isOpen, onOpen, onClose } = useDisclosure()
   return (
     <Flex direction={'column'} maxWidth="100%">
+      <ContactModal isOpen={isOpen} onClose={onClose} />
       <HStack
         justifyContent="space-between"
         alignItems="flex-start"
@@ -43,22 +50,30 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             schedule with so you add them to your list
           </Text>
         </Heading>
-        <Button
-          onClick={() => {}}
-          flexShrink={0}
-          colorScheme="primary"
-          display={{ base: 'none', md: 'flex' }}
-          mt={{ base: 4, md: 0 }}
-          mb={4}
-          leftIcon={<FaPlus />}
-        >
-          Create new contact
-        </Button>
       </HStack>
 
       <Tabs variant="unstyled" bg="neutral.900">
         <HStack justifyContent="space-between" mb={4} p={5}>
-          <Input w="fit-content" />
+          <Box w="fit-content" pos="relative" h="fit-content">
+            <FormLabel
+              display="flex"
+              htmlFor="search"
+              pos="absolute"
+              left={2}
+              insetY={0}
+              h="full"
+              justifyContent="center"
+              alignItems="center"
+            >
+              <SearchIcon alignSelf="center" color="neutral.400" />
+            </FormLabel>
+            <Input
+              pl={8}
+              w="fit-content"
+              placeholder="Search contact"
+              id="search"
+            />
+          </Box>
 
           <TabList
             w="auto"
@@ -99,7 +114,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             </Tab>
           </TabList>
           <Button
-            onClick={() => {}}
+            onClick={onOpen}
             flexShrink={0}
             colorScheme="primary"
             display={{ base: 'none', md: 'flex' }}
@@ -116,7 +131,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               <Table variant="unstyled" colorScheme="whiteAlpha">
                 <Thead bg="neutral.900">
                   <Tr color="white">
-                    <Th color="inherit">User</Th>
+                    <Th>User</Th>
                     <Th>Description</Th>
                     <Th>Account ID</Th>
                     <Th>Email address</Th>
@@ -139,7 +154,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               <Table variant="unstyled" colorScheme="whiteAlpha">
                 <Thead bg="neutral.900">
                   <Tr color="white">
-                    <Th color="inherit">User</Th>
+                    <Th>User</Th>
                     <Th>Description</Th>
                     <Th>Account ID</Th>
                     <Th>Email address</Th>
