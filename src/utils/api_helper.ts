@@ -10,6 +10,7 @@ import {
   ConnectResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
+import { ContactSearch } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
@@ -1153,4 +1154,24 @@ export const updateCustomSubscriptionDomain = async (
 
 export const getNewestCoupon = async (): Promise<Coupon> => {
   return await internalFetch<Coupon>(`/subscriptions/custom`)
+}
+
+export const searchForAccounts = async (query: string, offset = 0) => {
+  return await internalFetch<ContactSearch>(
+    `/secure/accounts/search?q=${query}&offset=${offset}`
+  )
+}
+
+export const sendContactListInvite = async (
+  address?: string,
+  email?: string
+) => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    `/secure/contact/invite`,
+    'POST',
+    {
+      address,
+      email,
+    }
+  )
 }

@@ -27,6 +27,7 @@ import {
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
 import { SupportedChain } from '@/types/chains'
+import { ContactSearch } from '@/types/Contacts'
 import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
@@ -2928,6 +2929,70 @@ const getDiscordAccounts = async (): Promise<
   }
   return data
 }
+
+const findAccountsByText = async (
+  current_address: string,
+  search: string,
+  limit = 10,
+  offset = 0
+) => {
+  const { data, error } = await db.supabase.rpc<ContactSearch>(
+    'search_accounts',
+    {
+      search,
+      max_results: limit,
+      skip: offset,
+      current_address,
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data?.[0]
+}
+
+const getOrCreateContactInvite = async (
+  owner_address: string,
+  address?: string,
+  email?: string
+) => {
+  let query = ''
+  if (address) {
+    query += `user_id.eq.${address}`
+  }
+  if (email) {
+    query += `email.eq.${email}`
+  }
+  const { data, error: searchError } = await db.supabase
+    .from('contact_invite')
+    .select()
+    .eq('account_owner_address', owner_address)
+    .or(query)
+  if (searchError) {
+    throw new Error(searchError.message)
+  }
+  if ((data?.length || 0) > 0) {
+    return data?.[0]
+  }
+  const { data: insertData, error: insertError } = await db.supabase
+    .from('contact_invite')
+    .insert([{ account_owner_address: owner_address, email, user_id: address }])
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
+  return insertData[0]
+}
+const isUserContact = async (owner_address: string, address: string) => {
+  const { data, error } = await db.supabase
+    .from('contact')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_owner_address', owner_address)
+    .eq('contact_address', address)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data?.[0]
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
@@ -2939,6 +3004,7 @@ export {
   deleteMeetingFromDB,
   deleteTgConnection,
   editGroup,
+  findAccountsByText,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptionEmail,
@@ -2964,6 +3030,7 @@ export {
   getMeetingFromDB,
   getNewestCoupon,
   getOfficeEventMappingId,
+  getOrCreateContactInvite,
   getSlotsForAccount,
   getSlotsForDashboard,
   getTgConnection,
@@ -2976,6 +3043,7 @@ export {
   insertOfficeEventMapping,
   isGroupAdmin,
   isSlotFree,
+  isUserContact,
   leaveGroup,
   manageGroupInvite,
   publicGroupJoin,
