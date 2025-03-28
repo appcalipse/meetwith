@@ -27,7 +27,7 @@ import {
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
 import { SupportedChain } from '@/types/chains'
-import { ContactSearch } from '@/types/Contacts'
+import { ContactSearch, DBContact, DBContactInvite } from '@/types/Contacts'
 import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
@@ -106,6 +106,7 @@ import {
   generateEmptyAvailabilities,
 } from './calendar_manager'
 import { apiUrl } from './constants'
+import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import { isTimeInsideAvailabilities } from './slots.helper'
@@ -2956,27 +2957,34 @@ const getOrCreateContactInvite = async (
   address?: string,
   email?: string
 ) => {
-  let query = ''
-  if (address) {
-    query += `user_id.eq.${address}`
-  }
-  if (email) {
-    query += `email.eq.${email}`
-  }
   const { data, error: searchError } = await db.supabase
     .from('contact_invite')
     .select()
     .eq('account_owner_address', owner_address)
-    .or(query)
+    .eq('destination', address || email)
   if (searchError) {
     throw new Error(searchError.message)
   }
   if ((data?.length || 0) > 0) {
     return data?.[0]
   }
+  let channel = ChannelType.ACCOUNT
+  if (email) {
+    channel = ChannelType.EMAIL
+  }
+  if (address) {
+    channel = ChannelType.ACCOUNT
+  }
+
   const { data: insertData, error: insertError } = await db.supabase
     .from('contact_invite')
-    .insert([{ account_owner_address: owner_address, email, user_id: address }])
+    .insert([
+      {
+        account_owner_address: owner_address,
+        destination: address || email,
+        channel,
+      },
+    ])
   if (insertError) {
     throw new Error(insertError.message)
   }
@@ -2993,7 +3001,183 @@ const isUserContact = async (owner_address: string, address: string) => {
   }
   return data?.[0]
 }
+
+const getContacts = async (
+  address: string,
+  limit = 10,
+  offset = 0
+): Promise<Array<DBContact>> => {
+  const { data, error } = await db.supabase
+    .from('contact')
+    .select(
+      `
+      id,
+       contact_address,
+        account_owner_address,
+        status,
+        account: accounts(
+          preferences: account_preferences(name, avatar_url, description),
+          calendars_exist: connected_calendars(id),
+          account_notifications(notification_types)
+        )
+    `
+    )
+    .eq('account_owner_address', address) // Ensure the contact exists for the given address
+
+    .range(
+      offset || 0,
+      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+    )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+
+const getContactInvites = async (
+  address: string,
+  limit = 10,
+  offset = 0
+): Promise<Array<DBContactInvite>> => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select(
+      `
+      id,
+       destination,
+        account_owner_address,
+        channel,
+        account: accounts(
+          preferences: account_preferences(name, avatar_url, description),
+          calendars_exist: connected_calendars(id),
+          account_notifications(notification_types)
+        )
+    `
+    )
+    .eq('destination', address) // Ensure the contact exists for the given address
+
+    .range(
+      offset || 0,
+      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+    )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const getContactInvitesCount = async (address: string) => {
+  const { error, count } = await db.supabase
+    .from('contact_invite')
+    .select('id', { count: 'exact' })
+    .eq('destination', address)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return count
+}
+const acceptContactInvite = async (
+  invite_identifier: string,
+  account_address: string
+) => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select()
+    .eq('id', invite_identifier)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  // make sure the actual account owner accepts the invite
+  if (
+    data?.channel === ChannelType.ACCOUNT &&
+    data?.destination !== account_address
+  ) {
+    throw new Error('Invalid invite')
+  }
+
+  const { data: contactExists } = await db.supabase
+    .from('contact')
+    .select()
+    .in('account_owner_address', [account_address, data?.account_owner_address])
+    .in('contact_address', [account_address, data?.account_owner_address])
+    .eq('status', ContactStatus.ACTIVE)
+
+  if (contactExists?.length) {
+    await db.supabase
+      .from('contact_invite')
+      .delete()
+      .eq('id', invite_identifier)
+    throw new Error('Contact already exists')
+  }
+
+  const { error: insertError } = await db.supabase.from('contact').insert([
+    {
+      account_owner_address: data?.account_owner_address,
+      contact_address: account_address,
+      status: ContactStatus.ACTIVE,
+    },
+    {
+      account_owner_address: account_address,
+      contact_address: data?.account_owner_address,
+      status: ContactStatus.ACTIVE,
+    },
+  ])
+
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
+  // clean up old status contacts
+  const { error: contactClearError } = await db.supabase
+    .from('contact')
+    .delete()
+    .in('account_owner_address', [account_address, data?.account_owner_address])
+    .in('contact_address', [account_address, data?.account_owner_address])
+    .eq('status', ContactStatus.INACTIVE)
+  if (contactClearError) {
+    throw new Error(contactClearError.message)
+  }
+
+  const { error: deleteError } = await db.supabase
+    .from('contact_invite')
+    .delete()
+    .eq('id', invite_identifier)
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+}
+const rejectContactInvite = async (
+  invite_identifier: string,
+  account_address: string
+) => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select()
+    .eq('id', invite_identifier)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  // make sure the actual account owner rejects the invite
+  if (
+    data?.channel === ChannelType.ACCOUNT &&
+    data?.destination !== account_address
+  ) {
+    throw new Error('Invalid invite')
+  }
+
+  const { error: deleteError } = await db.supabase
+    .from('contact_invite')
+    .delete()
+    .eq('id', invite_identifier)
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+}
+
 export {
+  acceptContactInvite,
   addOrUpdateConnectedCalendar,
   changeGroupRole,
   connectedCalendarExists,
@@ -3015,6 +3199,9 @@ export {
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
+  getContactInvites,
+  getContactInvitesCount,
+  getContacts,
   getDiscordAccounts,
   getExistingAccountsFromDB,
   getGateCondition,
@@ -3047,6 +3234,7 @@ export {
   leaveGroup,
   manageGroupInvite,
   publicGroupJoin,
+  rejectContactInvite,
   rejectGroupInvite,
   removeConnectedCalendar,
   removeMember,
