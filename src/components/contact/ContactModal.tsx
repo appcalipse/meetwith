@@ -18,16 +18,20 @@ import {
   Text,
   Th,
   Thead,
+  Tooltip,
   Tr,
+  useToast,
 } from '@chakra-ui/react'
 import { useMutation } from '@tanstack/react-query'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import React, { useEffect } from 'react'
 
 import { useDebounceValue } from '@/hooks/useDebounceValue'
-import { ContactSearch } from '@/types/Contacts'
+import { ContactSearch, LeanAccount } from '@/types/Contacts'
 import { searchForAccounts, sendContactListInvite } from '@/utils/api_helper'
 import { isValidEmail } from '@/utils/validations'
+
+import InfoTooltip from '../profile/components/Tooltip'
 
 type Props = {
   isOpen: boolean
@@ -37,6 +41,8 @@ type Props = {
 const ContactModal = (props: Props) => {
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const [result, setResult] = React.useState<ContactSearch | null>(null)
+  const toast = useToast()
+
   const { isLoading, mutateAsync, reset } = useMutation({
     mutationFn: (data: { query: string; offset?: number }) =>
       searchForAccounts(data?.query, data?.offset),
@@ -51,6 +57,7 @@ const ContactModal = (props: Props) => {
     null
   )
   const [isMoreLoading, setMoreLoading] = React.useState(false)
+
   useEffect(() => {
     if (!debouncedValue || debouncedValue.length === 0) {
       setResult(null)
@@ -76,6 +83,7 @@ const ContactModal = (props: Props) => {
             email: debouncedValue,
             address: '',
             name: '',
+            is_invited: false,
           },
         ],
       })
@@ -92,6 +100,40 @@ const ContactModal = (props: Props) => {
       result: result?.result?.concat(data?.result || []),
     })
     setMoreLoading(false)
+  }
+  const handleInvite = async (account: LeanAccount, index: number) => {
+    try {
+      setPendingForIndex(index)
+      const invite = await sendInviteAsync({
+        email: account.email,
+        address: account.address,
+      })
+      if (invite.success) {
+        const updatedResult = result
+        if (updatedResult?.result) {
+          updatedResult.result[index].is_invited = true
+          setResult(updatedResult)
+        }
+        toast({
+          title: 'Invitation sent successfully',
+          description: '',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      }
+    } catch (e: unknown) {
+      const error = e as Error
+      toast({
+        title: error.message,
+        description: '',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
+    }
   }
   return (
     <Modal
@@ -180,7 +222,7 @@ const ContactModal = (props: Props) => {
                       <Td colSpan={4}>
                         <HStack>
                           <Jazzicon
-                            address={account.address}
+                            address={account.address || ''}
                             className="contact-avatar"
                           />
                           <Text maxW={200} isTruncated>
@@ -189,22 +231,24 @@ const ContactModal = (props: Props) => {
                         </HStack>
                       </Td>
                       <Td>
-                        <Button
-                          colorScheme="primary"
-                          isLoading={
-                            pendingForIndex === index && isInviteLoading
-                          }
-                          disabled={isInviteLoading}
-                          onClick={() => {
-                            setPendingForIndex(index)
-                            sendInviteAsync({
-                              email: account.email,
-                              address: account.address,
-                            })
-                          }}
+                        <Tooltip
+                          label={'Contact Already Invited'}
+                          isDisabled={!account.is_invited}
                         >
-                          Send request
-                        </Button>
+                          <Button
+                            colorScheme="primary"
+                            isLoading={
+                              pendingForIndex === index && isInviteLoading
+                            }
+                            isDisabled={isInviteLoading || account.is_invited}
+                            _disabled={{
+                              bg: account.is_invited ? 'neutral.400' : '',
+                            }}
+                            onClick={() => handleInvite(account, index)}
+                          >
+                            Send request
+                          </Button>
+                        </Tooltip>
                       </Td>
                     </Tr>
                   ))}
