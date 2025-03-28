@@ -1,4 +1,4 @@
-import { Search2Icon, SearchIcon } from '@chakra-ui/icons'
+import { SearchIcon } from '@chakra-ui/icons'
 import {
   Badge,
   Box,
@@ -8,32 +8,228 @@ import {
   Heading,
   HStack,
   Input,
+  Spacer,
+  Spinner,
   Tab,
   Table,
-  TableCaption,
   TableContainer,
   TabList,
   TabPanel,
   TabPanels,
   Tabs,
   Tbody,
-  Td,
   Text,
-  Tfoot,
   Th,
   Thead,
   Tr,
   useDisclosure,
+  VStack,
 } from '@chakra-ui/react'
-import React from 'react'
+import { Jazzicon } from '@ukstv/jazzicon-react'
+import Image from 'next/image'
+import React, { ReactNode, useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
+import { RiSearch2Line } from 'react-icons/ri'
 
+import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { Account } from '@/types/Account'
+import { ContactInvite, Contacts } from '@/types/Contacts'
+import { getContactInviteRequests, getContacts } from '@/utils/api_helper'
+import { ellipsizeAddress } from '@/utils/user_manager'
 
+import ContactListItem from '../contact/ContactListItem'
 import ContactModal from '../contact/ContactModal'
+import ContactRequestItem from '../contact/ContactRequestItem'
 
 const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const [contacts, setContacts] = useState<Array<Contacts>>([])
+  const [loading, setIsLoading] = useState(true)
+  const [noMoreFetch, setNoMoreFetch] = useState(false)
+  const [noMoreFetchRequests, setNoMoreFetchRequests] = useState(false)
+  const [loadingRequests, setIsLoadingRequests] = useState(true)
+  const { requestCount } = useContext(ContactStateContext)
+  const [firstFetch, setFirstFetch] = useState(true)
+  const [requests, setRequests] = useState<Array<ContactInvite>>([])
+  const fetchContacts = async (reset?: boolean) => {
+    const PAGE_SIZE = 10
+    setIsLoading(true)
+    const newContacts = await getContacts(
+      PAGE_SIZE,
+      reset ? 0 : contacts.length
+    )
+
+    if (newContacts.length < PAGE_SIZE) {
+      setNoMoreFetch(true)
+    }
+    setContacts((reset ? [] : [...contacts]).concat(newContacts))
+    setIsLoading(false)
+  }
+  const fetchRequests = async (reset?: boolean, limit = 10) => {
+    const PAGE_SIZE = limit
+    setIsLoadingRequests(true)
+    const newRequests = await getContactInviteRequests(
+      PAGE_SIZE,
+      reset ? 0 : requests.length
+    )
+    if (newRequests.length < PAGE_SIZE) {
+      setNoMoreFetchRequests(true)
+    }
+    setRequests((reset ? [] : [...requests]).concat(newRequests))
+  }
+  const resetState = async () => {
+    setFirstFetch(true)
+    setNoMoreFetch(false)
+    await fetchContacts(true)
+    await fetchRequests(true)
+    setFirstFetch(false)
+  }
+
+  useEffect(() => {
+    void resetState()
+  }, [currentAccount?.address])
+  let contactContent: ReactNode
+  let requestContent: ReactNode
+
+  if (firstFetch) {
+    contactContent = (
+      <Tbody>
+        <Tr color="white">
+          <Th colSpan={6}>
+            <VStack alignItems="center" mb={8}>
+              <Image
+                src="/assets/schedule.svg"
+                height={200}
+                width={200}
+                alt="Loading..."
+              />
+              <HStack pt={8}>
+                <Spinner />
+                <Text fontSize="lg">Checking your contacts...</Text>
+              </HStack>
+            </VStack>
+          </Th>
+        </Tr>
+      </Tbody>
+    )
+  } else if (requests.length === 0) {
+    contactContent = (
+      <Tbody>
+        <Tr color="white">
+          <Th justifyContent="center" colSpan={6}>
+            <Text textAlign="center" w="100%" mx="auto">
+              You have no contacts
+            </Text>
+          </Th>
+        </Tr>
+      </Tbody>
+    )
+  } else {
+    contactContent = (
+      <Tbody>
+        {contacts?.map((account, index) => (
+          <ContactListItem
+            account={account}
+            key={account.contact_address}
+            index={index}
+          />
+        ))}
+        <Tr color="white">
+          <Th justifyContent="center" colSpan={6}>
+            <VStack mb={8}>
+              {!noMoreFetch && !firstFetch && (
+                <Button
+                  isLoading={loading}
+                  colorScheme="primary"
+                  variant="outline"
+                  alignSelf="center"
+                  my={4}
+                  onClick={() => fetchContacts()}
+                >
+                  Load more
+                </Button>
+              )}
+              <Spacer />
+            </VStack>
+          </Th>
+        </Tr>
+      </Tbody>
+    )
+  }
+
+  if (firstFetch) {
+    requestContent = (
+      <Tbody>
+        <Tr color="white">
+          <Th colSpan={6}>
+            <VStack alignItems="center" mb={8}>
+              <Image
+                src="/assets/schedule.svg"
+                height={200}
+                width={200}
+                alt="Loading..."
+              />
+              <HStack pt={8}>
+                <Spinner />
+                <Text fontSize="lg">Checking your contact requests...</Text>
+              </HStack>
+            </VStack>
+          </Th>
+        </Tr>
+      </Tbody>
+    )
+  } else if (requests.length === 0) {
+    requestContent = (
+      <Tbody>
+        <Tr color="white">
+          <Th justifyContent="center" colSpan={6}>
+            <Text textAlign="center" w="100%" mx="auto">
+              You have no contact request
+            </Text>
+          </Th>
+        </Tr>
+      </Tbody>
+    )
+  } else {
+    requestContent = (
+      <Tbody>
+        {requests?.map((account, index) => (
+          <ContactRequestItem
+            account={account}
+            key={account.account_owner_address}
+            refetch={() => fetchRequests(false, requests.length + 1)}
+            syncAccept={() =>
+              setRequests(
+                requests.filter(
+                  r => r.account_owner_address !== account.account_owner_address
+                )
+              )
+            }
+            index={index}
+          />
+        ))}
+        <Tr color="white">
+          <Th justifyContent="center" colSpan={6}>
+            <VStack mb={8}>
+              {!noMoreFetch && !firstFetch && (
+                <Button
+                  isLoading={loading}
+                  colorScheme="primary"
+                  variant="outline"
+                  alignSelf="center"
+                  my={4}
+                  onClick={() => fetchContacts()}
+                >
+                  Load more
+                </Button>
+              )}
+              <Spacer />
+            </VStack>
+          </Th>
+        </Tr>
+      </Tbody>
+    )
+  }
   return (
     <Flex direction={'column'} maxWidth="100%">
       <ContactModal isOpen={isOpen} onClose={onClose} />
@@ -65,7 +261,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               justifyContent="center"
               alignItems="center"
             >
-              <SearchIcon alignSelf="center" color="neutral.400" />
+              <RiSearch2Line color="#7B8794" />
             </FormLabel>
             <Input
               pl={8}
@@ -102,15 +298,17 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               }}
             >
               Requests received
-              <Badge
-                colorScheme="primary"
-                color="neutral.900"
-                bg="primary.200"
-                ml={2}
-                px={1.5}
-              >
-                2
-              </Badge>
+              {requestCount > 0 && (
+                <Badge
+                  colorScheme="primary"
+                  color="neutral.900"
+                  bg="primary.200"
+                  ml={2}
+                  px={1.5}
+                >
+                  {requestCount}
+                </Badge>
+              )}
             </Tab>
           </TabList>
           <Button
@@ -127,30 +325,21 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         </HStack>
         <TableContainer>
           <TabPanels>
-            <TabPanel>
+            <TabPanel p={0}>
               <Table variant="unstyled" colorScheme="whiteAlpha">
                 <Thead bg="neutral.900">
                   <Tr color="white">
                     <Th>User</Th>
                     <Th>Description</Th>
                     <Th>Account ID</Th>
-                    <Th>Email address</Th>
                     <Th>Schedule</Th>
                     <Th>Action</Th>
                   </Tr>
                 </Thead>
-                <Tbody>
-                  <Tr color="white">
-                    <Th justifyContent="center" colSpan={6}>
-                      <Text textAlign="center" w="100%" mx="auto">
-                        No Contacts
-                      </Text>
-                    </Th>
-                  </Tr>
-                </Tbody>
+                {contactContent}
               </Table>
             </TabPanel>
-            <TabPanel>
+            <TabPanel p={0}>
               <Table variant="unstyled" colorScheme="whiteAlpha">
                 <Thead bg="neutral.900">
                   <Tr color="white">
@@ -158,19 +347,10 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                     <Th>Description</Th>
                     <Th>Account ID</Th>
                     <Th>Email address</Th>
-                    <Th>Schedule</Th>
                     <Th>Action</Th>
                   </Tr>
                 </Thead>
-                <Tbody>
-                  <Tr color="white">
-                    <Th justifyContent="center" colSpan={6}>
-                      <Text textAlign="center" w="100%" mx="auto">
-                        No Contacts
-                      </Text>
-                    </Th>
-                  </Tr>
-                </Tbody>
+                {requestContent}
               </Table>
             </TabPanel>
           </TabPanels>
