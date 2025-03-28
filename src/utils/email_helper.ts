@@ -551,7 +551,7 @@ export const sendContactInvitationEmail = async (
 ): Promise<void> => {
   const email = new Email({
     views: {
-      root: path.resolve('src', 'emails', 'group_invite'),
+      root: path.resolve('src', 'emails', 'contact_invite'),
       options: {
         extension: 'pug',
       },
