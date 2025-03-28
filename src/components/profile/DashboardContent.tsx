@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
 import RedirectHandler from '@/components/redirect'
+import ContactStateProvider from '@/providers/ContactInvitesProvider'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { EditMode } from '../../types/Dashboard'
@@ -45,26 +46,28 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   }
 
   return currentAccount ? (
-    <HStack
-      alignItems="start"
-      width="100%"
-      maxWidth="100%"
-      justifyContent="space-between"
-    >
-      <RedirectHandler />
-      <Box flex={{ base: '0', lg: '4' }} mr={{ base: 0, lg: 18 }}>
-        <NavMenu currentSection={currentSection} />
-      </Box>
-      <Box
+    <ContactStateProvider currentAccount={currentAccount}>
+      <HStack
+        alignItems="start"
+        width="100%"
         maxWidth="100%"
-        overflow="hidden"
-        flex={{ base: '1', md: '8' }}
-        marginLeft={{ base: '0 !important', md: 2 }}
-        marginInlineStart={{ base: '0 !important', md: 2 }}
+        justifyContent="space-between"
       >
-        {renderSelected()}
-      </Box>
-    </HStack>
+        <RedirectHandler />
+        <Box flex={{ base: '0', lg: '4' }} mr={{ base: 0, lg: 18 }}>
+          <NavMenu currentSection={currentSection} />
+        </Box>
+        <Box
+          maxWidth="100%"
+          overflow="hidden"
+          flex={{ base: '1', md: '8' }}
+          marginLeft={{ base: '0 !important', md: 2 }}
+          marginInlineStart={{ base: '0 !important', md: 2 }}
+        >
+          {renderSelected()}
+        </Box>
+      </HStack>
+    </ContactStateProvider>
   ) : (
     <Flex
       width="100%"
