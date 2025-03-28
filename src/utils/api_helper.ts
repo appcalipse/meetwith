@@ -10,7 +10,7 @@ import {
   ConnectResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
-import { ContactSearch } from '@/types/Contacts'
+import { ContactInvite, Contacts, ContactSearch } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
@@ -1174,4 +1174,28 @@ export const sendContactListInvite = async (
       email,
     }
   )
+}
+
+export const getContacts = async (limit = 10, offset = 0) => {
+  return await internalFetch<Array<Contacts>>(
+    `/secure/contact?limit=${limit}&offset=${offset}`
+  )
+}
+
+export const getContactInviteRequests = async (limit = 10, offset = 0) => {
+  return await internalFetch<Array<ContactInvite>>(
+    `/secure/contact/requests?limit=${limit}&offset=${offset}`
+  )
+}
+
+export const getContactInviteRequestCount = async () => {
+  return await internalFetch<number>(`/secure/contact/requests/metrics`)
+}
+
+export const acceptContactInvite = async (identifier: string) => {
+  return await internalFetch(`/secure/contact/requests/${identifier}`, 'POST')
+}
+
+export const rejectContactInvite = async (identifier: string) => {
+  return await internalFetch(`/secure/contact/requests/${identifier}`, 'DELETE')
 }
