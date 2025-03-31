@@ -1,4 +1,4 @@
-import { CheckIcon } from '@chakra-ui/icons'
+import { CheckIcon, ChevronDownIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
@@ -7,6 +7,7 @@ import {
   HStack,
   IconButton,
   Input,
+  Select,
   Text,
   Textarea,
   useColorModeValue,
@@ -269,7 +270,26 @@ const GroupInviteForm: FC<InviteModalProps> = ({
               Press enter. No need to add yourself.
             </Text>
           </FormControl>
-
+          <FormControl>
+            <FormLabel display="flex" alignItems="center">
+              Add from Contact list
+            </FormLabel>
+            <HStack
+              onClick={e => {}}
+              borderColor="neutral.400"
+              borderWidth={1}
+              cursor="pointer"
+              color="neutral.400"
+              justifyContent="space-between"
+              borderRadius="0.375rem"
+              height={10}
+              fontSize="16"
+              px={4}
+            >
+              <Text userSelect="none">Select member</Text>
+              <ChevronDownIcon w={30} h={30} />
+            </HStack>
+          </FormControl>
           <InvitedUsersList
             users={invitedUsers}
             removeUser={removeUser}
