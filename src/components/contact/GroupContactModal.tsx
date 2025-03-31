@@ -73,6 +73,7 @@ const GroupContactModal = (props: Props) => {
       query: debouncedValue,
       offset: reset ? 0 : result?.result?.length,
     })
+    // TODO: Write sql function on supabase to handle this search
     if (isValidEmail(debouncedValue) && search.result === null) {
       setResult({
         total_count: 1,
