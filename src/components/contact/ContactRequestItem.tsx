@@ -92,9 +92,6 @@ const ContactRequestItem: FC<Props> = ({
         <Text>{ellipsizeAddress(account.account_owner_address)}</Text>
       </Th>
       <Th>
-        <Text>{account.email_address}</Text>
-      </Th>
-      <Th>
         <HStack gap={4}>
           <Button
             colorScheme="primary"
