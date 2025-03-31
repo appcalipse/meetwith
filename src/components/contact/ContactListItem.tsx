@@ -1,27 +1,29 @@
 import { Button, HStack, Text, Th, Tr } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
+import { useRouter } from 'next/router'
 import React, { FC } from 'react'
 
-import { Contacts } from '@/types/Contacts'
-import { acceptContactInvite } from '@/utils/api_helper'
+import { Contact } from '@/types/Contacts'
+import { removeContact } from '@/utils/api_helper'
+import { ContactStatus } from '@/utils/constants/contact'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 type Props = {
-  account: Contacts
+  account: Contact
   index: number
 }
 
 const ContactListItem: FC<Props> = ({ account, index }) => {
-  const [isAccepting, setIsAccepting] = React.useState(false)
   const [isRemoving, setIsRemoving] = React.useState(false)
-  const handleAccept = async () => {
-    setIsAccepting(true)
+  const { push } = useRouter()
+  const handleRemove = async () => {
+    setIsRemoving(true)
     try {
-      await acceptContactInvite(account.id)
+      await removeContact(account.contact_address)
     } catch (e) {
       console.error(e)
     } finally {
-      setIsAccepting(false)
+      setIsRemoving(false)
     }
   }
   return (
@@ -46,16 +48,27 @@ const ContactListItem: FC<Props> = ({ account, index }) => {
         <Text>{ellipsizeAddress(account.contact_address)}</Text>
       </Th>
       <Th>
-        <Button colorScheme="primary" onClick={() => {}}>
-          Schedule
-        </Button>
+        {account.status === ContactStatus.ACTIVE ? (
+          <Button
+            colorScheme="primary"
+            onClick={() => {
+              push(`/dashboard/schedule?ref=contact&contactId=${account.id}`)
+            }}
+          >
+            Schedule
+          </Button>
+        ) : (
+          <Button colorScheme="primary" onClick={() => {}}>
+            Send request
+          </Button>
+        )}
       </Th>
       <Th>
         <Button
           colorScheme="primary"
-          // isLoading={}
+          isLoading={isRemoving}
           variant="outline"
-          onClick={() => {}}
+          onClick={handleRemove}
         >
           Remove
         </Button>
