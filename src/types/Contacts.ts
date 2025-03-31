@@ -1,3 +1,5 @@
+import { ContactStatus } from '@/utils/constants/contact'
+
 import { NotificationType } from './AccountNotifications'
 
 export interface LeanAccount {
@@ -24,7 +26,7 @@ export interface DBContact {
   id: string
   contact_address: string
   account_owner_address: string
-  status: 'active'
+  status: ContactStatus
   account: {
     preferences: {
       name: string
@@ -60,10 +62,10 @@ export interface DBContactInvite {
   }
 }
 
-export interface Contacts {
+export interface Contact {
   id: string
   contact_address: string
-  status: string
+  status: ContactStatus
   name: string
   avatar_url: string
   description: string
