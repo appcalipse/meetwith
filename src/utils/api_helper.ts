@@ -10,7 +10,12 @@ import {
   ConnectResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
-import { ContactInvite, Contacts, ContactSearch } from '@/types/Contacts'
+import {
+  Contact,
+  ContactInvite,
+  ContactSearch,
+  DBContact,
+} from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
@@ -1177,7 +1182,7 @@ export const sendContactListInvite = async (
 }
 
 export const getContacts = async (limit = 10, offset = 0) => {
-  return await internalFetch<Array<Contacts>>(
+  return await internalFetch<Array<Contact>>(
     `/secure/contact?limit=${limit}&offset=${offset}`
   )
 }
@@ -1193,9 +1198,26 @@ export const getContactInviteRequestCount = async () => {
 }
 
 export const acceptContactInvite = async (identifier: string) => {
-  return await internalFetch(`/secure/contact/requests/${identifier}`, 'POST')
+  return await internalFetch<{ success: boolean }>(
+    `/secure/contact/requests/${identifier}`,
+    'POST'
+  )
 }
 
 export const rejectContactInvite = async (identifier: string) => {
-  return await internalFetch(`/secure/contact/requests/${identifier}`, 'DELETE')
+  return await internalFetch<{ success: boolean }>(
+    `/secure/contact/requests/${identifier}`,
+    'DELETE'
+  )
+}
+
+export const getContactById = async (identifier: string) => {
+  return await internalFetch<Contact>(`/secure/contact/${identifier}`)
+}
+
+export const removeContact = async (contact_address: string) => {
+  return await internalFetch<{ success: boolean }>(
+    `/secure/contact/${contact_address}`,
+    'DELETE'
+  )
 }
