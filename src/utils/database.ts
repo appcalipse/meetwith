@@ -3034,6 +3034,34 @@ const getContacts = async (
   return data
 }
 
+const getContactById = async (
+  address: string,
+  id: string
+): Promise<DBContact> => {
+  const { data, error } = await db.supabase
+    .from('contact')
+    .select(
+      `
+      id,
+       contact_address,
+        account_owner_address,
+        status,
+        account: accounts(
+          preferences: account_preferences(name, avatar_url, description),
+          calendars_exist: connected_calendars(id),
+          account_notifications(notification_types)
+        )
+    `
+    )
+    .eq('id', id)
+    .eq('account_owner_address', address)
+    .eq('status', ContactStatus.ACTIVE)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
 const getContactInvites = async (
   address: string,
   limit = 10,
@@ -3060,6 +3088,34 @@ const getContactInvites = async (
       offset || 0,
       (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
     )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const getContactByAddress = async (
+  owner_address: string,
+  address: string
+): Promise<DBContact> => {
+  const { data, error } = await db.supabase
+    .from('contact')
+    .select(
+      `
+      id,
+       contact_address,
+        account_owner_address,
+        status,
+        account: accounts(
+          preferences: account_preferences(name, avatar_url, description),
+          calendars_exist: connected_calendars(id),
+          account_notifications(notification_types)
+        )
+    `
+    )
+    .eq('account_owner_address', owner_address)
+    .eq('contact_address', address)
+    .eq('status', ContactStatus.ACTIVE)
+    .single()
   if (error) {
     throw new Error(error.message)
   }
@@ -3134,6 +3190,7 @@ const acceptContactInvite = async (
     .in('account_owner_address', [account_address, data?.account_owner_address])
     .in('contact_address', [account_address, data?.account_owner_address])
     .eq('status', ContactStatus.INACTIVE)
+
   if (contactClearError) {
     throw new Error(contactClearError.message)
   }
@@ -3141,7 +3198,8 @@ const acceptContactInvite = async (
   const { error: deleteError } = await db.supabase
     .from('contact_invite')
     .delete()
-    .eq('id', invite_identifier)
+    .in('account_owner_address', [account_address, data?.account_owner_address])
+    .in('destination', [account_address, data?.account_owner_address])
   if (deleteError) {
     throw new Error(deleteError.message)
   }
@@ -3175,6 +3233,26 @@ const rejectContactInvite = async (
     throw new Error(deleteError.message)
   }
 }
+const removeContact = async (address: string, contact_address: string) => {
+  const { error: updateError } = await db.supabase
+    .from('contact')
+    .update({ status: ContactStatus.INACTIVE })
+    .eq('account_owner_address', contact_address)
+    .eq('contact_address', address)
+
+  if (updateError) {
+    throw new Error(updateError.message)
+  }
+  const { error: removeError } = await db.supabase
+    .from('contact')
+    .delete()
+    .eq('account_owner_address', address)
+    .eq('contact_address', contact_address)
+
+  if (removeError) {
+    throw new Error(removeError.message)
+  }
+}
 
 export {
   acceptContactInvite,
@@ -3199,6 +3277,7 @@ export {
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
+  getContactById,
   getContactInvites,
   getContactInvitesCount,
   getContacts,
@@ -3237,6 +3316,7 @@ export {
   rejectContactInvite,
   rejectGroupInvite,
   removeConnectedCalendar,
+  removeContact,
   removeMember,
   saveConferenceMeetingToDB,
   saveEmailToDB,
