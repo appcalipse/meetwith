@@ -29,6 +29,7 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
+  getContactById,
   getExistingAccounts,
   getGroup,
   getGroupsMembers,
@@ -210,10 +211,11 @@ const Schedule: NextPage = () => {
   >(undefined)
   const toast = useToast()
   const { query, push } = useRouter()
-  const { groupId, intent, meetingId } = query as {
+  const { groupId, intent, meetingId, contactId } = query as {
     groupId: string
     intent: Intents
     meetingId: string
+    contactId: string
   }
   const [isScheduling, setIsScheduling] = useState(false)
   const [meetingNotification, setMeetingNotification] = useState<
@@ -529,7 +531,6 @@ const Schedule: NextPage = () => {
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
-    setIsPrefetching(true)
     try {
       const group = await getGroup(groupId)
       const fetchedGroupMembers = await getGroupsMembers(groupId)
@@ -557,13 +558,40 @@ const Schedule: NextPage = () => {
     } catch (error: any) {
       handleApiError('Error prefetching group.', error)
     }
+  }
+  const handleContactPrefetch = async () => {
+    if (!contactId) return
+    try {
+      const contact = await getContactById(contactId)
+      const _participants = participants as Array<ParticipantInfo>
+      if (contact) {
+        const participant: ParticipantInfo = {
+          account_address: contact.contact_address,
+          name: contact.name,
+          status: ParticipationStatus.Pending,
+          type: ParticipantType.Invitee,
+          slot_id: '',
+          meeting_id: '',
+        }
+        setParticipants([participant])
+      }
+    } catch (error: any) {
+      handleApiError('Error prefetching contact.', error)
+    }
+  }
+  const handlePrefetch = async () => {
+    setIsPrefetching(true)
+    if (contactId) {
+      await handleContactPrefetch()
+    }
+    if (groupId) {
+      await handleGroupPrefetch()
+    }
     setIsPrefetching(false)
   }
   useEffect(() => {
-    if (groupId) {
-      void handleGroupPrefetch()
-    }
-  }, [groupId])
+    void handlePrefetch()
+  }, [groupId, contactId])
   const handleFetchMeetingInformation = async () => {
     if (!meetingId) return
     setIsPrefetching(true)
