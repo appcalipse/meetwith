@@ -31,21 +31,19 @@ import { ContactSearch, LeanAccount } from '@/types/Contacts'
 import { searchForAccounts, sendContactListInvite } from '@/utils/api_helper'
 import { isValidEmail } from '@/utils/validations'
 
-import InfoTooltip from '../profile/components/Tooltip'
-
 type Props = {
   isOpen: boolean
   onClose: () => void
 }
 
-const ContactModal = (props: Props) => {
+const GroupContactModal = (props: Props) => {
   const [debouncedValue, setValue] = useDebounceValue('', 500)
   const [result, setResult] = React.useState<ContactSearch | null>(null)
   const toast = useToast()
 
   const { isLoading, mutateAsync, reset } = useMutation({
     mutationFn: (data: { query: string; offset?: number }) =>
-      searchForAccounts(data?.query, data?.offset),
+      searchForAccounts(data?.query?.toLowerCase(), data?.offset),
   })
   const { isLoading: isInviteLoading, mutateAsync: sendInviteAsync } =
     useMutation({
@@ -210,6 +208,7 @@ const ContactModal = (props: Props) => {
                 <Thead bg="neutral.900">
                   <Tr color="white">
                     <Th colSpan={4}>User</Th>
+                    <Th colSpan={4}>Account ID</Th>
                     <Th colSpan={1}>Action</Th>
                   </Tr>
                 </Thead>
@@ -279,4 +278,4 @@ const ContactModal = (props: Props) => {
     </Modal>
   )
 }
-export default ContactModal
+export default GroupContactModal
