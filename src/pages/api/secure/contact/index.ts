@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
-import { Contacts } from '@/types/Contacts'
+import { Contact } from '@/types/Contacts'
 import { getContacts, initDB } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -18,7 +18,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         req.query.limit ? Number(req.query.limit as string) : undefined,
         req.query.offset ? Number(req.query.offset as string) : undefined
       )
-      const results: Array<Contacts> = dbResults.map(result => ({
+      const results: Array<Contact> = dbResults.map(result => ({
         id: result.id,
         contact_address: result.contact_address,
         status: result.status,
