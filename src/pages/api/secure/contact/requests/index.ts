@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
-import { ContactInvite, Contacts } from '@/types/Contacts'
+import { ContactInvite } from '@/types/Contacts'
 import { getContactInvites, initDB } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
