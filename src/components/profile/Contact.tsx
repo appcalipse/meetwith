@@ -1,4 +1,3 @@
-import { SearchIcon } from '@chakra-ui/icons'
 import {
   Badge,
   Box,
@@ -25,7 +24,6 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { Jazzicon } from '@ukstv/jazzicon-react'
 import Image from 'next/image'
 import React, { ReactNode, useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
@@ -33,17 +31,16 @@ import { RiSearch2Line } from 'react-icons/ri'
 
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { Account } from '@/types/Account'
-import { ContactInvite, Contacts } from '@/types/Contacts'
+import { type Contact, ContactInvite } from '@/types/Contacts'
 import { getContactInviteRequests, getContacts } from '@/utils/api_helper'
-import { ellipsizeAddress } from '@/utils/user_manager'
 
 import ContactListItem from '../contact/ContactListItem'
-import ContactModal from '../contact/ContactModal'
 import ContactRequestItem from '../contact/ContactRequestItem'
+import ContactSearchModal from '../contact/ContactSearchModal'
 
 const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const [contacts, setContacts] = useState<Array<Contacts>>([])
+  const [contacts, setContacts] = useState<Array<Contact>>([])
   const [loading, setIsLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [noMoreFetchRequests, setNoMoreFetchRequests] = useState(false)
@@ -112,12 +109,12 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         </Tr>
       </Tbody>
     )
-  } else if (requests.length === 0) {
+  } else if (contacts.length === 0) {
     contactContent = (
       <Tbody>
         <Tr color="white">
           <Th justifyContent="center" colSpan={6}>
-            <Text textAlign="center" w="100%" mx="auto">
+            <Text textAlign="center" w="100%" mx="auto" py={4}>
               You have no contacts
             </Text>
           </Th>
@@ -183,7 +180,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
       <Tbody>
         <Tr color="white">
           <Th justifyContent="center" colSpan={6}>
-            <Text textAlign="center" w="100%" mx="auto">
+            <Text textAlign="center" w="100%" mx="auto" py={4}>
               You have no contact request
             </Text>
           </Th>
@@ -211,14 +208,14 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         <Tr color="white">
           <Th justifyContent="center" colSpan={6}>
             <VStack mb={8}>
-              {!noMoreFetch && !firstFetch && (
+              {!noMoreFetchRequests && !firstFetch && (
                 <Button
-                  isLoading={loading}
+                  isLoading={loadingRequests}
                   colorScheme="primary"
                   variant="outline"
                   alignSelf="center"
                   my={4}
-                  onClick={() => fetchContacts()}
+                  onClick={() => fetchRequests()}
                 >
                   Load more
                 </Button>
@@ -232,7 +229,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   }
   return (
     <Flex direction={'column'} maxWidth="100%">
-      <ContactModal isOpen={isOpen} onClose={onClose} />
+      <ContactSearchModal isOpen={isOpen} onClose={onClose} />
       <HStack
         justifyContent="space-between"
         alignItems="flex-start"
@@ -346,7 +343,6 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                     <Th>User</Th>
                     <Th>Description</Th>
                     <Th>Account ID</Th>
-                    <Th>Email address</Th>
                     <Th>Action</Th>
                   </Tr>
                 </Thead>
