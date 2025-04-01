@@ -196,14 +196,10 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         {requests?.map((account, index) => (
           <ContactRequestItem
             account={account}
-            key={account.account_owner_address}
+            key={account.address}
             refetch={() => fetchRequests(false, requests.length + 1)}
             syncAccept={() =>
-              setRequests(
-                requests.filter(
-                  r => r.account_owner_address !== account.account_owner_address
-                )
-              )
+              setRequests(requests.filter(r => r.address !== account.address))
             }
             index={index}
           />

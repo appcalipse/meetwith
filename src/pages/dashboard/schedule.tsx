@@ -566,7 +566,7 @@ const Schedule: NextPage = () => {
       const _participants = participants as Array<ParticipantInfo>
       if (contact) {
         const participant: ParticipantInfo = {
-          account_address: contact.contact_address,
+          account_address: contact.address,
           name: contact.name,
           status: ParticipationStatus.Pending,
           type: ParticipantType.Invitee,
