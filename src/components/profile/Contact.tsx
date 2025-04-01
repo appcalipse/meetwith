@@ -29,6 +29,7 @@ import React, { ReactNode, useContext, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
 import { RiSearch2Line } from 'react-icons/ri'
 
+import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { Account } from '@/types/Account'
 import { type Contact, ContactInvite } from '@/types/Contacts'
@@ -40,6 +41,7 @@ import ContactSearchModal from '../contact/ContactSearchModal'
 
 const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const [debouncedValue, setValue] = useDebounceValue('', 500)
   const [contacts, setContacts] = useState<Array<Contact>>([])
   const [loading, setIsLoading] = useState(true)
   const [noMoreFetch, setNoMoreFetch] = useState(false)
@@ -53,7 +55,8 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setIsLoading(true)
     const newContacts = await getContacts(
       PAGE_SIZE,
-      reset ? 0 : contacts.length
+      reset ? 0 : contacts.length,
+      debouncedValue
     )
 
     if (newContacts.length < PAGE_SIZE) {
@@ -84,7 +87,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
 
   useEffect(() => {
     void resetState()
-  }, [currentAccount?.address])
+  }, [currentAccount?.address, debouncedValue])
   let contactContent: ReactNode
   let requestContent: ReactNode
 
@@ -127,7 +130,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         {contacts?.map((account, index) => (
           <ContactListItem
             account={account}
-            key={account.contact_address}
+            key={account.address}
             index={index}
           />
         ))}
@@ -265,6 +268,8 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               w="fit-content"
               placeholder="Search contact"
               id="search"
+              defaultValue={debouncedValue}
+              onChange={e => setValue(e.target.value)}
             />
           </Box>
 
