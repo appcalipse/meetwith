@@ -1181,9 +1181,9 @@ export const sendContactListInvite = async (
   )
 }
 
-export const getContacts = async (limit = 10, offset = 0) => {
+export const getContacts = async (limit = 10, offset = 0, query = '') => {
   return await internalFetch<Array<Contact>>(
-    `/secure/contact?limit=${limit}&offset=${offset}`
+    `/secure/contact?limit=${limit}&offset=${offset}&q=${query}`
   )
 }
 
