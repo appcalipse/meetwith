@@ -15,19 +15,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const dbResults = await getContactInvites(
         account_address,
+        req.query.q as string,
         req.query.limit ? Number(req.query.limit as string) : undefined,
         req.query.offset ? Number(req.query.offset as string) : undefined
       )
-      const results: Array<ContactInvite> = dbResults.map(result => ({
-        id: result.id,
-        account_owner_address: result.account_owner_address,
-        ...result.account.preferences,
-        calendar_exists: result.account.calendars_exist.length > 0,
-        email_address:
-          result.account.account_notifications?.notification_types?.find(
-            n => n.channel === NotificationChannel.EMAIL && !n.disabled
-          )?.destination,
-      }))
+      const results: Array<ContactInvite> = dbResults.result || []
       return res.status(200).json(results)
     } catch (e) {
       return res.status(500).send(e)
