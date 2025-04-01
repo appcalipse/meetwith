@@ -23,23 +23,12 @@ export interface InviteContact {
 }
 
 export interface DBContact {
-  id: string
-  contact_address: string
-  account_owner_address: string
-  status: ContactStatus
-  account: {
-    preferences: {
-      name: string
-      avatar_url: string
-      description: string
-    }
-    calendars_exist: Array<{
-      id: number
-    }>
-    account_notifications: {
-      notification_types: Array<NotificationType>
-    }
-  }
+  total_count: number
+  result: Array<Contact>
+}
+export interface DBContactLean {
+  total_count: number
+  result: Array<LeanContact>
 }
 
 export interface DBContactInvite {
@@ -64,7 +53,7 @@ export interface DBContactInvite {
 
 export interface Contact {
   id: string
-  contact_address: string
+  address: string
   status: ContactStatus
   name: string
   avatar_url: string
@@ -72,7 +61,11 @@ export interface Contact {
   calendar_exists: boolean
   email_address?: string
 }
-
+export interface LeanContact {
+  name: string
+  address: string
+  avatar_url?: string
+}
 export interface ContactInvite {
   id: string
   account_owner_address: string
