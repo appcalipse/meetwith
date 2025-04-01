@@ -22,7 +22,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       const result: Contact = {
         id: dbResult.id,
-        contact_address: dbResult.contact_address,
+        address: dbResult.contact_address,
         status: dbResult.status,
         ...dbResult.account.preferences,
         calendar_exists: dbResult.account.calendars_exist.length > 0,

@@ -26,6 +26,25 @@ export interface DBContact {
   total_count: number
   result: Array<Contact>
 }
+export interface SingleDBContact {
+  id: string
+  contact_address: string
+  account_owner_address: string
+  status: ContactStatus
+  account: {
+    preferences: {
+      name: string
+      avatar_url: string
+      description: string
+    }
+    calendars_exist: Array<{
+      id: number
+    }>
+    account_notifications: {
+      notification_types: Array<NotificationType>
+    }
+  }
+}
 export interface DBContactLean {
   total_count: number
   result: Array<LeanContact>

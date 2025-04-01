@@ -33,6 +33,7 @@ import {
   DBContact,
   DBContactInvite,
   DBContactLean,
+  SingleDBContact,
 } from '@/types/Contacts'
 import { DiscordAccount } from '@/types/Discord'
 import {
@@ -3050,7 +3051,7 @@ const getContactLean = async (
 const getContactById = async (
   address: string,
   id: string
-): Promise<DBContact> => {
+): Promise<SingleDBContact> => {
   const { data, error } = await db.supabase
     .from('contact')
     .select(
