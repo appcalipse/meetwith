@@ -73,13 +73,11 @@ const ContactRequestItem: FC<Props> = ({
       <Th w="fit-content" py={8}>
         <HStack w="fit-content">
           <Jazzicon
-            address={account.account_owner_address || ''}
+            address={account.address || ''}
             className="contact-avatar"
           />
           <Text maxW={200} isTruncated>
-            {account.name ||
-              account.account_owner_address ||
-              account.email_address}
+            {account.name || account.address || account.email_address}
           </Text>
         </HStack>
       </Th>
@@ -89,7 +87,7 @@ const ContactRequestItem: FC<Props> = ({
         </Text>
       </Th>
       <Th>
-        <Text>{ellipsizeAddress(account.account_owner_address)}</Text>
+        <Text>{ellipsizeAddress(account.address)}</Text>
       </Th>
       <Th>
         <HStack gap={4}>
