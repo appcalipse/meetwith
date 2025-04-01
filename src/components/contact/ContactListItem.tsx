@@ -19,7 +19,7 @@ const ContactListItem: FC<Props> = ({ account, index }) => {
   const handleRemove = async () => {
     setIsRemoving(true)
     try {
-      await removeContact(account.contact_address)
+      await removeContact(account.address)
     } catch (e) {
       console.error(e)
     } finally {
@@ -31,11 +31,11 @@ const ContactListItem: FC<Props> = ({ account, index }) => {
       <Th w="fit-content" py={8}>
         <HStack w="fit-content">
           <Jazzicon
-            address={account.contact_address || ''}
+            address={account.address || ''}
             className="contact-avatar"
           />
           <Text maxW={200} isTruncated>
-            {account.name || account.contact_address || account.email_address}
+            {account.name || account.address || account.email_address}
           </Text>
         </HStack>
       </Th>
@@ -45,7 +45,7 @@ const ContactListItem: FC<Props> = ({ account, index }) => {
         </Text>
       </Th>
       <Th>
-        <Text>{ellipsizeAddress(account.contact_address)}</Text>
+        <Text>{ellipsizeAddress(account.address)}</Text>
       </Th>
       <Th>
         {account.status === ContactStatus.ACTIVE ? (
