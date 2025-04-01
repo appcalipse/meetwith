@@ -30,25 +30,9 @@ export interface DBContactLean {
   total_count: number
   result: Array<LeanContact>
 }
-
 export interface DBContactInvite {
-  id: string
-  destination: string
-  account_owner_address: string
-  channel: string
-  account: {
-    preferences: {
-      name: string
-      avatar_url: string
-      description: string
-    }
-    calendars_exist: Array<{
-      id: number
-    }>
-    account_notifications: {
-      notification_types: Array<NotificationType>
-    }
-  }
+  total_count: number
+  result: Array<ContactInvite>
 }
 
 export interface Contact {
@@ -68,7 +52,7 @@ export interface LeanContact {
 }
 export interface ContactInvite {
   id: string
-  account_owner_address: string
+  address: string
   name: string
   avatar_url: string
   description: string
