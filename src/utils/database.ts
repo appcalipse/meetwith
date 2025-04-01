@@ -27,7 +27,13 @@ import {
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
 import { SupportedChain } from '@/types/chains'
-import { ContactSearch, DBContact, DBContactInvite } from '@/types/Contacts'
+import {
+  Contact,
+  ContactSearch,
+  DBContact,
+  DBContactInvite,
+  DBContactLean,
+} from '@/types/Contacts'
 import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
@@ -3004,34 +3010,41 @@ const isUserContact = async (owner_address: string, address: string) => {
 
 const getContacts = async (
   address: string,
+  query = '',
   limit = 10,
   offset = 0
-): Promise<Array<DBContact>> => {
-  const { data, error } = await db.supabase
-    .from('contact')
-    .select(
-      `
-      id,
-       contact_address,
-        account_owner_address,
-        status,
-        account: accounts(
-          preferences: account_preferences(name, avatar_url, description),
-          calendars_exist: connected_calendars(id),
-          account_notifications(notification_types)
-        )
-    `
-    )
-    .eq('account_owner_address', address) // Ensure the contact exists for the given address
-
-    .range(
-      offset || 0,
-      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-    )
+): Promise<DBContact> => {
+  const { data, error } = await db.supabase.rpc('search_contacts', {
+    search: query,
+    max_results: limit,
+    skip: offset,
+    current_account: address,
+  })
   if (error) {
     throw new Error(error.message)
   }
-  return data
+  return data as unknown as DBContact
+}
+
+const getContactLean = async (
+  address: string,
+  query = '',
+  limit = 10,
+  offset = 0
+): Promise<DBContactLean> => {
+  const { data, error } = await db.supabase.rpc<DBContactLean>(
+    'search_contacts_lean',
+    {
+      search: query,
+      max_results: limit,
+      skip: offset,
+      current_account: address,
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data as unknown as DBContactLean
 }
 
 const getContactById = async (
@@ -3064,34 +3077,20 @@ const getContactById = async (
 }
 const getContactInvites = async (
   address: string,
+  query = '',
   limit = 10,
   offset = 0
-): Promise<Array<DBContactInvite>> => {
-  const { data, error } = await db.supabase
-    .from('contact_invite')
-    .select(
-      `
-      id,
-       destination,
-        account_owner_address,
-        channel,
-        account: accounts(
-          preferences: account_preferences(name, avatar_url, description),
-          calendars_exist: connected_calendars(id),
-          account_notifications(notification_types)
-        )
-    `
-    )
-    .eq('destination', address) // Ensure the contact exists for the given address
-
-    .range(
-      offset || 0,
-      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-    )
+): Promise<DBContactInvite> => {
+  const { data, error } = await db.supabase.rpc('search_contact_invites', {
+    search: query,
+    max_results: limit,
+    skip: offset,
+    current_account: address,
+  })
   if (error) {
     throw new Error(error.message)
   }
-  return data
+  return data as unknown as DBContactInvite
 }
 const getContactByAddress = async (
   owner_address: string,
