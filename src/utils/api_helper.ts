@@ -15,6 +15,7 @@ import {
   ContactInvite,
   ContactSearch,
   DBContact,
+  LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
@@ -1186,10 +1187,19 @@ export const getContacts = async (limit = 10, offset = 0, query = '') => {
     `/secure/contact?limit=${limit}&offset=${offset}&q=${query}`
   )
 }
+export const getContactsLean = async (limit = 10, offset = 0, query = '') => {
+  return await internalFetch<Array<LeanContact>>(
+    `/secure/contact?type=lean&limit=${limit}&offset=${offset}&q=${query}`
+  )
+}
 
-export const getContactInviteRequests = async (limit = 10, offset = 0) => {
+export const getContactInviteRequests = async (
+  limit = 10,
+  offset = 0,
+  query = ''
+) => {
   return await internalFetch<Array<ContactInvite>>(
-    `/secure/contact/requests?limit=${limit}&offset=${offset}`
+    `/secure/contact/requests?limit=${limit}&offset=${offset}&q=${query}`
   )
 }
 
