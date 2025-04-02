@@ -3280,6 +3280,7 @@ export {
   getContactById,
   getContactInvites,
   getContactInvitesCount,
+  getContactLean,
   getContacts,
   getDiscordAccounts,
   getExistingAccountsFromDB,
