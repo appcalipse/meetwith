@@ -70,7 +70,8 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setIsLoadingRequests(true)
     const newRequests = await getContactInviteRequests(
       PAGE_SIZE,
-      reset ? 0 : requests.length
+      reset ? 0 : requests.length,
+      debouncedValue
     )
     if (newRequests.length < PAGE_SIZE) {
       setNoMoreFetchRequests(true)
