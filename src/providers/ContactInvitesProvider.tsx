@@ -1,15 +1,15 @@
 import * as React from 'react'
 
-import { Account } from '@/types/Account'
-import { getContactInviteRequestCount } from '@/utils/api_helper'
+import { ContactInvite } from '@/types/Contacts'
+
 interface IContactStateContext {
-  requestCount: number
-  fetchRequestCount: () => void
+  selectedContact: ContactInvite | null
+  setSelectedContact: (contact: ContactInvite) => void
 }
 
 const DEFAULT_STATE: IContactStateContext = {
-  requestCount: 0,
-  fetchRequestCount: () => {},
+  selectedContact: null,
+  setSelectedContact: () => {},
 }
 
 export const ContactStateContext =
@@ -17,20 +17,16 @@ export const ContactStateContext =
 
 const ContactStateProvider: React.FC<{
   children: React.ReactNode
-  currentAccount?: Account | null
-}> = ({ children, currentAccount }) => {
-  const [requestCount, setRequestCount] = React.useState(0)
-  const fetchRequestCount = async () => {
-    const count = await getContactInviteRequestCount()
-    setRequestCount(count)
-  }
-  React.useEffect(() => {
-    if (currentAccount) {
-      fetchRequestCount()
-    }
-  }, [currentAccount])
+}> = ({ children }) => {
+  const [selectedContact, setSelectedContact] =
+    React.useState<ContactInvite | null>(null)
   return (
-    <ContactStateContext.Provider value={{ requestCount, fetchRequestCount }}>
+    <ContactStateContext.Provider
+      value={{
+        selectedContact,
+        setSelectedContact,
+      }}
+    >
       {children}
     </ContactStateContext.Provider>
   )
