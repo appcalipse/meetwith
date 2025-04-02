@@ -3,12 +3,14 @@ import {
   Box,
   Button,
   FormLabel,
+  Heading,
   HStack,
   Input,
   Modal,
   ModalBody,
   ModalCloseButton,
   ModalContent,
+  ModalHeader,
   ModalOverlay,
   Spinner,
   Table,
@@ -27,12 +29,14 @@ import React, { useEffect, useState } from 'react'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { LeanContact } from '@/types/Contacts'
 import { getContactsLean } from '@/utils/api_helper'
+import { ellipsizeAddress } from '@/utils/user_manager'
 // TODO: Add coupon countdown
 type Props = {
   isOpen: boolean
   onClose: () => void
   isContactAlreadyAdded: (address: LeanContact) => boolean
   addUserFromContact: (address: LeanContact) => void
+  removeUserFromContact: (address: LeanContact) => void
 }
 
 const GroupContactModal = (props: Props) => {
@@ -58,11 +62,17 @@ const GroupContactModal = (props: Props) => {
       reset()
     }
   }, [debouncedValue])
+  useEffect(() => {
+    handleSearch()
+  }, [])
   const handleSearch = async (reset = true) => {
     const search = await mutateAsync({
       query: debouncedValue,
       offset: reset ? 0 : result?.length,
     })
+    if (search.length < PAGE_SIZE) {
+      setNoMoreFetch(true)
+    }
     // TODO: Write sql function on supabase to handle this search
 
     setResult(search)
@@ -89,15 +99,23 @@ const GroupContactModal = (props: Props) => {
     >
       <ModalOverlay backdropFilter="blur(10px)" bg="rgba(0, 0, 0, 0.6)" />
       <ModalContent p={0} bg="neutral.900" rounded={12}>
-        <ModalBody
+        <ModalHeader
           pt={10}
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          px={10}
+        >
+          <Heading size={'md'}>Invite group members</Heading>
+          <ModalCloseButton />
+        </ModalHeader>
+        <ModalBody
           pb={result.length > 0 ? 0 : 10}
           px={0}
           gap={2}
           display="flex"
           flexDirection="column"
         >
-          <ModalCloseButton />
           <Box px={10} pos="relative" h="fit-content">
             <FormLabel
               display="flex"
@@ -114,7 +132,7 @@ const GroupContactModal = (props: Props) => {
             <Input
               pl={10}
               w="100%"
-              placeholder="Search with email or wallet address"
+              placeholder="Search contact"
               id="search"
               defaultValue={debouncedValue}
               onChange={e => setValue(e.target.value)}
@@ -122,13 +140,15 @@ const GroupContactModal = (props: Props) => {
           </Box>
 
           {isLoading ? (
-            <Spinner
-              thickness="4px"
-              speed="0.65s"
-              emptyColor="primary.100"
-              color="primary.700"
-              size="xl"
-            />
+            <HStack alignItems="center" justifyContent="center" py={10}>
+              <Spinner
+                thickness="4px"
+                speed="0.65s"
+                emptyColor="primary.100"
+                color="primary.700"
+                size="xl"
+              />
+            </HStack>
           ) : (
             result?.length > 0 && (
               <TableContainer>
@@ -159,14 +179,17 @@ const GroupContactModal = (props: Props) => {
                         </Td>
                         <Td colSpan={4}>
                           <Text maxW={200} isTruncated>
-                            {account.address}
+                            {ellipsizeAddress(account.address)}
                           </Text>
                         </Td>
                         <Td>
                           {props.isContactAlreadyAdded(account) ? (
                             <Button
                               colorScheme="primary"
-                              onClick={() => props.addUserFromContact(account)}
+                              onClick={() =>
+                                props.removeUserFromContact(account)
+                              }
+                              variant="outline"
                             >
                               Remove
                             </Button>

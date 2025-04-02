@@ -2,6 +2,7 @@ import { Button, HStack, Text, Th, Tr, useToast } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import React, { FC, useContext } from 'react'
 
+import { ContactCountStateContext } from '@/providers/ContactInvitesCountProvider'
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { ContactInvite } from '@/types/Contacts'
 import { acceptContactInvite, rejectContactInvite } from '@/utils/api_helper'
@@ -12,6 +13,7 @@ type Props = {
   account: ContactInvite
   refetch: () => void
   syncAccept: () => void
+  openRejectModal: () => void
 }
 
 const ContactRequestItem: FC<Props> = ({
@@ -19,10 +21,11 @@ const ContactRequestItem: FC<Props> = ({
   index,
   refetch,
   syncAccept,
+  openRejectModal,
 }) => {
   const [isAccepting, setIsAccepting] = React.useState(false)
-  const [isRemoving, setIsRemoving] = React.useState(false)
-  const { fetchRequestCount } = useContext(ContactStateContext)
+  const { fetchRequestCount } = useContext(ContactCountStateContext)
+  const { setSelectedContact } = useContext(ContactStateContext)
 
   const toast = useToast()
   const handleAccept = async () => {
@@ -49,24 +52,8 @@ const ContactRequestItem: FC<Props> = ({
   }
 
   const handleRemove = async () => {
-    setIsRemoving(true)
-    try {
-      await rejectContactInvite(account.id)
-    } catch (e) {
-      const error = e as Error
-      console.error(e)
-      toast({
-        title: 'Error',
-        description: error.message || 'Could not remove contact request',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
-      refetch()
-    } finally {
-      setIsRemoving(false)
-    }
-    fetchRequestCount()
+    setSelectedContact(account)
+    openRejectModal()
   }
   return (
     <Tr bg={index % 2 === 0 ? 'neutral.825' : 'none'} color="white">
@@ -100,7 +87,6 @@ const ContactRequestItem: FC<Props> = ({
           </Button>
           <Button
             colorScheme="primary"
-            isLoading={isRemoving}
             variant="outline"
             onClick={handleRemove}
           >
