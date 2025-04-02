@@ -11,6 +11,7 @@ import {
   Text,
   Textarea,
   useColorModeValue,
+  useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -19,6 +20,7 @@ import React, { FC, FormEvent, useEffect, useState } from 'react'
 import { LuLink2 } from 'react-icons/lu'
 
 import InvitedUsersList from '@/components/group/InvitedUsersList'
+import { LeanAccount, LeanContact } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
@@ -30,6 +32,8 @@ import {
   isValidEmail,
   isValidEVMAddress,
 } from '@/utils/validations'
+
+import GroupContactModal from '../contact/GroupContactModal'
 
 interface InviteModalProps {
   onClose: (() => void) | boolean
@@ -45,6 +49,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
   onClose,
 }) => {
   const toast = useToast()
+  const { isOpen, onOpen, onClose: onModalClose } = useDisclosure()
   const [invitedUsers, setInvitedUsers] = useState<InvitedUser[]>([])
   const [enteredIdentifier, setEnteredIdentifier] = useState<string>('')
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -168,7 +173,33 @@ const GroupInviteForm: FC<InviteModalProps> = ({
     setEnteredIdentifier('')
     setIsLoading(false)
   }
+  const addUserFromContact = (account: LeanContact) => {
+    if (isContactAlreadyAdded(account)) {
+      toast({
+        title: 'User already added',
+        description: 'This user has already been added to the invite list.',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+        position: 'top',
+      })
+      return
+    }
 
+    const newUser: InvitedUser = {
+      id: invitedUsers.length,
+      account_address: account.address || '',
+      role: MemberType.ADMIN,
+      groupId,
+      name: account.name,
+      invitePending: true,
+    }
+    setInvitedUsers(prev => [...prev, newUser])
+  }
+
+  const isContactAlreadyAdded = (account: LeanContact) => {
+    return invitedUsers.some(user => user.account_address === account.address)
+  }
   const removeUser = (inviteeId: number) => {
     setInvitedUsers(prevUsers =>
       prevUsers.filter(user => user.id !== inviteeId)
@@ -206,6 +237,12 @@ const GroupInviteForm: FC<InviteModalProps> = ({
   return (
     <form style={{ width: '100%' }} onSubmit={handleInviteSubmit}>
       <Box pb={6}>
+        <GroupContactModal
+          addUserFromContact={addUserFromContact}
+          isOpen={isOpen}
+          onClose={onModalClose}
+          isContactAlreadyAdded={isContactAlreadyAdded}
+        />
         <VStack spacing={6} align="stretch">
           <VStack alignItems={'flex-start'} fontWeight={500}>
             <Text fontSize={'lg'}>Group invite link</Text>
@@ -275,7 +312,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
               Add from Contact list
             </FormLabel>
             <HStack
-              onClick={e => {}}
+              onClick={onOpen}
               borderColor="neutral.400"
               borderWidth={1}
               cursor="pointer"
