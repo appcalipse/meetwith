@@ -52,7 +52,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     )
     if (alreadyInvitedUsers.length > 0) {
       const invitedUsersConcatenated = alreadyInvitedUsers
-        .map(val => val.address || val.email)
+        .map(val => val.name || val.address || val.email)
         .join(', ')
       return res.status(400).json({
         error: `${invitedUsersConcatenated} has already been invited to group.`,
