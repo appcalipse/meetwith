@@ -117,6 +117,7 @@ export interface GroupInvitePayload {
     email?: string
     userId?: string
     role: MemberType
+    name?: string
   }[]
   message?: string
 }
