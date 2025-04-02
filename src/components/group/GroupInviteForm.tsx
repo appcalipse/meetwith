@@ -69,11 +69,12 @@ const GroupInviteForm: FC<InviteModalProps> = ({
     event.preventDefault()
     setIsSaving(true)
 
-    const invitees = invitedUsers.map(user => ({
+    const invitees: GroupInvitePayload['invitees'] = invitedUsers.map(user => ({
       address: user.account_address?.toLowerCase(),
       email: user.email?.toLowerCase(),
       userId: user.userId?.toLowerCase(),
       role: user.role,
+      name: user.name,
     }))
 
     const payload: GroupInvitePayload = { invitees, message }
@@ -196,6 +197,11 @@ const GroupInviteForm: FC<InviteModalProps> = ({
     }
     setInvitedUsers(prev => [...prev, newUser])
   }
+  const removeUserFromContact = (account: LeanContact) => {
+    setInvitedUsers(prevUsers =>
+      prevUsers.filter(user => user.account_address !== account.address)
+    )
+  }
 
   const isContactAlreadyAdded = (account: LeanContact) => {
     return invitedUsers.some(user => user.account_address === account.address)
@@ -242,6 +248,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
           isOpen={isOpen}
           onClose={onModalClose}
           isContactAlreadyAdded={isContactAlreadyAdded}
+          removeUserFromContact={removeUserFromContact}
         />
         <VStack spacing={6} align="stretch">
           <VStack alignItems={'flex-start'} fontWeight={500}>
