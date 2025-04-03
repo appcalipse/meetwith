@@ -1,21 +1,19 @@
 import {
-  Box,
   Button,
   Container,
   Heading,
   Image,
-  Text,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import Loading from '@components/Loading'
+import { EditMode, Intents } from '@meta/Dashboard'
+import { getGroupExternal, getGroups } from '@utils/api_helper'
 import { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { EditMode, Intents } from '@/types/Dashboard'
-import { getGroupExternal, getGroups } from '@/utils/api_helper'
 
 export default function LogoutPage() {
   const bgColor = useColorModeValue('white', 'neutral.800')
