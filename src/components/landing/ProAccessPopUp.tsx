@@ -15,13 +15,14 @@ import {
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { useContext } from 'react'
+import Countdown, { CountdownRenderProps } from 'react-countdown'
 import { BiCopy } from 'react-icons/bi'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { Coupon } from '@/types/Subscription'
-
+import { COUPON_CAMPAIGN_END_DATE } from '@/utils/constants/coupons'
 interface ProAccessPopUpProps {
   isDialogOpen: boolean
   onDialogClose: () => void
@@ -42,6 +43,54 @@ const ProAccessPopUp = (props: ProAccessPopUpProps) => {
       )
     }
     props.onDialogClose()
+  }
+  const renderer = ({
+    days,
+    hours,
+    minutes,
+    seconds,
+    completed,
+  }: CountdownRenderProps) => {
+    if (completed) {
+      return null
+    } else {
+      // Render a countdown
+      return (
+        <Heading
+          as="h2"
+          size="2xl"
+          textAlign="left"
+          lineHeight={1.2}
+          sx={{
+            background: 'linear-gradient( #F35826, #F78C69)',
+            backgroundClip: 'text',
+            textFillColor: 'transparent',
+          }}
+          display="flex"
+          alignItems="flex-start"
+        >
+          <VStack gap={0}>
+            <Text>{days}</Text>
+            <Text fontSize={'sm'}>days</Text>
+          </VStack>
+          :
+          <VStack gap={0}>
+            <Text>{hours}</Text>
+            <Text fontSize={'sm'}>hrs</Text>
+          </VStack>
+          :
+          <VStack gap={0}>
+            <Text>{minutes}</Text>
+            <Text fontSize={'sm'}>mins</Text>
+          </VStack>
+          :
+          <VStack gap={0}>
+            <Text>{seconds}</Text>
+            <Text fontSize={'sm'}>secs</Text>
+          </VStack>
+        </Heading>
+      )
+    }
   }
   return (
     <Modal
@@ -95,6 +144,10 @@ const ProAccessPopUp = (props: ProAccessPopUpProps) => {
                 mt="2"
               >
                 <VStack alignItems={{ md: 'flex-start', base: 'center' }}>
+                  <Countdown
+                    date={COUPON_CAMPAIGN_END_DATE}
+                    renderer={renderer}
+                  />
                   <Text color="white" fontWeight="500">
                     Use this coupon code to claim the offer
                   </Text>

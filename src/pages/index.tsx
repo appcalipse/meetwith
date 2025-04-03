@@ -8,6 +8,7 @@ import { sessionOptions } from '@/middleware'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Coupon } from '@/types/Subscription'
 import { getNewestCoupon } from '@/utils/api_helper'
+import { COUPON_CAMPAIGN_END_DATE } from '@/utils/constants/coupons'
 import redirectTo from '@/utils/redirect'
 import { isProAccount } from '@/utils/subscription_manager'
 
@@ -34,7 +35,10 @@ const Home: NextPage = () => {
     onOpen()
   }
   useEffect(() => {
-    if (logged && isProAccount(currentAccount ?? undefined)) {
+    if (
+      (logged && isProAccount(currentAccount ?? undefined)) ||
+      Date.now() > COUPON_CAMPAIGN_END_DATE
+    ) {
       onClose()
       return
     }
