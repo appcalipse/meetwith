@@ -7,6 +7,7 @@ import React, { FC } from 'react'
 import { Contact } from '@/types/Contacts'
 import { removeContact, sendContactListInvite } from '@/utils/api_helper'
 import { ContactStatus } from '@/utils/constants/contact'
+import { AccountNotFoundError, ContactAlreadyExists } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 type Props = {
@@ -65,14 +66,31 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
         isClosable: true,
       })
     } catch (e) {
-      const error = e as Error
-      toast({
-        title: 'Error',
-        description: error.message || 'Could not send contact invite',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof AccountNotFoundError) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact invite request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
     }
   }
   return (

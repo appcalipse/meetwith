@@ -11,6 +11,7 @@ import {
   Thead,
   Tr,
   useDisclosure,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import Image from 'next/image'
@@ -25,6 +26,7 @@ import {
   getContactInviteById,
   getContactInviteRequests,
 } from '@/utils/api_helper'
+import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
 
 import ContactAcceptInviteModal from './ContactAcceptInviteModal'
 import ContactRejectInviteModal from './ContactRejectInviteModal'
@@ -58,6 +60,7 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
   } = useDisclosure()
 
   const [firstFetch, setFirstFetch] = useState(true)
+  const toast = useToast()
   const fetchRequests = async (reset?: boolean, limit = 10) => {
     const PAGE_SIZE = limit
     setIsLoading(true)
@@ -85,10 +88,38 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
   }, [currentAccount?.address, search])
   let content: ReactNode
   const handleLoadContactInvite = async () => {
-    const contact = await getContactInviteById(identifier)
-    setSelectedContact(contact)
-    if (intent === Intents.ACCEPT_CONTACT) {
-      openAcceptModal()
+    try {
+      const contact = await getContactInviteById(identifier)
+      setSelectedContact(contact)
+      if (intent === Intents.ACCEPT_CONTACT) {
+        openAcceptModal()
+      }
+    } catch (e) {
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof ContactInviteNotFound) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
     }
   }
   useEffect(() => {

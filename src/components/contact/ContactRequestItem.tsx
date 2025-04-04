@@ -5,6 +5,7 @@ import React, { FC, useContext } from 'react'
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { ContactInvite } from '@/types/Contacts'
 import { acceptContactInvite } from '@/utils/api_helper'
+import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 type Props = {
@@ -35,13 +36,31 @@ const ContactRequestItem: FC<Props> = ({
       syncAccept()
     } catch (e) {
       const error = e as Error
-      toast({
-        title: 'Error',
-        description: error.message || 'Could not accept contact request',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof ContactInviteNotFound) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
       refetch()
     } finally {
       setIsAccepting(false)
