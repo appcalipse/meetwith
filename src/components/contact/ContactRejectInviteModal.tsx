@@ -18,6 +18,7 @@ import React, { useContext } from 'react'
 
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { acceptContactInvite, rejectContactInvite } from '@/utils/api_helper'
+import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
 
 export interface IContactRejectInviteModal {
   onClose: () => void
@@ -39,18 +40,35 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
     try {
       await rejectContactInvite(selectedContact.id)
       props.sync(selectedContact.id)
-      props.onClose()
     } catch (e) {
-      const error = e as Error
-      toast({
-        title: 'Error',
-        description: error.message || 'Could not remove contact request',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof ContactInviteNotFound) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
     } finally {
       setDeclining(false)
+      props.onClose()
     }
     fetchRequestCount()
   }
@@ -61,14 +79,31 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
       await acceptContactInvite(selectedContact.id)
       props.sync(selectedContact.id)
     } catch (e) {
-      const error = e as Error
-      toast({
-        title: 'Error',
-        description: error.message || 'Could not accept contact request',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof ContactInviteNotFound) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
       props.refetch()
     } finally {
       setIsAccepting(false)

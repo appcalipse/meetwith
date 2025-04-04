@@ -45,7 +45,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         address,
         userEmail
       )
-      const invitationLink = `${appUrl}/contact/accept?identifier=${invite.id}`
+      const invitationLink = `${appUrl}/contact/invite-accept?identifier=${invite.id}`
       const inviterName = getAccountDisplayName(req.session.account)
       try {
         if (userEmail) {

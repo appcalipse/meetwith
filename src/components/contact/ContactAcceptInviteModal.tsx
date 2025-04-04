@@ -18,6 +18,7 @@ import React, { useContext } from 'react'
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { logEvent } from '@/utils/analytics'
 import { acceptContactInvite } from '@/utils/api_helper'
+import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
 
 export interface IContactAcceptInviteModal {
   onClose: () => void
@@ -44,15 +45,31 @@ const ContactAcceptInviteModal: React.FC<IContactAcceptInviteModal> = props => {
         name: selectedContact.name,
       })
     } catch (e) {
-      const error = e as Error
-
-      toast({
-        title: 'Error',
-        description: error.message || 'Could not accept contact request',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof ContactInviteNotFound) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
       props.refetch()
     } finally {
       setIsAccepting(false)
