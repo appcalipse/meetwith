@@ -7,7 +7,6 @@ import {
   HStack,
   IconButton,
   Input,
-  Select,
   Text,
   Textarea,
   useColorModeValue,
@@ -20,13 +19,14 @@ import React, { FC, FormEvent, useEffect, useState } from 'react'
 import { LuLink2 } from 'react-icons/lu'
 
 import InvitedUsersList from '@/components/group/InvitedUsersList'
-import { LeanAccount, LeanContact } from '@/types/Contacts'
+import { LeanContact } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
 import { getExistingAccounts, inviteUsers } from '@/utils/api_helper'
 import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
+import { ContactNotFound } from '@/utils/errors'
 import {
   isEthereumAddressOrDomain,
   isValidEmail,
@@ -103,6 +103,15 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       setInvitedUsers([])
       onInviteSuccess?.()
     } catch (error: any) {
+      if (error instanceof ContactNotFound) {
+        toast({
+          title: 'Error',
+          description: error.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
       handleApiError('Error inviting member', error)
     }
     setIsSaving(false)
