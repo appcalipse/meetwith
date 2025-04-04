@@ -1,4 +1,4 @@
-import { ContactStatus } from '@/utils/constants/contact'
+import { ChannelType, ContactStatus } from '@/utils/constants/contact'
 
 import { NotificationType } from './AccountNotifications'
 
@@ -45,6 +45,25 @@ export interface SingleDBContact {
     }
   }
 }
+export interface SingleDBContactInvite {
+  id: string
+  destination: string
+  account_owner_address: string
+  channel: ChannelType
+  account: {
+    preferences: {
+      name: string
+      avatar_url: string
+      description: string
+    }
+    calendars_exist: Array<{
+      id: number
+    }>
+    account_notifications: {
+      notification_types: Array<NotificationType>
+    }
+  }
+}
 export interface DBContactLean {
   total_count: number
   result: Array<LeanContact>
@@ -65,6 +84,7 @@ export interface Contact {
   email_address?: string
 }
 export interface LeanContact {
+  id: string
   name: string
   address: string
   avatar_url?: string
