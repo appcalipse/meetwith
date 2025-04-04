@@ -11,6 +11,7 @@ import {
   isUserContact,
 } from '@/utils/database'
 import { sendContactInvitationEmail } from '@/utils/email_helper'
+import { AccountNotFoundError, ContactAlreadyExists } from '@/utils/errors'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -27,11 +28,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (address) {
         const isContact = await isUserContact(account_address, address)
         if (isContact) {
-          return res.status(400).send('User is already a contact')
+          throw new ContactAlreadyExists()
         }
         const account = await getAccountFromDB(address)
         if (!account) {
-          return res.status(404).send('Account not found')
+          throw new AccountNotFoundError(address)
         }
         const accountEmail = await getAccountNotificationSubscriptionEmail(
           address
@@ -61,6 +62,13 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         success: true,
       })
     } catch (e) {
+      if (e instanceof ContactAlreadyExists) {
+        return res.status(400).send(e.message)
+      }
+      if (e instanceof AccountNotFoundError) {
+        return res.status(404).send(e.message)
+      }
+
       return res.status(500).send(e)
     }
   }
