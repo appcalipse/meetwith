@@ -2,10 +2,9 @@ import { Button, HStack, Text, Th, Tr, useToast } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import React, { FC, useContext } from 'react'
 
-import { ContactCountStateContext } from '@/providers/ContactInvitesCountProvider'
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { ContactInvite } from '@/types/Contacts'
-import { acceptContactInvite, rejectContactInvite } from '@/utils/api_helper'
+import { acceptContactInvite } from '@/utils/api_helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 type Props = {
@@ -24,8 +23,9 @@ const ContactRequestItem: FC<Props> = ({
   openRejectModal,
 }) => {
   const [isAccepting, setIsAccepting] = React.useState(false)
-  const { fetchRequestCount } = useContext(ContactCountStateContext)
-  const { setSelectedContact } = useContext(ContactStateContext)
+
+  const { setSelectedContact, fetchRequestCount } =
+    useContext(ContactStateContext)
 
   const toast = useToast()
   const handleAccept = async () => {
@@ -35,8 +35,6 @@ const ContactRequestItem: FC<Props> = ({
       syncAccept()
     } catch (e) {
       const error = e as Error
-
-      console.error(e)
       toast({
         title: 'Error',
         description: error.message || 'Could not accept contact request',
