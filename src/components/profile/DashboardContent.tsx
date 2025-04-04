@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
 import RedirectHandler from '@/components/redirect'
-import ContactCountStateProvider from '@/providers/ContactInvitesCountProvider'
+import ContactStateProvider from '@/providers/ContactInvitesProvider'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { EditMode } from '../../types/Dashboard'
@@ -46,7 +46,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   }
 
   return currentAccount ? (
-    <ContactCountStateProvider currentAccount={currentAccount}>
+    <ContactStateProvider currentAccount={currentAccount}>
       <HStack
         alignItems="start"
         width="100%"
@@ -67,7 +67,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
           {renderSelected()}
         </Box>
       </HStack>
-    </ContactCountStateProvider>
+    </ContactStateProvider>
   ) : (
     <Flex
       width="100%"
