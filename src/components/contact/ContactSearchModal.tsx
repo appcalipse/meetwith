@@ -29,6 +29,7 @@ import React, { useEffect } from 'react'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { ContactSearch, LeanAccount } from '@/types/Contacts'
 import { searchForAccounts, sendContactListInvite } from '@/utils/api_helper'
+import { AccountNotFoundError, ContactAlreadyExists } from '@/utils/errors'
 import { isValidEmail } from '@/utils/validations'
 
 type Props = {
@@ -106,7 +107,7 @@ const ContactSearchModal = (props: Props) => {
         email: account.email,
         address: account.address,
       })
-      if (invite.success) {
+      if (invite?.success) {
         const updatedResult = result
         if (updatedResult?.result) {
           updatedResult.result[index].is_invited = true
@@ -122,15 +123,31 @@ const ContactSearchModal = (props: Props) => {
         })
       }
     } catch (e: unknown) {
-      const error = e as Error
-      toast({
-        title: error.message,
-        description: '',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
-      })
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof AccountNotFoundError) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact invite request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
     }
   }
   return (
