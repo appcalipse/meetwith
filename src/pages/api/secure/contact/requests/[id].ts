@@ -1,8 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { ContactInvite } from '@/types/Contacts'
 import {
   acceptContactInvite,
+  getContactInviteById,
   initDB,
   rejectContactInvite,
 } from '@/utils/database'
@@ -14,6 +16,23 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const account_address = req.session.account!.address
     if (!account_address) {
       return res.status(401).send('Unauthorized')
+    }
+    if (req.method === 'GET') {
+      const invite = await getContactInviteById(invite_id)
+      if (!invite) {
+        return res.status(404).send('Not found')
+      }
+      const data: ContactInvite = {
+        id: invite.id,
+        address: invite.account_owner_address,
+        calendar_exists: invite.account.calendars_exist.length > 0,
+        email_address:
+          invite.account.account_notifications?.notification_types?.find(
+            n => n.channel === 'email' && !n.disabled
+          )?.destination,
+        ...invite.account.preferences,
+      }
+      return res.status(200).json(data)
     }
     if (req.method === 'POST') {
       await acceptContactInvite(invite_id, account_address)
