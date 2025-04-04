@@ -118,6 +118,7 @@ export interface GroupInvitePayload {
     userId?: string
     role: MemberType
     name?: string
+    contactId?: string
   }[]
   message?: string
 }
