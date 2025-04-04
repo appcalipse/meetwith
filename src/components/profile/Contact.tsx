@@ -45,7 +45,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         gap={6}
       >
         <Heading fontSize="2xl">
-          My Contact
+          My Contacts
           <Text fontSize="sm" fontWeight={500} mt={1} lineHeight={1.5}>
             A contact is an entity or person you regularly would want to
             schedule with so you add them to your list
