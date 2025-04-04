@@ -14,8 +14,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     initDB()
     try {
       const dbResult = await getContactById(
-        account_address,
-        typeof req.query.id === 'string' ? req.query.id : ''
+        typeof req.query.id === 'string' ? req.query.id : '',
+        account_address
       )
       if (!dbResult) {
         return res.status(404).send('Contact not found')
