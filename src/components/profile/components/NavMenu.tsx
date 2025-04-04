@@ -26,7 +26,7 @@ import { FaUserGroup } from 'react-icons/fa6'
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
-import { ContactCountStateContext } from '@/providers/ContactInvitesCountProvider'
+import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
@@ -57,7 +57,7 @@ export const NavMenu: React.FC<{
   const router = useRouter()
   const toast = useToast()
   const [noOfInvitedGroups, setNoOfInvitedGroups] = React.useState<number>(0)
-  const { requestCount } = useContext(ContactCountStateContext)
+  const { requestCount } = useContext(ContactStateContext)
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'neutral.900')
