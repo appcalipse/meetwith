@@ -4,6 +4,7 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
 import { Contact } from '@/types/Contacts'
 import { getContactById, initDB, removeContact } from '@/utils/database'
+import { ContactNotFound } from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   const account_address = req.session.account!.address
@@ -17,9 +18,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         typeof req.query.id === 'string' ? req.query.id : '',
         account_address
       )
-      if (!dbResult) {
-        return res.status(404).send('Contact not found')
-      }
       const result: Contact = {
         id: dbResult.id,
         address: dbResult.contact_address,
@@ -33,6 +31,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       return res.status(200).json(result)
     } catch (e) {
+      if (e instanceof ContactNotFound) {
+        return res.status(404).send(e.message)
+      }
       return res.status(500).send(e)
     }
   }
