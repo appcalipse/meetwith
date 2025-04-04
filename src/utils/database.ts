@@ -34,6 +34,7 @@ import {
   DBContactInvite,
   DBContactLean,
   SingleDBContact,
+  SingleDBContactInvite,
 } from '@/types/Contacts'
 import { DiscordAccount } from '@/types/Discord'
 import {
@@ -88,6 +89,9 @@ import {
   AccountNotFoundError,
   AdminBelowOneError,
   AlreadyGroupMemberError,
+  ContactAlreadyExists,
+  ContactInviteNotFound,
+  ContactNotFound,
   CouponAlreadyUsed,
   CouponExpired,
   CouponNotValid,
@@ -1397,16 +1401,7 @@ const publicGroupJoin = async (group_id: string, address: string) => {
   if (groupUsers.map(val => val.member_id).includes(address.toLowerCase())) {
     throw new AlreadyGroupMemberError()
   }
-  const { error: memberError } = await db.supabase
-    .from('group_members')
-    .insert({
-      group_id,
-      member_id: address.toLowerCase(),
-      role: MemberType.MEMBER,
-    })
-  if (memberError) {
-    throw new Error(memberError.message)
-  }
+  await addUserToGroup(group_id, address.toLowerCase(), MemberType.MEMBER)
 }
 
 const manageGroupInvite = async (
@@ -1437,15 +1432,20 @@ const manageGroupInvite = async (
   if (reject) {
     return
   }
-  const { error: memberError } = await db.supabase
-    .from('group_members')
-    .insert({
-      group_id,
-      member_id: address.toLowerCase(),
-      role: data[0].role,
-    })
-  if (memberError) {
-    throw new Error(memberError.message)
+  await addUserToGroup(group_id, address.toLowerCase(), data[0].role)
+}
+const addUserToGroup = async (
+  group_id: string,
+  member_id: string,
+  role = MemberType.MEMBER
+) => {
+  const { error } = await db.supabase.from('group_members').insert({
+    group_id,
+    member_id,
+    role,
+  })
+  if (error) {
+    throw new Error(error.message)
   }
 }
 
@@ -3049,8 +3049,8 @@ const getContactLean = async (
 }
 
 const getContactById = async (
-  address: string,
-  id: string
+  id: string,
+  address: string
 ): Promise<SingleDBContact> => {
   const { data, error } = await db.supabase
     .from('contact')
@@ -3070,11 +3070,15 @@ const getContactById = async (
     .eq('id', id)
     .eq('account_owner_address', address)
     .eq('status', ContactStatus.ACTIVE)
-    .single()
+
   if (error) {
     throw new Error(error.message)
   }
-  return data
+  const contact = data?.[0]
+  if (!contact) {
+    throw new ContactNotFound()
+  }
+  return contact
 }
 const getContactInvites = async (
   address: string,
@@ -3131,6 +3135,34 @@ const getContactInvitesCount = async (address: string) => {
   }
   return count
 }
+const getContactInviteById = async (
+  id: string
+): Promise<SingleDBContactInvite> => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select(
+      `
+      id,
+       destination,
+        account_owner_address,
+        channel,
+        account: accounts(
+          preferences: account_preferences(name, avatar_url, description),
+          calendars_exist: connected_calendars(id),
+          account_notifications(notification_types)
+        )
+    `
+    )
+    .eq('id', id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  const invite = data?.[0]
+  if (!invite) {
+    throw new ContactInviteNotFound()
+  }
+  return invite
+}
 const acceptContactInvite = async (
   invite_identifier: string,
   account_address: string
@@ -3139,15 +3171,18 @@ const acceptContactInvite = async (
     .from('contact_invite')
     .select()
     .eq('id', invite_identifier)
-    .single()
   if (error) {
     throw new Error(error.message)
+  }
+  const invite = data?.[0]
+  if (!invite) {
+    throw new ContactInviteNotFound()
   }
 
   // make sure the actual account owner accepts the invite
   if (
-    data?.channel === ChannelType.ACCOUNT &&
-    data?.destination !== account_address
+    invite?.channel === ChannelType.ACCOUNT &&
+    invite?.destination !== account_address
   ) {
     throw new Error('Invalid invite')
   }
@@ -3155,8 +3190,11 @@ const acceptContactInvite = async (
   const { data: contactExists } = await db.supabase
     .from('contact')
     .select()
-    .in('account_owner_address', [account_address, data?.account_owner_address])
-    .in('contact_address', [account_address, data?.account_owner_address])
+    .in('account_owner_address', [
+      account_address,
+      invite?.account_owner_address,
+    ])
+    .in('contact_address', [account_address, invite?.account_owner_address])
     .eq('status', ContactStatus.ACTIVE)
 
   if (contactExists?.length) {
@@ -3164,18 +3202,19 @@ const acceptContactInvite = async (
       .from('contact_invite')
       .delete()
       .eq('id', invite_identifier)
-    throw new Error('Contact already exists')
+
+    throw new ContactAlreadyExists()
   }
 
   const { error: insertError } = await db.supabase.from('contact').insert([
     {
-      account_owner_address: data?.account_owner_address,
+      account_owner_address: invite?.account_owner_address,
       contact_address: account_address,
       status: ContactStatus.ACTIVE,
     },
     {
       account_owner_address: account_address,
-      contact_address: data?.account_owner_address,
+      contact_address: invite?.account_owner_address,
       status: ContactStatus.ACTIVE,
     },
   ])
@@ -3187,8 +3226,11 @@ const acceptContactInvite = async (
   const { error: contactClearError } = await db.supabase
     .from('contact')
     .delete()
-    .in('account_owner_address', [account_address, data?.account_owner_address])
-    .in('contact_address', [account_address, data?.account_owner_address])
+    .in('account_owner_address', [
+      account_address,
+      invite?.account_owner_address,
+    ])
+    .in('contact_address', [account_address, invite?.account_owner_address])
     .eq('status', ContactStatus.INACTIVE)
 
   if (contactClearError) {
@@ -3198,8 +3240,11 @@ const acceptContactInvite = async (
   const { error: deleteError } = await db.supabase
     .from('contact_invite')
     .delete()
-    .in('account_owner_address', [account_address, data?.account_owner_address])
-    .in('destination', [account_address, data?.account_owner_address])
+    .in('account_owner_address', [
+      account_address,
+      invite?.account_owner_address,
+    ])
+    .in('destination', [account_address, invite?.account_owner_address])
   if (deleteError) {
     throw new Error(deleteError.message)
   }
@@ -3212,15 +3257,19 @@ const rejectContactInvite = async (
     .from('contact_invite')
     .select()
     .eq('id', invite_identifier)
-    .single()
+
   if (error) {
     throw new Error(error.message)
   }
+  if (!data?.length) {
+    throw new Error('Invite not found')
+  }
+  const invite = data[0]
 
   // make sure the actual account owner rejects the invite
   if (
-    data?.channel === ChannelType.ACCOUNT &&
-    data?.destination !== account_address
+    invite?.channel === ChannelType.ACCOUNT &&
+    invite?.destination !== account_address
   ) {
     throw new Error('Invalid invite')
   }
@@ -3233,6 +3282,7 @@ const rejectContactInvite = async (
     throw new Error(deleteError.message)
   }
 }
+
 const removeContact = async (address: string, contact_address: string) => {
   const { error: updateError } = await db.supabase
     .from('contact')
@@ -3257,6 +3307,7 @@ const removeContact = async (address: string, contact_address: string) => {
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
+  addUserToGroup,
   changeGroupRole,
   connectedCalendarExists,
   createTgConnection,
@@ -3278,6 +3329,7 @@ export {
   getConferenceMeetingFromDB,
   getConnectedCalendars,
   getContactById,
+  getContactInviteById,
   getContactInvites,
   getContactInvitesCount,
   getContactLean,
