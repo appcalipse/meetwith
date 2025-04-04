@@ -11,32 +11,39 @@ import {
   ModalOverlay,
   Text,
   useToast,
+  VStack,
 } from '@chakra-ui/react'
+import { Jazzicon } from '@ukstv/jazzicon-react'
 import React, { useContext } from 'react'
 
+import { ContactCountStateContext } from '@/providers/ContactInvitesCountProvider'
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
-import { rejectContactInvite } from '@/utils/api_helper'
+import { acceptContactInvite, rejectContactInvite } from '@/utils/api_helper'
 
 export interface IContactRejectInviteModal {
   onClose: () => void
   isOpen: boolean
-  syncReject: (contactId: string) => void
+  sync: (contactId: string) => void
+  refetch: () => void
 }
 
 const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
   const [declining, setDeclining] = React.useState(false)
   const { selectedContact } = useContext(ContactStateContext)
   const toast = useToast()
+  const { fetchRequestCount } = useContext(ContactCountStateContext)
+
+  const [isAccepting, setIsAccepting] = React.useState(false)
+
   const handleDecline = async () => {
     if (!selectedContact) return
     setDeclining(true)
     try {
       await rejectContactInvite(selectedContact.id)
-      props.syncReject(selectedContact.id)
+      props.sync(selectedContact.id)
       props.onClose()
     } catch (e) {
       const error = e as Error
-      console.error(e)
       toast({
         title: 'Error',
         description: error.message || 'Could not remove contact request',
@@ -47,6 +54,30 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
     } finally {
       setDeclining(false)
     }
+    fetchRequestCount()
+  }
+  const handleAccept = async () => {
+    if (!selectedContact) return
+
+    setIsAccepting(true)
+    try {
+      await acceptContactInvite(selectedContact.id)
+      props.sync(selectedContact.id)
+    } catch (e) {
+      const error = e as Error
+      toast({
+        title: 'Error',
+        description: error.message || 'Could not accept contact request',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      })
+      props.refetch()
+    } finally {
+      setIsAccepting(false)
+    }
+    props.onClose()
+    fetchRequestCount()
   }
   return (
     <Modal
@@ -65,15 +96,43 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           px={6}
           pt={6}
         >
-          <Heading size={'md'}>Decline invite</Heading>
+          <Heading size={'md'}>Decline request</Heading>
           <ModalCloseButton />
         </ModalHeader>
         <ModalBody p={'0'} mt={'2'}>
-          <Box px="6" pb="6">
+          <Box px={6} pb={6}>
             <Text size={'sm'}>
-              Are you sure? You cannot undo this action afterwards. However, you
-              can always get invited back by an admin.
+              You are about to deny this connection request, this will mean
+              losing this connection
             </Text>
+            {selectedContact && (
+              <HStack w="100%" justifyContent="space-between" mt={6}>
+                <VStack alignItems="flex-start" gap={4}>
+                  <Text>User</Text>
+                  <HStack w="fit-content">
+                    <Jazzicon
+                      address={selectedContact.address || ''}
+                      className="contact-avatar"
+                    />
+                    <Text maxW={200} isTruncated>
+                      {selectedContact.name ||
+                        selectedContact.address ||
+                        selectedContact.email_address}
+                    </Text>
+                  </HStack>
+                </VStack>
+                <VStack alignItems="flex-start" gap={4}>
+                  <Text>Alternative</Text>
+                  <Button
+                    colorScheme="primary"
+                    onClick={handleAccept}
+                    isLoading={isAccepting}
+                  >
+                    Accept request
+                  </Button>
+                </VStack>
+              </HStack>
+            )}
           </Box>
           <HStack
             ml={'auto'}
@@ -83,6 +142,8 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
             justifyContent="space-between"
             bg="neutral.825"
             px="6"
+            borderTop={'1px solid'}
+            borderColor="neutral.400"
             py={4}
           >
             <Button onClick={props.onClose} colorScheme="primary">
