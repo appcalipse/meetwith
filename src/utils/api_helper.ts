@@ -1231,3 +1231,9 @@ export const removeContact = async (contact_address: string) => {
     'DELETE'
   )
 }
+
+export const getContactInviteById = async (identifier: string) => {
+  return await internalFetch<ContactInvite>(
+    `/secure/contact/requests/${identifier}`
+  )
+}
