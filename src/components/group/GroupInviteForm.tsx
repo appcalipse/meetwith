@@ -75,6 +75,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       userId: user.userId?.toLowerCase(),
       role: user.role,
       name: user.name,
+      contactId: user?.contactId,
     }))
 
     const payload: GroupInvitePayload = { invitees, message }
@@ -194,6 +195,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
       groupId,
       name: account.name,
       invitePending: true,
+      contactId: account.id,
     }
     setInvitedUsers(prev => [...prev, newUser])
   }
