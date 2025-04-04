@@ -16,7 +16,6 @@ import {
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import React, { useContext } from 'react'
 
-import { ContactCountStateContext } from '@/providers/ContactInvitesCountProvider'
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { acceptContactInvite, rejectContactInvite } from '@/utils/api_helper'
 
@@ -29,9 +28,8 @@ export interface IContactRejectInviteModal {
 
 const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
   const [declining, setDeclining] = React.useState(false)
-  const { selectedContact } = useContext(ContactStateContext)
+  const { selectedContact, fetchRequestCount } = useContext(ContactStateContext)
   const toast = useToast()
-  const { fetchRequestCount } = useContext(ContactCountStateContext)
 
   const [isAccepting, setIsAccepting] = React.useState(false)
 
@@ -58,7 +56,6 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
   }
   const handleAccept = async () => {
     if (!selectedContact) return
-
     setIsAccepting(true)
     try {
       await acceptContactInvite(selectedContact.id)
@@ -88,7 +85,12 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
       isCentered
     >
       <ModalOverlay backdropFilter="blur(10px)" bg="rgba(0, 0, 0, 0.6)" />
-      <ModalContent bg="neutral.900">
+      <ModalContent
+        bg="neutral.900"
+        fontWeight={500}
+        rounded={12}
+        overflow={'hidden'}
+      >
         <ModalHeader
           display="flex"
           justifyContent="space-between"
@@ -100,7 +102,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           <ModalCloseButton />
         </ModalHeader>
         <ModalBody p={'0'} mt={'2'}>
-          <Box px={6} pb={6}>
+          <Box px={6} pb={2}>
             <Text size={'sm'}>
               You are about to deny this connection request, this will mean
               losing this connection
