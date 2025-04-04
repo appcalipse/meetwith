@@ -77,9 +77,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           await addUserToGroup(groupId, contact.contact_address, invitee.role)
         } catch (error) {
           console.error('Error adding user to group:', error)
-        } finally {
-          continue
         }
+        continue
       }
       if (!invitee.email && !invitee.address) {
         console.error('Invitee email or address is undefined')
