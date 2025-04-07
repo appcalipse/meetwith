@@ -543,3 +543,54 @@ export const sendInvitationEmail = async (
     Sentry.captureException(err)
   }
 }
+
+export const sendContactInvitationEmail = async (
+  toEmail: string,
+  inviterName: string,
+  invitationLink: string
+): Promise<void> => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'contact_invite'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const locals = {
+    inviterName,
+    invitationLink,
+  }
+
+  try {
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
+
+    const msg: CreateEmailOptions = {
+      to: toEmail,
+      from: FROM,
+      subject: subject,
+      html: rendered,
+      text: `${inviterName} invited as a contact. Accept your invite here: ${invitationLink}`,
+      tags: [
+        {
+          name: 'contact',
+          value: 'invite',
+        },
+      ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
