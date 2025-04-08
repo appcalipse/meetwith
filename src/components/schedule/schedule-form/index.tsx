@@ -286,8 +286,14 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             alignItems="center"
             height="fit-content"
             margin={0}
+            _invalid={{
+              color: 'red.500',
+            }}
           >
             Meeting title
+            <Text color="red.500" display="inline">
+              *
+            </Text>
           </FormLabel>
           <Tooltip.Provider delayDuration={400}>
             <Tooltip.Root>
@@ -307,12 +313,12 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               <Tooltip.Content>
                 <Text
                   fontSize="sm"
-                  p={4}
-                  maxW="200px"
+                  p={2}
+                  maxW="150px"
                   bgColor={bgColor}
                   shadow="lg"
                 >
-                  Give a title for your meeting (optional)
+                  Give a title for your meeting
                 </Text>
                 <Tooltip.Arrow />
               </Tooltip.Content>
