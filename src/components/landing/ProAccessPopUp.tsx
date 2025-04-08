@@ -3,7 +3,6 @@ import {
   Button,
   Heading,
   HStack,
-  Image,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -13,6 +12,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
+import Image from 'next/image'
 import { useRouter } from 'next/router'
 import React, { useContext } from 'react'
 import Countdown, { CountdownRenderProps } from 'react-countdown'
@@ -108,7 +108,12 @@ const ProAccessPopUp = (props: ProAccessPopUpProps) => {
       >
         <ModalBody zIndex={100} bg="#1F2933">
           <ModalHeader px={0}>
-            <Image width="52px" src="/assets/logo.svg" alt="Meetwith" />
+            <Image
+              width={53}
+              height={33}
+              src="/assets/logo.svg"
+              alt="Meetwith"
+            />
           </ModalHeader>
           <ModalCloseButton top="25px" size={'lg'} />
           <VStack pb={24} position="relative" pt="8">
@@ -177,7 +182,15 @@ const ProAccessPopUp = (props: ProAccessPopUpProps) => {
               </VStack>
             </HStack>
             <Box insetX="-7" position={'absolute'} bottom="-2">
-              <Image alt="abstracts" src="/assets/abstracts.svg" w="100%" />
+              <Image
+                alt="abstracts"
+                src="/assets/abstracts.svg"
+                style={{
+                  width: '100%',
+                }}
+                width={804}
+                height={77}
+              />
             </Box>
           </VStack>
         </ModalBody>

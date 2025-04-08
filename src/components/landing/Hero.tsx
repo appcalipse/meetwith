@@ -1,17 +1,14 @@
 import { ArrowForwardIcon } from '@chakra-ui/icons'
-import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
-  Grid,
   Heading,
   HStack,
-  Image,
   SlideFade,
-  Stack,
   Text,
   VStack,
 } from '@chakra-ui/react'
+import Image from 'next/image'
 import router from 'next/router'
 import { useContext } from 'react'
 import { useInView } from 'react-intersection-observer'
@@ -19,8 +16,6 @@ import { useInView } from 'react-intersection-observer'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
-
-import { Why } from './Why'
 
 export function Hero() {
   const { currentAccount, loginIn } = useContext(AccountContext)
@@ -109,10 +104,20 @@ export function Hero() {
           reverse={false}
         >
           <Image
-            width={'100%'}
+            width={1125}
+            height={600}
+            quality={75}
             src={'/assets/product-ui.png'}
             alt="Product UI"
-            mt={10}
+            priority
+            style={{
+              maxWidth: '100%',
+              height: 'auto',
+              display: 'block',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              marginTop: 40,
+            }}
           />
         </SlideFade>
       </Box>
