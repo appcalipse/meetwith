@@ -79,6 +79,12 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
         key="msapplication-TileColor"
       />
       <meta name="theme-color" content="#f35826" key="theme-color" />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossOrigin="anonymous"
+      />
     </NextHead>
   )
 }
