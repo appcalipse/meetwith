@@ -154,7 +154,11 @@ const ScheduleBase = () => {
         <VStack width="100%" gap={4}>
           <Flex width="100%" gap={4}>
             <FormControl isInvalid={!isTitleValid}>
-              <FormLabel color={isTitleValid ? undefined : 'red.500'}>
+              <FormLabel
+                _invalid={{
+                  color: 'red.500',
+                }}
+              >
                 Title
                 <Text color="red.500" display="inline">
                   *
