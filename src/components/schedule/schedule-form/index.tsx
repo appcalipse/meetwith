@@ -149,6 +149,17 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       })
       return
     }
+    if (isTitleEmpty) {
+      toast({
+        title: 'Missing information',
+        description: 'Please fill in the meeting title',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
     if (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) {
       toast({
         title: 'Missing information',
@@ -207,6 +218,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const isGuestEmailValid = () => isValidEmail(guestEmail)
   const isUserEmailValid = () => isValidEmail(userEmail)
   const isNameEmpty = isEmptyString(name)
+  const isTitleEmpty = isEmptyString(title)
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
@@ -262,7 +274,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           />
         </FormControl>
       )}
-      <FormControl>
+      <FormControl isInvalid={isTitleEmpty}>
         <Flex
           alignItems="center"
           marginBottom="8px"
