@@ -26,7 +26,7 @@ const SOCIALS = [
   'udoka.eth',
   'osinachi.base.eth',
 ]
-export function Why() {
+function Why() {
   const { ref: whyContainer, inView: isWhyContainerVisible } = useInView({
     triggerOnce: true,
   })
@@ -97,6 +97,7 @@ export function Why() {
                     alt="Users"
                     width={38}
                     height={38}
+                    priority
                     style={{
                       width: 36,
                       height: 36,
@@ -151,6 +152,7 @@ export function Why() {
                       alt="Box"
                       width={38}
                       height={38}
+                      priority
                       style={{
                         width: 36,
                         height: 36,
@@ -205,6 +207,7 @@ export function Why() {
                     <Image
                       src="/assets/whys/Lock.svg"
                       alt="Box"
+                      priority
                       width={38}
                       height={38}
                       style={{
@@ -259,6 +262,7 @@ export function Why() {
                     alt="Box"
                     width={38}
                     height={38}
+                    priority
                     style={{
                       width: 36,
                       height: 36,
@@ -313,6 +317,7 @@ export function Why() {
                     alt="Box"
                     width={26}
                     height={36}
+                    priority
                     style={{
                       width: 36,
                       height: 36,
@@ -362,6 +367,7 @@ export function Why() {
                     alt="Box"
                     width={38}
                     height={38}
+                    priority
                     style={{
                       width: 36,
                       height: 36,
@@ -431,3 +437,5 @@ export function Why() {
     </Box>
   )
 }
+
+export default Why
