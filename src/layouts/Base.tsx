@@ -1,8 +1,7 @@
 import { Box, ChakraProvider, ColorModeProvider } from '@chakra-ui/react'
-import { DM_Sans } from 'next/font/google'
 import React, { ReactNode } from 'react'
 import { CookiesProvider } from 'react-cookie'
-const dmSans = DM_Sans({ subsets: ['latin'], display: 'swap' })
+
 import { CookieConsent } from '@/components/CookieConsent'
 import Footer from '@/components/Footer'
 import { ChakraMDXProvider } from '@/components/mdx.provider'
@@ -20,14 +19,7 @@ export const BaseLayout: React.FC<{
         <ChakraMDXProvider>
           <CookieConsent consentCookie={consentCookie} />
           <CookiesProvider>
-            <Box
-              minH="100vh"
-              display="flex"
-              flexDir="column"
-              style={{
-                fontFamily: dmSans.style.fontFamily,
-              }}
-            >
+            <Box minH="100vh" display="flex" flexDir="column">
               <Navbar />
               {children}
               <Footer />
