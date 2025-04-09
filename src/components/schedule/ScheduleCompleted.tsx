@@ -46,10 +46,12 @@ const ScheduleCompleted = () => {
         fontFamily="'DM Sans', sans-serif"
       >
         Your meeting <b>{title}</b> on{' '}
-        <b>{formatInTimeZone(pickedTime as Date, timezone, 'MMM d, yyyy')}</b>{' '}
+        <b>
+          {formatInTimeZone(pickedTime || new Date(), timezone, 'MMM d, yyyy')}
+        </b>{' '}
         at{' '}
         <b>
-          {formatInTimeZone(pickedTime as Date, timezone, 'hh:mm a')} (
+          {formatInTimeZone(pickedTime || new Date(), timezone, 'hh:mm a')} (
           {timezone})
         </b>{' '}
         has been {intent === Intents.UPDATE_MEETING ? 'updated' : 'scheduled'}.
