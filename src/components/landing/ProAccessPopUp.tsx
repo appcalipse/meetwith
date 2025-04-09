@@ -10,11 +10,12 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
-import React, { useContext } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import Countdown, { CountdownRenderProps } from 'react-countdown'
 import { BiCopy } from 'react-icons/bi'
 
@@ -22,27 +23,63 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { Coupon } from '@/types/Subscription'
+import { getNewestCoupon } from '@/utils/api_helper'
 import { COUPON_CAMPAIGN_END_DATE } from '@/utils/constants/coupons'
-interface ProAccessPopUpProps {
-  isDialogOpen: boolean
-  onDialogClose: () => void
-  coupon: Coupon | undefined
-}
-const ProAccessPopUp = (props: ProAccessPopUpProps) => {
-  const { logged } = useContext(AccountContext)
+import { isProAccount } from '@/utils/subscription_manager'
+
+const ProAccessPopUp = () => {
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const { logged, currentAccount } = useContext(AccountContext)
+
+  const [coupon, setCoupon] = useState<Coupon | undefined>(undefined)
+  const controller = new AbortController()
+
+  const signal = controller.signal
+  const fetchCoupon = async () => {
+    const data = await getNewestCoupon(signal)
+    setCoupon(data)
+    onOpen()
+  }
+  useEffect(() => {
+    return () => {
+      controller.abort()
+    }
+  }, [])
+  const handleCoupon = () => {
+    if (
+      (logged && isProAccount(currentAccount ?? undefined)) ||
+      Date.now() > COUPON_CAMPAIGN_END_DATE
+    ) {
+      onClose()
+      return
+    }
+    setTimeout(() => {
+      // Display after 5 seconds so that the user has time to load the page
+      void fetchCoupon()
+    }, 5000)
+  }
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(handleCoupon)
+    } else {
+      setTimeout(handleCoupon, 1)
+    }
+  }, [currentAccount])
+
   const { openConnection } = useContext(OnboardingModalContext)
   const { push } = useRouter()
   const onClaim = () => {
     if (logged) {
       push(
-        `/dashboard/${EditMode.DETAILS}?coupon=${props?.coupon?.code}&intent=${Intents.USE_COUPON}`
+        `/dashboard/${EditMode.DETAILS}?coupon=${coupon?.code}&intent=${Intents.USE_COUPON}`
       )
     } else {
       openConnection(
-        `/dashboard/${EditMode.DETAILS}?coupon=${props?.coupon?.code}&intent=${Intents.USE_COUPON}`
+        `/dashboard/${EditMode.DETAILS}?coupon=${coupon?.code}&intent=${Intents.USE_COUPON}`
       )
     }
-    props.onDialogClose()
+    onClose()
   }
   const renderer = ({
     days,
@@ -61,11 +98,9 @@ const ProAccessPopUp = (props: ProAccessPopUpProps) => {
           size="2xl"
           textAlign="left"
           lineHeight={1.2}
-          sx={{
-            background: 'linear-gradient( #F35826, #F78C69)',
-            backgroundClip: 'text',
-            textFillColor: 'transparent',
-          }}
+          background="linear-gradient( #F35826, #F78C69)"
+          backgroundClip="text"
+          textColor="transparent"
           display="flex"
           alignItems="flex-start"
         >
@@ -96,8 +131,8 @@ const ProAccessPopUp = (props: ProAccessPopUpProps) => {
     <Modal
       blockScrollOnMount={false}
       size={{ md: '3xl', base: 'lg' }}
-      isOpen={props.isDialogOpen}
-      onClose={props.onDialogClose}
+      isOpen={isOpen}
+      onClose={onClose}
       isCentered
     >
       <ModalOverlay />
@@ -161,19 +196,19 @@ const ProAccessPopUp = (props: ProAccessPopUpProps) => {
                     colorScheme="green"
                     onClick={() => {
                       try {
-                        navigator.clipboard.writeText(props?.coupon?.code || '')
+                        navigator.clipboard.writeText(coupon?.code || '')
                       } catch (e) {
                         console.error(e)
                       }
                     }}
                   >
-                    {props?.coupon?.code}
+                    {coupon?.code}
                   </Button>
                 </VStack>
                 <HStack width={'100%'} h={'1px'} bg="neutral.600" />
                 <VStack alignItems="flex-start" gap={4}>
                   <Text color="white" fontWeight="500">
-                    {props.coupon?.claims} / {props.coupon?.max_users} claims
+                    {coupon?.claims} / {coupon?.max_users} claims
                   </Text>
                   <Button color="primary.50" bg="primary.500" onClick={onClaim}>
                     Claim offer

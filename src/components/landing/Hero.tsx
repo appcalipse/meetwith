@@ -1,43 +1,29 @@
 import { ArrowForwardIcon } from '@chakra-ui/icons'
-import {
-  Box,
-  Button,
-  Heading,
-  HStack,
-  SlideFade,
-  Text,
-  VStack,
-} from '@chakra-ui/react'
+import { Box, Button, Heading, HStack, Text, VStack } from '@chakra-ui/react'
 import Image from 'next/image'
-import router from 'next/router'
+import { useRouter } from 'next/router'
 import { useContext } from 'react'
-import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
 
-export function Hero() {
+function Hero() {
   const { currentAccount, loginIn } = useContext(AccountContext)
 
   const { openConnection } = useContext(OnboardingModalContext)
-
+  const { push } = useRouter()
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on FREE plan')
       openConnection()
     } else {
-      await router.push('/dashboard')
+      await push('/dashboard')
     }
   }
 
-  const { ref: heroContainer, inView: isHeroContainerVisible } = useInView({
-    triggerOnce: true,
-  })
-
   return (
     <Box
-      ref={heroContainer}
       color="neutral.0"
       position="relative"
       mx="auto"
@@ -96,30 +82,19 @@ export function Hero() {
             </Button>
           </HStack>
         </VStack>
-        <SlideFade
-          in={isHeroContainerVisible}
-          delay={0.5}
-          offsetY={-50}
-          unmountOnExit={false}
-          reverse={false}
-        >
-          <Image
-            width={1125}
-            height={600}
-            quality={75}
-            src={'/assets/product-ui.png'}
-            alt="Product UI"
-            priority
-            style={{
-              maxWidth: '100%',
-              height: 'auto',
-              display: 'block',
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              marginTop: 40,
-            }}
-          />
-        </SlideFade>
+        <Image
+          width={1920}
+          height={1024}
+          src={'/assets/product-ui.webp'}
+          alt="Product UI"
+          loading="eager"
+          priority
+          style={{
+            width: '100%',
+            marginTop: 40,
+          }}
+          quality={60} // Drop quality from 75 to 60
+        />
       </Box>
       <Box
         w="100%"
@@ -134,3 +109,5 @@ export function Hero() {
     </Box>
   )
 }
+
+export default Hero
