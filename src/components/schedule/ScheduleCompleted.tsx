@@ -47,7 +47,9 @@ const ScheduleCompleted = () => {
       >
         Your meeting <b>{title}</b> on{' '}
         <b>
-          {formatInTimeZone(pickedTime || new Date(), timezone, 'MMM d, yyyy')}
+          {pickedTime
+            ? formatInTimeZone(pickedTime, timezone, 'MMM d, yyyy')
+            : 'Invalid date'}
         </b>{' '}
         at{' '}
         <b>
