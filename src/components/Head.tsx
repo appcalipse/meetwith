@@ -89,9 +89,9 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
       <link rel="dns-prefetch" href="https://meetwith.xyz" />
       <link rel="preconnect" href="https://meetwith.xyz" />
       <link rel="preload" href="/product-ui.webp" as="image" />
-      <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
-      <meta http-equiv="Pragma" content="no-cache" />
-      <meta http-equiv="Expires" content="0" />
+      <meta httpEquiv="Cache-Control" content="no-cache, must-revalidate" />
+      <meta httpEquiv="Pragma" content="no-cache" />
+      <meta httpEquiv="Expires" content="0" />
     </NextHead>
   )
 }
