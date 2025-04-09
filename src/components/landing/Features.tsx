@@ -54,7 +54,7 @@ const FEATURES = [
   },
 ]
 
-export function Features() {
+function Features() {
   const { currentAccount, loginIn } = useContext(AccountContext)
   const { openConnection } = useContext(OnboardingModalContext)
   const handleLogin = async () => {
@@ -71,6 +71,7 @@ export function Features() {
       mx="auto"
       id="features"
       scrollMarginTop={{ base: '60px', md: '20px' }}
+      px={5}
     >
       <Heading fontSize={'4xl'} textAlign="center" mb={8}>
         Features That Make Scheduling Effortless
@@ -156,6 +157,7 @@ export function Features() {
                 alt={val.title}
                 width={val.width / 3}
                 height={val.height / 3}
+                priority
                 style={{
                   maxWidth: '100%',
                   height: 'auto',
@@ -201,3 +203,5 @@ export function Features() {
     </Box>
   )
 }
+
+export default Features
