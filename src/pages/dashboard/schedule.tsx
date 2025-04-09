@@ -15,6 +15,7 @@ import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
+import { GetGroupsFullResponse } from '@/types/Group'
 import {
   MeetingDecrypted,
   MeetingProvider,
@@ -30,6 +31,7 @@ import { logEvent } from '@/utils/analytics'
 import {
   getExistingAccounts,
   getGroup,
+  getGroupsFull,
   getGroupsMembers,
   getMeeting,
 } from '@/utils/api_helper'
@@ -125,6 +127,8 @@ interface IScheduleContext {
       label: string
     }>
   >
+  groups: Array<GetGroupsFullResponse>
+  isGroupPrefetching: boolean
 }
 
 export interface IGroupParticipant {
@@ -170,6 +174,8 @@ const DEFAULT_CONTEXT: IScheduleContext = {
     label: 'Does not repeat',
   },
   setMeetingRepeat: () => {},
+  groups: [],
+  isGroupPrefetching: false,
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -221,6 +227,23 @@ const Schedule: NextPage = () => {
     value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
   })
+  const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
+  const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
+  const fetchGroups = async () => {
+    setIsGroupPrefetching(true)
+    try {
+      const fetchedGroups = await getGroupsFull(undefined, undefined)
+      setGroups(fetchedGroups)
+    } catch (error) {
+      handleApiError('Error fetching groups.', error as Error)
+    } finally {
+      setIsGroupPrefetching(false)
+    }
+  }
+
+  useEffect(() => {
+    void fetchGroups()
+  }, [])
   const handleTimePick = (time: Date | number) => setPickedTime(time)
   const handleAddGroup = (group: IGroupParticipant) => {
     setParticipants(prev => {
@@ -518,6 +541,8 @@ const Schedule: NextPage = () => {
     setMeetingNotification,
     meetingRepeat,
     setMeetingRepeat,
+    groups,
+    isGroupPrefetching,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
