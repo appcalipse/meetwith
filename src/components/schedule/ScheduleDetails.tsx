@@ -167,13 +167,19 @@ const ScheduleDetails = () => {
           <VStack alignItems="start" gap={4}>
             <HStack gap={3}>
               <FaCalendar size={24} />
-              <Text fontWeight="700">{format(pickedTime!, 'MMM d, yyyy')}</Text>
+              <Text fontWeight="700">
+                {format(pickedTime || new Date(), 'MMM d, yyyy')}
+              </Text>
             </HStack>
             <HStack gap={3}>
               <FaClock size={24} />
               <Text fontWeight="700">
-                {formatInTimeZone(pickedTime!, timezone, 'hh:mm a')} ({timezone}
-                )
+                {formatInTimeZone(
+                  pickedTime || new Date(),
+                  timezone,
+                  'hh:mm a'
+                )}{' '}
+                ({timezone})
               </Text>
             </HStack>
             <HStack gap={3}>
