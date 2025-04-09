@@ -32,20 +32,16 @@ const ProAccessPopUp = () => {
   const { logged, currentAccount } = useContext(AccountContext)
 
   const [coupon, setCoupon] = useState<Coupon | undefined>(undefined)
-  const controller = new AbortController()
 
-  const signal = controller.signal
-  const fetchCoupon = async () => {
-    const data = await getNewestCoupon(signal)
-    setCoupon(data)
-    onOpen()
+  const fetchCoupon = async (signal: AbortSignal) => {
+    try {
+      const data = await getNewestCoupon(signal)
+      setCoupon(data)
+      onOpen()
+    } catch (e) {}
   }
-  useEffect(() => {
-    return () => {
-      controller.abort()
-    }
-  }, [])
-  const handleCoupon = () => {
+
+  const handleCoupon = (signal: AbortSignal) => {
     if (
       (logged && isProAccount(currentAccount ?? undefined)) ||
       Date.now() > COUPON_CAMPAIGN_END_DATE
@@ -55,15 +51,20 @@ const ProAccessPopUp = () => {
     }
     setTimeout(() => {
       // Display after 5 seconds so that the user has time to load the page
-      void fetchCoupon()
+      void fetchCoupon(signal)
     }, 5000)
   }
   useEffect(() => {
     if (typeof window === 'undefined') return
+    const controller = new AbortController()
+    const signal = controller.signal
     if (window.requestIdleCallback) {
-      window.requestIdleCallback(handleCoupon)
+      window.requestIdleCallback(() => handleCoupon(signal))
     } else {
-      setTimeout(handleCoupon, 1)
+      setTimeout(() => handleCoupon(signal), 1)
+    }
+    return () => {
+      controller.abort()
     }
   }, [currentAccount])
 
