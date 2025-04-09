@@ -168,17 +168,17 @@ const ScheduleDetails = () => {
             <HStack gap={3}>
               <FaCalendar size={24} />
               <Text fontWeight="700">
-                {format(pickedTime || new Date(), 'MMM d, yyyy')}
+                {pickedTime
+                  ? format(pickedTime, 'MMM d, yyyy')
+                  : 'Invalid date'}
               </Text>
             </HStack>
             <HStack gap={3}>
               <FaClock size={24} />
               <Text fontWeight="700">
-                {formatInTimeZone(
-                  pickedTime || new Date(),
-                  timezone,
-                  'hh:mm a'
-                )}{' '}
+                {pickedTime
+                  ? formatInTimeZone(pickedTime, timezone, 'hh:mm a')
+                  : 'Invalid time'}{' '}
                 ({timezone})
               </Text>
             </HStack>

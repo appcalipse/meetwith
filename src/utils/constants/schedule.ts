@@ -52,7 +52,7 @@ export const MeetingRepeatOptions = [
   },
 ]
 
-export const DEFAULT_GROUP_SCHEDULING_DURATION = [
+const generateGroupSchedulingDurations = () => [
   { id: v4(), duration: 15 },
   { id: v4(), duration: 30 },
   { id: v4(), duration: 45 },
@@ -62,3 +62,6 @@ export const DEFAULT_GROUP_SCHEDULING_DURATION = [
   { id: v4(), duration: 150 },
   { id: v4(), duration: 180 },
 ]
+
+export const DEFAULT_GROUP_SCHEDULING_DURATION =
+  generateGroupSchedulingDurations()
