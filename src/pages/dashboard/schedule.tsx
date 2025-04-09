@@ -231,9 +231,14 @@ const Schedule: NextPage = () => {
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
   const fetchGroups = async () => {
     setIsGroupPrefetching(true)
-    const fetchedGroups = await getGroupsFull(undefined, undefined)
-    setGroups(fetchedGroups)
-    setIsGroupPrefetching(false)
+    try {
+      const fetchedGroups = await getGroupsFull(undefined, undefined)
+      setGroups(fetchedGroups)
+    } catch (error) {
+      handleApiError('Error fetching groups.', error as Error)
+    } finally {
+      setIsGroupPrefetching(false)
+    }
   }
 
   useEffect(() => {

@@ -45,7 +45,7 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
   const loadGroupMembers = () => {
     const actualMembers = props.members
     setGroupsMembers(actualMembers)
-    if (isExpanded && !groupParticipants[props.id]) {
+    if (isExpanded && !groupParticipants?.[props.id]) {
       setGroupAvailability(prev => ({
         ...prev,
         [props.id]: actualMembers
