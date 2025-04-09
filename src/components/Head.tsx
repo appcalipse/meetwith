@@ -80,11 +80,18 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
       />
       <meta name="theme-color" content="#f35826" key="theme-color" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://res.cloudinary.com" />
       <link
         rel="preconnect"
         href="https://fonts.gstatic.com"
         crossOrigin="anonymous"
       />
+      <link rel="dns-prefetch" href="https://meetwith.xyz" />
+      <link rel="preconnect" href="https://meetwith.xyz" />
+      <link rel="preload" href="/product-ui.webp" as="image" />
+      <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
+      <meta http-equiv="Pragma" content="no-cache" />
+      <meta http-equiv="Expires" content="0" />
     </NextHead>
   )
 }
