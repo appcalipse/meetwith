@@ -10,6 +10,7 @@ import App from 'next/app'
 import * as React from 'react'
 import { ThirdwebProvider } from 'thirdweb/react'
 
+import { Head } from '@/components/Head'
 import { ConnectModal } from '@/components/nav/ConnectModal'
 import { BaseLayout } from '@/layouts/Base'
 import { AccountProvider } from '@/providers/AccountProvider'
@@ -75,6 +76,7 @@ function MyApp({
             currentAccount={currentAccount}
             logged={!!currentAccount}
           >
+            <Head />
             <BaseLayout consentCookie={consentCookie ?? false}>
               <Component {...customProps} />
             </BaseLayout>
