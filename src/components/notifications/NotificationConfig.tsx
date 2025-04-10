@@ -1,15 +1,11 @@
 import {
-  Box,
   Button,
-  Flex,
   FormControl,
   FormHelperText,
   FormLabel,
   Heading,
   HStack,
-  Icon,
   Input,
-  Link,
   Spacer,
   Spinner,
   Switch,
@@ -21,11 +17,9 @@ import {
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { useEffect } from 'react'
-import { FaTelegram } from 'react-icons/fa'
 
 import { Account } from '@/types/Account'
 import { TelegramConnection } from '@/types/Telegram'
-import { isProduction } from '@/utils/constants'
 
 import {
   DiscordNotificationType,
@@ -219,32 +213,32 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             onDiscordNotificationChange={onDiscordNotificationChange}
             discordNotification={discordNotificationConfig}
           />
-          {!isProduction && (
-            <HStack>
-              <Switch
-                colorScheme="primary"
-                size="md"
-                isChecked={telegramNotificationConfigured}
-                onChange={e => {
-                  if (e.target.checked) {
-                    handleTgConnect()
-                  } else {
-                    handleTgDisconnect()
-                  }
-                }}
-                isDisabled={connecting}
-              />
-              <Text fontSize="lg" fontWeight="bold">
-                Telegram
+
+          <HStack>
+            <Switch
+              colorScheme="primary"
+              size="md"
+              isChecked={telegramNotificationConfigured}
+              onChange={e => {
+                if (e.target.checked) {
+                  handleTgConnect()
+                } else {
+                  handleTgDisconnect()
+                }
+              }}
+              isDisabled={connecting}
+            />
+            <Text fontSize="lg" fontWeight="bold">
+              Telegram
+            </Text>
+            {connecting && <Spinner size="sm" ml={2} />}
+            {tgConnectionPending && (
+              <Text fontSize="sm" color="gray.500">
+                (Pending connection)
               </Text>
-              {connecting && <Spinner size="sm" ml={2} />}
-              {tgConnectionPending && (
-                <Text fontSize="sm" color="gray.500">
-                  (Pending connection)
-                </Text>
-              )}
-            </HStack>
-          )}
+            )}
+          </HStack>
+
           <Spacer />
           <Button
             isLoading={loading}
