@@ -3,14 +3,11 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { NotificationChannel } from '@/types/AccountNotifications'
-import { DBSlot, MeetingProvider, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantType } from '@/types/ParticipantInfo'
+import { DBSlot } from '@/types/Meeting'
 import { MeetingCreationRequest } from '@/types/Requests'
-import { createHuddleRoom } from '@/utils/api_helper'
 import {
   getAccountFromDB,
   getAccountNotificationSubscriptions,
-  getConnectedCalendars,
   saveMeeting,
   setAccountNotificationSubscriptions,
 } from '@/utils/database'
@@ -19,7 +16,6 @@ import {
   MeetingCreationError,
   TimeNotAvailableError,
 } from '@/utils/errors'
-import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
 import { isValidEmail } from '@/utils/validations'
 
