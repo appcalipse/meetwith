@@ -11,13 +11,12 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useEffect, useState } from 'react'
+import React, { FC, useContext } from 'react'
 
 import Loading from '@/components/Loading'
 import ScheduleGroup from '@/components/schedule/ScheduleGroup'
+import { ScheduleContext } from '@/pages/dashboard/schedule'
 import { EditMode } from '@/types/Dashboard'
-import { GetGroupsFullResponse } from '@/types/Group'
-import { getGroupsFull } from '@/utils/api_helper'
 
 interface IScheduleGroupModal {
   onClose: () => void
@@ -25,19 +24,7 @@ interface IScheduleGroupModal {
 }
 
 const ScheduleGroupModal: FC<IScheduleGroupModal> = props => {
-  const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
-  const [loading, setLoading] = useState(false)
-  const fetchGroups = async () => {
-    setLoading(true)
-    const fetchedGroups = await getGroupsFull(undefined, undefined)
-    setGroups(fetchedGroups)
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    void fetchGroups()
-  }, [])
-
+  const { groups, isGroupPrefetching } = useContext(ScheduleContext)
   return (
     <Modal
       isOpen={props.isOpen}
@@ -67,7 +54,7 @@ const ScheduleGroupModal: FC<IScheduleGroupModal> = props => {
         <ModalBody p={'0'} mt={'6'}>
           <VStack w={'100%'}>
             <VStack w={'100%'} gap={0}>
-              {loading ? (
+              {isGroupPrefetching ? (
                 <Loading />
               ) : groups.length > 0 ? (
                 groups.map(group => <ScheduleGroup {...group} key={group.id} />)
