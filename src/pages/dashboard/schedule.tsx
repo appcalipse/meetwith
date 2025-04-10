@@ -16,9 +16,7 @@ import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
-
 import { GetGroupsFullResponse } from '@/types/Group'
-
 import {
   MeetingDecrypted,
   MeetingProvider,
