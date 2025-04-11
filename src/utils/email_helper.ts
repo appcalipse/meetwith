@@ -4,7 +4,7 @@ import Email from 'email-templates'
 import path from 'path'
 
 import { MeetingReminders } from '@/types/common'
-import { Intents } from '@/types/Dashboard'
+import { EditMode, Intents } from '@/types/Dashboard'
 import { Group } from '@/types/Group'
 import {
   MeetingChangeType,
@@ -30,7 +30,12 @@ const FROM = 'Meetwith <notifications@meetwith.xyz>'
 import { CreateEmailOptions, Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-
+const defaultResendOptions = {
+  from: FROM,
+  headers: {
+    'List-Unsubscribe': `<${appUrl}/dashboard/${EditMode.NOTIFICATIONS}>`,
+  },
+}
 export const newGroupInviteEmail = async (
   toEmail: string,
   participant: ParticipantInfoForInviteNotification,
@@ -50,10 +55,10 @@ export const newGroupInviteEmail = async (
 
   const msg: CreateEmailOptions = {
     to: toEmail,
-    from: FROM,
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
+    ...defaultResendOptions,
     tags: [
       {
         name: 'group',
@@ -88,10 +93,10 @@ export const newGroupRejectEmail = async (
 
   const msg: CreateEmailOptions = {
     to: toEmail,
-    from: FROM,
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
+    ...defaultResendOptions,
     tags: [
       {
         name: 'group',
@@ -214,10 +219,10 @@ export const newMeetingEmail = async (
   }
   const msg: CreateEmailOptions = {
     to: toEmail,
-    from: FROM,
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
+    ...defaultResendOptions,
     attachments: [
       {
         content: Buffer.from(icsFile.value!).toString('base64'),
@@ -303,7 +308,6 @@ export const cancelledMeetingEmail = async (
 
   const msg: CreateEmailOptions = {
     to: toEmail,
-    from: FROM,
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
@@ -314,6 +318,7 @@ export const cancelledMeetingEmail = async (
         contentType: 'text/plain',
       },
     ],
+    ...defaultResendOptions,
     tags: [
       {
         name: 'meeting',
@@ -458,10 +463,10 @@ export const updateMeetingEmail = async (
 
   const msg: CreateEmailOptions = {
     to: toEmail,
-    from: FROM,
     subject: rendered.subject!,
     html: rendered.html!,
     text: rendered.text,
+    ...defaultResendOptions,
     attachments: [
       {
         content: Buffer.from(icsFile.value!).toString('base64'),
@@ -525,10 +530,10 @@ export const sendInvitationEmail = async (
 
     const msg: CreateEmailOptions = {
       to: toEmail,
-      from: FROM,
       subject: subject,
       html: rendered,
       text: `${inviterName} invited you to join ${group.name}. Accept your invite here: ${invitationLink}`,
+      ...defaultResendOptions,
       tags: [
         {
           name: 'group',

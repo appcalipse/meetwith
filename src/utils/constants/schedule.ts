@@ -1,3 +1,5 @@
+import { v4 } from 'uuid'
+
 import { MeetingReminders } from '@/types/common'
 import { MeetingRepeat } from '@/types/Meeting'
 export const MeetingNotificationOptions = [
@@ -87,3 +89,17 @@ export const MeetingRepeatIntervals = [
     label: '1 week',
   },
 ]
+
+const generateGroupSchedulingDurations = () => [
+  { id: v4(), duration: 15 },
+  { id: v4(), duration: 30 },
+  { id: v4(), duration: 45 },
+  { id: v4(), duration: 60 },
+  { id: v4(), duration: 90 },
+  { id: v4(), duration: 120 },
+  { id: v4(), duration: 150 },
+  { id: v4(), duration: 180 },
+]
+
+export const DEFAULT_GROUP_SCHEDULING_DURATION =
+  generateGroupSchedulingDurations()

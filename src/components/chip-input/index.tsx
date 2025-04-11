@@ -156,7 +156,13 @@ export const ChipInput: React.FC<ChipInputProps> = ({
     <HStack
       borderWidth={'1px'}
       transition="border 300ms ease-out"
-      borderColor={focused ? hoverColor : borderColor}
+      borderColor={
+        inputProps?.isInvalid
+          ? inputProps?.errorBorderColor
+          : focused
+          ? hoverColor
+          : borderColor
+      }
       boxShadow={focused ? `0 0 0 1px ${hoverColor}` : 'none'}
       borderRadius={'md'}
       paddingLeft={'8px'}

@@ -1,0 +1,1 @@
+export const COUPON_CAMPAIGN_END_DATE = 1744916378653 // 17th April 2025
