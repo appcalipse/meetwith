@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as Sentry from '@sentry/nextjs'
 import { format, getWeekOfMonth } from 'date-fns'
 import { Auth, calendar_v3, google } from 'googleapis'
@@ -18,6 +19,14 @@ import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
 export type EventBusyDate = Record<'start' | 'end', Date | string>
+
+// --- NEW --- Interface defining the return structure for the sync function
+export interface CalendarSyncResult {
+  deletedGoogleEventIds: string[] // Google's event IDs that were deleted
+  nextSyncToken: string | null | undefined // Token for the next sync poll
+  error?: any // To capture potential errors during the sync API call
+  requiresFullSync?: boolean // Flag if a 410 error occurred, indicating token is invalid
+}
 
 export class MWWGoogleAuth extends google.auth.OAuth2 {
   constructor(client_id: string, client_secret: string, redirect_uri?: string) {
@@ -583,6 +592,76 @@ export default class GoogleCalendarService implements CalendarService {
       })
     )
   }
+
+  // --- NEW METHOD --- Added for Webhook Sync Logic ---
+  /**
+   * Performs an incremental sync of events for a given calendar using a sync token.
+   * Identifies deleted events based on the 'cancelled' status.
+   *
+   * @param calendarId The ID of the Google Calendar to sync (e.g., 'primary').
+   * @param syncToken The sync token from the previous successful sync.
+   * @returns {Promise<CalendarSyncResult>} Object containing deleted Google event IDs and the next sync token.
+   */
+  async syncCalendarEvents(
+    calendarId: string,
+    syncToken: string
+  ): Promise<CalendarSyncResult> {
+    try {
+      const myGoogleAuth = await this.auth.getToken() // Get authenticated client
+      const calendar = google.calendar({ version: 'v3', auth: myGoogleAuth })
+
+      const response = await calendar.events.list({
+        calendarId: parseCalendarId(calendarId), // Use helper to handle 'primary' etc.
+        syncToken: syncToken,
+        showDeleted: true, // <<< Required to see deleted ('cancelled') events
+      })
+
+      const deletedGoogleEventIds: string[] = []
+      if (response.data.items) {
+        for (const event of response.data.items) {
+          // Events deleted since the last syncToken will have status 'cancelled'
+          if (event.status === 'cancelled' && event.id) {
+            deletedGoogleEventIds.push(event.id) // Collect Google's ID
+          }
+        }
+      }
+
+      const nextSyncToken = response.data.nextSyncToken // Get the token for the next poll
+
+      // Return the result structure
+      return {
+        deletedGoogleEventIds,
+        nextSyncToken: nextSyncToken,
+        error: undefined, // Explicitly undefined on success
+        requiresFullSync: false,
+      }
+    } catch (error: any) {
+      console.error(
+        `Minimal Log: Error during calendar sync API call for calendar ${calendarId}:`,
+        error?.message
+      )
+
+      // Check specifically for 410 Gone (Invalid Sync Token)
+      if (error.code === 410) {
+        return {
+          // Return specific structure for 410
+          deletedGoogleEventIds: [],
+          nextSyncToken: null, // No valid token to return
+          error: error,
+          requiresFullSync: true, // Signal the need for a full re-sync
+        }
+      }
+
+      // Handle other API errors
+      return {
+        deletedGoogleEventIds: [],
+        nextSyncToken: null, // Cannot guarantee sync state, return null token
+        error: error, // Pass the error along
+        requiresFullSync: false, // Not necessarily a 410
+      }
+    }
+  }
+  // --- END NEW METHOD ---
 }
 
 const parseCalendarId = (calId?: string) => {
