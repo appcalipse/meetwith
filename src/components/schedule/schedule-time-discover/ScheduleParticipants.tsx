@@ -32,6 +32,9 @@ export function ScheduleParticipants({
     const availabilities = [
       ...new Set(Object.values(groupAvailability).flat()),
     ].map(val => val.toLowerCase())
+    if (availabilities.length === 0) {
+      availabilities.push(currentAccount?.address || '')
+    }
     return availabilities
   }, [groupAvailability])
 
