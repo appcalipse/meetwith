@@ -264,7 +264,7 @@ const Schedule: NextPage = () => {
       return [...prev, group]
     })
   }
-  const handleRemoveGroup = (groupId: string) =>
+  const handleRemoveGroup = (groupId: string) => {
     setParticipants(prev =>
       prev.filter(val => {
         const groupData = val as IGroupParticipant
@@ -272,6 +272,18 @@ const Schedule: NextPage = () => {
         return !isGroup
       })
     )
+    setGroupAvailability(prev => {
+      const newGroupAvailability = { ...prev }
+      delete newGroupAvailability[groupId]
+      return newGroupAvailability
+    })
+
+    setGroupParticipants(prev => {
+      const newGroupParticipants = { ...prev }
+      delete newGroupParticipants[groupId]
+      return newGroupParticipants
+    })
+  }
   const renderCurrentPage = () => {
     switch (currentPage) {
       case Page.SCHEDULE:
