@@ -1,5 +1,4 @@
 import { Box, Button, Heading, Image, Text, VStack } from '@chakra-ui/react'
-import { format } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext } from 'react'
