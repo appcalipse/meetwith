@@ -30,7 +30,11 @@ import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal'
 import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
-import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
+import {
+  IGroupParticipant,
+  Page,
+  ScheduleContext,
+} from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
@@ -78,6 +82,7 @@ const ScheduleBase = () => {
     setMeetingNotification,
     meetingRepeat,
     setMeetingRepeat,
+    setGroupParticipants,
     handleCancel,
   } = useContext(ScheduleContext)
   const handleSubmit = () => {
@@ -112,7 +117,29 @@ const ScheduleBase = () => {
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
   const iconColor = useColorModeValue('gray.800', 'white')
   const onParticipantsChange = (_participants: Array<ParticipantInfo>) => {
-    setParticipants(_participants)
+    setParticipants(_prev => {
+      const oldGroups = _prev.filter(_participantOld => {
+        const participant = _participantOld as IGroupParticipant
+        return participant.isGroup
+      }) as Array<IGroupParticipant>
+
+      oldGroups.forEach(oldGroup => {
+        const participants =
+          _participants as unknown as Array<IGroupParticipant>
+        const isGroupExist = participants.find(val => val.id === oldGroup.id)
+        if (!isGroupExist) {
+          setGroupParticipants(prev => ({
+            ...prev,
+            [oldGroup.id]: [],
+          }))
+          setGroupAvailability(prev => ({
+            ...prev,
+            [oldGroup.id]: [],
+          }))
+        }
+      })
+      return _participants as Array<ParticipantInfo | IGroupParticipant>
+    })
     if (_participants.length) {
       setIsParticipantsValid(true)
     }
@@ -121,6 +148,10 @@ const ScheduleBase = () => {
       .map(val => val.account_address)
       .filter(val => val != undefined)
     setGroupAvailability(prev => ({
+      ...prev,
+      [key]: addresses as string[],
+    }))
+    setGroupParticipants(prev => ({
       ...prev,
       [key]: addresses as string[],
     }))
