@@ -117,9 +117,6 @@ const ScheduleBase = () => {
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
   const iconColor = useColorModeValue('gray.800', 'white')
   const onParticipantsChange = (_participants: Array<ParticipantInfo>) => {
-    if (_participants.length) {
-      setIsParticipantsValid(true)
-    }
     setParticipants(_prev => {
       const oldGroups = _prev.filter(_participantOld => {
         const participant = _participantOld as IGroupParticipant
@@ -143,6 +140,9 @@ const ScheduleBase = () => {
       })
       return _participants as Array<ParticipantInfo | IGroupParticipant>
     })
+    if (_participants.length) {
+      setIsParticipantsValid(true)
+    }
     const key = 'no_group'
     const addresses = _participants
       .map(val => val.account_address)
