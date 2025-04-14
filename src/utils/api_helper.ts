@@ -97,7 +97,8 @@ export const internalFetch = async <T>(
 
     throw new ApiFetchError(response.status, await response.text())
   } catch (e: any) {
-    if (!path.includes('accounts')) {
+    // Exclude account not found error on sentry
+    if (!path.includes('accounts') && e.status === 404) {
       Sentry.captureException(e)
     }
     throw e
