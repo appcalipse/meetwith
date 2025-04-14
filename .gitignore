@@ -52,3 +52,6 @@ package-lock.json
 # Zoom
 zoom-token.json
 .qodo
+
+# Sentry Config File
+.env.sentry-build-plugin
