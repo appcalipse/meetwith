@@ -97,7 +97,7 @@ export const internalFetch = async <T>(
 
     throw new ApiFetchError(response.status, await response.text())
   } catch (e: any) {
-    if (!(e instanceof AccountNotFoundError)) {
+    if (!path.includes('accounts')) {
       Sentry.captureException(e)
     }
     throw e
