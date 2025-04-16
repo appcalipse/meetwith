@@ -156,7 +156,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       })
       return
     }
-    if (isTitleEmpty) {
+    if (isEmptyString(title)) {
       toast({
         title: 'Missing information',
         description: 'Please fill in the meeting title',
@@ -225,7 +225,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const isGuestEmailValid = () => isValidEmail(guestEmail)
   const isUserEmailValid = () => isValidEmail(userEmail)
   const isNameEmpty = isEmptyString(name)
-  const isTitleEmpty = isEmptyString(title)
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
@@ -281,7 +280,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           />
         </FormControl>
       )}
-      <FormControl isInvalid={isTitleEmpty}>
+      <FormControl>
         <Flex
           alignItems="center"
           marginBottom="8px"
@@ -293,9 +292,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             alignItems="center"
             height="fit-content"
             margin={0}
-            _invalid={{
-              color: 'red.500',
-            }}
           >
             Meeting title
             <Text color="red.500" display="inline">
