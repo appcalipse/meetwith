@@ -18,10 +18,7 @@ interface GoogleWebhookHeaders {
   changed?: string | string[]
 }
 
-export default async function calendarWebhookHandler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
     console.warn('Webhook received non-POST request method:', req.method)
     Sentry.captureMessage('Webhook received non-POST request', {
@@ -72,9 +69,4 @@ export default async function calendarWebhookHandler(
   // The response has already been sent.
 }
 
-// It's good practice to configure API routes correctly in Next.js
-// export const config = {
-//   api: {
-//     bodyParser: false, // Google webhooks usually have empty bodies, but good practice if unsure
-//   },
-// };
+export default handler
