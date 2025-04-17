@@ -11,7 +11,7 @@ import * as Sentry from '@sentry/nextjs' // Optional: For error reporting
 //   removeWatchChannelInfoFromDB,
 //   updateSyncTokenForChannel,
 //   // triggerFullSyncAndStoreNewToken // Function needed for 410 recovery
-// } from '../lib/database' // Adjust path: Your DB operations
+// } from '@/utils/database' // Adjust path: Your DB operations
 import GoogleCalendarService, { CalendarSyncResult } from './google.service' // Adjust path
 
 // Interface matching the headers extracted in the webhook handler
