@@ -153,7 +153,9 @@ export const getDiscordInfoForAddress = async (
   address: string
 ): Promise<DiscordUserInfo | null> => {
   const token = await getDiscordOAuthToken(address)
-
+  if (!token) {
+    return null
+  }
   return getDiscordAccountInfo(token!)
 }
 
@@ -166,7 +168,7 @@ export const getDiscordAccountInfo = async (
   try {
     const userResult = await fetch('https://discord.com/api/users/@me', {
       headers: {
-        authorization: `${discordAccessToken.token_type} ${discordAccessToken.access_token}`,
+        authorization: `${discordAccessToken?.token_type} ${discordAccessToken.access_token}`,
       },
     })
 
@@ -177,7 +179,7 @@ export const getDiscordAccountInfo = async (
 
     const userGuilds = await fetch('https://discord.com/api/users/@me/guilds', {
       headers: {
-        authorization: `${discordAccessToken.token_type} ${discordAccessToken.access_token}`,
+        authorization: `${discordAccessToken?.token_type} ${discordAccessToken.access_token}`,
       },
     })
 

@@ -133,7 +133,9 @@ export class MeetingChangeConflictError extends Error {
 
 export class MeetingCancelForbiddenError extends Error {
   constructor() {
-    super(`Cannot cancel a meeting if you are not the owner or scheduler`)
+    super(
+      `Only the host can cancel the meeting. You can RSPV "no" from the calendar-invite and/or ask the host to reschedule`
+    )
     this.name = 'MeetingCancelForbiddenError'
   }
 }
