@@ -18,8 +18,8 @@ import {
   addHours,
   endOfMonth,
   isBefore,
-  isSameDay,
   isSameMonth,
+  isWithinInterval,
   startOfMonth,
   sub,
 } from 'date-fns'
@@ -203,9 +203,10 @@ export function SchedulePickTime({
       .filter(val => isSameMonth(val, currentMonth))
     return days.map(date => {
       const slots = getEmptySlots(date)
+      date.setHours(0, 0, 0, 0)
       const busySlots = accountSlots.map(val => {
         return val.filter(slot => {
-          return isSameDay(slot.start, date)
+          return isWithinInterval(date, slot)
         })
       })
       const availabilities: Array<Record<string, Array<CustomTimeRange>>> = []
