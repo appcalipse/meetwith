@@ -1201,8 +1201,7 @@ const getGroupsAndMembers = async (
       .select(
         `
          group_members: group_members(*),
-         preferences: account_preferences(name),
-         calendars: connected_calendars(calendars)
+         preferences: account_preferences(name)
     `
       )
       .in('address', addresses)
@@ -1224,7 +1223,6 @@ const getGroupsAndMembers = async (
           address: member.group_members?.[0]?.member_id as string,
           role: member.group_members?.[0].role,
           invitePending: false,
-          calendarConnected: !!member.calendars[0]?.calendars?.length,
         })),
       })
     }
@@ -1575,7 +1573,6 @@ const getGroupUsers = async (
       group_members: group_members(*),
       group_invites: group_invites(*),
       preferences: account_preferences(name),
-      calendars: connected_calendars(calendars),
       subscriptions: subscriptions(*) 
     `
       )
