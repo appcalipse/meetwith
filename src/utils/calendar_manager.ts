@@ -795,13 +795,11 @@ const generateIcs = (
       getHours(meeting.end),
       getMinutes(meeting.end),
     ],
-    title:
-      meeting.title ||
-      CalendarServiceHelper.getMeetingTitle(
-        ownerAddress,
-        meeting.participants,
-        meeting.title
-      ),
+    title: CalendarServiceHelper.getMeetingTitle(
+      ownerAddress,
+      meeting.participants,
+      meeting.title
+    ),
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
