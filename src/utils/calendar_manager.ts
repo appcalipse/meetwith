@@ -779,7 +779,7 @@ const generateIcs = (
     url = 'https://meetwith.xyz'
   }
   const event: EventAttributes = {
-    uid: meeting.id,
+    uid: meeting.id.replaceAll('-', ''),
     start: [
       getYear(meeting.start),
       getMonth(meeting.start) + 1,
@@ -795,11 +795,13 @@ const generateIcs = (
       getHours(meeting.end),
       getMinutes(meeting.end),
     ],
-    title: CalendarServiceHelper.getMeetingTitle(
-      ownerAddress,
-      meeting.participants,
-      meeting.title
-    ),
+    title:
+      meeting.title ||
+      CalendarServiceHelper.getMeetingTitle(
+        ownerAddress,
+        meeting.participants,
+        meeting.title
+      ),
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
