@@ -169,14 +169,15 @@ export const newMeetingEmail = async (
     )}`,
     locals
   )
-  let hasCalendarSyncing = false
-
-  if (destinationAccountAddress && !hasCalendarSyncing) {
+  let hasCalendarSyncing
+  const ownerAddress =
+    participants.find(p => p.type === ParticipantType.Owner)?.account_address ||
+    ''
+  if (destinationAccountAddress || ownerAddress) {
     const accountCalendar = await getConnectedCalendars(
-      destinationAccountAddress,
+      destinationAccountAddress || ownerAddress,
       {
         syncOnly: true,
-        activeOnly: true,
       }
     )
     hasCalendarSyncing = accountCalendar.some(val => {
@@ -194,6 +195,7 @@ export const newMeetingEmail = async (
       participants,
       version: 0,
       related_slot_ids: [],
+      title,
       meeting_info_encrypted: mockEncrypted,
       content: description,
       reminders: meetingReminders,
@@ -225,9 +227,9 @@ export const newMeetingEmail = async (
     ...defaultResendOptions,
     attachments: [
       {
-        content: Buffer.from(icsFile.value!).toString('base64'),
+        content: icsFile.value,
         filename: `meeting_${meeting_id}.ics`,
-        contentType: 'text/plain',
+        contentType: `text/calendar; method=REQUEST; charset=UTF-8; name=meeting_${meeting_id}.ics`,
       },
     ],
     tags: [
@@ -275,6 +277,7 @@ export const cancelledMeetingEmail = async (
     {
       meeting_id,
       meeting_url: '',
+      title,
       start: new Date(start),
       end: new Date(end),
       id: meeting_id,
@@ -313,9 +316,9 @@ export const cancelledMeetingEmail = async (
     text: rendered.text,
     attachments: [
       {
-        content: Buffer.from(icsFile.value!).toString('base64'),
+        content: icsFile.value,
         filename: `meeting_${meeting_id}.ics`,
-        contentType: 'text/plain',
+        contentType: `text/calendar; method=REQUEST; charset=UTF-8; name=meeting_${meeting_id}.ics`,
       },
     ],
     ...defaultResendOptions,
@@ -413,13 +416,15 @@ export const updateMeetingEmail = async (
     `${path.resolve('src', 'emails', 'meeting_updated')}`,
     locals
   )
-  let hasCalendarSyncing = meetingProvider === MeetingProvider.GOOGLE_MEET
-  if (destinationAccountAddress && !hasCalendarSyncing) {
+  let hasCalendarSyncing
+  const ownerAddress =
+    participants.find(p => p.type === ParticipantType.Owner)?.account_address ||
+    ''
+  if (destinationAccountAddress || ownerAddress) {
     const accountCalendar = await getConnectedCalendars(
-      destinationAccountAddress,
+      destinationAccountAddress || ownerAddress,
       {
         syncOnly: true,
-        activeOnly: true,
       }
     )
     hasCalendarSyncing = accountCalendar.some(val => {
@@ -433,6 +438,7 @@ export const updateMeetingEmail = async (
       end: new Date(end),
       id: meeting_id,
       meeting_id,
+      title,
       created_at: new Date(created_at as Date),
       participants,
       version: 0,
@@ -469,9 +475,9 @@ export const updateMeetingEmail = async (
     ...defaultResendOptions,
     attachments: [
       {
-        content: Buffer.from(icsFile.value!).toString('base64'),
+        content: icsFile.value,
         filename: `meeting_${meeting_id}.ics`,
-        contentType: 'text/plain',
+        contentType: `text/calendar; method=REQUEST; charset=UTF-8; name=meeting_${meeting_id}.ics`,
       },
     ],
     tags: [
