@@ -27,7 +27,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
                 userId: group.id,
                 role: group.role,
                 invitePending: true,
-                calendarConnected: false,
                 displayName: group.email,
               }
             : group.group_members.length > 0
@@ -37,7 +36,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
                 address: group.group_members?.[0]?.member_id as string,
                 role: group.group_members?.[0].role,
                 invitePending: false,
-                calendarConnected: !!group.calendars[0]?.calendars?.length,
                 domain: group.subscriptions?.find(
                   sub => new Date(sub.expiry_time) > new Date()
                 )?.domain,
@@ -49,7 +47,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
                 userId: group.group_invites?.[0]?.id,
                 role: group.group_invites?.[0].role,
                 invitePending: true,
-                calendarConnected: !!group.calendars[0]?.calendars?.length,
               }
         })
         .filter(Boolean)
