@@ -44,7 +44,6 @@ export interface GroupMember {
   role: MemberType
   userId?: string
   invitePending: boolean
-  calendarConnected: boolean
   domain?: string
 }
 
