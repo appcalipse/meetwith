@@ -246,46 +246,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           md: '550px',
         }}
       >
-        <FormControl isInvalid={isNameEmpty}>
-          <FormLabel>Name</FormLabel>
-          <Input
-            autoFocus
-            type="text"
-            isDisabled={isSchedulingExternal}
-            placeholder="Your name or an identifier"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-          />
-        </FormControl>
-
-        {(scheduleType === SchedulingType.GUEST || doSendEmailReminders) && (
-          <FormControl
-            isInvalid={
-              doSendEmailReminders
-                ? !isFirstUserEmailValid && !isUserEmailValid()
-                : !isFirstGuestEmailValid && !isGuestEmailValid()
-            }
-          >
-            <FormLabel>Email</FormLabel>
-            <Input
-              type="email"
-              placeholder="Insert your email"
-              isDisabled={isSchedulingExternal}
-              value={doSendEmailReminders ? userEmail : guestEmail}
-              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-              onChange={e => {
-                if (doSendEmailReminders) {
-                  setUserEmail(e.target.value)
-                  setIsFirstUserEmailValid(false)
-                } else {
-                  setGuestEmail(e.target.value)
-                  setIsFirstGuestEmailValid(false)
-                }
-              }}
-            />
-          </FormControl>
-        )}
         <FormControl>
           <Flex
             alignItems="center"
@@ -343,6 +303,46 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             placeholder="Give a title for your meeting"
           />
         </FormControl>
+        <FormControl>
+          <FormLabel>Your Name</FormLabel>
+          <Input
+            autoFocus
+            type="text"
+            isDisabled={isSchedulingExternal}
+            placeholder="Your name or an identifier"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+          />
+        </FormControl>
+
+        {(scheduleType === SchedulingType.GUEST || doSendEmailReminders) && (
+          <FormControl
+            isInvalid={
+              doSendEmailReminders
+                ? !isFirstUserEmailValid && !isUserEmailValid()
+                : !isFirstGuestEmailValid && !isGuestEmailValid()
+            }
+          >
+            <FormLabel>Email</FormLabel>
+            <Input
+              type="email"
+              placeholder="Insert your email"
+              isDisabled={isSchedulingExternal}
+              value={doSendEmailReminders ? userEmail : guestEmail}
+              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+              onChange={e => {
+                if (doSendEmailReminders) {
+                  setUserEmail(e.target.value)
+                  setIsFirstUserEmailValid(false)
+                } else {
+                  setGuestEmail(e.target.value)
+                  setIsFirstGuestEmailValid(false)
+                }
+              }}
+            />
+          </FormControl>
+        )}
         <FormControl w="100%" maxW="100%">
           <FormLabel>Meeting reminders (optional)</FormLabel>
           <Select
