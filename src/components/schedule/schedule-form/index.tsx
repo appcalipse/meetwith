@@ -303,7 +303,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             placeholder="Give a title for your meeting"
           />
         </FormControl>
-        <FormControl isInvalid={isNameEmpty}>
+        <FormControl>
           <FormLabel>Your Name</FormLabel>
           <Input
             autoFocus
