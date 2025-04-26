@@ -183,8 +183,13 @@ const DEFAULT_CONTEXT: IScheduleContext = {
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
-
-const Schedule: NextPage = () => {
+interface IInitialProps {
+  groupId: string
+  intent: Intents
+  meetingId: string
+  contactId: string
+}
+const Schedule: NextPage<IInitialProps> = ({ groupId, intent, meetingId, contactId }) => {
   const { currentAccount } = useContext(AccountContext)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [participants, setParticipants] = useState<
@@ -216,13 +221,10 @@ const Schedule: NextPage = () => {
     MeetingDecrypted | undefined
   >(undefined)
   const toast = useToast()
-  const { query, push } = useRouter()
-  const { groupId, intent, meetingId, contactId } = query as {
-    groupId: string
-    intent: Intents
-    meetingId: string
-    contactId: string
-  }
+  
+  const router = useRouter()
+  const { query, push } = router
+
   const [isScheduling, setIsScheduling] = useState(false)
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{
@@ -339,11 +341,13 @@ const Schedule: NextPage = () => {
         slot_id: '',
         meeting_id: '',
       }))
+
       const currentParticipant = participants.filter(val => {
         const groupData = val as IGroupParticipant
         const isGroup = groupData.isGroup
         return !isGroup
       }) as Array<ParticipantInfo>
+
       const allParticipants = [
         ...new Set(
           [...currentParticipant, ...participantsGroup].filter(
@@ -352,8 +356,9 @@ const Schedule: NextPage = () => {
         ),
       ]
       const _participants = await parseAccounts(allParticipants)
+
       const userData = currentParticipant.find(
-        val => val.account_address === currentAccount!.address
+        val => val.account_address === currentAccount?.address
       )
       if (userData) {
         _participants.valid.push(userData)
@@ -640,17 +645,11 @@ const Schedule: NextPage = () => {
         return
       }
       setDecryptedMeeting(decryptedMeeting)
-      const participants = decryptedMeeting.participants.map(val => ({
-        account_address: val.account_address,
-        name: val.name,
-        status: val.status,
-        type: val.type,
-        slot_id: val.slot_id,
-        meeting_id: val.meeting_id,
-      }))
+      const participants = decryptedMeeting.participants
+
       const allAddresses = participants
         .map(val => val.account_address)
-        .filter(Boolean) as string[]
+        .filter(value => Boolean(value)) as string[]
       setGroupAvailability({
         no_group: allAddresses,
       })
@@ -702,7 +701,8 @@ const Schedule: NextPage = () => {
     if (intent === Intents.UPDATE_MEETING && meetingId) {
       void handleFetchMeetingInformation()
     }
-  }, [intent, meetingId])
+  }, [intent, meetingId, currentAccount?.address])
+
   return (
     <ScheduleContext.Provider value={context}>
       <Container
@@ -747,8 +747,8 @@ const EnhancedSchedule: NextPage = withLoginRedirect(
 )
 
 EnhancedSchedule.getInitialProps = async ctx => {
-  const { groupId } = ctx.query
-  return { groupId }
+  const { groupId, intent, meetingId, contactId } = ctx.query
+  return { groupId, intent, meetingId, contactId }
 }
 
 export default withLoginRedirect(EnhancedSchedule)
