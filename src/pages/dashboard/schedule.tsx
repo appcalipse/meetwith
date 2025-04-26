@@ -189,7 +189,12 @@ interface IInitialProps {
   meetingId: string
   contactId: string
 }
-const Schedule: NextPage<IInitialProps> = ({ groupId, intent, meetingId, contactId }) => {
+const Schedule: NextPage<IInitialProps> = ({
+  groupId,
+  intent,
+  meetingId,
+  contactId,
+}) => {
   const { currentAccount } = useContext(AccountContext)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [participants, setParticipants] = useState<
@@ -221,7 +226,7 @@ const Schedule: NextPage<IInitialProps> = ({ groupId, intent, meetingId, contact
     MeetingDecrypted | undefined
   >(undefined)
   const toast = useToast()
-  
+
   const router = useRouter()
   const { query, push } = router
 
@@ -607,6 +612,7 @@ const Schedule: NextPage<IInitialProps> = ({ groupId, intent, meetingId, contact
       const contact = await getContactById(contactId)
       const _participants = participants as Array<ParticipantInfo>
       if (contact) {
+        const key = 'no_group'
         const participant: ParticipantInfo = {
           account_address: contact.address,
           name: contact.name,
@@ -616,6 +622,13 @@ const Schedule: NextPage<IInitialProps> = ({ groupId, intent, meetingId, contact
           meeting_id: '',
         }
         setParticipants([participant])
+        const allAddresses = [contact.address]
+        if (currentAccount?.address) {
+          allAddresses.push(currentAccount?.address)
+        }
+        setGroupAvailability({
+          [key]: allAddresses,
+        })
       }
     } catch (error: any) {
       handleApiError('Error prefetching contact.', error)
