@@ -34,7 +34,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               minutes: -intervalInMinutes,
             })
             const reminderTimeInterval = add(reminderTime, {
-              minutes: -4,
+              minutes: -9,
             })
             const startInterval: Interval = {
               start: reminderTimeInterval,
