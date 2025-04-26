@@ -189,7 +189,12 @@ interface IInitialProps {
   meetingId: string
   contactId: string
 }
-const Schedule: NextPage<IInitialProps> = ({ groupId, intent, meetingId, contactId }) => {
+const Schedule: NextPage<IInitialProps> = ({
+  groupId,
+  intent,
+  meetingId,
+  contactId,
+}) => {
   const { currentAccount } = useContext(AccountContext)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [participants, setParticipants] = useState<
@@ -221,7 +226,7 @@ const Schedule: NextPage<IInitialProps> = ({ groupId, intent, meetingId, contact
     MeetingDecrypted | undefined
   >(undefined)
   const toast = useToast()
-  
+
   const router = useRouter()
   const { query, push } = router
 
