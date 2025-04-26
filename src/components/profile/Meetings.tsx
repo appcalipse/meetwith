@@ -199,8 +199,9 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
     } catch (e) {}
   }
   useEffect(() => {
-    slotId && fillMeeting()
-  }, [slotId, intent])
+    if (!slotId) return
+    fillMeeting()
+  }, [slotId])
 
   return (
     <Flex direction={'column'} maxWidth="100%">
