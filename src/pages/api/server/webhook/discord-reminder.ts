@@ -34,7 +34,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               minutes: -intervalInMinutes,
             })
             const reminderTimeInterval = add(reminderTime, {
-              minutes: -9,
+              minutes: -4,
             })
             const startInterval: Interval = {
               start: reminderTimeInterval,
@@ -47,12 +47,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               new Date(slot.start),
               'HH:mm a'
             )}\n Meeting Link: ${meeting.meeting_url}`
-            // eslint-disable-next-line no-restricted-syntax
-            console.info(
-              `
-              Sending Discord message: ${message} to ${account.account_address}
-              `
-            )
             await dmAccount(
               account.account_address,
               account.discord_id,
