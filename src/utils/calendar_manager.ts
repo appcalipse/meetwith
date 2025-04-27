@@ -952,7 +952,7 @@ const generateEmptyAvailabilities = (): DayAvailability[] => {
   for (let i = 0; i <= 6; i++) {
     availabilities.push({
       weekday: i,
-      ranges: [],
+      ranges: [defaultTimeRange()],
     })
   }
   return availabilities
