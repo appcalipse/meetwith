@@ -226,23 +226,3 @@ export class SubscriptionNotCustom extends Error {
     this.name = 'SubscriptionNotCustom'
   }
 }
-
-export class ContactAlreadyExists extends Error {
-  constructor() {
-    super(`Contact already exists`)
-    this.name = 'ContactAlreadyExists'
-  }
-}
-export class ContactNotFound extends Error {
-  constructor() {
-    super(`Contact not found`)
-    this.name = 'ContactNotFound'
-  }
-}
-
-export class ContactInviteNotFound extends Error {
-  constructor() {
-    super(`Contact invite not found`)
-    this.name = 'ContactInviteNotFound'
-  }
-}

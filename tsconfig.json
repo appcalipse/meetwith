@@ -17,10 +17,7 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": "./src",
     "paths": {
-      "@/*": ["*"],
-      "@components/*": ["./components/*"],
-      "@utils/*": ["./utils/*"],
-      "@meta/*": ["./types/*"]
+      "@/*": ["*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
