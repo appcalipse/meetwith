@@ -261,7 +261,9 @@ const ContactSearchModal = (props: Props) => {
                             }}
                             onClick={() => handleInvite(account, index)}
                           >
-                            Send request
+                            {account.is_invited
+                              ? 'Request Already Sent'
+                              : 'Send request'}
                           </Button>
                         </Tooltip>
                       </Td>
