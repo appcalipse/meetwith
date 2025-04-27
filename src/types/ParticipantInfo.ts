@@ -34,5 +34,4 @@ export interface InvitedUser extends ParticipantBaseInfo {
   invitePending: boolean
   email?: string
   userId?: string
-  contactId?: string
 }

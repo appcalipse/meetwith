@@ -13,6 +13,7 @@ const Dashboard: NextPage<DashboardProps> = props => {
   return (
     <Container
       data-testid={`dashboard-${props.section}`}
+      px={8}
       maxW={{
         base: '100%',
         '2xl': '8xl',

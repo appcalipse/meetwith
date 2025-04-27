@@ -30,7 +30,6 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
-  getContactById,
   getExistingAccounts,
   getGroup,
   getGroupsFull,
@@ -187,14 +186,8 @@ interface IInitialProps {
   groupId: string
   intent: Intents
   meetingId: string
-  contactId: string
 }
-const Schedule: NextPage<IInitialProps> = ({
-  groupId,
-  intent,
-  meetingId,
-  contactId,
-}) => {
+const Schedule: NextPage<IInitialProps> = ({ groupId, intent, meetingId }) => {
   const { currentAccount } = useContext(AccountContext)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [participants, setParticipants] = useState<
@@ -226,10 +219,8 @@ const Schedule: NextPage<IInitialProps> = ({
     MeetingDecrypted | undefined
   >(undefined)
   const toast = useToast()
-
   const router = useRouter()
   const { query, push } = router
-
   const [isScheduling, setIsScheduling] = useState(false)
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{
@@ -578,6 +569,7 @@ const Schedule: NextPage<IInitialProps> = ({
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
+    setIsPrefetching(true)
     try {
       const group = await getGroup(groupId)
       const fetchedGroupMembers = await getGroupsMembers(groupId)
@@ -605,40 +597,13 @@ const Schedule: NextPage<IInitialProps> = ({
     } catch (error: any) {
       handleApiError('Error prefetching group.', error)
     }
-  }
-  const handleContactPrefetch = async () => {
-    if (!contactId) return
-    try {
-      const contact = await getContactById(contactId)
-      const _participants = participants as Array<ParticipantInfo>
-      if (contact) {
-        const participant: ParticipantInfo = {
-          account_address: contact.address,
-          name: contact.name,
-          status: ParticipationStatus.Pending,
-          type: ParticipantType.Invitee,
-          slot_id: '',
-          meeting_id: '',
-        }
-        setParticipants([participant])
-      }
-    } catch (error: any) {
-      handleApiError('Error prefetching contact.', error)
-    }
-  }
-  const handlePrefetch = async () => {
-    setIsPrefetching(true)
-    if (contactId) {
-      await handleContactPrefetch()
-    }
-    if (groupId) {
-      await handleGroupPrefetch()
-    }
     setIsPrefetching(false)
   }
   useEffect(() => {
-    void handlePrefetch()
-  }, [groupId, contactId])
+    if (groupId) {
+      void handleGroupPrefetch()
+    }
+  }, [groupId])
   const handleFetchMeetingInformation = async () => {
     if (!meetingId) return
     setIsPrefetching(true)
@@ -752,8 +717,8 @@ const EnhancedSchedule: NextPage = withLoginRedirect(
 )
 
 EnhancedSchedule.getInitialProps = async ctx => {
-  const { groupId, intent, meetingId, contactId } = ctx.query
-  return { groupId, intent, meetingId, contactId }
+  const { groupId, intent, meetingId } = ctx.query
+  return { groupId, intent, meetingId }
 }
 
 export default withLoginRedirect(EnhancedSchedule)
