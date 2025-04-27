@@ -21,44 +21,34 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           currentTime
         )
         for (const slot of slots) {
-          try {
-            if (!slot.id) continue
-            const meeting = await getConferenceDataBySlotId(slot.id)
-            const reminders = (meeting?.reminders || []).sort((a, b) => b - a)
-            for (const reminder of reminders) {
-              const interval = MeetingRepeatIntervals.find(
-                i => i.value === reminder
-              )
-              const intervalInMinutes = interval?.interval
-              if (!intervalInMinutes) continue
-              const reminderTime = add(new Date(slot.start), {
-                minutes: -intervalInMinutes,
-              })
-              const reminderTimeInterval = add(reminderTime, {
-                minutes: -9,
-              })
-              const startInterval: Interval = {
-                start: reminderTimeInterval,
-                end: reminderTime,
-              }
-              if (!isWithinInterval(currentTime, startInterval)) continue
-              const message = `You have a meeting (${
-                meeting.title || 'No Title'
-              }) starting in ${interval.label} \n Start time: ${format(
-                new Date(slot.start),
-                'HH:mm a'
-              )}\n Meeting Link: ${meeting.meeting_url}`
-              // eslint-disable-next-line no-restricted-syntax
-              console.info(
-                `
-              Sending Tg message: ${message} to ${account.account_address}
-              `
-              )
-              await sendDm(account.telegram_id, message)
-              break
+          if (!slot.id) continue
+          const meeting = await getConferenceDataBySlotId(slot.id)
+          const reminders = (meeting?.reminders || []).sort((a, b) => b - a)
+          for (const reminder of reminders) {
+            const interval = MeetingRepeatIntervals.find(
+              i => i.value === reminder
+            )
+            const intervalInMinutes = interval?.interval
+            if (!intervalInMinutes) continue
+            const reminderTime = add(new Date(slot.start), {
+              minutes: -intervalInMinutes,
+            })
+            const reminderTimeInterval = add(reminderTime, {
+              minutes: -4,
+            })
+            const startInterval: Interval = {
+              start: reminderTimeInterval,
+              end: reminderTime,
             }
-          } catch (e) {
-            console.error(e)
+            if (!isWithinInterval(currentTime, startInterval)) continue
+            const message = `You have a meeting (${
+              meeting.title || 'No Title'
+            }) starting in ${interval.label} \n Start time: ${format(
+              new Date(slot.start),
+              'HH:mm a'
+            )}\n Meeting Link: ${meeting.meeting_url}`
+            await sendDm(account.telegram_id, message)
+            break
           }
         }
       }
