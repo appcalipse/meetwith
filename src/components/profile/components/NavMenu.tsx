@@ -32,6 +32,7 @@ import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
 import { getGroupsEmpty, getGroupsInvites } from '@/utils/api_helper'
 import { getAccountCalendarUrl } from '@/utils/calendar_manager'
+import { isProduction } from '@/utils/constants'
 import { getNotificationTime, saveNotificationTime } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -61,20 +62,14 @@ export const NavMenu: React.FC<{
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'neutral.900')
-  const LinkItems: Array<LinkItemProps> = useMemo(
-    () => [
+  const LinkItems: Array<LinkItemProps> = useMemo(() => {
+    const items = [
       { name: 'My Meetings', icon: FaCalendarDay, mode: EditMode.MEETINGS },
       {
         name: 'My Groups',
         icon: FaUserGroup,
         mode: EditMode.GROUPS,
         badge: noOfInvitedGroups,
-      },
-      {
-        name: 'My Contacts',
-        icon: FaUserGroup,
-        mode: EditMode.CONTACTS,
-        badge: requestCount,
       },
       {
         name: 'Meeting Settings',
@@ -102,9 +97,17 @@ export const NavMenu: React.FC<{
         icon: FaSignOutAlt,
         mode: EditMode.SIGNOUT,
       },
-    ],
-    [noOfInvitedGroups]
-  )
+    ]
+    if (!isProduction) {
+      items.splice(2, 0, {
+        name: 'My Contacts',
+        icon: FaUserGroup,
+        mode: EditMode.CONTACTS,
+        badge: requestCount,
+      })
+    }
+    return items
+  }, [noOfInvitedGroups, requestCount])
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
     emptyGroups?.forEach((data, index) => {
