@@ -77,12 +77,14 @@ export interface SocialLink {
   url: string
 }
 
-export interface TgConnectedAccounts {
-  telegram_id: string
+interface BaseConnectedAccounts {
+  timezone: string
   account_address: string
 }
+export interface TgConnectedAccounts extends BaseConnectedAccounts {
+  telegram_id: string
+}
 
-export interface DiscordConnectedAccounts {
+export interface DiscordConnectedAccounts extends BaseConnectedAccounts {
   discord_id: string
-  account_address: string
 }
