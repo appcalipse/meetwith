@@ -49,7 +49,6 @@ export const NavItem = ({
       <Flex
         position="relative"
         align="center"
-        alignItems="center"
         width="100%"
         paddingY="3"
         paddingX="8"
