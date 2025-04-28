@@ -161,3 +161,4 @@ export default Contact
 // TODO: I should not be able to send multiple invites to the same account, Only one invite till 7 days
 // TODO: hover state for disabled button should be same
 // TODO: there should be a different display text for the button when the account is already invited
+// TODO: Remove Redundant account fetch on slots fetch
