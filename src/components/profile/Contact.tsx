@@ -154,3 +154,10 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
 }
 
 export default Contact
+
+// TODO: Inviting account should not be able to accept invite from same account via email
+// TODO: add checker to contact search, I.e the email account should be generated on the server
+// TODO: add border radius for contact ui
+// TODO: I should not be able to send multiple invites to the same account, Only one invite till 7 days
+// TODO: hover state for disabled button should be same
+// TODO: there should be a different display text for the button when the account is already invited
