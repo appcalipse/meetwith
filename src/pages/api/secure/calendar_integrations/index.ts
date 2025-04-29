@@ -1,6 +1,9 @@
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { ConnectedCalendar } from '@/types/CalendarConnections'
 import {
   addOrUpdateConnectedCalendar,
   getConnectedCalendars,
@@ -61,6 +64,58 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       provider,
       calendars
     )
+
+    // get all connected calendars
+    const connectedCalendars = await getConnectedCalendars(
+      req.session.account!.address,
+      { syncOnly: true, activeOnly: false }
+    )
+
+    // For google calendars
+    if (provider.toLowerCase() === 'google') {
+      const googleCalendar = connectedCalendars.find(
+        (k: ConnectedCalendar) =>
+          k.provider.toLowerCase() === provider.toLowerCase()
+      )
+      if (googleCalendar) {
+        // filter for calendar where webhook is true
+        calendars.forEach(async ({ webhook, calendarId }: any) => {
+          if (webhook) {
+            const ownerAddress = req.session.account!.address
+            console.log('PUT', email, calendarId, ownerAddress)
+            const calendar = calendars.find(
+              (k: any) =>
+                k.calendarId.toLowerCase() === calendarId.toLowerCase()
+            )
+
+            if (calendar) {
+              const integration = getConnectedCalendarIntegration(
+                ownerAddress,
+                email,
+                googleCalendar.provider,
+                googleCalendar.payload
+              )
+              console.log('setup calendar webhook')
+
+              // removing a webhook
+              // if (integration && integration.stopChannel) {
+              //   console.log('stopping calendar webhook')
+              //   const resourceId = 'Vx-_Bil7EmsSwbBnj_y-Pz6hYw8'
+              //   await integration.stopChannel(ownerAddress, resourceId)
+              // }
+              await integration.setupCalendarWebhook(calendarId, ownerAddress)
+
+              // fetch all events
+              // if (integration.getEvents) {
+              //   console.log('get events')
+              //   await integration.getEvents(calendarId)
+              // }
+            }
+          }
+        })
+      }
+    }
+
     return res.status(200).json(result)
   }
 }

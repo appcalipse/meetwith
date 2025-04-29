@@ -1,4 +1,5 @@
 import {
+  CalendarEvent,
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
@@ -42,6 +43,24 @@ export interface CalendarService {
     dateFrom: string,
     dateTo: string
   ): Promise<EventBusyDate[]>
+
+  getEvents?: (calendarId: string, days?: number) => Promise<CalendarEvent[]>
+
+  stopChannel?: (
+    calendarOwnerAddress: string,
+    resourceId: string
+  ) => Promise<void>
+
+  /**
+   * List user availability on target external calendar
+   *
+   * @param calendarId calendar id to query
+   * @param calendarOwnerAddress calendar owner address
+   */
+  setupCalendarWebhook(
+    calendarId: string,
+    calendarOwnerAddress: string
+  ): Promise<void>
 
   /**
    * Updates an event on target external calendar
