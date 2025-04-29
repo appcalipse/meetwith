@@ -7,7 +7,7 @@ import { MeetingRepeatIntervals } from '@/utils/constants/schedule'
 import {
   getAccountsWithTgConnected,
   getConferenceDataBySlotId,
-  getSlotsForAccount,
+  getSlotsForAccountMinimal,
 } from '@/utils/database'
 import { sendDm } from '@/utils/services/telegram.helper'
 
@@ -16,8 +16,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const tgConnectedAccounts = await getAccountsWithTgConnected()
       const currentTime = new Date()
+
       for (const account of tgConnectedAccounts) {
-        const slots = await getSlotsForAccount(
+        const slots = await getSlotsForAccountMinimal(
           account.account_address,
           currentTime
         )
@@ -35,17 +36,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               const reminderTime = add(new Date(slot.start), {
                 minutes: -intervalInMinutes,
               })
-              const reminderTimeInterval = add(reminderTime, {
-                minutes: -9,
+              const reminderTimeEnd = add(reminderTime, {
+                seconds: 60,
               })
               const startInterval: Interval = {
-                start: reminderTimeInterval,
-                end: reminderTime,
+                start: reminderTime,
+                end: reminderTimeEnd,
               }
               if (!isWithinInterval(currentTime, startInterval)) continue
               const message = `You have a meeting (${
                 meeting.title || 'No Title'
-              }) \n Starting in ${
+              })(staging) \n Starting in ${
                 interval.label
               }. \n Meeting Time: ${dateToLocalizedRange(
                 new Date(slot.start),
