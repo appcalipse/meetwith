@@ -34,12 +34,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             const reminderTime = add(new Date(slot.start), {
               minutes: -intervalInMinutes,
             })
-            const reminderTimeInterval = add(reminderTime, {
-              minutes: -9,
+            const reminderTimeEnd = add(reminderTime, {
+              seconds: 60,
             })
             const startInterval: Interval = {
-              start: reminderTimeInterval,
-              end: reminderTime,
+              start: reminderTime,
+              end: reminderTimeEnd,
             }
             if (!isWithinInterval(currentTime, startInterval)) continue
             const message = `You have a meeting (${
