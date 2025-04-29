@@ -1,9 +1,11 @@
+/* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as Sentry from '@sentry/nextjs'
 import { format, getWeekOfMonth } from 'date-fns'
 import { Auth, calendar_v3, google } from 'googleapis'
 
 import {
+  CalendarEvent,
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
@@ -15,7 +17,7 @@ import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
-import { updateCalendarPayload } from '../database'
+import { updateCalendarPayload, updateCalendarWebhook } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -593,75 +595,169 @@ export default class GoogleCalendarService implements CalendarService {
     )
   }
 
-  // --- NEW METHOD --- Added for Webhook Sync Logic ---
-  /**
-   * Performs an incremental sync of events for a given calendar using a sync token.
-   * Identifies deleted events based on the 'cancelled' status.
-   *
-   * @param calendarId The ID of the Google Calendar to sync (e.g., 'primary').
-   * @param syncToken The sync token from the previous successful sync.
-   * @returns {Promise<CalendarSyncResult>} Object containing deleted Google event IDs and the next sync token.
-   */
-  async syncCalendarEvents(
-    calendarId: string,
-    syncToken: string
-  ): Promise<CalendarSyncResult> {
+  async getEvents(calendarId: string, days = 2): Promise<CalendarEvent[]> {
     try {
-      const myGoogleAuth = await this.auth.getToken() // Get authenticated client
-      const calendar = google.calendar({ version: 'v3', auth: myGoogleAuth })
-
-      const response = await calendar.events.list({
-        calendarId: parseCalendarId(calendarId), // Use helper to handle 'primary' etc.
-        syncToken: syncToken,
-        showDeleted: true, // <<< Required to see deleted ('cancelled') events
+      const myGoogleAuth = await this.auth.getToken() // Or getClient() depending on your auth setup
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
       })
 
-      const deletedGoogleEventIds: string[] = []
-      if (response.data.items) {
-        for (const event of response.data.items) {
-          // Events deleted since the last syncToken will have status 'cancelled'
-          if (event.status === 'cancelled' && event.id) {
-            deletedGoogleEventIds.push(event.id) // Collect Google's ID
-          }
+      const now = Date.now()
+
+      // Calculate dateTo (current time in RFC3339)
+      const dateTo = new Date(now).toISOString().replace(/\.000Z$/, 'Z') // Remove milliseconds
+
+      // Calculate timestamp for 2 days ago
+      const twoDaysAgoTimestamp = now - days * 24 * 60 * 60 * 1000
+
+      // Calculate dateFrom (2 days ago in RFC3339)
+      const dateFrom = new Date(twoDaysAgoTimestamp)
+        .toISOString()
+        .replace(/\.000Z$/, 'Z') // Remove milliseconds
+
+      const allEvents: CalendarEvent[] = []
+      let pageToken: string | undefined | null = undefined // Start with no page token
+
+      do {
+        const params: calendar_v3.Params$Resource$Events$List = {
+          calendarId: calendarId,
+          timeMin: dateFrom,
+          timeMax: dateTo,
+          singleEvents: true,
+          orderBy: 'startTime',
+          maxResults: 250, // Be explicit about max results per page
+          pageToken: pageToken || undefined, // Use pageToken if available
         }
-      }
 
-      const nextSyncToken = response.data.nextSyncToken // Get the token for the next poll
+        // Use await instead of callback
+        const response = await calendar.events.list(params)
 
-      // Return the result structure
-      return {
-        deletedGoogleEventIds,
-        nextSyncToken: nextSyncToken,
-        error: undefined, // Explicitly undefined on success
-        requiresFullSync: false,
-      }
-    } catch (error: any) {
-      console.error(
-        `Minimal Log: Error during calendar sync API call for calendar ${calendarId}:`,
-        error?.message
-      )
-
-      // Check specifically for 410 Gone (Invalid Sync Token)
-      if (error.code === 410) {
-        return {
-          // Return specific structure for 410
-          deletedGoogleEventIds: [],
-          nextSyncToken: null, // No valid token to return
-          error: error,
-          requiresFullSync: true, // Signal the need for a full re-sync
+        if (response?.data?.items) {
+          response.data.items.forEach((event: calendar_v3.Schema$Event) => {
+            // Added check for event.id as it technically can be null
+            if (event.id) {
+              allEvents.push({
+                id: event.id,
+                calendarId: calendarId, // Use the input calendarId
+                summary: event.summary || '',
+                description: event.description || '',
+                start: event.start?.dateTime || event.start?.date || '',
+                end: event.end?.dateTime || event.end?.date || '',
+                location: event.location || '',
+              })
+            } else {
+              console.warn('Found event without ID, skipping:', event.summary)
+            }
+          })
         }
-      }
 
-      // Handle other API errors
-      return {
-        deletedGoogleEventIds: [],
-        nextSyncToken: null, // Cannot guarantee sync state, return null token
-        error: error, // Pass the error along
-        requiresFullSync: false, // Not necessarily a 410
-      }
+        // Get the next page token for the next iteration
+        pageToken = response?.data?.nextPageToken
+      } while (pageToken) // Continue loop if there's a next page token
+
+      console.log('All events:', allEvents.length)
+
+      return allEvents
+    } catch (error) {
+      console.error('Error fetching Google Calendar events:', error)
+      // Re-throw or handle error more specifically
+      throw error // Propagate the error
     }
   }
-  // --- END NEW METHOD ---
+
+  async stopChannel(
+    calendarOwnerAddress: string,
+    resourceId: string
+  ): Promise<void> {
+    console.log(
+      `Attempting to stop channel with ID: ${calendarOwnerAddress} and Resource ID: ${resourceId}`
+    )
+    try {
+      const myGoogleAuth = await this.auth.getToken() // Or getClient() depending on auth setup
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+
+      const requestBody: calendar_v3.Schema$Channel = {
+        id: `id-${calendarOwnerAddress}`,
+        resourceId: resourceId,
+      }
+
+      // The channels.stop method requires the channel and resource IDs in the request body.
+      await calendar.channels.stop({
+        requestBody: requestBody,
+      })
+
+      await updateCalendarWebhook(
+        calendarOwnerAddress,
+        TimeSlotSource.GOOGLE,
+        false
+      )
+
+      console.log(
+        `Successfully stopped channel with ID: ${calendarOwnerAddress} and Resource ID: ${resourceId}`
+      )
+      // No meaningful data is returned on success, so we resolve void
+    } catch (error: any) {
+      // Log the specific error from the API if available
+      const apiError = error?.response?.data?.error || error
+      console.error(
+        `Error stopping Google Calendar channel (ID: ${calendarOwnerAddress}, Resource ID: ${resourceId}):`,
+        apiError.message || error.message || error
+      )
+      // Re-throw the error to be handled by the caller
+      throw new Error(
+        `Failed to stop channel: ${apiError.message || error.message}`
+      )
+    }
+  }
+
+  async setupCalendarWebhook(
+    calendarId: string,
+    calendarOwnerAddress: string
+  ): Promise<void> {
+    try {
+      const myGoogleAuth = await this.auth.getToken()
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+
+      // Fro local testing add ngrok url for apiUrl
+      const webhookAddress = `${apiUrl}/server/webhooks/calendar/google/${calendarOwnerAddress}`
+
+      console.log(webhookAddress)
+
+      // Create the watch request using the calendarOwnerAddress as the ID
+      const watchRequest: calendar_v3.Schema$Channel = {
+        id: `id-${calendarOwnerAddress}`,
+        type: 'web_hook',
+        address: webhookAddress,
+      }
+
+      const response = await calendar.events.watch({
+        calendarId: parseCalendarId(calendarId),
+        requestBody: watchRequest,
+      })
+
+      console.log(response)
+
+      await updateCalendarWebhook(
+        calendarOwnerAddress,
+        TimeSlotSource.GOOGLE,
+        true
+      )
+
+      console.log(
+        `Webhook set up for calendar ${calendarId} to owner ${calendarOwnerAddress}`
+      )
+    } catch (error) {
+      console.error('Error setting up Google Calendar webhook:', error)
+      throw error
+    }
+  }
 }
 
 const parseCalendarId = (calId?: string) => {

@@ -54,6 +54,19 @@ const MultipleCalendarList: React.FC<MultipleCalendarListProps> = props => {
     props.updateCalendars(calendars, index)
   }
 
+  const enableWebhooksForCalendar = (calendar: CalendarSyncInfo) => {
+    const index = props.calendars
+      .map(c => c.calendarId)
+      .indexOf(calendar.calendarId)
+    const calendars = JSON.parse(
+      JSON.stringify(
+        props.calendars.filter(c => c.calendarId !== calendar.calendarId)
+      )
+    )
+    calendars.splice(index, 0, { ...calendar, webhook: !calendar.webhook })
+    props.updateCalendars(calendars, index)
+  }
+
   return (
     <Box pl={{ base: 0, md: 20 }}>
       <VStack width="100%" flexWrap="wrap" alignItems="flex-start">
@@ -94,28 +107,53 @@ const MultipleCalendarList: React.FC<MultipleCalendarListProps> = props => {
               </HStack>
             </Checkbox>
 
-            <Flex
-              justifyContent={{ base: 'flex-end', md: 'flex-start' }}
-              alignItems="center"
-              direction={{ base: 'row-reverse', md: 'row' }}
-              pl={{ base: 0, md: 4 }}
-            >
-              <Text
-                fontSize="sm"
-                mr={{ base: 0, md: 4 }}
-                align={{ base: 'left', md: 'end' }}
+            <VStack>
+              <Flex
+                justifyContent={{ base: 'flex-end', md: 'flex-start' }}
+                alignItems="center"
+                direction={{ base: 'row-reverse', md: 'row' }}
+                pl={{ base: 0, md: 4 }}
               >
-                Add new Meetwith meetings to this calendar
-              </Text>
-              <Switch
-                size="md"
-                colorScheme="primary"
-                mr="4"
-                isChecked={calendar.enabled && calendar.sync}
-                onChange={() => toggleAddMeetingsToCalendar(calendar)}
-                isDisabled={!calendar.enabled || calendar.loading}
-              />
-            </Flex>
+                <Text
+                  fontSize="sm"
+                  mr={{ base: 0, md: 4 }}
+                  align={{ base: 'left', md: 'end' }}
+                >
+                  Add new Meetwith meetings to this calendar
+                </Text>
+                <Switch
+                  size="md"
+                  colorScheme="primary"
+                  mr="4"
+                  isChecked={calendar.enabled && calendar.sync}
+                  onChange={() => toggleAddMeetingsToCalendar(calendar)}
+                  isDisabled={!calendar.enabled || calendar.loading}
+                />
+              </Flex>
+              <Flex
+                justifyContent={{ base: 'flex-end', md: 'flex-start' }}
+                alignItems="center"
+                direction={{ base: 'row-reverse', md: 'row' }}
+                pl={{ base: 0, md: 4 }}
+              >
+                <Text
+                  fontSize="sm"
+                  mr={{ base: 0, md: 4 }}
+                  align={{ base: 'left', md: 'end' }}
+                >
+                  Enable webhook events for this calendar
+                </Text>
+                <Switch
+                  size="md"
+                  colorScheme="primary"
+                  mr="4"
+                  isChecked={calendar.enabled && calendar.webhook}
+                  onChange={() => enableWebhooksForCalendar(calendar)}
+                  isDisabled={!calendar.enabled || calendar.loading}
+                />
+              </Flex>
+            </VStack>
+
             {!!calendar.loading && (
               <Flex
                 position="absolute"

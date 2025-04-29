@@ -2040,6 +2040,22 @@ export const updateCalendarPayload = async (
   }
 }
 
+export const updateCalendarWebhook = async (
+  address: string,
+  provider: TimeSlotSource,
+  webhook: boolean
+): Promise<void> => {
+  const { error } = await db.supabase
+    .from('connected_calendars')
+    .update({ webhook, updated: new Date() })
+    .eq('account_address', address.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
 const addOrUpdateConnectedCalendar = async (
   address: string,
   email: string,

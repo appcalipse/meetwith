@@ -451,4 +451,9 @@ export default class Office365CalendarService implements CalendarService {
 
     return result.flat()
   }
+
+  async setupCalendarWebhook(
+    calendarId: string,
+    calendarOwnerAddress: string
+  ): Promise<void> {}
 }

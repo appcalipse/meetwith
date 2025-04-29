@@ -20,11 +20,22 @@ export const ConnectedCalendarIcons = {
   [TimeSlotSource.MWW]: FaCalendar,
 }
 
+export interface CalendarEvent {
+  id: string // The unique identifier for the event
+  calendarId: string // The ID of the calendar containing this event
+  summary: string // The title/name of the event
+  description: string // The description/details of the event
+  start: string // The start time (either dateTime or date)
+  end: string // The end time (either dateTime or date)
+  location: string // The location of the event
+}
+
 export interface CalendarSyncInfo {
   calendarId: string
   name: string
   sync: boolean
   enabled: boolean
+  webhook?: boolean
   color?: string
 }
 export interface ConnectedCalendarCore {
