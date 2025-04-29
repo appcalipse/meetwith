@@ -1,7 +1,8 @@
 import * as Sentry from '@sentry/node'
-import { add, format, isWithinInterval } from 'date-fns'
+import { add, isWithinInterval } from 'date-fns'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { dateToLocalizedRange } from '@/utils/calendar_manager'
 import { MeetingRepeatIntervals } from '@/utils/constants/schedule'
 import {
   getConferenceDataBySlotId,
@@ -33,20 +34,30 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             const reminderTime = add(new Date(slot.start), {
               minutes: -intervalInMinutes,
             })
-            const reminderTimeInterval = add(reminderTime, {
-              minutes: -4,
+            const reminderTimeEnd = add(reminderTime, {
+              seconds: 60,
             })
             const startInterval: Interval = {
-              start: reminderTimeInterval,
-              end: reminderTime,
+              start: reminderTime,
+              end: reminderTimeEnd,
             }
             if (!isWithinInterval(currentTime, startInterval)) continue
             const message = `You have a meeting (${
               meeting.title || 'No Title'
-            }) starting in ${interval.label} \n Start time: ${format(
+            }) \n Starting in ${
+              interval.label
+            }. \n Meeting Time: ${dateToLocalizedRange(
               new Date(slot.start),
-              'HH:mm a'
-            )}\n Meeting Link: ${meeting.meeting_url}`
+              new Date(slot.end),
+              account.timezone,
+              true
+            )} \n Meeting Link: ${meeting.meeting_url}`
+            // eslint-disable-next-line no-restricted-syntax
+            console.info(
+              `
+              Sending Discord message: ${message} to ${account.account_address}
+              `
+            )
             await dmAccount(
               account.account_address,
               account.discord_id,
