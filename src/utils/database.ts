@@ -510,6 +510,33 @@ const getSlotsForAccount = async (
 
   return data || []
 }
+
+const getSlotsForAccountMinimal = async (
+  account_address: string,
+  start?: Date,
+  end?: Date,
+  limit?: number,
+  offset?: number
+): Promise<DBSlot[]> => {
+  const _start = start ? start.toISOString() : '1970-01-01'
+  const _end = end ? end.toISOString() : '2500-01-01'
+  const { data, error } = await db.supabase
+    .from('slots')
+    .select()
+    .eq('account_address', account_address)
+    .or(
+      `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
+    )
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .order('start')
+
+  if (error) {
+    throw new Error(error.message)
+    // //TODO: handle error
+  }
+
+  return data || []
+}
 const updateRecurringSlots = async (identifier: string) => {
   const account = await getAccountFromDB(identifier)
   const _end = new Date().toISOString()
@@ -2962,6 +2989,7 @@ export {
   getNewestCoupon,
   getOfficeEventMappingId,
   getSlotsForAccount,
+  getSlotsForAccountMinimal,
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
