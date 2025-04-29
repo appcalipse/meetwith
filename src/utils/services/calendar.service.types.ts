@@ -44,7 +44,10 @@ export interface CalendarService {
     dateTo: string
   ): Promise<EventBusyDate[]>
 
-  getEvents?: (calendarId: string, days?: number) => Promise<CalendarEvent[]>
+  getGoogleEvents?: (
+    calendarId: string,
+    days?: number
+  ) => Promise<CalendarEvent[]>
 
   stopChannel?: (
     calendarOwnerAddress: string,

@@ -595,7 +595,10 @@ export default class GoogleCalendarService implements CalendarService {
     )
   }
 
-  async getEvents(calendarId: string, days = 2): Promise<CalendarEvent[]> {
+  async getGoogleEvents(
+    calendarId: string,
+    days = 2
+  ): Promise<CalendarEvent[]> {
     try {
       const myGoogleAuth = await this.auth.getToken() // Or getClient() depending on your auth setup
       const calendar = google.calendar({
