@@ -108,7 +108,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               // fetch all events
               // if (integration.getEvents) {
               //   console.log('get events')
-              //   await integration.getEvents(calendarId)
+              //   await integration.getGoogleEvents(calendarId)
               // }
             }
           }
