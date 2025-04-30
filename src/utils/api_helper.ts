@@ -54,6 +54,7 @@ import {
   AccountNotFoundError,
   ApiFetchError,
   ContactAlreadyExists,
+  ContactInviteAlreadySent,
   ContactInviteNotForAccount,
   ContactInviteNotFound,
   ContactNotFound,
@@ -1208,8 +1209,8 @@ export const sendContactListInvite = async (
     if (e instanceof ApiFetchError) {
       if (e.status && e.status === 400) {
         throw new ContactAlreadyExists()
-      } else if (e.status && e.status === 404 && address) {
-        throw new AccountNotFoundError(address)
+      } else if (e.status && e.status === 409) {
+        throw new ContactInviteAlreadySent()
       }
     }
   }
