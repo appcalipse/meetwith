@@ -102,6 +102,7 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof ContactInviteNotFound) {
         toast({
@@ -110,6 +111,7 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else {
         toast({
@@ -118,6 +120,7 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       }
     }
@@ -176,10 +179,10 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
             openRejectModal={openRejectModal}
           />
         ))}
-        <Tr color="white">
-          <Th justifyContent="center" colSpan={6}>
-            <VStack mb={8}>
-              {!noMoreFetch && !firstFetch && (
+        {!noMoreFetch && !firstFetch && (
+          <Tr color="white">
+            <Th justifyContent="center" colSpan={6}>
+              <VStack mb={8}>
                 <Button
                   isLoading={loading}
                   colorScheme="primary"
@@ -190,11 +193,11 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
                 >
                   Load more
                 </Button>
-              )}
-              <Spacer />
-            </VStack>
-          </Th>
-        </Tr>
+                <Spacer />
+              </VStack>
+            </Th>
+          </Tr>
+        )}
       </Tbody>
     )
   }
