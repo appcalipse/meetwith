@@ -53,6 +53,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof ContactInviteNotForAccount) {
         toast({
@@ -61,6 +62,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof ContactInviteNotFound) {
         toast({
@@ -69,6 +71,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof OwnInviteError) {
         toast({
@@ -77,6 +80,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else {
         toast({
@@ -85,6 +89,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       }
     } finally {
@@ -107,6 +112,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof ContactInviteNotForAccount) {
         toast({
@@ -115,6 +121,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof ContactInviteNotFound) {
         toast({
@@ -123,6 +130,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof OwnInviteError) {
         toast({
@@ -131,6 +139,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else {
         toast({
@@ -139,6 +148,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       }
       props.refetch()
