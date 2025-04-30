@@ -204,7 +204,7 @@ export const newMeetingEmail = async (
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
     destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
       : undefined,
     false,
     destinationAccountAddress
@@ -450,7 +450,7 @@ export const updateMeetingEmail = async (
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
     destinationAccountAddress
-      ? `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
       : undefined,
     false,
     destinationAccountAddress

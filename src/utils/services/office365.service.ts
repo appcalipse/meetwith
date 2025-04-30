@@ -7,6 +7,7 @@ import {
   Office365RecurrenceType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
+import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
@@ -320,7 +321,7 @@ export default class Office365CalendarService implements CalendarService {
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
           details.meeting_url,
-          `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
         ),
       },
       start: {
