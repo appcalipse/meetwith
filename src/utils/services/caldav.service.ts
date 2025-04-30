@@ -18,6 +18,7 @@ import {
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
+import { Intents } from '@/types/Dashboard'
 import { MeetingChangeType } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
@@ -168,7 +169,7 @@ export default class CaldavCalendarService implements CalendarService {
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
+          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
           false,
           {
             accountAddress: calendarOwnerAccountAddress,
@@ -213,7 +214,7 @@ export default class CaldavCalendarService implements CalendarService {
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.CREATE,
-          `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
+          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
           true
         )
 
@@ -292,7 +293,7 @@ export default class CaldavCalendarService implements CalendarService {
         },
         calendarOwnerAccountAddress,
         MeetingChangeType.UPDATE,
-        `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
+        `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
         false,
         {
           accountAddress: calendarOwnerAccountAddress,
@@ -330,7 +331,7 @@ export default class CaldavCalendarService implements CalendarService {
           },
           calendarOwnerAccountAddress,
           MeetingChangeType.UPDATE,
-          `${appUrl}/dashboard/meetings?slotId=${slot_id}`,
+          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
           true
         )
 
