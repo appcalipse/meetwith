@@ -5,7 +5,12 @@ import React, { FC, useContext } from 'react'
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { ContactInvite } from '@/types/Contacts'
 import { acceptContactInvite } from '@/utils/api_helper'
-import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
+import {
+  ContactAlreadyExists,
+  ContactInviteNotForAccount,
+  ContactInviteNotFound,
+  OwnInviteError,
+} from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 type Props = {
@@ -35,7 +40,6 @@ const ContactRequestItem: FC<Props> = ({
       await acceptContactInvite(account.id)
       syncAccept()
     } catch (e) {
-      const error = e as Error
       if (e instanceof ContactAlreadyExists) {
         toast({
           title: 'Error',
@@ -44,7 +48,23 @@ const ContactRequestItem: FC<Props> = ({
           duration: 5000,
           isClosable: true,
         })
+      } else if (e instanceof ContactInviteNotForAccount) {
+        toast({
+          title: 'Error',
+          description: "Contact invite already accepted or doesn't exist",
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
       } else if (e instanceof ContactInviteNotFound) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof OwnInviteError) {
         toast({
           title: 'Error',
           description: e.message,

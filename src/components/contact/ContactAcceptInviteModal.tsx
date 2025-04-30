@@ -18,7 +18,12 @@ import React, { useContext } from 'react'
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { logEvent } from '@/utils/analytics'
 import { acceptContactInvite } from '@/utils/api_helper'
-import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
+import {
+  ContactAlreadyExists,
+  ContactInviteNotForAccount,
+  ContactInviteNotFound,
+  OwnInviteError,
+} from '@/utils/errors'
 
 export interface IContactAcceptInviteModal {
   onClose: () => void
@@ -53,7 +58,23 @@ const ContactAcceptInviteModal: React.FC<IContactAcceptInviteModal> = props => {
           duration: 5000,
           isClosable: true,
         })
+      } else if (e instanceof ContactInviteNotForAccount) {
+        toast({
+          title: 'Error',
+          description: "Contact invite already accepted or doesn't exist",
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
       } else if (e instanceof ContactInviteNotFound) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      } else if (e instanceof OwnInviteError) {
         toast({
           title: 'Error',
           description: e.message,
