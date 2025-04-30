@@ -53,7 +53,13 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         </Heading>
       </HStack>
 
-      <Tabs variant="unstyled" bg="neutral.900">
+      <Tabs
+        variant="unstyled"
+        bg="neutral.900"
+        borderRadius={15}
+        mb={10}
+        pb={0}
+      >
         <HStack justifyContent="space-between" mb={4} p={5}>
           <Box w="fit-content" pos="relative" h="fit-content">
             <FormLabel
@@ -66,7 +72,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               justifyContent="center"
               alignItems="center"
             >
-              <RiSearch2Line color="#7B8794" />
+              <RiSearch2Line color="neutral.400" />
             </FormLabel>
             <Input
               pl={8}
@@ -75,6 +81,10 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               id="search"
               defaultValue={debouncedValue}
               onChange={e => setValue(e.target.value)}
+              borderColor="neutral.400"
+              _placeholder={{
+                color: 'neutral.400',
+              }}
             />
           </Box>
 
@@ -131,7 +141,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           </Button>
         </HStack>
         <TableContainer>
-          <TabPanels>
+          <TabPanels p={0}>
             <TabPanel p={0}>
               <ContactsList
                 currentAccount={currentAccount}
@@ -154,11 +164,3 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
 }
 
 export default Contact
-
-// TODO: Inviting account should not be able to accept invite from same account via email
-// TODO: add checker to contact search, I.e the email account should be generated on the server
-// TODO: add border radius for contact ui
-// TODO: I should not be able to send multiple invites to the same account, Only one invite till 7 days
-// TODO: hover state for disabled button should be same
-// TODO: there should be a different display text for the button when the account is already invited
-// TODO: Remove Redundant account fetch on slots fetch
