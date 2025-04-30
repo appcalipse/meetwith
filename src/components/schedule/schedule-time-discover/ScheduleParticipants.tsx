@@ -115,7 +115,7 @@ export function ScheduleParticipants({
                     textOverflow="ellipsis"
                     w={'fit-content'}
                   >
-                    {participant.name}
+                    {participant.name || 'You'}
                   </Heading>
                   {currentAccount?.address === participant.account_address && (
                     <Text fontSize={'sm'} color={'neutral.200'}>
