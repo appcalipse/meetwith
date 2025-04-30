@@ -2996,6 +2996,16 @@ const getOrCreateContactInvite = async (
   }
   return insertData[0]
 }
+const updateContactInviteCooldown = async (id: string) => {
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000
+  const { error } = await db.supabase
+    .from('contact_invite')
+    .update({ last_invited: new Date(Date.now() + SEVEN_DAYS) })
+    .eq('id', id)
+  if (error) {
+    throw new Error(error.message)
+  }
+}
 const isUserContact = async (owner_address: string, address: string) => {
   const { data, error } = await db.supabase
     .from('contact')
@@ -3287,6 +3297,18 @@ const rejectContactInvite = async (
     throw new Error(deleteError.message)
   }
 }
+const contactInviteByEmailExists = async (email: string) => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select()
+    .eq('destination', email)
+    .eq('channel', ChannelType.EMAIL)
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data?.length > 0
+}
 
 const removeContact = async (address: string, contact_address: string) => {
   const { error: updateError } = await db.supabase
@@ -3315,6 +3337,7 @@ export {
   addUserToGroup,
   changeGroupRole,
   connectedCalendarExists,
+  contactInviteByEmailExists,
   createTgConnection,
   deleteAllTgConnections,
   deleteGateCondition,
@@ -3385,6 +3408,7 @@ export {
   updateAccountFromInvite,
   updateAccountPreferences,
   updateAllRecurringSlots,
+  updateContactInviteCooldown,
   updateCustomSubscriptionDomain,
   updateMeeting,
   updateRecurringSlots,
