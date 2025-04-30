@@ -90,6 +90,7 @@ import {
   AdminBelowOneError,
   AlreadyGroupMemberError,
   ContactAlreadyExists,
+  ContactInviteNotForAccount,
   ContactInviteNotFound,
   ContactNotFound,
   CouponAlreadyUsed,
@@ -106,6 +107,7 @@ import {
   NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
+  OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   UnauthorizedError,
@@ -3181,7 +3183,10 @@ const acceptContactInvite = async (
     invite?.channel === ChannelType.ACCOUNT &&
     invite?.destination !== account_address
   ) {
-    throw new Error('Invalid invite')
+    throw new ContactInviteNotForAccount()
+  }
+  if (invite?.account_owner_address === account_address) {
+    throw new OwnInviteError()
   }
 
   const { data: contactExists } = await db.supabase
@@ -3259,7 +3264,7 @@ const rejectContactInvite = async (
     throw new Error(error.message)
   }
   if (!data?.length) {
-    throw new Error('Invite not found')
+    throw new ContactInviteNotForAccount()
   }
   const invite = data[0]
 
@@ -3268,7 +3273,10 @@ const rejectContactInvite = async (
     invite?.channel === ChannelType.ACCOUNT &&
     invite?.destination !== account_address
   ) {
-    throw new Error('Invalid invite')
+    throw new ContactInviteNotForAccount()
+  }
+  if (invite?.account_owner_address === account_address) {
+    throw new OwnInviteError()
   }
 
   const { error: deleteError } = await db.supabase
