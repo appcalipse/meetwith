@@ -523,7 +523,6 @@ const getSlotsForAccount = async (
 
   return data || []
 }
-
 const getSlotsForAccountMinimal = async (
   account_address: string,
   start?: Date,
