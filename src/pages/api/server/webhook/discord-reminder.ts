@@ -7,7 +7,7 @@ import { MeetingRepeatIntervals } from '@/utils/constants/schedule'
 import {
   getConferenceDataBySlotId,
   getDiscordAccounts,
-  getSlotsForAccount,
+  getSlotsForAccountMinimal,
 } from '@/utils/database'
 import { dmAccount } from '@/utils/services/discord.helper'
 
@@ -17,7 +17,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const discordAccounts = await getDiscordAccounts()
       const currentTime = new Date()
       for (const account of discordAccounts) {
-        const slots = await getSlotsForAccount(
+        const slots = await getSlotsForAccountMinimal(
           account.account_address,
           currentTime
         )
