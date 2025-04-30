@@ -46,7 +46,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               if (!isWithinInterval(currentTime, startInterval)) continue
               const message = `You have a meeting (${
                 meeting.title || 'No Title'
-              })(staging) \n Starting in ${
+              }) \n Starting in ${
                 interval.label
               }. \n Meeting Time: ${dateToLocalizedRange(
                 new Date(slot.start),
