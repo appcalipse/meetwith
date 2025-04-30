@@ -246,3 +246,18 @@ export class ContactInviteNotFound extends Error {
     this.name = 'ContactInviteNotFound'
   }
 }
+
+export class ContactInviteNotForAccount extends Error {
+  constructor() {
+    super(`Contact invite not for this account`)
+    this.name = 'ContactInviteNotForAccount'
+  }
+}
+
+// you can't accept your own invite
+export class OwnInviteError extends Error {
+  constructor() {
+    super(`You can't accept your own invite`)
+    this.name = 'OwnInviteError'
+  }
+}
