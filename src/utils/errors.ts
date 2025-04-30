@@ -261,3 +261,10 @@ export class OwnInviteError extends Error {
     this.name = 'OwnInviteError'
   }
 }
+
+export class ContactInviteAlreadySent extends Error {
+  constructor() {
+    super(`Contact invite already sent`)
+    this.name = 'ContactInviteAlreadySent'
+  }
+}
