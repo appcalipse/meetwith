@@ -47,6 +47,7 @@ const ContactRequestItem: FC<Props> = ({
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof ContactInviteNotForAccount) {
         toast({
@@ -55,6 +56,7 @@ const ContactRequestItem: FC<Props> = ({
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof ContactInviteNotFound) {
         toast({
@@ -63,6 +65,7 @@ const ContactRequestItem: FC<Props> = ({
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else if (e instanceof OwnInviteError) {
         toast({
@@ -71,6 +74,7 @@ const ContactRequestItem: FC<Props> = ({
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       } else {
         toast({
@@ -79,6 +83,7 @@ const ContactRequestItem: FC<Props> = ({
           status: 'error',
           duration: 5000,
           isClosable: true,
+          position: 'top',
         })
       }
       refetch()

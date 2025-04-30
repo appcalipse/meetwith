@@ -121,10 +121,10 @@ const ContactsList = forwardRef<ContactLisRef, Props>(
               refetch={() => fetchContacts(true, contacts.length + 1)}
             />
           ))}
-          <Tr color="white">
-            <Th justifyContent="center" colSpan={6}>
-              <VStack mb={8}>
-                {!noMoreFetch && !firstFetch && (
+          {!noMoreFetch && !firstFetch && (
+            <Tr color="white">
+              <Th justifyContent="center" colSpan={6}>
+                <VStack mb={8}>
                   <Button
                     isLoading={loading}
                     colorScheme="primary"
@@ -135,11 +135,11 @@ const ContactsList = forwardRef<ContactLisRef, Props>(
                   >
                     Load more
                   </Button>
-                )}
-                <Spacer />
-              </VStack>
-            </Th>
-          </Tr>
+                  <Spacer />
+                </VStack>
+              </Th>
+            </Tr>
+          )}
         </Tbody>
       )
     }
