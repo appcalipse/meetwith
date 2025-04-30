@@ -90,6 +90,7 @@ import {
   AdminBelowOneError,
   AlreadyGroupMemberError,
   ContactAlreadyExists,
+  ContactInviteNotForAccount,
   ContactInviteNotFound,
   ContactNotFound,
   CouponAlreadyUsed,
@@ -106,6 +107,7 @@ import {
   NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
+  OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   UnauthorizedError,
@@ -3020,6 +3022,16 @@ const getOrCreateContactInvite = async (
   }
   return insertData[0]
 }
+const updateContactInviteCooldown = async (id: string) => {
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000
+  const { error } = await db.supabase
+    .from('contact_invite')
+    .update({ last_invited: new Date(Date.now() + SEVEN_DAYS) })
+    .eq('id', id)
+  if (error) {
+    throw new Error(error.message)
+  }
+}
 const isUserContact = async (owner_address: string, address: string) => {
   const { data, error } = await db.supabase
     .from('contact')
@@ -3207,7 +3219,10 @@ const acceptContactInvite = async (
     invite?.channel === ChannelType.ACCOUNT &&
     invite?.destination !== account_address
   ) {
-    throw new Error('Invalid invite')
+    throw new ContactInviteNotForAccount()
+  }
+  if (invite?.account_owner_address === account_address) {
+    throw new OwnInviteError()
   }
 
   const { data: contactExists } = await db.supabase
@@ -3285,7 +3300,7 @@ const rejectContactInvite = async (
     throw new Error(error.message)
   }
   if (!data?.length) {
-    throw new Error('Invite not found')
+    throw new ContactInviteNotForAccount()
   }
   const invite = data[0]
 
@@ -3294,7 +3309,10 @@ const rejectContactInvite = async (
     invite?.channel === ChannelType.ACCOUNT &&
     invite?.destination !== account_address
   ) {
-    throw new Error('Invalid invite')
+    throw new ContactInviteNotForAccount()
+  }
+  if (invite?.account_owner_address === account_address) {
+    throw new OwnInviteError()
   }
 
   const { error: deleteError } = await db.supabase
@@ -3304,6 +3322,18 @@ const rejectContactInvite = async (
   if (deleteError) {
     throw new Error(deleteError.message)
   }
+}
+const contactInviteByEmailExists = async (email: string) => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select()
+    .eq('destination', email)
+    .eq('channel', ChannelType.EMAIL)
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data?.length > 0
 }
 
 const removeContact = async (address: string, contact_address: string) => {
@@ -3333,6 +3363,7 @@ export {
   addUserToGroup,
   changeGroupRole,
   connectedCalendarExists,
+  contactInviteByEmailExists,
   createTgConnection,
   deleteAllTgConnections,
   deleteGateCondition,
@@ -3404,6 +3435,7 @@ export {
   updateAccountFromInvite,
   updateAccountPreferences,
   updateAllRecurringSlots,
+  updateContactInviteCooldown,
   updateCustomSubscriptionDomain,
   updateMeeting,
   updateRecurringSlots,
