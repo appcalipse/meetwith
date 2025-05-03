@@ -18,6 +18,7 @@ import {
   addHours,
   endOfMonth,
   isBefore,
+  isSameDay,
   isSameMonth,
   isWithinInterval,
   startOfMonth,
@@ -203,12 +204,20 @@ export function SchedulePickTime({
       .filter(val => isSameMonth(val, currentMonth))
     return days.map(date => {
       const slots = getEmptySlots(date)
-      date.setHours(0, 0, 0, 0)
+      date = DateTime.fromJSDate(date)
+        .setZone(timezone)
+        .set({
+          hour: 0,
+          minute: 0,
+          second: 0,
+        })
+        .toJSDate()
       const busySlots = accountSlots.map(val => {
         return val.filter(slot => {
-          return isWithinInterval(date, slot)
+          return isWithinInterval(date, slot) || isSameDay(date, slot.start)
         })
       })
+
       const availabilities: Array<Record<string, Array<CustomTimeRange>>> = []
       const accounts = Object.values(groupAvailability).flat()
       for (const [key, entry] of Object.entries(accountAvailabilities)) {
