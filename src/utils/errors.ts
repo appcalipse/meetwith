@@ -268,3 +268,10 @@ export class ContactInviteAlreadySent extends Error {
     this.name = 'ContactInviteAlreadySent'
   }
 }
+
+export class CantInviteYourself extends Error {
+  constructor() {
+    super(`You can't invite yourself`)
+    this.name = 'CantInviteYourself'
+  }
+}
