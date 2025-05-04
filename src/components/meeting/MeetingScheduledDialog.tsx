@@ -12,8 +12,10 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { useMutation } from '@tanstack/react-query'
 import router from 'next/router'
 import { useContext, useState } from 'react'
+import { BiPlus } from 'react-icons/bi'
 import { FaBell } from 'react-icons/fa'
 
 import { AccountContext } from '@/providers/AccountProvider'
@@ -25,8 +27,16 @@ import {
 import { MeetingDecrypted, SchedulingType } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
-import { setNotificationSubscriptions } from '@/utils/api_helper'
+import {
+  sendContactListInvite,
+  setNotificationSubscriptions,
+} from '@/utils/api_helper'
 import { dateToHumanReadable } from '@/utils/calendar_manager'
+import {
+  CantInviteYourself,
+  ContactAlreadyExists,
+  ContactInviteAlreadySent,
+} from '@/utils/errors'
 import { getMeetingsScheduled } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 import { isValidEmail } from '@/utils/validations'
@@ -35,21 +45,25 @@ import { Account } from '../../types/Account'
 
 interface IProps {
   participants: ParticipantInfo[]
-  schedulerAccount?: Account
+  hostAccount?: Account
   accountNotificationSubs: number
   meeting?: MeetingDecrypted
   scheduleType: SchedulingType
   hasConnectedCalendar: boolean
   reset: () => void
+  isContact: boolean
+  setIsContact: (isContact: boolean) => void
 }
 
 const MeetingScheduledDialog: React.FC<IProps> = ({
   participants,
-  schedulerAccount,
+  hostAccount,
   accountNotificationSubs,
   meeting,
   scheduleType,
   hasConnectedCalendar,
+  isContact,
+  setIsContact,
   reset,
 }) => {
   const { currentAccount } = useContext(AccountContext)
@@ -57,7 +71,69 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   const toast = useToast()
 
   const { openConnection } = useContext(OnboardingModalContext)
-
+  const { isLoading: isInviteLoading, mutateAsync: sendInviteAsync } =
+    useMutation({
+      mutationFn: (data: { address?: string }) =>
+        sendContactListInvite(data?.address),
+      mutationKey: ['sendContactListInvite'],
+    })
+  const handleInvite = async () => {
+    try {
+      if (!hostAccount?.address) return
+      const invite = await sendInviteAsync({
+        address: hostAccount.address,
+      })
+      if (invite?.success) {
+        setIsContact(true)
+        toast({
+          title: 'Invitation sent successfully',
+          description: '',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      }
+    } catch (e: unknown) {
+      if (e instanceof ContactAlreadyExists) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      } else if (e instanceof ContactInviteAlreadySent) {
+        toast({
+          title: 'Error',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      } else if (e instanceof CantInviteYourself) {
+        toast({
+          title: 'Error',
+          description: 'You can&apos;t invite yourself',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Could not load contact invite request',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top',
+        })
+      }
+    }
+  }
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on WHY section')
@@ -85,12 +161,12 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
       participants?.filter(
         participant =>
           participant.account_address?.toLowerCase() !==
-          schedulerAccount?.address.toLowerCase()
+          currentAccount?.address.toLowerCase()
       ) ?? []
   }
 
-  const accountMeetingsScheduled = schedulerAccount
-    ? getMeetingsScheduled(schedulerAccount.address)
+  const accountMeetingsScheduled = currentAccount
+    ? getMeetingsScheduled(currentAccount.address)
     : 0
 
   const subs = {
@@ -149,7 +225,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
             <Text textAlign="center">
               {`Your meeting with ${getAllParticipantsDisplayName(
                 participantsToDisplay,
-                schedulerAccount?.address
+                currentAccount?.address
               )} at ${dateToHumanReadable(
                 meeting!.start,
                 Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -164,7 +240,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
           />
         </Flex>
 
-        {schedulerAccount &&
+        {currentAccount &&
         accountNotificationSubs === 0 &&
         accountMeetingsScheduled <= 3 &&
         !!currentAccount ? (
@@ -206,7 +282,17 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
           </VStack>
         ) : !!currentAccount ? (
           <VStack gap={4}>
-            {hasConnectedCalendar ? (
+            {!isContact ? (
+              <Button
+                colorScheme="primary"
+                width="100%"
+                isLoading={isInviteLoading}
+                onClick={() => handleInvite()}
+              >
+                <BiPlus size={24} style={{ marginRight: 4 }} />
+                Add host to contact list
+              </Button>
+            ) : hasConnectedCalendar ? (
               <Button
                 colorScheme="primary"
                 onClick={() => router.push('/dashboard/notifications')}
