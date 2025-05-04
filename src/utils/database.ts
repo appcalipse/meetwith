@@ -3083,6 +3083,23 @@ const getContactLean = async (
   return data as unknown as DBContactLean
 }
 
+const checkContactExists = async (
+  current_address: string,
+  user_address: string
+): Promise<DBContactLean> => {
+  const { data, error } = await db.supabase.rpc<DBContactLean>(
+    'check_contact_existence',
+    {
+      current_account: current_address,
+      user_address: user_address,
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data as unknown as DBContactLean
+}
+
 const getContactById = async (
   id: string,
   address: string
@@ -3115,6 +3132,7 @@ const getContactById = async (
   }
   return contact
 }
+
 const getContactInvites = async (
   address: string,
   query = '',
@@ -3362,6 +3380,7 @@ export {
   addOrUpdateConnectedCalendar,
   addUserToGroup,
   changeGroupRole,
+  checkContactExists,
   connectedCalendarExists,
   contactInviteByEmailExists,
   createTgConnection,
