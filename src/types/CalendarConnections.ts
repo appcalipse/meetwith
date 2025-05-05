@@ -30,12 +30,24 @@ export interface CalendarEvent {
   location: string // The location of the event
 }
 
+export interface CalendarWebhookResp {
+  calendarType: TimeSlotSource
+  webhookId: string
+  webhookAddress: string
+  webhookResourceId?: string
+  webhookExpiration?: Date
+}
 export interface CalendarSyncInfo {
   calendarId: string
   name: string
   sync: boolean
   enabled: boolean
   webhook?: boolean
+  webhookType?: TimeSlotSource
+  webhookId?: string
+  webhookResourceId?: string
+  webhookAddress?: string
+  webhookExpiration?: Date
   color?: string
 }
 export interface ConnectedCalendarCore {

@@ -7,6 +7,7 @@ import { Auth, calendar_v3, google } from 'googleapis'
 import {
   CalendarEvent,
   CalendarSyncInfo,
+  CalendarWebhookResp,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
@@ -17,7 +18,7 @@ import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
-import { updateCalendarPayload, updateCalendarWebhook } from '../database'
+import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -669,12 +670,9 @@ export default class GoogleCalendarService implements CalendarService {
     }
   }
 
-  async stopChannel(
-    calendarOwnerAddress: string,
-    resourceId: string
-  ): Promise<void> {
+  async stopChannel(webhookId: string, resourceId: string): Promise<void> {
     console.log(
-      `Attempting to stop channel with ID: ${calendarOwnerAddress} and Resource ID: ${resourceId}`
+      `Attempting to stop channel with ID: ${webhookId} and Resource ID: ${resourceId}`
     )
     try {
       const myGoogleAuth = await this.auth.getToken() // Or getClient() depending on auth setup
@@ -684,7 +682,7 @@ export default class GoogleCalendarService implements CalendarService {
       })
 
       const requestBody: calendar_v3.Schema$Channel = {
-        id: `id-${calendarOwnerAddress}`,
+        id: webhookId,
         resourceId: resourceId,
       }
 
@@ -693,21 +691,15 @@ export default class GoogleCalendarService implements CalendarService {
         requestBody: requestBody,
       })
 
-      await updateCalendarWebhook(
-        calendarOwnerAddress,
-        TimeSlotSource.GOOGLE,
-        false
-      )
-
       console.log(
-        `Successfully stopped channel with ID: ${calendarOwnerAddress} and Resource ID: ${resourceId}`
+        `Successfully stopped channel with ID: ${webhookId} and Resource ID: ${resourceId}`
       )
       // No meaningful data is returned on success, so we resolve void
     } catch (error: any) {
       // Log the specific error from the API if available
       const apiError = error?.response?.data?.error || error
       console.error(
-        `Error stopping Google Calendar channel (ID: ${calendarOwnerAddress}, Resource ID: ${resourceId}):`,
+        `Error stopping Google Calendar channel (ID: ${webhookId}, Resource ID: ${resourceId}):`,
         apiError.message || error.message || error
       )
       // Re-throw the error to be handled by the caller
@@ -719,8 +711,9 @@ export default class GoogleCalendarService implements CalendarService {
 
   async setupCalendarWebhook(
     calendarId: string,
-    calendarOwnerAddress: string
-  ): Promise<void> {
+    calendarOwnerAddress: string,
+    webhookUrl = apiUrl
+  ): Promise<CalendarWebhookResp> {
     try {
       const myGoogleAuth = await this.auth.getToken()
       const calendar = google.calendar({
@@ -729,9 +722,7 @@ export default class GoogleCalendarService implements CalendarService {
       })
 
       // Fro local testing add ngrok url for apiUrl
-      const webhookAddress = `${apiUrl}/server/webhooks/calendar/google/${calendarOwnerAddress}`
-
-      console.log(webhookAddress)
+      const webhookAddress = `${webhookUrl}/server/webhooks/calendar/google/${calendarOwnerAddress}`
 
       // Create the watch request using the calendarOwnerAddress as the ID
       const watchRequest: calendar_v3.Schema$Channel = {
@@ -745,17 +736,18 @@ export default class GoogleCalendarService implements CalendarService {
         requestBody: watchRequest,
       })
 
-      console.log(response)
-
-      await updateCalendarWebhook(
-        calendarOwnerAddress,
-        TimeSlotSource.GOOGLE,
-        true
-      )
+      const resp: CalendarWebhookResp = {
+        calendarType: TimeSlotSource.GOOGLE,
+        webhookId: response.data.id || '',
+        webhookAddress: response.config.data.address || '',
+        webhookResourceId: response.data.resourceId || '',
+        webhookExpiration: new Date(Number(response.data.expiration)),
+      }
 
       console.log(
         `Webhook set up for calendar ${calendarId} to owner ${calendarOwnerAddress}`
       )
+      return resp
     } catch (error) {
       console.error('Error setting up Google Calendar webhook:', error)
       throw error

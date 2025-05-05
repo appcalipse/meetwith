@@ -1,6 +1,7 @@
 import {
   CalendarEvent,
   CalendarSyncInfo,
+  CalendarWebhookResp,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
@@ -62,8 +63,9 @@ export interface CalendarService {
    */
   setupCalendarWebhook(
     calendarId: string,
-    calendarOwnerAddress: string
-  ): Promise<void>
+    calendarOwnerAddress: string,
+    webhookUrl?: string
+  ): Promise<CalendarWebhookResp>
 
   /**
    * Updates an event on target external calendar

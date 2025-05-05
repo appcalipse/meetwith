@@ -387,8 +387,9 @@ export default class CaldavCalendarService implements CalendarService {
 
   async setupCalendarWebhook(
     calendarId: string,
-    calendarOwnerAddress: string
-  ): Promise<void> {}
+    calendarOwnerAddress: string,
+    webhookUrl?: string
+  ): Promise<any> {}
 
   async getAvailability(
     calendarIds: string[],
