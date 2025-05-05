@@ -1,7 +1,9 @@
+/// <reference types="cypress" />
+
 import { add } from 'date-fns'
 import React from 'react'
 
-import { ScheduleTimeSlot } from './ScheduleTimeSlot'
+import { ScheduleTimeSlot } from '@/components/schedule/schedule-time-discover/ScheduleTimeSlot'
 
 describe('<ScheduleTimeSlot />', () => {
   it('renders', () => {
