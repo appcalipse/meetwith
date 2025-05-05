@@ -1,9 +1,14 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Time } from '@faker-js/faker/time'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { ConnectedCalendar } from '@/types/CalendarConnections'
+import {
+  CalendarSyncInfo,
+  ConnectedCalendar,
+} from '@/types/CalendarConnections'
+import { TimeSlotSource } from '@/types/Meeting'
 import {
   addOrUpdateConnectedCalendar,
   getConnectedCalendars,
@@ -53,23 +58,34 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }))
     )
   } else if (req.method === 'DELETE') {
+    // Delete a Calendar
     const { email, provider } = req.body
     await removeConnectedCalendar(req.session.account!.address, email, provider)
     return res.status(200).json({})
+    // eslint-disable-next-line prettier/prettier
   } else if (req.method === 'PUT') {
-    const { email, provider, calendars } = req.body
+    // Update a Calendar
+    const { email, provider, calendars } = req.body as {
+      email: string
+      provider: TimeSlotSource
+      calendars: CalendarSyncInfo[]
+    }
+
+    const ownerAddress = req.session.account!.address
+
+    console.log('updating calendar')
     const result = await addOrUpdateConnectedCalendar(
-      req.session.account!.address,
+      ownerAddress,
       email,
       provider,
       calendars
     )
 
     // get all connected calendars
-    const connectedCalendars = await getConnectedCalendars(
-      req.session.account!.address,
-      { syncOnly: true, activeOnly: false }
-    )
+    const connectedCalendars = await getConnectedCalendars(ownerAddress, {
+      syncOnly: true,
+      activeOnly: false,
+    })
 
     // For google calendars
     if (provider.toLowerCase() === 'google') {
@@ -79,38 +95,82 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       if (googleCalendar) {
         // filter for calendar where webhook is true
-        calendars.forEach(async ({ webhook, calendarId }: any) => {
+        calendars.forEach(async (calendar: CalendarSyncInfo) => {
+          const webhook = calendar.webhook
+          const calendarId = calendar.calendarId
+          const webhookUrl = 'https://e960-182-69-177-39.ngrok-free.app'
+
+          const integration = getConnectedCalendarIntegration(
+            ownerAddress,
+            email,
+            googleCalendar.provider,
+            googleCalendar.payload
+          )
+          // if (integration && integration.stopChannel) {
+          //   await integration.stopChannel(
+          //     // calendar.webhookId || '',
+          //     // calendar.webhookResourceId || ''
+          //     'id-0x2b8ef56fb6777964e83e183fa3076bf553f1822d',
+          //     'Vx-_Bil7EmsSwbBnj_y-Pz6hYw8'
+          //   )
+          // }
+
+          // const currentCalendar = googleCalendar.calendars.find(
+          //   (k: CalendarSyncInfo) => k.calendarId === calendarId
+          // )
+
           if (webhook) {
-            const ownerAddress = req.session.account!.address
-            console.log('PUT', email, calendarId, ownerAddress)
-            const calendar = calendars.find(
-              (k: any) =>
-                k.calendarId.toLowerCase() === calendarId.toLowerCase()
-            )
+            console.log('setup calendar webhook')
+            calendar.webhook = true
+            calendar.webhookType = TimeSlotSource.GOOGLE
 
-            if (calendar) {
-              const integration = getConnectedCalendarIntegration(
+            if (integration) {
+              const resp = await integration.setupCalendarWebhook(
+                calendarId,
                 ownerAddress,
-                email,
-                googleCalendar.provider,
-                googleCalendar.payload
+                webhookUrl
               )
-              console.log('setup calendar webhook')
 
-              // removing a webhook
-              // if (integration && integration.stopChannel) {
-              //   console.log('stopping calendar webhook')
-              //   const resourceId = 'Vx-_Bil7EmsSwbBnj_y-Pz6hYw8'
-              //   await integration.stopChannel(ownerAddress, resourceId)
-              // }
-              await integration.setupCalendarWebhook(calendarId, ownerAddress)
+              console.log('setup calendar webhook response', resp)
 
-              // fetch all events
-              // if (integration.getEvents) {
-              //   console.log('get events')
-              //   await integration.getGoogleEvents(calendarId)
-              // }
+              if (resp) {
+                calendar.webhookId = resp.webhookId
+                calendar.webhookAddress = resp.webhookAddress
+                calendar.webhookResourceId = resp.webhookResourceId
+                calendar.webhookExpiration = resp.webhookExpiration
+              }
             }
+            console.log('updating webhooks in database')
+            const result = await addOrUpdateConnectedCalendar(
+              ownerAddress,
+              email,
+              provider,
+              calendars
+            )
+            console.log('updated calendar', result)
+          } else {
+            calendar.webhook = false
+            calendar.webhookType = undefined
+            calendar.webhookId = ''
+            calendar.webhookAddress = ''
+            calendar.webhookResourceId = ''
+            calendar.webhookExpiration = undefined
+
+            if (integration && integration.stopChannel) {
+              console.log('stopping calendar webhook')
+              await integration.stopChannel(
+                calendar.webhookId || `id-${ownerAddress}`,
+                calendar.webhookResourceId || 'Vx-_Bil7EmsSwbBnj_y-Pz6hYw8'
+              )
+            }
+            // console.log('updating webhooks in database')
+            const _result = await addOrUpdateConnectedCalendar(
+              ownerAddress,
+              email,
+              provider,
+              calendars
+            )
+            // console.log('updated calendar', result)
           }
         })
       }
