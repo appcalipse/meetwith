@@ -44,6 +44,21 @@ export interface CalendarService {
   ): Promise<EventBusyDate[]>
 
   /**
+   * Gets the event by id on target external calendar
+   *
+   * @param meetingId the event id to query
+   * @param calendarId the calendar id to query
+   */
+  getEventById(
+    meetingId: string,
+    calendarId: string
+  ): Promise<
+    | NewCalendarEventType
+    | PromiseLike<NewCalendarEventType | undefined>
+    | undefined
+  >
+
+  /**
    * Updates an event on target external calendar
    *
    * @param calendarOwnerAccountAddress the owner account address
