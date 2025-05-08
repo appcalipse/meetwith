@@ -16,7 +16,7 @@
     "test": "NODE_ENV=test doppler run --config tests jest",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch",
-    "cy:open": "cypress open",
+    "cy:open": "cypress open --config-file ./cypress/cypress.config.ts",
     "cy:run": "cypress run",
     "cy:run:headless": "cypress run --headed --browser chrome",
     "cy:run:headless:record": "cypress run --headed --browser chrome --record --key 2f3a0b4d-5e8b-4c7e-9a1d-6f2f3a0b4d5e"
@@ -127,6 +127,7 @@
     "@faker-js/faker": "^6.2.0",
     "@peculiar/webcrypto": "^1.4.6",
     "@sentry/types": "^7.83.0",
+    "@synthetixio/synpress": "^4.1.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",
     "@types/amplitude-js": "^8.0.2",
