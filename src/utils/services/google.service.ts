@@ -34,7 +34,7 @@ export class MWWGoogleAuth extends google.auth.OAuth2 {
 }
 
 export default class GoogleCalendarService implements CalendarService {
-  private auth: { getToken: () => Promise<MWWGoogleAuth> }
+  auth: { getToken: () => Promise<MWWGoogleAuth> }
   private email: string
   constructor(
     address: string,
@@ -154,7 +154,7 @@ export default class GoogleCalendarService implements CalendarService {
         auth: myGoogleAuth,
       })
 
-      const calendarId = parseCalendarId(_calendarId)
+      const calendarId = this.parseCalendarId(_calendarId)
 
       calendar.events.get(
         {
@@ -219,7 +219,7 @@ export default class GoogleCalendarService implements CalendarService {
           if (event) {
             return resolve(event)
           }
-          const calendarId = parseCalendarId(_calendarId)
+          const calendarId = this.parseCalendarId(_calendarId)
           const participantsInfo: ParticipantInfo[] =
             meetingDetails.participants.map(participant => ({
               type: participant.type,
@@ -366,7 +366,7 @@ export default class GoogleCalendarService implements CalendarService {
     return new Promise(async (resolve, reject) => {
       const auth = this.auth
       const myGoogleAuth = await auth.getToken()
-      const calendarId = parseCalendarId(_calendarId)
+      const calendarId = this.parseCalendarId(_calendarId)
 
       const participantsInfo: ParticipantInfo[] =
         meetingDetails.participants.map(participant => ({
@@ -506,7 +506,7 @@ export default class GoogleCalendarService implements CalendarService {
         auth: myGoogleAuth,
       })
 
-      const calendarId = parseCalendarId(_calendarId)
+      const calendarId = this.parseCalendarId(_calendarId)
 
       calendar.events.delete(
         {
@@ -583,15 +583,14 @@ export default class GoogleCalendarService implements CalendarService {
       })
     )
   }
-}
-
-const parseCalendarId = (calId?: string) => {
-  if (!calId) {
-    return undefined
-  }
-  if (calId.indexOf('@') === -1) {
-    return calId
-  } else {
-    return 'primary'
+  parseCalendarId = (calId?: string) => {
+    if (!calId) {
+      return undefined
+    }
+    if (calId.indexOf('@') === -1) {
+      return calId
+    } else {
+      return 'primary'
+    }
   }
 }
