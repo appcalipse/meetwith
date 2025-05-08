@@ -304,9 +304,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           />
         </FormControl>
         <FormControl>
-          <FormLabel>Your Name</FormLabel>
+          <FormLabel htmlFor="name">Your Name</FormLabel>
           <Input
             autoFocus
+            id="name"
             type="text"
             isDisabled={isSchedulingExternal}
             placeholder="Your name or an identifier"
@@ -324,9 +325,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                 : !isFirstGuestEmailValid && !isGuestEmailValid()
             }
           >
-            <FormLabel>Email</FormLabel>
+            <FormLabel htmlFor="email">Email</FormLabel>
             <Input
               type="email"
+              id="email"
               placeholder="Insert your email"
               isDisabled={isSchedulingExternal}
               value={doSendEmailReminders ? userEmail : guestEmail}
