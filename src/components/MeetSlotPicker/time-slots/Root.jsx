@@ -107,6 +107,11 @@ function Root({
                 transitionProperty="all"
                 transitionDuration="300ms"
                 transitionTimingFunction="ease-in-out"
+                data-testid={
+                  selfAvailabilityCheck(slot.start)
+                    ? 'self-availability'
+                    : 'availability'
+                }
               >
                 {
                   <Text flex={1} fontWeight="bold">

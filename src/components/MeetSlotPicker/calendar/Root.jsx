@@ -158,6 +158,7 @@ function Root({
                         isDarkMode={colorMode === 'dark'}
                         isWeekend={_isWeekend}
                         onClick={() => isValid && handlePickDay(day)}
+                        data-testid={isValid ? 'valid-day' : 'invalid-day'}
                       >
                         {formatted}
                       </MonthDay>
