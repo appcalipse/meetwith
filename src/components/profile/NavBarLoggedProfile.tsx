@@ -88,11 +88,15 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
           )}
         </Box>
         {props.isOpen && (
-          <Text fontSize={'sm'} ml={2}>
+          <Text fontSize={'sm'} ml={2} data-testid="account-name">
             {accountName}
           </Text>
         )}
-        <Text fontSize={'sm'} display={{ base: 'none', lg: 'inline-block' }}>
+        <Text
+          fontSize={'sm'}
+          display={{ base: 'none', lg: 'inline-block' }}
+          data-testid="account-name"
+        >
           {accountName}
         </Text>
       </Flex>

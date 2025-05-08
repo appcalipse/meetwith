@@ -25,7 +25,9 @@ const ConnectWalletDialog: React.FC<IProps> = ({ isOpen }) => {
       >
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Connecting...</ModalHeader>
+          <ModalHeader data-testid="connection-modal-header">
+            Connecting...
+          </ModalHeader>
           <ModalBody p={6}>
             <Text color={useColorModeValue('gray.500', 'gray.300')}>
               Connecting your account
