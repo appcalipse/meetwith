@@ -1,6 +1,6 @@
 const baseURL =
   typeof window === 'undefined'
-    ? process.env.NEXT_PUBLIC_HOSTED_AT!.replace(/\/$/, '')
+    ? process.env.NEXT_PUBLIC_HOSTED_AT?.replace(/\/$/, '')
     : window.location.origin
 
 const apiUrl = `${baseURL}/api`
