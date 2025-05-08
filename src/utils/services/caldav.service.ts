@@ -253,6 +253,35 @@ export default class CaldavCalendarService implements CalendarService {
     }
   }
 
+  async getEventById(
+    meetingId: string,
+    calendarId: string
+  ): Promise<
+    | NewCalendarEventType
+    | PromiseLike<NewCalendarEventType | undefined>
+    | undefined
+  > {
+    return this.getEvents(calendarId, null, null, [meetingId])
+      .then(events => {
+        if (events.length > 0) {
+          const event = events[0]
+          return {
+            uid: event.uid,
+            id: event.uid,
+            type: 'Cal Dav',
+            password: '',
+            url: '',
+            additionalInfo: {},
+          }
+        }
+        return undefined
+      })
+      .catch(reason => {
+        Sentry.captureException(reason)
+        throw reason
+      })
+  }
+
   async updateEvent(
     calendarOwnerAccountAddress: string,
     meeting_id: string,

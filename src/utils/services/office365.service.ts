@@ -134,7 +134,41 @@ export default class Office365CalendarService implements CalendarService {
           : refreshAccessToken(credential.refresh_token),
     }
   }
+  getEventById(
+    meetingId: string,
+    calendarId: string
+  ): Promise<
+    | NewCalendarEventType
+    | PromiseLike<NewCalendarEventType | undefined>
+    | undefined
+  > {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const accessToken = await this.auth.getToken()
 
+        const response = await fetch(
+          `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${meetingId}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+          }
+        )
+
+        if (!response.ok) {
+          resolve(undefined)
+        } else {
+          const event = await handleErrorsResponse(response)
+          resolve(event)
+        }
+      } catch (error) {
+        Sentry.captureException(error)
+        reject()
+      }
+    })
+  }
   async refreshConnection(): Promise<CalendarSyncInfo[]> {
     const accessToken = await this.auth.getToken()
 
