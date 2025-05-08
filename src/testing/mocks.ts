@@ -98,3 +98,4 @@ export const CONDITION_MWW_POAP = {
   elements: [POAP_MWW],
   conditions: [],
 }
+export const TEST_ACCOUNT_REGEX = /0x[a-fA-F0-9]/
