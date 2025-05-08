@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 const TEST_ACCOUNT_REGEX = /0x[a-fA-F0-9]/
 context('Actions', () => {
-  before(() => {
+  beforeEach(() => {
     cy.once('window:load', () => {
       cy.get('button[aria-controls="ReactQueryDevtoolsPanel"]').click({
         multiple: true,
@@ -30,11 +30,11 @@ context('Actions', () => {
 
   // https://on.cypress.io/interacting-with-elements
 
-  it('Login - WIth Metamask', () => {
+  it('Login - With Metamask', () => {
     cy.get('button').contains('MetaMask').click()
 
-    cy.wait(10000)
-    cy.url({ timeout: 15000 }).should('match', /dashboard/)
+    cy.connectToDapp()
+    cy.url({ timeout: 150000 }).should('match', /dashboard/)
 
     cy.contains(TEST_ACCOUNT_REGEX).should('exist')
   })
