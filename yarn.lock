@@ -1979,7 +1979,7 @@
   resolved "https://registry.npmjs.org/@corex/deepmerge/-/deepmerge-4.0.43.tgz"
   integrity sha512-N8uEMrMPL0cu/bdboEWpQYb/0i2K5Qn8eCsxzOmxSggJbbQte7ljMRoXm917AbntqTGOzdTu+vP3KOOzoC70HQ==
 
-"@cypress/request@^3.0.8":
+"@cypress/request@^3.0.4":
   version "3.0.8"
   resolved "https://registry.yarnpkg.com/@cypress/request/-/request-3.0.8.tgz#992f1f42ba03ebb14fa5d97290abe9d015ed0815"
   integrity sha512-h0NFgh1mJmm1nr4jCwkGHwKneVYKghUyWe6TMNrk0B9zsjAJxpg8C4/+BAcmLgCPa1vj1V8rNUaILl+zYRUWBQ==
@@ -4402,6 +4402,13 @@
   resolved "https://registry.yarnpkg.com/@pkgjs/parseargs/-/parseargs-0.11.0.tgz#a77ea742fab25775145434eb1d2328cf5013ac33"
   integrity sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==
 
+"@playwright/test@^1.52.0":
+  version "1.52.0"
+  resolved "https://registry.yarnpkg.com/@playwright/test/-/test-1.52.0.tgz#267ec595b43a8f4fa5e444ea503689629e91a5b8"
+  integrity sha512-uh6W7sb55hl7D6vsAeA+V2p5JnlAqzhqFyF0VcJkKZXkgnFcVG9PziERRHQfPLfNGx1C292a4JqbWzhR8L4R1g==
+  dependencies:
+    playwright "1.52.0"
+
 "@popperjs/core@^2.9.0", "@popperjs/core@^2.9.3":
   version "2.11.8"
   resolved "https://registry.npmjs.org/@popperjs/core/-/core-2.11.8.tgz"
@@ -5808,6 +5815,11 @@
   resolved "https://registry.npmjs.org/@rushstack/eslint-patch/-/eslint-patch-1.6.0.tgz"
   integrity sha512-2/U3GXA6YiPYQDLGwtGlnNgKYBSwCFIHf8Y9LUY5VATHdtbLlU0Y1R3QoBnT0aB4qv/BEiVVsj7LJXoQCgJ2vA==
 
+"@scure/base@^1.2.5":
+  version "1.2.5"
+  resolved "https://registry.yarnpkg.com/@scure/base/-/base-1.2.5.tgz#f9d1b232425b367d0dcb81c96611dcc651d58671"
+  integrity sha512-9rE6EOVeIQzt5TSu4v+K523F8u6DhBsoZWPGKlnCshhlDhy0kJzUX4V+tr2dWmzF1GdekvThABoEQBGBQI7xZw==
+
 "@scure/base@~1.1.0", "@scure/base@~1.1.2":
   version "1.1.9"
   resolved "https://registry.npmjs.org/@scure/base/-/base-1.1.9.tgz"
@@ -6314,72 +6326,43 @@
   dependencies:
     tslib "^2.8.0"
 
-"@synthetixio/ethereum-wallet-mock@0.0.12":
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/@synthetixio/ethereum-wallet-mock/-/ethereum-wallet-mock-0.0.12.tgz#0b6e59652ccb7122ec1646a9d9f9d3100d9492c5"
-  integrity sha512-n1b59v61cPBRA1ryJIqBZ2VybArkRN+7/Hjl24A51J0nKFUED646/EzHRxl3qvLN7Xv3lcmjcmXX0KOcRozFXg==
-  dependencies:
-    "@depay/web3-client" "10.18.6"
-    "@depay/web3-mock" "14.19.1"
-    "@depay/web3-mock-evm" "^14.17.0"
-    "@synthetixio/synpress-core" "0.0.12"
-    viem "2.9.9"
+"@synthetixio/ethereum-wallet-mock@link:../synpress-cypress/wallets/ethereum-wallet-mock":
+  version "0.0.0"
+  uid ""
 
-"@synthetixio/synpress-cache@0.0.12":
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/@synthetixio/synpress-cache/-/synpress-cache-0.0.12.tgz#e563cc872dc70c296ef4b006f78b9dc88ca4172b"
-  integrity sha512-+3ry/p0TnW8yS2d6i9uFPQcHQ20DqeJoDVya0rBus0VPQy0zWxFQ4JWOlb2MyxBaog3shbX+G96UOfvdbpHqNA==
-  dependencies:
-    axios "1.6.7"
-    chalk "5.3.0"
-    commander "12.0.0"
-    esbuild "0.20.0"
-    fs-extra "11.2.0"
-    glob "10.3.10"
-    gradient-string "2.0.2"
-    progress "2.0.3"
-    tsup "8.0.2"
-    unzip-crx-3 "0.2.0"
-    unzipper "0.10.14"
-    zod "3.22.4"
+"@synthetixio/synpress-cache@link:../synpress-cypress/packages/cache":
+  version "0.0.0"
+  uid ""
 
 "@synthetixio/synpress-core@0.0.12":
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/@synthetixio/synpress-core/-/synpress-core-0.0.12.tgz#587c677e203871e5927c7fe5027162dc2b7e0032"
-  integrity sha512-OBJDWP/6Hf2olJD98IDeOMxrIJ8pGtnADmxBf0WTUHZiXOwysEnHWksOCaAI3Hef5X4I+MUTCRx2ea4AmvRG5g==
+  version "0.0.0"
+  uid ""
 
-"@synthetixio/synpress-metamask@0.0.12":
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/@synthetixio/synpress-metamask/-/synpress-metamask-0.0.12.tgz#26d0f831f74986b36cf0fa1d6f4f16d2d87c34b0"
-  integrity sha512-OHJq8r10+yLzsqUgF7c42xT0jTQASzapdFvGxa7Pz3GTCXz3k9VQVYjULXcVckM9rqr5FYhjhcb1MgovkDQHNw==
-  dependencies:
-    "@synthetixio/synpress-cache" "0.0.12"
-    "@synthetixio/synpress-core" "0.0.12"
-    "@viem/anvil" "0.0.7"
-    fs-extra "11.2.0"
-    zod "3.22.4"
+"@synthetixio/synpress-core@link:../synpress-cypress/packages/core":
+  version "0.0.0"
+  uid ""
 
-"@synthetixio/synpress-phantom@0.0.12":
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/@synthetixio/synpress-phantom/-/synpress-phantom-0.0.12.tgz#bb4ba71341c948c3c5c45e3d01a7039fe9804bf4"
-  integrity sha512-HJLeIllxFaasm8vHvFyHF6modwYjM/uoKCCSpSsD1khvLrSMwJey3p0ZwAlEEiaRMfqALvHDwTpKE3qSvnVLvg==
-  dependencies:
-    "@synthetixio/synpress-cache" "0.0.12"
-    "@synthetixio/synpress-core" "0.0.12"
-    "@viem/anvil" "0.0.7"
-    fs-extra "11.2.0"
-    zod "3.22.4"
+"@synthetixio/synpress-metamask@link:../synpress-cypress/wallets/metamask":
+  version "0.0.0"
+  uid ""
 
-"@synthetixio/synpress@^4.1.0":
+"@synthetixio/synpress-phantom@link:../synpress-cypress/wallets/phantom":
+  version "0.0.0"
+  uid ""
+
+"@synthetixio/synpress-tsconfig@^0.0.12":
+  version "0.0.12"
+  resolved "https://registry.yarnpkg.com/@synthetixio/synpress-tsconfig/-/synpress-tsconfig-0.0.12.tgz#f2599e5d018af48051855f18fcfb7ff8b13af989"
+  integrity sha512-WyouNIDYVsAeXgcH5ASuguNWFMJahIk3zAFoH+nh/rZNQFPmEIewnoCJyqtxq4Xev2vQMiXcEE2ICGtMRrSU7w==
+
+"@synthetixio/synpress@../synpress-cypress/release/":
   version "4.1.0"
-  resolved "https://registry.yarnpkg.com/@synthetixio/synpress/-/synpress-4.1.0.tgz#7997740d1e7ef83395e4c6fd3717318be18785b2"
-  integrity sha512-gjfIrFtwJhIJ3fJtKu0OSUrObP7fGWlGRfGCaMFysqhAv2sRc4TQQ8Fxih3Jix7e+oPYyR1vGfsyGpgMrY46oQ==
   dependencies:
-    "@synthetixio/ethereum-wallet-mock" "0.0.12"
-    "@synthetixio/synpress-cache" "0.0.12"
-    "@synthetixio/synpress-core" "0.0.12"
-    "@synthetixio/synpress-metamask" "0.0.12"
-    "@synthetixio/synpress-phantom" "0.0.12"
+    "@synthetixio/ethereum-wallet-mock" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/wallets/ethereum-wallet-mock"
+    "@synthetixio/synpress-cache" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/packages/cache"
+    "@synthetixio/synpress-core" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/packages/core"
+    "@synthetixio/synpress-metamask" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/wallets/metamask"
+    "@synthetixio/synpress-phantom" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/wallets/phantom"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
@@ -7055,7 +7038,7 @@
   resolved "https://registry.npmjs.org/@types/ms/-/ms-0.7.34.tgz"
   integrity sha512-nG96G3Wp6acyAgJqGasjODb+acrI7KltPiRxzHPXnP3NgI28bpQDRv53olbqGXbfcgF5aiiHmO3xpwEpS5Ld9g==
 
-"@types/node@*", "@types/node@16.11.7":
+"@types/node@*":
   version "16.11.7"
   resolved "https://registry.npmjs.org/@types/node/-/node-16.11.7.tgz"
   integrity sha512-QB5D2sqfSjCmTuWcBWyJ+/44bcjO7VbjSbOE0ucoVbAsSNQc4Lt6QkgkVXkTDwkL4z/beecZNDvVX15D4P8Jbw==
@@ -9680,11 +9663,6 @@ ci-info@^3.2.0, ci-info@^3.8.0:
   resolved "https://registry.npmjs.org/ci-info/-/ci-info-3.9.0.tgz"
   integrity sha512-NIxF55hv4nSqQswkAeiOi1r83xy8JldOFDTWiug55KBu9Jnblncd2U6ViHmYgHf01TPZS77NJBhBMKdWj9HQMQ==
 
-ci-info@^4.1.0:
-  version "4.2.0"
-  resolved "https://registry.yarnpkg.com/ci-info/-/ci-info-4.2.0.tgz#cbd21386152ebfe1d56f280a3b5feccbd96764c7"
-  integrity sha512-cYY9mypksY8NRqgDB1XD1RiJL338v/551niynFTGkZOO2LHuB2OmOYxDIe/ttN9AHwrqdum1360G3ald0W9kCg==
-
 cids@^0.7.1:
   version "0.7.5"
   resolved "https://registry.npmjs.org/cids/-/cids-0.7.5.tgz"
@@ -9761,7 +9739,7 @@ cli-table3@0.6.0:
   optionalDependencies:
     colors "^1.1.2"
 
-cli-table3@~0.6.5:
+cli-table3@~0.6.1:
   version "0.6.5"
   resolved "https://registry.yarnpkg.com/cli-table3/-/cli-table3-0.6.5.tgz#013b91351762739c16a9567c21a04632e449bf2f"
   integrity sha512-+W/5efTR7y5HRD7gACw9yQjqMVvEMLBHmboM/kPWam+H+Hmyrgjh6YncVKK122YZkXrLudzTuAukUw9FnMf7IQ==
@@ -9997,7 +9975,7 @@ commander@^6.2.0, commander@^6.2.1:
 
 commander@^8.0.0:
   version "8.3.0"
-  resolved "https://registry.npmjs.org/commander/-/commander-8.3.0.tgz"
+  resolved "https://registry.yarnpkg.com/commander/-/commander-8.3.0.tgz#4837ea1b2da67b9c616a67afbb0fafee567bca66"
   integrity sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==
 
 commander@^9.3.0:
@@ -10396,12 +10374,12 @@ csstype@^3.0.2, csstype@^3.1.2:
   resolved "https://registry.npmjs.org/csstype/-/csstype-3.1.3.tgz"
   integrity sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==
 
-cypress@^14.3.2:
-  version "14.3.2"
-  resolved "https://registry.yarnpkg.com/cypress/-/cypress-14.3.2.tgz#04a6ea66c1715119ef41dda5851d75801cc1e226"
-  integrity sha512-n+yGD2ZFFKgy7I3YtVpZ7BcFYrrDMcKj713eOZdtxPttpBjCyw/R8dLlFSsJPouneGN7A/HOSRyPJ5+3/gKDoA==
+cypress@13.15.1:
+  version "13.15.1"
+  resolved "https://registry.yarnpkg.com/cypress/-/cypress-13.15.1.tgz#d85074e07cc576eb30068617d529719ef6093b69"
+  integrity sha512-DwUFiKXo4lef9kA0M4iEhixFqoqp2hw8igr0lTqafRb9qtU3X0XGxKbkSYsUFdkrAkphc7MPDxoNPhk5pj9PVg==
   dependencies:
-    "@cypress/request" "^3.0.8"
+    "@cypress/request" "^3.0.4"
     "@cypress/xvfb" "^1.2.4"
     "@types/sinonjs__fake-timers" "8.1.1"
     "@types/sizzle" "^2.3.2"
@@ -10412,9 +10390,8 @@ cypress@^14.3.2:
     cachedir "^2.3.0"
     chalk "^4.1.0"
     check-more-types "^2.24.0"
-    ci-info "^4.1.0"
     cli-cursor "^3.1.0"
-    cli-table3 "~0.6.5"
+    cli-table3 "~0.6.1"
     commander "^6.2.1"
     common-tags "^1.8.0"
     dayjs "^1.10.4"
@@ -10427,6 +10404,7 @@ cypress@^14.3.2:
     figures "^3.2.0"
     fs-extra "^9.1.0"
     getos "^3.2.1"
+    is-ci "^3.0.1"
     is-installed-globally "~0.4.0"
     lazy-ass "^1.6.0"
     listr2 "^3.8.3"
@@ -10438,7 +10416,7 @@ cypress@^14.3.2:
     process "^0.11.10"
     proxy-from-env "1.0.0"
     request-progress "^3.0.0"
-    semver "^7.7.1"
+    semver "^7.5.3"
     supports-color "^8.1.1"
     tmp "~0.2.3"
     tree-kill "1.2.2"
@@ -10765,7 +10743,7 @@ define-property@^2.0.2:
 
 defined@^1.0.0:
   version "1.0.1"
-  resolved "https://registry.npmjs.org/defined/-/defined-1.0.1.tgz"
+  resolved "https://registry.yarnpkg.com/defined/-/defined-1.0.1.tgz#c0b9db27bfaffd95d6f61399419b893df0f91ebf"
   integrity sha512-hsBd2qSVCRE+5PmNdHt1uzyrFu5d3RwmFDKzyNZMFq/EwDNJF7Ee5+D5oEKF0hU6LhtoUF1macFvOe4AskQC1Q==
 
 defu@^6.1.4:
@@ -11082,6 +11060,11 @@ dotenv@8.2.0:
   resolved "https://registry.npmjs.org/dotenv/-/dotenv-8.2.0.tgz"
   integrity sha512-8sJ78ElpbDJBHNeBzUbUVLsqKdccaa/BXF1uPTw3GrvQTBgrQrtObr2mUrE38vzYd8cEv+m/JBfDLioYcfXoaw==
 
+dotenv@^16.5.0:
+  version "16.5.0"
+  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.5.0.tgz#092b49f25f808f020050051d1ff258e404c78692"
+  integrity sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==
+
 drbg.js@^1.0.1:
   version "1.0.1"
   resolved "https://registry.npmjs.org/drbg.js/-/drbg.js-1.0.1.tgz"
@@ -11354,7 +11337,7 @@ enhanced-resolve@^5.12.0:
 
 enquirer@^2.3.5, enquirer@^2.3.6:
   version "2.4.1"
-  resolved "https://registry.npmjs.org/enquirer/-/enquirer-2.4.1.tgz"
+  resolved "https://registry.yarnpkg.com/enquirer/-/enquirer-2.4.1.tgz#93334b3fbd74fc7097b224ab4a8fb7e40bf4ae56"
   integrity sha512-rRqJg/6gd538VHvR3PSrdRBb/1Vy2YfzHqzvbhGIQpDRKIa4FgV/54b5Q1xYSxOOwKvjXweS26E0Q+nAMwp2pQ==
   dependencies:
     ansi-colors "^4.1.1"
@@ -11724,7 +11707,7 @@ escaya@0.0.61:
 
 escodegen@^2.0.0:
   version "2.1.0"
-  resolved "https://registry.npmjs.org/escodegen/-/escodegen-2.1.0.tgz"
+  resolved "https://registry.yarnpkg.com/escodegen/-/escodegen-2.1.0.tgz#ba93bbb7a43986d29d6041f99f5262da773e2e17"
   integrity sha512-2NlIDTwUWJN0mRPQOdtQBzbUHvdGY2P1VXSyU83Q3xKxM7WHX2Ql8dKq782Q9TgQUNOLEzEYu9bzLNj1q88I5w==
   dependencies:
     esprima "^4.0.1"
@@ -13039,6 +13022,11 @@ fs.realpath@^1.0.0:
   resolved "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz"
   integrity sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==
 
+fsevents@2.3.2:
+  version "2.3.2"
+  resolved "https://registry.yarnpkg.com/fsevents/-/fsevents-2.3.2.tgz#8a526f78b8fdf4623b709e0b975c52c24c02fd1a"
+  integrity sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==
+
 fsevents@^2.3.2, fsevents@~2.3.2:
   version "2.3.3"
   resolved "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz"
@@ -13455,7 +13443,7 @@ globby@11.0.3:
 
 globby@^11.0.3, globby@^11.1.0:
   version "11.1.0"
-  resolved "https://registry.npmjs.org/globby/-/globby-11.1.0.tgz"
+  resolved "https://registry.yarnpkg.com/globby/-/globby-11.1.0.tgz#bd4be98bb042f83d796f7e3811991fbe82a0d34b"
   integrity sha512-jhIXaOzy1sb8IyocaruWSn1TjmnBVs8Ayhcy83rmxNJ8q2uWKCAj3CnJY+KpGSXCueAPc0i05kVvVKtP1t9S3g==
   dependencies:
     array-union "^2.1.0"
@@ -15170,6 +15158,13 @@ is-ci@^2.0.0:
   dependencies:
     ci-info "^2.0.0"
 
+is-ci@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/is-ci/-/is-ci-3.0.1.tgz#db6ecbed1bd659c43dac0f45661e7674103d1867"
+  integrity sha512-ZYvCgrefwqoQ6yTyYUbQu64HsITZ3NfKX1lzaEYdkTDcfKzzCI/wthRRYKkdjHKFVgNiXKAKm65Zo1pk2as/QQ==
+  dependencies:
+    ci-info "^3.2.0"
+
 is-circular@^1.0.2:
   version "1.0.2"
   resolved "https://registry.npmjs.org/is-circular/-/is-circular-1.0.2.tgz"
@@ -16835,7 +16830,7 @@ keyv@^3.0.0:
 
 keyv@^4.5.3:
   version "4.5.4"
-  resolved "https://registry.npmjs.org/keyv/-/keyv-4.5.4.tgz"
+  resolved "https://registry.yarnpkg.com/keyv/-/keyv-4.5.4.tgz#a879a99e29452f942439f2a405e3af8b31d4de93"
   integrity sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==
   dependencies:
     json-buffer "3.0.1"
@@ -20176,10 +20171,24 @@ pirates@^4.0.4:
 
 pkg-dir@^4.2.0:
   version "4.2.0"
-  resolved "https://registry.npmjs.org/pkg-dir/-/pkg-dir-4.2.0.tgz"
+  resolved "https://registry.yarnpkg.com/pkg-dir/-/pkg-dir-4.2.0.tgz#f099133df7ede422e81d1d8448270eeb3e4261f3"
   integrity sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==
   dependencies:
     find-up "^4.0.0"
+
+playwright-core@1.52.0:
+  version "1.52.0"
+  resolved "https://registry.yarnpkg.com/playwright-core/-/playwright-core-1.52.0.tgz#238f1f0c3edd4ebba0434ce3f4401900319a3dca"
+  integrity sha512-l2osTgLXSMeuLZOML9qYODUQoPPnUsKsb5/P6LJ2e6uPKXUdPK5WYhN4z03G+YNbWmGDY4YENauNu4ZKczreHg==
+
+playwright@1.52.0:
+  version "1.52.0"
+  resolved "https://registry.yarnpkg.com/playwright/-/playwright-1.52.0.tgz#26cb9a63346651e1c54c8805acfd85683173d4bd"
+  integrity sha512-JAwMNMBlxJ2oD1kce4KPtMkDeKGHQstdpFPcPH3maElAXon/QZeTvtsfXmTMRyO9TslfoYOXkSsvao2nE1ilTw==
+  dependencies:
+    playwright-core "1.52.0"
+  optionalDependencies:
+    fsevents "2.3.2"
 
 pngjs@^3.3.0:
   version "3.4.0"
@@ -23046,7 +23055,7 @@ tailwindcss@^2.1.2:
 
 tapable@^2.2.0:
   version "2.2.1"
-  resolved "https://registry.npmjs.org/tapable/-/tapable-2.2.1.tgz"
+  resolved "https://registry.yarnpkg.com/tapable/-/tapable-2.2.1.tgz#1967a73ef4060a82f12ab96af86d52fdb76eeca0"
   integrity sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==
 
 tar@^4:
@@ -23747,9 +23756,9 @@ typedarray@^0.0.6:
   integrity sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==
 
 typescript@^5.3.2:
-  version "5.7.3"
-  resolved "https://registry.npmjs.org/typescript/-/typescript-5.7.3.tgz"
-  integrity sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==
+  version "5.8.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.8.3.tgz#92f8a3e5e3cf497356f4178c34cd65a7f5e8440e"
+  integrity sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==
 
 uc.micro@^1.0.1:
   version "1.0.6"
@@ -24519,7 +24528,7 @@ whatwg-fetch@^2.0.4:
 
 whatwg-fetch@^3.4.1:
   version "3.6.20"
-  resolved "https://registry.npmjs.org/whatwg-fetch/-/whatwg-fetch-3.6.20.tgz"
+  resolved "https://registry.yarnpkg.com/whatwg-fetch/-/whatwg-fetch-3.6.20.tgz#580ce6d791facec91d37c72890995a0b48d31c70"
   integrity sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==
 
 whatwg-mimetype@^3.0.0:
