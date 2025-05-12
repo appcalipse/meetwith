@@ -1,9 +1,15 @@
+import { IronSession } from 'iron-session'
 import { getIronSession } from 'iron-session/edge'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { AccountSession } from './types/Session'
 import { apiUrl, YEAR_DURATION_IN_SECONDS } from './utils/constants'
 
 export const SESSION_COOKIE_NAME = 'mww_iron'
+
+interface IronSessionData extends IronSession {
+  account: AccountSession | undefined
+}
 
 export const sessionOptions = {
   password: process.env.IRON_COOKIE_PASSWORD!,
@@ -42,7 +48,11 @@ export const config = {
 const handleSecureRoute = async (req: NextRequest) => {
   const res = NextResponse.next()
 
-  const session = await getIronSession(req, res, sessionOptions)
+  const session = (await getIronSession(
+    req,
+    res,
+    sessionOptions
+  )) as IronSessionData
 
   if (!session?.account) return notAuthorized
 
