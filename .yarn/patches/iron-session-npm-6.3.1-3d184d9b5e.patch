@@ -1,0 +1,1011 @@
+diff --git a/src/core.ts b/src/core.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..55a09024551353156b2d2e982e438e83fc61867d
+--- /dev/null
++++ b/src/core.ts
+@@ -0,0 +1,336 @@
++import * as Iron from "iron-webcrypto";
++import type { CookieSerializeOptions } from "cookie";
++import cookie from "cookie";
++import type { IncomingMessage, ServerResponse } from "http";
++
++// default time allowed to check for iron seal validity when ttl passed
++// see https://hapi.dev/family/iron/api/?v=6.0.0#options
++const timestampSkewSec = 60;
++
++type passwordsMap = { [id: string]: string };
++type password = string | passwordsMap;
++
++const fourteenDaysInSeconds = 15 * 24 * 3600;
++
++// We store a token major version to handle data format changes when any. So that when you upgrade the cookies
++// can be kept alive between upgrades, no need to disconnect everyone.
++const currentMajorVersion = 2;
++const versionDelimiter = "~";
++
++const defaultOptions: {
++  ttl: number;
++  cookieOptions: CookieSerializeOptions;
++} = {
++  ttl: fourteenDaysInSeconds,
++  cookieOptions: {
++    httpOnly: true,
++    secure: true,
++    sameSite: "lax",
++    path: "/",
++  },
++};
++
++export interface IronSessionOptions {
++  /**
++   * This is the cookie name that will be used inside the browser. You should make sure it's unique given
++   * your application. Example: vercel-session
++   */
++  cookieName: string;
++
++  /**
++   * This is the password(s) that will be used to encrypt the cookie. It can be either a string or an object
++   * like {1: "password", 2: password}.
++   *
++   * When you provide multiple passwords then all of them will be used to decrypt the cookie and only the most
++   * recent (= highest key, 2 in this example) password will be used to encrypt the cookie. This allow you
++   * to use password rotation (security)
++   */
++  password: password;
++
++  /**
++   * This is the time in seconds that the session will be valid for. This also set the max-age attribute of
++   * the cookie automatically (minus 60 seconds so that the cookie always expire before the session).
++   */
++  ttl?: number;
++
++  /**
++   * This is the options that will be passed to the cookie library.
++   * You can see all of them here: https://github.com/jshttp/cookie#options-1.
++   *
++   * If you want to use "session cookies" (cookies that are deleted when the browser is closed) then you need
++   * to pass cookieOptions: { maxAge: undefined }.
++   */
++  cookieOptions?: CookieSerializeOptions;
++}
++
++// eslint-disable-next-line @typescript-eslint/no-empty-interface
++export interface IronSessionData {
++  // If we allow for any keys, then there's no more type check on unknown properties
++  // which is not good
++  // If we allow for any keys, the later delete will work but I prefer to disable the
++  // check at this stage and
++  // provide good type checking instead
++  // [key: string]: unknown;
++}
++
++export type IronSession = IronSessionData & {
++  /**
++   * Destroys the session data and removes the cookie.
++   */
++  destroy: () => void;
++
++  /**
++   * Encrypts the session data and sets the cookie.
++   */
++  save: () => Promise<void>;
++};
++
++
++type RequestType = IncomingMessage | Request;
++type ResponseType = ServerResponse | Response;
++
++export function createGetIronSession(
++  _crypto: Crypto,
++  unsealData: ReturnType<typeof createUnsealData>,
++  sealData: ReturnType<typeof createSealData>,
++) {
++  return async (
++    req: RequestType,
++    res: ResponseType,
++    userSessionOptions: IronSessionOptions,
++  ): Promise<IronSession> => {
++    if (
++      !req ||
++      !res ||
++      !userSessionOptions ||
++      !userSessionOptions.cookieName ||
++      !userSessionOptions.password
++    ) {
++      throw new Error(
++        `iron-session: Bad usage. Minimum usage is const session = await getIronSession(req, res, { cookieName: "...", password: "...". Check the usage here: https://github.com/vvo/iron-session`,
++      );
++    }
++
++    const passwordsAsMap = normalizeStringPasswordToMap(
++      userSessionOptions.password,
++    );
++
++    Object.values(
++      normalizeStringPasswordToMap(userSessionOptions.password),
++    ).forEach((password) => {
++      if (password.length < 32) {
++        throw new Error(
++          `iron-session: Bad usage. Password must be at least 32 characters long.`,
++        );
++      }
++    });
++
++    const options: Required<IronSessionOptions> = {
++      ...defaultOptions,
++      ...userSessionOptions,
++      cookieOptions: {
++        ...defaultOptions.cookieOptions,
++        ...(userSessionOptions.cookieOptions || {}),
++      },
++    };
++
++    if (options.ttl === 0) {
++      // ttl = 0 means no expiration
++      // but in reality cookies have to expire (can't have no max-age)
++      // 2147483647 is the max value for max-age in cookies
++      // see https://stackoverflow.com/a/11685301/147079
++      options.ttl = 2147483647;
++    }
++
++    if (
++      userSessionOptions.cookieOptions &&
++      "maxAge" in userSessionOptions.cookieOptions
++    ) {
++      // session cookie, do not set maxAge, consider token as infinite
++      if (userSessionOptions.cookieOptions.maxAge === undefined) {
++        options.ttl = 0;
++      } else {
++        options.cookieOptions.maxAge = computeCookieMaxAge(
++          userSessionOptions.cookieOptions.maxAge,
++        );
++      }
++    } else {
++      options.cookieOptions.maxAge = computeCookieMaxAge(options.ttl);
++    }
++
++    const sealFromCookies = cookie.parse(
++      "credentials" in req
++        ? req.headers.get("cookie") || ""
++        : req.headers.cookie || "",
++    )[options.cookieName];
++
++    const session =
++      sealFromCookies === undefined
++        ? {}
++        : await unsealData<IronSessionData>(sealFromCookies, {
++            password: passwordsAsMap,
++            ttl: options.ttl,
++          });
++
++    Object.defineProperties(session, {
++      save: {
++        value: async function save() {
++          if ("headersSent" in res && res.headersSent === true) {
++            throw new Error(
++              `iron-session: Cannot set session cookie: session.save() was called after headers were sent. Make sure to call it before any res.send() or res.end()`,
++            );
++          }
++          const seal = await sealData(session, {
++            password: passwordsAsMap,
++            ttl: options.ttl,
++          });
++          const cookieValue = cookie.serialize(
++            options.cookieName,
++            seal,
++            options.cookieOptions,
++          );
++
++          if (cookieValue.length > 4096) {
++            throw new Error(
++              `iron-session: Cookie length is too big ${cookieValue.length}, browsers will refuse it. Try to remove some data.`,
++            );
++          }
++
++          addToCookies(cookieValue, res);
++        },
++      },
++      destroy: {
++        value: function destroy() {
++          Object.keys(session).forEach((key) => {
++            // @ts-ignore See comment on the IronSessionData interface
++            delete session[key];
++          });
++
++          const cookieValue = cookie.serialize(options.cookieName, "", {
++            ...options.cookieOptions,
++            maxAge: 0,
++          });
++          addToCookies(cookieValue, res);
++        },
++      },
++    });
++
++    return session as IronSession;
++  };
++}
++
++function addToCookies(cookieValue: string, res: ResponseType) {
++  if ("headers" in res) {
++    res.headers.append("set-cookie", cookieValue);
++    return;
++  }
++
++  let existingSetCookie =
++    (res.getHeader("set-cookie") as string[] | string) ?? [];
++  if (typeof existingSetCookie === "string") {
++    existingSetCookie = [existingSetCookie];
++  }
++  res.setHeader("set-cookie", [...existingSetCookie, cookieValue]);
++}
++
++function computeCookieMaxAge(ttl: number) {
++  // The next line makes sure browser will expire cookies before seals are considered expired by the server.
++  // It also allows for clock difference of 60 seconds maximum between server and clients.
++  // It also makes sure to expire the cookie immediately when value is 0
++  return ttl - timestampSkewSec;
++}
++
++export function createUnsealData(_crypto: Crypto) {
++  return async <T = Record<string, unknown>>(
++    seal: string,
++    {
++      password,
++      ttl = fourteenDaysInSeconds,
++    }: { password: password; ttl?: number },
++  ): Promise<T> => {
++    const passwordsAsMap = normalizeStringPasswordToMap(password);
++    const { sealWithoutVersion, tokenVersion } = parseSeal(seal);
++
++    try {
++      const data =
++        (await Iron.unseal(_crypto, sealWithoutVersion, passwordsAsMap, {
++          ...Iron.defaults,
++          ttl: ttl * 1000,
++        })) || {};
++
++      if (tokenVersion === 2) {
++        return data as T;
++      }
++
++      return {
++        // @ts-expect-error `persistent` does not exist on newer tokens
++        ...data.persistent,
++      };
++    } catch (error) {
++      if (error instanceof Error) {
++        if (
++          error.message === "Expired seal" ||
++          error.message === "Bad hmac value" ||
++          error.message.startsWith("Cannot find password: ") ||
++          error.message === "Incorrect number of sealed components"
++        ) {
++          // if seal expired or
++          // if seal is not valid (encrypted using a different password, when passwords are badly rotated) or
++          // if we can't find back the password in the seal
++          // then we just start a new session over
++          return {} as T;
++        }
++      }
++
++      throw error;
++    }
++  };
++}
++
++function parseSeal(seal: string): {
++  sealWithoutVersion: string;
++  tokenVersion: number | null;
++} {
++  if (seal[seal.length - 2] === versionDelimiter) {
++    const [sealWithoutVersion, tokenVersionAsString] =
++      seal.split(versionDelimiter);
++    return {
++      sealWithoutVersion,
++      tokenVersion: parseInt(tokenVersionAsString, 10),
++    };
++  }
++
++  return { sealWithoutVersion: seal, tokenVersion: null };
++}
++
++export function createSealData(_crypto: Crypto) {
++  return async (
++    data: unknown,
++    {
++      password,
++      ttl = fourteenDaysInSeconds,
++    }: { password: password; ttl?: number },
++  ) => {
++    const passwordsAsMap = normalizeStringPasswordToMap(password);
++
++    const mostRecentPasswordId = Math.max(
++      ...Object.keys(passwordsAsMap).map((id) => parseInt(id, 10)),
++    );
++
++    const passwordForSeal = {
++      id: mostRecentPasswordId.toString(),
++      secret: passwordsAsMap[mostRecentPasswordId],
++    };
++
++    const seal = await Iron.seal(_crypto, data, passwordForSeal, {
++      ...Iron.defaults,
++      ttl: ttl * 1000,
++    });
++
++    return `${seal}${versionDelimiter}${currentMajorVersion}`;
++  };
++}
++
++function normalizeStringPasswordToMap(password: password) {
++  return typeof password === "string" ? { 1: password } : password;
++}
+diff --git a/src/getPropertyDescriptorForReqSession.ts b/src/getPropertyDescriptorForReqSession.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..a8582c01a85442a2adceb2a20de7defe1fa81415
+--- /dev/null
++++ b/src/getPropertyDescriptorForReqSession.ts
+@@ -0,0 +1,28 @@
++import type { IronSession } from ".";
++
++export default function getPropertyDescriptorForReqSession(
++  session: IronSession,
++): PropertyDescriptor {
++  return {
++    enumerable: true,
++    get() {
++      return session;
++    },
++    set(value) {
++      const keys = Object.keys(value);
++      const currentKeys = Object.keys(session);
++
++      currentKeys.forEach((key) => {
++        if (!keys.includes(key)) {
++          // @ts-ignore See comment in IronSessionData interface
++          delete session[key];
++        }
++      });
++
++      keys.forEach((key) => {
++        // @ts-ignore See comment in IronSessionData interface
++        session[key] = value[key];
++      });
++    },
++  };
++}
+diff --git a/src/index.test.ts b/src/index.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2606e718fcf5dc59d83d1db722c6aee0e2d628f6
+--- /dev/null
++++ b/src/index.test.ts
+@@ -0,0 +1,587 @@
++import type { IncomingMessage, ServerResponse } from "http";
++import { getIronSession, IronSessionOptions, sealData } from ".";
++
++const password = "Gbm49ATjnqnkCCCdhV4uDBhbfnPqsCW0";
++const cookieName = "test";
++const defaultReq = {
++  headers: {},
++  socket: {
++    encrypted: true,
++  },
++} as unknown as IncomingMessage;
++const defaultRes = {} as ServerResponse;
++const defaultOptions: IronSessionOptions = {
++  password,
++  cookieName,
++};
++
++declare module "iron-session" {
++  interface IronSessionData {
++    user?: { id: number; meta?: string };
++    admin?: boolean;
++  }
++}
++
++test("no req", async () => {
++  // @ts-ignore we actually want to test this
++  await expect(getIronSession()).rejects.toThrowErrorMatchingInlineSnapshot(
++    `"iron-session: Bad usage. Minimum usage is const session = await getIronSession(req, res, { cookieName: \\"...\\", password: \\"...\\". Check the usage here: https://github.com/vvo/iron-session"`,
++  );
++});
++
++test("no res", async () => {
++  // @ts-ignore we actually want to test this
++  await expect(getIronSession({})).rejects.toThrowErrorMatchingInlineSnapshot(
++    `"iron-session: Bad usage. Minimum usage is const session = await getIronSession(req, res, { cookieName: \\"...\\", password: \\"...\\". Check the usage here: https://github.com/vvo/iron-session"`,
++  );
++});
++
++test("no password", async () => {
++  await expect(
++    // @ts-ignore we actually want to test this
++    getIronSession({}, {}),
++  ).rejects.toThrowErrorMatchingInlineSnapshot(
++    `"iron-session: Bad usage. Minimum usage is const session = await getIronSession(req, res, { cookieName: \\"...\\", password: \\"...\\". Check the usage here: https://github.com/vvo/iron-session"`,
++  );
++});
++
++test("no cookie name", async () => {
++  await expect(
++    // @ts-ignore we actually want to test this
++    getIronSession({}, {}, { password }),
++  ).rejects.toThrowErrorMatchingInlineSnapshot(
++    `"iron-session: Bad usage. Minimum usage is const session = await getIronSession(req, res, { cookieName: \\"...\\", password: \\"...\\". Check the usage here: https://github.com/vvo/iron-session"`,
++  );
++});
++
++test("bad password length", async () => {
++  await expect(
++    // @ts-ignore we actually want to test this
++    getIronSession({}, {}, { password: password.substring(1), cookieName }),
++  ).rejects.toThrowErrorMatchingInlineSnapshot(
++    `"iron-session: Bad usage. Password must be at least 32 characters long."`,
++  );
++});
++
++test("getSession(req, res, options)", async () => {
++  const session = await getIronSession(defaultReq, defaultRes, defaultOptions);
++  expect(session).toMatchInlineSnapshot(`Object {}`);
++});
++
++test("session.save", async () => {
++  const res = {
++    getHeader: jest.fn(),
++    setHeader: jest.fn(),
++  };
++
++  const session = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    defaultOptions,
++  );
++
++  session.user = { id: 100 };
++
++  await session.save();
++  const headerName = res.setHeader.mock.calls[0][0];
++  expect(headerName).toMatchInlineSnapshot(`"set-cookie"`);
++
++  const headerValue = res.setHeader.mock.calls[0][1];
++  expect(Array.isArray(headerValue)).toBe(true);
++  expect(headerValue).toHaveLength(1);
++
++  const cookie = headerValue[0];
++  const seal = cookie.split(";")[0].split("=")[1];
++  expect(seal).toHaveLength(265);
++
++  const cookieParams = cookie.split(";").slice(1).join(";");
++  expect(cookieParams).toMatchInlineSnapshot(
++    `" Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax"`,
++  );
++});
++
++test("delete session.* and session.save", async () => {
++  const res = {
++    getHeader: jest.fn(),
++    setHeader: jest.fn(),
++  };
++
++  const firstSession = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    defaultOptions,
++  );
++
++  firstSession.user = { id: 100 };
++
++  await firstSession.save();
++  const firstCookie = res.setHeader.mock.calls[0][1][0].split(";")[0];
++
++  res.setHeader.mockClear();
++
++  const secondSession = await getIronSession(
++    {
++      ...defaultReq,
++      headers: { cookie: firstCookie },
++    } as IncomingMessage,
++    res as unknown as ServerResponse,
++    defaultOptions,
++  );
++
++  delete secondSession.user;
++
++  await secondSession.save();
++
++  const secondCookie = res.setHeader.mock.calls[0][1][0].split(";")[0];
++
++  const thirdSession = await getIronSession(
++    {
++      ...defaultReq,
++      headers: { cookie: secondCookie },
++    } as IncomingMessage,
++    res as unknown as ServerResponse,
++    defaultOptions,
++  );
++
++  expect(thirdSession).toMatchInlineSnapshot(`Object {}`);
++});
++
++test("When ttl is 0 (infinite session), maxAge is very far away", async () => {
++  const res = {
++    getHeader: jest.fn(),
++    setHeader: jest.fn(),
++  };
++
++  const session = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    { ...defaultOptions, ttl: 0 },
++  );
++
++  await session.save();
++  const headerValue = res.setHeader.mock.calls[0][1];
++  const cookie = headerValue[0];
++  const maxAgeParam = cookie.split(";")[1].trim();
++  expect(maxAgeParam).toMatchInlineSnapshot(`"Max-Age=2147483587"`);
++});
++
++test("Passing down a maxAge option", async () => {
++  const res = {
++    getHeader: jest.fn(),
++    setHeader: jest.fn(),
++  };
++
++  const session = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    {
++      ...defaultOptions,
++      ttl: 0,
++      cookieOptions: { maxAge: 1000 },
++    },
++  );
++
++  await session.save();
++  const headerValue = res.setHeader.mock.calls[0][1];
++  const cookie = headerValue[0];
++  const maxAgeParam = cookie.split(";")[1].trim();
++  expect(maxAgeParam).toMatchInlineSnapshot(`"Max-Age=940"`);
++});
++
++test("Passing down maxAge = undefined (session cookies)", async () => {
++  const res = {
++    getHeader: jest.fn(),
++    setHeader: jest.fn(),
++  };
++
++  const session = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    {
++      ...defaultOptions,
++      cookieOptions: { maxAge: undefined },
++    },
++  );
++
++  await session.save();
++  const headerValue = res.setHeader.mock.calls[0][1];
++  const cookie = headerValue[0].split(";");
++  cookie.shift();
++  expect(cookie).toMatchInlineSnapshot(`
++    Array [
++      " Path=/",
++      " HttpOnly",
++      " Secure",
++      " SameSite=Lax",
++    ]
++  `);
++});
++
++test("session.destroy", async () => {
++  const res = {
++    getHeader: jest.fn(),
++    setHeader: jest.fn(),
++  };
++
++  const session = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    defaultOptions,
++  );
++
++  session.user = { id: 88 };
++
++  expect(session).toMatchInlineSnapshot(`
++    Object {
++      "user": Object {
++        "id": 88,
++      },
++    }
++  `);
++
++  session.destroy();
++
++  expect(session).toMatchInlineSnapshot(`Object {}`);
++
++  expect(res.setHeader.mock.calls[0]).toMatchInlineSnapshot(`
++    Array [
++      "set-cookie",
++      Array [
++        "test=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax",
++      ],
++    ]
++  `);
++});
++
++test("When trying to use an expired seal", async () => {
++  jest.useFakeTimers();
++
++  // 100 seconds seal ttl
++  const ttl = 100;
++
++  jest.setSystemTime(0);
++
++  const data = { user: { id: 20 } };
++  const seal = await sealData(data, { password, ttl });
++
++  const firstReq = {
++    ...defaultReq,
++    headers: { cookie: `test=${seal}` },
++  } as IncomingMessage;
++
++  const firstSession = await getIronSession(firstReq, defaultRes, {
++    password,
++    cookieName,
++    ttl,
++  });
++
++  expect(firstSession).toMatchInlineSnapshot(`
++    Object {
++      "user": Object {
++        "id": 20,
++      },
++    }
++  `);
++
++  jest.setSystemTime((ttl + 60) * 1000);
++
++  const secondReq = {
++    ...defaultReq,
++    headers: { cookie: `test=${seal}` },
++  } as IncomingMessage;
++
++  const secondSession = await getIronSession(secondReq, defaultRes, {
++    password,
++    cookieName,
++    ttl,
++  });
++
++  // now the session is empty, automatically
++  expect(secondSession).toMatchInlineSnapshot(`Object {}`);
++
++  jest.useRealTimers();
++});
++
++test("Session is refreshed (ttl, maxAge) when saves happens", async () => {
++  const res = {
++    getHeader: jest.fn(),
++    setHeader: jest.fn(),
++  };
++
++  jest.useFakeTimers();
++
++  // 100 seconds seal ttl
++  const ttl = 100;
++
++  jest.setSystemTime(0);
++
++  const firstSession = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    {
++      password,
++      cookieName,
++      ttl,
++    },
++  );
++
++  firstSession.user = { id: 42 };
++
++  await firstSession.save();
++
++  const firstCookie = res.setHeader.mock.calls[0][1][0];
++  res.setHeader.mockClear();
++  res.getHeader.mockClear();
++
++  expect(firstCookie.split(";")[1].trim()).toMatchInlineSnapshot(
++    `"Max-Age=40"`,
++  );
++
++  jest.setSystemTime((ttl + 30) * 1000);
++
++  const secondSession = await getIronSession(
++    {
++      ...defaultReq,
++      headers: { cookie: firstCookie.split(";")[0] }, // this is the test=seal part
++    } as IncomingMessage,
++    res as unknown as ServerResponse,
++    {
++      password,
++      cookieName,
++      ttl,
++    },
++  );
++
++  expect(secondSession).toMatchInlineSnapshot(`
++    Object {
++      "user": Object {
++        "id": 42,
++      },
++    }
++  `);
++
++  // at this point the session is valid up to ttl + 30 + 100 + 59
++  await secondSession.save();
++
++  const secondCookie = res.setHeader.mock.calls[0][1][0];
++
++  // max age should stay the same as previously because it is relative to the time the cookie is set
++  // max age is set to ttl - 60 so the cookie expires before the seal expires, avoiding errors
++  expect(secondCookie.split(";")[1].trim()).toMatchInlineSnapshot(
++    `"Max-Age=40"`,
++  );
++
++  res.setHeader.mockClear();
++  res.getHeader.mockClear();
++
++  jest.setSystemTime((ttl + 30 + ttl + 30) * 1000);
++
++  const thirdSession = await getIronSession(
++    {
++      ...defaultReq,
++      headers: { cookie: secondCookie.split(";")[0] },
++    } as IncomingMessage,
++    res as unknown as ServerResponse,
++    {
++      password,
++      cookieName,
++      ttl,
++    },
++  );
++
++  // if the session ttl was not pushed after each save then this would be an empty object here
++  expect(thirdSession).toMatchInlineSnapshot(`
++    Object {
++      "user": Object {
++        "id": 42,
++      },
++    }
++  `);
++
++  jest.useRealTimers();
++});
++
++test("When mixing passwords between seals, the session is automatically reset. Example: password was updated server-side without rotation.", async () => {
++  const firstPassword = "Bb0EyombqcDK58k870btymbGJrgZFrN2";
++  const secondPassword = "182XhM1mAzottfvzPMN0nh20HMwZprBc";
++
++  const seal = await sealData(
++    { user: { id: 77 } },
++    { password: firstPassword, ttl: 0 },
++  );
++
++  const session = await getIronSession(
++    {
++      ...defaultReq,
++      headers: { cookie: `test=${seal}` },
++    } as IncomingMessage,
++    defaultRes,
++    { password: secondPassword, cookieName },
++  );
++
++  expect(session).toMatchInlineSnapshot(`Object {}`);
++});
++
++test("Password rotation", async () => {
++  const firstPassword = { 1: "BcTv8NKLVfGcTt18HqGf2DhEnmJrLbNU" };
++  const secondPassword = {
++    // any of these passwords will try to decrypt the seal
++    // only the most recent one (2: "...") one will be used to encrypt new seals
++    2: "scKVNPWFippYjA3tRjJPuPnK7ocj4Vnn",
++    ...firstPassword,
++  };
++
++  const seal = await sealData(
++    { user: { id: 30 } },
++    { password: firstPassword },
++  );
++
++  const session = await getIronSession(
++    {
++      ...defaultReq,
++      headers: { cookie: `test=${seal}` },
++    } as IncomingMessage,
++    defaultRes,
++    { password: secondPassword, cookieName },
++  );
++
++  expect(session).toMatchInlineSnapshot(`
++    Object {
++      "user": Object {
++        "id": 30,
++      },
++    }
++  `);
++});
++
++test("it throws when cookie length is too big", async () => {
++  const session = await getIronSession(defaultReq, defaultRes, defaultOptions);
++
++  session.user = { id: 20, meta: "somevalue".repeat(500) };
++
++  await expect(session.save()).rejects.toThrowErrorMatchingInlineSnapshot(
++    `"iron-session: Cookie length is too big 6343, browsers will refuse it. Try to remove some data."`,
++  );
++});
++
++test("it keeps previously set cookies (single value)", async () => {
++  const res = {
++    getHeader: function () {
++      return "existingCookie=value";
++    },
++    setHeader: jest.fn(),
++  };
++
++  const session = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    defaultOptions,
++  );
++
++  await session.save();
++
++  const headerValue = res.setHeader.mock.calls[0][1];
++  expect(headerValue.length).toBe(2);
++  expect(headerValue[0]).toBe("existingCookie=value");
++});
++
++test("it throws when calling save() and headers were already sent", async () => {
++  const session = await getIronSession(
++    defaultReq,
++    {
++      headersSent: true,
++    } as unknown as ServerResponse,
++    defaultOptions,
++  );
++
++  await expect(session.save()).rejects.toThrowErrorMatchingInlineSnapshot(
++    `"iron-session: Cannot set session cookie: session.save() was called after headers were sent. Make sure to call it before any res.send() or res.end()"`,
++  );
++});
++
++test("it keeps previously set cookies (multiple values)", async () => {
++  const res = {
++    getHeader: function () {
++      return ["existingCookie=value", "anotherCookie=value2"];
++    },
++    setHeader: jest.fn(),
++  };
++
++  const session = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    defaultOptions,
++  );
++
++  await session.save();
++
++  const headerValue = res.setHeader.mock.calls[0][1];
++  expect(headerValue.length).toBe(3);
++  expect(headerValue[0]).toBe("existingCookie=value");
++  expect(headerValue[1]).toBe("anotherCookie=value2");
++});
++
++test("it keeps previously set cookies (multiple values) on destroy()", async () => {
++  const res = {
++    getHeader: function () {
++      return ["existingCookie=value", "anotherCookie=value2"];
++    },
++    setHeader: jest.fn(),
++  };
++
++  const session = await getIronSession(
++    defaultReq,
++    res as unknown as ServerResponse,
++    defaultOptions,
++  );
++
++  session.destroy();
++
++  expect(res.setHeader.mock.calls[0]).toMatchInlineSnapshot(`
++    Array [
++      "set-cookie",
++      Array [
++        "existingCookie=value",
++        "anotherCookie=value2",
++        "test=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax",
++      ],
++    ]
++  `);
++});
++
++test("getSession with a previous (next-iron-session) session cookie", async () => {
++  const session = await getIronSession(
++    {
++      ...defaultReq,
++      headers: {
++        cookie:
++          // this seal was previously generated with a ttl of 0
++          "test=Fe26.2*1*1e2bacee1edffaeb4a9ba4a07dc36c2c60d20415a60ac1b901033af1f107ead5*LAC9Fn3BJ9ifKMhVL3pP5w*JHhcByIzk4ThLt9rUW-fDMrOwUT7htHy1uyqeOTIqrVwDJ0Bz7TOAwIz_Cos-ug3**7dfa11868bbcc4f7e118342c0280ff49ba4a7cc84c70395bbc3d821a5f460174*6a8FkHxdg322jyym6PwJf3owz7pd6nq5ZIzyLHGVC0c",
++      },
++    } as unknown as IncomingMessage,
++    defaultRes,
++    defaultOptions,
++  );
++
++  expect(session.user).toMatchInlineSnapshot(`
++    Object {
++      "id": 77,
++    }
++  `);
++});
++
++test("it throws when trying to reassign save or destroy", async () => {
++  const session = await getIronSession(defaultReq, defaultRes, defaultOptions);
++  expect(() => {
++    // eslint-disable-next-line @typescript-eslint/no-empty-function
++    session.save = async () => {};
++  }).toThrowErrorMatchingInlineSnapshot(
++    `"Cannot assign to read only property 'save' of object '#<Object>'"`,
++  );
++  expect(() => {
++    // eslint-disable-next-line @typescript-eslint/no-empty-function
++    session.destroy = async () => {};
++  }).toThrowErrorMatchingInlineSnapshot(
++    `"Cannot assign to read only property 'destroy' of object '#<Object>'"`,
++  );
++});
+diff --git a/src/index.ts b/src/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f452b3da18c320a4255ef5a7965c74673a031dc
+--- /dev/null
++++ b/src/index.ts
+@@ -0,0 +1,13 @@
++import { createGetIronSession, createSealData, createUnsealData } from "./core";
++import { Crypto } from "@peculiar/webcrypto";
++
++const _crypto = new Crypto();
++
++export * from "./core";
++export const unsealData = createUnsealData(_crypto);
++export const sealData = createSealData(_crypto);
++export const getIronSession = createGetIronSession(
++  _crypto,
++  unsealData,
++  sealData,
++);
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..29c01411227745f629278b0721e1cf6c9ae28d17
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,17 @@
++{
++  "extends": "@tsconfig/node12/tsconfig.json",
++  "include": ["src", "next", "express", "edge"],
++  "exclude": ["node_modules", "./**/dist"],
++  "compilerOptions": {
++    "paths": {
++      "iron-session": ["./src/index.ts"],
++      "iron-session/next": ["./next/index.ts"],
++      "iron-session/express": ["./express/index.ts"],
++      "iron-session/edge": ["./edge/index.ts"]
++    },
++    "declarationMap": true,
++    "declaration": true,
++    "esModuleInterop": true,
++    "lib": ["ES2019", "DOM"]
++  }
++}
