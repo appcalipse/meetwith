@@ -5,14 +5,15 @@ import {
   NextApiHandler,
 } from 'next'
 
+import { AccountSession } from '@/types/Session'
+
 declare module 'iron-session' {
   interface IronSessionData {
-    account?: AccountSession
+    account: AccountSession | undefined
   }
 }
 
 import { sessionOptions } from '@/middleware'
-import { AccountSession } from '@/types/Session'
 
 export function withSessionRoute(handler: NextApiHandler) {
   return withIronSessionApiRoute(handler, sessionOptions)
