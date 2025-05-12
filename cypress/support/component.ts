@@ -16,7 +16,7 @@
 // Import commands.js using ES2015 syntax:
 import './commands'
 
-import { synpressCommandsForMetaMask } from '@synthetixio/synpress/cypress/support'
+import { synpressCommandsForMetaMask } from '@synpress-cypress/synpress/cypress/support'
 import { mount } from 'cypress/react'
 synpressCommandsForMetaMask()
 

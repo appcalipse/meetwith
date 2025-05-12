@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 // Import Synpress commands for MetaMask
-import { synpressCommandsForMetaMask } from '@synthetixio/synpress/cypress/support'
+import { synpressCommandsForMetaMask } from '@synpress-cypress/synpress/cypress/support'
 
 // Extend Cypress Chainable interface to include custom commands
 declare global {
