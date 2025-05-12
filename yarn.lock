@@ -6326,43 +6326,77 @@
   dependencies:
     tslib "^2.8.0"
 
-"@synthetixio/ethereum-wallet-mock@link:../synpress-cypress/wallets/ethereum-wallet-mock":
-  version "0.0.0"
-  uid ""
+"@synpress-cypress/ethereum-wallet-mock@0.0.12":
+  version "0.0.12"
+  resolved "https://registry.yarnpkg.com/@synpress-cypress/ethereum-wallet-mock/-/ethereum-wallet-mock-0.0.12.tgz#bea54572fdf012ea020170dd555c6f5178a8d911"
+  integrity sha512-7j9gpPBJBIoMWvMfgM7Jjwohhl061kKPAJeqWnCyG+pnDc9AKXLt9rwkR8LXTzLYTHiIXpFmlCqWEBqNjA3ehQ==
+  dependencies:
+    "@depay/web3-client" "10.18.6"
+    "@depay/web3-mock" "14.19.1"
+    "@depay/web3-mock-evm" "^14.17.0"
+    "@synpress-cypress/synpress-core" "0.0.12"
+    viem "2.9.9"
 
-"@synthetixio/synpress-cache@link:../synpress-cypress/packages/cache":
-  version "0.0.0"
-  uid ""
+"@synpress-cypress/synpress-cache@0.0.12":
+  version "0.0.12"
+  resolved "https://registry.yarnpkg.com/@synpress-cypress/synpress-cache/-/synpress-cache-0.0.12.tgz#c380c98811b4ef69a4f86bb239cbd0d6debc757c"
+  integrity sha512-6Qe74W4dv7lW97E2WXEP1epClGscAe/kpHzTOKWf4eG3Uc8JtBMeZ3tUkDVSxa2803x/G61eGJRDyi8eMDCnjQ==
+  dependencies:
+    axios "1.6.7"
+    chalk "5.3.0"
+    commander "12.0.0"
+    esbuild "0.20.0"
+    fs-extra "11.2.0"
+    glob "10.3.10"
+    gradient-string "2.0.2"
+    progress "2.0.3"
+    tsup "8.0.2"
+    unzip-crx-3 "0.2.0"
+    unzipper "0.10.14"
+    zod "3.22.4"
 
-"@synthetixio/synpress-core@0.0.12":
-  version "0.0.0"
-  uid ""
+"@synpress-cypress/synpress-core@0.0.12":
+  version "0.0.12"
+  resolved "https://registry.yarnpkg.com/@synpress-cypress/synpress-core/-/synpress-core-0.0.12.tgz#8b9640dabea8f05c39fb18805afb7f62a0c18fbc"
+  integrity sha512-MZFVLIkA9XEOAmCTkXMaesjxw+dlkJ71jSamGqbLfMBEUIlUDGn+EcGtBuupYcXpVx0/SMvZ+Xhke151KI/ztA==
 
-"@synthetixio/synpress-core@link:../synpress-cypress/packages/core":
-  version "0.0.0"
-  uid ""
+"@synpress-cypress/synpress-metamask@0.0.12":
+  version "0.0.12"
+  resolved "https://registry.yarnpkg.com/@synpress-cypress/synpress-metamask/-/synpress-metamask-0.0.12.tgz#295dfefce028f154a42382a0033fbcf921a6f3f7"
+  integrity sha512-lPIkP2Vx/+ZOO0LDVak3SKy49zNp/j93436PCdTUEZKFTKqTyFWIJNH8I+CCyNwS1jn1tpZYLiAXtII9KhXLAg==
+  dependencies:
+    "@synpress-cypress/synpress-cache" "0.0.12"
+    "@synpress-cypress/synpress-core" "0.0.12"
+    "@viem/anvil" "0.0.7"
+    fs-extra "11.2.0"
+    zod "3.22.4"
 
-"@synthetixio/synpress-metamask@link:../synpress-cypress/wallets/metamask":
-  version "0.0.0"
-  uid ""
+"@synpress-cypress/synpress-phantom@0.0.12":
+  version "0.0.12"
+  resolved "https://registry.yarnpkg.com/@synpress-cypress/synpress-phantom/-/synpress-phantom-0.0.12.tgz#61ea13e236d26c7a5f59f91232cf85a9ad50a8bc"
+  integrity sha512-85pW91mVYdxNggJayt54VLcwlqo30+5jwBGSVOAEIEJUafx9LB7e5jusYK6Uz1PPHZyoLoPumk+C1tjB36L8bA==
+  dependencies:
+    "@synpress-cypress/synpress-cache" "0.0.12"
+    "@synpress-cypress/synpress-core" "0.0.12"
+    "@viem/anvil" "0.0.7"
+    fs-extra "11.2.0"
+    zod "3.22.4"
 
-"@synthetixio/synpress-phantom@link:../synpress-cypress/wallets/phantom":
-  version "0.0.0"
-  uid ""
+"@synpress-cypress/synpress@^4.1.0":
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/@synpress-cypress/synpress/-/synpress-4.1.0.tgz#e784b80ee54b36628a5af44af377f3fa02fbaaeb"
+  integrity sha512-9aXnXM9bdoqZSFmpLi4Op+DvFrkBckbvShnOQAY7vJEplkm4m15QtoF0I8g/IYEaJU1IejvTV/urtAXrpgXZ4Q==
+  dependencies:
+    "@synpress-cypress/ethereum-wallet-mock" "0.0.12"
+    "@synpress-cypress/synpress-cache" "0.0.12"
+    "@synpress-cypress/synpress-core" "0.0.12"
+    "@synpress-cypress/synpress-metamask" "0.0.12"
+    "@synpress-cypress/synpress-phantom" "0.0.12"
 
 "@synthetixio/synpress-tsconfig@^0.0.12":
   version "0.0.12"
   resolved "https://registry.yarnpkg.com/@synthetixio/synpress-tsconfig/-/synpress-tsconfig-0.0.12.tgz#f2599e5d018af48051855f18fcfb7ff8b13af989"
   integrity sha512-WyouNIDYVsAeXgcH5ASuguNWFMJahIk3zAFoH+nh/rZNQFPmEIewnoCJyqtxq4Xev2vQMiXcEE2ICGtMRrSU7w==
-
-"@synthetixio/synpress@../synpress-cypress/release/":
-  version "4.1.0"
-  dependencies:
-    "@synthetixio/ethereum-wallet-mock" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/wallets/ethereum-wallet-mock"
-    "@synthetixio/synpress-cache" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/packages/cache"
-    "@synthetixio/synpress-core" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/packages/core"
-    "@synthetixio/synpress-metamask" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/wallets/metamask"
-    "@synthetixio/synpress-phantom" "link:../../Library/Caches/Yarn/v6/npm-@synthetixio-synpress-4.1.0-c15ddad5-b43f-42f6-a9aa-d781e7ae3cb4-1746883803516/node_modules/@synthetixio/wallets/phantom"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
