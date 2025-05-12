@@ -21,6 +21,14 @@ context('Actions', () => {
         cy.log('Accept Cookies button not found')
       }
     })
+    cy.get('button').contains('Sign in').click()
+    cy.get('button').contains('MetaMask').click()
+    cy.get('p').contains('Connecting')
+    cy.confirmSignature()
+    cy.url({ timeout: 150000 }).should('match', /dashboard/)
+  })
+  afterEach(() => {
+    // cy.visit('/logout')
   })
 
   // https://on.cypress.io/interacting-with-elements
@@ -37,10 +45,9 @@ context('Actions', () => {
     cy.get('[data-testid="availability"]').first().click()
     cy.get('#title').type('Test Meeting')
     cy.get('#name').type('Udoka Onyela')
-    cy.get('#email').type('fumudukus@gmail.com')
     cy.get('button').contains('Schedule').click({ timeout: 10000 })
 
-    cy.intercept('POST', '/api/meetings/guest').as('scheduleMeeting')
+    cy.intercept('POST', '/api/secure/meetings').as('scheduleMeeting')
 
     cy.wait('@scheduleMeeting', { timeout: 60000 })
     cy.contains('Success!').should('exist')
