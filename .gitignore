@@ -44,7 +44,6 @@ yarn-error.log*
 #vscode
 /.vscode
 
-.yarn
 .idea
 bun.lockb
 package-lock.json
@@ -62,3 +61,5 @@ node_modules/
 .cache-synpress
 downloads
 chrome
+
+.yarn/install-state.gz
