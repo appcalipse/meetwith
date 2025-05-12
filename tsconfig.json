@@ -22,11 +22,5 @@
     "types": ["jest", "node", "@testing-library/jest-dom"]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
-  "exclude": [
-    "node_modules",
-    "cypress/cypress.config.ts",
-    "cypress",
-    "**/*.cy.tsx",
-    "**/*.cy.ts"
-  ]
+  "exclude": ["node_modules", "cypress"]
 }
