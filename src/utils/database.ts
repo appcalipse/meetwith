@@ -1986,9 +1986,10 @@ const getConnectedCalendars = async (
 
   if (!data) return []
 
-  const connectedCalendars: ConnectedCalendar[] =
-    !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
-
+  // const connectedCalendars: ConnectedCalendar[] =
+  //   !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
+  // ignore pro for now
+  const connectedCalendars: ConnectedCalendar[] = data
   if (syncOnly) {
     const calendars: ConnectedCalendar[] = JSON.parse(
       JSON.stringify(connectedCalendars)
