@@ -758,13 +758,13 @@ export const signup = async (
 }
 
 export const listConnectedCalendars = async (
-  syncOnly?: boolean
+  syncOnly = false
 ): Promise<ConnectedCalendarCore[]> => {
   return await queryClient.fetchQuery(
     QueryKeys.connectedCalendars(syncOnly),
     () =>
       internalFetch<ConnectedCalendarCore[]>(
-        `/secure/calendar_integrations?syncOnly=${syncOnly ? 'true' : 'false'}`
+        `/secure/calendar_integrations?syncOnly=${syncOnly}`
       )
   )
 }
