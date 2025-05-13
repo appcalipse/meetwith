@@ -19,8 +19,8 @@
     "test:watch": "jest --watch",
     "cy:open": "cypress open --config-file ./cypress/cypress.config.ts",
     "cy:run": "cypress run --headed  --config-file ./cypress/cypress.config.ts  --browser chrome",
-    "cy:run:headless": "cypress run --headed --browser chrome",
-    "cy:run:headless:record": "cypress run --headed --browser chrome --record --key 2f3a0b4d-5e8b-4c7e-9a1d-6f2f3a0b4d5e",
+    "cy:run:headless": "cypress run --headless --browser chrome --config-file ./cypress/cypress.config.ts",
+    "cy:run:headless:record": "cypress run --headless --browser chrome --record --key 2f3a0b4d-5e8b-4c7e-9a1d-6f2f3a0b4d5e --config-file ./cypress/cypress.config.ts",
     "build:cache": "synpress ./cypress",
     "build:cache:force": "synpress --force",
     "build:cache:headless": "synpress --headless"

@@ -13,7 +13,7 @@ export default defineConfig({
   e2e: {
     baseUrl: 'http://localhost:3000',
     testIsolation: true,
-    specPattern: '**/*.cy.{js,jsx,ts,tsx}',
+    specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: '**/e2e.{js,jsx,ts,tsx}',
     setupNodeEvents(on, config) {
       config.browsers = [
@@ -28,7 +28,7 @@ export default defineConfig({
           majorVersion: '116',
         },
       ] as any
-      return configureSynpressForMetaMask(on, config, false) as any
+      return configureSynpressForMetaMask(on, config, true) as any
     },
     experimentalInteractiveRunEvents: true,
   },
