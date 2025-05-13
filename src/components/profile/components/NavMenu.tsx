@@ -197,6 +197,7 @@ export const NavMenu: React.FC<{
     }
   }, [])
   useEffect(() => {
+    if (!currentAccount) return
     void handleGroupInvites()
     const lastNotificationTime = getNotificationTime(currentAccount?.address)
     if (lastNotificationTime === null) return
