@@ -138,7 +138,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     openRemoveModal,
   }
   const fetchGroups = async (reset?: boolean) => {
-    const PAGE_SIZE = 5
+    const PAGE_SIZE = 10
     setLoading(true)
     const newGroups = await getGroups(PAGE_SIZE, reset ? 0 : groups.length)
     if (newGroups?.length < PAGE_SIZE) {
