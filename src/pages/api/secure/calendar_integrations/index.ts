@@ -98,7 +98,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         calendars.forEach(async (calendar: CalendarSyncInfo) => {
           const webhook = calendar.webhook
           const calendarId = calendar.calendarId
-          const webhookUrl = 'https://e960-182-69-177-39.ngrok-free.app'
+          const webhookUrl =
+            'https://6683-2401-4900-8842-1889-d814-c1ce-c4c3-2883.ngrok-free.app/api'
 
           const integration = getConnectedCalendarIntegration(
             ownerAddress,
@@ -131,7 +132,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
                 webhookUrl
               )
 
-              console.log('setup calendar webhook response', resp)
+              console.log('setup calendar webhook response')
 
               if (resp) {
                 calendar.webhookId = resp.webhookId

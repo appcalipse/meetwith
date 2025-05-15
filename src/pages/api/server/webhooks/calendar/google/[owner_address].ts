@@ -38,7 +38,7 @@ const handler = async (
     const resourceId = req.headers['x-goog-resource-id']
     const resourceState = req.headers['x-goog-resource-state']
 
-    console.log(req)
+    // console.log(req)
 
     console.log('Channel ID:', channelId)
     console.log('Resource ID:', resourceId)
