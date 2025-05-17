@@ -5,6 +5,7 @@ on:
     branches:
       - 'main'
       - 'develop'
+      - 'pre-prod'
 
 jobs:
   deploy:
@@ -38,7 +39,7 @@ jobs:
 
     - name: Deploy in the Staging env
       if: ${{ github.ref == 'refs/heads/pre-prod' }}
-      run: copilot deploy -e production --force
+      run: copilot deploy -e pre-prod --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
 
