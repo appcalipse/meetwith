@@ -83,17 +83,19 @@ function Hero() {
           </HStack>
         </VStack>
         <Image
-          width={1920}
-          height={1024}
           src={'/assets/product-ui.webp'}
           alt="Product UI"
           loading="eager"
           priority
+          width={1360}
+          height={726}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1360px"
           style={{
             width: '100%',
+            height: 'auto',
             marginTop: 40,
           }}
-          quality={60} // Drop quality from 75 to 60
+          quality={75}
         />
       </Box>
       <Box
