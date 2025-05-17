@@ -5,7 +5,6 @@ dotenv.config({
   path: '../.env.test.local',
 })
 
-const getBrowser = () => {}
 // Define Cypress configuration
 export default defineConfig({
   chromeWebSecurity: true,
@@ -28,7 +27,7 @@ export default defineConfig({
           majorVersion: '116',
         },
       ] as any
-      return configureSynpressForMetaMask(on, config, true) as any
+      return configureSynpressForMetaMask(on, config, false) as any
     },
     experimentalInteractiveRunEvents: true,
   },

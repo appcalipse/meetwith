@@ -35,19 +35,19 @@ Cypress.on('uncaught:exception', (err, runnable) => {
 // Confirm, if a specific event exists in the schedule
 Cypress.Commands.add(
   'eventExists',
-  (scheduler_address: string, meeting_id: string) => {
+  (scheduler_address: string, slot_id: string) => {
     // Send a GET request (you can override method and options if needed)
     return cy
       .request({
         method: 'GET',
         url: '/api/server/calendar_integrations/google/event_exists',
         headers: {
-          'X-Server-Secret': Cypress.env('TEST_ACCOUNT_IDENTIFIER'),
+          'X-Server-Secret': Cypress.env('SERVER_SECRET'),
           'Content-Type': 'application/json',
         },
         body: {
           scheduler_address,
-          meeting_id,
+          slot_id,
         },
       })
       .then(response => {
