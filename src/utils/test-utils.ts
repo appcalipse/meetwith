@@ -1,8 +1,12 @@
-import { getConnectedCalendars } from './database'
+import { getConferenceDataBySlotId, getConnectedCalendars } from './database'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 
-export const eventExists = async (meetingId: string, targetAccount: string) => {
+export const eventExists = async (slotId: string, targetAccount: string) => {
   try {
+    const meeting = await getConferenceDataBySlotId(slotId)
+
+    const meetingId = meeting.id
+
     const exists = []
     const calendars = await getConnectedCalendars(targetAccount, {
       syncOnly: true,
