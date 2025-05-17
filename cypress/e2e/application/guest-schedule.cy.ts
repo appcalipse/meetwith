@@ -1,5 +1,6 @@
 /// <reference types="cypress" />
 const accountIdentifier = Cypress.env('TEST_ACCOUNT_IDENTIFIER')
+const ownerAddress = '0xbae723e409ec9e0337dd7facfacd47b73aa3b620'
 context('Actions', () => {
   before(() => {
     cy.visit('/', { timeout: 300000 })
@@ -42,7 +43,21 @@ context('Actions', () => {
 
     cy.intercept('POST', '/api/meetings/guest').as('scheduleMeeting')
 
-    cy.wait('@scheduleMeeting', { timeout: 60000 })
+    cy.wait('@scheduleMeeting', { timeout: 60000 }).then(
+      (interception: any) => {
+        expect(interception.response.statusCode).to.equal(200)
+        const slotId = interception.response.body.id
+        cy.log('slotId ID:', slotId)
+        cy.log('Owner Address:', ownerAddress)
+
+        // Check if the event exists in the calendar
+        cy.wait(10000)
+        cy.eventExists(ownerAddress, slotId).then(exists => {
+          expect(exists).to.be.true
+          cy.log('Event exists in the calendar')
+        })
+      }
+    )
     cy.contains('Success!').should('exist')
 
     /* ==== End Cypress Studio ==== */

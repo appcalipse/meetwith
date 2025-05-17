@@ -1,7 +1,9 @@
 /// <reference types="cypress" />
 const accountIdentifier = Cypress.env('TEST_ACCOUNT_IDENTIFIER')
+const ownerAddress = '0xbae723e409ec9e0337dd7facfacd47b73aa3b620'
+
 context('Actions', () => {
-  before(() => {
+  beforeEach(() => {
     cy.visit('/', { timeout: 300000 })
     cy.get('button[aria-controls="ReactQueryDevtoolsPanel"]', {
       timeout: 30000,
@@ -26,13 +28,15 @@ context('Actions', () => {
     cy.get('p').contains('Connecting')
     cy.confirmSignature()
     cy.url({ timeout: 150000 }).should('match', /dashboard/)
+    // wait for re-direction completions before going to the next test
+    cy.wait(10000)
   })
   afterEach(() => {
-    // cy.visit('/logout')
+    cy.visit('/logout')
   })
 
   // https://on.cypress.io/interacting-with-elements
-  it('Schedule - Guests no availability', () => {
+  it('Schedule - Public', () => {
     cy.visit('/test')
 
     cy.intercept('GET', `/api/meetings/busy/${accountIdentifier}*`).as(
@@ -49,9 +53,30 @@ context('Actions', () => {
 
     cy.intercept('POST', '/api/secure/meetings').as('scheduleMeeting')
 
-    cy.wait('@scheduleMeeting', { timeout: 60000 })
+    cy.wait('@scheduleMeeting', { timeout: 60000 }).then(
+      (interception: any) => {
+        expect(interception.response.statusCode).to.equal(200)
+        const slotId = interception.response.body.id
+        cy.log('slotId ID:', slotId)
+        cy.log('Owner Address:', ownerAddress)
+
+        // Check if the event exists in the calendar
+        cy.wait(10000)
+        cy.eventExists(ownerAddress, slotId).then(exists => {
+          expect(exists).to.be.true
+          cy.log('Event exists in the calendar')
+        })
+        cy.eventExists(accountIdentifier, slotId).then(exists => {
+          expect(exists).to.be.true
+          cy.log('Event exists in the calendar')
+        })
+      }
+    )
     cy.contains('Success!').should('exist')
 
     /* ==== End Cypress Studio ==== */
+  })
+  it('Schedule - Group', () => {
+    cy.visit('/dashboard/schedule')
   })
 })
