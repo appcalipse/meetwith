@@ -87,9 +87,9 @@ function Hero() {
           alt="Product UI"
           loading="eager"
           priority
-          width={1360}
-          height={726}
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1360px"
+          width={1200}
+          height={675}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
           style={{
             width: '100%',
             height: 'auto',
