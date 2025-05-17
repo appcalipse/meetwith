@@ -128,7 +128,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       info,
       currentConnectedAccountAddress,
       MeetingChangeType.CREATE,
-      `${appUrl}/dashboard/meetings?slotId=${info.id}`
+      `${appUrl}/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
     )
 
     const url = window.URL.createObjectURL(
@@ -468,7 +468,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
       <CancelMeetingDialog
         isOpen={isOpen}
         onClose={onClose}
-        decriptedMeeting={decryptedMeeting}
+        decryptedMeeting={decryptedMeeting}
         currentAccount={currentAccount}
         afterCancel={onCancel}
       />

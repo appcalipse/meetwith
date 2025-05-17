@@ -1,15 +1,11 @@
 import {
-  Box,
   Button,
-  Flex,
   FormControl,
   FormHelperText,
   FormLabel,
   Heading,
   HStack,
-  Icon,
   Input,
-  Link,
   Spacer,
   Spinner,
   Switch,
@@ -21,11 +17,9 @@ import {
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { useEffect } from 'react'
-import { FaTelegram } from 'react-icons/fa'
 
 import { Account } from '@/types/Account'
 import { TelegramConnection } from '@/types/Telegram'
-import { isProduction } from '@/utils/constants'
 
 import {
   DiscordNotificationType,
@@ -153,8 +147,16 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     logEvent('Connect Telegram')
     const hash = await createTelegramHash()
     const url = `https://t.me/MeetWithDEVBot?start=${hash.tg_id}`
-    push(url)
-    setConnecting(false)
+    window.open(url, '_blank')
+
+    const intervalId = setInterval(async () => {
+      const pendingConnection = await getPendingTgConnection()
+      if (!pendingConnection) {
+        setTelegramNotificationConfigured(true)
+        clearInterval(intervalId)
+        setConnecting(false)
+      }
+    }, 5000)
   }
   const handleTgDisconnect = async () => {
     setConnecting(true)
@@ -211,61 +213,33 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             onDiscordNotificationChange={onDiscordNotificationChange}
             discordNotification={discordNotificationConfig}
           />
-          {!isProduction && (
-            <>
-              <HStack>
-                <Flex
-                  width="22px"
-                  height="22px"
-                  bgColor={bgColor}
-                  borderRadius="50%"
-                  justifyContent="center"
-                  alignItems="center"
-                >
-                  <Icon as={FaTelegram} color={color} />
-                </Flex>
-                <Text fontSize="lg" fontWeight="bold">
-                  Telegram
-                </Text>
-                {telegramNotificationConfigured ? (
-                  <Button
-                    variant="ghost"
-                    colorScheme="primary"
-                    isLoading={connecting}
-                    onClick={handleTgDisconnect}
-                  >
-                    Disconnect
-                  </Button>
-                ) : tgConnectionPending ? (
-                  <Box>
-                    <Text>
-                      Follow the{' '}
-                      <Link
-                        href={`https://t.me/MeetWithDEVBot?start=${tgConnectionPending.tg_id}`}
-                        target="_blank"
-                      >
-                        https://t.me/MeetWithDEVBot?start=
-                        {tgConnectionPending.tg_id}
-                      </Link>{' '}
-                      to connect or open the bot @MeetWithDEVBot and run the
-                      command `/set {tgConnectionPending.tg_id}`
-                    </Text>
-                  </Box>
-                ) : (
-                  <Button
-                    isLoading={connecting}
-                    loadingText="Connecting"
-                    variant="outline"
-                    colorScheme="primary"
-                    onClick={handleTgConnect}
-                  >
-                    Connect
-                  </Button>
-                )}
-              </HStack>
-              <Spacer />
-            </>
-          )}
+
+          <HStack>
+            <Switch
+              colorScheme="primary"
+              size="md"
+              isChecked={telegramNotificationConfigured}
+              onChange={e => {
+                if (e.target.checked) {
+                  handleTgConnect()
+                } else {
+                  handleTgDisconnect()
+                }
+              }}
+              isDisabled={connecting}
+            />
+            <Text fontSize="lg" fontWeight="bold">
+              Telegram
+            </Text>
+            {connecting && <Spinner size="sm" ml={2} />}
+            {tgConnectionPending && (
+              <Text fontSize="sm" color="gray.500">
+                (Pending connection)
+              </Text>
+            )}
+          </HStack>
+
+          <Spacer />
           <Button
             isLoading={loading}
             alignSelf="start"

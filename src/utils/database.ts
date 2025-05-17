@@ -13,8 +13,10 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
+  DiscordConnectedAccounts,
   MeetingType,
   SimpleAccountInfo,
+  TgConnectedAccounts,
 } from '@/types/Account'
 import {
   AccountNotifications,
@@ -491,11 +493,37 @@ const getSlotsForAccount = async (
 
   const _start = start ? start.toISOString() : '1970-01-01'
   const _end = end ? end.toISOString() : '2500-01-01'
-
   const { data, error } = await db.supabase
     .from('slots')
     .select()
     .eq('account_address', account.address)
+    .or(
+      `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
+    )
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .order('start')
+
+  if (error) {
+    throw new Error(error.message)
+    // //TODO: handle error
+  }
+
+  return data || []
+}
+
+const getSlotsForAccountMinimal = async (
+  account_address: string,
+  start?: Date,
+  end?: Date,
+  limit?: number,
+  offset?: number
+): Promise<DBSlot[]> => {
+  const _start = start ? start.toISOString() : '1970-01-01'
+  const _end = end ? end.toISOString() : '2500-01-01'
+  const { data, error } = await db.supabase
+    .from('slots')
+    .select()
+    .eq('account_address', account_address)
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
@@ -921,6 +949,7 @@ const saveMeeting = async (
     recurrence: meeting.meetingRepeat,
     version: MeetingVersion.V2,
     slots: meeting.allSlotIds || [],
+    title: meeting.title,
   })
   if (!createdRootMeeting) {
     throw new Error(
@@ -1199,8 +1228,7 @@ const getGroupsAndMembers = async (
       .select(
         `
          group_members: group_members(*),
-         preferences: account_preferences(name),
-         calendars: connected_calendars(calendars)
+         preferences: account_preferences(name)
     `
       )
       .in('address', addresses)
@@ -1222,7 +1250,6 @@ const getGroupsAndMembers = async (
           address: member.group_members?.[0]?.member_id as string,
           role: member.group_members?.[0].role,
           invitePending: false,
-          calendarConnected: !!member.calendars[0]?.calendars?.length,
         })),
       })
     }
@@ -1573,7 +1600,7 @@ const getGroupUsers = async (
       group_members: group_members(*),
       group_invites: group_invites(*),
       preferences: account_preferences(name),
-      calendars: connected_calendars(calendars)
+      subscriptions: subscriptions(*) 
     `
       )
       .in('address', addresses)
@@ -1959,9 +1986,10 @@ const getConnectedCalendars = async (
 
   if (!data) return []
 
-  const connectedCalendars: ConnectedCalendar[] =
-    !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
-
+  // const connectedCalendars: ConnectedCalendar[] =
+  //   !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
+  // ignore pro for now
+  const connectedCalendars: ConnectedCalendar[] = data
   if (syncOnly) {
     const calendars: ConnectedCalendar[] = JSON.parse(
       JSON.stringify(connectedCalendars)
@@ -2538,6 +2566,7 @@ const updateMeeting = async (
     provider: meetingProvider,
     recurrence: meetingUpdateRequest.meetingRepeat,
     version: MeetingVersion.V2,
+    title: meetingUpdateRequest.title,
     slots: meeting.slots?.filter(
       val => !meetingUpdateRequest.slotsToRemove.includes(val)
     ),
@@ -2902,6 +2931,28 @@ const getNewestCoupon = async () => {
   }
   return coupon
 }
+const getAccountsWithTgConnected = async (): Promise<
+  Array<TgConnectedAccounts>
+> => {
+  const { data, error } = await db.supabase.rpc<TgConnectedAccounts>(
+    'get_telegram_notifications'
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const getDiscordAccounts = async (): Promise<
+  Array<DiscordConnectedAccounts>
+> => {
+  const { data, error } = await db.supabase.rpc<DiscordConnectedAccounts>(
+    'get_discord_notifications'
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
@@ -2918,10 +2969,12 @@ export {
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
   getAccountsNotificationSubscriptionEmails,
+  getAccountsWithTgConnected,
   getAppToken,
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
+  getDiscordAccounts,
   getExistingAccountsFromDB,
   getGateCondition,
   getGateConditionsForAccount,
@@ -2937,6 +2990,7 @@ export {
   getNewestCoupon,
   getOfficeEventMappingId,
   getSlotsForAccount,
+  getSlotsForAccountMinimal,
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
