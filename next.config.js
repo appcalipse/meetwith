@@ -22,7 +22,23 @@ const moduleExports = {
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   compress: true,
   experimental: {
-    optimizePackageImports: ['@chakra-ui/react'],
+    optimizePackageImports: [
+      '@chakra-ui/react',
+      '@chakra-ui/icons',
+      '@chakra-ui/theme-tools',
+      'date-fns',
+      'lodash',
+    ],
+  },
+
+  images: {
+    domains: [],
+    deviceSizes: [640, 750, 828, 1080, 1200],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    formats: ['image/webp'],
+    minimumCacheTTL: 60,
+    dangerouslyAllowSVG: false,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   async headers() {
     return [
@@ -65,6 +81,9 @@ const moduleExports = {
     }
 
     return config
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
   },
 }
 
