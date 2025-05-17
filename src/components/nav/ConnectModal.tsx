@@ -1,4 +1,5 @@
 import { Box, Portal } from '@chakra-ui/react'
+import * as Sentry from '@sentry/nextjs'
 import { useContext, useEffect, useState } from 'react'
 import {
   AutoConnect,
@@ -36,19 +37,23 @@ export const ConnectModal: React.FC = ({}) => {
   const status = useActiveWalletConnectionStatus()
 
   useEffect(() => {
-    if (!tryingToConnect && status === 'connecting') {
-      setTryingToConnect(true)
-    }
-    if (tryingToConnect && status === 'connected') {
-      setTryingToConnect(false)
-      if (!logged && wallet && wallet.getAccount()) {
-        wallet && disconnect(wallet)
-        logout(wallet)
-      } else if (logged && wallet) {
-        doLogin(wallet)
+    try {
+      if (!tryingToConnect && status === 'connecting') {
+        setTryingToConnect(true)
       }
-    } else if (tryingToConnect && status === 'disconnected' && logged) {
-      logout()
+      if (tryingToConnect && status === 'connected') {
+        setTryingToConnect(false)
+        if (!logged && wallet && wallet.getAccount()) {
+          wallet && disconnect(wallet)
+          logout(wallet)
+        } else if (logged && wallet) {
+          doLogin(wallet)
+        }
+      } else if (tryingToConnect && status === 'disconnected' && logged) {
+        logout()
+      }
+    } catch (e) {
+      Sentry.captureException(e)
     }
   }, [status, wallet, logged])
 
@@ -65,18 +70,22 @@ export const ConnectModal: React.FC = ({}) => {
   ]
 
   const doLogin = async (wallet: Wallet) => {
-    if (
-      wallet.getAccount() !== undefined &&
-      wallet.getAccount()!.address.toLowerCase() !==
-        currentAccount?.address.toLowerCase()
-    ) {
-      await handleLogin(
-        wallet,
-        undefined,
-        undefined,
-        shouldRedirect,
-        redirectPath
-      )
+    try {
+      if (
+        wallet.getAccount() !== undefined &&
+        wallet.getAccount()!.address.toLowerCase() !==
+          currentAccount?.address.toLowerCase()
+      ) {
+        await handleLogin(
+          wallet,
+          undefined,
+          undefined,
+          shouldRedirect,
+          redirectPath
+        )
+      }
+    } catch (e) {
+      Sentry.captureException(e)
     }
   }
 
@@ -120,9 +129,9 @@ export const ConnectModal: React.FC = ({}) => {
           onConnect={onConnect}
           appMetadata={{
             name: 'Meetwith',
-            url: 'https://meetwithwallet.xyz',
+            url: 'https://meetwith.xyz',
             description: 'Meetwith is the web3 tailored scheduling tool.',
-            logoUrl: 'https://meetwithwallet.xyz/assets/logo.svg',
+            logoUrl: 'https://meetwith.xyz/assets/logo.svg',
           }}
           walletConnect={{
             projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
@@ -134,9 +143,9 @@ export const ConnectModal: React.FC = ({}) => {
     <AutoConnect
       appMetadata={{
         name: 'Meetwith',
-        url: 'https://meetwithwallet.xyz',
+        url: 'https://meetwith.xyz',
         description: 'Meetwith is the web3 tailored scheduling tool.',
-        logoUrl: 'https://meetwithwallet.xyz/assets/logo.svg',
+        logoUrl: 'https://meetwith.xyz/assets/logo.svg',
       }}
       wallets={wallets}
       client={thirdWebClient}

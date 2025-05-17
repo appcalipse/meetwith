@@ -17,13 +17,10 @@ import {
   addDays,
   addHours,
   endOfMonth,
-  format,
   isBefore,
   isSameDay,
   isSameMonth,
-  setHours,
-  setMinutes,
-  setSeconds,
+  isWithinInterval,
   startOfMonth,
   sub,
 } from 'date-fns'
@@ -80,17 +77,6 @@ const GUIDES = [
   {
     color: getBgColor(State.NONE_AVAILABLE),
     description: 'No one is available',
-  },
-]
-
-const CLOCK = [
-  {
-    label: 'AM',
-    value: 'AM',
-  },
-  {
-    label: 'PM',
-    value: 'PM',
   },
 ]
 
@@ -218,11 +204,20 @@ export function SchedulePickTime({
       .filter(val => isSameMonth(val, currentMonth))
     return days.map(date => {
       const slots = getEmptySlots(date)
+      date = DateTime.fromJSDate(date)
+        .setZone(timezone)
+        .set({
+          hour: 0,
+          minute: 0,
+          second: 0,
+        })
+        .toJSDate()
       const busySlots = accountSlots.map(val => {
         return val.filter(slot => {
-          return isSameDay(slot.start, date)
+          return isWithinInterval(date, slot) || isSameDay(date, slot.start)
         })
       })
+
       const availabilities: Array<Record<string, Array<CustomTimeRange>>> = []
       const accounts = Object.values(groupAvailability).flat()
       for (const [key, entry] of Object.entries(accountAvailabilities)) {

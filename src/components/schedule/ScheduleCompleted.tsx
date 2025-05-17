@@ -1,5 +1,4 @@
 import { Box, Button, Heading, Image, Text, VStack } from '@chakra-ui/react'
-import { format } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { useRouter } from 'next/router'
 import React, { useContext } from 'react'
@@ -46,10 +45,14 @@ const ScheduleCompleted = () => {
         fontFamily="'DM Sans', sans-serif"
       >
         Your meeting <b>{title}</b> on{' '}
-        <b>{formatInTimeZone(pickedTime as Date, timezone, 'MMM d, yyyy')}</b>{' '}
+        <b>
+          {pickedTime
+            ? formatInTimeZone(pickedTime, timezone, 'MMM d, yyyy')
+            : 'Invalid date'}
+        </b>{' '}
         at{' '}
         <b>
-          {formatInTimeZone(pickedTime as Date, timezone, 'hh:mm a')} (
+          {formatInTimeZone(pickedTime || new Date(), timezone, 'hh:mm a')} (
           {timezone})
         </b>{' '}
         has been {intent === Intents.UPDATE_MEETING ? 'updated' : 'scheduled'}.

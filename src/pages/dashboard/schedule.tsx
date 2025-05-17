@@ -1,4 +1,4 @@
-import { Container, Flex, useToast } from '@chakra-ui/react'
+import { Container, Flex, useDisclosure, useToast } from '@chakra-ui/react'
 import { addMinutes, differenceInMinutes } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { NextPage } from 'next'
@@ -6,6 +6,7 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
+import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import ScheduleBase from '@/components/schedule/ScheduleBase'
 import ScheduleCompleted from '@/components/schedule/ScheduleCompleted'
 import ScheduleDetails from '@/components/schedule/ScheduleDetails'
@@ -14,7 +15,8 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
 import { MeetingReminders } from '@/types/common'
-import { Intents } from '@/types/Dashboard'
+import { EditMode, Intents } from '@/types/Dashboard'
+import { GetGroupsFullResponse } from '@/types/Group'
 import {
   MeetingDecrypted,
   MeetingProvider,
@@ -30,6 +32,7 @@ import { logEvent } from '@/utils/analytics'
 import {
   getExistingAccounts,
   getGroup,
+  getGroupsFull,
   getGroupsMembers,
   getMeeting,
 } from '@/utils/api_helper'
@@ -96,6 +99,7 @@ interface IScheduleContext {
   timezone: string
   setTimezone: React.Dispatch<React.SetStateAction<string>>
   handleSchedule: () => void
+  handleCancel: () => void
   isScheduling: boolean
   meetingProvider: MeetingProvider
   setMeetingProvider: React.Dispatch<React.SetStateAction<MeetingProvider>>
@@ -125,6 +129,8 @@ interface IScheduleContext {
       label: string
     }>
   >
+  groups: Array<GetGroupsFullResponse>
+  isGroupPrefetching: boolean
 }
 
 export interface IGroupParticipant {
@@ -156,6 +162,7 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   timezone: '',
   setTimezone: () => {},
   handleSchedule: () => {},
+  handleCancel: () => {},
   isScheduling: false,
   meetingProvider: MeetingProvider.HUDDLE,
   setMeetingProvider: () => {},
@@ -170,12 +177,19 @@ const DEFAULT_CONTEXT: IScheduleContext = {
     label: 'Does not repeat',
   },
   setMeetingRepeat: () => {},
+  groups: [],
+  isGroupPrefetching: false,
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
-
-const Schedule: NextPage = () => {
+interface IInitialProps {
+  groupId: string
+  intent: Intents
+  meetingId: string
+}
+const Schedule: NextPage<IInitialProps> = ({ groupId, intent, meetingId }) => {
   const { currentAccount } = useContext(AccountContext)
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const [participants, setParticipants] = useState<
     Array<ParticipantInfo | IGroupParticipant>
   >([])
@@ -201,15 +215,12 @@ const Schedule: NextPage = () => {
     selectDefaultProvider(currentAccount?.preferences.meetingProviders)
   )
   const [meetingUrl, setMeetingUrl] = useState('')
-  const [decryptedMeeting, setDecryptedMeeting] =
-    useState<MeetingDecrypted | null>(null)
+  const [decryptedMeeting, setDecryptedMeeting] = useState<
+    MeetingDecrypted | undefined
+  >(undefined)
   const toast = useToast()
-  const { query } = useRouter()
-  const { groupId, intent, meetingId } = query as {
-    groupId: string
-    intent: Intents
-    meetingId: string
-  }
+  const router = useRouter()
+  const { query, push } = router
   const [isScheduling, setIsScheduling] = useState(false)
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{
@@ -221,6 +232,23 @@ const Schedule: NextPage = () => {
     value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
   })
+  const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
+  const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
+  const fetchGroups = async () => {
+    setIsGroupPrefetching(true)
+    try {
+      const fetchedGroups = await getGroupsFull(undefined, undefined)
+      setGroups(fetchedGroups)
+    } catch (error) {
+      handleApiError('Error fetching groups.', error as Error)
+    } finally {
+      setIsGroupPrefetching(false)
+    }
+  }
+
+  useEffect(() => {
+    void fetchGroups()
+  }, [])
   const handleTimePick = (time: Date | number) => setPickedTime(time)
   const handleAddGroup = (group: IGroupParticipant) => {
     setParticipants(prev => {
@@ -234,7 +262,7 @@ const Schedule: NextPage = () => {
       return [...prev, group]
     })
   }
-  const handleRemoveGroup = (groupId: string) =>
+  const handleRemoveGroup = (groupId: string) => {
     setParticipants(prev =>
       prev.filter(val => {
         const groupData = val as IGroupParticipant
@@ -242,6 +270,18 @@ const Schedule: NextPage = () => {
         return !isGroup
       })
     )
+    setGroupAvailability(prev => {
+      const newGroupAvailability = { ...prev }
+      delete newGroupAvailability[groupId]
+      return newGroupAvailability
+    })
+
+    setGroupParticipants(prev => {
+      const newGroupParticipants = { ...prev }
+      delete newGroupParticipants[groupId]
+      return newGroupParticipants
+    })
+  }
   const renderCurrentPage = () => {
     switch (currentPage) {
       case Page.SCHEDULE:
@@ -297,11 +337,13 @@ const Schedule: NextPage = () => {
         slot_id: '',
         meeting_id: '',
       }))
+
       const currentParticipant = participants.filter(val => {
         const groupData = val as IGroupParticipant
         const isGroup = groupData.isGroup
         return !isGroup
       }) as Array<ParticipantInfo>
+
       const allParticipants = [
         ...new Set(
           [...currentParticipant, ...participantsGroup].filter(
@@ -310,8 +352,9 @@ const Schedule: NextPage = () => {
         ),
       ]
       const _participants = await parseAccounts(allParticipants)
+
       const userData = currentParticipant.find(
-        val => val.account_address === currentAccount!.address
+        val => val.account_address === currentAccount?.address
       )
       if (userData) {
         _participants.valid.push(userData)
@@ -484,6 +527,8 @@ const Schedule: NextPage = () => {
     }
     setIsScheduling(false)
   }
+  const handleRedirect = () => push(`/dashboard/${EditMode.MEETINGS}`)
+  const handleCancel = () => onOpen()
   const context: IScheduleContext = {
     groupParticipants,
     groupAvailability,
@@ -518,6 +563,9 @@ const Schedule: NextPage = () => {
     setMeetingNotification,
     meetingRepeat,
     setMeetingRepeat,
+    handleCancel,
+    groups,
+    isGroupPrefetching,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -567,17 +615,11 @@ const Schedule: NextPage = () => {
         return
       }
       setDecryptedMeeting(decryptedMeeting)
-      const participants = decryptedMeeting.participants.map(val => ({
-        account_address: val.account_address,
-        name: val.name,
-        status: val.status,
-        type: val.type,
-        slot_id: val.slot_id,
-        meeting_id: val.meeting_id,
-      }))
+      const participants = decryptedMeeting.participants
+
       const allAddresses = participants
         .map(val => val.account_address)
-        .filter(Boolean) as string[]
+        .filter(value => Boolean(value)) as string[]
       setGroupAvailability({
         no_group: allAddresses,
       })
@@ -629,7 +671,8 @@ const Schedule: NextPage = () => {
     if (intent === Intents.UPDATE_MEETING && meetingId) {
       void handleFetchMeetingInformation()
     }
-  }, [intent, meetingId])
+  }, [intent, meetingId, currentAccount?.address])
+
   return (
     <ScheduleContext.Provider value={context}>
       <Container
@@ -657,6 +700,13 @@ const Schedule: NextPage = () => {
         ) : (
           renderCurrentPage()
         )}
+        <CancelMeetingDialog
+          isOpen={isOpen}
+          onClose={onClose}
+          decryptedMeeting={decryptedMeeting}
+          currentAccount={currentAccount}
+          afterCancel={handleRedirect}
+        />
       </Container>
     </ScheduleContext.Provider>
   )
@@ -667,8 +717,8 @@ const EnhancedSchedule: NextPage = withLoginRedirect(
 )
 
 EnhancedSchedule.getInitialProps = async ctx => {
-  const { groupId } = ctx.query
-  return { groupId }
+  const { groupId, intent, meetingId } = ctx.query
+  return { groupId, intent, meetingId }
 }
 
 export default withLoginRedirect(EnhancedSchedule)

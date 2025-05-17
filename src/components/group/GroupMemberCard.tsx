@@ -129,8 +129,8 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       role: props.role,
       displayName: props.displayName,
       userId: props.userId,
-      calendarConnected: props.calendarConnected,
       invitePending: props.invitePending,
+      domain: props.domain,
     })
     openRemoveModal()
   }
@@ -154,9 +154,9 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           </Heading>
           {!props.invitePending ? (
             <CopyLinkButton
-              url={`${appUrl}/${props.address}`}
+              url={`${appUrl}/${props.domain || props.address}`}
               size="md"
-              label={`${appUrl}/${props.address}`}
+              label={`${appUrl}/${props.domain || props.address}`}
               withIcon
               design_type="link"
               pl={0}
@@ -248,48 +248,6 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
             </MenuList>
           </Menu>
         )}
-      </HStack>
-      <HStack flexBasis="35%" display="flex" justifyContent="space-between">
-        {props?.calendarConnected ? (
-          <Tag size={'sm'} variant="subtle">
-            <TagLeftIcon
-              boxSize="12px"
-              w={5}
-              h={5}
-              as={GoDotFill}
-              color="green.500"
-            />
-            <TagLabel px="2px">Connected</TagLabel>
-          </Tag>
-        ) : (
-          <Text p={0} fontWeight={700}>
-            Not connected
-          </Text>
-        )}
-        {
-          // no one can leave an empty group
-          !props?.isEmpty &&
-            (props.address === props.currentAccount.address ? (
-              <Icon
-                ml={2}
-                w={25}
-                h={25}
-                as={BiExit}
-                cursor="pointer"
-                onClick={handleLeaveGroup}
-              />
-            ) : // only admin can remove other users
-            props.viewerRole === MemberType.ADMIN ? (
-              <Icon
-                ml={2}
-                w={25}
-                h={25}
-                as={MdDelete}
-                onClick={handleRemoveGroupMember}
-                cursor="pointer"
-              />
-            ) : null)
-        }
       </HStack>
     </HStack>
   )

@@ -19,9 +19,9 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { Select as ChakraSelect } from 'chakra-react-select'
-import { format, set } from 'date-fns'
+import { format } from 'date-fns'
 import { useRouter } from 'next/router'
-import React, { ReactNode, useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useState } from 'react'
 
 import { ChipInput } from '@/components/chip-input'
 import { SingleDatepicker } from '@/components/input-date-picker'
@@ -30,7 +30,11 @@ import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import DiscoverATimeInfoModal from '@/components/schedule/DiscoverATimeInfoModal'
 import ScheduleGroupModal from '@/components/schedule/ScheduleGroupModal'
-import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
+import {
+  IGroupParticipant,
+  Page,
+  ScheduleContext,
+} from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
@@ -78,6 +82,8 @@ const ScheduleBase = () => {
     setMeetingNotification,
     meetingRepeat,
     setMeetingRepeat,
+    setGroupParticipants,
+    handleCancel,
   } = useContext(ScheduleContext)
   const handleSubmit = () => {
     if (!title) {
@@ -111,7 +117,29 @@ const ScheduleBase = () => {
   const [openWhatIsThis, setOpenWhatIsThis] = useState(false)
   const iconColor = useColorModeValue('gray.800', 'white')
   const onParticipantsChange = (_participants: Array<ParticipantInfo>) => {
-    setParticipants(_participants)
+    setParticipants(_prev => {
+      const oldGroups = _prev.filter(_participantOld => {
+        const participant = _participantOld as IGroupParticipant
+        return participant.isGroup
+      }) as Array<IGroupParticipant>
+
+      oldGroups.forEach(oldGroup => {
+        const participants =
+          _participants as unknown as Array<IGroupParticipant>
+        const isGroupExist = participants.find(val => val.id === oldGroup.id)
+        if (!isGroupExist) {
+          setGroupParticipants(prev => ({
+            ...prev,
+            [oldGroup.id]: [],
+          }))
+          setGroupAvailability(prev => ({
+            ...prev,
+            [oldGroup.id]: [],
+          }))
+        }
+      })
+      return _participants as Array<ParticipantInfo | IGroupParticipant>
+    })
     if (_participants.length) {
       setIsParticipantsValid(true)
     }
@@ -123,12 +151,35 @@ const ScheduleBase = () => {
       ...prev,
       [key]: addresses as string[],
     }))
+    setGroupParticipants(prev => ({
+      ...prev,
+      [key]: addresses as string[],
+    }))
   }
+
+  const type = useMemo(
+    () =>
+      currentAccount?.preferences.availableTypes.find(
+        type => type.duration === duration
+      ),
+    [duration]
+  )
+  useEffect(() => {
+    const type = currentAccount?.preferences.availableTypes.find(
+      type => type.duration === duration
+    )
+    if (type?.customLink) {
+      setMeetingProvider(MeetingProvider.CUSTOM)
+      setMeetingUrl(type.customLink)
+    }
+  }, [currentAccount, duration])
+
   useEffect(() => {
     if (participants.length > 0) {
       setIsParticipantsValid(true)
     }
   }, [participants])
+
   return (
     <Box>
       <DiscoverATimeInfoModal
@@ -344,43 +395,49 @@ const ScheduleBase = () => {
             />
           </HStack>
         </FormControl>
-        <VStack alignItems="start" w={'100%'} gap={4}>
-          <Text fontSize="18px" fontWeight={500}>
-            Location
-          </Text>
-          <RadioGroup
-            onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-            value={meetingProvider}
-            w={'100%'}
-          >
-            <VStack w={'100%'} gap={4}>
-              {meetingProviders.map(provider => (
-                <Radio
-                  flexDirection="row-reverse"
-                  justifyContent="space-between"
-                  w="100%"
-                  colorScheme="primary"
-                  value={provider}
-                  key={provider}
-                >
-                  <Text fontWeight="600" color={'primary.200'} cursor="pointer">
-                    {renderProviderName(provider)}
-                  </Text>
-                </Radio>
-              ))}
-            </VStack>
-          </RadioGroup>
-          {meetingProvider === MeetingProvider.CUSTOM && (
-            <Input
-              type="text"
-              placeholder="insert a custom meeting url"
-              isDisabled={isScheduling}
-              my={4}
-              value={meetingUrl}
-              onChange={e => setMeetingUrl(e.target.value)}
-            />
-          )}
-        </VStack>
+        {(type?.fixedLink || !type?.customLink) && (
+          <VStack alignItems="start" w={'100%'} gap={4}>
+            <Text fontSize="18px" fontWeight={500}>
+              Location
+            </Text>
+            <RadioGroup
+              onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+              value={meetingProvider}
+              w={'100%'}
+            >
+              <VStack w={'100%'} gap={4}>
+                {meetingProviders.map(provider => (
+                  <Radio
+                    flexDirection="row-reverse"
+                    justifyContent="space-between"
+                    w="100%"
+                    colorScheme="primary"
+                    value={provider}
+                    key={provider}
+                  >
+                    <Text
+                      fontWeight="600"
+                      color={'primary.200'}
+                      cursor="pointer"
+                    >
+                      {renderProviderName(provider)}
+                    </Text>
+                  </Radio>
+                ))}
+              </VStack>
+            </RadioGroup>
+            {meetingProvider === MeetingProvider.CUSTOM && (
+              <Input
+                type="text"
+                placeholder="insert a custom meeting url"
+                isDisabled={isScheduling}
+                my={4}
+                value={meetingUrl}
+                onChange={e => setMeetingUrl(e.target.value)}
+              />
+            )}
+          </VStack>
+        )}
         <FormControl w="100%" maxW="100%">
           <FormLabel>Meeting reminders</FormLabel>
           <ChakraSelect
@@ -465,20 +522,35 @@ const ScheduleBase = () => {
             placeholder="Any information you want to share prior to the meeting?"
           />
         </FormControl>
-        <Button
-          w="100%"
-          py={3}
-          h={'auto'}
-          variant="outline"
-          colorScheme="primary"
-          onClick={handleSchedule}
-          isLoading={isScheduling}
-          isDisabled={
-            participants.length === 0 || !title || !duration || !pickedTime
-          }
-        >
-          Schedule now
-        </Button>
+        <HStack w="100%">
+          <Button
+            w="100%"
+            py={3}
+            h={'auto'}
+            variant="outline"
+            colorScheme="primary"
+            onClick={handleSchedule}
+            isLoading={isScheduling}
+            isDisabled={
+              participants.length === 0 || !title || !duration || !pickedTime
+            }
+          >
+            {query.intent === Intents.UPDATE_MEETING
+              ? 'Update Meeting'
+              : 'Schedule now'}
+          </Button>
+          {query.intent === Intents.UPDATE_MEETING && (
+            <Button
+              w="100%"
+              py={3}
+              h={'auto'}
+              colorScheme="primary"
+              onClick={handleCancel}
+            >
+              Cancel Meeting
+            </Button>
+          )}
+        </HStack>
       </VStack>
     </Box>
   )

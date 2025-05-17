@@ -776,10 +776,10 @@ const generateIcs = (
 ): ReturnObject => {
   let url = meeting.meeting_url.trim()
   if (!isValidUrl(url)) {
-    url = 'https://meetwithwallet.xyz'
+    url = 'https://meetwith.xyz'
   }
   const event: EventAttributes = {
-    uid: meeting.id,
+    uid: meeting.id.replaceAll('-', ''),
     start: [
       getYear(meeting.start),
       getMonth(meeting.start) + 1,
@@ -1063,7 +1063,7 @@ const noNoReplyEmailForAccount = (account_address: string): string => {
   const content = sanitizeContent(
     account_address.replaceAll(' ', '_').toLowerCase()
   )
-  return `no_reply_${content}@meetwithwallet.xyz`
+  return `no_reply_${content}@meetwith.xyz`
 }
 
 const decodeMeeting = async (
