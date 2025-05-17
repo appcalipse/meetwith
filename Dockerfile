@@ -9,10 +9,13 @@ RUN apk add git
 RUN apk add --update python3 make g++\
    && rm -rf /var/cache/apk/*
 
+RUN corepack enable
+RUN corepack prepare yarn@4.9.1 --activate
+
 WORKDIR /app
-COPY package.json yarn.lock ./ 
+COPY package.json yarn.lock .yarnrc.yml ./ 
 COPY ./patches ./patches
-RUN yarn install --frozen-lockfile --unsafe-perm
+RUN yarn install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM node:18.19-alpine AS builder
