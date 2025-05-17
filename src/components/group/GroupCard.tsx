@@ -222,40 +222,6 @@ const GroupCard: React.FC<IGroupCard> = props => {
               </Tooltip.Root>
             </Tooltip.Provider>
           </Flex>
-          <Flex alignItems="center" flexBasis="35%" gap={0.5}>
-            <Heading size="sm" fontWeight={800}>
-              Calendar connection
-            </Heading>
-            <Tooltip.Provider delayDuration={400}>
-              <Tooltip.Root>
-                <Tooltip.Trigger>
-                  <Flex
-                    w="16px"
-                    h="16px"
-                    borderRadius="50%"
-                    bgColor={iconColor}
-                    justifyContent="center"
-                    alignItems="center"
-                    ml={1}
-                  >
-                    <Icon w={1} color={itemsBgColor} as={FaInfo} />
-                  </Flex>
-                </Tooltip.Trigger>
-                <Tooltip.Content>
-                  <Text
-                    fontSize="sm"
-                    p={4}
-                    maxW="200px"
-                    bgColor={itemsBgColor}
-                    shadow="lg"
-                  >
-                    At least 1 eternal calendar connected to Meetwith platform.
-                  </Text>
-                  <Tooltip.Arrow />
-                </Tooltip.Content>
-              </Tooltip.Root>
-            </Tooltip.Provider>
-          </Flex>
         </HStack>
         <VStack width="100%" borderRadius="lg">
           {groupMembers.map(member => (

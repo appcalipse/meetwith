@@ -52,7 +52,45 @@ export const MeetingRepeatOptions = [
   },
 ]
 
-export const DEFAULT_GROUP_SCHEDULING_DURATION = [
+export const MeetingRepeatIntervals = [
+  {
+    value: MeetingReminders['5_MINUTES_BEFORE'],
+    interval: 5,
+    label: '5 minutes',
+  },
+  {
+    value: MeetingReminders['10_MINUTES_BEFORE'],
+    interval: 10,
+    label: '10 minutes',
+  },
+  {
+    value: MeetingReminders['15_MINUTES_BEFORE'],
+    interval: 15,
+    label: '15 minutes',
+  },
+  {
+    value: MeetingReminders['30_MINUTES_BEFORE'],
+    interval: 30,
+    label: '30 minutes',
+  },
+  {
+    value: MeetingReminders['1_HOUR_BEFORE'],
+    interval: 60,
+    label: '1 hour',
+  },
+  {
+    value: MeetingReminders['1_DAY_BEFORE'],
+    interval: 1440,
+    label: '1 day',
+  },
+  {
+    value: MeetingReminders['1_WEEK_BEFORE'],
+    interval: 10080,
+    label: '1 week',
+  },
+]
+
+const generateGroupSchedulingDurations = () => [
   { id: v4(), duration: 15 },
   { id: v4(), duration: 30 },
   { id: v4(), duration: 45 },
@@ -62,3 +100,6 @@ export const DEFAULT_GROUP_SCHEDULING_DURATION = [
   { id: v4(), duration: 150 },
   { id: v4(), duration: 180 },
 ]
+
+export const DEFAULT_GROUP_SCHEDULING_DURATION =
+  generateGroupSchedulingDurations()

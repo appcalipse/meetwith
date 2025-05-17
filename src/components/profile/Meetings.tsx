@@ -18,11 +18,13 @@ import { FaPlus } from 'react-icons/fa'
 
 import { useMeetingDialog } from '@/components/schedule/meeting.dialog.hook'
 import { Account } from '@/types/Account'
+import { Intents } from '@/types/Dashboard'
 import { DBSlot, MeetingChangeType } from '@/types/Meeting'
 import { getMeeting, getMeetingsForDashboard } from '@/utils/api_helper'
 import { decodeMeeting } from '@/utils/calendar_manager'
 
 import MeetingCard from '../meeting/MeetingCard'
+import { useCancelDialog } from '../schedule/cancel.dialog.hook'
 
 const Meetings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
@@ -32,7 +34,10 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
   const [noMoreFetch, setNoMoreFetch] = useState(false)
   const [firstFetch, setFirstFetch] = useState(true)
   const { push, query } = useRouter()
-  const { slotId } = query
+  const { slotId, intent } = query as {
+    slotId: string
+    intent: Intents
+  }
 
   const timezone =
     currentAccount?.preferences?.timezone ||
@@ -171,18 +176,31 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
 
   const toast = useToast()
   const [MeetingDialog, openMeetingDialog] = useMeetingDialog()
+  const { CancelDialog, openCancelDialog } = useCancelDialog()
   const fillMeeting = async () => {
-    const meeting = await getMeeting(slotId as string)
-    const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
-    openMeetingDialog(
-      meeting,
-      decodedMeeting,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-      afterClose
-    )
+    try {
+      const meeting = await getMeeting(slotId as string)
+      const decodedMeeting = await decodeMeeting(meeting, currentAccount!)
+      if (intent === Intents.CANCEL_MEETING) {
+        openCancelDialog(
+          meeting,
+          decodedMeeting ?? undefined,
+          afterClose,
+          currentAccount
+        )
+      } else {
+        openMeetingDialog(
+          meeting,
+          decodedMeeting,
+          Intl.DateTimeFormat().resolvedOptions().timeZone,
+          afterClose
+        )
+      }
+    } catch (e) {}
   }
   useEffect(() => {
-    slotId && fillMeeting()
+    if (!slotId) return
+    fillMeeting()
   }, [slotId])
 
   return (
@@ -216,6 +234,7 @@ const Meetings: React.FC<{ currentAccount: Account }> = ({
       </Button>
       {content}
       <MeetingDialog />
+      <CancelDialog />
     </Flex>
   )
 }

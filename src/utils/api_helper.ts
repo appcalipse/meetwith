@@ -97,7 +97,10 @@ export const internalFetch = async <T>(
 
     throw new ApiFetchError(response.status, await response.text())
   } catch (e: any) {
-    Sentry.captureException(e)
+    // Exclude account not found error on sentry
+    if (!path.includes('accounts') && e.status === 404) {
+      Sentry.captureException(e)
+    }
     throw e
   }
 }
@@ -741,13 +744,13 @@ export const signup = async (
 }
 
 export const listConnectedCalendars = async (
-  syncOnly?: boolean
+  syncOnly = false
 ): Promise<ConnectedCalendarCore[]> => {
   return await queryClient.fetchQuery(
     QueryKeys.connectedCalendars(syncOnly),
     () =>
       internalFetch<ConnectedCalendarCore[]>(
-        `/secure/calendar_integrations?syncOnly=${syncOnly ? 'true' : 'false'}`
+        `/secure/calendar_integrations?syncOnly=${syncOnly}`
       )
   )
 }

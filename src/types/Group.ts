@@ -1,3 +1,5 @@
+import { Subscription } from './Subscription'
+
 export enum MemberType {
   ADMIN = 'admin',
   MEMBER = 'member',
@@ -42,7 +44,7 @@ export interface GroupMember {
   role: MemberType
   userId?: string
   invitePending: boolean
-  calendarConnected: boolean
+  domain?: string
 }
 
 export interface UpdateGroupPayload {
@@ -74,6 +76,7 @@ export interface GroupUsers {
   calendars: Array<{
     calendars?: Array<CalendarType>
   }>
+  subscriptions: Array<Subscription>
 }
 export interface GroupMemberQuery {
   id: string

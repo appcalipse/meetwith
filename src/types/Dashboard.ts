@@ -15,6 +15,7 @@ export enum Intents {
   JOIN = 'join',
   USE_COUPON = 'use-coupon',
   UPDATE_MEETING = 'update-meeting',
+  CANCEL_MEETING = 'cancel-meeting',
 }
 
 export enum InviteType {
