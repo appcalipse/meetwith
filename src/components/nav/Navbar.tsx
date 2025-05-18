@@ -8,12 +8,13 @@ import {
   Flex,
   HStack,
   Icon,
-  Image,
   Stack,
   Text,
   useColorModeValue,
   useDisclosure,
+  useMediaQuery,
 } from '@chakra-ui/react'
+import Image from 'next/image'
 import router, { useRouter } from 'next/router'
 import { useContext, useEffect, useState } from 'react'
 import { BiMenuAltRight } from 'react-icons/bi'
@@ -71,7 +72,10 @@ export const Navbar = () => {
     changeNavbarBackground()
   }, [])
   const params = new URLSearchParams(query as Record<string, string>)
-
+  const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
+    ssr: true,
+    fallback: false, // return false on the server, and re-evaluate on the client side
+  })
   const queryString = params.toString()
   const handleConnectionOpen = () => {
     openConnection(
@@ -120,10 +124,18 @@ export const Navbar = () => {
                 cursor="pointer"
               >
                 <Image
-                  width={{ md: '100px', base: '75px' }}
-                  p={2}
-                  src="/assets/logo.svg"
+                  width={53}
+                  height={33}
                   alt="Meetwith"
+                  style={{
+                    width: isMobile ? '75px' : '100px',
+                    height: 'auto',
+                    display: 'block',
+                    marginLeft: 'auto',
+                    marginRight: 'auto',
+                    padding: 8,
+                  }}
+                  src="/assets/logo.svg"
                 />
               </Flex>
             </Flex>
@@ -137,10 +149,18 @@ export const Navbar = () => {
               >
                 <HStack>
                   <Image
-                    width="100px"
-                    p={2}
                     src="/assets/logo.svg"
+                    width={53}
+                    height={33}
                     alt="Meetwith"
+                    style={{
+                      width: '100px',
+                      height: 'auto',
+                      display: 'block',
+                      marginLeft: 'auto',
+                      marginRight: 'auto',
+                      padding: 8,
+                    }}
                   />
                 </HStack>
               </Link>
@@ -321,7 +341,20 @@ const MobileNav = ({
     >
       <Flex alignItems="center" justify="space-between" mb={2} width="100%">
         <Flex alignItems="center" cursor="pointer">
-          <Image width="100px" p={2} src="/assets/logo.svg" alt="Meetwith" />
+          <Image
+            width={53}
+            height={33}
+            alt="Meetwith"
+            style={{
+              width: '100px',
+              height: 'auto',
+              display: 'block',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              padding: 8,
+            }}
+            src="/assets/logo.svg"
+          />
         </Flex>
 
         <Button
