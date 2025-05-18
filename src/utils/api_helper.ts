@@ -267,6 +267,23 @@ export const scheduleMeetingAsGuest = async (
   }
 }
 
+export const guestMeetingOverwrite = async (
+  meeting: MeetingCreationRequest
+): Promise<DBSlot> => {
+  try {
+    return (await internalFetch(`/meetings/guest`, 'PATCH', meeting)) as DBSlot
+  } catch (e: any) {
+    if (e.status && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e.status && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e.status && e.status === 403) {
+      throw new GateConditionNotValidError()
+    }
+    throw e
+  }
+}
+
 export const updateMeeting = async (
   slotId: string,
   meeting: MeetingUpdateRequest

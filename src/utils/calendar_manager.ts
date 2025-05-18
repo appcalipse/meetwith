@@ -47,6 +47,8 @@ import {
   getAccount,
   getExistingAccounts,
   getMeeting,
+  getMeetingGuest,
+  guestMeetingOverwrite,
   isSlotFreeApiCall,
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
@@ -260,6 +262,131 @@ const buildMeetingData = async (
   meetingTitle = 'No Title',
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT
+): Promise<MeetingCreationRequest> => {
+  if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
+    if (isValidEmail(meetingUrl)) {
+      throw new InvalidURL()
+    }
+    if (!isValidUrl(meetingUrl)) {
+      meetingUrl = `https://${meetingUrl}`
+      if (!isValidUrl(meetingUrl)) {
+        throw new InvalidURL()
+      }
+    }
+  }
+
+  const privateInfo: MeetingInfo = {
+    created_at: new Date(),
+    participants: sanitizedParticipants,
+    title: meetingTitle,
+    content: meetingContent,
+    meeting_url: meetingUrl,
+    change_history_paths: [],
+    related_slot_ids: [],
+    meeting_id: meetingId,
+    reminders: meetingReminders,
+    provider: meetingProvider,
+    recurrence: meetingRepeat,
+  }
+
+  // first pass to make sure that we are keeping the existing slot id
+  for (const participant of sanitizedParticipants) {
+    const existingSlotId = participantsToKeep[participant.account_address || '']
+    participant.slot_id = existingSlotId || participant.slot_id
+  }
+
+  const allAccountSlotIds = sanitizedParticipants
+    .filter(p => p.account_address)
+    .map(it => it.slot_id)
+    .filter(val => val !== undefined) as string[]
+
+  const allSlotIds = sanitizedParticipants
+    .map(it => it.slot_id!)
+    .filter(val => val !== undefined)
+
+  const participantsMappings = []
+
+  for (const participant of sanitizedParticipants) {
+    // we use participant key if it is an actual participant, otherwise, it is a
+    // guest and have not a PK yet, so we encode data using our pk.
+    const encodingKey =
+      allAccounts.filter(
+        account =>
+          account.address.toLowerCase() ===
+          participant.account_address?.toLowerCase()
+      )[0]?.internal_pub_key || process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
+
+    const privateInfoComplete = JSON.stringify({
+      ...privateInfo,
+      // we need to store the other related slots in other to update the meeting later
+      related_slot_ids: allAccountSlotIds.filter(
+        id => id !== participant.slot_id
+      ),
+    } as MeetingInfo)
+
+    const participantMapping: RequestParticipantMapping = {
+      account_address: participant.account_address || '',
+      // this is the actual slot id for this participant, we choose it before creation
+      slot_id: participant.slot_id,
+      type: participant.type,
+      meeting_id: meetingId,
+      privateInfo: await encryptWithPublicKey(encodingKey, privateInfoComplete),
+      // store a hash of the original data in order to be able to determine in the
+      // future if the user is th
+      privateInfoHash: simpleHash(privateInfoComplete),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      name: participant.name || '',
+      guest_email: participant.guest_email,
+      status:
+        participant.type === ParticipantType.Scheduler
+          ? ParticipationStatus.Accepted
+          : ParticipationStatus.Pending,
+      mappingType: !!participantsToKeep[
+        participant.account_address || participant.guest_email || ''
+      ]
+        ? ParticipantMappingType.KEEP
+        : ParticipantMappingType.ADD,
+    }
+
+    participantsMappings.push(participantMapping)
+  }
+
+  return {
+    type: schedulingType,
+    start: startTime,
+    end: endTime,
+    meeting_id: meetingId,
+    participants_mapping: participantsMappings,
+    meetingTypeId,
+    meeting_url: privateInfo['meeting_url'],
+    content: privateInfo['content'],
+    title: privateInfo['title'],
+    meetingProvider,
+    meetingReminders,
+    meetingRepeat,
+    allSlotIds,
+  }
+}
+
+const buildOverwriteMeetingData = async (
+  schedulingType: SchedulingType,
+  meetingTypeId: string,
+  startTime: Date,
+  endTime: Date,
+  sanitizedParticipants: ParticipantInfo[],
+  allAccounts: Account[],
+  participantsToKeep: {
+    [accountOrEmail: string]: string
+  },
+  meetingProvider: MeetingProvider,
+  currentAccount?: Account | null,
+  meetingContent?: string,
+  meetingUrl = '',
+  meetingId = '',
+  meetingTitle = 'No Title',
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT,
+  oldMeetingId?: string
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -684,6 +811,131 @@ const scheduleMeeting = async (
       const meeting = (await decryptMeeting(slot, currentAccount))!
       return meeting
     }
+
+    // Invalidate meetings cache and update meetings where required
+    queryClient.invalidateQueries(
+      QueryKeys.meetingsByAccount(currentAccount?.address?.toLowerCase())
+    )
+    queryClient.invalidateQueries(
+      QueryKeys.busySlots({ id: currentAccount?.address?.toLowerCase() })
+    )
+
+    participants.forEach(p => {
+      queryClient.invalidateQueries(
+        QueryKeys.meetingsByAccount(p.account_address?.toLowerCase())
+      )
+      queryClient.invalidateQueries(
+        QueryKeys.busySlots({
+          id: p.account_address?.toLowerCase(),
+        })
+      )
+    })
+    return {
+      id: slot.id!,
+      ...meeting,
+      created_at: meeting.start,
+      participants: meeting.participants_mapping,
+      content: meeting.content,
+      title: meeting.title,
+      meeting_id: newMeetingId,
+      meeting_url: meeting.meeting_url,
+      start: meeting.start,
+      end: meeting.end,
+      related_slot_ids: [],
+      version: 0,
+      meeting_info_encrypted: slot.meeting_info_encrypted,
+    }
+  } catch (error: any) {
+    throw error
+  }
+}
+const scheduleMeetingOverwrite = async (
+  ignoreAvailabilities: boolean,
+  schedulingType: SchedulingType,
+  meetingTypeId: string,
+  startTime: Date,
+  endTime: Date,
+  participants: ParticipantInfo[],
+  meetingProvider: MeetingProvider,
+  meetingId: string,
+  currentAccount?: Account | null,
+  meetingContent?: string,
+  meetingUrl?: string,
+  emailToSendReminders?: string,
+  meetingTitle?: string,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT
+): Promise<MeetingDecrypted> => {
+  const newMeetingId = uuidv4()
+  const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
+  const meetingData = await getMeetingGuest(meetingId)
+
+  const meeting_url =
+    meetingUrl ||
+    (
+      await generateMeetingUrl({
+        meeting_id: newMeetingId,
+        title: meetingTitle || 'No Title',
+        end: endTime,
+        start: startTime,
+        meetingProvider,
+        participants_mapping: participantData.sanitizedParticipants,
+        accounts: participantData.allAccounts,
+        content: meetingContent,
+        meetingReminders,
+        meetingRepeat,
+      })
+    ).url
+
+  const meeting = await buildOverwriteMeetingData(
+    schedulingType,
+    meetingTypeId,
+    startTime,
+    endTime,
+    participantData.sanitizedParticipants,
+    participantData.allAccounts,
+    {},
+    meetingProvider,
+    currentAccount,
+    meetingContent,
+    meeting_url,
+    newMeetingId,
+    meetingTitle,
+    meetingReminders,
+    meetingRepeat,
+    meetingId
+  )
+  if (!ignoreAvailabilities) {
+    const promises: Promise<boolean>[] = []
+    participants
+      .filter(p => p.account_address !== currentAccount?.address)
+      .forEach(participant => {
+        promises.push(
+          new Promise<boolean>(async resolve => {
+            if (
+              !participant.account_address ||
+              (
+                await isSlotFreeApiCall(
+                  participant.account_address,
+                  startTime,
+                  endTime,
+                  meetingTypeId
+                )
+              ).isFree
+            ) {
+              resolve(true)
+            }
+            resolve(false)
+          })
+        )
+      })
+    const results = await Promise.all(promises)
+    if (results.some(r => !r)) {
+      throw new TimeNotAvailableError()
+    }
+  }
+  try {
+    const slot: DBSlot = await guestMeetingOverwrite(meeting)
 
     // Invalidate meetings cache and update meetings where required
     queryClient.invalidateQueries(
@@ -1195,6 +1447,7 @@ export {
   noNoReplyEmailForAccount,
   outLookUrlParsedDate,
   scheduleMeeting,
+  scheduleMeetingOverwrite,
   selectDefaultProvider,
   updateMeeting,
 }
