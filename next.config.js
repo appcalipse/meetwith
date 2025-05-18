@@ -2,6 +2,8 @@
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { withSentryConfig } = require('@sentry/nextjs')
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const crypto = require('crypto')
 
 // https://nextjs.org/docs/advanced-features/using-mdx
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -21,6 +23,7 @@ const moduleExports = {
   eslint: { dirs: ['src'] },
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   compress: true,
+  poweredByHeader: false,
   experimental: {
     optimizePackageImports: [
       '@chakra-ui/react',
@@ -28,6 +31,9 @@ const moduleExports = {
       '@chakra-ui/theme-tools',
       'date-fns',
       'lodash',
+      '@emotion/react',
+      '@emotion/styled',
+      'framer-motion',
     ],
   },
 
@@ -62,28 +68,74 @@ const moduleExports = {
       },
     ]
   },
-  swcMinify: true,
-  webpack: config => {
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? {
+            exclude: ['error', 'warn'],
+          }
+        : false,
+  },
+
+  webpack: (config, { dev, isServer }) => {
     // Split your bundles more aggressively
     config.optimization.splitChunks = {
       chunks: 'all',
       maxInitialRequests: 25,
       minSize: 20000,
-    }
-    config.optimization.splitChunks.cacheGroups = {
-      ...config.optimization.splitChunks.cacheGroups,
-      chakra: {
-        test: /[\\/]node_modules[\\/](@chakra-ui)[\\/]/,
-        name: 'chakra-ui',
-        priority: 10,
-        enforce: true,
+      cacheGroups: {
+        default: false,
+        vendors: false,
+        framework: {
+          name: 'framework',
+          chunks: 'all',
+          test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+          priority: 40,
+          enforce: true,
+        },
+        commons: {
+          name: 'commons',
+          chunks: 'all',
+          minChunks: 2,
+          priority: 20,
+          reuseExistingChunk: true,
+        },
+        lib: {
+          test(module) {
+            return (
+              module.size() > 160000 &&
+              /node_modules[/\\]/.test(module.identifier())
+            )
+          },
+          name(module) {
+            const hash = crypto.createHash('sha1')
+            if (module.identifier) {
+              hash.update(module.identifier())
+            }
+            return hash.digest('hex').substring(0, 8)
+          },
+          chunks: 'all',
+          priority: 30,
+          minChunks: 1,
+          reuseExistingChunk: true,
+        },
+        chakra: {
+          test: /[\\/]node_modules[\\/](@chakra-ui|@emotion)[\\/]/,
+          name: 'chakra-ui',
+          chunks: 'all',
+          priority: 35,
+          enforce: true,
+        },
       },
     }
 
+    if (!dev) {
+      // Production optimizations
+      config.optimization.moduleIds = 'deterministic'
+      config.optimization.chunkIds = 'deterministic'
+    }
+
     return config
-  },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
   },
 }
 

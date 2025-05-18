@@ -9,7 +9,7 @@ import { sessionOptions } from '@/middleware'
 import redirectTo from '@/utils/redirect'
 
 import Faq from '../components/landing/FAQ'
-import Features from '../components/landing/Features'
+import { Features } from '../components/landing/Features'
 import Hero from '../components/landing/Hero'
 import Why from '../components/landing/Why'
 const ProAccessPopUp = dynamic(
