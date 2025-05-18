@@ -1,28 +1,16 @@
-import { ArrowForwardIcon } from '@chakra-ui/icons'
 import {
   Box,
-  Button,
   Flex,
   Grid,
   Heading,
   HStack,
-  Icon,
-  Image,
   SlideFade,
   Tag,
   Text,
   VStack,
 } from '@chakra-ui/react'
-import router from 'next/router'
-import { useContext } from 'react'
-import { BsBell, BsShieldShaded } from 'react-icons/bs'
-import { FaRegCalendarCheck, FaRegHandshake } from 'react-icons/fa'
+import Image from 'next/image'
 import { useInView } from 'react-intersection-observer'
-import { base, polygon } from 'thirdweb/chains'
-
-import { AccountContext } from '@/providers/AccountProvider'
-import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { logEvent } from '@/utils/analytics'
 
 const SOCIALS = [
   'mrjacklop.eth',
@@ -38,11 +26,7 @@ const SOCIALS = [
   'udoka.eth',
   'osinachi.base.eth',
 ]
-export function Why() {
-  const { currentAccount, loginIn } = useContext(AccountContext)
-
-  const { openConnection } = useContext(OnboardingModalContext)
-
+function Why() {
   const { ref: whyContainer, inView: isWhyContainerVisible } = useInView({
     triggerOnce: true,
   })
@@ -108,7 +92,17 @@ export function Why() {
                   w={'58px'}
                   h={'58px'}
                 >
-                  <Image src="/assets/whys/Group.svg" alt="Users" w={9} h={9} />
+                  <Image
+                    src="/assets/whys/Group.svg"
+                    alt="Users"
+                    width={38}
+                    height={38}
+                    priority
+                    style={{
+                      width: 36,
+                      height: 36,
+                    }}
+                  />
                 </Box>
 
                 <Heading
@@ -156,8 +150,13 @@ export function Why() {
                     <Image
                       src="/assets/whys/Calendar.svg"
                       alt="Box"
-                      w={9}
-                      h={9}
+                      width={38}
+                      height={38}
+                      priority
+                      style={{
+                        width: 36,
+                        height: 36,
+                      }}
                     />
                   </Box>
                   <VStack flex={1} alignItems="flex-start">
@@ -205,7 +204,17 @@ export function Why() {
                     w={'58px'}
                     h={'58px'}
                   >
-                    <Image src="/assets/whys/Lock.svg" alt="Box" w={9} h={9} />
+                    <Image
+                      src="/assets/whys/Lock.svg"
+                      alt="Box"
+                      priority
+                      width={38}
+                      height={38}
+                      style={{
+                        width: 36,
+                        height: 36,
+                      }}
+                    />
                   </Box>
                   <VStack flex={1} alignItems="flex-start">
                     <Heading
@@ -248,7 +257,17 @@ export function Why() {
                   w={'58px'}
                   h={'58px'}
                 >
-                  <Image src="/assets/whys/Box.svg" alt="Box" w={9} h={9} />
+                  <Image
+                    src="/assets/whys/Box.svg"
+                    alt="Box"
+                    width={38}
+                    height={38}
+                    priority
+                    style={{
+                      width: 36,
+                      height: 36,
+                    }}
+                  />
                 </Box>
                 <Heading
                   fontSize={{ md: '26px', base: 'xl' }}
@@ -293,7 +312,17 @@ export function Why() {
                   w={'58px'}
                   h={'58px'}
                 >
-                  <Image src="/assets/whys/Shield.svg" alt="Box" w={9} h={9} />
+                  <Image
+                    src="/assets/whys/Shield.svg"
+                    alt="Box"
+                    width={26}
+                    height={36}
+                    priority
+                    style={{
+                      width: 36,
+                      height: 36,
+                    }}
+                  />
                 </Box>
 
                 <Heading
@@ -333,7 +362,17 @@ export function Why() {
                   w={'58px'}
                   h={'58px'}
                 >
-                  <Image src="/assets/whys/Link.svg" alt="Box" w={9} h={9} />
+                  <Image
+                    src="/assets/whys/Link.svg"
+                    alt="Box"
+                    width={38}
+                    height={38}
+                    priority
+                    style={{
+                      width: 36,
+                      height: 36,
+                    }}
+                  />
                 </Box>
 
                 <Heading
@@ -378,7 +417,7 @@ export function Why() {
           justifyContent="center"
           gap={4}
         >
-          {SOCIALS.map((social, index) => (
+          {SOCIALS.map(social => (
             <Tag
               key={social}
               fontSize={'base'}
@@ -398,3 +437,5 @@ export function Why() {
     </Box>
   )
 }
+
+export default Why

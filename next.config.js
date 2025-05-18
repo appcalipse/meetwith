@@ -15,11 +15,76 @@ const withMDX = require('@next/mdx')({
   },
 })
 
-/** @type {import('@sentry/nextjs/types/config/types').ExportedNextConfig} */
+/** @type {import('next').NextConfig} */
 const moduleExports = {
   reactStrictMode: true,
   eslint: { dirs: ['src'] },
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
+  compress: true,
+  experimental: {
+    optimizePackageImports: [
+      '@chakra-ui/react',
+      '@chakra-ui/icons',
+      '@chakra-ui/theme-tools',
+      'date-fns',
+      'lodash',
+    ],
+  },
+
+  images: {
+    domains: [],
+    deviceSizes: [640, 750, 828, 1080, 1200],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    formats: ['image/webp'],
+    minimumCacheTTL: 60,
+    dangerouslyAllowSVG: false,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  async headers() {
+    return [
+      {
+        source: '/images/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ]
+  },
+  swcMinify: true,
+  webpack: config => {
+    // Split your bundles more aggressively
+    config.optimization.splitChunks = {
+      chunks: 'all',
+      maxInitialRequests: 25,
+      minSize: 20000,
+    }
+    config.optimization.splitChunks.cacheGroups = {
+      ...config.optimization.splitChunks.cacheGroups,
+      chakra: {
+        test: /[\\/]node_modules[\\/](@chakra-ui)[\\/]/,
+        name: 'chakra-ui',
+        priority: 10,
+        enforce: true,
+      },
+    }
+
+    return config
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
 }
 
 const SentryWebpackPluginOptions = {

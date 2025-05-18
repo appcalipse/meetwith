@@ -1,14 +1,13 @@
-import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons'
-import { Link, VStack } from '@chakra-ui/react'
+import { VStack } from '@chakra-ui/react'
 import {
   Accordion,
   AccordionButton,
-  AccordionIcon,
   AccordionItem,
   AccordionPanel,
   Box,
   Heading,
 } from '@chakra-ui/react'
+import Link from 'next/link'
 import { ReactElement } from 'react'
 import { BiCaretDown, BiCaretUp } from 'react-icons/bi'
 
@@ -41,12 +40,12 @@ const faqs: Faq[] = [
     body: (
       <>
         Check our high-level feature roadmap{' '}
-        <Link href="mailto:contact@meetwithwallet.xyz" isExternal>
+        <Link href="mailto:contact@meetwithwallet.xyz" target="_blank">
           here
         </Link>{' '}
         and vote on what you want to be done next. You can also be an active
         member in our community through our{' '}
-        <Link isExternal href={MWW_DISCORD_SERVER}>
+        <Link href={MWW_DISCORD_SERVER} target="_blank">
           Discord
         </Link>
       </>
@@ -54,7 +53,7 @@ const faqs: Faq[] = [
   },
 ]
 
-export function Faq() {
+function Faq() {
   return (
     <VStack
       py={{ base: '10', md: '20' }}
@@ -114,3 +113,4 @@ export function Faq() {
     </VStack>
   )
 }
+export default Faq
