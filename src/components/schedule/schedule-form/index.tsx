@@ -110,7 +110,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [meetingUrl, setMeetingUrl] = useState('')
   const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
   const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
-  const [isEmailInFocus, setIsEmailIsInFocus] = useState(false)
   const [showEmailConfirm, setShowEmailConfirm] = useState(false)
   const meetingProviders = (preferences?.meetingProviders || []).concat(
     MeetingProvider.CUSTOM
