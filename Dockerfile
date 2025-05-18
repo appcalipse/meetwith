@@ -15,6 +15,7 @@ RUN corepack prepare yarn@4.9.1 --activate
 WORKDIR /app
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY ./patches ./patches
+# Install all dependencies since we need them for building
 RUN yarn install --immutable
 
 # Rebuild the source code only when needed
@@ -54,12 +55,16 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Install only production dependencies in the final stage
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY ./patches ./patches
+RUN yarn workspaces focus --all --production
+
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/zoom-token.json ./zoom-token.json
 COPY --from=builder --chown=nextjs:nodejs /app/credentials.json ./credentials.json
 COPY --from=builder --chown=nextjs:nodejs /app/google-master-token.json ./google-master-token.json
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/.yarnrc.yml ./
 COPY --from=builder /app/src/emails ./src/emails
