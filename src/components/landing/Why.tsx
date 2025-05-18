@@ -32,7 +32,7 @@ function Why() {
   })
 
   return (
-    <Box px={5}>
+    <Box px={5} id={'why'}>
       <VStack
         bg={'neutral.900'}
         alignItems="center"

@@ -54,7 +54,7 @@ const FEATURES = [
   },
 ]
 
-function Features() {
+export function Features() {
   const { currentAccount, loginIn } = useContext(AccountContext)
   const { openConnection } = useContext(OnboardingModalContext)
   const handleLogin = async () => {
@@ -70,6 +70,7 @@ function Features() {
       maxW="1360px"
       mx="auto"
       id="features"
+      data-testid="features"
       scrollMarginTop={{ base: '60px', md: '20px' }}
       px={5}
     >
@@ -203,5 +204,3 @@ function Features() {
     </Box>
   )
 }
-
-export default Features
