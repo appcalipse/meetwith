@@ -93,7 +93,9 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
         href="/assets/product-ui.webp"
         as="image"
         type="image/webp"
-        fetchPriority="high"
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        fetchpriority="high"
       />
       <meta httpEquiv="Cache-Control" content="no-cache, must-revalidate" />
       <meta httpEquiv="Pragma" content="no-cache" />
