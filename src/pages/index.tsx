@@ -34,10 +34,10 @@ const Home: NextPage = () => {
       <DarkMode>
         <Box bg={'neutral.900'} pb={36} fontWeight={500}>
           <Hero />
-          <ProAccessPopUp />
           <Why />
           <Features />
           <Faq />
+          <ProAccessPopUp />
         </Box>
       </DarkMode>
     </main>
