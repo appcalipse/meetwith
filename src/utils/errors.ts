@@ -40,6 +40,13 @@ export class MeetingCreationError extends Error {
   }
 }
 
+export class MultipleSchedulersError extends Error {
+  constructor() {
+    super(`A meeting must have only one scheduler`)
+    this.name = 'MultipleSchedulersError'
+  }
+}
+
 export class NotGroupMemberError extends Error {
   constructor() {
     super(`Not a group member`)
