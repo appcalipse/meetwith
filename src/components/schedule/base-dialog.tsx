@@ -81,6 +81,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingWithYourselfError,
+  MultipleSchedulersError,
   TimeNotAvailableError,
 } from '@/utils/errors'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
@@ -479,6 +480,15 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           title: 'Failed to schedule meeting',
           description:
             'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'A meeting must have only one scheduler',
           status: 'error',
           duration: 5000,
           position: 'top',
