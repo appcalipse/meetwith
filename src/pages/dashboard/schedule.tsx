@@ -39,6 +39,7 @@ import {
 } from '@/utils/api_helper'
 import {
   decodeMeeting,
+  deleteMeeting,
   scheduleMeeting,
   selectDefaultProvider,
   updateMeeting,
@@ -56,6 +57,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingWithYourselfError,
+  MultipleSchedulersError,
   TimeNotAvailableError,
   UrlCreationError,
   ZoomServiceUnavailable,
@@ -132,6 +134,10 @@ interface IScheduleContext {
   >
   groups: Array<GetGroupsFullResponse>
   isGroupPrefetching: boolean
+  handleDelete: () => void
+  isDeleting: boolean
+  canDelete: boolean
+  isScheduler: boolean
 }
 
 export interface IGroupParticipant {
@@ -163,6 +169,7 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   timezone: '',
   setTimezone: () => {},
   handleSchedule: () => {},
+  handleDelete: () => {},
   handleCancel: () => {},
   isScheduling: false,
   meetingProvider: MeetingProvider.HUDDLE,
@@ -180,6 +187,9 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setMeetingRepeat: () => {},
   groups: [],
   isGroupPrefetching: false,
+  isDeleting: false,
+  canDelete: false,
+  isScheduler: false,
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -214,6 +224,7 @@ const Schedule: NextPage<IInitialProps> = ({
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [isPrefetching, setIsPrefetching] = useState(false)
   const [currentSelectedDate, setCurrentSelectedDate] = useState(new Date())
+  const [isDeleting, setIsDeleting] = useState(false)
   const [timezone, setTimezone] = useState<string>(
     currentAccount?.preferences?.timezone ??
       Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -226,9 +237,10 @@ const Schedule: NextPage<IInitialProps> = ({
     MeetingDecrypted | undefined
   >(undefined)
   const toast = useToast()
-
+  const [canDelete, setCanDelete] = useState(true)
+  const [isScheduler, setIsScheduler] = useState(false)
   const router = useRouter()
-  const { query, push } = router
+  const { push } = router
 
   const [isScheduling, setIsScheduling] = useState(false)
   const [meetingNotification, setMeetingNotification] = useState<
@@ -330,6 +342,149 @@ const Schedule: NextPage<IInitialProps> = ({
       }
     }
     return { valid, invalid }
+  }
+  const handleDelete = async () => {
+    if (!decryptedMeeting) return
+    setIsDeleting(true)
+    try {
+      await deleteMeeting(
+        true,
+        currentAccount?.address || '',
+        'no_type',
+        decryptedMeeting?.start,
+        decryptedMeeting?.end,
+        decryptedMeeting,
+        getSignature(currentAccount?.address || '') || ''
+      )
+      toast({
+        title: 'Meeting Deleted',
+        description: 'The meeting was deleted successfully',
+        status: 'success',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      push(`/dashboard/${EditMode.MEETINGS}`)
+    } catch (e: any) {
+      if (e instanceof MeetingWithYourselfError) {
+        toast({
+          title: "Ops! Can't do that",
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof TimeNotAvailableError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GateConditionNotValidError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingCreationError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description:
+            'A meeting requires at least two participants. Please add more participants to schedule the meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description: 'A meeting must have only one scheduler',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description: 'A meeting must have only one scheduler',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingChangeConflictError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description:
+            'Someone else has updated this meeting. Please reload and try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof InvalidURL) {
+        toast({
+          title: 'Failed to delete meeting',
+          description: 'Please provide a valid url/link for your meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof Huddle01ServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof ZoomServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GoogleServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Google seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof UrlCreationError) {
+        toast({
+          title: 'Failed to delete meeting',
+          description:
+            'There was an issue generating a meeting url for your meeting. try using a different location',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else {
+        handleApiError('Error deleting meeting', e)
+      }
+    }
+    setIsDeleting(false)
   }
   const handleSchedule = async () => {
     try {
@@ -471,6 +626,15 @@ const Schedule: NextPage<IInitialProps> = ({
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'A meeting must have only one scheduler',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else if (e instanceof MeetingChangeConflictError) {
         toast({
           title: 'Failed to update meeting',
@@ -575,6 +739,10 @@ const Schedule: NextPage<IInitialProps> = ({
     handleCancel,
     groups,
     isGroupPrefetching,
+    handleDelete,
+    isDeleting,
+    canDelete,
+    isScheduler,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -659,7 +827,15 @@ const Schedule: NextPage<IInitialProps> = ({
       }
       setDecryptedMeeting(decryptedMeeting)
       const participants = decryptedMeeting.participants
-
+      const scheduler = participants.find(
+        val => val.type === ParticipantType.Scheduler
+      )
+      if (participants.length === 2) {
+        setCanDelete(false)
+      } else if (scheduler?.account_address === currentAccount?.address) {
+        setIsScheduler(true)
+        setCanDelete(false)
+      }
       const allAddresses = participants
         .map(val => val.account_address)
         .filter(value => Boolean(value)) as string[]
