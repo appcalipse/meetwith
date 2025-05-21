@@ -84,6 +84,10 @@ const ScheduleBase = () => {
     setMeetingRepeat,
     setGroupParticipants,
     handleCancel,
+    handleDelete,
+    isDeleting,
+    canDelete,
+    isScheduler,
   } = useContext(ScheduleContext)
   const handleSubmit = () => {
     if (!title) {
@@ -494,6 +498,7 @@ const ScheduleBase = () => {
                 }
               )
             }
+            // eslint-disable-next-line tailwindcss/no-custom-classname
             className="noLeftBorder timezone-select"
             options={MeetingRepeatOptions}
             components={customSelectComponents}
@@ -526,6 +531,7 @@ const ScheduleBase = () => {
           <Button
             w="100%"
             py={3}
+            flex={1}
             h={'auto'}
             variant="outline"
             colorScheme="primary"
@@ -539,15 +545,29 @@ const ScheduleBase = () => {
               ? 'Update Meeting'
               : 'Schedule now'}
           </Button>
-          {query.intent === Intents.UPDATE_MEETING && (
+          {query.intent === Intents.UPDATE_MEETING && isScheduler && (
             <Button
               w="100%"
               py={3}
               h={'auto'}
               colorScheme="primary"
               onClick={handleCancel}
+              flex={1}
             >
               Cancel Meeting
+            </Button>
+          )}
+          {query.intent === Intents.UPDATE_MEETING && canDelete && (
+            <Button
+              w="100%"
+              py={3}
+              h={'auto'}
+              colorScheme="primary"
+              onClick={handleDelete}
+              isLoading={isDeleting}
+              flex={1}
+            >
+              Delete Meeting
             </Button>
           )}
         </HStack>
