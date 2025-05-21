@@ -80,6 +80,7 @@ import {
   InvalidURL,
   MeetingCreationError,
   MeetingWithYourselfError,
+  MultipleSchedulersError,
   TimeNotAvailableError,
   UrlCreationError,
   ZoomServiceUnavailable,
@@ -522,6 +523,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           title: 'Failed to schedule meeting',
           description:
             'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'A meeting must have only one scheduler',
           status: 'error',
           duration: 5000,
           position: 'top',
