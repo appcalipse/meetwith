@@ -27,7 +27,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     // load the original slot information that is already stored in the database
     const existingSlot = await getMeetingFromDB(slotId)
-
     // validate ownership
     const account_address = req.session.account!.address
     const account = await getAccountFromDB(account_address)
@@ -43,7 +42,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         participant =>
           participant.account_address?.toLowerCase() ===
           account.address.toLowerCase()
-      ).length === 0
+      ).length === 0 &&
+      !meeting.slotsToRemove.includes(slotId) // if the user is attempting to delete a slot, we don't care if they are a participant of the meeting
     ) {
       return res
         .status(403)
