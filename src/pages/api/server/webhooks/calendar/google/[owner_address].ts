@@ -2,9 +2,12 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import {
-  GoogleCalendarPushNotification,
-  GoogleCalendarWebhookRequest,
-} from '@/types/GoogleEvent'
+  CalendarSyncInfo,
+  ConnectedCalendar,
+} from '@/types/CalendarConnections'
+import { GoogleCalendarWebhookRequest } from '@/types/GoogleEvent'
+import { getConnectedCalendars } from '@/utils/database'
+import { getConnectedCalendarIntegration } from '@/utils/services/connected_calendars.factory'
 
 /**
  * Google Calendar Webhook Handler
@@ -30,39 +33,34 @@ const handler = async (
 
   try {
     // Log the headers (important for verification of Google webhook)
-    console.log(
-      '#################################### received a webhook ######## '
-    )
-    console.log('Webhook Headers:', req.headers)
     const channelId = req.headers['x-goog-channel-id']
     const resourceId = req.headers['x-goog-resource-id']
-    const resourceState = req.headers['x-goog-resource-state']
 
-    // console.log(req)
-
-    console.log('Channel ID:', channelId)
-    console.log('Resource ID:', resourceId)
-    console.log('Resource State:', resourceState)
-
-    // Log the full request body
-    console.log('Webhook Payload:', req.body)
-
-    // Parse the data as our defined interface
-    const notification = req.body as GoogleCalendarPushNotification
-
-    // Process the calendar event if it exists
-    if (notification.event) {
-      const event = notification.event
-      console.log('Event ID:', event.id)
-      console.log('Event Summary:', event.summary)
-      console.log('Event Status:', event.status)
-      console.log('Start Time:', event.start)
-      console.log('End Time:', event.end)
-
-      // Here you would add your business logic to handle the event
-      // e.g., update your database, send notifications, etc.
-    } else {
-      console.log('No event data in this notification')
+    const ownerAddress = (channelId as string)?.replace('id-', '').trim() || ''
+    const allCalendars = await getConnectedCalendars(ownerAddress, {
+      syncOnly: true,
+      activeOnly: false,
+    })
+    const googleCalendar = allCalendars.find(
+      (k: ConnectedCalendar) => k.provider.toLowerCase() === 'google'
+    )
+    if (googleCalendar) {
+      const calendar = googleCalendar.calendars.find(
+        (c: CalendarSyncInfo) => c.webhookResourceId === resourceId
+      )
+      const integration = getConnectedCalendarIntegration(
+        ownerAddress,
+        googleCalendar.email,
+        googleCalendar.provider,
+        googleCalendar.payload
+      )
+      if (calendar && integration && integration.syncCalendarEvents) {
+        await integration.syncCalendarEvents(
+          ownerAddress,
+          calendar.calendarId,
+          2
+        )
+      }
     }
 
     // Always respond quickly to Google to acknowledge receipt

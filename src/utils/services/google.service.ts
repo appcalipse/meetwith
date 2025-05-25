@@ -12,13 +12,23 @@ import {
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
-import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
+import {
+  ExtendedDBSlot,
+  MeetingProvider,
+  MeetingRepeat,
+  TimeSlotSource,
+} from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
-import { updateCalendarPayload } from '../database'
+import {
+  deleteMeetingOnlyFromDB,
+  getMeetingFromDB,
+  getSlotsForDashboard,
+  updateCalendarPayload,
+} from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -609,16 +619,13 @@ export default class GoogleCalendarService implements CalendarService {
 
       const now = Date.now()
 
-      // Calculate dateTo (current time in RFC3339)
-      const dateTo = new Date(now).toISOString().replace(/\.000Z$/, 'Z') // Remove milliseconds
-
       // Calculate timestamp for 2 days ago
-      const twoDaysAgoTimestamp = now - days * 24 * 60 * 60 * 1000
+      const daysBack = now - days * 24 * 60 * 60 * 1000
+      const daysTo = now + days * 24 * 60 * 60 * 1000
 
       // Calculate dateFrom (2 days ago in RFC3339)
-      const dateFrom = new Date(twoDaysAgoTimestamp)
-        .toISOString()
-        .replace(/\.000Z$/, 'Z') // Remove milliseconds
+      const dateFrom = new Date(daysBack).toISOString().replace(/\.000Z$/, 'Z') // Remove milliseconds
+      const dateTo = new Date(daysTo).toISOString().replace(/\.000Z$/, 'Z') // Remove milliseconds
 
       const allEvents: CalendarEvent[] = []
       let pageToken: string | undefined | null = undefined // Start with no page token
@@ -660,13 +667,62 @@ export default class GoogleCalendarService implements CalendarService {
         pageToken = response?.data?.nextPageToken
       } while (pageToken) // Continue loop if there's a next page token
 
-      console.log('All events:', allEvents.length)
-
       return allEvents
     } catch (error) {
       console.error('Error fetching Google Calendar events:', error)
       // Re-throw or handle error more specifically
       throw error // Propagate the error
+    }
+  }
+
+  async syncCalendarEvents(
+    calendarOwnerAccountAddress: string,
+    calendarId: string,
+    daysToFetch = 2 // Sync events roughly for one year past and one year into the future
+  ): Promise<void> {
+    try {
+      // 1. Fetch current events from Google Calendar within a wide range.
+      const googleEvents =
+        (await this.getGoogleEvents(calendarId, daysToFetch)) || []
+
+      const now = Date.now()
+      const daysFrom = now - daysToFetch * 24 * 60 * 60 * 1000
+      const meetings: ExtendedDBSlot[] = await getSlotsForDashboard(
+        calendarOwnerAccountAddress,
+        new Date(daysFrom),
+        5,
+        0
+      )
+
+      if (meetings && meetings.length > 0) {
+        const data = meetings.map(m => ({
+          meetingConfId: m.conferenceData?.id.replaceAll('-', ''),
+          meetingId: m.id,
+        }))
+
+        const existingGoogleEventIds = new Set(
+          googleEvents.map(event => event.id)
+        )
+
+        const promises: Promise<any>[] = []
+        data.forEach((m: any) => {
+          if (!existingGoogleEventIds.has(m.meetingConfId)) {
+            console.log('Deleting event', m.meetingId)
+            promises.push(deleteMeetingOnlyFromDB([m.meetingId]))
+          } else {
+            console.log('no action needed for event', m.meetingId)
+          }
+        })
+        await Promise.allSettled(promises) // Wait for all operations to attempt completion
+      }
+
+      console.log(`Synchronization complete for calendar ${calendarId}.`)
+    } catch (error: any) {
+      console.error(
+        'Major Sync Error during Google Calendar synchronization:',
+        error
+      )
+      Sentry.captureException(error)
     }
   }
 

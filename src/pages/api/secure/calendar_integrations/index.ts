@@ -98,8 +98,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         calendars.forEach(async (calendar: CalendarSyncInfo) => {
           const webhook = calendar.webhook
           const calendarId = calendar.calendarId
-          const webhookUrl =
-            'https://6683-2401-4900-8842-1889-d814-c1ce-c4c3-2883.ngrok-free.app/api'
 
           const integration = getConnectedCalendarIntegration(
             ownerAddress,
@@ -107,18 +105,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             googleCalendar.provider,
             googleCalendar.payload
           )
-          // if (integration && integration.stopChannel) {
-          //   await integration.stopChannel(
-          //     // calendar.webhookId || '',
-          //     // calendar.webhookResourceId || ''
-          //     'id-0x2b8ef56fb6777964e83e183fa3076bf553f1822d',
-          //     'Vx-_Bil7EmsSwbBnj_y-Pz6hYw8'
-          //   )
-          // }
-
-          // const currentCalendar = googleCalendar.calendars.find(
-          //   (k: CalendarSyncInfo) => k.calendarId === calendarId
-          // )
 
           if (webhook) {
             console.log('setup calendar webhook')
@@ -128,8 +114,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             if (integration) {
               const resp = await integration.setupCalendarWebhook(
                 calendarId,
-                ownerAddress,
-                webhookUrl
+                ownerAddress
               )
 
               console.log('setup calendar webhook response')
@@ -161,7 +146,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               console.log('stopping calendar webhook')
               await integration.stopChannel(
                 calendar.webhookId || `id-${ownerAddress}`,
-                calendar.webhookResourceId || 'Vx-_Bil7EmsSwbBnj_y-Pz6hYw8'
+                calendar.webhookResourceId
               )
             }
             // console.log('updating webhooks in database')
