@@ -836,6 +836,14 @@ const handleMeetingCancelSync = async (
       .eq('id', slot.id)
   }
 }
+const deleteMeetingOnlyFromDB = async (slotIds: string[]) => {
+  const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
+
+  if (error) {
+    // eslint-disable-next-line no-restricted-syntax
+    console.log(error.message)
+  }
+}
 const deleteMeetingFromDB = async (
   participantActing: ParticipantBaseInfo,
   slotIds: string[],
@@ -2978,6 +2986,7 @@ export {
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
+  deleteMeetingOnlyFromDB,
   deleteTgConnection,
   editGroup,
   getAccountFromDB,

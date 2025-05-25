@@ -50,6 +50,12 @@ export interface CalendarService {
     days?: number
   ) => Promise<CalendarEvent[]>
 
+  syncCalendarEvents?: (
+    calendarOwnerAddress: string,
+    calendarId: string,
+    days?: number
+  ) => Promise<void>
+
   stopChannel?: (
     calendarOwnerAddress: string,
     resourceId: string
