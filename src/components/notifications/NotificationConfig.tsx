@@ -103,6 +103,12 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   const updateNotifications = async () => {
     setLoading(true)
     const subs = await getNotificationSubscriptions()
+    subs.notification_types = subs.notification_types.filter(
+      sub =>
+        ![NotificationChannel.DISCORD, NotificationChannel.EMAIL].includes(
+          sub.channel
+        )
+    )
     if (emailNotifications) {
       if (!isValidEmail(email)) {
         toast({
@@ -117,9 +123,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
         return
       }
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.EMAIL
-      )
+
       subs.notification_types.push({
         channel: NotificationChannel.EMAIL,
         destination: email,
@@ -128,9 +132,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     }
 
     if (discordNotificationConfig) {
-      subs.notification_types = subs.notification_types.filter(
-        sub => sub.channel !== NotificationChannel.DISCORD
-      )
       subs.notification_types.push(discordNotificationConfig)
     }
 

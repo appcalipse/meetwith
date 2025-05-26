@@ -58,7 +58,12 @@ const DiscordNotificationConfig: React.FC<Props> = ({
     validateDiscord()
   }, [])
 
-  return (
+  return loading ? (
+    <HStack>
+      <Spinner size={'sm'} />
+      <Text ml={4}>Loading Discord information</Text>
+    </HStack>
+  ) : (
     <VStack alignItems="start" flex={1}>
       <HStack py={4}>
         <Switch
@@ -92,12 +97,8 @@ const DiscordNotificationConfig: React.FC<Props> = ({
           )}
         </Text>
       </HStack>
-      {loading ? (
-        <HStack>
-          <Spinner size={'sm'} />
-          <Text ml={4}>Loading Discord information</Text>
-        </HStack>
-      ) : (
+
+      {
         <>
           {!loading && discordConnected && !inMWWServer && (
             <>
@@ -118,7 +119,7 @@ const DiscordNotificationConfig: React.FC<Props> = ({
             </>
           )}
         </>
-      )}
+      }
     </VStack>
   )
 }
