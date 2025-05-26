@@ -2565,6 +2565,7 @@ const updateMeeting = async (
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meetingProvider,
     recurrence: meetingUpdateRequest.meetingRepeat,
+    reminders: meetingUpdateRequest.meetingReminders,
     version: MeetingVersion.V2,
     title: meetingUpdateRequest.title,
     slots: meeting.slots?.filter(
