@@ -2,6 +2,7 @@ import { AddIcon, InfoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
+  Checkbox,
   Divider,
   Flex,
   FormControl,
@@ -44,7 +45,9 @@ import { durationToHumanReadable } from '@/utils/calendar_manager'
 import {
   DEFAULT_GROUP_SCHEDULING_DURATION,
   MeetingNotificationOptions,
+  MeetingPermissions,
   MeetingRepeatOptions,
+  MeetingSchedulePermissions,
 } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
@@ -88,6 +91,8 @@ const ScheduleBase = () => {
     isDeleting,
     canDelete,
     isScheduler,
+    selectedPermissions,
+    setSelectedPermissions,
   } = useContext(ScheduleContext)
   const handleSubmit = () => {
     if (!title) {
@@ -331,24 +336,63 @@ const ScheduleBase = () => {
               )}
             </FormHelperText>
           </FormControl>
-          <HStack width="fit-content" ml={'auto'}>
-            <Text fontWeight="500">What is this?</Text>{' '}
-            <InfoIcon
-              onClick={() => setOpenWhatIsThis(true)}
-              cursor="pointer"
-              color={iconColor}
-            />
-          </HStack>
-          <Button
-            w="100%"
-            py={3}
-            h={'auto'}
-            colorScheme="primary"
-            onClick={handleSubmit}
-          >
-            Discover a time
-          </Button>
+
+          <VStack w="100%" gap={4} alignItems="flex-start">
+            <Heading fontSize="lg" fontWeight={500}>
+              Permissions for guests
+            </Heading>
+
+            {MeetingSchedulePermissions.map(permission => (
+              <Checkbox
+                key={permission.value}
+                isChecked={selectedPermissions.includes(permission.value)}
+                w="100%"
+                colorScheme="primary"
+                flexDir="row-reverse"
+                justifyContent={'space-between'}
+                fontWeight={700}
+                color="primary.200"
+                fontSize="16px"
+                size={'lg'}
+                p={0}
+                marginInlineStart={0}
+                onChange={e => {
+                  const isChecked = e.target.checked
+                  if (isChecked) {
+                    setSelectedPermissions(prev => [...prev, permission.value])
+                  } else {
+                    setSelectedPermissions(prev =>
+                      prev.filter(p => p !== permission.value)
+                    )
+                  }
+                }}
+              >
+                <Text marginInlineStart={-2}>{permission.label}</Text>
+              </Checkbox>
+            ))}
+          </VStack>
+          <VStack w="100%">
+            <HStack width="fit-content" ml={'auto'}>
+              {' '}
+              <Text fontWeight="500">What is this?</Text>{' '}
+              <InfoIcon
+                onClick={() => setOpenWhatIsThis(true)}
+                cursor="pointer"
+                color={iconColor}
+              />
+            </HStack>
+            <Button
+              w="100%"
+              py={3}
+              h={'auto'}
+              colorScheme="primary"
+              onClick={handleSubmit}
+            >
+              Discover a time
+            </Button>
+          </VStack>
         </VStack>
+
         <HStack width="100%">
           <Divider />
           <Text
