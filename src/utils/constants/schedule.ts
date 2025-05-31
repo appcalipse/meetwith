@@ -103,3 +103,19 @@ const generateGroupSchedulingDurations = () => [
 
 export const DEFAULT_GROUP_SCHEDULING_DURATION =
   generateGroupSchedulingDurations()
+
+export enum MeetingPermissions {
+  SEE_GUEST_LIST = 'see_guest_list',
+  INVITE_GUESTS = 'invite_guests',
+}
+
+export const MeetingSchedulePermissions = [
+  {
+    value: MeetingPermissions.SEE_GUEST_LIST,
+    label: 'Permission to see other guests',
+  },
+  {
+    value: MeetingPermissions.INVITE_GUESTS,
+    label: 'Permission to invite other guests',
+  },
+]
