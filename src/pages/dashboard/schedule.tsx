@@ -46,6 +46,7 @@ import {
 } from '@/utils/calendar_manager'
 import {
   MeetingNotificationOptions,
+  MeetingPermissions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
 import { handleApiError } from '@/utils/error_helper'
@@ -72,6 +73,10 @@ export enum Page {
   SCHEDULE_DETAILS,
   COMPLETED,
 }
+
+// TODO: prevent members list from being seen if the see_guest_list option is not toggled
+// Hide members from UI and email
+// Figure out a way to hide and show participants on invite list
 
 interface IScheduleContext {
   groupParticipants: Record<string, Array<string>>
@@ -138,6 +143,10 @@ interface IScheduleContext {
   isDeleting: boolean
   canDelete: boolean
   isScheduler: boolean
+  selectedPermissions: Array<MeetingPermissions>
+  setSelectedPermissions: React.Dispatch<
+    React.SetStateAction<Array<MeetingPermissions>>
+  >
 }
 
 export interface IGroupParticipant {
@@ -190,6 +199,8 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   isDeleting: false,
   canDelete: false,
   isScheduler: false,
+  selectedPermissions: [MeetingPermissions.SEE_GUEST_LIST],
+  setSelectedPermissions: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -253,6 +264,9 @@ const Schedule: NextPage<IInitialProps> = ({
     value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
   })
+  const [selectedPermissions, setSelectedPermissions] = useState<
+    Array<MeetingPermissions>
+  >([MeetingPermissions.SEE_GUEST_LIST])
   const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
   const fetchGroups = async () => {
@@ -563,7 +577,8 @@ const Schedule: NextPage<IInitialProps> = ({
           meetingProvider,
           title,
           meetingNotification.map(mn => mn.value),
-          meetingRepeat.value
+          meetingRepeat.value,
+          selectedPermissions
         )
         logEvent('Updated a meeting', {
           fromDashboard: true,
@@ -584,7 +599,8 @@ const Schedule: NextPage<IInitialProps> = ({
           undefined,
           title,
           meetingNotification.map(n => n.value),
-          meetingRepeat.value
+          meetingRepeat.value,
+          selectedPermissions
         )
       }
       setCurrentPage(Page.COMPLETED)
@@ -743,6 +759,8 @@ const Schedule: NextPage<IInitialProps> = ({
     isDeleting,
     canDelete,
     isScheduler,
+    selectedPermissions,
+    setSelectedPermissions,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
