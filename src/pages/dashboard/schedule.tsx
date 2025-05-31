@@ -77,7 +77,7 @@ export enum Page {
 // TODO: prevent members list from being seen if the see_guest_list option is not toggled
 // Hide members from UI and email
 // Figure out a way to hide and show participants on invite list
-
+// TODO: work on the make other participant meeting owner logic
 interface IScheduleContext {
   groupParticipants: Record<string, Array<string>>
   groupAvailability: Record<string, Array<string>>
