@@ -57,6 +57,7 @@ import {
 
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
+import { MeetingPermissions } from './constants/schedule'
 import { getContentFromEncrypted, simpleHash } from './cryptography'
 import {
   InvalidURL,
@@ -260,7 +261,8 @@ const buildMeetingData = async (
   meetingId = '',
   meetingTitle = 'No Title',
   meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat = MeetingRepeat.NO_REPEAT
+  meetingRepeat = MeetingRepeat.NO_REPEAT,
+  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -286,6 +288,7 @@ const buildMeetingData = async (
     reminders: meetingReminders,
     provider: meetingProvider,
     recurrence: meetingRepeat,
+    permissions: selectedPermissions,
   }
 
   // first pass to make sure that we are keeping the existing slot id
@@ -399,7 +402,8 @@ const updateMeeting = async (
   meetingProvider: MeetingProvider,
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat = MeetingRepeat.NO_REPEAT
+  meetingRepeat = MeetingRepeat.NO_REPEAT,
+  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -414,6 +418,7 @@ const updateMeeting = async (
     currentAccount,
     signature
   )
+  const meetingPermissions = existingMeeting?.permissions
 
   //TODO: anyone can update a meeting, but we might need to change the participants statuses
 
@@ -428,6 +433,12 @@ const updateMeeting = async (
     existingMeeting!
   )
 
+  const actingParticipant = existingMeeting?.participants.find(
+    user => user.account_address === currentAccountAddress
+  )
+  if (!actingParticipant) {
+    throw new MeetingChangeConflictError()
+  }
   // those are the users that we need to remove the slots
   const toRemove = diff(
     existingMeetingAccounts,
@@ -443,6 +454,18 @@ const updateMeeting = async (
       .filter(p => p.account_address)
       .map(p => p.account_address!.toLowerCase()),
   ])
+
+  // Prevent non-schedulers from changing the number of participants:
+  // If the acting user is NOT the scheduler and the number of participants has changed,
+  // throw an error to block unauthorized modifications to the meeting's participant list.
+  if (
+    meetingPermissions &&
+    !meetingPermissions?.includes(MeetingPermissions.INVITE_GUESTS) &&
+    participants.length !== decryptedMeeting.participants.length &&
+    actingParticipant.type! === ParticipantType.Scheduler
+  ) {
+    throw new MeetingChangeConflictError()
+  }
 
   const accountSlotMap = await mapRelatedSlots(
     existingMeeting!,
@@ -519,7 +542,8 @@ const updateMeeting = async (
     rootMeetingId,
     meetingTitle,
     meetingReminders,
-    meetingRepeat
+    meetingRepeat,
+    selectedPermissions
   )
   const payload = {
     ...meetingData,
@@ -746,7 +770,8 @@ const scheduleMeeting = async (
   emailToSendReminders?: string,
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat = MeetingRepeat.NO_REPEAT
+  meetingRepeat = MeetingRepeat.NO_REPEAT,
+  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
@@ -783,7 +808,8 @@ const scheduleMeeting = async (
     newMeetingId,
     meetingTitle,
     meetingReminders,
-    meetingRepeat
+    meetingRepeat,
+    selectedPermissions
   )
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = []
