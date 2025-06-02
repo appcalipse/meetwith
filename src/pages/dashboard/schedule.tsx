@@ -873,6 +873,9 @@ const Schedule: NextPage<IInitialProps> = ({
         decryptedMeeting.provider ||
           selectDefaultProvider(currentAccount?.preferences.meetingProviders)
       )
+      setSelectedPermissions(
+        decryptedMeeting.permissions || [MeetingPermissions.SEE_GUEST_LIST]
+      )
       setMeetingUrl(decryptedMeeting.meeting_url)
       setMeetingNotification(
         decryptedMeeting.reminders?.map(val => {
