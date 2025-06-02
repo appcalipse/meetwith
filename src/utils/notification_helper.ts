@@ -466,6 +466,7 @@ const getEmailNotification = async (
       return updateMeetingEmail(
         toEmail,
         getParticipantActingDisplayName(participantActing, participant),
+        participant.type,
         participants,
         participant.timezone || timezone,
         new Date(start),
