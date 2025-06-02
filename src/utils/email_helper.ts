@@ -141,12 +141,15 @@ export const newMeetingEmail = async (
       !participants.some(p => p.type === ParticipantType.Scheduler))
   const canSeeGuestList =
     meetingPermissions === undefined ||
-    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST)
+    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
+    isScheduler
 
   const locals = {
-    participantsDisplay: canSeeGuestList
-      ? getAllParticipantsDisplayName(participants, destinationAccountAddress)
-      : undefined,
+    participantsDisplay: getAllParticipantsDisplayName(
+      participants,
+      destinationAccountAddress,
+      canSeeGuestList
+    ),
     meeting: {
       start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
@@ -348,6 +351,7 @@ export const cancelledMeetingEmail = async (
 export const updateMeetingEmail = async (
   toEmail: string,
   currentActorDisplayName: string,
+  participantType: ParticipantType,
   participants: ParticipantInfo[],
   timezone: string,
   start: Date,
@@ -369,10 +373,14 @@ export const updateMeetingEmail = async (
   if (!changes?.dateChange) {
     return true
   }
+  const isScheduler =
+    participantType === ParticipantType.Scheduler ||
+    (participantType === ParticipantType.Owner &&
+      !participants.some(p => p.type === ParticipantType.Scheduler))
   const canSeeGuestList =
     meetingPermissions === undefined ||
-    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST)
-
+    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
+    isScheduler
   const email = new Email()
   const newDuration = differenceInMinutes(end, start)
   const oldDuration = changes?.dateChange
@@ -384,9 +392,11 @@ export const updateMeetingEmail = async (
 
   const locals = {
     currentActorDisplayName,
-    participantsDisplay: canSeeGuestList
-      ? getAllParticipantsDisplayName(participants, destinationAccountAddress)
-      : undefined,
+    participantsDisplay: getAllParticipantsDisplayName(
+      participants,
+      destinationAccountAddress,
+      canSeeGuestList
+    ),
     meeting: {
       start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(newDuration),
