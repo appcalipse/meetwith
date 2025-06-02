@@ -367,6 +367,7 @@ const buildMeetingData = async (
     meetingReminders,
     meetingRepeat,
     allSlotIds,
+    meetingPermissions: selectedPermissions,
   }
 }
 
@@ -1103,6 +1104,7 @@ const decryptMeeting = async (
     reminders: meetingInfo.reminders,
     provider: meetingInfo?.provider,
     recurrence: meetingInfo?.recurrence,
+    permissions: meetingInfo?.permissions,
   }
 }
 
