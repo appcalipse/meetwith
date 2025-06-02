@@ -1079,6 +1079,7 @@ const saveMeeting = async (
     meetingProvider: meeting.meetingProvider,
     meetingReminders: meeting.meetingReminders,
     meetingRepeat: meeting.meetingRepeat,
+    meetingPermissions: meeting.meetingPermissions,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -2602,6 +2603,7 @@ const updateMeeting = async (
     changes: changingTime ? { dateChange: changingTime } : undefined,
     meetingReminders: meetingUpdateRequest.meetingReminders,
     meetingRepeat: meetingUpdateRequest.meetingRepeat,
+    meetingPermissions: meetingUpdateRequest.meetingPermissions,
   }
 
   // Doing notifications and syncs asynchronously
