@@ -1,5 +1,7 @@
 import { Encrypted } from 'eth-crypto'
 
+import { MeetingPermissions } from '@/utils/constants/schedule'
+
 import { Account } from './Account'
 import { MeetingReminders } from './common'
 import { MemberType } from './Group'
@@ -41,6 +43,7 @@ export interface MeetingCreationRequest {
   meetingReminders?: Array<MeetingReminders>
   meetingRepeat: MeetingRepeat
   allSlotIds?: Array<string>
+  meetingPermissions?: Array<MeetingPermissions>
 }
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
@@ -97,6 +100,7 @@ export interface MeetingCreationSyncRequest extends MeetingSyncRequest {
   meetingProvider: MeetingProvider
   meetingReminders?: Array<MeetingReminders>
   meetingRepeat?: MeetingRepeat
+  meetingPermissions?: Array<MeetingPermissions>
 }
 export interface GroupInviteNotifyRequest {
   group_id: string
