@@ -409,14 +409,12 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
 
               <Divider />
               <VStack alignItems="start" maxWidth="100%">
-                {canSeeGuestList && (
-                  <HStack alignItems="flex-start" maxWidth="100%">
-                    <Text display="inline" width="100%" whiteSpace="balance">
-                      <strong>Participants: </strong>
-                      {getNamesDisplay(decryptedMeeting, canSeeGuestList)}
-                    </Text>
-                  </HStack>
-                )}
+                <HStack alignItems="flex-start" maxWidth="100%">
+                  <Text display="inline" width="100%" whiteSpace="balance">
+                    <strong>Participants: </strong>
+                    {getNamesDisplay(decryptedMeeting, canSeeGuestList)}
+                  </Text>
+                </HStack>
                 <HStack
                   alignItems="flex-start"
                   maxWidth="100%"
