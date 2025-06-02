@@ -29,6 +29,8 @@ const FROM = 'Meetwith <notifications@meetwith.xyz>'
 
 import { CreateEmailOptions, Resend } from 'resend'
 
+import { MeetingPermissions } from './constants/schedule'
+
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
   from: FROM,
@@ -129,15 +131,22 @@ export const newMeetingEmail = async (
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat?: MeetingRepeat,
-  guestInfoEncrypted?: string
+  guestInfoEncrypted?: string,
+  meetingPermissions?: Array<MeetingPermissions>
 ): Promise<boolean> => {
   const email = new Email()
+  const isScheduler =
+    participantType === ParticipantType.Scheduler ||
+    (participantType === ParticipantType.Owner &&
+      !participants.some(p => p.type === ParticipantType.Scheduler))
+  const canSeeGuestList =
+    meetingPermissions === undefined ||
+    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST)
 
   const locals = {
-    participantsDisplay: getAllParticipantsDisplayName(
-      participants,
-      destinationAccountAddress
-    ),
+    participantsDisplay: canSeeGuestList
+      ? getAllParticipantsDisplayName(participants, destinationAccountAddress)
+      : undefined,
     meeting: {
       start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(differenceInMinutes(end, start)),
@@ -157,10 +166,6 @@ export const newMeetingEmail = async (
       : undefined,
   }
 
-  const isScheduler =
-    participantType === ParticipantType.Scheduler ||
-    (participantType === ParticipantType.Owner &&
-      !participants.some(p => p.type === ParticipantType.Scheduler))
   const rendered = await email.renderAll(
     `${path.resolve(
       'src',
@@ -358,11 +363,16 @@ export const updateMeetingEmail = async (
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat?: MeetingRepeat,
-  guestInfoEncrypted?: string
+  guestInfoEncrypted?: string,
+  meetingPermissions?: Array<MeetingPermissions>
 ): Promise<boolean> => {
   if (!changes?.dateChange) {
     return true
   }
+  const canSeeGuestList =
+    meetingPermissions === undefined ||
+    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST)
+
   const email = new Email()
   const newDuration = differenceInMinutes(end, start)
   const oldDuration = changes?.dateChange
@@ -374,10 +384,9 @@ export const updateMeetingEmail = async (
 
   const locals = {
     currentActorDisplayName,
-    participantsDisplay: getAllParticipantsDisplayName(
-      participants,
-      destinationAccountAddress
-    ),
+    participantsDisplay: canSeeGuestList
+      ? getAllParticipantsDisplayName(participants, destinationAccountAddress)
+      : undefined,
     meeting: {
       start: dateToHumanReadable(start, timezone, true),
       duration: durationToHumanReadable(newDuration),
