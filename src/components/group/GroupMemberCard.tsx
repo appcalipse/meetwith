@@ -9,19 +9,14 @@ import {
   MenuItem,
   MenuList,
   Spinner,
-  Tag,
-  TagLabel,
-  TagLeftIcon,
   Text,
   useColorModeValue,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
 import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 import { BiExit } from 'react-icons/bi'
 import { FaChevronDown } from 'react-icons/fa'
-import { GoDotFill } from 'react-icons/go'
 import { MdDelete } from 'react-icons/md'
 
 import { GroupContext } from '@/components/profile/Group'
@@ -188,66 +183,94 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           )}
         </VStack>
       </HStack>
-      <HStack flexBasis="15%" overflow="hidden">
-        {loading ? (
-          <Spinner marginInline="auto" />
-        ) : (
-          <Menu>
-            <MenuButton
-              as={Button}
-              rightIcon={
-                <FaChevronDown
-                  style={{
-                    marginLeft:
-                      currentRole === MemberType.ADMIN ? '0px' : '15px',
-                  }}
-                />
-              }
-              variant="ghost"
-              gap={12}
-              pr={4}
-              pl={0}
-              textTransform="capitalize"
-              isDisabled={!props.isAdmin}
-            >
-              {currentRole}
-            </MenuButton>
-            <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
-              <MenuItem
-                textTransform="capitalize"
-                borderBottom={`2px solid neutral.200`}
-                backgroundColor={
-                  currentRole === MemberType.ADMIN
-                    ? activeMenuColor
-                    : menuBgColor
+      <HStack display="flex" flexBasis="30%" justifyContent="space-between">
+        <HStack overflow="hidden" maxW={'150px'}>
+          {loading ? (
+            <Spinner marginInline="auto" />
+          ) : (
+            <Menu>
+              <MenuButton
+                as={Button}
+                rightIcon={
+                  <FaChevronDown
+                    style={{
+                      marginLeft:
+                        currentRole === MemberType.ADMIN ? '0px' : '15px',
+                    }}
+                  />
                 }
-                onClick={handleRoleChange(MemberType.MEMBER, MemberType.ADMIN)}
-                disabled={currentRole === MemberType.ADMIN}
-              >
-                {MemberType.ADMIN}
-              </MenuItem>
-              <MenuItem
-                width="100px"
+                variant="ghost"
+                gap={12}
+                pr={4}
+                pl={0}
                 textTransform="capitalize"
-                backgroundColor={
-                  currentRole === MemberType.MEMBER
-                    ? activeMenuColor
-                    : menuBgColor
-                }
-                disabled={currentRole === MemberType.MEMBER}
-                onClick={handleRoleChange(
-                  MemberType.ADMIN,
-                  MemberType.MEMBER,
-                  currentRole === MemberType.ADMIN &&
-                    props.groupRoles.filter(role => role === MemberType.ADMIN)
-                      .length === 1
-                )}
+                isDisabled={!props.isAdmin}
               >
-                {MemberType.MEMBER}
-              </MenuItem>
-            </MenuList>
-          </Menu>
-        )}
+                {currentRole}
+              </MenuButton>
+              <MenuList width="10px" minWidth="fit-content" overflowX="hidden">
+                <MenuItem
+                  width="100px"
+                  textTransform="capitalize"
+                  borderBottom={`2px solid neutral.200`}
+                  backgroundColor={
+                    currentRole === MemberType.ADMIN
+                      ? activeMenuColor
+                      : menuBgColor
+                  }
+                  onClick={handleRoleChange(
+                    MemberType.MEMBER,
+                    MemberType.ADMIN
+                  )}
+                  disabled={currentRole === MemberType.ADMIN}
+                >
+                  {MemberType.ADMIN}
+                </MenuItem>
+                <MenuItem
+                  width="100px"
+                  textTransform="capitalize"
+                  backgroundColor={
+                    currentRole === MemberType.MEMBER
+                      ? activeMenuColor
+                      : menuBgColor
+                  }
+                  disabled={currentRole === MemberType.MEMBER}
+                  onClick={handleRoleChange(
+                    MemberType.ADMIN,
+                    MemberType.MEMBER,
+                    currentRole === MemberType.ADMIN &&
+                      props.groupRoles.filter(role => role === MemberType.ADMIN)
+                        .length === 1
+                  )}
+                >
+                  {MemberType.MEMBER}
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          )}
+        </HStack>
+        <HStack>
+          (props.address === props.currentAccount.address ? (
+          <Icon
+            ml={2}
+            w={25}
+            h={25}
+            as={BiExit}
+            cursor="pointer"
+            onClick={handleLeaveGroup}
+          />
+          ) : // only admin can remove other users props.viewerRole ===
+          MemberType.ADMIN ? (
+          <Icon
+            ml={2}
+            w={25}
+            h={25}
+            as={MdDelete}
+            onClick={handleRemoveGroupMember}
+            cursor="pointer"
+          />
+          ) : null)
+        </HStack>
       </HStack>
     </HStack>
   )
