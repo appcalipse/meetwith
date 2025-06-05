@@ -32,7 +32,7 @@ import {
 } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
-  MeetingRemindersComponent,
+  noClearCustomSelectComponent,
 } from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -355,6 +355,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               }>
               // can't select more than 5 notifications
               if (meetingNotification.length > 5) {
+                toast({
+                  title: 'Limit reached',
+                  description: 'You can select up to 5 notifications only.',
+                  status: 'warning',
+                  duration: 3000,
+                  isClosable: true,
+                })
                 return
               }
               setMeetingNotification(meetingNotification)
@@ -364,7 +371,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             isMulti
             tagVariant={'solid'}
             options={MeetingNotificationOptions}
-            components={MeetingRemindersComponent}
+            components={noClearCustomSelectComponent}
             chakraStyles={{
               container: provided => ({
                 ...provided,
