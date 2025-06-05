@@ -340,7 +340,7 @@ const ScheduleBase = () => {
                   }
                 }}
                 inputProps={{
-                  pr: 14,
+                  pr: 180,
                   isInvalid: !isParticipantsValid,
                   errorBorderColor: 'red.500',
                 }}
