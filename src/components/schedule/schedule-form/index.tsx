@@ -110,6 +110,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [meetingUrl, setMeetingUrl] = useState('')
   const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
   const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
+  const [showEmailConfirm, setShowEmailConfirm] = useState(false)
   const meetingProviders = (preferences?.meetingProviders || []).concat(
     MeetingProvider.CUSTOM
   )
@@ -331,6 +332,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               isDisabled={isSchedulingExternal}
               value={doSendEmailReminders ? userEmail : guestEmail}
               onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+              borderColor={showEmailConfirm ? 'green.500' : undefined}
+              onBlur={() => {
+                setShowEmailConfirm(isGuestEmailValid())
+              }}
               onChange={e => {
                 if (doSendEmailReminders) {
                   setUserEmail(e.target.value)
@@ -341,6 +346,17 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                 }
               }}
             />
+            {showEmailConfirm && (
+              <Text
+                color="green.500"
+                fontSize="medium"
+                mt={2}
+                w="100%"
+                textAlign={'left'}
+              >
+                Confirm you entered the correct email before you proceed
+              </Text>
+            )}
           </FormControl>
         )}
         <FormControl w="100%" maxW="100%">
