@@ -1205,6 +1205,8 @@ const getUserGroups = async (
   }
   return []
 }
+
+// TODO: Migrate this to a single sql query
 const getGroupsAndMembers = async (
   address: string,
   limit: number,
@@ -1226,49 +1228,50 @@ const getGroupsAndMembers = async (
   if (error) {
     throw new Error(error.message)
   }
-  const groups = []
-  for (const group of data) {
-    const { data: membersData, error: membersError } = await db.supabase
-      .from('group_members')
-      .select()
-      .eq('group_id', group.group.id)
-    if (membersError) {
-      throw new Error(membersError.message)
-    }
-    const addresses = membersData.map(
-      (member: GroupMemberQuery) => member.member_id
-    )
-    const { data: members, error } = await db.supabase
-      .from('accounts')
-      .select(
-        `
+  const groups = await Promise.all(
+    data.map(async group => {
+      const { data: membersData, error: membersError } = await db.supabase
+        .from('group_members')
+        .select()
+        .eq('group_id', group.group.id)
+      if (membersError) {
+        throw new Error(membersError.message)
+      }
+      const addresses = membersData.map(
+        (member: GroupMemberQuery) => member.member_id
+      )
+      const { data: members, error } = await db.supabase
+        .from('accounts')
+        .select(
+          `
          group_members: group_members(*),
          preferences: account_preferences(name)
     `
-      )
-      .in('address', addresses)
-      .filter('group_members.group_id', 'eq', group.group.id)
-      .range(
-        offset || 0,
-        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-      )
-    if (error) {
-      throw new Error(error.message)
-    }
+        )
+        .in('address', addresses)
+        .filter('group_members.group_id', 'eq', group.group.id)
+        .range(
+          offset || 0,
+          (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
+        )
+      if (error) {
+        throw new Error(error.message)
+      }
 
-    if (data) {
-      groups.push({
-        ...group.group,
-        members: members.map(member => ({
-          userId: member.group_members?.[0]?.id,
-          displayName: member.preferences?.name,
-          address: member.group_members?.[0]?.member_id as string,
-          role: member.group_members?.[0].role,
-          invitePending: false,
-        })),
-      })
-    }
-  }
+      if (data) {
+        return {
+          ...group.group,
+          members: members.map(member => ({
+            userId: member.group_members?.[0]?.id,
+            displayName: member.preferences?.name,
+            address: member.group_members?.[0]?.member_id as string,
+            role: member.group_members?.[0].role,
+            invitePending: false,
+          })),
+        }
+      }
+    })
+  )
   return groups
 }
 async function findGroupsWithSingleMember(
