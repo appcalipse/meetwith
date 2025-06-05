@@ -72,7 +72,7 @@ import {
 } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
-  MeetingRemindersComponent,
+  noClearCustomSelectComponent,
 } from '@/utils/constants/select'
 import {
   GateConditionNotValidError,
@@ -707,6 +707,13 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                 }>
                 // can't select more than 5 notifications
                 if (meetingNotification.length > 5) {
+                  toast({
+                    title: 'Limit reached',
+                    description: 'You can select up to 5 notifications only.',
+                    status: 'warning',
+                    duration: 3000,
+                    isClosable: true,
+                  })
                   return
                 }
                 setMeetingNotification(meetingNotification)
@@ -716,7 +723,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               isMulti
               tagVariant={'solid'}
               options={MeetingNotificationOptions}
-              components={MeetingRemindersComponent}
+              components={noClearCustomSelectComponent}
               chakraStyles={{
                 container: provided => ({
                   ...provided,
