@@ -12,7 +12,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { FC, useContext, useState } from 'react'
+import React, { FC, useContext, useEffect, useState } from 'react'
 
 import { ScheduleContext } from '@/pages/dashboard/schedule'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
@@ -21,13 +21,16 @@ interface IProps {
   isOpen: boolean
   participants: Array<ParticipantInfo>
 }
-const ScheduleParticipantsOwners: FC<IProps> = props => {
+const ScheduleParticipantsOwnersModal: FC<IProps> = props => {
   const { meetingOwners, setMeetingOwners } = useContext(ScheduleContext)
-  const [owners, setOwners] = useState<Array<string>>(meetingOwners)
+  const [owners, setOwners] = useState<Array<ParticipantInfo>>(meetingOwners)
   const handleSave = () => {
     setMeetingOwners(owners)
     props.onClose()
   }
+  useEffect(() => {
+    setOwners(meetingOwners)
+  }, [meetingOwners])
   return (
     <Modal
       isOpen={props.isOpen}
@@ -75,17 +78,24 @@ const ScheduleParticipantsOwners: FC<IProps> = props => {
                       onChange={() =>
                         setOwners(prev => {
                           if (
-                            prev.includes(participant.account_address || '')
+                            prev.some(
+                              val =>
+                                val.account_address ===
+                                participant.account_address
+                            )
                           ) {
                             return prev.filter(
-                              owner => owner !== participant.account_address
+                              owner =>
+                                owner.account_address !==
+                                participant.account_address
                             )
                           }
-                          return [...prev, participant.account_address || '']
+                          return [...prev, participant]
                         })
                       }
-                      isChecked={owners.includes(
-                        participant.account_address || ''
+                      isChecked={owners.some(
+                        val =>
+                          val.account_address === participant.account_address
                       )}
                     />
                     <Text>{participant.name}</Text>
@@ -94,20 +104,22 @@ const ScheduleParticipantsOwners: FC<IProps> = props => {
               ))
             )}
           </VStack>
-          <VStack mt={6}>
-            <Button
-              colorScheme="primary"
-              onClick={handleSave}
-              ml={'auto'}
-              right={0}
-              px={6}
-            >
-              Save
-            </Button>
-          </VStack>
+          {props.participants.length > 0 && (
+            <VStack mt={6}>
+              <Button
+                colorScheme="primary"
+                onClick={handleSave}
+                ml={'auto'}
+                right={0}
+                px={6}
+              >
+                Save
+              </Button>
+            </VStack>
+          )}
         </ModalBody>
       </ModalContent>
     </Modal>
   )
 }
-export default ScheduleParticipantsOwners
+export default ScheduleParticipantsOwnersModal
