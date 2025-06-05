@@ -58,9 +58,10 @@ import {
   noClearCustomSelectComponent,
 } from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
-import ScheduleParticipantsOwners from './ScheduleParticipantsOwners'
+import ScheduleParticipantsOwnersModal from './ScheduleParticipantsOwnersModal'
 
 const ScheduleBase = () => {
   const { query } = useRouter()
@@ -103,6 +104,8 @@ const ScheduleBase = () => {
     setSelectedPermissions,
     groups,
     groupParticipants,
+    meetingOwners,
+    setMeetingOwners,
   } = useContext(ScheduleContext)
   const handleSubmit = () => {
     if (!title) {
@@ -183,42 +186,16 @@ const ScheduleBase = () => {
     [duration]
   )
 
-  const mergedParticipants = useMemo(() => {
-    const allParticipants: Array<ParticipantInfo> = []
-    for (const participant of participants) {
-      if (isGroupParticipant(participant)) {
-        const group = groups.find(g => g.id === participant.id)
-        if (group) {
-          const groupMembers = groupParticipants?.[participant.id] || []
-          const membersSanitized = groupMembers
-            .map(member => {
-              const groupMember = group.members.find(m => m.address === member)
-              if (
-                groupMember &&
-                groupMember.address &&
-                allParticipants.every(
-                  val => val.account_address !== groupMember.address
-                )
-              ) {
-                return {
-                  account_address: groupMember.address,
-                  name: groupMember.displayName,
-                  type: ParticipantType.Invitee,
-                  status: ParticipationStatus.Accepted,
-                  meeting_id: '',
-                }
-              }
-              return undefined
-            })
-            .filter(val => val !== undefined)
-          allParticipants.push(...membersSanitized)
-        }
-      } else {
-        allParticipants.push(participant)
-      }
-    }
-    return allParticipants
-  }, [participants, groups, groupParticipants])
+  const mergedParticipants = useMemo(
+    () =>
+      getMergedParticipants(
+        participants,
+        groups,
+        groupParticipants,
+        currentAccount?.address || ''
+      ),
+    [participants, groups, groupParticipants]
+  )
 
   useEffect(() => {
     const type = currentAccount?.preferences.availableTypes.find(
@@ -234,6 +211,22 @@ const ScheduleBase = () => {
     if (participants.length > 0) {
       setIsParticipantsValid(true)
     }
+    const mergedParticipants = getMergedParticipants(
+      participants,
+      groups,
+      groupParticipants,
+      currentAccount?.address || ''
+    )
+    if (mergedParticipants.length > 0) {
+      const filteredMeetingOwners = meetingOwners.filter(owner =>
+        mergedParticipants.some(
+          participant => participant.account_address === owner.account_address
+        )
+      )
+      setMeetingOwners(filteredMeetingOwners)
+    } else {
+      setMeetingOwners([])
+    }
   }, [participants])
 
   return (
@@ -242,7 +235,7 @@ const ScheduleBase = () => {
         isOpen={openWhatIsThis}
         onClose={() => setOpenWhatIsThis(false)}
       />
-      <ScheduleParticipantsOwners
+      <ScheduleParticipantsOwnersModal
         isOpen={isOpen}
         onClose={onClose}
         participants={mergedParticipants}
@@ -441,8 +434,23 @@ const ScheduleBase = () => {
                 width="100%"
                 bg="transparent"
                 variant="link"
+                textDecor="none"
+                fontWeight="400"
+                _hover={{
+                  textDecoration: 'none',
+                }}
               >
-                <Text userSelect="none">Add Participants</Text>
+                <Text userSelect="none">
+                  {meetingOwners.length > 0
+                    ? meetingOwners
+                        .map(
+                          owner =>
+                            owner.name ||
+                            ellipsizeAddress(owner.account_address || '')
+                        )
+                        .join(', ')
+                    : 'Add Participants'}
+                </Text>
                 <Icon as={FaChevronDown} w={4} h={4} />
               </Button>
             </FormControl>
