@@ -69,6 +69,7 @@ import {
   ZoomServiceUnavailable,
 } from '@/utils/errors'
 import { getAddressFromDomain } from '@/utils/rpc_helper_front'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
@@ -150,8 +151,8 @@ interface IScheduleContext {
   setSelectedPermissions: React.Dispatch<
     React.SetStateAction<Array<MeetingPermissions>>
   >
-  meetingOwners: Array<string>
-  setMeetingOwners: React.Dispatch<React.SetStateAction<Array<string>>>
+  meetingOwners: Array<ParticipantInfo>
+  setMeetingOwners: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
 }
 
 const DEFAULT_CONTEXT: IScheduleContext = {
@@ -251,7 +252,7 @@ const Schedule: NextPage<IInitialProps> = ({
   const toast = useToast()
   const [canDelete, setCanDelete] = useState(true)
   const [isScheduler, setIsScheduler] = useState(false)
-  const [meetingOwners, setMeetingOwners] = useState<Array<string>>([])
+  const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
   const router = useRouter()
   const { push } = router
 
@@ -505,49 +506,33 @@ const Schedule: NextPage<IInitialProps> = ({
     }
     setIsDeleting(false)
   }
+
   const handleSchedule = async () => {
     try {
       setIsScheduling(true)
-      const actualMembers = [
-        ...new Set(Object.values(groupParticipants).flat()),
-      ]
-      const members = await getExistingAccounts(actualMembers)
-      const participantsGroup = members.map(val => ({
-        account_address: val.address?.toLowerCase(),
-        name: val.preferences.name,
-        status: ParticipationStatus.Pending,
-        type: ParticipantType.Invitee,
-        slot_id: '',
-        meeting_id: '',
+      const allParticipants = getMergedParticipants(
+        participants,
+        groups,
+        groupParticipants,
+        currentAccount?.address || ''
+      ).map(val => ({
+        ...val,
+        type: meetingOwners.some(
+          owner => owner.account_address === val.account_address
+        )
+          ? ParticipantType.Owner
+          : ParticipantType.Invitee,
       }))
-
-      const individualParticipants = participants.filter(
-        (val): val is ParticipantInfo => !isGroupParticipant(val)
-      )
-
-      const allParticipants = [
-        ...new Set(
-          [...individualParticipants, ...participantsGroup].filter(
-            val => val.account_address != currentAccount!.address
-          )
-        ),
-      ]
       const _participants = await parseAccounts(allParticipants)
 
-      const userData = individualParticipants.find(
-        val => val.account_address === currentAccount?.address
-      )
-      if (userData) {
-        _participants.valid.push(userData)
-      } else {
-        _participants.valid.push({
-          account_address: currentAccount!.address,
-          type: ParticipantType.Scheduler,
-          status: ParticipationStatus.Accepted,
-          slot_id: '',
-          meeting_id: '',
-        })
-      }
+      _participants.valid.push({
+        account_address: currentAccount?.address,
+        type: ParticipantType.Scheduler,
+        status: ParticipationStatus.Accepted,
+        slot_id: '',
+        meeting_id: '',
+      })
+
       if (_participants.invalid.length > 0) {
         toast({
           title: 'Invalid invitees',
