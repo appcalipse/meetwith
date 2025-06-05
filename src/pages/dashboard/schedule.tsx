@@ -521,18 +521,26 @@ const Schedule: NextPage<IInitialProps> = ({
           owner => owner.account_address === val.account_address
         )
           ? ParticipantType.Owner
-          : ParticipantType.Invitee,
+          : val.type || ParticipantType.Invitee,
       }))
       const _participants = await parseAccounts(allParticipants)
-
-      _participants.valid.push({
-        account_address: currentAccount?.address,
-        type: ParticipantType.Scheduler,
-        status: ParticipationStatus.Accepted,
-        slot_id: '',
-        meeting_id: '',
-      })
-
+      const individualParticipants = participants.filter(
+        (val): val is ParticipantInfo => !isGroupParticipant(val)
+      )
+      const userData = individualParticipants.find(
+        val => val.account_address === currentAccount?.address
+      )
+      if (userData) {
+        _participants.valid.push(userData)
+      } else {
+        _participants.valid.push({
+          account_address: currentAccount?.address,
+          type: ParticipantType.Scheduler,
+          status: ParticipationStatus.Accepted,
+          slot_id: '',
+          meeting_id: '',
+        })
+      }
       if (_participants.invalid.length > 0) {
         toast({
           title: 'Invalid invitees',
@@ -550,16 +558,20 @@ const Schedule: NextPage<IInitialProps> = ({
       if (!pickedTime) return
       const start = new Date(pickedTime)
       const end = addMinutes(new Date(start), duration)
-      const isScheduler =
+      const isSchedulerOrOwner = [
+        ParticipantType.Scheduler,
+        ParticipantType.Owner,
+      ].includes(
         decryptedMeeting?.participants?.find(
           p => p.account_address === currentAccount?.address
-        )?.type === ParticipantType.Scheduler
+        )?.type || ParticipantType?.Invitee
+      )
       const canUpdateOtherGuests =
         decryptedMeeting?.permissions === undefined ||
         !!decryptedMeeting?.permissions?.includes(
           MeetingPermissions.INVITE_GUESTS
         ) ||
-        isScheduler
+        isSchedulerOrOwner
       if (
         !canUpdateOtherGuests &&
         decryptedMeeting?.participants?.length !== _participants.valid.length
@@ -617,7 +629,7 @@ const Schedule: NextPage<IInitialProps> = ({
         )
       }
       setCurrentPage(Page.COMPLETED)
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof MeetingWithYourselfError) {
         toast({
           title: "Ops! Can't do that",
@@ -724,7 +736,7 @@ const Schedule: NextPage<IInitialProps> = ({
           isClosable: true,
         })
       } else {
-        handleApiError('Error scheduling meeting', e)
+        handleApiError('Error scheduling meeting', e as Error)
       }
     }
     setIsScheduling(false)
@@ -868,6 +880,8 @@ const Schedule: NextPage<IInitialProps> = ({
       } else if (scheduler?.account_address === currentAccount?.address) {
         setIsScheduler(true)
         setCanDelete(false)
+      } else {
+        setIsScheduler(false)
       }
       const allAddresses = participants
         .map(val => val.account_address)
@@ -895,6 +909,7 @@ const Schedule: NextPage<IInitialProps> = ({
       const meetingOwners = decryptedMeeting.participants?.filter(
         val => val.type === ParticipantType.Owner
       )
+      setMeetingOwners(meetingOwners)
       setMeetingNotification(
         decryptedMeeting.reminders?.map(val => {
           const option = MeetingNotificationOptions.find(
