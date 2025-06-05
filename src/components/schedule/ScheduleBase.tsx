@@ -1,4 +1,4 @@
-import { AddIcon, ChevronDownIcon, InfoIcon } from '@chakra-ui/icons'
+import { AddIcon, InfoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
@@ -39,24 +39,16 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import {
   DEFAULT_GROUP_SCHEDULING_DURATION,
   MeetingNotificationOptions,
-  MeetingPermissions,
   MeetingRepeatOptions,
   MeetingSchedulePermissions,
 } from '@/utils/constants/schedule'
-import {
-  customSelectComponents,
-  noClearCustomSelectComponent,
-} from '@/utils/constants/select'
+import { noClearCustomSelectComponent } from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -382,79 +374,84 @@ const ScheduleBase = () => {
             </FormHelperText>
           </FormControl>
 
-          <VStack w="100%" gap={4} alignItems="flex-start">
-            <Heading fontSize="lg" fontWeight={500}>
-              Permissions for guests
-            </Heading>
+          {isScheduler && (
+            <VStack w="100%" gap={4} alignItems="flex-start">
+              <Heading fontSize="lg" fontWeight={500}>
+                Permissions for guests
+              </Heading>
 
-            {MeetingSchedulePermissions.map(permission => (
-              <Checkbox
-                key={permission.value}
-                isChecked={selectedPermissions.includes(permission.value)}
-                w="100%"
-                colorScheme="primary"
-                flexDir="row-reverse"
-                justifyContent={'space-between'}
-                fontWeight={700}
-                color="primary.200"
-                fontSize="16px"
-                size={'lg'}
-                p={0}
-                marginInlineStart={0}
-                onChange={e => {
-                  const isChecked = e.target.checked
-                  if (isChecked) {
-                    setSelectedPermissions(prev => [...prev, permission.value])
-                  } else {
-                    setSelectedPermissions(prev =>
-                      prev.filter(p => p !== permission.value)
-                    )
-                  }
-                }}
-              >
-                <Text marginInlineStart={-2}>{permission.label}</Text>
-              </Checkbox>
-            ))}
-            <FormControl>
-              <FormLabel display="flex" alignItems="center" fontSize="medium">
-                Make other participants meeting owners
-                <InfoTooltip text="Granting ownership will allow them to manage the meeting" />
-              </FormLabel>
-              <Button
-                onClick={onOpen}
-                borderColor="inherit"
-                borderWidth={1}
-                cursor="pointer"
-                color="neutral.400"
-                justifyContent="space-between"
-                borderRadius="0.375rem"
-                height={10}
-                fontSize="16"
-                px={4}
-                width="100%"
-                bg="transparent"
-                variant="link"
-                textDecor="none"
-                fontWeight="400"
-                _hover={{
-                  textDecoration: 'none',
-                }}
-              >
-                <Text userSelect="none">
-                  {meetingOwners.length > 0
-                    ? meetingOwners
-                        .map(
-                          owner =>
-                            owner.name ||
-                            ellipsizeAddress(owner.account_address || '')
-                        )
-                        .join(', ')
-                    : 'Add Participants'}
-                </Text>
-                <Icon as={FaChevronDown} w={4} h={4} />
-              </Button>
-            </FormControl>
-          </VStack>
+              {MeetingSchedulePermissions.map(permission => (
+                <Checkbox
+                  key={permission.value}
+                  isChecked={selectedPermissions.includes(permission.value)}
+                  w="100%"
+                  colorScheme="primary"
+                  flexDir="row-reverse"
+                  justifyContent={'space-between'}
+                  fontWeight={700}
+                  color="primary.200"
+                  fontSize="16px"
+                  size={'lg'}
+                  p={0}
+                  marginInlineStart={0}
+                  onChange={e => {
+                    const isChecked = e.target.checked
+                    if (isChecked) {
+                      setSelectedPermissions(prev => [
+                        ...prev,
+                        permission.value,
+                      ])
+                    } else {
+                      setSelectedPermissions(prev =>
+                        prev.filter(p => p !== permission.value)
+                      )
+                    }
+                  }}
+                >
+                  <Text marginInlineStart={-2}>{permission.label}</Text>
+                </Checkbox>
+              ))}
+              <FormControl>
+                <FormLabel display="flex" alignItems="center" fontSize="medium">
+                  Make other participants meeting owners
+                  <InfoTooltip text="Granting ownership will allow them to manage the meeting" />
+                </FormLabel>
+                <Button
+                  onClick={onOpen}
+                  borderColor="inherit"
+                  borderWidth={1}
+                  cursor="pointer"
+                  color="neutral.400"
+                  justifyContent="space-between"
+                  borderRadius="0.375rem"
+                  height={10}
+                  fontSize="16"
+                  px={4}
+                  width="100%"
+                  bg="transparent"
+                  variant="link"
+                  textDecor="none"
+                  fontWeight="400"
+                  _hover={{
+                    textDecoration: 'none',
+                  }}
+                >
+                  <Text userSelect="none">
+                    {meetingOwners.length > 0
+                      ? meetingOwners
+                          .map(
+                            owner =>
+                              owner.name ||
+                              ellipsizeAddress(owner.account_address || '')
+                          )
+                          .join(', ')
+                      : 'Add Participants'}
+                  </Text>
+                  <Icon as={FaChevronDown} w={4} h={4} />
+                </Button>
+              </FormControl>
+            </VStack>
+          )}
           <VStack w="100%">
             <HStack width="fit-content" ml={'auto'}>
               {' '}
