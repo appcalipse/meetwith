@@ -368,6 +368,10 @@ const buildMeetingData = async (
     meetingRepeat,
     allSlotIds,
     meetingPermissions: selectedPermissions,
+    ignoreOwnerAvailability:
+      participantsMappings.filter(
+        mapping => mapping.type === ParticipantType.Owner
+      ).length > 1,
   }
 }
 
