@@ -251,7 +251,7 @@ const Schedule: NextPage<IInitialProps> = ({
   >(undefined)
   const toast = useToast()
   const [canDelete, setCanDelete] = useState(true)
-  const [isScheduler, setIsScheduler] = useState(false)
+  const [isScheduler, setIsScheduler] = useState(true)
   const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
   const router = useRouter()
   const { push } = router
@@ -892,6 +892,9 @@ const Schedule: NextPage<IInitialProps> = ({
         decryptedMeeting.permissions || [MeetingPermissions.SEE_GUEST_LIST]
       )
       setMeetingUrl(decryptedMeeting.meeting_url)
+      const meetingOwners = decryptedMeeting.participants?.filter(
+        val => val.type === ParticipantType.Owner
+      )
       setMeetingNotification(
         decryptedMeeting.reminders?.map(val => {
           const option = MeetingNotificationOptions.find(
