@@ -44,6 +44,7 @@ export interface MeetingCreationRequest {
   meetingRepeat: MeetingRepeat
   allSlotIds?: Array<string>
   meetingPermissions?: Array<MeetingPermissions>
+  ignoreOwnerAvailability?: boolean
 }
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
