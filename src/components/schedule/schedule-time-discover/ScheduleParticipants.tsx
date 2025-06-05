@@ -76,7 +76,7 @@ export function ScheduleParticipants({
         <Heading size={'sm'}>Calendar connection</Heading>
       </HStack>
       <Divider bg={'neutral.400'} />
-      <VStack gap={4}>
+      <VStack gap={4} w="100%">
         {meetingMembers.map((participant, index) => {
           return (
             <HStack
