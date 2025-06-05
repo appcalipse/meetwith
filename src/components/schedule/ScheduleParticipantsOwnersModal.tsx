@@ -16,6 +16,7 @@ import React, { FC, useContext, useEffect, useState } from 'react'
 
 import { ScheduleContext } from '@/pages/dashboard/schedule'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { ellipsizeAddress } from '@/utils/user_manager'
 interface IProps {
   onClose: () => void
   isOpen: boolean
@@ -98,7 +99,12 @@ const ScheduleParticipantsOwnersModal: FC<IProps> = props => {
                           val.account_address === participant.account_address
                       )}
                     />
-                    <Text>{participant.name}</Text>
+                    <Text>
+                      {participant.name ||
+                        (participant.account_address
+                          ? ellipsizeAddress(participant.account_address)
+                          : participant.guest_email)}
+                    </Text>
                   </HStack>
                 </HStack>
               ))
