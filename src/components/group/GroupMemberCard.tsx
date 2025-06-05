@@ -250,26 +250,30 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
           )}
         </HStack>
         <HStack>
-          (props.address === props.currentAccount.address ? (
-          <Icon
-            ml={2}
-            w={25}
-            h={25}
-            as={BiExit}
-            cursor="pointer"
-            onClick={handleLeaveGroup}
-          />
-          ) : // only admin can remove other users props.viewerRole ===
-          MemberType.ADMIN ? (
-          <Icon
-            ml={2}
-            w={25}
-            h={25}
-            as={MdDelete}
-            onClick={handleRemoveGroupMember}
-            cursor="pointer"
-          />
-          ) : null)
+          {
+            // no one can leave an empty group
+            !props?.isEmpty &&
+              (props.address === props.currentAccount.address ? (
+                <Icon
+                  ml={2}
+                  w={25}
+                  h={25}
+                  as={BiExit}
+                  cursor="pointer"
+                  onClick={handleLeaveGroup}
+                />
+              ) : // only admin can remove other users
+              props.viewerRole === MemberType.ADMIN ? (
+                <Icon
+                  ml={2}
+                  w={25}
+                  h={25}
+                  as={MdDelete}
+                  onClick={handleRemoveGroupMember}
+                  cursor="pointer"
+                />
+              ) : null)
+          }
         </HStack>
       </HStack>
     </HStack>
