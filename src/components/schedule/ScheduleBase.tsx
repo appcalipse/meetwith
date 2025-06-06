@@ -408,7 +408,10 @@ const ScheduleBase = () => {
                     }
                   }}
                 >
-                  <Text marginInlineStart={-2}>{permission.label}</Text>
+                  <HStack marginInlineStart={-2} gap={0}>
+                    <Text>{permission.label}</Text>
+                    {permission.info && <InfoTooltip text={permission.info} />}
+                  </HStack>
                 </Checkbox>
               ))}
               <FormControl>
