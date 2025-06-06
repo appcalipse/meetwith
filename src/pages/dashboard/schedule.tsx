@@ -357,7 +357,7 @@ const Schedule: NextPage<IInitialProps> = ({
         isClosable: true,
       })
       push(`/dashboard/${EditMode.MEETINGS}`)
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof MeetingWithYourselfError) {
         toast({
           title: "Ops! Can't do that",
@@ -966,7 +966,7 @@ const Schedule: NextPage<IInitialProps> = ({
               label: 'Does not repeat',
             }
       )
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error fetching meeting information.', error)
     }
     setIsPrefetching(false)
