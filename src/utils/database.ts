@@ -28,7 +28,6 @@ import {
 } from '@/types/CalendarConnections'
 import { SupportedChain } from '@/types/chains'
 import {
-  Contact,
   ContactSearch,
   DBContact,
   DBContactInvite,
@@ -486,9 +485,7 @@ const getAccountFromDB = async (
       account.address
     )
     if (includePrivateInformation) {
-      const discord_account = await getDiscordAccount(account.address)
-
-      account.discord_account = discord_account
+      account.discord_account = await getDiscordAccount(account.address)
     }
     return account
   } else if (error) {
@@ -2408,7 +2405,6 @@ const updateMeeting = async (
     // means there are duplicate participants
     throw new MeetingCreationError()
   }
-
   const slots = []
   let meetingResponse = {} as DBSlot
   let index = 0
