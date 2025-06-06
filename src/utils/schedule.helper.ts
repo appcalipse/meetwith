@@ -1,3 +1,8 @@
+import { Account } from '@meta/Account'
+import { getAccount } from '@utils/api_helper'
+import { getAddressFromDomain } from '@utils/rpc_helper_front'
+import { isValidEmail, isValidEVMAddress } from '@utils/validations'
+
 import { GetGroupsFullResponse } from '@/types/Group'
 import {
   ParticipantInfo,
@@ -46,4 +51,49 @@ export const getMergedParticipants = (
     }
   }
   return allParticipants.filter(val => val.account_address !== accountAddress)
+}
+
+export const parseAccounts = async (
+  participants: ParticipantInfo[]
+): Promise<{ valid: ParticipantInfo[]; invalid: string[] }> => {
+  const valid: ParticipantInfo[] = []
+  const invalid: string[] = []
+  for (const participant of participants) {
+    if (
+      isValidEVMAddress(participant.account_address || '') ||
+      isValidEmail(participant.guest_email || '')
+    ) {
+      valid.push(participant)
+    } else {
+      const address = await getAddressFromDomain(participant.name || '')
+      if (address) {
+        valid.push({
+          account_address: address,
+          type: ParticipantType.Invitee,
+          slot_id: '',
+          meeting_id: '',
+          status: ParticipationStatus.Pending,
+        })
+      } else if (participant.name) {
+        let account: Account | null = null
+        try {
+          account = await getAccount(participant.name)
+        } catch (e) {}
+
+        if (account) {
+          valid.push({
+            account_address: account.address,
+            type: ParticipantType.Invitee,
+            slot_id: '',
+            meeting_id: '',
+            status: ParticipationStatus.Pending,
+            name: participant.name,
+          })
+        } else {
+          invalid.push(participant.name!)
+        }
+      }
+    }
+  }
+  return { valid, invalid }
 }
