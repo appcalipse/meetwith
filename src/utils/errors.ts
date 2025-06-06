@@ -282,3 +282,10 @@ export class CantInviteYourself extends Error {
     this.name = 'CantInviteYourself'
   }
 }
+
+export class PermissionDenied extends Error {
+  constructor() {
+    super(`You do not have permission to perform this action`)
+    this.name = 'PermissionDenied'
+  }
+}
