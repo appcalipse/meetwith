@@ -284,8 +284,21 @@ export class CantInviteYourself extends Error {
 }
 
 export class PermissionDenied extends Error {
-  constructor() {
-    super(`You do not have permission to perform this action`)
+  constructor(message = `You do not have permission to perform this action`) {
+    super(message)
     this.name = 'PermissionDenied'
+  }
+}
+export class GuestListModificationDenied extends PermissionDenied {
+  constructor() {
+    super("You don't have permission to modify the meeting invitees.")
+    this.name = 'GuestListModificationDenied'
+  }
+}
+
+export class MeetingDetailsModificationDenied extends PermissionDenied {
+  constructor() {
+    super("You don't have permission to modify the meeting details")
+    this.name = 'MeetingDetailsModificationDenied'
   }
 }
