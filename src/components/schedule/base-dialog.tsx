@@ -25,6 +25,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { parseAccounts } from '@utils/schedule.helper'
 import { Select as ChakraSelect } from 'chakra-react-select'
 import {
   addDays,
@@ -84,12 +85,10 @@ import {
   MultipleSchedulersError,
   TimeNotAvailableError,
 } from '@/utils/errors'
-import { getAddressFromDomain } from '@/utils/rpc_helper_front'
 import { getSignature } from '@/utils/storage'
 import { isProAccount } from '@/utils/subscription_manager'
 import { parseTime } from '@/utils/time.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
-import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import RichTextEditor from '../profile/components/RichTextEditor'
 import { CancelMeetingDialog } from './cancel-dialog'
@@ -139,9 +138,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
   const [inputError, setInputError] = useState(
     undefined as ReactNode | undefined
   )
-  const [meetingUrl, setMeetingUrl] = useState(
-    decryptedMeeting?.meeting_url || ''
-  )
+  const [meetingUrl] = useState(decryptedMeeting?.meeting_url || '')
   const [duration, setDuration] = useState(
     meeting && meeting.id ? differenceInMinutes(meeting.end, meeting.start) : 30
   )
@@ -176,7 +173,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     currentAccount?.preferences?.meetingProviders
   )
 
-  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
+  const [meetingProvider] = useState<MeetingProvider>(
     decryptedMeeting?.provider || defaultProvider
   )
   if (meetingId) {
@@ -202,35 +199,6 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       return
     }
     setParticipants(_participants)
-  }
-
-  const parseAccounts = async (
-    participants: ParticipantInfo[]
-  ): Promise<{ valid: ParticipantInfo[]; invalid: string[] }> => {
-    const valid: ParticipantInfo[] = []
-    const invalid: string[] = []
-    for (const participant of participants) {
-      if (
-        isValidEVMAddress(participant.account_address || '') ||
-        isValidEmail(participant.guest_email || '')
-      ) {
-        valid.push(participant)
-      } else {
-        const address = await getAddressFromDomain(participant.name || '')
-        if (address) {
-          valid.push({
-            account_address: address,
-            type: ParticipantType.Invitee,
-            slot_id: '',
-            meeting_id: '',
-            status: ParticipationStatus.Pending,
-          })
-        } else {
-          invalid.push(participant.name!)
-        }
-      }
-    }
-    return { valid, invalid }
   }
 
   const buildSelectedStart = () => {
