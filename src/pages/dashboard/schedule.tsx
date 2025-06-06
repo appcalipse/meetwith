@@ -36,7 +36,6 @@ import {
 import { logEvent } from '@/utils/analytics'
 import {
   getContactById,
-  getExistingAccounts,
   getGroup,
   getGroupsFull,
   getGroupsMembers,
@@ -64,14 +63,14 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   MultipleSchedulersError,
+  PermissionDenied,
   TimeNotAvailableError,
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
-import { getAddressFromDomain } from '@/utils/rpc_helper_front'
-import { getMergedParticipants } from '@/utils/schedule.helper'
+import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
-import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
+import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 export enum Page {
   SCHEDULE,
@@ -335,34 +334,7 @@ const Schedule: NextPage<IInitialProps> = ({
         return <ScheduleCompleted />
     }
   }
-  const parseAccounts = async (
-    participants: ParticipantInfo[]
-  ): Promise<{ valid: ParticipantInfo[]; invalid: string[] }> => {
-    const valid: ParticipantInfo[] = []
-    const invalid: string[] = []
-    for (const participant of participants) {
-      if (
-        isValidEVMAddress(participant.account_address || '') ||
-        isValidEmail(participant.guest_email || '')
-      ) {
-        valid.push(participant)
-      } else {
-        const address = await getAddressFromDomain(participant.name || '')
-        if (address) {
-          valid.push({
-            account_address: address,
-            type: ParticipantType.Invitee,
-            slot_id: '',
-            meeting_id: '',
-            status: ParticipationStatus.Pending,
-          })
-        } else {
-          invalid.push(participant.name!)
-        }
-      }
-    }
-    return { valid, invalid }
-  }
+
   const handleDelete = async () => {
     if (!decryptedMeeting) return
     setIsDeleting(true)
@@ -510,8 +482,30 @@ const Schedule: NextPage<IInitialProps> = ({
   const handleSchedule = async () => {
     try {
       setIsScheduling(true)
+      const isSchedulerOrOwner = [
+        ParticipantType.Scheduler,
+        ParticipantType.Owner,
+      ].includes(
+        decryptedMeeting?.participants?.find(
+          p => p.account_address === currentAccount?.address
+        )?.type || ParticipantType?.Invitee
+      )
+      const canViewParticipants =
+        decryptedMeeting?.permissions?.includes(
+          MeetingPermissions.SEE_GUEST_LIST
+        ) ||
+        decryptedMeeting?.permissions === undefined ||
+        isSchedulerOrOwner
+      const actualParticipants = canViewParticipants
+        ? participants
+        : participants
+            .filter(p => {
+              if (isGroupParticipant(p)) return true
+              return !p.isHidden
+            })
+            .concat(decryptedMeeting?.participants || [])
       const allParticipants = getMergedParticipants(
-        participants,
+        actualParticipants,
         groups,
         groupParticipants,
         currentAccount?.address || ''
@@ -521,10 +515,10 @@ const Schedule: NextPage<IInitialProps> = ({
           owner => owner.account_address === val.account_address
         )
           ? ParticipantType.Owner
-          : val.type || ParticipantType.Invitee,
+          : val.type,
       }))
       const _participants = await parseAccounts(allParticipants)
-      const individualParticipants = participants.filter(
+      const individualParticipants = actualParticipants.filter(
         (val): val is ParticipantInfo => !isGroupParticipant(val)
       )
       const userData = individualParticipants.find(
@@ -558,20 +552,14 @@ const Schedule: NextPage<IInitialProps> = ({
       if (!pickedTime) return
       const start = new Date(pickedTime)
       const end = addMinutes(new Date(start), duration)
-      const isSchedulerOrOwner = [
-        ParticipantType.Scheduler,
-        ParticipantType.Owner,
-      ].includes(
-        decryptedMeeting?.participants?.find(
-          p => p.account_address === currentAccount?.address
-        )?.type || ParticipantType?.Invitee
-      )
+
       const canUpdateOtherGuests =
         decryptedMeeting?.permissions === undefined ||
         !!decryptedMeeting?.permissions?.includes(
           MeetingPermissions.INVITE_GUESTS
         ) ||
         isSchedulerOrOwner
+
       if (
         !canUpdateOtherGuests &&
         decryptedMeeting?.participants?.length !== _participants.valid.length
@@ -730,6 +718,15 @@ const Schedule: NextPage<IInitialProps> = ({
           title: 'Failed to schedule meeting',
           description:
             'There was an issue generating a meeting url for your meeting. try using a different location',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof PermissionDenied) {
+        toast({
+          title: 'Permission Denied',
+          description: 'You do not have permission to update other guests.',
           status: 'error',
           duration: 5000,
           position: 'top',
@@ -905,6 +902,37 @@ const Schedule: NextPage<IInitialProps> = ({
       setSelectedPermissions(
         decryptedMeeting.permissions || [MeetingPermissions.SEE_GUEST_LIST]
       )
+      if (decryptedMeeting.permissions) {
+        const isSchedulerOrOwner = [
+          ParticipantType.Scheduler,
+          ParticipantType.Owner,
+        ].includes(
+          decryptedMeeting?.participants?.find(
+            p => p.account_address === currentAccount?.address
+          )?.type || ParticipantType?.Invitee
+        )
+        const canViewParticipants =
+          decryptedMeeting.permissions.includes(
+            MeetingPermissions.SEE_GUEST_LIST
+          ) || isSchedulerOrOwner
+        if (!canViewParticipants) {
+          const displayName = getAllParticipantsDisplayName(
+            decryptedMeeting?.participants,
+            currentAccount?.address,
+            false
+          )
+          setParticipants([
+            {
+              name: displayName,
+              meeting_id: '',
+              status: ParticipationStatus.Accepted,
+              type: ParticipantType.Invitee,
+              slot_id: '',
+              isHidden: true,
+            },
+          ])
+        }
+      }
       setMeetingUrl(decryptedMeeting.meeting_url)
       const meetingOwners = decryptedMeeting.participants?.filter(
         val => val.type === ParticipantType.Owner
