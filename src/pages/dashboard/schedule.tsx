@@ -812,7 +812,7 @@ const Schedule: NextPage<IInitialProps> = ({
           id: group.id,
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error prefetching group.', error)
     }
   }
@@ -820,7 +820,6 @@ const Schedule: NextPage<IInitialProps> = ({
     if (!contactId) return
     try {
       const contact = await getContactById(contactId)
-      const _participants = participants as Array<ParticipantInfo>
       if (contact) {
         const key = 'no_group'
         const participant: ParticipantInfo = {
@@ -840,7 +839,7 @@ const Schedule: NextPage<IInitialProps> = ({
           [key]: allAddresses,
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error prefetching contact.', error)
     }
   }
