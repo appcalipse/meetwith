@@ -40,7 +40,7 @@ import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { IGroupParticipant, isGroupParticipant } from '@/types/schedule'
+import { isGroupParticipant, Participant } from '@/types/schedule'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
 import {
   DEFAULT_GROUP_SCHEDULING_DURATION,
@@ -134,11 +134,12 @@ const ScheduleBase = () => {
     setParticipants(_prev => {
       const oldGroups = _prev.filter(_participantOld =>
         isGroupParticipant(_participantOld)
-      ) as Array<IGroupParticipant>
+      )
 
       oldGroups.forEach(oldGroup => {
-        const participants =
-          _participants as unknown as Array<IGroupParticipant>
+        const participants = _participants.filter(_participantOld =>
+          isGroupParticipant(_participantOld)
+        )
         const isGroupExist = participants.find(val => val.id === oldGroup.id)
         if (!isGroupExist) {
           setGroupParticipants(prev => ({
@@ -151,7 +152,7 @@ const ScheduleBase = () => {
           }))
         }
       })
-      return _participants as Array<ParticipantInfo | IGroupParticipant>
+      return _participants as Array<Participant>
     })
     if (_participants.length) {
       setIsParticipantsValid(true)
