@@ -726,7 +726,7 @@ const Schedule: NextPage<IInitialProps> = ({
       } else if (e instanceof PermissionDenied) {
         toast({
           title: 'Permission Denied',
-          description: 'You do not have permission to update other guests.',
+          description: e.message,
           status: 'error',
           duration: 5000,
           position: 'top',
@@ -871,13 +871,17 @@ const Schedule: NextPage<IInitialProps> = ({
       const scheduler = participants.find(
         val => val.type === ParticipantType.Scheduler
       )
-      if (participants.length === 2) {
-        setCanDelete(false)
-      } else if (scheduler?.account_address === currentAccount?.address) {
-        setIsScheduler(true)
+      const isCurrentUserScheduler =
+        scheduler?.account_address === currentAccount?.address
+      setIsScheduler(isCurrentUserScheduler)
+
+      if (
+        participants.length === 2 ||
+        scheduler?.account_address === currentAccount?.address
+      ) {
         setCanDelete(false)
       } else {
-        setIsScheduler(false)
+        setCanDelete(true)
       }
       const allAddresses = participants
         .map(val => val.account_address)
