@@ -107,6 +107,7 @@ export const DEFAULT_GROUP_SCHEDULING_DURATION =
 export enum MeetingPermissions {
   SEE_GUEST_LIST = 'see_guest_list',
   INVITE_GUESTS = 'invite_guests',
+  EDIT_MEETING = 'edit_meeting',
 }
 
 export const MeetingSchedulePermissions = [
@@ -117,5 +118,10 @@ export const MeetingSchedulePermissions = [
   {
     value: MeetingPermissions.INVITE_GUESTS,
     label: 'Permission to invite other guests',
+  },
+  {
+    value: MeetingPermissions.EDIT_MEETING,
+    label: 'Permission to edit the meeting',
+    info: 'Guests will be able to modify the meeting title, description, location, and other details, but not the invitees.',
   },
 ]
