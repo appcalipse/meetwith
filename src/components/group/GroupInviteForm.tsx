@@ -5,6 +5,7 @@ import {
   FormControl,
   FormLabel,
   HStack,
+  Icon,
   IconButton,
   Input,
   Text,
@@ -16,6 +17,7 @@ import {
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { FC, FormEvent, useEffect, useState } from 'react'
+import { FaChevronDown } from 'react-icons/fa'
 import { LuLink2 } from 'react-icons/lu'
 
 import InvitedUsersList from '@/components/group/InvitedUsersList'
@@ -342,7 +344,7 @@ const GroupInviteForm: FC<InviteModalProps> = ({
               px={4}
             >
               <Text userSelect="none">Select member</Text>
-              <ChevronDownIcon w={30} h={30} />
+              <Icon as={FaChevronDown} w={4} h={4} />
             </HStack>
           </FormControl>
           <InvitedUsersList
