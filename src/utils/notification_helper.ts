@@ -506,14 +506,15 @@ const getDiscordNotification = async (
       participant.mappingType === ParticipantMappingType.ADD
         ? MeetingChangeType.CREATE
         : _changeType
-    const isScheduler =
-      participant.type === ParticipantType.Scheduler ||
-      (participant.type === ParticipantType.Owner &&
-        !participantsInfo?.some(p => p.type === ParticipantType.Scheduler))
+
+    const isSchedulerOrOwner = [
+      ParticipantType.Scheduler,
+      ParticipantType.Owner,
+    ].includes(participant.type)
     const canSeeGuestList =
       meetingPermissions === undefined ||
       !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
-      isScheduler
+      isSchedulerOrOwner
     let message
     let actor
     switch (changeType) {
@@ -616,14 +617,14 @@ const getTelegramNotification = async (
   const destination = participant.notifications!.notification_types.filter(
     n => n.channel === NotificationChannel.TELEGRAM
   )[0].destination
-  const isScheduler =
-    participant.type === ParticipantType.Scheduler ||
-    (participant.type === ParticipantType.Owner &&
-      !participantsInfo?.some(p => p.type === ParticipantType.Scheduler))
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(participant.type)
   const canSeeGuestList =
     meetingPermissions === undefined ||
     !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
-    isScheduler
+    isSchedulerOrOwner
   let message
   const actor = getParticipantActingDisplayName(participantActing, participant)
   switch (changeType) {
