@@ -39,6 +39,7 @@ import {
   MeetingDecrypted,
   MeetingRepeat,
 } from '@/types/Meeting'
+import { ParticipantType } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
   dateToLocalizedRange,
@@ -48,6 +49,7 @@ import {
   generateOffice365CalendarUrl,
 } from '@/utils/calendar_manager'
 import { appUrl, isProduction } from '@/utils/constants'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
@@ -143,10 +145,14 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
     link.parentNode!.removeChild(link)
   }
 
-  const getNamesDisplay = (meeting: MeetingDecrypted) => {
+  const getNamesDisplay = (
+    meeting: MeetingDecrypted,
+    canSeeGuestList: boolean
+  ) => {
     return getAllParticipantsDisplayName(
       meeting.participants,
-      currentAccount!.address
+      currentAccount!.address,
+      canSeeGuestList
     )
   }
 
@@ -207,6 +213,21 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
     meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(
+    decryptedMeeting?.participants?.find(
+      p => p.account_address === currentAccount?.address
+    )?.type || ParticipantType?.Invitee
+  )
+  const canSeeGuestList =
+    decryptedMeeting?.permissions === undefined ||
+    !!decryptedMeeting?.permissions?.includes(
+      MeetingPermissions.SEE_GUEST_LIST
+    ) ||
+    isSchedulerOrOwner
+
   return (
     <>
       {loading ? (
@@ -396,7 +417,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                 <HStack alignItems="flex-start" maxWidth="100%">
                   <Text display="inline" width="100%" whiteSpace="balance">
                     <strong>Participants: </strong>
-                    {getNamesDisplay(decryptedMeeting)}
+                    {getNamesDisplay(decryptedMeeting, canSeeGuestList)}
                   </Text>
                 </HStack>
                 <HStack
