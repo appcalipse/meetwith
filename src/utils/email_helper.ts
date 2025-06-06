@@ -135,14 +135,15 @@ export const newMeetingEmail = async (
   meetingPermissions?: Array<MeetingPermissions>
 ): Promise<boolean> => {
   const email = new Email()
-  const isScheduler =
-    participantType === ParticipantType.Scheduler ||
-    (participantType === ParticipantType.Owner &&
-      !participants.some(p => p.type === ParticipantType.Scheduler))
+
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(participantType)
   const canSeeGuestList =
     meetingPermissions === undefined ||
     !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
-    isScheduler
+    isSchedulerOrOwner
 
   const locals = {
     participantsDisplay: getAllParticipantsDisplayName(
@@ -168,7 +169,10 @@ export const newMeetingEmail = async (
         )}`
       : undefined,
   }
-
+  const isScheduler =
+    participantType === ParticipantType.Scheduler ||
+    (participantType === ParticipantType.Owner &&
+      !participants.some(p => p.type === ParticipantType.Scheduler))
   const rendered = await email.renderAll(
     `${path.resolve(
       'src',
@@ -373,14 +377,15 @@ export const updateMeetingEmail = async (
   if (!changes?.dateChange) {
     return true
   }
-  const isScheduler =
-    participantType === ParticipantType.Scheduler ||
-    (participantType === ParticipantType.Owner &&
-      !participants.some(p => p.type === ParticipantType.Scheduler))
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(participantType)
+
   const canSeeGuestList =
     meetingPermissions === undefined ||
     !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
-    isScheduler
+    isSchedulerOrOwner
   const email = new Email()
   const newDuration = differenceInMinutes(end, start)
   const oldDuration = changes?.dateChange

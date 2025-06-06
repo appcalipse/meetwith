@@ -213,16 +213,20 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
     meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
-  const isScheduler =
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(
     decryptedMeeting?.participants?.find(
       p => p.account_address === currentAccount?.address
-    )?.type === ParticipantType.Scheduler
+    )?.type || ParticipantType?.Invitee
+  )
   const canSeeGuestList =
     decryptedMeeting?.permissions === undefined ||
     !!decryptedMeeting?.permissions?.includes(
       MeetingPermissions.SEE_GUEST_LIST
     ) ||
-    isScheduler
+    isSchedulerOrOwner
 
   return (
     <>
