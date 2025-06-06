@@ -14,12 +14,12 @@ import {
   useState,
 } from 'react'
 
-import { IGroupParticipant } from '@/pages/dashboard/schedule'
 import {
   ParticipantInfo,
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
+import { IGroupParticipant } from '@/types/schedule'
 import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import { BadgeChip } from './chip'

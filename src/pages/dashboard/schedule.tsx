@@ -28,10 +28,14 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
+import {
+  IGroupParticipant,
+  isGroupParticipant,
+  Participant,
+} from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
   getContactById,
-  getExistingAccounts,
   getGroup,
   getGroupsFull,
   getGroupsMembers,
@@ -46,6 +50,7 @@ import {
 } from '@/utils/calendar_manager'
 import {
   MeetingNotificationOptions,
+  MeetingPermissions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
 import { handleApiError } from '@/utils/error_helper'
@@ -58,13 +63,14 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   MultipleSchedulersError,
+  PermissionDenied,
   TimeNotAvailableError,
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
-import { getAddressFromDomain } from '@/utils/rpc_helper_front'
+import { getMergedParticipants, parseAccounts } from '@/utils/schedule.helper'
 import { getSignature } from '@/utils/storage'
-import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
+import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 export enum Page {
   SCHEDULE,
@@ -73,6 +79,10 @@ export enum Page {
   COMPLETED,
 }
 
+// TODO: prevent members list from being seen if the see_guest_list option is not toggled
+// Hide members from UI and email
+// Figure out a way to hide and show participants on invite list
+// TODO: work on the make other participant meeting owner logic
 interface IScheduleContext {
   groupParticipants: Record<string, Array<string>>
   groupAvailability: Record<string, Array<string>>
@@ -84,11 +94,9 @@ interface IScheduleContext {
   >
   addGroup: (group: IGroupParticipant) => void
   removeGroup: (groupId: string) => void
-  participants: Array<ParticipantInfo | IGroupParticipant>
+  participants: Array<Participant>
   handlePageSwitch: (page: Page) => void
-  setParticipants: React.Dispatch<
-    React.SetStateAction<Array<ParticipantInfo | IGroupParticipant>>
-  >
+  setParticipants: React.Dispatch<React.SetStateAction<Array<Participant>>>
   title: string
   content: string
   duration: number
@@ -138,12 +146,12 @@ interface IScheduleContext {
   isDeleting: boolean
   canDelete: boolean
   isScheduler: boolean
-}
-
-export interface IGroupParticipant {
-  id: string
-  name: string
-  isGroup: boolean
+  selectedPermissions: Array<MeetingPermissions>
+  setSelectedPermissions: React.Dispatch<
+    React.SetStateAction<Array<MeetingPermissions>>
+  >
+  meetingOwners: Array<ParticipantInfo>
+  setMeetingOwners: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
 }
 
 const DEFAULT_CONTEXT: IScheduleContext = {
@@ -190,6 +198,10 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   isDeleting: false,
   canDelete: false,
   isScheduler: false,
+  selectedPermissions: [MeetingPermissions.SEE_GUEST_LIST],
+  setSelectedPermissions: () => {},
+  meetingOwners: [],
+  setMeetingOwners: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -238,7 +250,8 @@ const Schedule: NextPage<IInitialProps> = ({
   >(undefined)
   const toast = useToast()
   const [canDelete, setCanDelete] = useState(true)
-  const [isScheduler, setIsScheduler] = useState(false)
+  const [isScheduler, setIsScheduler] = useState(true)
+  const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
   const router = useRouter()
   const { push } = router
 
@@ -253,6 +266,9 @@ const Schedule: NextPage<IInitialProps> = ({
     value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
   })
+  const [selectedPermissions, setSelectedPermissions] = useState<
+    Array<MeetingPermissions>
+  >([MeetingPermissions.SEE_GUEST_LIST])
   const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
   const fetchGroups = async () => {
@@ -274,8 +290,10 @@ const Schedule: NextPage<IInitialProps> = ({
   const handleAddGroup = (group: IGroupParticipant) => {
     setParticipants(prev => {
       const groupAdded = prev.some(val => {
-        const groupData = val as IGroupParticipant
-        return groupData.isGroup && groupData.id === group.id
+        if (isGroupParticipant(val)) {
+          return val.isGroup && val.id === group.id
+        }
+        return false
       })
       if (groupAdded) {
         return prev
@@ -286,9 +304,10 @@ const Schedule: NextPage<IInitialProps> = ({
   const handleRemoveGroup = (groupId: string) => {
     setParticipants(prev =>
       prev.filter(val => {
-        const groupData = val as IGroupParticipant
-        const isGroup = groupData.isGroup && groupData.id === groupId
-        return !isGroup
+        if (isGroupParticipant(val)) {
+          return val.id !== groupId
+        }
+        return true
       })
     )
     setGroupAvailability(prev => {
@@ -315,34 +334,7 @@ const Schedule: NextPage<IInitialProps> = ({
         return <ScheduleCompleted />
     }
   }
-  const parseAccounts = async (
-    participants: ParticipantInfo[]
-  ): Promise<{ valid: ParticipantInfo[]; invalid: string[] }> => {
-    const valid: ParticipantInfo[] = []
-    const invalid: string[] = []
-    for (const participant of participants) {
-      if (
-        isValidEVMAddress(participant.account_address || '') ||
-        isValidEmail(participant.guest_email || '')
-      ) {
-        valid.push(participant)
-      } else {
-        const address = await getAddressFromDomain(participant.name || '')
-        if (address) {
-          valid.push({
-            account_address: address,
-            type: ParticipantType.Invitee,
-            slot_id: '',
-            meeting_id: '',
-            status: ParticipationStatus.Pending,
-          })
-        } else {
-          invalid.push(participant.name!)
-        }
-      }
-    }
-    return { valid, invalid }
-  }
+
   const handleDelete = async () => {
     if (!decryptedMeeting) return
     setIsDeleting(true)
@@ -365,7 +357,7 @@ const Schedule: NextPage<IInitialProps> = ({
         isClosable: true,
       })
       push(`/dashboard/${EditMode.MEETINGS}`)
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof MeetingWithYourselfError) {
         toast({
           title: "Ops! Can't do that",
@@ -486,45 +478,57 @@ const Schedule: NextPage<IInitialProps> = ({
     }
     setIsDeleting(false)
   }
+
   const handleSchedule = async () => {
     try {
       setIsScheduling(true)
-      const actualMembers = [
-        ...new Set(Object.values(groupParticipants).flat()),
-      ]
-      const members = await getExistingAccounts(actualMembers)
-      const participantsGroup = members.map(val => ({
-        account_address: val.address?.toLowerCase(),
-        name: val.preferences.name,
-        status: ParticipationStatus.Pending,
-        type: ParticipantType.Invitee,
-        slot_id: '',
-        meeting_id: '',
+      const isSchedulerOrOwner = [
+        ParticipantType.Scheduler,
+        ParticipantType.Owner,
+      ].includes(
+        decryptedMeeting?.participants?.find(
+          p => p.account_address === currentAccount?.address
+        )?.type || ParticipantType?.Invitee
+      )
+      const canViewParticipants =
+        decryptedMeeting?.permissions?.includes(
+          MeetingPermissions.SEE_GUEST_LIST
+        ) ||
+        decryptedMeeting?.permissions === undefined ||
+        isSchedulerOrOwner
+      const actualParticipants = canViewParticipants
+        ? participants
+        : participants
+            .filter(p => {
+              if (isGroupParticipant(p)) return true
+              return !p.isHidden
+            })
+            .concat(decryptedMeeting?.participants || [])
+      const allParticipants = getMergedParticipants(
+        actualParticipants,
+        groups,
+        groupParticipants,
+        currentAccount?.address || ''
+      ).map(val => ({
+        ...val,
+        type: meetingOwners.some(
+          owner => owner.account_address === val.account_address
+        )
+          ? ParticipantType.Owner
+          : val.type,
       }))
-
-      const currentParticipant = participants.filter(val => {
-        const groupData = val as IGroupParticipant
-        const isGroup = groupData.isGroup
-        return !isGroup
-      }) as Array<ParticipantInfo>
-
-      const allParticipants = [
-        ...new Set(
-          [...currentParticipant, ...participantsGroup].filter(
-            val => val.account_address != currentAccount!.address
-          )
-        ),
-      ]
       const _participants = await parseAccounts(allParticipants)
-
-      const userData = currentParticipant.find(
+      const individualParticipants = actualParticipants.filter(
+        (val): val is ParticipantInfo => !isGroupParticipant(val)
+      )
+      const userData = individualParticipants.find(
         val => val.account_address === currentAccount?.address
       )
       if (userData) {
         _participants.valid.push(userData)
       } else {
         _participants.valid.push({
-          account_address: currentAccount!.address,
+          account_address: currentAccount?.address,
           type: ParticipantType.Scheduler,
           status: ParticipationStatus.Accepted,
           slot_id: '',
@@ -548,6 +552,29 @@ const Schedule: NextPage<IInitialProps> = ({
       if (!pickedTime) return
       const start = new Date(pickedTime)
       const end = addMinutes(new Date(start), duration)
+
+      const canUpdateOtherGuests =
+        decryptedMeeting?.permissions === undefined ||
+        !!decryptedMeeting?.permissions?.includes(
+          MeetingPermissions.INVITE_GUESTS
+        ) ||
+        isSchedulerOrOwner
+
+      if (
+        !canUpdateOtherGuests &&
+        decryptedMeeting?.participants?.length !== _participants.valid.length
+      ) {
+        toast({
+          title: 'Permission Denied',
+          description: 'You do not have permission to update other guests.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+        setIsScheduling(false)
+        return
+      }
       if (meetingId && intent === Intents.UPDATE_MEETING) {
         await updateMeeting(
           true,
@@ -563,7 +590,8 @@ const Schedule: NextPage<IInitialProps> = ({
           meetingProvider,
           title,
           meetingNotification.map(mn => mn.value),
-          meetingRepeat.value
+          meetingRepeat.value,
+          selectedPermissions
         )
         logEvent('Updated a meeting', {
           fromDashboard: true,
@@ -584,11 +612,12 @@ const Schedule: NextPage<IInitialProps> = ({
           undefined,
           title,
           meetingNotification.map(n => n.value),
-          meetingRepeat.value
+          meetingRepeat.value,
+          selectedPermissions
         )
       }
       setCurrentPage(Page.COMPLETED)
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof MeetingWithYourselfError) {
         toast({
           title: "Ops! Can't do that",
@@ -694,8 +723,17 @@ const Schedule: NextPage<IInitialProps> = ({
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof PermissionDenied) {
+        toast({
+          title: 'Permission Denied',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else {
-        handleApiError('Error scheduling meeting', e)
+        handleApiError('Error scheduling meeting', e as Error)
       }
     }
     setIsScheduling(false)
@@ -743,6 +781,10 @@ const Schedule: NextPage<IInitialProps> = ({
     isDeleting,
     canDelete,
     isScheduler,
+    selectedPermissions,
+    setSelectedPermissions,
+    meetingOwners,
+    setMeetingOwners,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -770,7 +812,7 @@ const Schedule: NextPage<IInitialProps> = ({
           id: group.id,
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error prefetching group.', error)
     }
   }
@@ -778,7 +820,6 @@ const Schedule: NextPage<IInitialProps> = ({
     if (!contactId) return
     try {
       const contact = await getContactById(contactId)
-      const _participants = participants as Array<ParticipantInfo>
       if (contact) {
         const key = 'no_group'
         const participant: ParticipantInfo = {
@@ -798,7 +839,7 @@ const Schedule: NextPage<IInitialProps> = ({
           [key]: allAddresses,
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error prefetching contact.', error)
     }
   }
@@ -830,11 +871,17 @@ const Schedule: NextPage<IInitialProps> = ({
       const scheduler = participants.find(
         val => val.type === ParticipantType.Scheduler
       )
-      if (participants.length === 2) {
+      const isCurrentUserScheduler =
+        scheduler?.account_address === currentAccount?.address
+      setIsScheduler(isCurrentUserScheduler)
+
+      if (
+        participants.length === 2 ||
+        scheduler?.account_address === currentAccount?.address
+      ) {
         setCanDelete(false)
-      } else if (scheduler?.account_address === currentAccount?.address) {
-        setIsScheduler(true)
-        setCanDelete(false)
+      } else {
+        setCanDelete(true)
       }
       const allAddresses = participants
         .map(val => val.account_address)
@@ -855,7 +902,45 @@ const Schedule: NextPage<IInitialProps> = ({
         decryptedMeeting.provider ||
           selectDefaultProvider(currentAccount?.preferences.meetingProviders)
       )
+      setSelectedPermissions(
+        decryptedMeeting.permissions || [MeetingPermissions.SEE_GUEST_LIST]
+      )
+      if (decryptedMeeting.permissions) {
+        const isSchedulerOrOwner = [
+          ParticipantType.Scheduler,
+          ParticipantType.Owner,
+        ].includes(
+          decryptedMeeting?.participants?.find(
+            p => p.account_address === currentAccount?.address
+          )?.type || ParticipantType?.Invitee
+        )
+        const canViewParticipants =
+          decryptedMeeting.permissions.includes(
+            MeetingPermissions.SEE_GUEST_LIST
+          ) || isSchedulerOrOwner
+        if (!canViewParticipants) {
+          const displayName = getAllParticipantsDisplayName(
+            decryptedMeeting?.participants,
+            currentAccount?.address,
+            false
+          )
+          setParticipants([
+            {
+              name: displayName,
+              meeting_id: '',
+              status: ParticipationStatus.Accepted,
+              type: ParticipantType.Invitee,
+              slot_id: '',
+              isHidden: true,
+            },
+          ])
+        }
+      }
       setMeetingUrl(decryptedMeeting.meeting_url)
+      const meetingOwners = decryptedMeeting.participants?.filter(
+        val => val.type === ParticipantType.Owner
+      )
+      setMeetingOwners(meetingOwners)
       setMeetingNotification(
         decryptedMeeting.reminders?.map(val => {
           const option = MeetingNotificationOptions.find(
@@ -881,7 +966,7 @@ const Schedule: NextPage<IInitialProps> = ({
               label: 'Does not repeat',
             }
       )
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError('Error fetching meeting information.', error)
     }
     setIsPrefetching(false)
