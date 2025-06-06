@@ -66,6 +66,7 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   MultipleSchedulersError,
+  PermissionDenied,
   TimeNotAvailableError,
 } from './errors'
 import { getSlugFromText } from './generic_utils'
@@ -414,7 +415,26 @@ const updateMeeting = async (
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
   }
-
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(
+    decryptedMeeting?.participants?.find(
+      p => p.account_address === currentAccountAddress
+    )?.type || ParticipantType?.Invitee
+  )
+  const canUpdateOtherGuests =
+    decryptedMeeting?.permissions === undefined ||
+    !!decryptedMeeting?.permissions?.includes(
+      MeetingPermissions.INVITE_GUESTS
+    ) ||
+    isSchedulerOrOwner
+  if (
+    !canUpdateOtherGuests &&
+    decryptedMeeting?.participants?.length !== participants.length
+  ) {
+    throw new PermissionDenied()
+  }
   const currentAccount = await getAccount(currentAccountAddress)
 
   const existingDBSlot = await getMeeting(decryptedMeeting.id)
