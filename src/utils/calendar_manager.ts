@@ -60,10 +60,12 @@ import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { getContentFromEncrypted, simpleHash } from './cryptography'
 import {
+  GuestListModificationDenied,
   InvalidURL,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  MeetingDetailsModificationDenied,
   MeetingWithYourselfError,
   MultipleSchedulersError,
   PermissionDenied,
@@ -377,10 +379,10 @@ const buildMeetingData = async (
 }
 
 /**
- *
- * @param ignoreAvailabilities
- * @param currentAccountAddress
- * @param meetingTypeId
+ * Updates a meeting with the provided parameters
+ * @param ignoreAvailabilities - determine if we should check the availabilities of the participants
+ * @param currentAccountAddress - the address of the current account
+ * @param meetingTypeId - the id of the meeting type
  * @param startTime
  * @param endTime
  * @param decryptedMeeting
@@ -392,6 +394,7 @@ const buildMeetingData = async (
  * @param meetingTitle
  * @param meetingReminders
  * @param meetingRepeat
+ * @param selectedPermissions
  * @returns
  */
 const updateMeeting = async (
@@ -433,7 +436,30 @@ const updateMeeting = async (
     !canUpdateOtherGuests &&
     decryptedMeeting?.participants?.length !== participants.length
   ) {
-    throw new PermissionDenied()
+    throw new GuestListModificationDenied()
+  }
+
+  const canEditMeetingDetails =
+    decryptedMeeting?.permissions === undefined ||
+    !!decryptedMeeting?.permissions?.includes(
+      MeetingPermissions.EDIT_MEETING
+    ) ||
+    isSchedulerOrOwner
+
+  if (
+    !canEditMeetingDetails &&
+    (decryptedMeeting?.title !== meetingTitle ||
+      decryptedMeeting?.content !== content ||
+      decryptedMeeting?.meeting_url !== meetingUrl ||
+      decryptedMeeting?.provider !== meetingProvider ||
+      decryptedMeeting?.reminders?.length !== meetingReminders?.length ||
+      decryptedMeeting?.recurrence !== meetingRepeat ||
+      decryptedMeeting?.permissions?.length !== selectedPermissions.length ||
+      new Date(decryptedMeeting?.start).getTime() !==
+        new Date(startTime).getTime() ||
+      new Date(decryptedMeeting?.end).getTime() !== new Date(endTime).getTime())
+  ) {
+    throw new MeetingDetailsModificationDenied()
   }
   const currentAccount = await getAccount(currentAccountAddress)
 
