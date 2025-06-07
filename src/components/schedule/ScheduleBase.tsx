@@ -425,7 +425,7 @@ const ScheduleBase = () => {
                   borderColor="inherit"
                   borderWidth={1}
                   cursor="pointer"
-                  color="neutral.400"
+                  color={meetingOwners.length > 0 ? 'white' : 'neutral.400'}
                   justifyContent="space-between"
                   borderRadius="0.375rem"
                   height={10}
