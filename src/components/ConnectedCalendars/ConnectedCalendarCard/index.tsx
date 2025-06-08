@@ -19,7 +19,11 @@ import { FaUnlink } from 'react-icons/fa'
 
 import { CalendarSyncInfo } from '@/types/CalendarConnections'
 import { TimeSlotSource } from '@/types/Meeting'
-import { updateConnectedCalendar } from '@/utils/api_helper'
+import {
+  getGoogleAuthConnectUrl,
+  getOffice365ConnectUrl,
+  updateConnectedCalendar,
+} from '@/utils/api_helper'
 
 import DisconnectCalendarDialog from '../DisconnectCalendarDialog'
 import { MultipleCalendarList } from '../MultipleCalendarList'
@@ -30,6 +34,8 @@ export interface ConnectedCalendarCardProps {
   icon: IconType
   calendars: CalendarSyncInfo[]
   onDelete: () => Promise<void>
+  expectedPermissions: number
+  grantedPermissions: number
 }
 
 const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
@@ -42,6 +48,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
       return { ...c, loading: false }
     })
   )
+  const [loading, setLoading] = useState(false)
 
   const onSwitch = async (evt: ChangeEvent<HTMLInputElement>) => {
     setUpdating(true)
@@ -62,7 +69,26 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
   }
 
   const toast = useToast()
-
+  const selectOption = (provider: TimeSlotSource) => async () => {
+    setLoading(true)
+    switch (provider) {
+      case TimeSlotSource.GOOGLE:
+        const googleResponse = await getGoogleAuthConnectUrl()
+        !!googleResponse && window.location.assign(googleResponse.url)
+        return
+      case TimeSlotSource.OFFICE:
+        const officeResponse = await getOffice365ConnectUrl()
+        !!officeResponse && window.location.assign(officeResponse.url)
+        return
+      case TimeSlotSource.ICLOUD:
+      case TimeSlotSource.WEBDAV:
+        // no redirect, these providers will handle the logic
+        break
+      default:
+        throw new Error(`Invalid provider selected: ${provider}`)
+    }
+    setLoading(false)
+  }
   const updateCalendars = async (
     _calendars: (CalendarSyncInfo & { loading: boolean })[],
     index: number
@@ -119,15 +145,33 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
             </Text>
           </VStack>
         </HStack>
-        <Button
-          display={{ base: 'none', md: 'flex' }}
-          onClick={onOpen}
-          leftIcon={<FaUnlink />}
-          variant="link"
-          color={textColor}
-        >
-          Disconnect
-        </Button>
+        {props.expectedPermissions !== props?.grantedPermissions ? (
+          <>
+            <Text color={'primary.200'} maxW="400px">
+              ⚠️ Limited calendar access detected: {props.grantedPermissions}/
+              {props.expectedPermissions} calendar permissions granted. Grant
+              full access to ensure proper calendar management.
+            </Text>
+            <Button
+              display={{ base: 'none', md: 'flex' }}
+              colorScheme="primary"
+              onClick={selectOption(props.provider)}
+              isLoading={loading}
+            >
+              Complete Permission
+            </Button>
+          </>
+        ) : (
+          <Button
+            display={{ base: 'none', md: 'flex' }}
+            onClick={onOpen}
+            leftIcon={<FaUnlink />}
+            variant="link"
+            color={textColor}
+          >
+            Disconnect
+          </Button>
+        )}
         <DisconnectCalendarDialog
           isOpen={isOpen}
           onClose={onClose}
@@ -151,7 +195,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
             onChange={onSwitch}
             isChecked={calendars[0].sync}
             isDisabled={isUpdating}
-          ></Switch>
+          />
           <Text color={textColor}>
             Add new Meetwith events to this calendar
           </Text>

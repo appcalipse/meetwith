@@ -18,6 +18,7 @@ import {
   addHours,
   endOfMonth,
   isBefore,
+  isSameDay,
   isSameMonth,
   isWithinInterval,
   startOfMonth,
@@ -203,12 +204,20 @@ export function SchedulePickTime({
       .filter(val => isSameMonth(val, currentMonth))
     return days.map(date => {
       const slots = getEmptySlots(date)
-      date.setHours(0, 0, 0, 0)
+      date = DateTime.fromJSDate(date)
+        .setZone(timezone)
+        .set({
+          hour: 0,
+          minute: 0,
+          second: 0,
+        })
+        .toJSDate()
       const busySlots = accountSlots.map(val => {
         return val.filter(slot => {
-          return isWithinInterval(date, slot)
+          return isWithinInterval(date, slot) || isSameDay(date, slot.start)
         })
       })
+
       const availabilities: Array<Record<string, Array<CustomTimeRange>>> = []
       const accounts = Object.values(groupAvailability).flat()
       for (const [key, entry] of Object.entries(accountAvailabilities)) {
@@ -305,7 +314,7 @@ export function SchedulePickTime({
   const isAm = (val: Date) => {
     return formatInTimeZone(val, timezone, 'a').toLowerCase() === 'am'
   }
-  const SLOTS = useMemo(
+  const HOURS_SLOTS = useMemo(
     () =>
       getEmptySlots(new Date()).map(val =>
         formatInTimeZone(
@@ -433,7 +442,7 @@ export function SchedulePickTime({
               >
                 <Box h={'48px'} width={'100%'} />
                 <VStack align={'flex-start'} p={1}>
-                  {SLOTS.map((slot, index) => {
+                  {HOURS_SLOTS.map((slot, index) => {
                     return (
                       <HStack
                         key={index}

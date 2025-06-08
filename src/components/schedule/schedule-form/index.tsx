@@ -32,7 +32,7 @@ import {
 } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
-  MeetingRemindersComponent,
+  noClearCustomSelectComponent,
 } from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
@@ -110,6 +110,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [meetingUrl, setMeetingUrl] = useState('')
   const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
   const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
+  const [showEmailConfirm, setShowEmailConfirm] = useState(false)
   const meetingProviders = (preferences?.meetingProviders || []).concat(
     MeetingProvider.CUSTOM
   )
@@ -331,6 +332,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               isDisabled={isSchedulingExternal}
               value={doSendEmailReminders ? userEmail : guestEmail}
               onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+              borderColor={showEmailConfirm ? 'green.500' : undefined}
+              onBlur={() => {
+                setShowEmailConfirm(isGuestEmailValid())
+              }}
               onChange={e => {
                 if (doSendEmailReminders) {
                   setUserEmail(e.target.value)
@@ -341,6 +346,17 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                 }
               }}
             />
+            {showEmailConfirm && (
+              <Text
+                color="green.500"
+                fontSize="medium"
+                mt={2}
+                w="100%"
+                textAlign={'left'}
+              >
+                Confirm you entered the correct email before you proceed
+              </Text>
+            )}
           </FormControl>
         )}
         <FormControl w="100%" maxW="100%">
@@ -355,6 +371,13 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               }>
               // can't select more than 5 notifications
               if (meetingNotification.length > 5) {
+                toast({
+                  title: 'Limit reached',
+                  description: 'You can select up to 5 notifications only.',
+                  status: 'warning',
+                  duration: 3000,
+                  isClosable: true,
+                })
                 return
               }
               setMeetingNotification(meetingNotification)
@@ -364,7 +387,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             isMulti
             tagVariant={'solid'}
             options={MeetingNotificationOptions}
-            components={MeetingRemindersComponent}
+            components={noClearCustomSelectComponent}
             chakraStyles={{
               container: provided => ({
                 ...provided,

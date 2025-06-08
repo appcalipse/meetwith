@@ -2,6 +2,7 @@ import { Interval } from 'date-fns'
 import { Encrypted } from 'eth-crypto'
 
 import { ConditionRelation } from '@/types/common'
+import { MeetingPermissions } from '@/utils/constants/schedule'
 
 import { MeetingReminders } from './common'
 import { ParticipantInfo } from './ParticipantInfo'
@@ -106,30 +107,21 @@ export interface MeetingInfo {
   content?: string
   meeting_url: string
   participants: ParticipantInfo[]
-  change_history_paths: string[]
+  change_history_paths?: string[]
   reminders?: Array<MeetingReminders>
   related_slot_ids: string[]
   meeting_id: ConferenceMeeting['id']
   provider?: MeetingProvider
   recurrence?: MeetingRepeat
+  permissions?: Array<MeetingPermissions>
 }
 
-export interface MeetingDecrypted {
+export interface MeetingDecrypted extends MeetingInfo {
   id: string
-  meeting_id: ConferenceMeeting['id']
-  created_at: Date
   start: Date
   end: Date
-  participants: ParticipantInfo[]
-  meeting_url: string
-  title?: string
-  content?: string
-  related_slot_ids: string[]
   version: DBSlot['version']
-  reminders?: Array<MeetingReminders>
   meeting_info_encrypted: Encrypted
-  provider?: MeetingProvider
-  recurrence?: MeetingRepeat
 }
 
 export enum GroupMeetingType {
