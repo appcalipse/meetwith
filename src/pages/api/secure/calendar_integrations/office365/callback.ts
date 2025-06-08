@@ -173,7 +173,7 @@ async function handler(
     }
     res.redirect(
       `/dashboard/calendars?calendarResult=success${
-        newState64 ? `&state=${newState64}` : ''
+        newState64 && !stateObject.ignoreState ? `&state=${newState64}` : ''
       }`
     )
   }
