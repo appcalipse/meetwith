@@ -29,7 +29,7 @@ const DisconnectCalendarDialog: React.FC<DisconnectCalendarProps> = ({
 
   const onDeleteWrapper = async () => {
     setBusy(true)
-    await queryClient.invalidateQueries(QueryKeys.connectedCalendars())
+    await queryClient.invalidateQueries(QueryKeys.connectedCalendars(false))
     await onDelete()
     setBusy(false)
     onClose()
