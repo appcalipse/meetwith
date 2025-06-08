@@ -10,6 +10,7 @@ import {
   Input,
   Radio,
   RadioGroup,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { Select as ChakraSelect } from 'chakra-react-select'
@@ -23,11 +24,7 @@ import { IoMdTimer } from 'react-icons/io'
 
 import Loading from '@/components/Loading'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
-import {
-  IGroupParticipant,
-  Page,
-  ScheduleContext,
-} from '@/pages/dashboard/schedule'
+import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
@@ -37,6 +34,7 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
+import { isGroupParticipant } from '@/types/schedule'
 import { getExistingAccounts } from '@/utils/api_helper'
 import {
   MeetingNotificationOptions,
@@ -44,7 +42,7 @@ import {
 } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
-  MeetingRemindersComponent,
+  noClearCustomSelectComponent,
 } from '@/utils/constants/select'
 import { renderProviderName } from '@/utils/generic_utils'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
@@ -76,6 +74,7 @@ const ScheduleDetails = () => {
   const { query } = useRouter()
   const [groupMembers, setGroupsMembers] = useState<Array<ParticipantInfo>>([])
   const [loading, setLoading] = useState(false)
+  const toast = useToast()
   const meetingProviders = (
     currentAccount?.preferences?.meetingProviders || []
   ).concat(MeetingProvider.CUSTOM)
@@ -83,10 +82,8 @@ const ScheduleDetails = () => {
     handlePageSwitch(Page.SCHEDULE_TIME)
   }
   const groups = participants.filter(val => {
-    const groupData = val as IGroupParticipant
-    const isGroup = groupData.isGroup
-    return isGroup
-  }) as Array<IGroupParticipant>
+    return isGroupParticipant(val)
+  })
   const fetchGroupMembers = async () => {
     setLoading(true)
     const actualMembers = [...new Set(Object.values(groupParticipants).flat())]
@@ -113,11 +110,9 @@ const ScheduleDetails = () => {
     ...new Set(Object.values(groupAvailability).flat()),
   ]
 
-  const currentParticipant = participants.filter(val => {
-    const groupData = val as IGroupParticipant
-    const isGroup = groupData.isGroup
-    return !isGroup
-  }) as Array<ParticipantInfo>
+  const currentParticipant = participants.filter(
+    val => !isGroupParticipant(val)
+  ) as Array<ParticipantInfo>
   const requiredGroupMembers = groupMembers
     .filter(val => allAvailabilities.includes(val.account_address || ''))
     .concat(currentParticipant)
@@ -287,6 +282,13 @@ const ScheduleDetails = () => {
                 }>
                 // can't select more than 5 notifications
                 if (meetingNotification.length > 5) {
+                  toast({
+                    title: 'Limit reached',
+                    description: 'You can select up to 5 notifications only.',
+                    status: 'warning',
+                    duration: 3000,
+                    isClosable: true,
+                  })
                   return
                 }
                 setMeetingNotification(meetingNotification)
@@ -296,7 +298,7 @@ const ScheduleDetails = () => {
               isMulti
               tagVariant={'solid'}
               options={MeetingNotificationOptions}
-              components={MeetingRemindersComponent}
+              components={noClearCustomSelectComponent}
               chakraStyles={{
                 container: provided => ({
                   ...provided,

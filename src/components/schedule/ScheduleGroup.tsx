@@ -12,9 +12,10 @@ import { FaChevronDown, FaChevronUp } from 'react-icons/fa'
 
 import { Availability } from '@/components/icons/Availability'
 import ScheduleGroupMember from '@/components/schedule/ScheduleGroupMember'
-import { IGroupParticipant, ScheduleContext } from '@/pages/dashboard/schedule'
+import { ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 import { GetGroupsFullResponse, GroupMember } from '@/types/Group'
+import { isGroupParticipant } from '@/types/schedule'
 
 type ScheduleGroupItemProps = GetGroupsFullResponse
 
@@ -35,11 +36,7 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
   const [collapsed, setCollapsed] = useState(true)
   const isExpanded = useMemo(
     () =>
-      participants.some(val => {
-        const groupData = val as IGroupParticipant
-        const isGroup = groupData.isGroup && groupData.id === props.id
-        return isGroup
-      }),
+      participants.some(val => isGroupParticipant(val) && val.id === props.id),
     [participants, props.id]
   )
   const loadGroupMembers = () => {
