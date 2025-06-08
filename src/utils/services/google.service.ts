@@ -7,6 +7,7 @@ import {
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
+import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
@@ -244,7 +245,7 @@ export default class GoogleCalendarService implements CalendarService {
             description: CalendarServiceHelper.getMeetingSummary(
               meetingDetails.content,
               meetingDetails.meeting_url,
-              `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+              `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
             ),
             start: {
               dateTime: new Date(meetingDetails.start).toISOString(),
@@ -391,7 +392,7 @@ export default class GoogleCalendarService implements CalendarService {
         description: CalendarServiceHelper.getMeetingSummary(
           meetingDetails.content,
           meetingDetails.meeting_url,
-          `${appUrl}/dashboard/meetings?slotId=${slot_id}`
+          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
         ),
         start: {
           dateTime: new Date(meetingDetails.start).toISOString(),

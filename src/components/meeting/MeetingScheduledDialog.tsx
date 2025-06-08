@@ -24,6 +24,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
+import { Intents } from '@/types/Dashboard'
 import { MeetingDecrypted, SchedulingType } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
@@ -327,7 +328,9 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               colorScheme="primary"
               width="100%"
               onClick={() =>
-                router.push(`/dashboard/meetings?slotId=${meeting?.id}`)
+                router.push(
+                  `/dashboard/schedule?meetingId=${meeting?.id}&intent=${Intents.UPDATE_MEETING}`
+                )
               }
             >
               View/Edit Meeting

@@ -99,7 +99,7 @@
     "react-timezone-select": "^3.2.8",
     "react-virtualized": "^9.22.3",
     "reflect-metadata": "^0.1.13",
-    "resend": "^4.1.1",
+    "resend": "^4.5.1",
     "sanitize-html": "^2.11.0",
     "slugify": "^1.6.5",
     "spacetime": "^7.7.0",

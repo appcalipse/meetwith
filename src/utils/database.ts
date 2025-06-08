@@ -28,7 +28,6 @@ import {
 } from '@/types/CalendarConnections'
 import { SupportedChain } from '@/types/chains'
 import {
-  Contact,
   ContactSearch,
   DBContact,
   DBContactInvite,
@@ -486,9 +485,7 @@ const getAccountFromDB = async (
       account.address
     )
     if (includePrivateInformation) {
-      const discord_account = await getDiscordAccount(account.address)
-
-      account.discord_account = discord_account
+      account.discord_account = await getDiscordAccount(account.address)
     }
     return account
   } else if (error) {
@@ -512,6 +509,33 @@ const getSlotsForAccount = async (
     .from('slots')
     .select()
     .eq('account_address', account.address)
+    .or(
+      `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
+    )
+    .range(offset || 0, (offset || 0) + (limit ? limit - 1 : 999999999999999))
+    .order('start')
+
+  if (error) {
+    throw new Error(error.message)
+    // //TODO: handle error
+  }
+
+  return data || []
+}
+
+const getSlotsForAccountMinimal = async (
+  account_address: string,
+  start?: Date,
+  end?: Date,
+  limit?: number,
+  offset?: number
+): Promise<DBSlot[]> => {
+  const _start = start ? start.toISOString() : '1970-01-01'
+  const _end = end ? end.toISOString() : '2500-01-01'
+  const { data, error } = await db.supabase
+    .from('slots')
+    .select()
+    .eq('account_address', account_address)
     .or(
       `and(start.gte.${_start},end.lte.${_end}),and(start.lte.${_start},end.gte.${_end}),and(start.gt.${_start},end.lte.${_end}),and(start.gte.${_start},end.lt.${_end})`
     )
@@ -887,23 +911,33 @@ const saveMeeting = async (
     meeting.participants_mapping.map(p => p.account_address!)
   )
 
-  const ownerParticipant =
-    meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
-    null
+  const ownerParticipants =
+    meeting.participants_mapping.filter(
+      p => p.type === ParticipantType.Owner
+    ) || []
 
-  const ownerAccount = ownerParticipant
-    ? await getAccountFromDB(ownerParticipant.account_address!)
-    : null
+  const ownerAccounts =
+    ownerParticipants.length > 0
+      ? await Promise.all(
+          ownerParticipants.map(
+            async owner => await getAccountFromDB(owner.account_address!)
+          )
+        )
+      : []
 
   const schedulerAccount =
     meeting.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
 
-  const ownerIsNotScheduler =
-    !!ownerParticipant &&
-    !!schedulerAccount &&
-    ownerParticipant.account_address !== schedulerAccount.account_address
+  const ownerIsNotScheduler = Boolean(
+    schedulerAccount &&
+      !ownerParticipants.some(
+        val =>
+          val?.account_address?.toLowerCase() ===
+          schedulerAccount.account_address
+      )
+  )
 
   if (ownerIsNotScheduler && schedulerAccount) {
     const gatesResponse = await db.supabase
@@ -947,6 +981,11 @@ const saveMeeting = async (
   const timezone = meeting.participants_mapping[0].timeZone
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
+      const ownerAccount = ownerAccounts.find(
+        val =>
+          val?.address?.toLowerCase() ===
+          participant?.account_address?.toLowerCase()
+      )
       if (
         existingAccounts
           .map(account => account.address)
@@ -954,12 +993,11 @@ const saveMeeting = async (
         participant.type === ParticipantType.Owner
       ) {
         // only validate slot if meeting is being scheduled on someone's calendar and not by the person itself (from dashboard for example)
-        const participantIsOwner = Boolean(
-          ownerParticipant &&
-            ownerParticipant.account_address?.toLowerCase() ===
-              participant.account_address.toLowerCase()
+        const participantIsOwner = ownerParticipants.some(
+          val =>
+            val?.account_address?.toLowerCase() ===
+            participant?.account_address?.toLowerCase()
         )
-
         const slotIsTaken = async () =>
           !(await isSlotFree(
             participant.account_address!,
@@ -968,15 +1006,17 @@ const saveMeeting = async (
             meeting.meetingTypeId
           ))
         const isTimeAvailable = () =>
+          ownerAccount &&
           isTimeInsideAvailabilities(
-            utcToZonedTime(meeting.start, ownerAccount!.preferences.timezone),
-            utcToZonedTime(meeting.end, ownerAccount!.preferences.timezone),
-            ownerAccount!.preferences.availabilities
+            utcToZonedTime(meeting.start, ownerAccount?.preferences.timezone),
+            utcToZonedTime(meeting.end, ownerAccount?.preferences.timezone),
+            ownerAccount?.preferences.availabilities || []
           )
         if (
           participantIsOwner &&
           ownerIsNotScheduler &&
-          (!isTimeAvailable() || (await slotIsTaken()))
+          ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
+            (await slotIsTaken()))
         )
           throw new TimeNotAvailableError()
       }
@@ -1053,6 +1093,7 @@ const saveMeeting = async (
     meetingProvider: meeting.meetingProvider,
     meetingReminders: meeting.meetingReminders,
     meetingRepeat: meeting.meetingRepeat,
+    meetingPermissions: meeting.meetingPermissions,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -1970,9 +2011,10 @@ const getConnectedCalendars = async (
 
   if (!data) return []
 
-  const connectedCalendars: ConnectedCalendar[] =
-    !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
-
+  // const connectedCalendars: ConnectedCalendar[] =
+  //   !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
+  // ignore pro for now
+  const connectedCalendars: ConnectedCalendar[] = data
   if (syncOnly) {
     const calendars: ConnectedCalendar[] = JSON.parse(
       JSON.stringify(connectedCalendars)
@@ -2355,13 +2397,14 @@ const updateMeeting = async (
 ): Promise<DBSlot> => {
   if (
     new Set(
-      meetingUpdateRequest.participants_mapping.map(p => p.account_address)
+      meetingUpdateRequest.participants_mapping.map(
+        p => p.account_address || p.guest_email
+      )
     ).size !== meetingUpdateRequest.participants_mapping.length
   ) {
-    //means there are duplicate participants
+    // means there are duplicate participants
     throw new MeetingCreationError()
   }
-
   const slots = []
   let meetingResponse = {} as DBSlot
   let index = 0
@@ -2370,14 +2413,19 @@ const updateMeeting = async (
   const existingAccounts = await getExistingAccountsFromDB(
     meetingUpdateRequest.participants_mapping.map(p => p.account_address!)
   )
-  const ownerParticipant =
-    meetingUpdateRequest.participants_mapping.find(
+  const ownerParticipants =
+    meetingUpdateRequest.participants_mapping.filter(
       p => p.type === ParticipantType.Owner
-    ) || null
+    ) || []
 
-  const ownerAccount = ownerParticipant
-    ? await getAccountFromDB(ownerParticipant.account_address!)
-    : null
+  const ownerAccounts =
+    ownerParticipants.length > 0
+      ? await Promise.all(
+          ownerParticipants.map(
+            async owner => await getAccountFromDB(owner.account_address!)
+          )
+        )
+      : []
 
   const schedulerAccount =
     meetingUpdateRequest.participants_mapping.find(
@@ -2391,22 +2439,30 @@ const updateMeeting = async (
     const isEditing = participant.mappingType === ParticipantMappingType.KEEP
 
     if (participant.account_address) {
+      const ownerAccount = ownerAccounts.find(
+        val =>
+          val?.address?.toLowerCase() ===
+          participant?.account_address?.toLowerCase()
+      )
       if (
         existingAccounts
           .map(account => account.address)
           .includes(participant.account_address!)
       ) {
         // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
-        const participantIsOwner = Boolean(
-          ownerParticipant &&
-            ownerParticipant.account_address?.toLowerCase() ===
-              participant.account_address.toLowerCase()
+        const participantIsOwner = ownerParticipants.some(
+          val =>
+            val?.account_address?.toLowerCase() ===
+            participant?.account_address?.toLowerCase()
         )
+
         const ownerIsNotScheduler = Boolean(
-          ownerParticipant &&
-            schedulerAccount &&
-            ownerParticipant.account_address !==
-              schedulerAccount.account_address
+          schedulerAccount &&
+            !ownerParticipants.some(
+              val =>
+                val?.account_address?.toLowerCase() ===
+                schedulerAccount.account_address
+            )
         )
 
         let isEditingToSameTime = false
@@ -2437,16 +2493,17 @@ const updateMeeting = async (
           ))
 
         const isTimeAvailable = () =>
+          ownerAccount &&
           isTimeInsideAvailabilities(
             utcToZonedTime(
               meetingUpdateRequest.start,
-              ownerAccount!.preferences.timezone
+              ownerAccount?.preferences.timezone
             ),
             utcToZonedTime(
               meetingUpdateRequest.end,
-              ownerAccount!.preferences.timezone
+              ownerAccount?.preferences.timezone
             ),
-            ownerAccount!.preferences.availabilities
+            ownerAccount?.preferences.availabilities
           )
 
         if (
@@ -2454,7 +2511,9 @@ const updateMeeting = async (
           ownerIsNotScheduler &&
           !isEditingToSameTime &&
           participantActing.account_address !== participant.account_address &&
-          (!isTimeAvailable() || (await slotIsTaken()))
+          ((!meetingUpdateRequest.ignoreOwnerAvailability &&
+            !isTimeAvailable()) ||
+            (await slotIsTaken()))
         )
           throw new TimeNotAvailableError()
       }
@@ -2575,6 +2634,7 @@ const updateMeeting = async (
     changes: changingTime ? { dateChange: changingTime } : undefined,
     meetingReminders: meetingUpdateRequest.meetingReminders,
     meetingRepeat: meetingUpdateRequest.meetingRepeat,
+    meetingPermissions: meetingUpdateRequest.meetingPermissions,
   }
 
   // Doing notifications and syncs asynchronously
@@ -3398,6 +3458,7 @@ export {
   getOfficeEventMappingId,
   getOrCreateContactInvite,
   getSlotsForAccount,
+  getSlotsForAccountMinimal,
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
