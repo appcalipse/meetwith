@@ -79,7 +79,7 @@ export const useLogin = () => {
             }
           }
           if (redirectPath) {
-            stateObj.redirect = redirectPath
+            stateObj.redirectTo = redirectPath
           }
           const state = Buffer.from(JSON.stringify(stateObj)).toString('base64')
 
