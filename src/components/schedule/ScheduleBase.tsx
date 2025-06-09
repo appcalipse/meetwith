@@ -21,6 +21,9 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import DeleteMeetingModal from '@components/schedule/DeleteMeetingModal'
+import ScheduleParticipantsOwnersModal from '@components/schedule/ScheduleParticipantsOwnersModal'
+import ScheduleParticipantsSchedulerModal from '@components/schedule/ScheduleParticipantsSchedulerModal'
 import { Select as ChakraSelect } from 'chakra-react-select'
 import { format } from 'date-fns'
 import { useRouter } from 'next/router'
@@ -53,8 +56,6 @@ import { renderProviderName } from '@/utils/generic_utils'
 import { getMergedParticipants } from '@/utils/schedule.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
-import ScheduleParticipantsOwnersModal from './ScheduleParticipantsOwnersModal'
-
 const ScheduleBase = () => {
   const { query } = useRouter()
   const { currentAccount } = useContext(AccountContext)
@@ -63,6 +64,16 @@ const ScheduleBase = () => {
   const [isParticipantsValid, setIsParticipantsValid] = useState(true)
   const toast = useToast()
   const { onOpen, isOpen, onClose } = useDisclosure()
+  const {
+    onOpen: onSchedulerDeleteOpen,
+    isOpen: isSchedulerDeleteOpen,
+    onClose: OnSchedulerDeleteClose,
+  } = useDisclosure()
+  const {
+    onOpen: onDeleteOpen,
+    isOpen: isDeleteOpen,
+    onClose: OnSchedulerClose,
+  } = useDisclosure()
   const {
     participants,
     setParticipants,
@@ -88,7 +99,6 @@ const ScheduleBase = () => {
     setMeetingRepeat,
     setGroupParticipants,
     handleCancel,
-    handleDelete,
     isDeleting,
     canDelete,
     isScheduler,
@@ -232,6 +242,17 @@ const ScheduleBase = () => {
         isOpen={isOpen}
         onClose={onClose}
         participants={mergedParticipants}
+      />
+      <ScheduleParticipantsSchedulerModal
+        isOpen={isSchedulerDeleteOpen}
+        onClose={OnSchedulerDeleteClose}
+        participants={mergedParticipants}
+      />
+      <DeleteMeetingModal
+        onClose={OnSchedulerClose}
+        isOpen={isDeleteOpen}
+        isScheduler={isScheduler}
+        openSchedulerModal={onSchedulerDeleteOpen}
       />
       <ScheduleGroupModal onClose={closeGroupModal} isOpen={isGroupModalOpen} />
       <VStack
@@ -670,11 +691,12 @@ const ScheduleBase = () => {
             placeholder="Any information you want to share prior to the meeting?"
           />
         </FormControl>
-        <HStack w="100%">
+        <HStack w="100%" flexWrap="wrap">
           <Button
             w="100%"
             py={3}
             flex={1}
+            flexBasis="50%"
             h={'auto'}
             variant="outline"
             colorScheme="primary"
@@ -696,6 +718,7 @@ const ScheduleBase = () => {
               colorScheme="primary"
               onClick={handleCancel}
               flex={1}
+              flexBasis="40%"
             >
               Cancel Meeting
             </Button>
@@ -705,10 +728,15 @@ const ScheduleBase = () => {
               w="100%"
               py={3}
               h={'auto'}
-              colorScheme="primary"
-              onClick={handleDelete}
+              onClick={onDeleteOpen}
+              color={'white'}
+              bg={'orangeButton.800'}
+              _hover={{
+                opacity: 0.75,
+              }}
               isLoading={isDeleting}
               flex={1}
+              flexBasis="40%"
             >
               Delete Meeting
             </Button>
