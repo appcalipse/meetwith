@@ -112,6 +112,7 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   addressesToRemove: string[]
   guestsToRemove: ParticipantInfo[]
   reason?: string
+  title?: string
 }
 
 export interface DiscordAccountInfoRequest {
