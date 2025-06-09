@@ -68,7 +68,6 @@ import {
   MeetingDetailsModificationDenied,
   MeetingWithYourselfError,
   MultipleSchedulersError,
-  PermissionDenied,
   TimeNotAvailableError,
 } from './errors'
 import { getSlugFromText } from './generic_utils'
@@ -615,16 +614,35 @@ const deleteMeeting = async (
   startTime: Date,
   endTime: Date,
   decryptedMeeting: MeetingDecrypted,
-  signature: string
+  signature: string,
+  scheduler?: ParticipantInfo
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
     throw new MeetingChangeConflictError()
   }
-  const participants: ParticipantInfo[] =
-    decryptedMeeting?.participants?.filter(
-      val => val.account_address !== currentAccountAddress
-    )
+  let participants: ParticipantInfo[] = decryptedMeeting?.participants?.filter(
+    val => val.account_address !== currentAccountAddress
+  )
+  if (scheduler) {
+    if (participants.some(val => val.type === ParticipantType.Scheduler)) {
+      throw new MultipleSchedulersError()
+    }
+    participants = participants.map(participant => {
+      if (
+        participant.account_address?.toLowerCase() ===
+        scheduler.account_address?.toLowerCase()
+      ) {
+        return {
+          ...participant,
+          type: ParticipantType.Scheduler,
+          status: ParticipationStatus.Accepted,
+        }
+      }
+      return participant
+    })
+  }
+
   const currentAccount = await getAccount(currentAccountAddress)
 
   const existingDBSlot = await getMeeting(decryptedMeeting.id)
