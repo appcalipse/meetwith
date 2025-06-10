@@ -22,3 +22,8 @@ export const noClearCustomSelectComponent: Props['components'] = {
     </chakraComponents.DropdownIndicator>
   ),
 }
+
+export type Option<T> = {
+  value: T // The actual value of the option
+  label: string // The displayed label of the option
+}
