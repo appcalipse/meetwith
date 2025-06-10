@@ -1228,9 +1228,12 @@ const dateToLocalizedRange = (
   return start + end
 }
 
-const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
+const getAccountDomainUrl = (
+  account?: Account | null,
+  ellipsize?: boolean
+): string => {
   if (isProAccount(account)) {
-    const domain = account.subscriptions?.find(
+    const domain = account?.subscriptions?.find(
       sub => new Date(sub.expiry_time) > new Date()
     )?.domain
     if (domain) {
@@ -1238,12 +1241,12 @@ const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
     }
   }
   return `address/${
-    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+    ellipsize ? ellipsizeAddress(account?.address) : account?.address
   }`
 }
 
 const getAccountCalendarUrl = (
-  account: Account,
+  account?: Account,
   ellipsize?: boolean
 ): string => {
   return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
