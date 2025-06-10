@@ -1232,7 +1232,7 @@ const getAccountDomainUrl = (
   account?: Account | null,
   ellipsize?: boolean
 ): string => {
-  if (isProAccount(account)) {
+  if (isProAccount(account!)) {
     const domain = account?.subscriptions?.find(
       sub => new Date(sub.expiry_time) > new Date()
     )?.domain
