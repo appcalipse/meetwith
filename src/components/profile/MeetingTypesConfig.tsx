@@ -21,6 +21,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import CreateMeetingTypeModal from '@components/meeting-settings/CreateMeetingTypeModal'
 import { useContext, useRef, useState } from 'react'
 import { FaArrowLeft, FaClock, FaTrash } from 'react-icons/fa'
 
@@ -73,6 +74,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
 
   return (
     <Box width="100%" bg={bgColor} p={8} borderRadius={12}>
+      <CreateMeetingTypeModal onClose={() => {}} isOpen />
       {selectedType ? (
         <TypeConfig
           typeId={selectedType}
