@@ -130,7 +130,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
             {currentAccount.preferences.availableTypes
               .filter(type => !type.deleted)
               .map((type, index) => {
-                const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
+                const url = `${getAccountCalendarUrl(currentAccount, false)}/${
                   type.url
                 }`
                 return (
