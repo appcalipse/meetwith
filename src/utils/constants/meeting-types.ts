@@ -52,9 +52,45 @@ export enum PlanType {
   ONE_OFF = 'one_off',
   SESSIONS = 'sessions',
 }
+export const PlanTypeOptions = [
+  {
+    value: PlanType.ONE_OFF,
+    label: 'One-off',
+  },
+  {
+    value: PlanType.SESSIONS,
+    label: 'Sessions',
+  },
+]
+export const isPlanType = (value: string): value is PlanType => {
+  return Object.values(PlanType).some(type => type === value)
+}
 export enum PaymentChannel {
   ACCOUNT_ADDRESS = 'account_address',
   CUSTOM_ADDRESS = 'custom_address',
+}
+export const PaymentChannelOptions = (address: string) => [
+  {
+    value: PaymentChannel.ACCOUNT_ADDRESS,
+    label: `In-app wallet (${address})`,
+  },
+  {
+    value: PaymentChannel.CUSTOM_ADDRESS,
+    label: 'Custom Address',
+  },
+]
+export const CryptoNetworkForCardSettlementOptions = [
+  {
+    value: 'celo',
+    label: 'Celo',
+  },
+  {
+    value: 'arbitrum',
+    label: 'Arbitrum',
+  },
+]
+export const isPaymentChannel = (value: string): value is PaymentChannel => {
+  return Object.values(PaymentChannel).some(channel => channel === value)
 }
 export enum PaymentType {
   FIAT = 'fiat',
