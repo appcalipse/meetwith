@@ -100,6 +100,9 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   const [isEditing, setIsEditing] = useState(false)
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+  const [duplicatingBlockId, setDuplicatingBlockId] = useState<string | null>(
+    null
+  )
 
   useEffect(() => {
     // Initialize empty availabilities for all days
@@ -352,6 +355,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
   const handleDuplicateBlock = async (blockId: string) => {
     try {
+      setDuplicatingBlockId(blockId)
       await duplicateBlock.mutateAsync(blockId)
       toast({
         title: 'Availability block duplicated',
@@ -371,6 +375,8 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
         position: 'top',
         isClosable: true,
       })
+    } finally {
+      setDuplicatingBlockId(null)
     }
   }
 
@@ -555,7 +561,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
                   borderColor="#F9B19A"
                   borderRadius={8}
                   onClick={() => handleDuplicateBlock(block.id)}
-                  isLoading={duplicateBlock.isLoading}
+                  isLoading={duplicatingBlockId === block.id}
                 >
                   Duplicate
                 </Button>
@@ -573,7 +579,8 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
           border="1px solid"
           borderRadius={12}
           borderColor="#323F4B"
-          height="38.75rem"
+          minHeight="21rem"
+          maxHeight="38.75rem"
           overflowY="hidden"
         >
           <Box
