@@ -855,7 +855,8 @@ const deleteMeetingFromDB = async (
   guestsToRemove: ParticipantInfo[],
   meeting_id: string,
   timezone: string,
-  reason?: string
+  reason?: string,
+  title?: string
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
@@ -877,6 +878,7 @@ const deleteMeetingFromDB = async (
     start: new Date(oldSlots[0].start),
     end: new Date(oldSlots[0].end),
     created_at: new Date(oldSlots[0].created_at!),
+    title,
     timezone,
     reason,
   }
@@ -2657,7 +2659,9 @@ const updateMeeting = async (
       meetingUpdateRequest.slotsToRemove,
       meetingUpdateRequest.guestsToRemove,
       meetingUpdateRequest.meeting_id,
-      timezone
+      timezone,
+      undefined,
+      meetingUpdateRequest.title
     )
 
   return meetingResponse
