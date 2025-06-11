@@ -1,3 +1,4 @@
+import { DeleteIcon } from '@chakra-ui/icons'
 import {
   Box,
   Checkbox,
@@ -11,37 +12,56 @@ import {
 import { format, setDay } from 'date-fns'
 import { FaPlusCircle, FaTrash } from 'react-icons/fa'
 
-import { DayAvailability, TimeRange } from '@/types/Account'
-import { defaultTimeRange } from '@/utils/calendar_manager'
+import { TimeRange } from '@/types/Account'
 
 import { TimeSelector } from './time-selector'
+
+type DayAvailability = {
+  weekday: number
+  ranges: TimeRange[]
+}
 
 type WeekdayConfigProps = {
   dayAvailability: DayAvailability
   onChange: (weekday: number, times: TimeRange[] | null) => void
 }
 
+const defaultTimeRange = () => ({
+  start: '09:00',
+  end: '17:00',
+})
+
 const getNewSlotEnd = (start: string) => {
   const [hours, minutes] = start.split(':')
-
-  const hoursToNum = Number(hours)
-
-  if (hoursToNum === 23) return '24:00'
-
-  return `${String(hoursToNum + 1).padStart(2, '0')}:${minutes}`
+  const endHours = (parseInt(hours) + 1).toString().padStart(2, '0')
+  return `${endHours}:${minutes}`
 }
 
 export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
+  const { dayAvailability, onChange } = props
+  const iconColor = useColorModeValue('gray.500', 'gray.200')
+  const borderColor = useColorModeValue('gray.300', 'gray.700')
+
+  // Ensure ranges exists and is an array
+  const ranges = dayAvailability?.ranges || []
+  const isSelected = ranges.length > 0
+  const times = [...ranges].sort((a, b) => {
+    if (!a.start || !b.start) return 0
+    return (
+      Number(a.start.split(':').join('')) - Number(b.start.split(':').join(''))
+    )
+  })
+
   const handleChangeTime = (index: number, start: string, end: string) => {
     const newTimes = [...times]
     newTimes[index] = { start, end }
-    props.onChange(props.dayAvailability.weekday, newTimes)
+    onChange(dayAvailability.weekday, newTimes)
   }
 
   const handleAddSlotClick = () => {
     const start = times[times.length - 1].end
 
-    props.onChange(props.dayAvailability.weekday, [
+    onChange(dayAvailability.weekday, [
       ...times,
       {
         start,
@@ -53,17 +73,8 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
   const handleTimeRemoveClick = (index: number) => {
     const newTimes = [...times]
     newTimes.splice(index, 1)
-    props.onChange(props.dayAvailability.weekday, newTimes)
+    onChange(dayAvailability.weekday, newTimes.length === 0 ? null : newTimes)
   }
-
-  const iconColor = useColorModeValue('gray.500', 'gray.200')
-  const borderColor = useColorModeValue('gray.300', 'gray.700')
-
-  const isSelected = props.dayAvailability.ranges.length > 0
-  const times = [...props.dayAvailability.ranges].sort(
-    (a, b) =>
-      Number(a.start.split(':').join('')) - Number(b.start.split(':').join(''))
-  )
 
   return (
     <Box py={2} width="100%" borderBottom="1px solid" borderColor={borderColor}>
@@ -79,15 +90,15 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
           colorScheme="primary"
           isChecked={isSelected}
           onChange={e => {
-            props.onChange(
-              props.dayAvailability.weekday,
+            onChange(
+              dayAvailability.weekday,
               e.target.checked ? [defaultTimeRange()] : null
             )
           }}
           minW="140px"
         >
           <strong>
-            {format(setDay(new Date(), props.dayAvailability.weekday), 'cccc')}
+            {format(setDay(new Date(), dayAvailability.weekday), 'cccc')}
           </strong>
         </Checkbox>
         <Spacer display={{ base: 'none', sm: 'block' }} />
