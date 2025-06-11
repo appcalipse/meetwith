@@ -142,7 +142,7 @@ interface IScheduleContext {
   >
   groups: Array<GetGroupsFullResponse>
   isGroupPrefetching: boolean
-  handleDelete: () => void
+  handleDelete: (scheduler?: ParticipantInfo) => void
   isDeleting: boolean
   canDelete: boolean
   isScheduler: boolean
@@ -335,7 +335,7 @@ const Schedule: NextPage<IInitialProps> = ({
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (scheduler?: ParticipantInfo) => {
     if (!decryptedMeeting) return
     setIsDeleting(true)
     try {
@@ -346,7 +346,8 @@ const Schedule: NextPage<IInitialProps> = ({
         decryptedMeeting?.start,
         decryptedMeeting?.end,
         decryptedMeeting,
-        getSignature(currentAccount?.address || '') || ''
+        getSignature(currentAccount?.address || '') || '',
+        scheduler
       )
       toast({
         title: 'Meeting Deleted',
@@ -875,10 +876,7 @@ const Schedule: NextPage<IInitialProps> = ({
         scheduler?.account_address === currentAccount?.address
       setIsScheduler(isCurrentUserScheduler)
 
-      if (
-        participants.length === 2 ||
-        scheduler?.account_address === currentAccount?.address
-      ) {
+      if (participants.length === 2) {
         setCanDelete(false)
       } else {
         setCanDelete(true)
