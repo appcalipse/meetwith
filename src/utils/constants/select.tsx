@@ -1,5 +1,10 @@
 import { Icon } from '@chakra-ui/react'
-import { chakraComponents, Props } from 'chakra-react-select'
+import {
+  chakraComponents,
+  ChakraStylesConfig,
+  GroupBase,
+  Props,
+} from 'chakra-react-select'
 import { FaChevronDown } from 'react-icons/fa'
 export const customSelectComponents: Props['components'] = {
   ClearIndicator: props => (
@@ -26,4 +31,29 @@ export const noClearCustomSelectComponent: Props['components'] = {
 export type Option<T> = {
   value: T // The actual value of the option
   label: string // The displayed label of the option
+}
+
+export const fullWidthStyle:
+  | ChakraStylesConfig<unknown, boolean, GroupBase<unknown>>
+  | undefined = {
+  container: provided => ({
+    ...provided,
+    borderColor: 'inherit',
+    borderRadius: 'md',
+    maxW: '100%',
+    display: 'block',
+    w: '100%',
+  }),
+  placeholder: provided => ({
+    ...provided,
+    textAlign: 'left',
+  }),
+  input: provided => ({
+    ...provided,
+    textAlign: 'left',
+  }),
+  control: provided => ({
+    ...provided,
+    textAlign: 'left',
+  }),
 }
