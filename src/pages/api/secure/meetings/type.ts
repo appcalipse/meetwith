@@ -1,109 +1,70 @@
+import {
+  CreateMeetingTypeRequest,
+  DeleteMeetingTypeRequest,
+  UpdateMeetingTypeRequest,
+} from '@meta/Requests'
+import { extractQuery } from '@utils/generic_utils'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { v4 } from 'uuid'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { MeetingType } from '@/types/Account'
 import {
+  createMeetingType,
+  deleteMeetingType,
   getAccountFromDB,
+  getMeetingTypes,
   updateAccountPreferences,
+  updateMeetingType,
   workMeetingTypeGates,
 } from '@/utils/database'
 import { isProAccount } from '@/utils/subscription_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
-  if (req.method === 'POST') {
+  try {
     const account_id = req.session.account!.address
-
-    const account = await getAccountFromDB(account_id)
-
-    const isPro = isProAccount(account)
-
-    const meetingType = req.body as MeetingType
-    meetingType.description = meetingType.description?.trim() || ''
-
-    let updatedInfo
-
-    if (!isPro) {
-      delete meetingType.scheduleGate
-    }
-
-    if (meetingType?.id) {
-      // editing and not adding
-      const type = account.preferences.availableTypes.find(
-        t => t.id === meetingType.id
+    if (req.method === 'GET') {
+      const limit = extractQuery(req.query, 'limit')
+      const offset = extractQuery(req.query, 'offset')
+      const meetingTypes = await getMeetingTypes(
+        account_id,
+        limit ? Number(limit) : undefined,
+        offset ? Number(offset) : undefined
       )
-
-      if (!type) {
-        return res.status(403).send("You can't edit this meeting type")
-      }
-      updatedInfo = {
-        ...account,
-        preferences: {
-          ...account.preferences!,
-          availableTypes: account.preferences.availableTypes.map(t => {
-            if (t.id === meetingType.id) {
-              return meetingType
-            }
-            return t
-          }),
-        },
-      }
-    } else {
-      updatedInfo = {
-        ...account,
-        preferences: {
-          ...account.preferences!,
-          availableTypes: [
-            ...account.preferences.availableTypes,
-            { ...meetingType, id: v4() },
-          ],
-        },
-      }
+      return res.status(200).json(meetingTypes)
+    }
+    if (req.method === 'POST') {
+      const meetingTypePayload = req.body as CreateMeetingTypeRequest
+      const meetingType = await createMeetingType(
+        account_id,
+        meetingTypePayload
+      )
+      res.status(200).json(meetingType)
+    }
+    if (req.method === 'PATCH') {
+      const meetingTypePayload = req.body as UpdateMeetingTypeRequest
+      const meetingType = await updateMeetingType(
+        account_id,
+        meetingTypePayload.id,
+        meetingTypePayload
+      )
+      res.status(200).json(meetingType)
+    } else if (req.method === 'DELETE') {
+      const meetingTypePayload = req.body as DeleteMeetingTypeRequest
+      const meetingType = await deleteMeetingType(
+        account_id,
+        meetingTypePayload.id
+      )
+      res.status(200).json(meetingType)
     }
 
-    const updatedAccount = await updateAccountPreferences(updatedInfo)
-
-    await workMeetingTypeGates(updatedAccount.preferences?.availableTypes || [])
-
-    return res.status(200).json(updatedAccount)
-  } else if (req.method === 'DELETE') {
-    const account_id = req.session.account!.address
-
-    const account = await getAccountFromDB(account_id)
-
-    const { typeId } = req.body
-
-    const type = account.preferences.availableTypes.find(t => t.id === typeId)
-
-    if (!type) {
-      return res.status(403).send("You can't remove this meeting type")
+    return res.status(404).send('Not found')
+  } catch (e) {
+    if (e instanceof Error) {
+      console.error('Error in meetings/type API:', e.message)
+      return res.status(500).send(e.message)
     }
-
-    if (account.preferences.availableTypes.length == 1) {
-      return res.status(403).send('You should keep at least one meeting type')
-    }
-
-    type.deleted = true
-
-    const updatedInfo = {
-      ...account,
-      preferences: {
-        ...account.preferences!,
-        availableTypes: account.preferences.availableTypes.map(t => {
-          if (t.id === typeId) {
-            return type
-          }
-          return t
-        }),
-      },
-    }
-
-    const updatedAccount = await updateAccountPreferences(updatedInfo)
-
-    return res.status(200).json(updatedAccount)
   }
-
-  return res.status(404).send('Not found')
 }
 
 export default withSessionRoute(handle)
