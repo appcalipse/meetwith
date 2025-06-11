@@ -1,7 +1,12 @@
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
-import { Account, MeetingType, SimpleAccountInfo } from '@/types/Account'
+import {
+  Account,
+  MeetingType,
+  SimpleAccountInfo,
+  TimeRange,
+} from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import {
   CalendarSyncInfo,
@@ -1319,4 +1324,65 @@ export const getContactInviteById = async (identifier: string) => {
 
 export const doesContactExist = async (identifier: string) => {
   return await internalFetch<boolean>(`/secure/contact/${identifier}/exist`)
+}
+
+export const getAvailabilityBlocks = async () => {
+  const account = await getOwnAccount('')
+  return await internalFetch(`/availabilities?address=${account.address}`)
+}
+
+export const createAvailabilityBlock = async (
+  title: string,
+  timezone: string,
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+) => {
+  const account = await getOwnAccount('')
+  return await internalFetch(
+    `/availabilities?address=${account.address}`,
+    'POST',
+    {
+      title,
+      timezone,
+      weekly_availability,
+    }
+  )
+}
+
+export const getAvailabilityBlock = async (id: string) => {
+  const account = await getOwnAccount('')
+  return await internalFetch(`/availabilities/${id}?address=${account.address}`)
+}
+
+export const updateAvailabilityBlock = async (
+  id: string,
+  title: string,
+  timezone: string,
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+) => {
+  const account = await getOwnAccount('')
+  return await internalFetch(
+    `/availabilities/${id}?address=${account.address}`,
+    'PUT',
+    {
+      title,
+      timezone,
+      weekly_availability,
+    }
+  )
+}
+
+export const deleteAvailabilityBlock = async (id: string) => {
+  const account = await getOwnAccount('')
+  return await internalFetch(
+    `/availabilities/${id}?address=${account.address}`,
+    'DELETE'
+  )
+}
+
+export const duplicateAvailabilityBlock = async (id: string) => {
+  const account = await getOwnAccount('')
+  return await internalFetch(
+    `/availabilities/${id}?address=${account.address}`,
+    'POST'
+  )
 }
