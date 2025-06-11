@@ -17,6 +17,7 @@ import {
   MeetingType,
   SimpleAccountInfo,
   TgConnectedAccounts,
+  TimeRange,
 } from '@/types/Account'
 import {
   AccountNotifications,
@@ -3407,6 +3408,107 @@ const removeContact = async (address: string, contact_address: string) => {
   if (removeError) {
     throw new Error(removeError.message)
   }
+}
+
+export const createAvailabilityBlock = async (
+  account_address: string,
+  title: string,
+  timezone: string,
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+) => {
+  const { data, error } = await db.supabase
+    .from('availabilities')
+    .insert([
+      {
+        title,
+        timezone,
+        weekly_availability,
+        account_owner_address: account_address,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export const getAvailabilityBlock = async (
+  id: string,
+  account_address: string
+) => {
+  const { data, error } = await db.supabase
+    .from('availabilities')
+    .select('*')
+    .eq('id', id)
+    .eq('account_owner_address', account_address)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export const updateAvailabilityBlock = async (
+  id: string,
+  account_address: string,
+  title: string,
+  timezone: string,
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+) => {
+  const { data, error } = await db.supabase
+    .from('availabilities')
+    .update({
+      title,
+      timezone,
+      weekly_availability,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('account_owner_address', account_address)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export const deleteAvailabilityBlock = async (
+  id: string,
+  account_address: string
+) => {
+  const { error } = await db.supabase
+    .from('availabilities')
+    .delete()
+    .eq('id', id)
+    .eq('account_owner_address', account_address)
+
+  if (error) throw error
+}
+
+export const duplicateAvailabilityBlock = async (
+  id: string,
+  account_address: string
+) => {
+  // First get the block to duplicate
+  const block = await getAvailabilityBlock(id, account_address)
+  if (!block) throw new Error('Availability block not found')
+
+  // Create a new block with the same data but a new ID
+  const { data, error } = await db.supabase
+    .from('availabilities')
+    .insert([
+      {
+        title: `${block.title} (Copy)`,
+        timezone: block.timezone,
+        weekly_availability: block.weekly_availability,
+        account_owner_address: account_address,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
 }
 
 export {
