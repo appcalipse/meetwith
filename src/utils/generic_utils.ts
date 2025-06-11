@@ -150,3 +150,18 @@ export const convertMinutes = (minutes: number) => {
     }
   }
 }
+
+export const extractQuery = (
+  query: Partial<{
+    [key: string]: string | string[]
+  }>,
+  key: string
+) => {
+  const value = query[key]
+  if (Array.isArray(value)) {
+    return value[0] || undefined
+  } else if (typeof value === 'string') {
+    return value
+  }
+  return undefined
+}
