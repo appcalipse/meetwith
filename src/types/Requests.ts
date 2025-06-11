@@ -1,3 +1,8 @@
+import {
+  PaymentChannel,
+  PlanType,
+  SessionType,
+} from '@utils/constants/meeting-types'
 import { Encrypted } from 'eth-crypto'
 
 import { MeetingPermissions } from '@/utils/constants/schedule'
@@ -155,4 +160,31 @@ export interface CouponSubscriptionRequest {
 
 export interface SubscriptionUpdateRequest {
   domain: string
+}
+
+export interface CreateMeetingTypeRequest {
+  title: string
+  description?: string
+  type: SessionType
+  duration_minutes?: number
+  min_notice_minutes?: number
+  scheduleGate?: string
+  slug?: string
+  availability_id?: string
+  calendars?: number[]
+  plan?: {
+    type: PlanType
+    price_per_slot: number
+    no_of_slot: number
+    payment_channel: PaymentChannel
+    payment_address: string
+  }
+}
+
+export interface UpdateMeetingTypeRequest extends CreateMeetingTypeRequest {
+  id: string
+}
+
+export interface DeleteMeetingTypeRequest {
+  id: string
 }
