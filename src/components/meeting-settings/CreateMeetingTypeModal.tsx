@@ -6,6 +6,7 @@ import {
 import { Link } from '@chakra-ui/next-js'
 import {
   Button,
+  FormControl,
   Heading,
   HStack,
   Input,
@@ -31,7 +32,9 @@ import {
 } from '@utils/calendar_manager'
 import { appUrl } from '@utils/constants'
 import {
+  DurationOptions,
   isSessionType,
+  MinNoticeTimeOptions,
   SessionType,
   SessionTypeOptions,
 } from '@utils/constants/meeting-types'
@@ -40,10 +43,11 @@ import {
   MeetingRepeatOptions,
 } from '@utils/constants/schedule'
 import { noClearCustomSelectComponent, Option } from '@utils/constants/select'
+import { convertMinutes } from '@utils/generic_utils'
 import useAccountContext from '@utils/hooks/useAccountContext'
 import { ellipsizeAddress } from '@utils/user_manager'
 import { Select as ChakraSelect } from 'chakra-react-select'
-import React, { FC, useContext, useId } from 'react'
+import React, { FC, useContext, useId, useState } from 'react'
 
 interface IProps {
   onClose: () => void
@@ -64,17 +68,13 @@ const CreateMeetingTypeModal: FC<IProps> = props => {
   const [description, setDescription] = React.useState('')
   const [customBookingLink, setCustomBookingLink] = React.useState('')
   const keyId = useId()
+  const [minAdvanceTime, setMinAdvanceTime] = useState(convertMinutes(60 * 24))
+  const [duration, setDuration] = useState(0)
   const handleSessionChange = (value: unknown) => {
     const sessionType = value as Option<SessionType>
     if (isSessionType(sessionType.value)) {
       setSessionType(sessionType)
     }
-  }
-  function middleTruncate(text: string, maxLength: number): string {
-    if (text.length <= maxLength) return text
-
-    const half = Math.floor(maxLength / 2)
-    return `${text.slice(0, half)}...${text.slice(-half)}`
   }
   const domainUrl = getAccountDomainUrl(currentAccount)
   return (
@@ -88,10 +88,12 @@ const CreateMeetingTypeModal: FC<IProps> = props => {
       <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
       <ModalContent p="6" bg="neutral.900">
         <ModalHeader p={'0'}>
-          <HStack color={'primary.400'}>
-            <ArrowBackIcon w={6} h={6} />
-            <Text fontSize={16}>Back</Text>
-          </HStack>
+          <ModalCloseButton right={6} w={'fit-content'}>
+            <HStack color={'primary.400'}>
+              <ArrowBackIcon w={6} h={6} />
+              <Text fontSize={16}>Back</Text>
+            </HStack>
+          </ModalCloseButton>
           <Heading fontSize={'24px'} mt={4} fontWeight={700}>
             New Session and Plan
           </Heading>
@@ -291,6 +293,148 @@ const CreateMeetingTypeModal: FC<IProps> = props => {
                   }),
                 }}
               />
+            </VStack>
+            <HStack w={'100%'} gap={5}>
+              <FormControl w={'35%'}>
+                <Text mb={1}>Session Duration</Text>
+                <ChakraSelect
+                  value={minAdvanceTime.type}
+                  colorScheme="primary"
+                  onChange={value =>
+                    setMinAdvanceTime({
+                      amount: minAdvanceTime.amount,
+                      type: String(value),
+                      isEmpty: false,
+                    })
+                  }
+                  options={DurationOptions}
+                  // eslint-disable-next-line tailwindcss/no-custom-classname
+                  className="date-select"
+                  components={noClearCustomSelectComponent}
+                  chakraStyles={{
+                    container: provided => ({
+                      ...provided,
+                      borderColor: 'inherit',
+                      borderRadius: 'md',
+                      maxW: '100%',
+                      display: 'block',
+                      w: '100% !important',
+                      height: '100% !important',
+                    }),
+                    placeholder: provided => ({
+                      ...provided,
+                      textAlign: 'left',
+                    }),
+                    input: provided => ({
+                      ...provided,
+                      textAlign: 'left',
+                    }),
+                    control: provided => ({
+                      ...provided,
+                      textAlign: 'left',
+                    }),
+                  }}
+                />
+              </FormControl>
+              <FormControl w={'65%'}>
+                <Text mb={1}>Minimum Notice Time</Text>
+                <HStack w={'100%'} alignItems="center">
+                  <Input
+                    width="50%"
+                    type="number"
+                    value={minAdvanceTime.amount}
+                    onChange={e => {
+                      setMinAdvanceTime({
+                        amount: Number(e.target.value),
+                        type: minAdvanceTime.type,
+                        isEmpty: false,
+                      })
+                    }}
+                  />
+                  <ChakraSelect
+                    value={minAdvanceTime.type}
+                    colorScheme="primary"
+                    onChange={value =>
+                      setMinAdvanceTime({
+                        amount: minAdvanceTime.amount,
+                        type: String(value),
+                        isEmpty: false,
+                      })
+                    }
+                    options={MinNoticeTimeOptions}
+                    // eslint-disable-next-line tailwindcss/no-custom-classname
+                    className="date-select"
+                    components={noClearCustomSelectComponent}
+                    chakraStyles={{
+                      container: provided => ({
+                        ...provided,
+                        borderColor: 'inherit',
+                        borderRadius: 'md',
+                        display: 'block',
+                        width: '50% !important',
+                        height: '100% !important',
+                      }),
+                      placeholder: provided => ({
+                        ...provided,
+                        textAlign: 'left',
+                      }),
+                      input: provided => ({
+                        ...provided,
+                        textAlign: 'left',
+                      }),
+                      control: provided => ({
+                        ...provided,
+                        textAlign: 'left',
+                      }),
+                    }}
+                  />
+                </HStack>
+              </FormControl>
+            </HStack>
+            <VStack mt={1}>
+              <VStack w={'100%'} alignItems="flex-start" gap={1}>
+                <Heading size={'sm'}>Plan & Package Settings</Heading>
+                <Text color={'neutral.400'} mt={0}>
+                  Setup your plan for the schedulers
+                </Text>
+              </VStack>
+              <VStack
+                width={'100%'}
+                justifyContent={'space-between'}
+                alignItems="flex-start"
+              >
+                <Text fontSize={'16px'}>Session Type</Text>
+                <ChakraSelect
+                  value={sessionType}
+                  colorScheme="primary"
+                  onChange={handleSessionChange}
+                  // eslint-disable-next-line tailwindcss/no-custom-classname
+                  className="noLeftBorder timezone-select"
+                  options={SessionTypeOptions}
+                  components={noClearCustomSelectComponent}
+                  chakraStyles={{
+                    container: provided => ({
+                      ...provided,
+                      borderColor: 'inherit',
+                      borderRadius: 'md',
+                      maxW: '100%',
+                      display: 'block',
+                    }),
+                    placeholder: provided => ({
+                      ...provided,
+                      textAlign: 'left',
+                    }),
+                    input: provided => ({
+                      ...provided,
+                      textAlign: 'left',
+                    }),
+                    control: provided => ({
+                      ...provided,
+                      textAlign: 'left',
+                    }),
+                  }}
+                />
+              </VStack>
             </VStack>
           </VStack>
         </ModalBody>

@@ -16,6 +16,38 @@ export const SessionTypeOptions = [
     label: 'Free',
   },
 ]
+export const MinNoticeTimeOptions = [
+  {
+    value: 'minutes',
+    label: 'Minutes',
+  },
+  {
+    value: 'hours',
+    label: 'Hours',
+  },
+  {
+    value: 'days',
+    label: 'Days',
+  },
+]
+export const DurationOptions = [
+  {
+    value: 15,
+    label: '15 Mins',
+  },
+  {
+    value: 30,
+    label: '30 Mins',
+  },
+  {
+    value: 30,
+    label: '45 Mins',
+  },
+  {
+    value: 60,
+    label: '60 Mins',
+  },
+]
 export enum PlanType {
   ONE_OFF = 'one_off',
   SESSIONS = 'sessions',

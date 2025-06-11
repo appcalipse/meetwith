@@ -132,6 +132,7 @@ a {
 }
 
 .timezone-select > div > div > hr,
+.custom-select > div > div > hr,
 .date-select > div > div > hr,
 .hideBorder > div > div > hr {
   display: none;

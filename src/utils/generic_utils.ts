@@ -136,3 +136,17 @@ export const renderProviderName = (provider: MeetingProvider) => {
       return 'Custom'
   }
 }
+
+export const convertMinutes = (minutes: number) => {
+  if (minutes < 60) {
+    return { amount: minutes, type: 'minutes', isEmpty: false }
+  } else if (minutes < 60 * 24) {
+    return { amount: Math.floor(minutes / 60), type: 'hours', isEmpty: false }
+  } else {
+    return {
+      amount: Math.floor(minutes / (60 * 24)),
+      type: 'days',
+      isEmpty: false,
+    }
+  }
+}
