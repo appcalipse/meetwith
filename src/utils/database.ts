@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import { PaymentChannel, PlanType } from '@utils/constants/meeting-types'
 import CryptoJS from 'crypto-js'
 import { addMinutes, addMonths, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
@@ -13,6 +14,7 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
+  BaseMeetingType,
   DiscordConnectedAccounts,
   MeetingType,
   SimpleAccountInfo,
@@ -70,6 +72,7 @@ import {
   ParticipantType,
 } from '@/types/ParticipantInfo'
 import {
+  CreateMeetingTypeRequest,
   GroupInviteNotifyRequest,
   MeetingCancelSyncRequest,
   MeetingCreationRequest,
@@ -662,8 +665,8 @@ const isSlotFree = async (
   if (
     minTime &&
     minTime.length > 0 &&
-    minTime[0].minAdvanceTime &&
-    isAfter(addMinutes(new Date(), minTime[0].minAdvanceTime), start)
+    minTime[0].min_notice_minutes &&
+    isAfter(addMinutes(new Date(), minTime[0].min_notice_minutes), start)
   ) {
     return false
   }
@@ -3409,6 +3412,171 @@ const removeContact = async (address: string, contact_address: string) => {
   }
 }
 
+const getMeetingTypes = async (
+  account_address: string,
+  limit = 10,
+  offset = 0
+): Promise<Array<MeetingType>> => {
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .select(
+      `
+    *,
+    availability: availabilities(*),
+    plan: meeting_type_plan(*)
+    connected_calendars: meeting_type_connected_calendars(
+      calendar_id: calendars(id, name, type)
+    )
+    `
+    )
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data as MeetingType[]
+}
+const createMeetingType = async (
+  account_address: string,
+  meetingType: CreateMeetingTypeRequest
+) => {
+  const { data: availabilities } = await db.supabase
+    .from('availabilities')
+    .select()
+    .eq('account_owner_address', account_address)
+  const availability = availabilities?.[0]
+  const payload: BaseMeetingType = {
+    account_owner_address: account_address,
+    type: meetingType.type,
+    min_notice_minutes: meetingType.min_notice_minutes,
+    duration_minutes: meetingType.duration_minutes,
+    title: meetingType.title,
+    slug: meetingType.slug,
+    availability_id: meetingType.availability_id || availability?.id,
+    description: meetingType.description,
+  }
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .insert([payload])
+  const meeting_type_id = data?.[0].id
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (meetingType?.calendars && meetingType?.calendars?.length > 0) {
+    const { error: calendarError } = await db.supabase
+      .from('meeting_type_connected_calendars')
+      .insert(
+        meetingType?.calendars?.map(calendar => ({
+          meeting_type_id,
+          calendar_id: calendar,
+        }))
+      )
+    if (calendarError) {
+      throw new Error(calendarError.message)
+    }
+  }
+  if (meetingType?.plan) {
+    const { error: planError } = await db.supabase
+      .from('meeting_type_plan')
+      .insert([
+        {
+          meeting_type_id,
+          type: meetingType?.plan.type,
+          price_per_slot: meetingType?.plan.price_per_slot,
+          no_of_slot: meetingType?.plan.no_of_slot,
+          payment_channel: meetingType?.plan.payment_channel,
+          payment_address: meetingType?.plan.payment_address,
+        },
+      ])
+    if (planError) {
+      throw new Error(planError.message)
+    }
+  }
+  return data?.[0] as MeetingType
+}
+const deleteMeetingType = async (
+  account_address: string,
+  meeting_type_id: string
+): Promise<void> => {
+  const { error } = await db.supabase
+    .from('meeting_type')
+    .update({ deleted_at: new Date() })
+    .eq('account_owner_address', account_address)
+    .eq('id', meeting_type_id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+const updateMeetingType = async (
+  account_address: string,
+  meeting_type_id: string,
+  meetingType: CreateMeetingTypeRequest
+): Promise<MeetingType> => {
+  const { data: availabilities } = await db.supabase
+    .from('availabilities')
+    .select()
+    .eq('account_owner_address', account_address)
+  const availability = availabilities?.[0]
+  const payload: BaseMeetingType = {
+    account_owner_address: account_address,
+    type: meetingType.type,
+    min_notice_minutes: meetingType.min_notice_minutes,
+    duration_minutes: meetingType.duration_minutes,
+    title: meetingType.title,
+    slug: meetingType.slug,
+    availability_id: meetingType.availability_id || availability?.id,
+    description: meetingType.description,
+  }
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .update(payload)
+    .eq('account_owner_address', account_address)
+    .eq('id', meeting_type_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (meetingType?.calendars && meetingType?.calendars?.length > 0) {
+    const { error: calendarError } = await db.supabase
+      .from('meeting_type_connected_calendars')
+      .delete()
+      .eq('meeting_type_id', meeting_type_id)
+    if (calendarError) {
+      throw new Error(calendarError.message)
+    }
+    const { error: insertCalendarError } = await db.supabase
+      .from('meeting_type_connected_calendars')
+      .insert(
+        meetingType?.calendars?.map(calendar => ({
+          meeting_type_id,
+          calendar_id: calendar,
+        }))
+      )
+    if (insertCalendarError) {
+      throw new Error(insertCalendarError.message)
+    }
+  }
+  if (meetingType?.plan) {
+    const { error: insertPlanError } = await db.supabase
+      .from('meeting_type_plan')
+      .update([
+        {
+          meeting_type_id,
+          type: meetingType?.plan.type,
+          price_per_slot: meetingType?.plan.price_per_slot,
+          no_of_slot: meetingType?.plan.no_of_slot,
+          payment_channel: meetingType?.plan.payment_channel,
+          payment_address: meetingType?.plan.payment_address,
+        },
+      ])
+    if (insertPlanError) {
+      throw new Error(insertPlanError.message)
+    }
+  }
+  return data?.[0] as MeetingType
+}
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -3417,11 +3585,13 @@ export {
   checkContactExists,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  createMeetingType,
   createTgConnection,
   deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
+  deleteMeetingType,
   deleteTgConnection,
   editGroup,
   findAccountsByText,
@@ -3454,6 +3624,7 @@ export {
   getGroupUsers,
   getGroupUsersInternal,
   getMeetingFromDB,
+  getMeetingTypes,
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
@@ -3491,6 +3662,7 @@ export {
   updateContactInviteCooldown,
   updateCustomSubscriptionDomain,
   updateMeeting,
+  updateMeetingType,
   updateRecurringSlots,
   upsertGateCondition,
   workMeetingTypeGates,
