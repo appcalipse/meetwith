@@ -1,3 +1,5 @@
+import { SessionType } from '@utils/constants/meeting-types'
+
 import { DiscordAccount } from './Discord'
 import { MeetingProvider } from './Meeting'
 import { Subscription } from './Subscription'
@@ -30,18 +32,22 @@ export interface SimpleAccountInfo {
   internal_pub_key: string
 }
 
-export interface MeetingType {
-  id: string
+export interface BaseMeetingType {
   title: string
-  url: string
-  duration: number
+  account_owner_address: string
+  type: SessionType
   description?: string
-  minAdvanceTime: number
+  availability_id: string
+  slug?: string
+  duration_minutes?: number
+  min_notice_minutes?: number
+}
+export interface MeetingType extends BaseMeetingType {
+  id: string
   scheduleGate?: string
-  customLink?: string
-  fixedLink?: boolean
-  deleted?: boolean
-  private?: boolean
+  created_at: Date
+  updated_at: Date
+  deleted_at: Date
 }
 
 export interface DayAvailability {
