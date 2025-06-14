@@ -48,6 +48,7 @@ interface AvailabilityBlock {
 interface UseAvailabilityBlocksResult {
   blocks: AvailabilityBlock[] | undefined
   isLoading: boolean
+  isFetching: boolean
   createBlock: UseMutationResult<
     AvailabilityBlock,
     unknown,
@@ -96,11 +97,14 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   const {
     blocks: availabilityBlocks,
     isLoading,
+    isFetching,
     createBlock,
     updateBlock,
     deleteBlock,
     duplicateBlock,
-  } = useAvailabilityBlocks() as UseAvailabilityBlocksResult
+  } = useAvailabilityBlocks(
+    currentAccount?.address
+  ) as UseAvailabilityBlocksResult
 
   // Modal form state
   const [newBlockTitle, setNewBlockTitle] = useState('')
@@ -487,6 +491,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
         padding={{ base: 4, md: 6, lg: 8 }}
         borderRadius={12}
         background="#141A1F"
+        position="relative"
         sx={{
           scrollbarGutter: 'stable both-edges',
           '&::-webkit-scrollbar': {
@@ -512,6 +517,22 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
           },
         }}
       >
+        {isFetching && (
+          <Flex
+            position="absolute"
+            top={0}
+            left={0}
+            right={0}
+            bottom={0}
+            justify="center"
+            align="center"
+            bg="rgba(20, 26, 31, 0.8)"
+            zIndex={1}
+            borderRadius={12}
+          >
+            <Spinner size="xl" color="orange.500" />
+          </Flex>
+        )}
         <Flex
           align="flex-start"
           justify="space-between"
@@ -550,136 +571,184 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
         </Flex>
 
         <Flex flexDirection="column" gap={6} flexWrap="wrap" mt={7}>
-          {availabilityBlocks?.map(block => (
+          {availabilityBlocks?.length === 0 ? (
             <Box
-              key={block.id}
               bg="#141A1F"
               border="1px solid"
               borderColor="#7B8794"
               borderRadius={12}
-              p={{ base: 4, md: 6 }}
+              p={{ base: 6, md: 8 }}
               width="100%"
-              position="relative"
+              textAlign="center"
             >
-              <Flex
-                justify="space-between"
-                align="flex-start"
-                mb={4}
-                flexDirection={{ base: 'column', md: 'row' }}
-                gap={{ base: 4, md: 0 }}
+              <VStack spacing={4}>
+                <Box as="span" fontSize={{ base: 40, md: 48 }} color="#F9B19A">
+                  <AiFillClockCircle />
+                </Box>
+                <VStack spacing={2}>
+                  <Heading
+                    fontSize={{ base: 20, md: 24 }}
+                    color="white"
+                    fontWeight={500}
+                  >
+                    No availability blocks yet
+                  </Heading>
+                  <Text
+                    color="#9AA5B1"
+                    fontSize={{ base: 14, md: 16 }}
+                    maxW={{ base: '100%', md: '400px' }}
+                  >
+                    Create your first availability block to define when
+                    you&apos;re available for meetings.
+                  </Text>
+                </VStack>
+                <Button
+                  leftIcon={<AddIcon color="#2D3748" />}
+                  colorScheme="orange"
+                  bg="#F9B19A"
+                  color="#191D27"
+                  _hover={{ bg: '#F9B19A' }}
+                  onClick={handleCreateBlock}
+                  fontSize="sm"
+                  px={6}
+                  mt={2}
+                >
+                  Create first availability block
+                </Button>
+              </VStack>
+            </Box>
+          ) : (
+            availabilityBlocks?.map(block => (
+              <Box
+                key={block.id}
+                bg="#141A1F"
+                border="1px solid"
+                borderColor="#7B8794"
+                borderRadius={12}
+                p={{ base: 4, md: 6 }}
+                width="100%"
+                position="relative"
               >
                 <Flex
-                  align="flex-start"
                   justify="space-between"
-                  w="100%"
+                  align="flex-start"
+                  mb={4}
                   flexDirection={{ base: 'column', md: 'row' }}
                   gap={{ base: 4, md: 0 }}
                 >
-                  <HStack spacing={5}>
-                    <Heading fontSize={20} fontWeight={500} color="white">
-                      {block.title}
-                    </Heading>
-                    {block.isDefault && (
-                      <Badge
-                        background="#00CE5D"
+                  <Flex
+                    align="flex-start"
+                    justify="space-between"
+                    w="100%"
+                    flexDirection={{ base: 'column', md: 'row' }}
+                    gap={{ base: 4, md: 0 }}
+                  >
+                    <HStack spacing={5}>
+                      <Heading fontSize={20} fontWeight={500} color="white">
+                        {block.title}
+                      </Heading>
+                      {block.isDefault && (
+                        <Badge
+                          background="#00CE5D"
+                          borderRadius={8}
+                          color="#FFFFFF"
+                          fontSize={12.8}
+                          textTransform="none"
+                          fontWeight={500}
+                          px={4}
+                          py={1}
+                        >
+                          Default
+                        </Badge>
+                      )}
+                    </HStack>
+                    <HStack color="gray.400" fontSize="sm">
+                      <HStack
+                        spacing={1}
+                        background="#323F4B"
                         borderRadius={8}
-                        color="#FFFFFF"
                         fontSize={12.8}
-                        textTransform="none"
-                        fontWeight={500}
-                        px={4}
+                        px={3}
                         py={1}
                       >
-                        Default
-                      </Badge>
-                    )}
-                  </HStack>
-                  <HStack color="gray.400" fontSize="sm">
-                    <HStack
-                      spacing={1}
-                      background="#323F4B"
-                      borderRadius={8}
-                      fontSize={12.8}
-                      px={3}
-                      py={1}
-                    >
-                      <Box as="span" fontSize={16}>
-                        <AiFillClockCircle color="#FFFFFF" />
-                      </Box>
-                      <Text color="#FFFFFF">
-                        {getHoursPerWeek(block.availabilities)}
-                      </Text>
+                        <Box as="span" fontSize={16}>
+                          <AiFillClockCircle color="#FFFFFF" />
+                        </Box>
+                        <Text color="#FFFFFF">
+                          {getHoursPerWeek(block.availabilities)}
+                        </Text>
+                      </HStack>
                     </HStack>
-                  </HStack>
+                  </Flex>
                 </Flex>
-              </Flex>
 
-              <VStack align="start" spacing={2} mb={4}>
+                <VStack align="start" spacing={2} mb={4}>
+                  <Flex
+                    direction="column"
+                    gap={3}
+                    borderBottom="1px solid"
+                    borderColor="#7B8794"
+                    pb={3}
+                    width="100%"
+                  >
+                    {getFormattedSchedule(block.availabilities).map(
+                      (line, index) => (
+                        <Text
+                          key={index}
+                          color="#9AA5B1"
+                          fontWeight={500}
+                          fontSize={16}
+                        >
+                          {line}
+                        </Text>
+                      )
+                    )}
+                  </Flex>
+
+                  <Text color="#9AA5B1" fontWeight={500} fontSize={16}>
+                    Timezone: {block.timezone}
+                  </Text>
+                </VStack>
+
                 <Flex
-                  direction="column"
-                  gap={3}
-                  borderBottom="1px solid"
-                  borderColor="#7B8794"
-                  pb={3}
-                  width="100%"
+                  justify="space-between"
+                  align="center"
+                  mt={6}
+                  flexDirection={{ base: 'column', md: 'row' }}
+                  gap={{ base: 4, md: 0 }}
                 >
-                  {getFormattedSchedule(block.availabilities).map(
-                    (line, index) => (
-                      <Text
-                        key={index}
-                        color="#9AA5B1"
-                        fontWeight={500}
-                        fontSize={16}
-                      >
-                        {line}
-                      </Text>
-                    )
-                  )}
+                  <Button
+                    bg="#F9B19A"
+                    color="#323F4B"
+                    _hover={{ bg: '#F9B19A' }}
+                    fontSize={15}
+                    fontWeight={700}
+                    width={{ base: '100%', md: '185px' }}
+                    height="38px"
+                    borderRadius={8}
+                    onClick={() => handleEditBlock(block)}
+                  >
+                    Manage availability
+                  </Button>
+                  <Button
+                    bg="transparent"
+                    color="#F9B19A"
+                    _hover={{ bg: 'transparent' }}
+                    fontSize={15}
+                    fontWeight={700}
+                    width={{ base: '100%', md: '160px' }}
+                    height="38px"
+                    border="1px solid"
+                    borderColor="#F9B19A"
+                    borderRadius={8}
+                    onClick={() => handleDuplicateBlock(block)}
+                  >
+                    Duplicate
+                  </Button>
                 </Flex>
-
-                <Text color="#9AA5B1" fontWeight={500} fontSize={16}>
-                  Timezone: {block.timezone}
-                </Text>
-              </VStack>
-
-              <Flex
-                justify="space-between"
-                align="center"
-                mt={6}
-                flexDirection={{ base: 'column', md: 'row' }}
-                gap={{ base: 4, md: 0 }}
-              >
-                <Button
-                  bg="#F9B19A"
-                  color="#323F4B"
-                  _hover={{ bg: '#F9B19A' }}
-                  fontSize={15}
-                  fontWeight={700}
-                  width={{ base: '100%', md: '185px' }}
-                  height="38px"
-                  borderRadius={8}
-                  onClick={() => handleEditBlock(block)}
-                >
-                  Manage availability
-                </Button>
-                <Button
-                  bg="transparent"
-                  color="#F9B19A"
-                  _hover={{ bg: 'transparent' }}
-                  fontSize={15}
-                  fontWeight={700}
-                  width={{ base: '100%', md: '160px' }}
-                  height="38px"
-                  border="1px solid"
-                  borderColor="#F9B19A"
-                  borderRadius={8}
-                  onClick={() => handleDuplicateBlock(block)}
-                >
-                  Duplicate
-                </Button>
-              </Flex>
-            </Box>
-          ))}
+              </Box>
+            ))
+          )}
         </Flex>
       </Box>
 
