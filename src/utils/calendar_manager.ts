@@ -1261,10 +1261,10 @@ const generateDefaultMeetingType = (): MeetingType => {
   const meetingType: MeetingType = {
     id: uuidv4(),
     title,
-    url: getSlugFromText(title),
-    duration: 30,
-    minAdvanceTime: 60,
-  }
+    slug: getSlugFromText(title),
+    duration_minutes: 30,
+    min_notice_minutes: 60,
+  } as any
 
   return meetingType
 }
