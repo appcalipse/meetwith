@@ -81,11 +81,11 @@ export const PaymentChannelOptions = (address: string) => [
 ]
 export const CryptoNetworkForCardSettlementOptions = [
   {
-    value: 'celo',
+    value: 42220,
     label: 'Celo',
   },
   {
-    value: 'arbitrum',
+    value: 42161,
     label: 'Arbitrum',
   },
 ]
