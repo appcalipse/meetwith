@@ -40,9 +40,11 @@ import {
 } from '@/types/Meeting'
 import {
   ChangeGroupAdminRequest,
+  CreateMeetingTypeRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
+  UpdateMeetingTypeRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
@@ -342,14 +344,28 @@ export const isSlotFreeApiCall = async (
   }
 }
 
-export const saveMeetingType = async (type: MeetingType): Promise<Account> => {
-  return (await internalFetch(`/secure/meetings/type`, 'POST', type)) as Account
+export const saveMeetingType = async (
+  type: CreateMeetingTypeRequest
+): Promise<MeetingType> => {
+  return await internalFetch<MeetingType>(`/secure/meetings/type`, 'POST', type)
 }
 
-export const removeMeetingType = async (typeId: string): Promise<Account> => {
-  return (await internalFetch(`/secure/meetings/type`, 'DELETE', {
+export const updateMeetingType = async (
+  type: UpdateMeetingTypeRequest
+): Promise<MeetingType> => {
+  return await internalFetch<MeetingType>(
+    `/secure/meetings/type`,
+    'PATCH',
+    type
+  )
+}
+
+export const removeMeetingType = async (
+  typeId: string
+): Promise<MeetingType> => {
+  return await internalFetch<MeetingType>(`/secure/meetings/type`, 'DELETE', {
     typeId,
-  })) as Account
+  })
 }
 
 export const getMeetings = async (
@@ -1319,4 +1335,14 @@ export const getContactInviteById = async (identifier: string) => {
 
 export const doesContactExist = async (identifier: string) => {
   return await internalFetch<boolean>(`/secure/contact/${identifier}/exist`)
+}
+
+export const getMeetingTypes = async (
+  limit = 10,
+  offset = 0
+): Promise<MeetingType[]> => {
+  const response = (await internalFetch(
+    `/secure/meetings/type?limit=${limit}&offset=${offset}`
+  )) as MeetingType[]
+  return response
 }
