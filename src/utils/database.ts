@@ -3418,8 +3418,40 @@ export const createAvailabilityBlock = async (
   account_address: string,
   title: string,
   timezone: string,
-  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
+  is_default = false
 ) => {
+  // If this is being set as default, update account preferences
+  if (is_default) {
+    const { data: block, error: blockError } = await db.supabase
+      .from('availabilities')
+      .insert([
+        {
+          title,
+          timezone,
+          weekly_availability,
+          account_owner_address: account_address,
+        },
+      ])
+      .select()
+      .single()
+
+    if (blockError) throw blockError
+
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availabilities: weekly_availability,
+        timezone: timezone,
+        availaibility_id: block.id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) throw prefError
+
+    return block
+  }
+
   const { data, error } = await db.supabase
     .from('availabilities')
     .insert([
@@ -3449,7 +3481,18 @@ export const getAvailabilityBlock = async (
     .single()
 
   if (error) throw error
-  return data
+
+  // Check if this is the default block
+  const { data: accountPrefs } = await db.supabase
+    .from('account_preferences')
+    .select('availaibility_id')
+    .eq('owner_account_address', account_address)
+    .single()
+
+  return {
+    ...data,
+    isDefault: accountPrefs?.availaibility_id === id,
+  }
 }
 
 export const updateAvailabilityBlock = async (
@@ -3457,15 +3500,46 @@ export const updateAvailabilityBlock = async (
   account_address: string,
   title: string,
   timezone: string,
-  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
+  is_default = false
 ) => {
+  // Get current account preferences to check if this block is currently default
+  const { data: accountPrefs } = await db.supabase
+    .from('account_preferences')
+    .select('availaibility_id')
+    .eq('owner_account_address', account_address)
+    .single()
+
+  const isCurrentlyDefault = accountPrefs?.availaibility_id === id
+
+  // If this block is being set as default, update account preferences
+  if (is_default) {
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) throw prefError
+  } else if (isCurrentlyDefault) {
+    // If this block is currently default but is being unset, set availaibility_id to null
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: null,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) throw prefError
+  }
+
   const { data, error } = await db.supabase
     .from('availabilities')
     .update({
       title,
       timezone,
       weekly_availability,
-      updated_at: new Date().toISOString(),
     })
     .eq('id', id)
     .eq('account_owner_address', account_address)
@@ -3480,6 +3554,17 @@ export const deleteAvailabilityBlock = async (
   id: string,
   account_address: string
 ) => {
+  // Check if this is the default block by checking account preferences
+  const { data: accountPrefs } = await db.supabase
+    .from('account_preferences')
+    .select('availaibility_id')
+    .eq('owner_account_address', account_address)
+    .single()
+
+  if (accountPrefs?.availaibility_id === id) {
+    throw new Error('Cannot delete the default availability block')
+  }
+
   const { error } = await db.supabase
     .from('availabilities')
     .delete()
@@ -3491,28 +3576,96 @@ export const deleteAvailabilityBlock = async (
 
 export const duplicateAvailabilityBlock = async (
   id: string,
-  account_address: string
+  account_address: string,
+  modifiedData?: {
+    title?: string
+    timezone?: string
+    weekly_availability?: Array<{ weekday: number; ranges: TimeRange[] }>
+    is_default?: boolean
+  }
 ) => {
   // First get the block to duplicate
   const block = await getAvailabilityBlock(id, account_address)
   if (!block) throw new Error('Availability block not found')
 
-  // Create a new block with the same data but a new ID
-  const { data, error } = await db.supabase
+  // Create a new block with the same data but a new ID, applying any modifications
+  const { data: newBlock, error: blockError } = await db.supabase
     .from('availabilities')
     .insert([
       {
-        title: `${block.title} (Copy)`,
-        timezone: block.timezone,
-        weekly_availability: block.weekly_availability,
+        title: modifiedData?.title || `${block.title} (Copy)`,
+        timezone: modifiedData?.timezone || block.timezone,
+        weekly_availability:
+          modifiedData?.weekly_availability || block.weekly_availability,
         account_owner_address: account_address,
       },
     ])
     .select()
     .single()
 
+  if (blockError) throw blockError
+
+  // If this is being set as default, update account preferences with the new block ID
+  if (modifiedData?.is_default) {
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: newBlock.id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) {
+      console.error('Error updating account preferences:', prefError)
+      throw prefError
+    }
+
+    await db.supabase
+      .from('account_preferences')
+      .select('*')
+      .eq('owner_account_address', account_address)
+      .single()
+  }
+
+  return newBlock
+}
+
+export const isDefaultAvailabilityBlock = async (
+  id: string,
+  account_address: string
+): Promise<boolean> => {
+  const { data: accountPrefs } = await db.supabase
+    .from('account_preferences')
+    .select('availaibility_id')
+    .eq('owner_account_address', account_address)
+    .single()
+
+  return accountPrefs?.availaibility_id === id
+}
+
+export const getAvailabilityBlocks = async (account_address: string) => {
+  // Get all availability blocks
+  const { data: blocks, error } = await db.supabase
+    .from('availabilities')
+    .select('*')
+    .eq('account_owner_address', account_address)
+    .order('created_at', { ascending: false })
+
   if (error) throw error
-  return data
+
+  // Get account preferences to determine default block
+  const { data: accountPrefs } = await db.supabase
+    .from('account_preferences')
+    .select('availaibility_id')
+    .eq('owner_account_address', account_address)
+    .single()
+
+  // Add isDefault flag to each block based on availaibility_id
+  const blocksWithDefault = blocks.map(block => ({
+    ...block,
+    isDefault: accountPrefs?.availaibility_id === block.id,
+  }))
+
+  return blocksWithDefault
 }
 
 export {
