@@ -1357,7 +1357,8 @@ export const updateAvailabilityBlock = async (
   id: string,
   title: string,
   timezone: string,
-  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
+  is_default?: boolean
 ) => {
   const account = await getOwnAccount('')
   return await internalFetch(
@@ -1367,6 +1368,7 @@ export const updateAvailabilityBlock = async (
       title,
       timezone,
       weekly_availability,
+      is_default,
     }
   )
 }
@@ -1379,10 +1381,19 @@ export const deleteAvailabilityBlock = async (id: string) => {
   )
 }
 
-export const duplicateAvailabilityBlock = async (id: string) => {
+export const duplicateAvailabilityBlock = async (
+  id: string,
+  modifiedData?: {
+    title?: string
+    timezone?: string
+    weekly_availability?: Array<{ weekday: number; ranges: TimeRange[] }>
+    is_default?: boolean
+  }
+) => {
   const account = await getOwnAccount('')
   return await internalFetch(
     `/availabilities/${id}?address=${account.address}`,
-    'POST'
+    'POST',
+    modifiedData
   )
 }

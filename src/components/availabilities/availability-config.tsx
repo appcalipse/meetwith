@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax */
 import { AddIcon } from '@chakra-ui/icons'
 import {
   Badge,
@@ -44,6 +45,46 @@ interface AvailabilityBlock {
   }>
 }
 
+interface UseAvailabilityBlocksResult {
+  blocks: AvailabilityBlock[] | undefined
+  isLoading: boolean
+  createBlock: UseMutationResult<
+    AvailabilityBlock,
+    unknown,
+    {
+      title: string
+      timezone: string
+      weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+      is_default?: boolean
+    }
+  >
+  updateBlock: UseMutationResult<
+    AvailabilityBlock,
+    unknown,
+    {
+      id: string
+      title: string
+      timezone: string
+      weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+      is_default?: boolean
+    }
+  >
+  deleteBlock: UseMutationResult<void, unknown, string>
+  duplicateBlock: UseMutationResult<
+    AvailabilityBlock,
+    unknown,
+    {
+      id: string
+      modifiedData: {
+        title: string
+        timezone: string
+        weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+        is_default: boolean
+      }
+    }
+  >
+}
+
 const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
@@ -59,31 +100,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     updateBlock,
     deleteBlock,
     duplicateBlock,
-  } = useAvailabilityBlocks() as {
-    blocks: AvailabilityBlock[]
-    isLoading: boolean
-    createBlock: UseMutationResult<
-      AvailabilityBlock,
-      Error,
-      {
-        title: string
-        timezone: string
-        weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
-      }
-    >
-    updateBlock: UseMutationResult<
-      AvailabilityBlock,
-      Error,
-      {
-        id: string
-        title: string
-        timezone: string
-        weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
-      }
-    >
-    deleteBlock: UseMutationResult<void, Error, string>
-    duplicateBlock: UseMutationResult<AvailabilityBlock, Error, string>
-  }
+  } = useAvailabilityBlocks() as UseAvailabilityBlocksResult
 
   // Modal form state
   const [newBlockTitle, setNewBlockTitle] = useState('')
@@ -252,6 +269,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     setSetAsDefault(false)
     setIsEditing(false)
     setEditingBlockId(null)
+    setDuplicatingBlockId(null)
     setShowDeleteConfirmation(false)
     onOpen()
   }
@@ -267,6 +285,31 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     onOpen()
   }
 
+  const handleDuplicateBlock = async (block: AvailabilityBlock) => {
+    // Pre-fill the form with the block's data
+    setNewBlockTitle(`${block.title} (Copy)`)
+    setNewBlockTimezone(block.timezone)
+    setNewBlockAvailabilities([...block.availabilities])
+    setSetAsDefault(false)
+    setIsEditing(false)
+    setEditingBlockId(null)
+    setDuplicatingBlockId(block.id)
+    setShowDeleteConfirmation(false)
+    onOpen()
+  }
+
+  const handleClose = () => {
+    setNewBlockTitle('')
+    setNewBlockTimezone(currentAccount!.preferences.timezone)
+    setNewBlockAvailabilities([])
+    setSetAsDefault(false)
+    setIsEditing(false)
+    setEditingBlockId(null)
+    setDuplicatingBlockId(null)
+    setShowDeleteConfirmation(false)
+    onClose()
+  }
+
   const handleSaveNewBlock = async () => {
     if (!newBlockTitle.trim()) {
       toast({
@@ -280,18 +323,64 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
       return
     }
 
+    // Check if there are any availabilities set
+    const hasAvailabilities = newBlockAvailabilities.some(
+      day => day.ranges && day.ranges.length > 0
+    )
+
+    if (!hasAvailabilities) {
+      toast({
+        title: 'Availability required',
+        description: 'Please add at least one availability time slot.',
+        status: 'error',
+        duration: 3000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+
     try {
       if (isEditing && editingBlockId) {
-        await updateBlock.mutateAsync({
+        const currentBlock = getCurrentEditingBlock()
+        console.log('setAsDefault state:', setAsDefault)
+        console.log('currentBlock:', currentBlock)
+
+        const updatedBlock = await updateBlock.mutateAsync({
           id: editingBlockId,
           title: newBlockTitle,
           timezone: newBlockTimezone || 'Africa/Lagos',
           weekly_availability: newBlockAvailabilities,
+          is_default: setAsDefault,
         })
+
+        console.log('Account preferences:', currentAccount?.preferences)
+        console.log('Updated availability block:', updatedBlock)
+        console.log('All availability blocks:', availabilityBlocks)
 
         toast({
           title: 'Availability block updated',
           description: `${newBlockTitle} has been updated successfully.`,
+          status: 'success',
+          duration: 3000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (duplicatingBlockId) {
+        // Handle duplication
+        const duplicatedBlock = await duplicateBlock.mutateAsync({
+          id: duplicatingBlockId,
+          modifiedData: {
+            title: newBlockTitle,
+            timezone: newBlockTimezone || 'Africa/Lagos',
+            weekly_availability: newBlockAvailabilities,
+            is_default: setAsDefault,
+          },
+        })
+
+        toast({
+          title: 'Availability block duplicated',
+          description: `${duplicatedBlock.title} has been created successfully.`,
           status: 'success',
           duration: 3000,
           position: 'top',
@@ -302,6 +391,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
           title: newBlockTitle,
           timezone: newBlockTimezone || 'Africa/Lagos',
           weekly_availability: newBlockAvailabilities,
+          is_default: setAsDefault,
         })
 
         toast({
@@ -314,7 +404,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
         })
       }
 
-      onClose()
+      handleClose()
     } catch (error) {
       toast({
         title: 'Error',
@@ -339,44 +429,19 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
           position: 'top',
           isClosable: true,
         })
-        onClose()
-      } catch (error) {
+        handleClose()
+      } catch (error: any) {
         toast({
           title: 'Error',
-          description: 'Failed to delete availability block. Please try again.',
+          description:
+            error.message ||
+            'Failed to delete availability block. Please try again.',
           status: 'error',
           duration: 3000,
           position: 'top',
           isClosable: true,
         })
       }
-    }
-  }
-
-  const handleDuplicateBlock = async (blockId: string) => {
-    try {
-      setDuplicatingBlockId(blockId)
-      await duplicateBlock.mutateAsync(blockId)
-      toast({
-        title: 'Availability block duplicated',
-        description: 'The availability block has been duplicated successfully.',
-        status: 'success',
-        duration: 3000,
-        position: 'top',
-        isClosable: true,
-      })
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description:
-          'Failed to duplicate availability block. Please try again.',
-        status: 'error',
-        duration: 3000,
-        position: 'top',
-        isClosable: true,
-      })
-    } finally {
-      setDuplicatingBlockId(null)
     }
   }
 
@@ -416,19 +481,49 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
       </Heading>
 
       <Box
-        width={880}
-        maxHeight={860}
+        width={{ base: '100%', md: '100%', lg: 880 }}
+        maxHeight={{ base: '100%', md: '100%', lg: 860 }}
         overflowY="auto"
-        padding={8}
+        padding={{ base: 4, md: 6, lg: 8 }}
         borderRadius={12}
         background="#141A1F"
+        sx={{
+          scrollbarGutter: 'stable both-edges',
+          '&::-webkit-scrollbar': {
+            width: '6px',
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'transparent',
+            borderRadius: '3px',
+            transition: 'background 0.2s ease',
+          },
+          '&:hover::-webkit-scrollbar-thumb': {
+            background: '#323F4B',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: '#4A5568',
+          },
+          '&::-webkit-scrollbar-corner': {
+            background: 'transparent',
+          },
+        }}
       >
-        <Flex align="flex-start" justify="space-between" mb={4}>
-          <Box width={533}>
-            <Heading fontSize={22} color="white" mb={2}>
+        <Flex
+          align="flex-start"
+          justify="space-between"
+          mb={4}
+          flexDirection={{ base: 'column', md: 'row' }}
+          gap={{ base: 4, md: 0 }}
+        >
+          <Box width={{ base: '100%', md: 533 }}>
+            <Heading fontSize={{ base: 18, md: 22 }} color="white" mb={2}>
               Availability blocks
             </Heading>
-            <Text color="#FFFFFF" fontSize={16}>
+            <Text color="#FFFFFF" fontSize={{ base: 14, md: 16 }}>
               Define when you&apos;re free to meet. Different{' '}
               <Text as="span" color="#F9B19A" textDecoration="underline">
                 groups
@@ -462,12 +557,24 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
               border="1px solid"
               borderColor="#7B8794"
               borderRadius={12}
-              p={6}
+              p={{ base: 4, md: 6 }}
               width="100%"
               position="relative"
             >
-              <Flex justify="space-between" align="flex-start" mb={4}>
-                <Flex align="flex-start" justify="space-between" w="100%">
+              <Flex
+                justify="space-between"
+                align="flex-start"
+                mb={4}
+                flexDirection={{ base: 'column', md: 'row' }}
+                gap={{ base: 4, md: 0 }}
+              >
+                <Flex
+                  align="flex-start"
+                  justify="space-between"
+                  w="100%"
+                  flexDirection={{ base: 'column', md: 'row' }}
+                  gap={{ base: 4, md: 0 }}
+                >
                   <HStack spacing={5}>
                     <Heading fontSize={20} fontWeight={500} color="white">
                       {block.title}
@@ -535,14 +642,20 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
                 </Text>
               </VStack>
 
-              <Flex justify="space-between" align="center" mt={6}>
+              <Flex
+                justify="space-between"
+                align="center"
+                mt={6}
+                flexDirection={{ base: 'column', md: 'row' }}
+                gap={{ base: 4, md: 0 }}
+              >
                 <Button
                   bg="#F9B19A"
                   color="#323F4B"
                   _hover={{ bg: '#F9B19A' }}
                   fontSize={15}
                   fontWeight={700}
-                  width="185px"
+                  width={{ base: '100%', md: '185px' }}
                   height="38px"
                   borderRadius={8}
                   onClick={() => handleEditBlock(block)}
@@ -555,13 +668,12 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
                   _hover={{ bg: 'transparent' }}
                   fontSize={15}
                   fontWeight={700}
-                  width="160px"
+                  width={{ base: '100%', md: '160px' }}
                   height="38px"
                   border="1px solid"
                   borderColor="#F9B19A"
                   borderRadius={8}
-                  onClick={() => handleDuplicateBlock(block.id)}
-                  isLoading={duplicatingBlockId === block.id}
+                  onClick={() => handleDuplicateBlock(block)}
                 >
                   Duplicate
                 </Button>
@@ -572,16 +684,23 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
       </Box>
 
       {/* Modal for creating/editing availability block */}
-      <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        size={{ base: 'full', md: 'xl' }}
+        isCentered
+      >
         <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
         <ModalContent
           bg="#141A1F"
           border="1px solid"
-          borderRadius={12}
+          borderRadius={{ base: 0, md: 12 }}
           borderColor="#323F4B"
-          minHeight="21rem"
-          maxHeight="38.75rem"
+          minHeight={{ base: '100%', md: '21rem' }}
+          maxHeight={{ base: '100%', md: '38.75rem' }}
           overflowY="hidden"
+          margin={{ base: 0, md: 4 }}
+          width={{ base: '100%', md: 'calc(100% - 32px)' }}
         >
           <Box
             overflowY="auto"
@@ -616,7 +735,12 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
                   <Flex justify="space-between" align="center">
                     <Flex alignItems="flex-end" gap={2}>
                       <Text color="#FFFFFF" fontWeight={700} fontSize={22}>
-                        {newBlockTitle || 'Default title'}
+                        {isEditing
+                          ? 'Edit'
+                          : duplicatingBlockId
+                          ? 'Duplicate'
+                          : 'New'}{' '}
+                        Availability Block
                       </Text>
                     </Flex>
                     <Button
@@ -626,10 +750,19 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
                       _hover={{ bg: '#F9B19A' }}
                       size="sm"
                       onClick={handleSaveNewBlock}
-                      width="70px"
-                      height="40px"
+                      width={{ base: '60px', md: '70px' }}
+                      height={{ base: '36px', md: '40px' }}
                       borderRadius={8}
-                      isLoading={createBlock.isLoading || updateBlock.isLoading}
+                      isLoading={
+                        createBlock.isLoading ||
+                        updateBlock.isLoading ||
+                        duplicateBlock.isLoading
+                      }
+                      isDisabled={
+                        createBlock.isLoading ||
+                        updateBlock.isLoading ||
+                        duplicateBlock.isLoading
+                      }
                     >
                       Save
                     </Button>
@@ -702,7 +835,22 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
                       ))}
                     </Box>
 
-                    <Flex justify="flex-end" align="center" pt={4}>
+                    <Flex justify="space-between" align="center" pt={4} gap={4}>
+                      <Button
+                        bg="transparent"
+                        color="#F9B19A"
+                        _hover={{ bg: 'transparent' }}
+                        fontSize={16}
+                        fontWeight={700}
+                        width={{ base: '100%', md: '100px' }}
+                        height="48px"
+                        border="1px solid"
+                        borderColor="#F9B19A"
+                        borderRadius={8}
+                        onClick={handleClose}
+                      >
+                        Close
+                      </Button>
                       {isEditing && (
                         <Button
                           colorScheme="orange"

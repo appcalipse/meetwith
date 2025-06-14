@@ -3,11 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { TimeRange } from '@/types/Account'
-import {
-  createAvailabilityBlock,
-  getAccountFromDB,
-  getAvailabilityBlock,
-} from '@/utils/database'
+import { createAvailabilityBlock, getAccountFromDB } from '@/utils/database'
 import { UnauthorizedError } from '@/utils/errors'
 
 const supabase = createClient(
@@ -20,6 +16,7 @@ interface AvailabilityBlock {
   title: string
   timezone: string
   weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+  is_default?: boolean
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -43,39 +40,57 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
         if (error) throw error
 
+        // Get account preferences to determine default block
+        const { data: accountPrefs } = await supabase
+          .from('account_preferences')
+          .select('availaibility_id')
+          .eq('owner_account_address', address)
+          .single()
+
         // Transform the data into the format expected by the frontend
         const blocks = (availabilityBlocks || []).map(
           (block: AvailabilityBlock) => ({
             id: block.id,
             title: block.title,
             timezone: block.timezone,
-            isDefault: false,
+            isDefault: accountPrefs?.availaibility_id === block.id,
             availabilities: block.weekly_availability,
           })
         )
 
-        // Add default block only if there are no custom blocks
+        // If no blocks exist, create a default block
         if (blocks.length === 0) {
+          const defaultBlock = await createAvailabilityBlock(
+            address,
+            'Default Availability',
+            accountData.preferences.timezone,
+            accountData.preferences.availabilities || [],
+            true
+          )
           blocks.push({
-            id: 'default',
-            title: 'Default Availability',
-            timezone: accountData.preferences.timezone,
+            id: defaultBlock.id,
+            title: defaultBlock.title,
+            timezone: defaultBlock.timezone,
             isDefault: true,
-            availabilities: accountData.preferences.availabilities || [],
+            availabilities: defaultBlock.weekly_availability,
           })
         }
 
         return res.status(200).json(blocks)
 
       case 'POST':
-        const { title, timezone, weekly_availability } = req.body
+        const { title, timezone, weekly_availability, is_default } = req.body
         const newBlock = await createAvailabilityBlock(
           address,
           title,
           timezone,
-          weekly_availability
+          weekly_availability,
+          is_default
         )
-        return res.status(200).json(newBlock)
+        return res.status(200).json({
+          ...newBlock,
+          isDefault: is_default,
+        })
 
       default:
         res.setHeader('Allow', ['GET', 'POST'])

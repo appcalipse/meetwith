@@ -29,6 +29,7 @@ export const useAvailabilityBlocks = () => {
       title: string
       timezone: string
       weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+      is_default?: boolean
     }) => {
       const response = await internalFetch<AvailabilityBlock>(
         '/availabilities',
@@ -48,6 +49,7 @@ export const useAvailabilityBlocks = () => {
       title: string
       timezone: string
       weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+      is_default?: boolean
     }) => {
       const response = await internalFetch<AvailabilityBlock>(
         `/availabilities/${data.id}`,
@@ -71,12 +73,29 @@ export const useAvailabilityBlocks = () => {
   })
 
   const duplicateBlock = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await internalFetch<AvailabilityBlock>(
-        `/availabilities/${id}`,
-        'POST'
-      )
-      return response
+    mutationFn: async ({
+      id,
+      modifiedData,
+    }: {
+      id: string
+      modifiedData: {
+        title: string
+        timezone: string
+        weekly_availability: any[]
+        is_default: boolean
+      }
+    }) => {
+      const response = await fetch(`/api/availabilities/${id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(modifiedData),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to duplicate availability block')
+      }
+      return response.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['availabilityBlocks'] })
