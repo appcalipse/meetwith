@@ -1,96 +1,33 @@
-/* eslint-disable no-restricted-syntax */
 import { AddIcon } from '@chakra-ui/icons'
 import {
-  Badge,
   Box,
   Button,
   Flex,
-  FormControl,
-  FormLabel,
   Heading,
-  HStack,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
-  ModalOverlay,
   Spinner,
-  Switch,
   Text,
   useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { UseMutationResult } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
-import { AiFillClockCircle } from 'react-icons/ai'
+import { useState } from 'react'
 
-import TimezoneSelector from '@/components/TimezoneSelector'
 import { useAvailabilityBlocks } from '@/hooks/useAvailabilityBlocks'
-// import { AccountContext } from '@/providers/AccountProvider'
-// import { OnboardingContext } from '@/providers/OnboardingProvider'
-import { Account, TimeRange } from '@/types/Account'
+import { useAvailabilityForm } from '@/hooks/useAvailabilityForm'
+import { Account } from '@/types/Account'
+import {
+  AvailabilityBlock,
+  UseAvailabilityBlocksResult,
+} from '@/types/availability'
+import { validateAvailabilityBlock } from '@/utils/availability.helper'
 
-import { WeekdayConfig } from './weekday-config'
-
-interface AvailabilityBlock {
-  id: string
-  title: string
-  timezone: string
-  isDefault: boolean
-  availabilities: Array<{
-    weekday: number
-    ranges: TimeRange[]
-  }>
-}
-
-interface UseAvailabilityBlocksResult {
-  blocks: AvailabilityBlock[] | undefined
-  isLoading: boolean
-  isFetching: boolean
-  createBlock: UseMutationResult<
-    AvailabilityBlock,
-    unknown,
-    {
-      title: string
-      timezone: string
-      weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
-      is_default?: boolean
-    }
-  >
-  updateBlock: UseMutationResult<
-    AvailabilityBlock,
-    unknown,
-    {
-      id: string
-      title: string
-      timezone: string
-      weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
-      is_default?: boolean
-    }
-  >
-  deleteBlock: UseMutationResult<void, unknown, string>
-  duplicateBlock: UseMutationResult<
-    AvailabilityBlock,
-    unknown,
-    {
-      id: string
-      modifiedData: {
-        title: string
-        timezone: string
-        weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
-        is_default: boolean
-      }
-    }
-  >
-}
+import { AvailabilityBlockCard } from './availability-block-card'
+import { AvailabilityEmptyState } from './availability-empty-state'
+import { AvailabilityModal } from './availability-modal'
 
 const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
-  // const { login } = useContext(AccountContext)
-  // const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const toast = useToast()
 
@@ -106,18 +43,15 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     currentAccount?.address
   ) as UseAvailabilityBlocksResult
 
-  // Modal form state
-  const [newBlockTitle, setNewBlockTitle] = useState('')
-  const [newBlockTimezone, setNewBlockTimezone] = useState<
-    string | null | undefined
-  >(currentAccount!.preferences.timezone)
-  const [newBlockAvailabilities, setNewBlockAvailabilities] = useState<
-    Array<{
-      weekday: number
-      ranges: TimeRange[]
-    }>
-  >([])
-  const [setAsDefault, setSetAsDefault] = useState(false)
+  const {
+    formState,
+    resetForm,
+    updateAvailability,
+    setTitle,
+    setTimezone,
+    setIsDefault,
+  } = useAvailabilityForm(currentAccount)
+
   const [isEditing, setIsEditing] = useState(false)
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
@@ -125,152 +59,8 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     null
   )
 
-  useEffect(() => {
-    // Initialize empty availabilities for all days
-    const emptyAvailabilities = []
-    for (let i = 0; i <= 6; i++) {
-      emptyAvailabilities.push({ weekday: i, ranges: [] })
-    }
-    setNewBlockAvailabilities(emptyAvailabilities)
-  }, [])
-
-  const getHoursPerWeek = (
-    availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
-  ) => {
-    if (!availabilities) return '0hrs/week'
-
-    const totalHours = availabilities.reduce((total, day) => {
-      if (!day.ranges) return total
-
-      const dayHours = day.ranges.reduce((dayTotal, range) => {
-        if (!range.start || !range.end) return dayTotal
-
-        const start = new Date(`2000-01-01T${range.start}:00`)
-        const end = new Date(`2000-01-01T${range.end}:00`)
-        return dayTotal + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-      }, 0)
-      return total + dayHours
-    }, 0)
-
-    if (totalHours === 0) return '0hrs/week'
-
-    return `${Math.round(totalHours)}hrs/week`
-  }
-
-  const formatTime = (time: string | undefined) => {
-    if (!time) return ''
-    const [hours, minutes] = time.split(':')
-    const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'pm' : 'am'
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
-    return `${displayHour}:${minutes}${ampm}`
-  }
-
-  const getFormattedSchedule = (
-    availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
-  ) => {
-    if (!availabilities) return []
-
-    // const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    const workingDays = availabilities.filter(
-      day => day.ranges && day.ranges.length > 0
-    )
-
-    if (workingDays.length === 0) return []
-
-    // Group consecutive days with same time ranges
-    const scheduleLines: string[] = []
-    let currentGroup: number[] = []
-    let currentTimeRange = ''
-
-    workingDays.forEach((day, index) => {
-      const timeRange =
-        day.ranges && day.ranges.length > 0
-          ? `${formatTime(day.ranges[0].start)} - ${formatTime(
-              day.ranges[0].end
-            )}`
-          : ''
-
-      if (index === 0) {
-        currentGroup = [day.weekday]
-        currentTimeRange = timeRange
-      } else {
-        const prevDay = workingDays[index - 1]
-        const prevTimeRange =
-          prevDay.ranges && prevDay.ranges.length > 0
-            ? `${formatTime(prevDay.ranges[0].start)} - ${formatTime(
-                prevDay.ranges[0].end
-              )}`
-            : ''
-
-        if (
-          timeRange === prevTimeRange &&
-          day.weekday === currentGroup[currentGroup.length - 1] + 1
-        ) {
-          // Same time range and consecutive day
-          currentGroup.push(day.weekday)
-        } else {
-          // Different time range or non-consecutive day, finish current group
-          const groupText = formatDayGroup(currentGroup, currentTimeRange)
-          if (groupText) scheduleLines.push(groupText)
-
-          currentGroup = [day.weekday]
-          currentTimeRange = timeRange
-        }
-      }
-
-      // Handle last group
-      if (index === workingDays.length - 1) {
-        const groupText = formatDayGroup(currentGroup, currentTimeRange)
-        if (groupText) scheduleLines.push(groupText)
-      }
-    })
-
-    return scheduleLines
-  }
-
-  const formatDayGroup = (days: number[], timeRange: string) => {
-    if (days.length === 0) return ''
-
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-    if (days.length === 1) {
-      return `${dayNames[days[0]]} : ${timeRange}`
-    } else if (days.length === 2) {
-      return `${dayNames[days[0]]}, ${dayNames[days[1]]} : ${timeRange}`
-    } else {
-      // Check if consecutive
-      let consecutive = true
-      for (let i = 1; i < days.length; i++) {
-        if (days[i] !== days[i - 1] + 1) {
-          consecutive = false
-          break
-        }
-      }
-
-      if (consecutive) {
-        return `${dayNames[days[0]]}, ${
-          dayNames[days[days.length - 1]]
-        } : ${timeRange}`
-      } else {
-        return `${dayNames[days[0]]}, ${
-          dayNames[days[days.length - 1]]
-        } : ${timeRange}`
-      }
-    }
-  }
-
   const handleCreateBlock = () => {
-    // Initialize new block availabilities with empty ranges for all days
-    const emptyAvailabilities = []
-    for (let i = 0; i <= 6; i++) {
-      emptyAvailabilities.push({ weekday: i, ranges: [] })
-    }
-
-    setNewBlockTitle('')
-    setNewBlockTimezone(currentAccount!.preferences.timezone)
-    setNewBlockAvailabilities(emptyAvailabilities)
-    setSetAsDefault(false)
+    resetForm()
     setIsEditing(false)
     setEditingBlockId(null)
     setDuplicatingBlockId(null)
@@ -279,10 +69,12 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   }
 
   const handleEditBlock = (block: AvailabilityBlock) => {
-    setNewBlockTitle(block.title)
-    setNewBlockTimezone(block.timezone)
-    setNewBlockAvailabilities([...block.availabilities])
-    setSetAsDefault(block.isDefault)
+    setTitle(block.title)
+    setTimezone(block.timezone)
+    block.availabilities.forEach(availability => {
+      updateAvailability(availability.weekday, availability.ranges)
+    })
+    setIsDefault(block.isDefault)
     setIsEditing(true)
     setEditingBlockId(block.id)
     setShowDeleteConfirmation(false)
@@ -290,11 +82,12 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   }
 
   const handleDuplicateBlock = async (block: AvailabilityBlock) => {
-    // Pre-fill the form with the block's data
-    setNewBlockTitle(`${block.title} (Copy)`)
-    setNewBlockTimezone(block.timezone)
-    setNewBlockAvailabilities([...block.availabilities])
-    setSetAsDefault(false)
+    setTitle(`${block.title} (Copy)`)
+    setTimezone(block.timezone)
+    block.availabilities.forEach(availability => {
+      updateAvailability(availability.weekday, availability.ranges)
+    })
+    setIsDefault(false)
     setIsEditing(false)
     setEditingBlockId(null)
     setDuplicatingBlockId(block.id)
@@ -303,10 +96,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   }
 
   const handleClose = () => {
-    setNewBlockTitle('')
-    setNewBlockTimezone(currentAccount!.preferences.timezone)
-    setNewBlockAvailabilities([])
-    setSetAsDefault(false)
+    resetForm()
     setIsEditing(false)
     setEditingBlockId(null)
     setDuplicatingBlockId(null)
@@ -315,27 +105,18 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   }
 
   const handleSaveNewBlock = async () => {
-    if (!newBlockTitle.trim()) {
-      toast({
-        title: 'Title required',
-        description: 'Please enter a title for your availability block.',
-        status: 'error',
-        duration: 3000,
-        position: 'top',
-        isClosable: true,
-      })
-      return
-    }
-
-    // Check if there are any availabilities set
-    const hasAvailabilities = newBlockAvailabilities.some(
-      day => day.ranges && day.ranges.length > 0
+    const validation = validateAvailabilityBlock(
+      formState.title,
+      formState.availabilities
     )
 
-    if (!hasAvailabilities) {
+    if (!validation.isValid) {
       toast({
-        title: 'Availability required',
-        description: 'Please add at least one availability time slot.',
+        title: validation.error,
+        description:
+          validation.error === 'Title required'
+            ? 'Please enter a title for your availability block.'
+            : 'Please add at least one availability time slot.',
         status: 'error',
         duration: 3000,
         position: 'top',
@@ -346,39 +127,30 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
     try {
       if (isEditing && editingBlockId) {
-        const currentBlock = getCurrentEditingBlock()
-        console.log('setAsDefault state:', setAsDefault)
-        console.log('currentBlock:', currentBlock)
-
-        const updatedBlock = await updateBlock.mutateAsync({
+        await updateBlock.mutateAsync({
           id: editingBlockId,
-          title: newBlockTitle,
-          timezone: newBlockTimezone || 'Africa/Lagos',
-          weekly_availability: newBlockAvailabilities,
-          is_default: setAsDefault,
+          title: formState.title,
+          timezone: formState.timezone || 'Africa/Lagos',
+          weekly_availability: formState.availabilities,
+          is_default: formState.isDefault,
         })
-
-        console.log('Account preferences:', currentAccount?.preferences)
-        console.log('Updated availability block:', updatedBlock)
-        console.log('All availability blocks:', availabilityBlocks)
 
         toast({
           title: 'Availability block updated',
-          description: `${newBlockTitle} has been updated successfully.`,
+          description: `${formState.title} has been updated successfully.`,
           status: 'success',
           duration: 3000,
           position: 'top',
           isClosable: true,
         })
       } else if (duplicatingBlockId) {
-        // Handle duplication
         const duplicatedBlock = await duplicateBlock.mutateAsync({
           id: duplicatingBlockId,
           modifiedData: {
-            title: newBlockTitle,
-            timezone: newBlockTimezone || 'Africa/Lagos',
-            weekly_availability: newBlockAvailabilities,
-            is_default: setAsDefault,
+            title: formState.title,
+            timezone: formState.timezone || 'Africa/Lagos',
+            weekly_availability: formState.availabilities,
+            is_default: formState.isDefault,
           },
         })
 
@@ -392,15 +164,15 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
         })
       } else {
         await createBlock.mutateAsync({
-          title: newBlockTitle,
-          timezone: newBlockTimezone || 'Africa/Lagos',
-          weekly_availability: newBlockAvailabilities,
-          is_default: setAsDefault,
+          title: formState.title,
+          timezone: formState.timezone || 'Africa/Lagos',
+          weekly_availability: formState.availabilities,
+          is_default: formState.isDefault,
         })
 
         toast({
           title: 'Availability block created',
-          description: `${newBlockTitle} has been created successfully.`,
+          description: `${formState.title} has been created successfully.`,
           status: 'success',
           duration: 3000,
           position: 'top',
@@ -457,19 +229,6 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     setShowDeleteConfirmation(false)
   }
 
-  const onNewBlockAvailabilityChange = (
-    day: number,
-    ranges: TimeRange[] | null
-  ) => {
-    const newAvailabilities = [...newBlockAvailabilities]
-    newAvailabilities[day] = { weekday: day, ranges: ranges ?? [] }
-    setNewBlockAvailabilities(newAvailabilities)
-  }
-
-  const getCurrentEditingBlock = () => {
-    return availabilityBlocks?.find(block => block.id === editingBlockId)
-  }
-
   if (isLoading) {
     return (
       <Flex justify="center" align="center" h="100vh">
@@ -480,7 +239,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
   return (
     <VStack alignItems="start" flex={1} mb={8} spacing={6}>
-      <Heading fontSize="2xl" color="white">
+      <Heading fontSize="2xl" color="neutral.0">
         My Availability
       </Heading>
 
@@ -490,7 +249,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
         overflowY="auto"
         padding={{ base: 4, md: 6, lg: 8 }}
         borderRadius={12}
-        background="#141A1F"
+        background="neutral.900"
         position="relative"
         sx={{
           scrollbarGutter: 'stable both-edges',
@@ -507,10 +266,10 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
             transition: 'background 0.2s ease',
           },
           '&:hover::-webkit-scrollbar-thumb': {
-            background: '#323F4B',
+            background: 'neutral.800',
           },
           '&::-webkit-scrollbar-thumb:hover': {
-            background: '#4A5568',
+            background: 'neutral.600',
           },
           '&::-webkit-scrollbar-corner': {
             background: 'transparent',
@@ -541,27 +300,27 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
           gap={{ base: 4, md: 0 }}
         >
           <Box width={{ base: '100%', md: 533 }}>
-            <Heading fontSize={{ base: 18, md: 22 }} color="white" mb={2}>
+            <Heading fontSize={{ base: 18, md: 22 }} color="neutral.0" mb={2}>
               Availability blocks
             </Heading>
-            <Text color="#FFFFFF" fontSize={{ base: 14, md: 16 }}>
+            <Text color="neutral.0" fontSize={{ base: 14, md: 16 }}>
               Define when you&apos;re free to meet. Different{' '}
-              <Text as="span" color="#F9B19A" textDecoration="underline">
+              <Text as="span" color="primary.200" textDecoration="underline">
                 groups
               </Text>{' '}
               and{' '}
-              <Text as="span" color="#F9B19A" textDecoration="underline">
+              <Text as="span" color="primary.200" textDecoration="underline">
                 session types
               </Text>{' '}
               can use different availability blocks.
             </Text>
           </Box>
           <Button
-            leftIcon={<AddIcon color="#2D3748" />}
+            leftIcon={<AddIcon color="neutral.800" />}
             colorScheme="orange"
-            bg="#F9B19A"
-            color="#191D27"
-            _hover={{ bg: '#F9B19A' }}
+            bg="primary.200"
+            color="neutral.800"
+            _hover={{ bg: 'primary.200' }}
             onClick={handleCreateBlock}
             fontSize="sm"
             px={6}
@@ -572,462 +331,46 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
         <Flex flexDirection="column" gap={6} flexWrap="wrap" mt={7}>
           {availabilityBlocks?.length === 0 ? (
-            <Box
-              bg="#141A1F"
-              border="1px solid"
-              borderColor="#7B8794"
-              borderRadius={12}
-              p={{ base: 6, md: 8 }}
-              width="100%"
-              textAlign="center"
-            >
-              <VStack spacing={4}>
-                <Box as="span" fontSize={{ base: 40, md: 48 }} color="#F9B19A">
-                  <AiFillClockCircle />
-                </Box>
-                <VStack spacing={2}>
-                  <Heading
-                    fontSize={{ base: 20, md: 24 }}
-                    color="white"
-                    fontWeight={500}
-                  >
-                    No availability blocks yet
-                  </Heading>
-                  <Text
-                    color="#9AA5B1"
-                    fontSize={{ base: 14, md: 16 }}
-                    maxW={{ base: '100%', md: '400px' }}
-                  >
-                    Create your first availability block to define when
-                    you&apos;re available for meetings.
-                  </Text>
-                </VStack>
-                <Button
-                  leftIcon={<AddIcon color="#2D3748" />}
-                  colorScheme="orange"
-                  bg="#F9B19A"
-                  color="#191D27"
-                  _hover={{ bg: '#F9B19A' }}
-                  onClick={handleCreateBlock}
-                  fontSize="sm"
-                  px={6}
-                  mt={2}
-                >
-                  Create first availability block
-                </Button>
-              </VStack>
-            </Box>
+            <AvailabilityEmptyState onCreateBlock={handleCreateBlock} />
           ) : (
             availabilityBlocks?.map(block => (
-              <Box
+              <AvailabilityBlockCard
                 key={block.id}
-                bg="#141A1F"
-                border="1px solid"
-                borderColor="#7B8794"
-                borderRadius={12}
-                p={{ base: 4, md: 6 }}
-                width="100%"
-                position="relative"
-              >
-                <Flex
-                  justify="space-between"
-                  align="flex-start"
-                  mb={4}
-                  flexDirection={{ base: 'column', md: 'row' }}
-                  gap={{ base: 4, md: 0 }}
-                >
-                  <Flex
-                    align="flex-start"
-                    justify="space-between"
-                    w="100%"
-                    flexDirection={{ base: 'column', md: 'row' }}
-                    gap={{ base: 4, md: 0 }}
-                  >
-                    <HStack spacing={5}>
-                      <Heading fontSize={20} fontWeight={500} color="white">
-                        {block.title}
-                      </Heading>
-                      {block.isDefault && (
-                        <Badge
-                          background="#00CE5D"
-                          borderRadius={8}
-                          color="#FFFFFF"
-                          fontSize={12.8}
-                          textTransform="none"
-                          fontWeight={500}
-                          px={4}
-                          py={1}
-                        >
-                          Default
-                        </Badge>
-                      )}
-                    </HStack>
-                    <HStack color="gray.400" fontSize="sm">
-                      <HStack
-                        spacing={1}
-                        background="#323F4B"
-                        borderRadius={8}
-                        fontSize={12.8}
-                        px={3}
-                        py={1}
-                      >
-                        <Box as="span" fontSize={16}>
-                          <AiFillClockCircle color="#FFFFFF" />
-                        </Box>
-                        <Text color="#FFFFFF">
-                          {getHoursPerWeek(block.availabilities)}
-                        </Text>
-                      </HStack>
-                    </HStack>
-                  </Flex>
-                </Flex>
-
-                <VStack align="start" spacing={2} mb={4}>
-                  <Flex
-                    direction="column"
-                    gap={3}
-                    borderBottom="1px solid"
-                    borderColor="#7B8794"
-                    pb={3}
-                    width="100%"
-                  >
-                    {getFormattedSchedule(block.availabilities).map(
-                      (line, index) => (
-                        <Text
-                          key={index}
-                          color="#9AA5B1"
-                          fontWeight={500}
-                          fontSize={16}
-                        >
-                          {line}
-                        </Text>
-                      )
-                    )}
-                  </Flex>
-
-                  <Text color="#9AA5B1" fontWeight={500} fontSize={16}>
-                    Timezone: {block.timezone}
-                  </Text>
-                </VStack>
-
-                <Flex
-                  justify="space-between"
-                  align="center"
-                  mt={6}
-                  flexDirection={{ base: 'column', md: 'row' }}
-                  gap={{ base: 4, md: 0 }}
-                >
-                  <Button
-                    bg="#F9B19A"
-                    color="#323F4B"
-                    _hover={{ bg: '#F9B19A' }}
-                    fontSize={15}
-                    fontWeight={700}
-                    width={{ base: '100%', md: '185px' }}
-                    height="38px"
-                    borderRadius={8}
-                    onClick={() => handleEditBlock(block)}
-                  >
-                    Manage availability
-                  </Button>
-                  <Button
-                    bg="transparent"
-                    color="#F9B19A"
-                    _hover={{ bg: 'transparent' }}
-                    fontSize={15}
-                    fontWeight={700}
-                    width={{ base: '100%', md: '160px' }}
-                    height="38px"
-                    border="1px solid"
-                    borderColor="#F9B19A"
-                    borderRadius={8}
-                    onClick={() => handleDuplicateBlock(block)}
-                  >
-                    Duplicate
-                  </Button>
-                </Flex>
-              </Box>
+                block={block}
+                onEdit={handleEditBlock}
+                onDuplicate={handleDuplicateBlock}
+              />
             ))
           )}
         </Flex>
       </Box>
 
-      {/* Modal for creating/editing availability block */}
-      <Modal
+      <AvailabilityModal
         isOpen={isOpen}
         onClose={handleClose}
-        size={{ base: 'full', md: 'xl' }}
-        isCentered
-      >
-        <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
-        <ModalContent
-          bg="#141A1F"
-          border="1px solid"
-          borderRadius={{ base: 0, md: 12 }}
-          borderColor="#323F4B"
-          minHeight={{ base: '100%', md: '21rem' }}
-          maxHeight={{ base: '100%', md: '38.75rem' }}
-          overflowY="hidden"
-          margin={{ base: 0, md: 4 }}
-          width={{ base: '100%', md: 'calc(100% - 32px)' }}
-        >
-          <Box
-            overflowY="auto"
-            sx={{
-              scrollbarGutter: 'stable both-edges',
-              '&::-webkit-scrollbar': {
-                width: '6px',
-                background: 'transparent',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: 'transparent',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: 'transparent',
-                borderRadius: '3px',
-                transition: 'background 0.2s ease',
-              },
-              '&:hover::-webkit-scrollbar-thumb': {
-                background: '#323F4B',
-              },
-              '&::-webkit-scrollbar-thumb:hover': {
-                background: '#4A5568',
-              },
-              '&::-webkit-scrollbar-corner': {
-                background: 'transparent',
-              },
-            }}
-          >
-            {!showDeleteConfirmation ? (
-              <>
-                <ModalHeader color="white" pb={2}>
-                  <Flex justify="space-between" align="center">
-                    <Flex alignItems="flex-end" gap={2}>
-                      <Text color="#FFFFFF" fontWeight={700} fontSize={22}>
-                        {isEditing
-                          ? 'Edit'
-                          : duplicatingBlockId
-                          ? 'Duplicate'
-                          : 'New'}{' '}
-                        Availability Block
-                      </Text>
-                    </Flex>
-                    <Button
-                      colorScheme="orange"
-                      bg="#F9B19A"
-                      color="#191D27"
-                      _hover={{ bg: '#F9B19A' }}
-                      size="sm"
-                      onClick={handleSaveNewBlock}
-                      width={{ base: '60px', md: '70px' }}
-                      height={{ base: '36px', md: '40px' }}
-                      borderRadius={8}
-                      isLoading={
-                        createBlock.isLoading ||
-                        updateBlock.isLoading ||
-                        duplicateBlock.isLoading
-                      }
-                      isDisabled={
-                        createBlock.isLoading ||
-                        updateBlock.isLoading ||
-                        duplicateBlock.isLoading
-                      }
-                    >
-                      Save
-                    </Button>
-                  </Flex>
-                  <HStack spacing={4} mt={5}>
-                    <Switch
-                      size="lg"
-                      colorScheme="primary"
-                      isChecked={setAsDefault}
-                      _active={{ border: 'none' }}
-                      onChange={e => setSetAsDefault(e.target.checked)}
-                    />
-                    <Text color="white" fontSize={16} fontWeight={700}>
-                      Set as default
-                    </Text>
-                  </HStack>
-                </ModalHeader>
-
-                <ModalBody pb={6}>
-                  <VStack spacing={6} align="stretch">
-                    <FormControl>
-                      <FormLabel
-                        color="white"
-                        fontSize={15}
-                        fontWeight={500}
-                        mb={2}
-                      >
-                        Title
-                      </FormLabel>
-                      <Input
-                        placeholder="Enter availability block title"
-                        value={newBlockTitle}
-                        onChange={e => setNewBlockTitle(e.target.value)}
-                        bg="#141A1F"
-                        border="1px solid"
-                        borderColor="#323F4B"
-                        color="white"
-                        _placeholder={{ color: 'gray.400' }}
-                        _focus={{
-                          borderColor: '#FF8A65',
-                          boxShadow: '0 0 0 1px #FF8A65',
-                        }}
-                      />
-                    </FormControl>
-
-                    <FormControl>
-                      <FormLabel
-                        color="white"
-                        fontSize={15}
-                        fontWeight={500}
-                        mb={2}
-                      >
-                        Timezone
-                      </FormLabel>
-                      <TimezoneSelector
-                        value={newBlockTimezone}
-                        onChange={setNewBlockTimezone}
-                      />
-                    </FormControl>
-
-                    <Box>
-                      {newBlockAvailabilities.map((availability, index) => (
-                        <WeekdayConfig
-                          key={`${
-                            isEditing ? editingBlockId : 'new-block'
-                          }-${index}`}
-                          dayAvailability={availability}
-                          onChange={onNewBlockAvailabilityChange}
-                        />
-                      ))}
-                    </Box>
-
-                    <Flex justify="space-between" align="center" pt={4} gap={4}>
-                      <Button
-                        bg="transparent"
-                        color="#F9B19A"
-                        _hover={{ bg: 'transparent' }}
-                        fontSize={16}
-                        fontWeight={700}
-                        width={{ base: '100%', md: '100px' }}
-                        height="48px"
-                        border="1px solid"
-                        borderColor="#F9B19A"
-                        borderRadius={8}
-                        onClick={handleClose}
-                      >
-                        Close
-                      </Button>
-                      {isEditing && (
-                        <Button
-                          colorScheme="orange"
-                          bg="#EB001B"
-                          color="#FFFFFF"
-                          _hover={{ bg: '#EB001B' }}
-                          size="sm"
-                          onClick={handleShowDeleteConfirmation}
-                          width="253px"
-                          height="48px"
-                          borderRadius={8}
-                          fontSize={16}
-                          fontWeight={700}
-                        >
-                          Delete this availability block
-                        </Button>
-                      )}
-                    </Flex>
-                  </VStack>
-                </ModalBody>
-              </>
-            ) : (
-              // Delete Confirmation Screen
-              <Box p={6}>
-                <VStack spacing={6} align="stretch">
-                  <Box>
-                    <Text color="white" fontSize={20} fontWeight={500} mb={4}>
-                      You are about to delete the{' '}
-                      <Text
-                        as="span"
-                        color="#F9B19A"
-                        textDecoration="underline"
-                      >
-                        {getCurrentEditingBlock()?.title || 'working hours'}
-                      </Text>{' '}
-                      availability block
-                    </Text>
-
-                    <VStack align="start" spacing={2} mb={6}>
-                      {getCurrentEditingBlock() &&
-                        getFormattedSchedule(
-                          getCurrentEditingBlock()!.availabilities
-                        ).map((line, index) => (
-                          <Text
-                            key={index}
-                            color="#9AA5B1"
-                            fontSize={16}
-                            fontWeight={500}
-                          >
-                            {line}
-                          </Text>
-                        ))}
-
-                      <Box
-                        borderTop="1px solid"
-                        borderColor="#7B8794"
-                        width="100%"
-                        my={3}
-                      />
-
-                      <Text color="#9AA5B1" fontSize={16} fontWeight={500}>
-                        Timezone: {getCurrentEditingBlock()?.timezone}
-                      </Text>
-                    </VStack>
-
-                    <Text color="#FF0000" fontSize={16} fontWeight={500} mb={6}>
-                      Deleting this availability block will affect your
-                      availability in those groups and session types you have.
-                    </Text>
-                  </Box>
-
-                  <Flex justify="space-between" align="center">
-                    <Button
-                      bg="#F9B19A"
-                      color="#191D27"
-                      _hover={{ bg: '#F9B19A' }}
-                      onClick={handleCancelDelete}
-                      width="157px"
-                      height="48px"
-                      borderRadius={8}
-                      fontSize={16}
-                      fontWeight={700}
-                    >
-                      No, don&apos;t delete
-                    </Button>
-                    <Button
-                      bg="transparent"
-                      color="#FF0000"
-                      border="1px solid"
-                      borderColor="#FF0000"
-                      _hover={{ bg: 'transparent' }}
-                      onClick={handleDeleteBlock}
-                      width="84px"
-                      height="48px"
-                      borderRadius={8}
-                      fontSize={16}
-                      fontWeight={700}
-                      isLoading={deleteBlock.isLoading}
-                    >
-                      Delete
-                    </Button>
-                  </Flex>
-                </VStack>
-              </Box>
-            )}
-          </Box>
-        </ModalContent>
-      </Modal>
+        isEditing={isEditing}
+        editingBlockId={editingBlockId}
+        duplicatingBlockId={duplicatingBlockId}
+        showDeleteConfirmation={showDeleteConfirmation}
+        formState={formState}
+        onTitleChange={setTitle}
+        onTimezoneChange={setTimezone}
+        onAvailabilityChange={updateAvailability}
+        onIsDefaultChange={setIsDefault}
+        onSave={handleSaveNewBlock}
+        onDelete={handleDeleteBlock}
+        onCancelDelete={handleCancelDelete}
+        onShowDeleteConfirmation={handleShowDeleteConfirmation}
+        isLoading={
+          createBlock.isLoading ||
+          updateBlock.isLoading ||
+          duplicateBlock.isLoading ||
+          deleteBlock.isLoading
+        }
+        currentEditingBlock={availabilityBlocks?.find(
+          block => block.id === editingBlockId
+        )}
+      />
     </VStack>
   )
 }
