@@ -42,7 +42,7 @@ export const fullWidthStyle:
     borderRadius: 'md',
     maxW: '100%',
     display: 'block',
-    w: '100%',
+    width: '100% !important',
   }),
   placeholder: provided => ({
     ...provided,
