@@ -1,6 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
-import { PaymentChannel, PlanType } from '@utils/constants/meeting-types'
 import CryptoJS from 'crypto-js'
 import { addMinutes, addMonths, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
@@ -3422,10 +3421,10 @@ const getMeetingTypes = async (
     .select(
       `
     *,
-    availability: availabilities(*),
-    plan: meeting_type_plan(*)
-    connected_calendars: meeting_type_connected_calendars(
-      calendar_id: calendars(id, name, type)
+    availabilities: meeting_type_availabilities(availabilities(*)),
+    plan: meeting_type_plan(*),
+    connected_calendars: meeting_type_calendars(
+       connected_calendars(id, email, provider)
     )
     `
     )
@@ -3436,7 +3435,20 @@ const getMeetingTypes = async (
   if (error) {
     throw new Error(error.message)
   }
-  return data as MeetingType[]
+  const transformedData = data?.map(meetingType => ({
+    ...meetingType,
+    calendars: meetingType?.connected_calendars?.map(
+      (calendar: { connected_calendars: MeetingType['calendars'][0] }) =>
+        calendar.connected_calendars
+    ),
+    availabilities: meetingType?.availabilities?.map(
+      (availability: { availabilities: MeetingType['availabilities'][0] }) =>
+        availability.availabilities
+    ),
+    plan: meetingType?.plan?.[0],
+  }))
+
+  return transformedData as MeetingType[]
 }
 const createMeetingType = async (
   account_address: string,
@@ -3454,7 +3466,6 @@ const createMeetingType = async (
     duration_minutes: meetingType.duration_minutes,
     title: meetingType.title,
     slug: meetingType.slug,
-    availability_id: meetingType.availability_id || availability?.id,
     description: meetingType.description,
   }
   const { data, error } = await db.supabase
@@ -3464,9 +3475,26 @@ const createMeetingType = async (
   if (error) {
     throw new Error(error.message)
   }
+  if (
+    meetingType?.availability_ids &&
+    meetingType?.availability_ids.length > 0
+  ) {
+    const { error: meetingTypeAvailaibilityError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .insert(
+        meetingType?.availability_ids?.map(availability_id => ({
+          meeting_type_id,
+          availability_id:
+            availability_id === 'default' ? availability?.id : availability_id,
+        }))
+      )
+    if (meetingTypeAvailaibilityError) {
+      throw new Error(meetingTypeAvailaibilityError.message)
+    }
+  }
   if (meetingType?.calendars && meetingType?.calendars?.length > 0) {
     const { error: calendarError } = await db.supabase
-      .from('meeting_type_connected_calendars')
+      .from('meeting_type_calendars')
       .insert(
         meetingType?.calendars?.map(calendar => ({
           meeting_type_id,
@@ -3488,6 +3516,7 @@ const createMeetingType = async (
           no_of_slot: meetingType?.plan.no_of_slot,
           payment_channel: meetingType?.plan.payment_channel,
           payment_address: meetingType?.plan.payment_address,
+          default_chain_id: meetingType?.plan.crypto_network,
         },
       ])
     if (planError) {
@@ -3520,14 +3549,12 @@ const updateMeetingType = async (
     .select()
     .eq('account_owner_address', account_address)
   const availability = availabilities?.[0]
-  const payload: BaseMeetingType = {
+  const payload: Partial<BaseMeetingType> = {
     account_owner_address: account_address,
-    type: meetingType.type,
     min_notice_minutes: meetingType.min_notice_minutes,
     duration_minutes: meetingType.duration_minutes,
     title: meetingType.title,
     slug: meetingType.slug,
-    availability_id: meetingType.availability_id || availability?.id,
     description: meetingType.description,
   }
   const { data, error } = await db.supabase
@@ -3538,16 +3565,40 @@ const updateMeetingType = async (
   if (error) {
     throw new Error(error.message)
   }
+  if (
+    meetingType?.availability_ids &&
+    meetingType?.availability_ids.length > 0
+  ) {
+    const { error: meetingTypeAvailabilityDeleteError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .delete()
+      .eq('meeting_type_id', meeting_type_id)
+    if (meetingTypeAvailabilityDeleteError) {
+      throw new Error(meetingTypeAvailabilityDeleteError.message)
+    }
+    const { error: meetingTypeAvailabilityError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .insert(
+        meetingType?.availability_ids?.map(availability_id => ({
+          meeting_type_id,
+          availability_id:
+            availability_id === 'default' ? availability?.id : availability_id,
+        }))
+      )
+    if (meetingTypeAvailabilityError) {
+      throw new Error(meetingTypeAvailabilityError.message)
+    }
+  }
   if (meetingType?.calendars && meetingType?.calendars?.length > 0) {
     const { error: calendarError } = await db.supabase
-      .from('meeting_type_connected_calendars')
+      .from('meeting_type_calendars')
       .delete()
       .eq('meeting_type_id', meeting_type_id)
     if (calendarError) {
       throw new Error(calendarError.message)
     }
     const { error: insertCalendarError } = await db.supabase
-      .from('meeting_type_connected_calendars')
+      .from('meeting_type_calendars')
       .insert(
         meetingType?.calendars?.map(calendar => ({
           meeting_type_id,
@@ -3571,6 +3622,8 @@ const updateMeetingType = async (
           payment_address: meetingType?.plan.payment_address,
         },
       ])
+      .eq('meeting_type_id', meeting_type_id)
+
     if (insertPlanError) {
       throw new Error(insertPlanError.message)
     }
