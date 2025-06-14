@@ -11,17 +11,24 @@ interface AvailabilityBlock {
   availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
 }
 
-export const useAvailabilityBlocks = () => {
+export const useAvailabilityBlocks = (accountAddress?: string) => {
   const queryClient = useQueryClient()
 
-  const { data: blocks, isLoading } = useQuery({
-    queryKey: ['availabilityBlocks'],
+  const {
+    data: blocks,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: ['availabilityBlocks', accountAddress],
     queryFn: async () => {
       const response = await internalFetch<AvailabilityBlock[]>(
         '/availabilities'
       )
       return response
     },
+    refetchOnMount: true,
+    staleTime: 0,
+    enabled: !!accountAddress, // Only run the query if we have an account address
   })
 
   const createBlock = useMutation({
@@ -39,7 +46,9 @@ export const useAvailabilityBlocks = () => {
       return response
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['availabilityBlocks'] })
+      queryClient.invalidateQueries({
+        queryKey: ['availabilityBlocks', accountAddress],
+      })
     },
   })
 
@@ -59,7 +68,9 @@ export const useAvailabilityBlocks = () => {
       return response
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['availabilityBlocks'] })
+      queryClient.invalidateQueries({
+        queryKey: ['availabilityBlocks', accountAddress],
+      })
     },
   })
 
@@ -68,7 +79,9 @@ export const useAvailabilityBlocks = () => {
       await internalFetch(`/availabilities/${id}`, 'DELETE')
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['availabilityBlocks'] })
+      queryClient.invalidateQueries({
+        queryKey: ['availabilityBlocks', accountAddress],
+      })
     },
   })
 
@@ -98,13 +111,16 @@ export const useAvailabilityBlocks = () => {
       return response.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['availabilityBlocks'] })
+      queryClient.invalidateQueries({
+        queryKey: ['availabilityBlocks', accountAddress],
+      })
     },
   })
 
   return {
     blocks,
     isLoading,
+    isFetching,
     createBlock,
     updateBlock,
     deleteBlock,
