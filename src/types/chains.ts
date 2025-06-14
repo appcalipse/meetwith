@@ -1,4 +1,6 @@
 import {
+  arbitrum,
+  celo,
   Chain,
   defineChain,
   mainnet,
@@ -32,6 +34,8 @@ export enum SupportedChain {
   POLYGON_AMOY = 'POLYGON_AMOI',
   SEPOLIA = 'SEPOLIA',
   METIS_ANDROMEDA = 'METIS_ANDROMEDA',
+  ARBITRUM = 'ARBITRUM',
+  CELO = 'CELO',
   CUSTOM = 'CUSTOM',
 }
 
@@ -41,6 +45,8 @@ export enum AcceptedToken {
   METIS = 'METIS',
   DAI = 'DAI',
   USDC = 'USDC',
+  EUR = 'EUR',
+  CELO = 'CELO',
 }
 
 export interface AcceptedTokenInfo {
@@ -194,6 +200,58 @@ export const supportedChains: ChainInfo[] = [
       {
         token: AcceptedToken.USDC,
         contractAddress: '0xea32a96608495e54156ae48931a7c20f0dcc1a21',
+      },
+    ],
+  },
+  {
+    chain: SupportedChain.CELO,
+    thirdwebChain: celo,
+    id: 42220,
+    name: 'Celo',
+    fullName: 'Celo Mainnet',
+    rpcUrl: 'https://forno.celo.org',
+    testnet: false,
+    nativeTokenSymbol: 'CELO',
+    domainContractAddess: '0x000000000000000000000000000000000000ce10',
+    registarContractAddress: '', // no applicable registar contract on Celo
+    blockExplorerUrl: 'https://explorer.celo.org',
+    image: '/assets/chains/Celo.svg',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.CELO,
+        contractAddress: '0x471EcE3750Da237f93B8E339c536989b8978a438',
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0x765DE816845861e75A25fCA122bb689B8B1282a', // cUSD
+      },
+      {
+        token: AcceptedToken.EUR, // cEUR
+        contractAddress: '0xD8763CBa276a3738E6DE85b4b3f5FDEd6D6cA73',
+      },
+    ],
+  },
+  {
+    chain: SupportedChain.ARBITRUM,
+    thirdwebChain: arbitrum,
+    id: 42161,
+    name: 'Arbitrum',
+    fullName: 'Arbitrum One Mainnet',
+    rpcUrl: 'https://arb1.arbitrum.io/rpc',
+    testnet: false,
+    nativeTokenSymbol: 'ETH',
+    domainContractAddess: '0x0000000000000000000000000000000000000000', // N/A
+    registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
+    blockExplorerUrl: 'https://arbiscan.io',
+    image: '/assets/chains/Arbitrum.svg',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.ETHER,
+        contractAddress: zeroAddress,
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
       },
     ],
   },
