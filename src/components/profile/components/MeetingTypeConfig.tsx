@@ -12,6 +12,7 @@ import {
   Textarea,
   VStack,
 } from '@chakra-ui/react'
+import { SessionType } from '@utils/constants/meeting-types'
 import {
   forwardRef,
   ReactNode,
@@ -60,7 +61,7 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
     props.selectedType?.description || ''
   )
   const [duration, setDuration] = useState<number>(
-    props.selectedType?.duration || 30
+    props.selectedType?.duration_minutes || 30
   )
   const [accountGates, setAccountGates] = useState<GateConditionObject[]>([])
   const [selectedGate, setSelectedGate] = useState<
@@ -69,13 +70,13 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
   const [meetingGate, setMeetingGate] = useState<string>('')
   const [loadingGates, setLoadingGates] = useState<boolean>(true)
   const [customLink, setCustomLink] = useState<string>(
-    props.selectedType?.customLink || ''
+    props.selectedType?.custom_link || ''
   )
   const [fixedLink, setFixedLink] = useState<boolean>(
-    props.selectedType?.fixedLink || false
+    props.selectedType?.fixed_link || false
   )
   const [isPrivate, setPrivate] = useState<boolean>(
-    props.selectedType?.private || false
+    props.selectedType?.type === SessionType.FREE || false
   )
   const selectRef = useRef<HTMLSelectElement>(null)
 
@@ -100,7 +101,7 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
   }
 
   const [minAdvanceTime, setMinAdvanceTime] = useState(
-    convertMinutes(props.selectedType?.minAdvanceTime || 60 * 24)
+    convertMinutes(props.selectedType?.min_notice_minutes || 60 * 24)
   )
 
   const fetchAccountGates = async () => {
@@ -142,9 +143,9 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
       id: props.selectedType?.id || '',
       title,
       description,
-      url: getSlugFromText(title as string),
-      duration,
-      minAdvanceTime:
+      slug: getSlugFromText(title as string),
+      duration_minutes: duration,
+      min_notice_minutes:
         minAdvanceTime.amount *
         (minAdvanceTime.type === 'minutes'
           ? 1
@@ -152,9 +153,8 @@ const MeetingTypeConfig: React.ForwardRefRenderFunction<HandleProps, IProps> = (
           ? 60
           : 60 * 24),
       scheduleGate: meetingGate,
-      private: isPrivate,
-      customLink,
-      fixedLink,
+      custom_link: customLink,
+      fixed_link: fixedLink,
     }
 
     const account = await saveMeetingType(meetingType)
