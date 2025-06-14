@@ -166,18 +166,19 @@ export interface CreateMeetingTypeRequest {
   title: string
   description?: string
   type: SessionType
-  duration_minutes?: number
-  min_notice_minutes?: number
+  duration_minutes: number
+  min_notice_minutes: number
   scheduleGate?: string
   slug?: string
-  availability_id?: string
+  availability_ids?: string[]
   calendars?: number[]
   plan?: {
-    type: PlanType
-    price_per_slot: number
-    no_of_slot: number
-    payment_channel: PaymentChannel
-    payment_address: string
+    type?: PlanType
+    price_per_slot?: number
+    no_of_slot?: number
+    payment_channel?: PaymentChannel
+    payment_address?: string
+    crypto_network?: number
   }
 }
 
@@ -186,5 +187,5 @@ export interface UpdateMeetingTypeRequest extends CreateMeetingTypeRequest {
 }
 
 export interface DeleteMeetingTypeRequest {
-  id: string
+  typeId: string
 }
