@@ -52,6 +52,17 @@ export const colors = {
   yellow: {
     300: '#FFC700',
   },
+  red: {
+    500: '#FF0000',
+    600: '#EB001B',
+  },
+  orange: {
+    400: '#FF8A65',
+  },
+  dark: {
+    900: '#141A1F',
+    800: '#191D27',
+  },
 }
 
 const newTheme = {
