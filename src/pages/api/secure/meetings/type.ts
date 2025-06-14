@@ -53,7 +53,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const meetingTypePayload = req.body as DeleteMeetingTypeRequest
       const meetingType = await deleteMeetingType(
         account_id,
-        meetingTypePayload.id
+        meetingTypePayload.typeId
       )
       res.status(200).json(meetingType)
     }
