@@ -5,6 +5,8 @@ import {
 } from '@utils/constants/meeting-types'
 import { z } from 'zod'
 
+// Meeting Types
+
 export const createMeetingSchema = z.object({
   title: z.string().min(1, 'Title is required'), // Required string
   description: z
@@ -61,3 +63,95 @@ export const createMeetingSchema = z.object({
     })
     .optional(), // Plan object is optional
 })
+
+export type SchemaKeys = keyof z.infer<typeof createMeetingSchema>
+export type PlanKeys = NonNullable<z.infer<typeof createMeetingSchema>['plan']>
+
+export type ErrorState = {
+  [K in SchemaKeys]?: K extends 'plan'
+    ? Partial<Record<keyof PlanKeys, string>>
+    : string
+}
+export type PlanFieldKey = `plan.${keyof PlanKeys}`
+export type fieldKey = SchemaKeys | PlanFieldKey
+const isPlanFieldKey = (field: fieldKey): field is PlanFieldKey => {
+  return field.startsWith('plan.')
+}
+export type ErrorAction =
+  | { type: 'SET_ERROR'; field: fieldKey; message: string } // Set error for a specific field
+  | { type: 'CLEAR_ERROR'; field: fieldKey } // Clear error for a specific field
+  | { type: 'CLEAR_ALL' } // Clear all errors at once
+
+export const errorReducer = (
+  state: ErrorState,
+  action: ErrorAction
+): ErrorState => {
+  switch (action.type) {
+    case 'SET_ERROR':
+      if (isPlanFieldKey(action.field)) {
+        const [field, subField] = action.field.split('.') as [
+          SchemaKeys,
+          string
+        ]
+        const existingField = state[field] as Record<string, string> | undefined
+        return {
+          ...state,
+          [field]: {
+            ...(existingField || {}),
+            [subField]: action.message,
+          },
+        }
+      }
+      return {
+        ...state,
+        [action.field]: action.message,
+      }
+    case 'CLEAR_ERROR':
+      if (isPlanFieldKey(action.field)) {
+        const [localField, subField] = action.field.split('.') as [
+          SchemaKeys,
+          string
+        ]
+        const existingField = state[localField] as
+          | Record<string, string>
+          | undefined
+        return {
+          ...state,
+          [localField]: {
+            ...(existingField || {}),
+            [subField]: undefined,
+          },
+        }
+      } else {
+        const { [action.field]: _, ...rest } = state // Clear error for a specific field
+        return rest
+      }
+    case 'CLEAR_ALL':
+      return {} // Clear all errors
+    default:
+      return state
+  }
+}
+export const validateField = (field: fieldKey, value: unknown) => {
+  try {
+    if (isPlanFieldKey(field)) {
+      const [_, subField] = field.split('.') as ['plan', keyof PlanKeys]
+
+      const planSchema = createMeetingSchema.shape.plan
+        .unwrap()
+        .pick({ [subField]: true } as { [K in keyof PlanKeys]?: true })
+
+      planSchema.parse({ [subField]: value })
+    } else {
+      createMeetingSchema
+        .pick({ [field]: true } as Partial<Record<SchemaKeys, true>>)
+        .parse({ [field]: value })
+    }
+    return { isValid: true, error: null }
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return { isValid: false, error: e.errors[0].message }
+    }
+    return { isValid: false, error: 'Validation failed' }
+  }
+}
