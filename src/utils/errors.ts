@@ -302,3 +302,12 @@ export class MeetingDetailsModificationDenied extends PermissionDenied {
     this.name = 'MeetingDetailsModificationDenied'
   }
 }
+
+export class LastMeetingTypeError extends Error {
+  constructor() {
+    super(
+      `You cannot delete your last meeting type, please create a new one first`
+    )
+    this.name = 'LastMeetingTypeError'
+  }
+}
