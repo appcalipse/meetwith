@@ -3,22 +3,17 @@ import {
   DeleteMeetingTypeRequest,
   UpdateMeetingTypeRequest,
 } from '@meta/Requests'
+import { LastMeetingTypeError } from '@utils/errors'
 import { extractQuery } from '@utils/generic_utils'
 import { NextApiRequest, NextApiResponse } from 'next'
-import { v4 } from 'uuid'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { MeetingType } from '@/types/Account'
 import {
   createMeetingType,
   deleteMeetingType,
-  getAccountFromDB,
   getMeetingTypes,
-  updateAccountPreferences,
   updateMeetingType,
-  workMeetingTypeGates,
 } from '@/utils/database'
-import { isProAccount } from '@/utils/subscription_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -51,18 +46,21 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       res.status(200).json(meetingType)
     } else if (req.method === 'DELETE') {
       const meetingTypePayload = req.body as DeleteMeetingTypeRequest
-      const meetingType = await deleteMeetingType(
-        account_id,
-        meetingTypePayload.typeId
-      )
-      res.status(200).json(meetingType)
+      await deleteMeetingType(account_id, meetingTypePayload.typeId)
+      res.status(200).json({
+        success: true,
+      })
     }
 
     return res.status(404).send('Not found')
   } catch (e) {
-    if (e instanceof Error) {
+    if (e instanceof LastMeetingTypeError) {
+      return res.status(409).send(e.message)
+    } else if (e instanceof Error) {
       console.error('Error in meetings/type API:', e.message)
-      return res.status(500).send(e.message)
+      return res
+        .status(500)
+        .send('An error occurred while processing your request.')
     }
   }
 }
