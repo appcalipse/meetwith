@@ -32,6 +32,10 @@ export interface Account {
   isCalendarConnected?: boolean
 }
 
+export interface PublicAccount extends Account {
+  meetingTypes?: MeetingType[]
+}
+
 export interface SimpleAccountInfo {
   address: string
   internal_pub_key: string
@@ -53,7 +57,7 @@ export interface MeetingType extends BaseMeetingType {
   scheduleGate?: string
   availabilities: Array<Availability>
   plan?: MeetingTypePlan
-  calendars: Array<
+  calendars?: Array<
     Omit<
       ConnectedCalendarCore,
       'calendars' | 'expectedPermissions' | 'grantedPermissions'
