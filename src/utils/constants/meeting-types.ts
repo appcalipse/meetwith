@@ -114,3 +114,9 @@ export enum PaymentStatus {
   FAILED = 'failed',
   CANCELLED = 'cancelled',
 }
+
+export enum PublicSchedulingSteps {
+  SELECT_TYPE = 'SELECT_TYPE',
+  PAY_FOR_SESSION = 'PAY_FOR_SESSION',
+  BOOK_SESSION = 'BOOK_SESSION',
+}
