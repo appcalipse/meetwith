@@ -103,7 +103,12 @@ export const formatDayGroup = (days: number[], timeRange: string): string => {
   if (days.length === 1) {
     return `${dayNames[days[0]]} : ${timeRange}`
   } else if (days.length === 2) {
-    return `${dayNames[days[0]]}, ${dayNames[days[1]]} : ${timeRange}`
+    // Check if consecutive
+    if (days[1] === days[0] + 1) {
+      return `${dayNames[days[0]]} - ${dayNames[days[1]]} : ${timeRange}`
+    } else {
+      return `${dayNames[days[0]]}, ${dayNames[days[1]]} : ${timeRange}`
+    }
   } else {
     // Check if consecutive
     let consecutive = true
@@ -115,7 +120,7 @@ export const formatDayGroup = (days: number[], timeRange: string): string => {
     }
 
     if (consecutive) {
-      return `${dayNames[days[0]]}, ${
+      return `${dayNames[days[0]]} - ${
         dayNames[days[days.length - 1]]
       } : ${timeRange}`
     } else {

@@ -14,7 +14,7 @@ import { FaPlusCircle, FaTrash } from 'react-icons/fa'
 
 import { TimeRange } from '@/types/Account'
 
-import { TimeSelector } from './time-selector'
+import { TimeSelector } from './TimeSelector'
 
 type DayAvailability = {
   weekday: number

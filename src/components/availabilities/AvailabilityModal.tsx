@@ -21,7 +21,7 @@ import { TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import { getFormattedSchedule } from '@/utils/availability.helper'
 
-import { WeekdayConfig } from './weekday-config'
+import { WeekdayConfig } from './WeekdayConfig'
 
 interface AvailabilityModalProps {
   isOpen: boolean
