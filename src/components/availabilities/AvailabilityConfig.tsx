@@ -21,9 +21,9 @@ import {
 } from '@/types/availability'
 import { validateAvailabilityBlock } from '@/utils/availability.helper'
 
-import { AvailabilityBlockCard } from './availability-block-card'
-import { AvailabilityEmptyState } from './availability-empty-state'
-import { AvailabilityModal } from './availability-modal'
+import { AvailabilityBlockCard } from './AvailabilityBlockCard'
+import { AvailabilityEmptyState } from './AvailabilityEmptyState'
+import { AvailabilityModal } from './AvailabilityModal'
 
 const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
@@ -245,8 +245,8 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
       <Box
         width={{ base: '100%', md: '100%', lg: 880 }}
-        maxHeight={{ base: '100%', md: '100%', lg: 860 }}
-        overflowY="auto"
+        // maxHeight={{ base: '100%', md: '100%', lg: 860 }}
+        // overflowY="auto"
         padding={{ base: 4, md: 6, lg: 8 }}
         borderRadius={12}
         background="neutral.900"
