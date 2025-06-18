@@ -67,25 +67,25 @@ export const createMeetingSchema = z.object({
 export type SchemaKeys = keyof z.infer<typeof createMeetingSchema>
 export type PlanKeys = NonNullable<z.infer<typeof createMeetingSchema>['plan']>
 
-export type ErrorState = {
-  [K in SchemaKeys]?: K extends 'plan'
-    ? Partial<Record<keyof PlanKeys, string>>
-    : string
+export type ErrorState<T extends string, J extends string, P> = {
+  [K in T]?: K extends J ? Partial<Record<keyof P, string>> : string
 }
 export type PlanFieldKey = `plan.${keyof PlanKeys}`
 export type fieldKey = SchemaKeys | PlanFieldKey
 const isPlanFieldKey = (field: fieldKey): field is PlanFieldKey => {
   return field.startsWith('plan.')
 }
-export type ErrorAction =
-  | { type: 'SET_ERROR'; field: fieldKey; message: string } // Set error for a specific field
-  | { type: 'CLEAR_ERROR'; field: fieldKey } // Clear error for a specific field
+export type ErrorAction<T> =
+  | { type: 'SET_ERROR'; field: T; message: string } // Set error for a specific field
+  | { type: 'CLEAR_ERROR'; field: T } // Clear error for a specific field
   | { type: 'CLEAR_ALL' } // Clear all errors at once
 
+// TODO: Make this generic so it can be used across all instances required without re-writing
+
 export const errorReducer = (
-  state: ErrorState,
-  action: ErrorAction
-): ErrorState => {
+  state: ErrorState<SchemaKeys, 'plan', PlanKeys>,
+  action: ErrorAction<fieldKey>
+): ErrorState<SchemaKeys, 'plan', PlanKeys> => {
   switch (action.type) {
     case 'SET_ERROR':
       if (isPlanFieldKey(action.field)) {
@@ -132,12 +132,16 @@ export const errorReducer = (
       return state
   }
 }
-export const validateField = (field: fieldKey, value: unknown) => {
+export const validateField = /*<T, J>*/ (
+  field: fieldKey,
+  value: unknown
+  // schema: z.Schema
+) => {
   try {
     if (isPlanFieldKey(field)) {
-      const [_, subField] = field.split('.') as ['plan', keyof PlanKeys]
+      const [topField, subField] = field.split('.') as ['plan', keyof PlanKeys]
 
-      const planSchema = createMeetingSchema.shape.plan
+      const planSchema = createMeetingSchema.shape[topField]
         .unwrap()
         .pick({ [subField]: true } as { [K in keyof PlanKeys]?: true })
 
@@ -153,5 +157,46 @@ export const validateField = (field: fieldKey, value: unknown) => {
       return { isValid: false, error: e.errors[0].message }
     }
     return { isValid: false, error: 'Validation failed' }
+  }
+}
+
+// Payment Info Schema
+export const paymentInfoSchema = z.object({
+  name: z.string(),
+  email: z.string().email('Invalid email address'),
+})
+export type PaymentInfo = z.infer<typeof paymentInfoSchema>
+
+export const validatePaymentInfo = (key: keyof PaymentInfo, data: unknown) => {
+  try {
+    paymentInfoSchema
+      .pick({ [key]: true } as Partial<Record<keyof PaymentInfo, true>>)
+      .parse({ [key]: data })
+    return { isValid: true, error: null }
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return { isValid: false, error: e.errors[0].message }
+    }
+    return { isValid: false, error: 'Validation failed' }
+  }
+}
+
+export const errorReducerSingle = (
+  state: ErrorState<keyof PaymentInfo, '', never>,
+  action: ErrorAction<keyof PaymentInfo>
+): ErrorState<keyof PaymentInfo, '', never> => {
+  switch (action.type) {
+    case 'SET_ERROR':
+      return {
+        ...state,
+        [action.field]: action.message,
+      }
+    case 'CLEAR_ERROR':
+      const { [action.field]: _, ...rest } = state // Clear error for a specific field
+      return rest
+    case 'CLEAR_ALL':
+      return {} // Clear all errors
+    default:
+      return state
   }
 }
