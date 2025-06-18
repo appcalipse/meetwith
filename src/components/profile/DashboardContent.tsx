@@ -54,7 +54,12 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         justifyContent="space-between"
       >
         <RedirectHandler />
-        <Box flex={{ base: '0', lg: '4' }} mr={{ base: 0, lg: 18 }}>
+        <Box
+          flex={{ base: '0', lg: '4' }}
+          mr={{ base: 0, lg: 18 }}
+          position="sticky"
+          top={40}
+        >
           <NavMenu currentSection={currentSection} />
         </Box>
         <Box
