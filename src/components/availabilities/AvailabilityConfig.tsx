@@ -4,22 +4,17 @@ import {
   Button,
   Flex,
   Heading,
-  Spinner,
   Text,
   useDisclosure,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useState } from 'react'
 
+import CustomLoading from '@/components/CustomLoading'
+import { useAvailabilityBlockHandlers } from '@/hooks/useAvailabilityBlockHandlers'
 import { useAvailabilityBlocks } from '@/hooks/useAvailabilityBlocks'
 import { useAvailabilityForm } from '@/hooks/useAvailabilityForm'
 import { Account } from '@/types/Account'
-import {
-  AvailabilityBlock,
-  UseAvailabilityBlocksResult,
-} from '@/types/availability'
-import { validateAvailabilityBlock } from '@/utils/availability.helper'
+import { UseAvailabilityBlocksResult } from '@/types/availability'
 
 import { AvailabilityBlockCard } from './AvailabilityBlockCard'
 import { AvailabilityEmptyState } from './AvailabilityEmptyState'
@@ -29,7 +24,6 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const toast = useToast()
 
   const {
     blocks: availabilityBlocks,
@@ -52,189 +46,36 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     setIsDefault,
   } = useAvailabilityForm(currentAccount)
 
-  const [isEditing, setIsEditing] = useState(false)
-  const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
-  const [duplicatingBlockId, setDuplicatingBlockId] = useState<string | null>(
-    null
-  )
+  const {
+    isEditing,
+    editingBlockId,
+    duplicatingBlockId,
+    showDeleteConfirmation,
+    handleCreateBlock,
+    handleEditBlock,
+    handleDuplicateBlock,
+    handleClose,
+    handleSaveNewBlock,
+    handleDeleteBlock,
+    handleShowDeleteConfirmation,
+    handleCancelDelete,
+  } = useAvailabilityBlockHandlers({
+    createBlock,
+    updateBlock,
+    deleteBlock,
+    duplicateBlock,
+    formState,
+    resetForm,
+    setTitle,
+    setTimezone,
+    updateAvailability,
+    setIsDefault,
+    onOpen,
+    onClose,
+  })
 
-  const handleCreateBlock = () => {
-    resetForm()
-    setIsEditing(false)
-    setEditingBlockId(null)
-    setDuplicatingBlockId(null)
-    setShowDeleteConfirmation(false)
-    onOpen()
-  }
-
-  const handleEditBlock = (block: AvailabilityBlock) => {
-    setTitle(block.title)
-    setTimezone(block.timezone)
-    block.availabilities.forEach(availability => {
-      updateAvailability(availability.weekday, availability.ranges)
-    })
-    setIsDefault(block.isDefault)
-    setIsEditing(true)
-    setEditingBlockId(block.id)
-    setShowDeleteConfirmation(false)
-    onOpen()
-  }
-
-  const handleDuplicateBlock = async (block: AvailabilityBlock) => {
-    setTitle(`${block.title} (Copy)`)
-    setTimezone(block.timezone)
-    block.availabilities.forEach(availability => {
-      updateAvailability(availability.weekday, availability.ranges)
-    })
-    setIsDefault(false)
-    setIsEditing(false)
-    setEditingBlockId(null)
-    setDuplicatingBlockId(block.id)
-    setShowDeleteConfirmation(false)
-    onOpen()
-  }
-
-  const handleClose = () => {
-    resetForm()
-    setIsEditing(false)
-    setEditingBlockId(null)
-    setDuplicatingBlockId(null)
-    setShowDeleteConfirmation(false)
-    onClose()
-  }
-
-  const handleSaveNewBlock = async () => {
-    const validation = validateAvailabilityBlock(
-      formState.title,
-      formState.availabilities
-    )
-
-    if (!validation.isValid) {
-      toast({
-        title: validation.error,
-        description:
-          validation.error === 'Title required'
-            ? 'Please enter a title for your availability block.'
-            : 'Please add at least one availability time slot.',
-        status: 'error',
-        duration: 3000,
-        position: 'top',
-        isClosable: true,
-      })
-      return
-    }
-
-    try {
-      if (isEditing && editingBlockId) {
-        await updateBlock.mutateAsync({
-          id: editingBlockId,
-          title: formState.title,
-          timezone: formState.timezone || 'Africa/Lagos',
-          weekly_availability: formState.availabilities,
-          is_default: formState.isDefault,
-        })
-
-        toast({
-          title: 'Availability block updated',
-          description: `${formState.title} has been updated successfully.`,
-          status: 'success',
-          duration: 3000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (duplicatingBlockId) {
-        const duplicatedBlock = await duplicateBlock.mutateAsync({
-          id: duplicatingBlockId,
-          modifiedData: {
-            title: formState.title,
-            timezone: formState.timezone || 'Africa/Lagos',
-            weekly_availability: formState.availabilities,
-            is_default: formState.isDefault,
-          },
-        })
-
-        toast({
-          title: 'Availability block duplicated',
-          description: `${duplicatedBlock.title} has been created successfully.`,
-          status: 'success',
-          duration: 3000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else {
-        await createBlock.mutateAsync({
-          title: formState.title,
-          timezone: formState.timezone || 'Africa/Lagos',
-          weekly_availability: formState.availabilities,
-          is_default: formState.isDefault,
-        })
-
-        toast({
-          title: 'Availability block created',
-          description: `${formState.title} has been created successfully.`,
-          status: 'success',
-          duration: 3000,
-          position: 'top',
-          isClosable: true,
-        })
-      }
-
-      handleClose()
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to save availability block. Please try again.',
-        status: 'error',
-        duration: 3000,
-        position: 'top',
-        isClosable: true,
-      })
-    }
-  }
-
-  const handleDeleteBlock = async () => {
-    if (editingBlockId) {
-      try {
-        await deleteBlock.mutateAsync(editingBlockId)
-        toast({
-          title: 'Availability block deleted',
-          description: 'The availability block has been deleted successfully.',
-          status: 'success',
-          duration: 3000,
-          position: 'top',
-          isClosable: true,
-        })
-        handleClose()
-      } catch (error: any) {
-        toast({
-          title: 'Error',
-          description:
-            error.message ||
-            'Failed to delete availability block. Please try again.',
-          status: 'error',
-          duration: 3000,
-          position: 'top',
-          isClosable: true,
-        })
-      }
-    }
-  }
-
-  const handleShowDeleteConfirmation = () => {
-    setShowDeleteConfirmation(true)
-  }
-
-  const handleCancelDelete = () => {
-    setShowDeleteConfirmation(false)
-  }
-
-  if (isLoading) {
-    return (
-      <Flex justify="center" align="center" h="100vh">
-        <Spinner size="xl" color="orange.500" />
-      </Flex>
-    )
+  if (isLoading || isFetching) {
+    return <CustomLoading text="Loading your availability blocks..." />
   }
 
   return (
@@ -245,53 +86,11 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
       <Box
         width={{ base: '100%', md: '100%', lg: 880 }}
-        // maxHeight={{ base: '100%', md: '100%', lg: 860 }}
-        // overflowY="auto"
         padding={{ base: 4, md: 6, lg: 8 }}
         borderRadius={12}
         background="neutral.900"
         position="relative"
-        sx={{
-          scrollbarGutter: 'stable both-edges',
-          '&::-webkit-scrollbar': {
-            width: '6px',
-            background: 'transparent',
-          },
-          '&::-webkit-scrollbar-track': {
-            background: 'transparent',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: 'transparent',
-            borderRadius: '3px',
-            transition: 'background 0.2s ease',
-          },
-          '&:hover::-webkit-scrollbar-thumb': {
-            background: 'neutral.800',
-          },
-          '&::-webkit-scrollbar-thumb:hover': {
-            background: 'neutral.600',
-          },
-          '&::-webkit-scrollbar-corner': {
-            background: 'transparent',
-          },
-        }}
       >
-        {isFetching && (
-          <Flex
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            justify="center"
-            align="center"
-            bg="rgba(20, 26, 31, 0.8)"
-            zIndex={1}
-            borderRadius={12}
-          >
-            <Spinner size="xl" color="orange.500" />
-          </Flex>
-        )}
         <Flex
           align="flex-start"
           justify="space-between"

@@ -89,6 +89,7 @@ import {
   AccountNotFoundError,
   AdminBelowOneError,
   AlreadyGroupMemberError,
+  AvailabilityBlockNotFoundError,
   ContactAlreadyExists,
   ContactInviteNotForAccount,
   ContactInviteNotFound,
@@ -96,10 +97,12 @@ import {
   CouponAlreadyUsed,
   CouponExpired,
   CouponNotValid,
+  DefaultAvailabilityBlockError,
   GateConditionNotValidError,
   GateInUseError,
   GroupCreationError,
   GroupNotExistsError,
+  InvalidAvailabilityBlockError,
   IsGroupAdminError,
   MeetingChangeConflictError,
   MeetingCreationError,
@@ -3480,7 +3483,12 @@ export const getAvailabilityBlock = async (
     .eq('account_owner_address', account_address)
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new AvailabilityBlockNotFoundError()
+    }
+    throw error
+  }
 
   // Check if this is the default block
   const { data: accountPrefs } = await db.supabase
@@ -3562,7 +3570,7 @@ export const deleteAvailabilityBlock = async (
     .single()
 
   if (accountPrefs?.availaibility_id === id) {
-    throw new Error('Cannot delete the default availability block')
+    throw new DefaultAvailabilityBlockError()
   }
 
   const { error } = await db.supabase
@@ -3571,7 +3579,12 @@ export const deleteAvailabilityBlock = async (
     .eq('id', id)
     .eq('account_owner_address', account_address)
 
-  if (error) throw error
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new AvailabilityBlockNotFoundError()
+    }
+    throw error
+  }
 }
 
 export const duplicateAvailabilityBlock = async (
@@ -3586,7 +3599,9 @@ export const duplicateAvailabilityBlock = async (
 ) => {
   // First get the block to duplicate
   const block = await getAvailabilityBlock(id, account_address)
-  if (!block) throw new Error('Availability block not found')
+  if (!block) {
+    throw new AvailabilityBlockNotFoundError()
+  }
 
   // Create a new block with the same data but a new ID, applying any modifications
   const { data: newBlock, error: blockError } = await db.supabase
@@ -3603,7 +3618,9 @@ export const duplicateAvailabilityBlock = async (
     .select()
     .single()
 
-  if (blockError) throw blockError
+  if (blockError) {
+    throw new InvalidAvailabilityBlockError('Failed to create duplicate block')
+  }
 
   // If this is being set as default, update account preferences with the new block ID
   if (modifiedData?.is_default) {
@@ -3616,14 +3633,8 @@ export const duplicateAvailabilityBlock = async (
 
     if (prefError) {
       console.error('Error updating account preferences:', prefError)
-      throw prefError
+      throw new InvalidAvailabilityBlockError('Failed to set as default block')
     }
-
-    await db.supabase
-      .from('account_preferences')
-      .select('*')
-      .eq('owner_account_address', account_address)
-      .single()
   }
 
   return newBlock

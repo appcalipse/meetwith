@@ -1,27 +1,23 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { TimeRange } from '@/types/Account'
-import { createAvailabilityBlock, getAccountFromDB } from '@/utils/database'
-import { UnauthorizedError } from '@/utils/errors'
-
-const supabase = createClient(
-  process.env.NEXT_SUPABASE_URL!,
-  process.env.NEXT_SUPABASE_KEY!
-)
-
-interface AvailabilityBlock {
-  id: string
-  title: string
-  timezone: string
-  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
-  is_default?: boolean
-}
+import { CreateAvailabilityBlockRequest } from '@/types/Requests'
+import {
+  createAvailabilityBlock,
+  getAvailabilityBlocks,
+} from '@/utils/database'
+import {
+  InvalidAvailabilityBlockError,
+  UnauthorizedError,
+} from '@/utils/errors'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!['GET', 'POST'].includes(req.method || '')) {
+    res.setHeader('Allow', ['GET', 'POST'])
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   try {
-    // Get the account from the session
     const account = req.session.account
     if (!account) {
       throw new UnauthorizedError()
@@ -30,56 +26,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const address = account.address
 
     switch (req.method) {
-      case 'GET':
-        const accountData = await getAccountFromDB(address, true)
-        // Get all availability blocks for this account
-        const { data: availabilityBlocks, error } = await supabase
-          .from('availabilities')
-          .select('*')
-          .eq('account_owner_address', address)
+      case 'GET': {
+        const blocks = await getAvailabilityBlocks(address)
+        const transformedBlocks = blocks.map(block => ({
+          ...block,
+          availabilities: block.weekly_availability,
+        }))
+        return res.status(200).json(transformedBlocks)
+      }
 
-        if (error) throw error
-
-        // Get account preferences to determine default block
-        const { data: accountPrefs } = await supabase
-          .from('account_preferences')
-          .select('availaibility_id')
-          .eq('owner_account_address', address)
-          .single()
-
-        // Transform the data into the format expected by the frontend
-        const blocks = (availabilityBlocks || []).map(
-          (block: AvailabilityBlock) => ({
-            id: block.id,
-            title: block.title,
-            timezone: block.timezone,
-            isDefault: accountPrefs?.availaibility_id === block.id,
-            availabilities: block.weekly_availability,
-          })
-        )
-
-        // If no blocks exist, create a default block
-        if (blocks.length === 0) {
-          const defaultBlock = await createAvailabilityBlock(
-            address,
-            'Default Availability',
-            accountData.preferences.timezone,
-            accountData.preferences.availabilities || [],
-            true
-          )
-          blocks.push({
-            id: defaultBlock.id,
-            title: defaultBlock.title,
-            timezone: defaultBlock.timezone,
-            isDefault: true,
-            availabilities: defaultBlock.weekly_availability,
-          })
+      case 'POST': {
+        const { title, timezone, weekly_availability, is_default } =
+          req.body as CreateAvailabilityBlockRequest
+        if (!title || !timezone || !weekly_availability) {
+          throw new InvalidAvailabilityBlockError('Missing required fields')
         }
 
-        return res.status(200).json(blocks)
-
-      case 'POST':
-        const { title, timezone, weekly_availability, is_default } = req.body
         const newBlock = await createAvailabilityBlock(
           address,
           title,
@@ -90,18 +52,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return res.status(200).json({
           ...newBlock,
           isDefault: is_default,
+          availabilities: newBlock.weekly_availability,
         })
-
-      default:
-        res.setHeader('Allow', ['GET', 'POST'])
-        return res.status(405).end(`Method ${req.method} Not Allowed`)
+      }
     }
-  } catch (error: any) {
-    console.error('Error in availabilities handler:', error)
+  } catch (error: unknown) {
     if (error instanceof UnauthorizedError) {
       return res.status(401).json({ error: error.message })
+    } else if (error instanceof InvalidAvailabilityBlockError) {
+      return res.status(400).json({ error: error.message })
     }
-    return res.status(500).json({ error: 'Internal server error' })
+
+    console.error('Error in availabilities handler:', error)
+    return res.status(500).json({ error: 'An error occurred' })
   }
 }
 
