@@ -1,3 +1,7 @@
+import { MeetingType } from '@/types/Account'
+import { SupportedChain, supportedChains } from '@/types/chains'
+import { isProduction } from '@/utils/constants'
+
 export enum SessionType {
   PAID = 'paid',
   FREE = 'free',
@@ -59,7 +63,7 @@ export const PlanTypeOptions = [
   },
   {
     value: PlanType.SESSIONS,
-    label: 'Sessions',
+    label: 'Package of Sessions',
   },
 ]
 export const isPlanType = (value: string): value is PlanType => {
@@ -79,16 +83,16 @@ export const PaymentChannelOptions = (address: string) => [
     label: 'Custom Address',
   },
 ]
-export const CryptoNetworkForCardSettlementOptions = [
-  {
-    value: 42220,
-    label: 'Celo',
-  },
-  {
-    value: 42161,
-    label: 'Arbitrum',
-  },
-]
+const devChains = [SupportedChain.SEPOLIA]
+const prodChains = [SupportedChain.ARBITRUM, SupportedChain.CELO]
+const chain = isProduction ? prodChains : devChains
+
+export const CryptoNetworkForCardSettlementOptions = supportedChains
+  .filter(val => (chain || []).includes(val.chain))
+  .map(val => ({
+    value: val.id,
+    label: val.fullName,
+  }))
 export const isPaymentChannel = (value: string): value is PaymentChannel => {
   return Object.values(PaymentChannel).some(channel => channel === value)
 }
@@ -116,7 +120,36 @@ export enum PaymentStatus {
 }
 
 export enum PublicSchedulingSteps {
-  SELECT_TYPE = 'SELECT_TYPE',
-  PAY_FOR_SESSION = 'PAY_FOR_SESSION',
-  BOOK_SESSION = 'BOOK_SESSION',
+  SELECT_TYPE = 'select-type',
+  PAY_FOR_SESSION = 'pay-for-session',
+  BOOK_SESSION = 'book-session',
 }
+
+export enum PaymentStep {
+  SELECT_PAYMENT_METHOD = 'select-payment-method',
+  CONFIRM_PAYMENT = 'confirm-payment',
+  FIAT_PAYMENT_VERIFYING = 'fiat-payment-verifying',
+  SELECT_CRYPTO_NETWORK = 'select-crypto-network',
+}
+export const getDefaultValues = (): Partial<MeetingType> => ({
+  type: SessionType.FREE,
+  slug: '',
+  title: '',
+  duration_minutes: 30,
+  min_notice_minutes: 60,
+  calendars: [],
+  availabilities: [],
+  description: '',
+  plan: {
+    type: PlanType.ONE_OFF,
+    no_of_slot: 1,
+    price_per_slot: 0,
+    payment_channel: PaymentChannel.ACCOUNT_ADDRESS,
+    payment_address: '',
+    meeting_type_id: '',
+    default_chain_id: supportedChains[0].id,
+    created_at: new Date(),
+    updated_at: new Date(),
+    id: '',
+  },
+})
