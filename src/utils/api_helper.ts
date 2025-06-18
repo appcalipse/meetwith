@@ -45,9 +45,12 @@ import {
 } from '@/types/Meeting'
 import {
   ChangeGroupAdminRequest,
+  CreateAvailabilityBlockRequest,
+  DuplicateAvailabilityBlockRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
+  UpdateAvailabilityBlockRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
@@ -1327,73 +1330,49 @@ export const doesContactExist = async (identifier: string) => {
 }
 
 export const getAvailabilityBlocks = async () => {
-  const account = await getOwnAccount('')
-  return await internalFetch(`/availabilities?address=${account.address}`)
+  return await internalFetch(`/availabilities`)
 }
 
-export const createAvailabilityBlock = async (
-  title: string,
-  timezone: string,
-  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
-) => {
-  const account = await getOwnAccount('')
-  return await internalFetch(
-    `/availabilities?address=${account.address}`,
-    'POST',
-    {
-      title,
-      timezone,
-      weekly_availability,
-    }
-  )
+export const createAvailabilityBlock = async ({
+  title,
+  timezone,
+  weekly_availability,
+  is_default,
+}: CreateAvailabilityBlockRequest) => {
+  return await internalFetch(`/availabilities`, 'POST', {
+    title,
+    timezone,
+    weekly_availability,
+    is_default,
+  })
 }
 
 export const getAvailabilityBlock = async (id: string) => {
-  const account = await getOwnAccount('')
-  return await internalFetch(`/availabilities/${id}?address=${account.address}`)
+  return await internalFetch(`/availabilities/${id}`)
 }
 
-export const updateAvailabilityBlock = async (
-  id: string,
-  title: string,
-  timezone: string,
-  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
-  is_default?: boolean
-) => {
-  const account = await getOwnAccount('')
-  return await internalFetch(
-    `/availabilities/${id}?address=${account.address}`,
-    'PUT',
-    {
-      title,
-      timezone,
-      weekly_availability,
-      is_default,
-    }
-  )
+export const updateAvailabilityBlock = async ({
+  id,
+  title,
+  timezone,
+  weekly_availability,
+  is_default,
+}: UpdateAvailabilityBlockRequest) => {
+  return await internalFetch(`/availabilities/${id}`, 'PUT', {
+    title,
+    timezone,
+    weekly_availability,
+    is_default,
+  })
 }
 
 export const deleteAvailabilityBlock = async (id: string) => {
-  const account = await getOwnAccount('')
-  return await internalFetch(
-    `/availabilities/${id}?address=${account.address}`,
-    'DELETE'
-  )
+  return await internalFetch(`/availabilities/${id}`, 'DELETE')
 }
 
-export const duplicateAvailabilityBlock = async (
-  id: string,
-  modifiedData?: {
-    title?: string
-    timezone?: string
-    weekly_availability?: Array<{ weekday: number; ranges: TimeRange[] }>
-    is_default?: boolean
-  }
-) => {
-  const account = await getOwnAccount('')
-  return await internalFetch(
-    `/availabilities/${id}?address=${account.address}`,
-    'POST',
-    modifiedData
-  )
+export const duplicateAvailabilityBlock = async ({
+  id,
+  modifiedData,
+}: DuplicateAvailabilityBlockRequest) => {
+  return await internalFetch(`/availabilities/${id}`, 'POST', modifiedData)
 }
