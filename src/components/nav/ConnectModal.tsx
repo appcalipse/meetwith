@@ -127,6 +127,7 @@ export const ConnectModal: React.FC = ({}) => {
           showThirdwebBranding={false}
           showAllWallets={false}
           onConnect={onConnect}
+          autoConnect
           appMetadata={{
             name: 'Meetwith',
             url: 'https://meetwith.xyz',
