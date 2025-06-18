@@ -77,7 +77,7 @@ interface Availability {
   updated_at: Date
   weekly_availability: DayAvailability[]
 }
-interface MeetingTypePlan {
+export interface MeetingTypePlan {
   id: string
   meeting_type_id: string
   type: PlanType
