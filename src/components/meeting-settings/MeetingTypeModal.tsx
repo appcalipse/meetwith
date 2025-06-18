@@ -14,20 +14,17 @@ import {
   InputRightElement,
   Modal,
   ModalBody,
-  ModalCloseButton,
   ModalContent,
   ModalHeader,
   ModalOverlay,
   Spinner,
   Text,
   Textarea,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { ConnectedCalendarCore } from '@meta/CalendarConnections'
-import {
-  CreateMeetingTypeRequest,
-  UpdateMeetingTypeRequest,
-} from '@meta/Requests'
+import { CreateMeetingTypeRequest } from '@meta/Requests'
 import { saveMeetingType, updateMeetingType } from '@utils/api_helper'
 import { getAccountDomainUrl } from '@utils/calendar_manager'
 import { appUrl } from '@utils/constants'
@@ -52,123 +49,45 @@ import {
 } from '@utils/constants/select'
 import { convertMinutes } from '@utils/generic_utils'
 import useAccountContext from '@utils/hooks/useAccountContext'
-import { createMeetingSchema } from '@utils/schemas'
+import {
+  createMeetingSchema,
+  ErrorAction,
+  errorReducer,
+  ErrorState,
+  fieldKey,
+  PlanKeys,
+  SchemaKeys,
+  validateField,
+} from '@utils/schemas'
 import { Select as ChakraSelect } from 'chakra-react-select'
 import React, { FC, Reducer, useState } from 'react'
 import { z } from 'zod'
 
 import { MeetingType } from '@/types/Account'
-
-type SchemaKeys = keyof z.infer<typeof createMeetingSchema>
-type PlanKeys = NonNullable<z.infer<typeof createMeetingSchema>['plan']>
-
-type ErrorState = {
-  [K in SchemaKeys]?: K extends 'plan'
-    ? Partial<Record<keyof PlanKeys, string>>
-    : string
-}
-type PlanFieldKey = `plan.${keyof PlanKeys}`
-type fieldKey = SchemaKeys | PlanFieldKey
-const isPlanFieldKey = (field: fieldKey): field is PlanFieldKey => {
-  return field.startsWith('plan.')
-}
-type ErrorAction =
-  | { type: 'SET_ERROR'; field: fieldKey; message: string } // Set error for a specific field
-  | { type: 'CLEAR_ERROR'; field: fieldKey } // Clear error for a specific field
-  | { type: 'CLEAR_ALL' } // Clear all errors at once
-
-const errorReducer = (state: ErrorState, action: ErrorAction): ErrorState => {
-  switch (action.type) {
-    case 'SET_ERROR':
-      const newState = { ...state } // Set or update error for a field
-      if (isPlanFieldKey(action.field)) {
-        const [field, subField] = action.field.split('.') as [
-          SchemaKeys,
-          string
-        ]
-        const existingField = state[field] as Record<string, string> | undefined
-        return {
-          ...state,
-          [field]: {
-            ...(existingField || {}),
-            [subField]: action.message,
-          },
-        }
-      }
-      return {
-        ...state,
-        [action.field]: action.message,
-      }
-    case 'CLEAR_ERROR':
-      if (isPlanFieldKey(action.field)) {
-        const [localField, subField] = action.field.split('.') as [
-          SchemaKeys,
-          string
-        ]
-        const existingField = state[localField] as
-          | Record<string, string>
-          | undefined
-        return {
-          ...state,
-          [localField]: {
-            ...(existingField || {}),
-            [subField]: undefined,
-          },
-        }
-      } else {
-        const { [action.field]: _, ...rest } = state // Clear error for a specific field
-        return rest
-      }
-    case 'CLEAR_ALL':
-      return {} // Clear all errors
-    default:
-      return state
-  }
-}
-export const validateField = (field: fieldKey, value: unknown) => {
-  try {
-    if (isPlanFieldKey(field)) {
-      const [_, subField] = field.split('.') as ['plan', keyof PlanKeys]
-
-      const planSchema = createMeetingSchema.shape.plan
-        .unwrap()
-        .pick({ [subField]: true } as { [K in keyof PlanKeys]?: true })
-
-      planSchema.parse({ [subField]: value })
-    } else {
-      createMeetingSchema
-        .pick({ [field]: true } as Partial<Record<SchemaKeys, true>>)
-        .parse({ [field]: value })
-    }
-    return { isValid: true, error: null }
-  } catch (e) {
-    if (e instanceof z.ZodError) {
-      return { isValid: false, error: e.errors[0].message }
-    }
-    return { isValid: false, error: 'Validation failed' }
-  }
-}
 interface IProps {
   onClose: () => void
   isOpen: boolean
   isCalendarLoading: boolean
   calendarOptions: ConnectedCalendarCore[]
   refetch: () => Promise<void>
-  selectedType?: MeetingType | null
+  onDelete: () => void
+  initialValues?: Partial<MeetingType> | null
+  canDelete: boolean
 }
-const EditMeetingTypeModal: FC<IProps> = props => {
+
+const MeetingTypeModal: FC<IProps> = props => {
   const [errors, dispatchErrors] = React.useReducer<
-    Reducer<ErrorState, ErrorAction>
+    Reducer<ErrorState<SchemaKeys, 'plan', PlanKeys>, ErrorAction<fieldKey>>
   >(errorReducer, {})
   const currentAccount = useAccountContext()
   const [sessionType, setSessionType] = React.useState<Option<SessionType>>(
     SessionTypeOptions.find(
-      option => option.value === props.selectedType?.type
+      option => option.value === props.initialValues?.type
     ) || SessionTypeOptions[0]
   )
   const [planType, setPlanType] = React.useState<Option<PlanType>>(
     PlanTypeOptions.find(
-      option => option.value === props.selectedType?.plan?.type
+      option => option.value === props.initialValues?.plan?.type
     ) || PlanTypeOptions[0]
   )
   const channelOptions = PaymentChannelOptions(currentAccount?.address || '')
@@ -176,7 +95,7 @@ const EditMeetingTypeModal: FC<IProps> = props => {
     Option<PaymentChannel>
   >(
     channelOptions.find(
-      option => option.value === props.selectedType?.plan?.payment_channel
+      option => option.value === props.initialValues?.plan?.payment_channel
     ) || channelOptions[0]
   )
   const [availabilityBlock, setAvailabilityBlock] = React.useState<
@@ -189,49 +108,50 @@ const EditMeetingTypeModal: FC<IProps> = props => {
   ])
   const [cryptoNetwork, setCryptoNetwork] = useState<Option<number>>(
     CryptoNetworkForCardSettlementOptions.find(
-      option => option.value === props.selectedType?.plan?.default_chain_id
+      option => option.value === props.initialValues?.plan?.default_chain_id
     ) || CryptoNetworkForCardSettlementOptions[0]
   )
-  const [title, setTitle] = React.useState(props.selectedType?.title || '')
+  const [title, setTitle] = React.useState(props.initialValues?.title || '')
   const [description, setDescription] = React.useState(
-    props.selectedType?.description
+    props.initialValues?.description
   )
   const [customBookingLink, setCustomBookingLink] = React.useState(
-    props.selectedType?.slug || ''
+    props.initialValues?.slug || ''
   )
   const [minAdvanceTime, setMinAdvanceTime] = useState(
-    convertMinutes(props.selectedType?.min_notice_minutes || 60 * 24)
+    convertMinutes(props.initialValues?.min_notice_minutes || 60 * 24)
   )
   const [minAdvanceType, setMinAdvanceType] = useState<Option<string>>(
     MinNoticeTimeOptions.find(
       val =>
         val.value.toLowerCase() ===
-        convertMinutes(props.selectedType?.min_notice_minutes || 60 * 24).type
+        convertMinutes(props.initialValues?.min_notice_minutes || 60 * 24).type
     ) || MinNoticeTimeOptions[0]
   )
   const [duration, setDuration] = useState<Option<number>>(
     DurationOptions.find(
-      option => option.value === props.selectedType?.duration_minutes
+      option => option.value === props.initialValues?.duration_minutes
     ) || DurationOptions[1]
   )
   const [calendars, setCalendars] = useState<Option<number>[]>(
-    props.selectedType?.calendars?.map(calendar => ({
+    props.initialValues?.calendars?.map(calendar => ({
       value: calendar.id,
       label: calendar.email,
     })) || []
   )
   const [noOfSlot, setNoOfSlot] = useState<string>(
-    props?.selectedType?.plan?.no_of_slot?.toString() || ''
+    props?.initialValues?.plan?.no_of_slot?.toString() || ''
   )
   const [pricePerSession, setPricePerSession] = useState<string>(
-    props?.selectedType?.plan?.price_per_slot?.toString() || ''
+    props?.initialValues?.plan?.price_per_slot?.toString() || ''
   )
   const [customAddress, setCustomAddress] = useState<string>(
-    props.selectedType?.plan?.payment_channel === PaymentChannel.CUSTOM_ADDRESS
-      ? props?.selectedType?.plan?.payment_address || ''
+    props.initialValues?.plan?.payment_channel === PaymentChannel.CUSTOM_ADDRESS
+      ? props?.initialValues?.plan?.payment_address || ''
       : ''
   )
   const [isLoading, setIsLoading] = useState(false)
+  const toast = useToast()
   // TODO: validate data with zod.
   const handleSessionChange = (value: unknown) => {
     const sessionType = value as Option<SessionType>
@@ -282,9 +202,11 @@ const EditMeetingTypeModal: FC<IProps> = props => {
     dispatchErrors({
       type: 'CLEAR_ALL',
     })
-    if (!props.selectedType) return
-    const payload: UpdateMeetingTypeRequest = {
-      id: props.selectedType.id,
+    if (!props.initialValues) {
+      setIsLoading(false)
+      return
+    }
+    const payload: CreateMeetingTypeRequest = {
       type: sessionType.value,
       slug: customBookingLink,
       title,
@@ -305,7 +227,8 @@ const EditMeetingTypeModal: FC<IProps> = props => {
           ? undefined
           : {
               type: planType.value,
-              no_of_slot: Number(noOfSlot),
+              no_of_slot:
+                planType.value === PlanType.SESSIONS ? Number(noOfSlot) : 1,
               price_per_slot: Number(pricePerSession),
               payment_channel: paymentChannel.value,
               payment_address:
@@ -318,12 +241,15 @@ const EditMeetingTypeModal: FC<IProps> = props => {
     try {
       createMeetingSchema.parse(payload) // Validate using the Zod schema
       // If valid, submit the form (e.g. API call)
-      await updateMeetingType(payload)
+      if (props.initialValues.id) {
+        await updateMeetingType({ ...payload, id: props.initialValues.id })
+      } else {
+        await saveMeetingType(payload)
+      }
       await props.refetch()
       props.onClose()
     } catch (e) {
       if (e instanceof z.ZodError) {
-        // Dispatch errors to the reducer
         e.errors.forEach(err => {
           dispatchErrors({
             type: 'SET_ERROR',
@@ -415,6 +341,20 @@ const EditMeetingTypeModal: FC<IProps> = props => {
     })
     props.onClose()
   }
+  const handleDelete = async () => {
+    if (!props.canDelete) {
+      toast({
+        title: 'Cannot delete',
+        description: 'You need to have at least one session type.',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+    if (props.initialValues) props.onDelete()
+  }
   return (
     <Modal
       isOpen={props.isOpen}
@@ -426,28 +366,45 @@ const EditMeetingTypeModal: FC<IProps> = props => {
       <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
       <ModalContent p="6" bg="neutral.900">
         <ModalHeader p={'0'}>
-          <ModalCloseButton left={6} w={'fit-content'}>
-            <HStack color={'primary.400'}>
+          <HStack
+            w={'100%'}
+            justifyContent="space-between"
+            position="relative"
+            py={2}
+          >
+            <HStack
+              color={'primary.400'}
+              onClick={handleClose}
+              w={'fit-content'}
+              cursor="pointer"
+              role={'button'}
+            >
               <ArrowBackIcon w={6} h={6} />
               <Text fontSize={16}>Back</Text>
             </HStack>
-          </ModalCloseButton>
-          <Button
-            right={6}
-            w={'fit-content'}
-            colorScheme="orangeButton"
-            pos="absolute"
-            variant="link"
-          >
-            Delete
-          </Button>
-
+            {props.initialValues?.id && (
+              <Button
+                w={'fit-content'}
+                colorScheme="orangeButton"
+                variant="link"
+                onClick={handleDelete}
+              >
+                Delete
+              </Button>
+            )}
+          </HStack>
           <Heading fontSize={'24px'} mt={6} fontWeight={700}>
-            Edit Session and Plan
+            {props?.initialValues?.id
+              ? 'New Session and Plan'
+              : 'Create Session and Plan'}
           </Heading>
         </ModalHeader>
         <ModalBody p={'0'} w="100%">
-          <Text color={'neutral.400'}>Create new session type</Text>
+          <Text color={'neutral.400'}>
+            {props?.initialValues?.id
+              ? 'Edit session type'
+              : 'Create new session type'}
+          </Text>
           <VStack mt={4} alignItems={'flex-start'} spacing={4} w="100%">
             <FormControl
               gap={1}
@@ -459,7 +416,7 @@ const EditMeetingTypeModal: FC<IProps> = props => {
             >
               <FormLabel fontSize={'16px'}>Session Type</FormLabel>
               <ChakraSelect
-                isDisabled
+                isDisabled={!!props.initialValues?.id}
                 value={sessionType}
                 colorScheme="primary"
                 onChange={handleSessionChange}
@@ -799,32 +756,34 @@ const EditMeetingTypeModal: FC<IProps> = props => {
                     <FormErrorMessage>{errors.plan?.type}</FormErrorMessage>
                   )}
                 </FormControl>
-                <FormControl
-                  width={'100%'}
-                  justifyContent={'space-between'}
-                  alignItems="flex-start"
-                  isInvalid={!!errors.plan?.no_of_slot}
-                >
-                  <FormLabel fontSize={'16px'}>
-                    Plan maximum booking slot per person
-                  </FormLabel>
-                  <Input
-                    placeholder="What is the maximum booking slot per person?"
-                    borderColor="neutral.400"
-                    width={'max-content'}
-                    w="100%"
-                    errorBorderColor="red.500"
-                    type={'number'}
-                    value={noOfSlot}
-                    onChange={e => setNoOfSlot(e.target.value)}
-                    onBlur={() => handleBlur('plan.no_of_slot')}
-                  />
-                  {!!errors.plan?.no_of_slot && (
-                    <FormErrorMessage>
-                      {errors.plan?.no_of_slot}
-                    </FormErrorMessage>
-                  )}
-                </FormControl>
+                {planType.value === PlanType.SESSIONS && (
+                  <FormControl
+                    width={'100%'}
+                    justifyContent={'space-between'}
+                    alignItems="flex-start"
+                    isInvalid={!!errors.plan?.no_of_slot}
+                  >
+                    <FormLabel fontSize={'16px'}>
+                      Plan maximum booking slot per person
+                    </FormLabel>
+                    <Input
+                      placeholder="What is the maximum booking slot per person?"
+                      borderColor="neutral.400"
+                      width={'max-content'}
+                      w="100%"
+                      errorBorderColor="red.500"
+                      type={'number'}
+                      value={noOfSlot}
+                      onChange={e => setNoOfSlot(e.target.value)}
+                      onBlur={() => handleBlur('plan.no_of_slot')}
+                    />
+                    {!!errors.plan?.no_of_slot && (
+                      <FormErrorMessage>
+                        {errors.plan?.no_of_slot}
+                      </FormErrorMessage>
+                    )}
+                  </FormControl>
+                )}
                 <FormControl
                   width={'100%'}
                   justifyContent={'space-between'}
@@ -920,7 +879,14 @@ const EditMeetingTypeModal: FC<IProps> = props => {
                     className="noLeftBorder timezone-select"
                     options={CryptoNetworkForCardSettlementOptions}
                     components={noClearCustomSelectComponent}
-                    chakraStyles={fullWidthStyle}
+                    chakraStyles={{
+                      ...fullWidthStyle,
+                      menu: provided => ({
+                        ...provided,
+                        zIndex: 9999, // Ensure dropdown renders on top
+                      }),
+                    }}
+                    menuPlacement="auto"
                     onBlur={() => handleBlur('plan.payment_channel')}
                   />
                   {!!errors.plan?.crypto_network && (
@@ -937,7 +903,9 @@ const EditMeetingTypeModal: FC<IProps> = props => {
                 onClick={handleSave}
                 isLoading={isLoading}
               >
-                Update Session Type
+                {props?.initialValues?.id
+                  ? 'Update Session Type'
+                  : 'Create Session Type'}
               </Button>
               <Button
                 variant="outline"
@@ -954,4 +922,4 @@ const EditMeetingTypeModal: FC<IProps> = props => {
   )
 }
 
-export default EditMeetingTypeModal
+export default MeetingTypeModal
