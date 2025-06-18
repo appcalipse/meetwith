@@ -13,7 +13,8 @@
     "prepare": "husky install",
     "postinstall": "patch-package",
     "postbuild": "next-sitemap",
-    "test": "NODE_ENV=test doppler run --config tests jest",
+    "test": "NODE_ENV=test jest",
+    "test:doppler": "NODE_ENV=test doppler run --config tests jest",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch"
   },
