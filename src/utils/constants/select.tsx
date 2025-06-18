@@ -28,9 +28,9 @@ export const noClearCustomSelectComponent: Props['components'] = {
   ),
 }
 
-export type Option<T> = {
+export type Option<T, J = string> = {
   value: T // The actual value of the option
-  label: string // The displayed label of the option
+  label: J // The displayed label of the option
 }
 
 export const fullWidthStyle:
