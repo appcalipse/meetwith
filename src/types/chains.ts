@@ -1,6 +1,8 @@
 import {
   arbitrum,
+  arbitrumSepolia,
   celo,
+  celoAlfajoresTestnet,
   Chain,
   defineChain,
   mainnet,
@@ -35,6 +37,8 @@ export enum SupportedChain {
   SEPOLIA = 'SEPOLIA',
   METIS_ANDROMEDA = 'METIS_ANDROMEDA',
   ARBITRUM = 'ARBITRUM',
+  ARBITRUM_SEPOLIA = 'ARBITRUM_SEPOLIA',
+  CELO_ALFAJORES = 'CELO_ALFAJORES',
   CELO = 'CELO',
   CUSTOM = 'CUSTOM',
 }
@@ -96,6 +100,10 @@ export const supportedChains: ChainInfo[] = [
       {
         token: AcceptedToken.DAI,
         contractAddress: '0x1DF8FcA6035342eeD37c3C10dcD4cC1B4030628D',
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
       },
     ],
   },
@@ -223,11 +231,35 @@ export const supportedChains: ChainInfo[] = [
       },
       {
         token: AcceptedToken.USDC,
-        contractAddress: '0x765DE816845861e75A25fCA122bb689B8B1282a', // cUSD
+        contractAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a', // cUSD
       },
       {
         token: AcceptedToken.EUR, // cEUR
-        contractAddress: '0xD8763CBa276a3738E6DE85b4b3f5FDEd6D6cA73',
+        contractAddress: '0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73',
+      },
+    ],
+  },
+  {
+    chain: SupportedChain.CELO_ALFAJORES,
+    thirdwebChain: celoAlfajoresTestnet,
+    id: 44787,
+    name: 'Celo Alfajores',
+    fullName: 'Celo Alfajores Testnet',
+    rpcUrl: 'https://alfajores.celoscan.io',
+    testnet: true,
+    nativeTokenSymbol: 'ETH',
+    domainContractAddess: '0x0000000000000000000000000000000000000000', // N/A
+    registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
+    blockExplorerUrl: 'https://alfajores.celoscan.io',
+    image: '/assets/chains/Celo.svg',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.CELO,
+        contractAddress: '0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9',
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
       },
     ],
   },
@@ -255,7 +287,32 @@ export const supportedChains: ChainInfo[] = [
       },
     ],
   },
+  {
+    chain: SupportedChain.ARBITRUM_SEPOLIA,
+    thirdwebChain: arbitrumSepolia,
+    id: 421614,
+    name: 'Arbitrum',
+    fullName: 'Arbitrum Sepolia',
+    rpcUrl: 'https://sepolia.arbiscan.io/rpc',
+    testnet: true,
+    nativeTokenSymbol: 'ETH',
+    domainContractAddess: '0x0000000000000000000000000000000000000000', // N/A
+    registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
+    blockExplorerUrl: 'https://sepolia.arbiscan.io',
+    image: '/assets/chains/Arbitrum.svg',
+    acceptableTokens: [
+      {
+        token: AcceptedToken.ETHER,
+        contractAddress: zeroAddress,
+      },
+      {
+        token: AcceptedToken.USDC,
+        contractAddress: '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
+      },
+    ],
+  },
 ]
+export const DEFAULT_CHAIN_ID = 42220
 
 export const getTestnetChains = (): ChainInfo[] => {
   return supportedChains.filter(chain => chain.testnet)
