@@ -1,15 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { TimeRange } from '@/types/Account'
-import { internalFetch } from '@/utils/api_helper'
-
-interface AvailabilityBlock {
-  id: string
-  title: string
-  timezone: string
-  isDefault: boolean
-  availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
-}
+import {
+  CreateAvailabilityBlockRequest,
+  DuplicateAvailabilityBlockRequest,
+  UpdateAvailabilityBlockRequest,
+} from '@/types/Requests'
+import {
+  createAvailabilityBlock,
+  deleteAvailabilityBlock,
+  duplicateAvailabilityBlock,
+  getAvailabilityBlocks,
+  updateAvailabilityBlock,
+} from '@/utils/api_helper'
 
 export const useAvailabilityBlocks = (accountAddress?: string) => {
   const queryClient = useQueryClient()
@@ -20,30 +22,15 @@ export const useAvailabilityBlocks = (accountAddress?: string) => {
     isFetching,
   } = useQuery({
     queryKey: ['availabilityBlocks', accountAddress],
-    queryFn: async () => {
-      const response = await internalFetch<AvailabilityBlock[]>(
-        '/availabilities'
-      )
-      return response
-    },
+    queryFn: getAvailabilityBlocks,
     refetchOnMount: true,
     staleTime: 0,
-    enabled: !!accountAddress, // Only run the query if we have an account address
+    enabled: !!accountAddress,
   })
 
   const createBlock = useMutation({
-    mutationFn: async (data: {
-      title: string
-      timezone: string
-      weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
-      is_default?: boolean
-    }) => {
-      const response = await internalFetch<AvailabilityBlock>(
-        '/availabilities',
-        'POST',
-        data
-      )
-      return response
+    mutationFn: async (data: CreateAvailabilityBlockRequest) => {
+      return createAvailabilityBlock(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -53,19 +40,8 @@ export const useAvailabilityBlocks = (accountAddress?: string) => {
   })
 
   const updateBlock = useMutation({
-    mutationFn: async (data: {
-      id: string
-      title: string
-      timezone: string
-      weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
-      is_default?: boolean
-    }) => {
-      const response = await internalFetch<AvailabilityBlock>(
-        `/availabilities/${data.id}`,
-        'PUT',
-        data
-      )
-      return response
+    mutationFn: async (data: UpdateAvailabilityBlockRequest) => {
+      return updateAvailabilityBlock(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -76,7 +52,7 @@ export const useAvailabilityBlocks = (accountAddress?: string) => {
 
   const deleteBlock = useMutation({
     mutationFn: async (id: string) => {
-      await internalFetch(`/availabilities/${id}`, 'DELETE')
+      return deleteAvailabilityBlock(id)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -86,29 +62,8 @@ export const useAvailabilityBlocks = (accountAddress?: string) => {
   })
 
   const duplicateBlock = useMutation({
-    mutationFn: async ({
-      id,
-      modifiedData,
-    }: {
-      id: string
-      modifiedData: {
-        title: string
-        timezone: string
-        weekly_availability: any[]
-        is_default: boolean
-      }
-    }) => {
-      const response = await fetch(`/api/availabilities/${id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(modifiedData),
-      })
-      if (!response.ok) {
-        throw new Error('Failed to duplicate availability block')
-      }
-      return response.json()
+    mutationFn: async (data: DuplicateAvailabilityBlockRequest) => {
+      return duplicateAvailabilityBlock(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

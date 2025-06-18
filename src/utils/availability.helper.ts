@@ -26,11 +26,14 @@ export const getHoursPerWeek = (
 
 export const formatTime = (time: string | undefined): string => {
   if (!time) return ''
-  const [hours, minutes] = time.split(':')
-  const hour = parseInt(hours)
-  const ampm = hour >= 12 ? 'pm' : 'am'
-  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
-  return `${displayHour}:${minutes}${ampm}`
+  const [hours, minutes] = time.split(':').map(Number)
+  const date = new Date()
+  date.setHours(hours, minutes, 0, 0)
+  return date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
 }
 
 export const getFormattedSchedule = (
