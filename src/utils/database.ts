@@ -16,6 +16,7 @@ import {
   BaseMeetingType,
   DiscordConnectedAccounts,
   MeetingType,
+  PublicAccount,
   SimpleAccountInfo,
   TgConnectedAccounts,
 } from '@/types/Account'
@@ -26,6 +27,7 @@ import {
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
+  ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
 import { SupportedChain } from '@/types/chains'
 import {
@@ -102,6 +104,7 @@ import {
   GroupCreationError,
   GroupNotExistsError,
   IsGroupAdminError,
+  LastMeetingTypeError,
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
@@ -494,6 +497,18 @@ const getAccountFromDB = async (
     throw new Error(error.message)
   }
   throw new AccountNotFoundError(identifier)
+}
+
+const getAccountFromDBPublic = async (
+  identifier: string
+): Promise<PublicAccount> => {
+  const account: PublicAccount = await getAccountFromDB(identifier)
+  const meetingTypes = await getMeetingTypes(account.address, 100, 0)
+  account.meetingTypes = meetingTypes.map(val => ({
+    ...val,
+    calendars: undefined,
+  }))
+  return account
 }
 
 const getSlotsForAccount = async (
@@ -3430,7 +3445,7 @@ const getMeetingTypes = async (
     )
     .eq('account_owner_address', account_address)
     .is('deleted_at', null)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: true })
     .range(offset, offset + limit - 1)
   if (error) {
     throw new Error(error.message)
@@ -3438,7 +3453,7 @@ const getMeetingTypes = async (
   const transformedData = data?.map(meetingType => ({
     ...meetingType,
     calendars: meetingType?.connected_calendars?.map(
-      (calendar: { connected_calendars: MeetingType['calendars'][0] }) =>
+      (calendar: { connected_calendars: ConnectedCalendarCore }) =>
         calendar.connected_calendars
     ),
     availabilities: meetingType?.availabilities?.map(
@@ -3529,7 +3544,19 @@ const deleteMeetingType = async (
   account_address: string,
   meeting_type_id: string
 ): Promise<void> => {
-  const { error } = await db.supabase
+  const { data: meetingTypes, error: MeetingTypeError } = await db.supabase
+    .from('meeting_type')
+    .select(`id`)
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+    .range(0, 2)
+  if (MeetingTypeError) {
+    throw new Error(MeetingTypeError.message)
+  }
+  if (meetingTypes?.length === 1) {
+    throw new LastMeetingTypeError()
+  }
+  const { data, error } = await db.supabase
     .from('meeting_type')
     .update({ deleted_at: new Date() })
     .eq('account_owner_address', account_address)
@@ -3620,6 +3647,7 @@ const updateMeetingType = async (
           no_of_slot: meetingType?.plan.no_of_slot,
           payment_channel: meetingType?.plan.payment_channel,
           payment_address: meetingType?.plan.payment_address,
+          default_chain_id: meetingType?.plan.crypto_network,
         },
       ])
       .eq('meeting_type_id', meeting_type_id)
@@ -3649,6 +3677,7 @@ export {
   editGroup,
   findAccountsByText,
   getAccountFromDB,
+  getAccountFromDBPublic,
   getAccountNonce,
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
