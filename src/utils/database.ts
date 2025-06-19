@@ -3444,38 +3444,8 @@ export const createAvailabilityBlock = async (
   weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
   is_default = false
 ) => {
-  // If this is being set as default, update account preferences
-  if (is_default) {
-    const { data: block, error: blockError } = await db.supabase
-      .from('availabilities')
-      .insert([
-        {
-          title,
-          timezone,
-          weekly_availability,
-          account_owner_address: account_address,
-        },
-      ])
-      .select()
-      .single()
-
-    if (blockError) throw blockError
-
-    const { error: prefError } = await db.supabase
-      .from('account_preferences')
-      .update({
-        availabilities: weekly_availability,
-        timezone: timezone,
-        availaibility_id: block.id,
-      })
-      .eq('owner_account_address', account_address)
-
-    if (prefError) throw prefError
-
-    return block
-  }
-
-  const { data, error } = await db.supabase
+  // Create the availability block
+  const { data: block, error: blockError } = await db.supabase
     .from('availabilities')
     .insert([
       {
@@ -3488,8 +3458,23 @@ export const createAvailabilityBlock = async (
     .select()
     .single()
 
-  if (error) throw error
-  return data
+  if (blockError) throw blockError
+
+  // If this is being set as default, update account preferences
+  if (is_default) {
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availabilities: weekly_availability,
+        timezone: timezone,
+        availaibility_id: block.id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) throw prefError
+  }
+
+  return block
 }
 
 export const getAvailabilityBlock = async (
