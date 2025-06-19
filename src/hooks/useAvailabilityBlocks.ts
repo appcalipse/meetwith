@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { UseAvailabilityBlocksResult } from '@/types/availability'
 import {
   CreateAvailabilityBlockRequest,
   DuplicateAvailabilityBlockRequest,
@@ -13,7 +14,9 @@ import {
   updateAvailabilityBlock,
 } from '@/utils/api_helper'
 
-export const useAvailabilityBlocks = (accountAddress?: string) => {
+export const useAvailabilityBlocks = (
+  accountAddress?: string
+): UseAvailabilityBlocksResult => {
   const queryClient = useQueryClient()
 
   const {

@@ -14,7 +14,6 @@ import { useAvailabilityBlockHandlers } from '@/hooks/useAvailabilityBlockHandle
 import { useAvailabilityBlocks } from '@/hooks/useAvailabilityBlocks'
 import { useAvailabilityForm } from '@/hooks/useAvailabilityForm'
 import { Account } from '@/types/Account'
-import { UseAvailabilityBlocksResult } from '@/types/availability'
 
 import { AvailabilityBlockCard } from './AvailabilityBlockCard'
 import { AvailabilityEmptyState } from './AvailabilityEmptyState'
@@ -33,9 +32,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     updateBlock,
     deleteBlock,
     duplicateBlock,
-  } = useAvailabilityBlocks(
-    currentAccount?.address
-  ) as UseAvailabilityBlocksResult
+  } = useAvailabilityBlocks(currentAccount?.address)
 
   const {
     formState,
