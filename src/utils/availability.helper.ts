@@ -19,8 +19,6 @@ export const getHoursPerWeek = (
     return total + dayHours
   }, 0)
 
-  if (totalHours === 0) return '0hrs/week'
-
   return `${Math.round(totalHours)}hrs/week`
 }
 
@@ -127,9 +125,8 @@ export const formatDayGroup = (days: number[], timeRange: string): string => {
         dayNames[days[days.length - 1]]
       } : ${timeRange}`
     } else {
-      return `${dayNames[days[0]]}, ${
-        dayNames[days[days.length - 1]]
-      } : ${timeRange}`
+      const dayLabels = days.map(day => dayNames[day]).join(', ')
+      return `${dayLabels} : ${timeRange}`
     }
   }
 }
