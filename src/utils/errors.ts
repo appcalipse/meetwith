@@ -311,3 +311,31 @@ export class LastMeetingTypeError extends Error {
     this.name = 'LastMeetingTypeError'
   }
 }
+
+export class TransactionNotFoundError extends Error {
+  constructor(txHash: `0x${string}`) {
+    super(`Transaction or receipt not found for hash: ${txHash}`)
+    this.name = 'TransactionNotFoundError'
+  }
+}
+
+export class ChainNotFound extends Error {
+  constructor(chainId: string) {
+    super(`Chain ${chainId} not found`)
+    this.name = 'ChainNotFound'
+  }
+}
+
+export class MeetingTypeNotFound extends Error {
+  constructor() {
+    super(`Meeting type not found`)
+    this.name = 'MeetingTypeNotFound'
+  }
+}
+
+export class InValidGuests extends Error {
+  constructor() {
+    super(`Guest email or address is required.`)
+    this.name = 'InValidGuests'
+  }
+}
