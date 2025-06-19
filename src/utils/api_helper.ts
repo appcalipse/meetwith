@@ -8,6 +8,7 @@ import {
   TimeRange,
 } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
+import { AvailabilityBlock } from '@/types/availability'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -1329,8 +1330,8 @@ export const doesContactExist = async (identifier: string) => {
   return await internalFetch<boolean>(`/secure/contact/${identifier}/exist`)
 }
 
-export const getAvailabilityBlocks = async () => {
-  return await internalFetch(`/availabilities`)
+export const getAvailabilityBlocks = async (): Promise<AvailabilityBlock[]> => {
+  return await internalFetch<AvailabilityBlock[]>(`/availabilities`)
 }
 
 export const createAvailabilityBlock = async ({
@@ -1338,8 +1339,8 @@ export const createAvailabilityBlock = async ({
   timezone,
   weekly_availability,
   is_default,
-}: CreateAvailabilityBlockRequest) => {
-  return await internalFetch(`/availabilities`, 'POST', {
+}: CreateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(`/availabilities`, 'POST', {
     title,
     timezone,
     weekly_availability,
@@ -1347,8 +1348,10 @@ export const createAvailabilityBlock = async ({
   })
 }
 
-export const getAvailabilityBlock = async (id: string) => {
-  return await internalFetch(`/availabilities/${id}`)
+export const getAvailabilityBlock = async (
+  id: string
+): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(`/availabilities/${id}`)
 }
 
 export const updateAvailabilityBlock = async ({
@@ -1357,22 +1360,30 @@ export const updateAvailabilityBlock = async ({
   timezone,
   weekly_availability,
   is_default,
-}: UpdateAvailabilityBlockRequest) => {
-  return await internalFetch(`/availabilities/${id}`, 'PUT', {
-    title,
-    timezone,
-    weekly_availability,
-    is_default,
-  })
+}: UpdateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(
+    `/availabilities/${id}`,
+    'PUT',
+    {
+      title,
+      timezone,
+      weekly_availability,
+      is_default,
+    }
+  )
 }
 
-export const deleteAvailabilityBlock = async (id: string) => {
-  return await internalFetch(`/availabilities/${id}`, 'DELETE')
+export const deleteAvailabilityBlock = async (id: string): Promise<void> => {
+  return await internalFetch<void>(`/availabilities/${id}`, 'DELETE')
 }
 
 export const duplicateAvailabilityBlock = async ({
   id,
   modifiedData,
-}: DuplicateAvailabilityBlockRequest) => {
-  return await internalFetch(`/availabilities/${id}`, 'POST', modifiedData)
+}: DuplicateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(
+    `/availabilities/${id}`,
+    'POST',
+    modifiedData
+  )
 }

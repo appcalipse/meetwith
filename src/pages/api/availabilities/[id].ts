@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
@@ -24,70 +25,65 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: 'Invalid availability block ID' })
   }
 
-  if (!['GET', 'PUT', 'DELETE', 'POST'].includes(req.method || '')) {
-    res.setHeader('Allow', ['GET', 'PUT', 'DELETE', 'POST'])
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
   try {
     const account = req.session.account
     if (!account) {
       throw new UnauthorizedError()
     }
 
-    switch (req.method) {
-      case 'GET': {
-        const availability = await getAvailabilityBlock(id, account.address)
-        return res.status(200).json({
-          ...availability,
-          availabilities: availability.weekly_availability,
-        })
-      }
-
-      case 'PUT': {
-        const { title, timezone, weekly_availability, is_default } =
-          req.body as UpdateAvailabilityBlockRequest
-        if (!title || !timezone || !weekly_availability) {
-          throw new InvalidAvailabilityBlockError('Missing required fields')
-        }
-
-        const updatedAvailability = await updateAvailabilityBlock(
-          id,
-          account.address,
-          title,
-          timezone,
-          weekly_availability,
-          is_default
-        )
-
-        return res.status(200).json({
-          ...updatedAvailability,
-          isDefault: is_default,
-          availabilities: updatedAvailability.weekly_availability,
-        })
-      }
-
-      case 'DELETE': {
-        await deleteAvailabilityBlock(id, account.address)
-        return res.status(200).json({ success: true })
-      }
-
-      case 'POST': {
-        const modifiedData =
-          req.body as DuplicateAvailabilityBlockRequest['modifiedData']
-        const duplicatedBlock = await duplicateAvailabilityBlock(
-          id,
-          account.address,
-          modifiedData
-        )
-
-        return res.status(200).json({
-          ...duplicatedBlock,
-          isDefault: modifiedData.is_default,
-          availabilities: duplicatedBlock.weekly_availability,
-        })
-      }
+    if (req.method === 'GET') {
+      const availability = await getAvailabilityBlock(id, account.address)
+      return res.status(200).json({
+        ...availability,
+        availabilities: availability.weekly_availability,
+      })
     }
+
+    if (req.method === 'PUT') {
+      const { title, timezone, weekly_availability, is_default } =
+        req.body as UpdateAvailabilityBlockRequest
+      if (!title || !timezone || !weekly_availability) {
+        throw new InvalidAvailabilityBlockError('Missing required fields')
+      }
+
+      const updatedAvailability = await updateAvailabilityBlock(
+        id,
+        account.address,
+        title,
+        timezone,
+        weekly_availability,
+        is_default
+      )
+
+      return res.status(200).json({
+        ...updatedAvailability,
+        isDefault: is_default,
+        availabilities: updatedAvailability.weekly_availability,
+      })
+    }
+
+    if (req.method === 'DELETE') {
+      await deleteAvailabilityBlock(id, account.address)
+      return res.status(200).json({ success: true })
+    }
+
+    if (req.method === 'POST') {
+      const modifiedData =
+        req.body as DuplicateAvailabilityBlockRequest['modifiedData']
+      const duplicatedBlock = await duplicateAvailabilityBlock(
+        id,
+        account.address,
+        modifiedData
+      )
+
+      return res.status(200).json({
+        ...duplicatedBlock,
+        isDefault: modifiedData.is_default,
+        availabilities: duplicatedBlock.weekly_availability,
+      })
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' })
   } catch (error: unknown) {
     if (error instanceof UnauthorizedError) {
       return res.status(401).json({ error: error.message })
@@ -99,7 +95,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(400).json({ error: error.message })
     }
 
-    console.error('Error in availability block handler:', error)
+    Sentry.captureException(error)
     return res.status(500).json({ error: 'An error occurred' })
   }
 }
