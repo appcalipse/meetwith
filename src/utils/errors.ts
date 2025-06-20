@@ -302,3 +302,24 @@ export class MeetingDetailsModificationDenied extends PermissionDenied {
     this.name = 'MeetingDetailsModificationDenied'
   }
 }
+
+export class AvailabilityBlockNotFoundError extends Error {
+  constructor() {
+    super('Availability block not found')
+    this.name = 'AvailabilityBlockNotFoundError'
+  }
+}
+
+export class DefaultAvailabilityBlockError extends Error {
+  constructor() {
+    super('Cannot delete the default availability block')
+    this.name = 'DefaultAvailabilityBlockError'
+  }
+}
+
+export class InvalidAvailabilityBlockError extends Error {
+  constructor(message: string) {
+    super(message || 'Invalid availability block data')
+    this.name = 'InvalidAvailabilityBlockError'
+  }
+}

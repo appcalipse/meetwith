@@ -1,8 +1,14 @@
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
-import { Account, MeetingType, SimpleAccountInfo } from '@/types/Account'
+import {
+  Account,
+  MeetingType,
+  SimpleAccountInfo,
+  TimeRange,
+} from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
+import { AvailabilityBlock } from '@/types/availability'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -40,9 +46,12 @@ import {
 } from '@/types/Meeting'
 import {
   ChangeGroupAdminRequest,
+  CreateAvailabilityBlockRequest,
+  DuplicateAvailabilityBlockRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
+  UpdateAvailabilityBlockRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
@@ -1319,4 +1328,62 @@ export const getContactInviteById = async (identifier: string) => {
 
 export const doesContactExist = async (identifier: string) => {
   return await internalFetch<boolean>(`/secure/contact/${identifier}/exist`)
+}
+
+export const getAvailabilityBlocks = async (): Promise<AvailabilityBlock[]> => {
+  return await internalFetch<AvailabilityBlock[]>(`/availabilities`)
+}
+
+export const createAvailabilityBlock = async ({
+  title,
+  timezone,
+  weekly_availability,
+  is_default,
+}: CreateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(`/availabilities`, 'POST', {
+    title,
+    timezone,
+    weekly_availability,
+    is_default,
+  })
+}
+
+export const getAvailabilityBlock = async (
+  id: string
+): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(`/availabilities/${id}`)
+}
+
+export const updateAvailabilityBlock = async ({
+  id,
+  title,
+  timezone,
+  weekly_availability,
+  is_default,
+}: UpdateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(
+    `/availabilities/${id}`,
+    'PUT',
+    {
+      title,
+      timezone,
+      weekly_availability,
+      is_default,
+    }
+  )
+}
+
+export const deleteAvailabilityBlock = async (id: string): Promise<void> => {
+  return await internalFetch<void>(`/availabilities/${id}`, 'DELETE')
+}
+
+export const duplicateAvailabilityBlock = async ({
+  id,
+  modifiedData,
+}: DuplicateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(
+    `/availabilities/${id}`,
+    'POST',
+    modifiedData
+  )
 }
