@@ -209,7 +209,7 @@ export const NavMenu: React.FC<{
 
   if (!currentAccount) return null
 
-  const accountUrl = getAccountCalendarUrl(currentAccount!, false)
+  const accountUrl = getAccountCalendarUrl(currentAccount, false)
 
   const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })
