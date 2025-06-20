@@ -3,6 +3,7 @@ import ConfirmPaymentInfo from '@components/public-meeting/ConfirmPaymentInfo'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import MakeYourPayment from '@components/public-meeting/MakeYourPayment'
 import ProgressHeader from '@components/public-meeting/ProgressHeader'
+import SelectCryptoNetwork from '@components/public-meeting/SelectCryptoNetwork'
 import SessionTypeCardPaymentInfo from '@components/public-meeting/SessionTypeCardPaymentInfo'
 import { PaymentStep } from '@utils/constants/meeting-types'
 import React, { useContext } from 'react'
@@ -15,7 +16,7 @@ const PaymentComponent = () => {
       case PaymentStep.CONFIRM_PAYMENT:
         return <ConfirmPaymentInfo />
       case PaymentStep.SELECT_CRYPTO_NETWORK:
-        return null
+        return <SelectCryptoNetwork />
       case PaymentStep.FIAT_PAYMENT_VERIFYING:
         return null
 
