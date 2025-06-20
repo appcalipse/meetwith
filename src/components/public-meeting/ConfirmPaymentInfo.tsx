@@ -12,7 +12,18 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
-import { PaymentStep, PaymentType } from '@utils/constants/meeting-types'
+import { ConfirmCryptoTransactionRequest } from '@meta/Requests'
+import { createCryptoTransaction } from '@utils/api_helper'
+import {
+  PaymentStep,
+  PaymentType,
+  TokenType,
+} from '@utils/constants/meeting-types'
+import {
+  ChainNotFound,
+  InValidGuests,
+  TransactionNotFoundError,
+} from '@utils/errors'
 import React, { Reducer, useContext, useMemo } from 'react'
 import {
   Bridge,
@@ -21,12 +32,13 @@ import {
   toUnits,
   waitForReceipt,
 } from 'thirdweb'
-import { useActiveWallet, useConnect } from 'thirdweb/react'
-import { createWallet } from 'thirdweb/wallets'
-import { Address } from 'viem'
+import { useActiveWallet } from 'thirdweb/react'
+import { Wallet } from 'thirdweb/wallets'
+import { Address, formatUnits } from 'viem'
 
+import useAccountContext from '@/hooks/useAccountContext'
+import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import { AcceptedToken, ChainInfo, supportedChains } from '@/types/chains'
-import { isProduction } from '@/utils/constants'
 import { formatCurrency, parseUnits } from '@/utils/generic_utils'
 import {
   ErrorAction,
@@ -35,6 +47,7 @@ import {
   PaymentInfo,
   validatePaymentInfo,
 } from '@/utils/schemas'
+import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
@@ -42,8 +55,10 @@ const ConfirmPaymentInfo = () => {
   const { setPaymentType, setPaymentStep, paymentType, selectedType, account } =
     useContext(PublicScheduleContext)
   const toast = useToast({ position: 'top', isClosable: true })
+  const currentAccount = useAccountContext()
   const wallet = useActiveWallet()
-  console.log({ wallet }, 'here..')
+  const { needsReconnection, attemptReconnection } = useSmartReconnect()
+
   const chain = supportedChains.find(
     val => val.id === selectedType?.plan?.default_chain_id
   ) as ChainInfo
@@ -51,18 +66,19 @@ const ConfirmPaymentInfo = () => {
   const NATIVE_TOKEN_ADDRESS = chain?.acceptableTokens?.find(
     token => token.token === AcceptedToken.USDC
   )?.contractAddress as Address
+  const tokenPriceFeed = new PriceFeedService()
   const handlePay = async () => {
     const amount =
       selectedType!.plan!.price_per_slot! * selectedType!.plan!.no_of_slot!
     if (paymentType === PaymentType.CRYPTO) {
       try {
-        const signingAccount =
-          wallet?.getAccount() ||
-          (await wallet?.connect({ client: thirdWebClient }))
+        let currentWallet: Wallet | undefined | null = wallet
+        if (needsReconnection) {
+          currentWallet = await attemptReconnection()
+        }
+        const signingAccount = currentWallet?.getAccount()
 
-        console.log({ signingAccount })
         if (signingAccount) {
-          console.log({ chain })
           const balance = await getTokenBalance(
             signingAccount.address,
             NATIVE_TOKEN_ADDRESS,
@@ -72,14 +88,27 @@ const ConfirmPaymentInfo = () => {
             NATIVE_TOKEN_ADDRESS,
             chain.chain
           )
-          console.log({ tokenInfo })
+
           if (!tokenInfo?.decimals) return // Unable to get token details
-          const transferAmount = parseUnits(`${amount}`, tokenInfo?.decimals)
+          const tokenMarketPrice = await tokenPriceFeed.getPrice(
+            chain.chain,
+            AcceptedToken.USDC
+          )
+          const transferAmount = parseUnits(
+            `${amount / tokenMarketPrice}`,
+            tokenInfo?.decimals
+          )
           if (balance < transferAmount) {
             // Make this a toast
-            console.error(
-              `Insufficient balance. Required: ${transferAmount}, Available: ${balance}`
-            )
+            toast({
+              title: 'Insufficient Balance',
+              description: `You need ${formatUnits(
+                transferAmount - balance,
+                tokenInfo?.decimals
+              )} ${tokenInfo?.itemSymbol} more to complete this transaction.`,
+              status: 'error',
+              duration: 5000,
+            })
             return
           }
           const transaction = prepareContractCall({
@@ -119,38 +148,57 @@ const ConfirmPaymentInfo = () => {
           } else {
             throw new Error('Transaction failed')
           }
-          console.log({ transactionHash, rest })
+          const payload: ConfirmCryptoTransactionRequest = {
+            transaction_hash: transactionHash,
+            amount: parseFloat(
+              formatUnits(transferAmount, tokenInfo?.decimals)
+            ),
+            meeting_type_id: selectedType?.id || '',
+            token_address: NATIVE_TOKEN_ADDRESS,
+            token_type: TokenType.ERC20,
+            chain: chain.chain,
+            fiat_equivalent: amount,
+            guest_address: currentAccount?.address,
+          }
+          const transactionData = await createCryptoTransaction(payload)
+          // eslint-disable-next-line no-restricted-syntax
+          console.log({ transactionHash, rest, transactionData })
           // implement transaction store data here
         }
-      } catch (e: unknown) {
-        const error = e as Error
-        console.error('Payment failed:', error)
-        toast({
-          title: 'Payment Failed',
-          description: error.message || 'Transaction was rejected or failed',
-          status: 'error',
-          duration: 5000,
-        })
+      } catch (error: unknown) {
+        if (error instanceof TransactionNotFoundError) {
+          toast({
+            title: 'Transaction Not Found',
+            description:
+              error.message || 'Transaction was not found on the blockchain',
+            status: 'error',
+            duration: 5000,
+          })
+        } else if (error instanceof ChainNotFound) {
+          toast({
+            title: 'Chain Not Found',
+            description: error.message || 'The specified chain does not exist',
+            status: 'error',
+            duration: 5000,
+          })
+        } else if (error instanceof InValidGuests) {
+          toast({
+            title: 'Invalid Guests',
+            description: error.message || 'Guest email or address is required.',
+            status: 'error',
+            duration: 5000,
+          })
+        } else if (error instanceof Error) {
+          console.error('Payment failed:', error)
+          toast({
+            title: 'Payment Failed',
+            description: error.message || 'Transaction was rejected or failed',
+            status: 'error',
+            duration: 5000,
+          })
+        }
       }
     } else {
-      const preparedOnramp = await Bridge.Onramp.prepare({
-        client: thirdWebClient,
-        onramp: 'transak',
-        chainId: chain.id,
-        tokenAddress: NATIVE_TOKEN_ADDRESS,
-        receiver: selectedType?.plan?.payment_address || account.address, // receiver's address
-        amount: toUnits('500', 6), // 10 of the destination token
-        // Optional params:
-        // sender: "0x...", // sender's address
-        // onrampTokenAddress: NATIVE_TOKEN_ADDRESS, // token to initially onramp to
-        // onrampChainId: 1, // chain to initially onramp to
-        currency: 'USD',
-        // maxSteps: 2,
-        purchaseData: { customId: '123' },
-      })
-      console.log({ preparedOnramp })
-      console.log(preparedOnramp.link) // URL to redirect the user to
-      console.log(preparedOnramp.currencyAmount)
     }
   }
   const [errors, dispatchErrors] = React.useReducer<
