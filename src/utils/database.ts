@@ -29,7 +29,7 @@ import {
   ConnectedCalendar,
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
-import { SupportedChain } from '@/types/chains'
+import { getChainInfo, SupportedChain } from '@/types/chains'
 import {
   ContactSearch,
   DBContact,
@@ -73,6 +73,7 @@ import {
   ParticipantType,
 } from '@/types/ParticipantInfo'
 import {
+  ConfirmCryptoTransactionRequest,
   CreateMeetingTypeRequest,
   GroupInviteNotifyRequest,
   MeetingCancelSyncRequest,
@@ -88,10 +89,19 @@ import {
   GateUsage,
   GateUsageType,
 } from '@/types/TokenGating'
+import { BaseMeetingSession, BaseTransaction } from '@/types/Transactions'
+import {
+  Currency,
+  PaymentDirection,
+  PaymentStatus,
+  PaymentType,
+  TokenType,
+} from '@/utils/constants/meeting-types'
 import {
   AccountNotFoundError,
   AdminBelowOneError,
   AlreadyGroupMemberError,
+  ChainNotFound,
   ContactAlreadyExists,
   ContactInviteNotForAccount,
   ContactInviteNotFound,
@@ -108,6 +118,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  MeetingTypeNotFound,
   NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
@@ -117,6 +128,7 @@ import {
   UnauthorizedError,
 } from '@/utils/errors'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
+import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
   generateDefaultMeetingType,
@@ -3558,7 +3570,7 @@ const deleteMeetingType = async (
   }
   const { data, error } = await db.supabase
     .from('meeting_type')
-    .update({ deleted_at: new Date() })
+    .update({ deleted_at: new Date().toISOString() })
     .eq('account_owner_address', account_address)
     .eq('id', meeting_type_id)
 
@@ -3583,6 +3595,7 @@ const updateMeetingType = async (
     title: meetingType.title,
     slug: meetingType.slug,
     description: meetingType.description,
+    updated_at: new Date().toISOString(),
   }
   const { data, error } = await db.supabase
     .from('meeting_type')
@@ -3648,6 +3661,7 @@ const updateMeetingType = async (
           payment_channel: meetingType?.plan.payment_channel,
           payment_address: meetingType?.plan.payment_address,
           default_chain_id: meetingType?.plan.crypto_network,
+          updated_at: new Date().toISOString(),
         },
       ])
       .eq('meeting_type_id', meeting_type_id)
@@ -3658,6 +3672,86 @@ const updateMeetingType = async (
   }
   return data?.[0] as MeetingType
 }
+
+const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .select(
+      `
+    *,
+    plan: meeting_type_plan(*)
+    `
+    )
+    .eq('id', id)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new MeetingTypeNotFound()
+  }
+  return data
+}
+const createCryptoTransaction = async (
+  transactionRequest: ConfirmCryptoTransactionRequest
+) => {
+  const chainInfo = getChainInfo(transactionRequest.chain)
+  if (!chainInfo?.id) {
+    throw new ChainNotFound(transactionRequest.chain)
+  }
+  const { feeInUSD, gasUsed, from } = await getTransactionFeeThirdweb(
+    transactionRequest.transaction_hash,
+    transactionRequest.chain
+  )
+  const payload: BaseTransaction = {
+    method: PaymentType.CRYPTO,
+    transaction_hash: transactionRequest.transaction_hash,
+    amount: transactionRequest.amount,
+    direction: PaymentDirection.CREDIT,
+    chain_id: chainInfo?.id,
+    token_address: from,
+    fiat_equivalent: transactionRequest.fiat_equivalent,
+    meeting_type_id: transactionRequest?.meeting_type_id,
+    initiator_address: from,
+    status: PaymentStatus.COMPLETED,
+    token_type: TokenType.ERC20,
+    confirmed_at: new Date().toISOString(),
+    currency: Currency.USD,
+    total_fee: feeInUSD,
+    metadata: {},
+    fee_breakdown: {
+      gas_used: gasUsed,
+      fee_in_usd: feeInUSD,
+    },
+  }
+  const { data, error } = await db.supabase.from('transactions').insert(payload)
+  if (error) {
+    throw new Error(error.message)
+  }
+  const meetingType = await getMeetingTypeFromDB(
+    transactionRequest.meeting_type_id
+  )
+  const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
+  const meetingSessions: Array<BaseMeetingSession> = Array.from(
+    { length: totalNoOfSlots },
+    (_, i) => ({
+      meeting_type_id: transactionRequest.meeting_type_id,
+      transaction_id: data[0]?.id,
+      session_number: i + 1,
+      guest_address: transactionRequest?.guest_address,
+      guest_email: transactionRequest?.guest_email,
+      owner_address: meetingType?.account_owner_address,
+    })
+  )
+  const { error: slotError } = await db.supabase
+    .from('meeting_sessions')
+    .insert(meetingSessions)
+  if (slotError) {
+    throw new Error(slotError.message)
+  }
+  return data[0]
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -3666,6 +3760,7 @@ export {
   checkContactExists,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  createCryptoTransaction,
   createMeetingType,
   createTgConnection,
   deleteAllTgConnections,
