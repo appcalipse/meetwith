@@ -7,7 +7,7 @@ import ContactStateProvider from '@/providers/ContactInvitesProvider'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import { EditMode } from '../../types/Dashboard'
-import AvailabilityConfig from '../availabilities/availability-config'
+import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
