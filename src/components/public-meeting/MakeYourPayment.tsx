@@ -17,7 +17,7 @@ const paymentMethods = [
   {
     id: 'pay-with-crypto',
     name: 'Pay with Crypto',
-    step: PaymentStep.CONFIRM_PAYMENT,
+    step: PaymentStep.SELECT_CRYPTO_NETWORK,
     icon: ChainLogo,
     type: PaymentType.CRYPTO,
   },
