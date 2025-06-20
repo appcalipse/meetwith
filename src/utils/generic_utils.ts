@@ -136,3 +136,44 @@ export const renderProviderName = (provider: MeetingProvider) => {
       return 'Custom'
   }
 }
+
+export const convertMinutes = (minutes: number) => {
+  if (minutes < 60) {
+    return { amount: minutes, type: 'minutes', isEmpty: false }
+  } else if (minutes < 60 * 24) {
+    return { amount: Math.floor(minutes / 60), type: 'hours', isEmpty: false }
+  } else {
+    return {
+      amount: Math.floor(minutes / (60 * 24)),
+      type: 'days',
+      isEmpty: false,
+    }
+  }
+}
+
+export const extractQuery = (
+  query: Partial<{
+    [key: string]: string | string[]
+  }>,
+  key: string
+) => {
+  const value = query[key]
+  if (Array.isArray(value)) {
+    return value[0] || undefined
+  } else if (typeof value === 'string') {
+    return value
+  }
+  return undefined
+}
+
+export const formatCurrency = (
+  amount: number,
+  currency = 'USD',
+  minimumFractionDigits = 0
+) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits,
+  }).format(amount)
+}
