@@ -115,9 +115,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     MeetingProvider.CUSTOM
   )
   useEffect(() => {
-    if (selectedType?.customLink) {
+    if (selectedType?.custom_link) {
       setMeetingProvider(MeetingProvider.CUSTOM)
-      setMeetingUrl(selectedType.customLink)
+      setMeetingUrl(selectedType.custom_link)
     }
   }, [selectedType])
   const handleScheduleWithWallet = async () => {
@@ -451,7 +451,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           />
         </FormControl>
         {scheduleType !== undefined &&
-          (selectedType?.fixedLink || !selectedType?.customLink) && (
+          (selectedType?.fixed_link || !selectedType?.custom_link) && (
             <VStack alignItems="start">
               <Text fontSize="18px" fontWeight={500}>
                 Location

@@ -1,3 +1,4 @@
+import { Transaction } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -6,6 +7,8 @@ import {
   MeetingType,
   SimpleAccountInfo,
   TimeRange,
+  PublicAccount,
+  SimpleAccountInfo,
 } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
@@ -52,6 +55,12 @@ import {
   MeetingCreationRequest,
   MeetingUpdateRequest,
   UpdateAvailabilityBlockRequest,
+  ConfirmCryptoTransactionRequest,
+  CreateMeetingTypeRequest,
+  MeetingCancelRequest,
+  MeetingCreationRequest,
+  MeetingUpdateRequest,
+  UpdateMeetingTypeRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
 import { Coupon, Subscription } from '@/types/Subscription'
@@ -63,6 +72,7 @@ import {
   AccountNotFoundError,
   ApiFetchError,
   CantInviteYourself,
+  ChainNotFound,
   ContactAlreadyExists,
   ContactInviteAlreadySent,
   ContactInviteNotForAccount,
@@ -78,6 +88,7 @@ import {
   Huddle01ServiceUnavailable,
   InvalidSessionError,
   IsGroupAdminError,
+  LastMeetingTypeError,
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
@@ -85,6 +96,7 @@ import {
   OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
+  TransactionNotFoundError,
   UnauthorizedError,
   UrlCreationError,
   ZoomServiceUnavailable,
@@ -119,22 +131,30 @@ export const internalFetch = async <T>(
     }
 
     throw new ApiFetchError(response.status, await response.text())
-  } catch (e: any) {
+  } catch (e: unknown) {
     // Exclude account not found error on sentry
-    if (!path.includes('accounts') && e.status === 404) {
+    if (
+      e instanceof ApiFetchError &&
+      !path.includes('accounts') &&
+      e.status === 404
+    ) {
       Sentry.captureException(e)
     }
     throw e
   }
 }
 
-export const getAccount = async (identifier: string): Promise<Account> => {
+export const getAccount = async (
+  identifier: string
+): Promise<PublicAccount> => {
   try {
-    const account = await internalFetch(`/accounts/${identifier}`)
+    const account = await internalFetch<PublicAccount>(
+      `/accounts/${identifier}`
+    )
     if (!account) throw new AccountNotFoundError(identifier)
-    return account as Account
-  } catch (e: any) {
-    if (e.status && e.status === 404) {
+    return account
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 404) {
       throw new AccountNotFoundError(identifier)
     }
     throw e
@@ -145,8 +165,8 @@ export const getOwnAccount = async (identifier: string): Promise<Account> => {
   try {
     const account = await internalFetch('/secure/accounts')
     return account as Account
-  } catch (e: any) {
-    if (e.status && e.status === 404) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 404) {
       throw new AccountNotFoundError(identifier)
     }
     throw e
@@ -160,8 +180,8 @@ export const getAccountByDomain = async (
     return (await internalFetch(
       `/accounts/subscriptions/check/${domain}`
     )) as Subscription
-  } catch (e: any) {
-    if (e.status && e.status === 404) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 404) {
       return null
     }
     throw e
@@ -176,7 +196,7 @@ export const getExistingAccountsSimple = async (
       addresses,
       fullInformation: false,
     })) as SimpleAccountInfo[]
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw e
   }
 }
@@ -190,7 +210,7 @@ export const getExistingAccounts = async (
       addresses,
       fullInformation: true,
     })) as Account[]
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw e
   }
 }
@@ -223,12 +243,12 @@ export const scheduleMeetingFromServer = async (
         'X-Server-Secret': process.env.SERVER_SECRET!,
       }
     )) as DBSlot
-  } catch (e: any) {
-    if (e.status && e.status === 409) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
       throw new TimeNotAvailableError()
-    } else if (e.status && e.status === 412) {
+    } else if (e instanceof ApiFetchError && e.status === 412) {
       throw new MeetingCreationError()
-    } else if (e.status && e.status === 403) {
+    } else if (e instanceof ApiFetchError && e.status === 403) {
       throw new GateConditionNotValidError()
     }
     throw e
@@ -248,8 +268,8 @@ export const getFullAccountInfo = async (
         'X-Server-Secret': process.env.SERVER_SECRET!,
       }
     )) as Account
-  } catch (e: any) {
-    if (e.status && e.status === 404) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 404) {
       throw new AccountNotFoundError(identifier)
     }
     throw e
@@ -261,12 +281,12 @@ export const scheduleMeeting = async (
 ): Promise<DBSlot> => {
   try {
     return (await internalFetch(`/secure/meetings`, 'POST', meeting)) as DBSlot
-  } catch (e: any) {
-    if (e.status && e.status === 409) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
       throw new TimeNotAvailableError()
-    } else if (e.status && e.status === 412) {
+    } else if (e instanceof ApiFetchError && e.status === 412) {
       throw new MeetingCreationError()
-    } else if (e.status && e.status === 403) {
+    } else if (e instanceof ApiFetchError && e.status === 403) {
       throw new GateConditionNotValidError()
     }
     throw e
@@ -278,12 +298,12 @@ export const scheduleMeetingAsGuest = async (
 ): Promise<DBSlot> => {
   try {
     return (await internalFetch(`/meetings/guest`, 'POST', meeting)) as DBSlot
-  } catch (e: any) {
-    if (e.status && e.status === 409) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
       throw new TimeNotAvailableError()
-    } else if (e.status && e.status === 412) {
+    } else if (e instanceof ApiFetchError && e.status === 412) {
       throw new MeetingCreationError()
-    } else if (e.status && e.status === 403) {
+    } else if (e instanceof ApiFetchError && e.status === 403) {
       throw new GateConditionNotValidError()
     }
     throw e
@@ -300,12 +320,12 @@ export const updateMeeting = async (
       'POST',
       meeting
     )) as DBSlot
-  } catch (e: any) {
-    if (e.status && e.status === 409) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
       throw new TimeNotAvailableError()
-    } else if (e.status && e.status === 412) {
+    } else if (e instanceof ApiFetchError && e.status === 412) {
       throw new MeetingCreationError()
-    } else if (e.status && e.status === 417) {
+    } else if (e instanceof ApiFetchError && e.status === 417) {
       throw new MeetingChangeConflictError()
     }
     throw e
@@ -326,10 +346,10 @@ export const cancelMeeting = async (
       'DELETE',
       body
     )) as { removed: string[] }
-  } catch (e: any) {
-    if (e.status && e.status === 409) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
       throw new TimeNotAvailableError()
-    } else if (e.status && e.status === 412) {
+    } else if (e instanceof ApiFetchError && e.status === 412) {
       throw new MeetingCreationError()
     }
     throw e
@@ -351,14 +371,36 @@ export const isSlotFreeApiCall = async (
   }
 }
 
-export const saveMeetingType = async (type: MeetingType): Promise<Account> => {
-  return (await internalFetch(`/secure/meetings/type`, 'POST', type)) as Account
+export const saveMeetingType = async (
+  type: CreateMeetingTypeRequest
+): Promise<MeetingType> => {
+  return await internalFetch<MeetingType>(`/secure/meetings/type`, 'POST', type)
 }
 
-export const removeMeetingType = async (typeId: string): Promise<Account> => {
-  return (await internalFetch(`/secure/meetings/type`, 'DELETE', {
-    typeId,
-  })) as Account
+export const updateMeetingType = async (
+  type: UpdateMeetingTypeRequest
+): Promise<MeetingType> => {
+  return await internalFetch<MeetingType>(
+    `/secure/meetings/type`,
+    'PATCH',
+    type
+  )
+}
+
+export const removeMeetingType = async (
+  typeId: string
+): Promise<MeetingType> => {
+  try {
+    return await internalFetch<MeetingType>(`/secure/meetings/type`, 'DELETE', {
+      typeId,
+    })
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new LastMeetingTypeError()
+    } else {
+      throw e
+    }
+  }
 }
 
 export const getMeetings = async (
@@ -569,8 +611,8 @@ export const leaveGroup = async (group_id: string) => {
       'POST'
     )
     return response?.success
-  } catch (e: any) {
-    if (e.status && e.status === 403) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 403) {
       throw new IsGroupAdminError()
     } else {
       throw e
@@ -742,10 +784,10 @@ export const login = async (accountAddress: string): Promise<Account> => {
       identifier: accountAddress,
       signature,
     })) as Account
-  } catch (e: any) {
-    if (e.status && e.status === 404) {
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 404) {
       throw new AccountNotFoundError(accountAddress)
-    } else if (e.status && e.status === 401) {
+    } else if (e instanceof ApiFetchError && e.status === 401) {
       throw new InvalidSessionError()
     }
     throw e
@@ -882,10 +924,10 @@ export const saveGateCondition = async (
 export const deleteGateCondition = async (id: string): Promise<boolean> => {
   try {
     return (
-      (await internalFetch(`/secure/gate`, 'DELETE', {
+      await internalFetch<{ result: boolean }>(`/secure/gate`, 'DELETE', {
         id,
-      })) as any
-    ).result as boolean
+      })
+    ).result
   } catch (e) {
     if (e instanceof ApiFetchError) {
       if (e.status === 409) {
@@ -956,13 +998,13 @@ export const getSuggestedSlots = async (
 ): Promise<Interval[]> => {
   try {
     return (
-      (await internalFetch(`/meetings/busy/suggest`, 'POST', {
+      await internalFetch<Interval[]>(`/meetings/busy/suggest`, 'POST', {
         addresses,
         startDate,
         endDate,
         duration,
         includePast,
-      })) as any[]
+      })
     ).map(slot => ({
       start: new Date(slot.start),
       end: new Date(slot.end),
@@ -1330,6 +1372,7 @@ export const doesContactExist = async (identifier: string) => {
   return await internalFetch<boolean>(`/secure/contact/${identifier}/exist`)
 }
 
+
 export const getAvailabilityBlocks = async (): Promise<AvailabilityBlock[]> => {
   return await internalFetch<AvailabilityBlock[]>(`/availabilities`)
 }
@@ -1386,4 +1429,32 @@ export const duplicateAvailabilityBlock = async ({
     'POST',
     modifiedData
   )
+
+export const getMeetingTypes = async (
+  limit = 10,
+  offset = 0
+): Promise<MeetingType[]> => {
+  const response = await internalFetch<MeetingType[]>(
+    `/secure/meetings/type?limit=${limit}&offset=${offset}`
+  )
+  return response
+}
+
+export const createCryptoTransaction = async (
+  transaction: ConfirmCryptoTransactionRequest
+): Promise<Transaction> => {
+  try {
+    return await internalFetch<Transaction>(
+      `/transactions/crypto`,
+      'POST',
+      transaction
+    )
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 402) {
+      throw new TransactionNotFoundError(transaction.transaction_hash)
+    } else if (e instanceof ApiFetchError && e.status === 404) {
+      throw new ChainNotFound(transaction.chain)
+    }
+    throw e
+  }
 }
