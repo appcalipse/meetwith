@@ -51,6 +51,7 @@ export interface BaseMeetingType {
   min_notice_minutes: number
   fixed_link?: boolean
   custom_link?: string
+  updated_at?: string | Date
 }
 export interface MeetingType extends BaseMeetingType {
   id: string
@@ -64,7 +65,6 @@ export interface MeetingType extends BaseMeetingType {
     >
   >
   created_at: Date
-  updated_at: Date
   deleted_at: Date
 }
 
