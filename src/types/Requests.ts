@@ -2,6 +2,7 @@ import { Encrypted } from 'eth-crypto'
 
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
+import { TimeRange } from './Account'
 import { Account } from './Account'
 import { MeetingReminders } from './common'
 import { MemberType } from './Group'
@@ -112,6 +113,7 @@ export interface MeetingCancelSyncRequest extends MeetingSyncRequest {
   addressesToRemove: string[]
   guestsToRemove: ParticipantInfo[]
   reason?: string
+  title?: string
 }
 
 export interface DiscordAccountInfoRequest {
@@ -155,4 +157,26 @@ export interface CouponSubscriptionRequest {
 
 export interface SubscriptionUpdateRequest {
   domain: string
+}
+
+export interface CreateAvailabilityBlockRequest {
+  title: string
+  timezone: string
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+  is_default?: boolean
+}
+
+export interface UpdateAvailabilityBlockRequest
+  extends CreateAvailabilityBlockRequest {
+  id: string
+}
+
+export interface DuplicateAvailabilityBlockRequest {
+  id: string
+  modifiedData: {
+    title: string
+    timezone: string
+    weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+    is_default: boolean
+  }
 }
