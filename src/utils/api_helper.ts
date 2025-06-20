@@ -5,8 +5,6 @@ import { DAVCalendar } from 'tsdav'
 import {
   Account,
   MeetingType,
-  SimpleAccountInfo,
-  TimeRange,
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
@@ -23,7 +21,6 @@ import {
   Contact,
   ContactInvite,
   ContactSearch,
-  DBContact,
   LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
@@ -49,17 +46,14 @@ import {
 } from '@/types/Meeting'
 import {
   ChangeGroupAdminRequest,
+  ConfirmCryptoTransactionRequest,
   CreateAvailabilityBlockRequest,
+  CreateMeetingTypeRequest,
   DuplicateAvailabilityBlockRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
   UpdateAvailabilityBlockRequest,
-  ConfirmCryptoTransactionRequest,
-  CreateMeetingTypeRequest,
-  MeetingCancelRequest,
-  MeetingCreationRequest,
-  MeetingUpdateRequest,
   UpdateMeetingTypeRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
@@ -1372,7 +1366,6 @@ export const doesContactExist = async (identifier: string) => {
   return await internalFetch<boolean>(`/secure/contact/${identifier}/exist`)
 }
 
-
 export const getAvailabilityBlocks = async (): Promise<AvailabilityBlock[]> => {
   return await internalFetch<AvailabilityBlock[]>(`/availabilities`)
 }
@@ -1429,15 +1422,15 @@ export const duplicateAvailabilityBlock = async ({
     'POST',
     modifiedData
   )
+}
 
 export const getMeetingTypes = async (
   limit = 10,
   offset = 0
 ): Promise<MeetingType[]> => {
-  const response = await internalFetch<MeetingType[]>(
+  return await internalFetch<MeetingType[]>(
     `/secure/meetings/type?limit=${limit}&offset=${offset}`
   )
-  return response
 }
 
 export const createCryptoTransaction = async (
