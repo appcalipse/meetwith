@@ -19,6 +19,7 @@ import {
   PublicAccount,
   SimpleAccountInfo,
   TgConnectedAccounts,
+  TimeRange,
 } from '@/types/Account'
 import {
   AccountNotifications,
@@ -101,6 +102,7 @@ import {
   AccountNotFoundError,
   AdminBelowOneError,
   AlreadyGroupMemberError,
+  AvailabilityBlockNotFoundError,
   ChainNotFound,
   ContactAlreadyExists,
   ContactInviteNotForAccount,
@@ -109,10 +111,12 @@ import {
   CouponAlreadyUsed,
   CouponExpired,
   CouponNotValid,
+  DefaultAvailabilityBlockError,
   GateConditionNotValidError,
   GateInUseError,
   GroupCreationError,
   GroupNotExistsError,
+  InvalidAvailabilityBlockError,
   IsGroupAdminError,
   LastMeetingTypeError,
   MeetingChangeConflictError,
@@ -883,7 +887,8 @@ const deleteMeetingFromDB = async (
   guestsToRemove: ParticipantInfo[],
   meeting_id: string,
   timezone: string,
-  reason?: string
+  reason?: string,
+  title?: string
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
@@ -905,6 +910,7 @@ const deleteMeetingFromDB = async (
     start: new Date(oldSlots[0].start),
     end: new Date(oldSlots[0].end),
     created_at: new Date(oldSlots[0].created_at!),
+    title,
     timezone,
     reason,
   }
@@ -2685,7 +2691,9 @@ const updateMeeting = async (
       meetingUpdateRequest.slotsToRemove,
       meetingUpdateRequest.guestsToRemove,
       meetingUpdateRequest.meeting_id,
-      timezone
+      timezone,
+      undefined,
+      meetingUpdateRequest.title
     )
 
   return meetingResponse
@@ -3438,6 +3446,251 @@ const removeContact = async (address: string, contact_address: string) => {
   }
 }
 
+const getDefaultAvailabilityBlockId = async (
+  account_address: string
+): Promise<string | null> => {
+  const { data: accountPrefs } = await db.supabase
+    .from('account_preferences')
+    .select('availaibility_id')
+    .eq('owner_account_address', account_address)
+    .single()
+
+  return accountPrefs?.availaibility_id || null
+}
+
+const isAvailabilityBlockDefault = async (
+  id: string,
+  account_address: string
+): Promise<boolean> => {
+  const defaultBlockId = await getDefaultAvailabilityBlockId(account_address)
+  return defaultBlockId === id
+}
+
+export const createAvailabilityBlock = async (
+  account_address: string,
+  title: string,
+  timezone: string,
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
+  is_default = false
+) => {
+  // Create the availability block
+  const { data: block, error: blockError } = await db.supabase
+    .from('availabilities')
+    .insert([
+      {
+        title,
+        timezone,
+        weekly_availability,
+        account_owner_address: account_address,
+      },
+    ])
+    .select()
+    .single()
+
+  if (blockError) throw blockError
+
+  // If this is being set as default, update account preferences
+  if (is_default) {
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availabilities: weekly_availability,
+        timezone: timezone,
+        availaibility_id: block.id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) throw prefError
+  }
+
+  return block
+}
+
+export const getAvailabilityBlock = async (
+  id: string,
+  account_address: string
+) => {
+  const { data, error } = await db.supabase
+    .from('availabilities')
+    .select('*')
+    .eq('id', id)
+    .eq('account_owner_address', account_address)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new AvailabilityBlockNotFoundError()
+    }
+    throw error
+  }
+
+  // Check if this is the default block
+  const isDefault = await isAvailabilityBlockDefault(id, account_address)
+
+  return {
+    ...data,
+    isDefault,
+  }
+}
+
+export const updateAvailabilityBlock = async (
+  id: string,
+  account_address: string,
+  title: string,
+  timezone: string,
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
+  is_default = false
+) => {
+  // Get current account preferences to check if this block is currently default
+  const isCurrentlyDefault = await isAvailabilityBlockDefault(
+    id,
+    account_address
+  )
+
+  // If this block is being set as default, update account preferences
+  if (is_default) {
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) throw prefError
+  } else if (isCurrentlyDefault) {
+    // If this block is currently default but is being unset, set availaibility_id to null
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: null,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) throw prefError
+  }
+
+  const { data, error } = await db.supabase
+    .from('availabilities')
+    .update({
+      title,
+      timezone,
+      weekly_availability,
+    })
+    .eq('id', id)
+    .eq('account_owner_address', account_address)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export const deleteAvailabilityBlock = async (
+  id: string,
+  account_address: string
+) => {
+  // Check if this is the default block by checking account preferences
+  const isDefault = await isAvailabilityBlockDefault(id, account_address)
+
+  if (isDefault) {
+    throw new DefaultAvailabilityBlockError()
+  }
+
+  const { error } = await db.supabase
+    .from('availabilities')
+    .delete()
+    .eq('id', id)
+    .eq('account_owner_address', account_address)
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new AvailabilityBlockNotFoundError()
+    }
+    throw error
+  }
+}
+
+export const duplicateAvailabilityBlock = async (
+  id: string,
+  account_address: string,
+  modifiedData?: {
+    title?: string
+    timezone?: string
+    weekly_availability?: Array<{ weekday: number; ranges: TimeRange[] }>
+    is_default?: boolean
+  }
+) => {
+  // First get the block to duplicate
+  const block = await getAvailabilityBlock(id, account_address)
+  if (!block) {
+    throw new AvailabilityBlockNotFoundError()
+  }
+
+  // Create a new block with the same data but a new ID, applying any modifications
+  const { data: newBlock, error: blockError } = await db.supabase
+    .from('availabilities')
+    .insert([
+      {
+        title: modifiedData?.title || `${block.title} (Copy)`,
+        timezone: modifiedData?.timezone || block.timezone,
+        weekly_availability:
+          modifiedData?.weekly_availability || block.weekly_availability,
+        account_owner_address: account_address,
+      },
+    ])
+    .select()
+    .single()
+
+  if (blockError) {
+    throw new InvalidAvailabilityBlockError('Failed to create duplicate block')
+  }
+
+  // If this is being set as default, update account preferences with the new block ID
+  if (modifiedData?.is_default) {
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: newBlock.id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) {
+      console.error('Error updating account preferences:', prefError)
+      throw new InvalidAvailabilityBlockError('Failed to set as default block')
+    }
+  }
+
+  return newBlock
+}
+
+export const isDefaultAvailabilityBlock = async (
+  id: string,
+  account_address: string
+): Promise<boolean> => {
+  return await isAvailabilityBlockDefault(id, account_address)
+}
+
+export const getAvailabilityBlocks = async (account_address: string) => {
+  // Get all availability blocks
+  const { data: blocks, error } = await db.supabase
+    .from('availabilities')
+    .select('*')
+    .eq('account_owner_address', account_address)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  // Get account preferences to determine default block
+  const defaultBlockId = await getDefaultAvailabilityBlockId(account_address)
+
+  // Add isDefault flag to each block based on availaibility_id
+  const blocksWithDefault = blocks.map(block => ({
+    ...block,
+    isDefault: defaultBlockId === block.id,
+  }))
+
+  return blocksWithDefault
+  
 const getMeetingTypes = async (
   account_address: string,
   limit = 10,

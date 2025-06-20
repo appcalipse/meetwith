@@ -23,7 +23,7 @@ import { useRouter } from 'next/router'
 import React, { FC, useContext, useEffect, useState } from 'react'
 import { FaApple, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
-import { WeekdayConfig } from '@/components/availabilities/weekday-config'
+import { WeekdayConfig } from '@/components/availabilities/WeekdayConfig'
 import WebDavDetailsPanel from '@/components/ConnectedCalendars/WebDavCalendarDetail'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import TimezoneSelector from '@/components/TimezoneSelector'
@@ -244,8 +244,8 @@ const GroupOnBoardingModal: FC<IGroupOnBoardingModalProps> = ({
           <Flex marginTop={6} direction="column">
             <Heading fontSize="24px">Enter display name</Heading>
             <Text marginTop={4} color={textColor}>
-              Enter your name below before joining {groupName}. You’ll be able
-              to edit this later.
+              Enter your name below before joining {groupName}. You&apos;ll be
+              able to edit this later.
             </Text>
 
             <Flex direction="column" gap={4}>

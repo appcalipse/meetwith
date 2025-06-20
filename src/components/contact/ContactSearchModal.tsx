@@ -158,7 +158,11 @@ const ContactSearchModal = (props: Props) => {
       onClose={props.onClose}
       isOpen={props.isOpen}
       blockScrollOnMount={false}
-      size={'lg'}
+      size={{
+        lg: 'lg',
+        md: 'xl',
+        base: '2xl',
+      }}
     >
       <ModalOverlay backdropFilter="blur(10px)" bg="rgba(0, 0, 0, 0.6)" />
       <ModalContent p={0} bg="neutral.900" rounded={12}>
@@ -244,7 +248,8 @@ const ContactSearchModal = (props: Props) => {
                             className="contact-avatar"
                           />
                           <Text maxW={{ base: 120, md: 200 }} isTruncated>
-                            {account.name || account.address || account.email}
+                            {account.name ||
+                              `no name - ${account.email || account.address}`}
                           </Text>
                         </HStack>
                       </Td>
