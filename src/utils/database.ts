@@ -3690,7 +3690,8 @@ export const getAvailabilityBlocks = async (account_address: string) => {
   }))
 
   return blocksWithDefault
-  
+}
+
 const getMeetingTypes = async (
   account_address: string,
   limit = 10,
