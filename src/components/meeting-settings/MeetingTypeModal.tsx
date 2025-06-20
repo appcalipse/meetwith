@@ -48,7 +48,6 @@ import {
   Option,
 } from '@utils/constants/select'
 import { convertMinutes } from '@utils/generic_utils'
-import useAccountContext from '@utils/hooks/useAccountContext'
 import {
   createMeetingSchema,
   ErrorAction,
@@ -63,6 +62,7 @@ import { Select as ChakraSelect } from 'chakra-react-select'
 import React, { FC, Reducer, useState } from 'react'
 import { z } from 'zod'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
 interface IProps {
   onClose: () => void
