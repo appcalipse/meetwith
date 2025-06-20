@@ -1,5 +1,7 @@
 import {
+  CalendarEvent,
   CalendarSyncInfo,
+  CalendarWebhookResp,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
@@ -42,6 +44,34 @@ export interface CalendarService {
     dateFrom: string,
     dateTo: string
   ): Promise<EventBusyDate[]>
+
+  getGoogleEvents?: (
+    calendarId: string,
+    days?: number
+  ) => Promise<CalendarEvent[]>
+
+  syncCalendarEvents?: (
+    calendarOwnerAddress: string,
+    calendarId: string,
+    days?: number
+  ) => Promise<void>
+
+  stopChannel?: (
+    calendarOwnerAddress: string,
+    resourceId: string
+  ) => Promise<void>
+
+  /**
+   * List user availability on target external calendar
+   *
+   * @param calendarId calendar id to query
+   * @param calendarOwnerAddress calendar owner address
+   */
+  setupCalendarWebhook(
+    calendarId: string,
+    calendarOwnerAddress: string,
+    webhookUrl?: string
+  ): Promise<CalendarWebhookResp>
 
   /**
    * Updates an event on target external calendar

@@ -62,9 +62,16 @@ const handleSecureRoute = async (req: NextRequest) => {
 }
 
 const handleServerRoute = async (req: NextRequest) => {
+  const pathname = req.nextUrl.pathname
+
+  // Exclude specific webhook path
+  if (pathname.startsWith('/api/server/webhooks/calendar/google/')) {
+    return NextResponse.next()
+  }
+
   if (req.headers.get('X-Server-Secret') === process.env.SERVER_SECRET) {
     return NextResponse.next()
   }
 
-  return notAuthorized
+  return notAuthorized()
 }

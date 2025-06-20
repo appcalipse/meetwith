@@ -852,6 +852,14 @@ const handleMeetingCancelSync = async (
       .eq('id', slot.id)
   }
 }
+const deleteMeetingOnlyFromDB = async (slotIds: string[]) => {
+  const { error } = await db.supabase.from('slots').delete().in('id', slotIds)
+
+  if (error) {
+    // eslint-disable-next-line no-restricted-syntax
+    console.log(error.message)
+  }
+}
 const deleteMeetingFromDB = async (
   participantActing: ParticipantBaseInfo,
   slotIds: string[],
@@ -2064,6 +2072,22 @@ export const updateCalendarPayload = async (
     .update({ payload, updated: new Date() })
     .eq('account_address', address.toLowerCase())
     .ilike('email', email.toLowerCase())
+    .eq('provider', provider)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+export const updateCalendarWebhook = async (
+  address: string,
+  provider: TimeSlotSource,
+  webhook: boolean
+): Promise<void> => {
+  const { error } = await db.supabase
+    .from('connected_calendars')
+    .update({ webhook, updated: new Date() })
+    .eq('account_address', address.toLowerCase())
     .eq('provider', provider)
 
   if (error) {
@@ -3676,6 +3700,7 @@ export {
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
+  deleteMeetingOnlyFromDB,
   deleteTgConnection,
   editGroup,
   findAccountsByText,

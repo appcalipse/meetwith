@@ -1,23 +1,45 @@
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as Sentry from '@sentry/nextjs'
 import { format, getWeekOfMonth } from 'date-fns'
 import { Auth, calendar_v3, google } from 'googleapis'
 
 import {
+  CalendarEvent,
   CalendarSyncInfo,
+  CalendarWebhookResp,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
-import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
+import {
+  ExtendedDBSlot,
+  MeetingProvider,
+  MeetingRepeat,
+  TimeSlotSource,
+} from '@/types/Meeting'
 import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
-import { updateCalendarPayload } from '../database'
+import {
+  deleteMeetingOnlyFromDB,
+  getMeetingFromDB,
+  getSlotsForDashboard,
+  updateCalendarPayload,
+} from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
 export type EventBusyDate = Record<'start' | 'end', Date | string>
+
+// --- NEW --- Interface defining the return structure for the sync function
+export interface CalendarSyncResult {
+  deletedGoogleEventIds: string[] // Google's event IDs that were deleted
+  nextSyncToken: string | null | undefined // Token for the next sync poll
+  error?: any // To capture potential errors during the sync API call
+  requiresFullSync?: boolean // Flag if a 410 error occurred, indicating token is invalid
+}
 
 export class MWWGoogleAuth extends google.auth.OAuth2 {
   constructor(client_id: string, client_secret: string, redirect_uri?: string) {
@@ -582,6 +604,210 @@ export default class GoogleCalendarService implements CalendarService {
         )
       })
     )
+  }
+
+  async getGoogleEvents(
+    calendarId: string,
+    days = 2
+  ): Promise<CalendarEvent[]> {
+    try {
+      const myGoogleAuth = await this.auth.getToken() // Or getClient() depending on your auth setup
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+
+      const now = Date.now()
+
+      // Calculate timestamp for 2 days ago
+      const daysBack = now - days * 24 * 60 * 60 * 1000
+      const daysTo = now + days * 24 * 60 * 60 * 1000
+
+      // Calculate dateFrom (2 days ago in RFC3339)
+      const dateFrom = new Date(daysBack).toISOString().replace(/\.000Z$/, 'Z') // Remove milliseconds
+      const dateTo = new Date(daysTo).toISOString().replace(/\.000Z$/, 'Z') // Remove milliseconds
+
+      const allEvents: CalendarEvent[] = []
+      let pageToken: string | undefined | null = undefined // Start with no page token
+
+      do {
+        const params: calendar_v3.Params$Resource$Events$List = {
+          calendarId: calendarId,
+          timeMin: dateFrom,
+          timeMax: dateTo,
+          singleEvents: true,
+          orderBy: 'startTime',
+          maxResults: 250, // Be explicit about max results per page
+          pageToken: pageToken || undefined, // Use pageToken if available
+        }
+
+        // Use await instead of callback
+        const response = await calendar.events.list(params)
+
+        if (response?.data?.items) {
+          response.data.items.forEach((event: calendar_v3.Schema$Event) => {
+            // Added check for event.id as it technically can be null
+            if (event.id) {
+              allEvents.push({
+                id: event.id,
+                calendarId: calendarId, // Use the input calendarId
+                summary: event.summary || '',
+                description: event.description || '',
+                start: event.start?.dateTime || event.start?.date || '',
+                end: event.end?.dateTime || event.end?.date || '',
+                location: event.location || '',
+              })
+            } else {
+              console.warn('Found event without ID, skipping:', event.summary)
+            }
+          })
+        }
+
+        // Get the next page token for the next iteration
+        pageToken = response?.data?.nextPageToken
+      } while (pageToken) // Continue loop if there's a next page token
+
+      return allEvents
+    } catch (error) {
+      console.error('Error fetching Google Calendar events:', error)
+      // Re-throw or handle error more specifically
+      throw error // Propagate the error
+    }
+  }
+
+  async syncCalendarEvents(
+    calendarOwnerAccountAddress: string,
+    calendarId: string,
+    daysToFetch = 2 // Sync events roughly for one year past and one year into the future
+  ): Promise<void> {
+    try {
+      // 1. Fetch current events from Google Calendar within a wide range.
+      const googleEvents =
+        (await this.getGoogleEvents(calendarId, daysToFetch)) || []
+
+      const now = Date.now()
+      const daysFrom = now - daysToFetch * 24 * 60 * 60 * 1000
+      const meetings: ExtendedDBSlot[] = await getSlotsForDashboard(
+        calendarOwnerAccountAddress,
+        new Date(daysFrom),
+        5,
+        0
+      )
+
+      if (meetings && meetings.length > 0) {
+        const data = meetings.map(m => ({
+          meetingConfId: m.conferenceData?.id.replaceAll('-', ''),
+          meetingId: m.id,
+        }))
+
+        const existingGoogleEventIds = new Set(
+          googleEvents.map(event => event.id)
+        )
+
+        const promises: Promise<any>[] = []
+        data.forEach((m: any) => {
+          if (!existingGoogleEventIds.has(m.meetingConfId)) {
+            console.log('Deleting event', m.meetingId)
+            promises.push(deleteMeetingOnlyFromDB([m.meetingId]))
+          } else {
+            console.log('no action needed for event', m.meetingId)
+          }
+        })
+        await Promise.allSettled(promises) // Wait for all operations to attempt completion
+      }
+
+      console.log(`Synchronization complete for calendar ${calendarId}.`)
+    } catch (error: any) {
+      console.error(
+        'Major Sync Error during Google Calendar synchronization:',
+        error
+      )
+      Sentry.captureException(error)
+    }
+  }
+
+  async stopChannel(webhookId: string, resourceId: string): Promise<void> {
+    console.log(
+      `Attempting to stop channel with ID: ${webhookId} and Resource ID: ${resourceId}`
+    )
+    try {
+      const myGoogleAuth = await this.auth.getToken() // Or getClient() depending on auth setup
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+
+      const requestBody: calendar_v3.Schema$Channel = {
+        id: webhookId,
+        resourceId: resourceId,
+      }
+
+      // The channels.stop method requires the channel and resource IDs in the request body.
+      await calendar.channels.stop({
+        requestBody: requestBody,
+      })
+
+      console.log(
+        `Successfully stopped channel with ID: ${webhookId} and Resource ID: ${resourceId}`
+      )
+      // No meaningful data is returned on success, so we resolve void
+    } catch (error: any) {
+      // Log the specific error from the API if available
+      const apiError = error?.response?.data?.error || error
+      console.error(
+        `Error stopping Google Calendar channel (ID: ${webhookId}, Resource ID: ${resourceId}):`,
+        apiError.message || error.message || error
+      )
+      // Re-throw the error to be handled by the caller
+      throw new Error(
+        `Failed to stop channel: ${apiError.message || error.message}`
+      )
+    }
+  }
+
+  async setupCalendarWebhook(
+    calendarId: string,
+    calendarOwnerAddress: string,
+    webhookUrl = apiUrl
+  ): Promise<CalendarWebhookResp> {
+    try {
+      const myGoogleAuth = await this.auth.getToken()
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: myGoogleAuth,
+      })
+
+      // Fro local testing add ngrok url for apiUrl
+      const webhookAddress = `${webhookUrl}/server/webhooks/calendar/google/${calendarOwnerAddress}`
+
+      // Create the watch request using the calendarOwnerAddress as the ID
+      const watchRequest: calendar_v3.Schema$Channel = {
+        id: `id-${calendarOwnerAddress}`,
+        type: 'web_hook',
+        address: webhookAddress,
+      }
+
+      const response = await calendar.events.watch({
+        calendarId: parseCalendarId(calendarId),
+        requestBody: watchRequest,
+      })
+
+      const resp: CalendarWebhookResp = {
+        calendarType: TimeSlotSource.GOOGLE,
+        webhookId: response.data.id || '',
+        webhookAddress: response.config.data.address || '',
+        webhookResourceId: response.data.resourceId || '',
+        webhookExpiration: new Date(Number(response.data.expiration)),
+      }
+
+      console.log(
+        `Webhook set up for calendar ${calendarId} to owner ${calendarOwnerAddress}`
+      )
+      return resp
+    } catch (error) {
+      console.error('Error setting up Google Calendar webhook:', error)
+      throw error
+    }
   }
 }
 
