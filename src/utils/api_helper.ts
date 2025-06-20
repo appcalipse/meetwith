@@ -1,3 +1,4 @@
+import { Transaction } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -45,6 +46,7 @@ import {
 } from '@/types/Meeting'
 import {
   ChangeGroupAdminRequest,
+  ConfirmCryptoTransactionRequest,
   CreateMeetingTypeRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
@@ -61,6 +63,7 @@ import {
   AccountNotFoundError,
   ApiFetchError,
   CantInviteYourself,
+  ChainNotFound,
   ContactAlreadyExists,
   ContactInviteAlreadySent,
   ContactInviteNotForAccount,
@@ -84,6 +87,7 @@ import {
   OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
+  TransactionNotFoundError,
   UnauthorizedError,
   UrlCreationError,
   ZoomServiceUnavailable,
@@ -1367,4 +1371,23 @@ export const getMeetingTypes = async (
     `/secure/meetings/type?limit=${limit}&offset=${offset}`
   )) as MeetingType[]
   return response
+}
+
+export const createCryptoTransaction = async (
+  transaction: ConfirmCryptoTransactionRequest
+): Promise<Transaction> => {
+  try {
+    return await internalFetch<Transaction>(
+      `/transactions/crypto`,
+      'POST',
+      transaction
+    )
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 402) {
+      throw new TransactionNotFoundError(transaction.transaction_hash)
+    } else if (e instanceof ApiFetchError && e.status === 404) {
+      throw new ChainNotFound(transaction.chain)
+    }
+    throw e
+  }
 }
