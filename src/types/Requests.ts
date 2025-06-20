@@ -2,9 +2,11 @@ import {
   PaymentChannel,
   PlanType,
   SessionType,
+  TokenType,
 } from '@utils/constants/meeting-types'
 import { Encrypted } from 'eth-crypto'
 
+import { SupportedChain } from '@/types/chains'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 import { Account } from './Account'
@@ -188,4 +190,16 @@ export interface UpdateMeetingTypeRequest extends CreateMeetingTypeRequest {
 
 export interface DeleteMeetingTypeRequest {
   typeId: string
+}
+
+export interface ConfirmCryptoTransactionRequest {
+  transaction_hash: `0x${string}`
+  amount: number
+  meeting_type_id: string
+  token_address: string
+  token_type: TokenType
+  chain: SupportedChain
+  fiat_equivalent: number
+  guest_email?: string
+  guest_address?: string
 }
