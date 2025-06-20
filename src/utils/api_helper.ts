@@ -5,10 +5,13 @@ import { DAVCalendar } from 'tsdav'
 import {
   Account,
   MeetingType,
+  SimpleAccountInfo,
+  TimeRange,
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
+import { AvailabilityBlock } from '@/types/availability'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -46,6 +49,12 @@ import {
 } from '@/types/Meeting'
 import {
   ChangeGroupAdminRequest,
+  CreateAvailabilityBlockRequest,
+  DuplicateAvailabilityBlockRequest,
+  MeetingCancelRequest,
+  MeetingCreationRequest,
+  MeetingUpdateRequest,
+  UpdateAvailabilityBlockRequest,
   ConfirmCryptoTransactionRequest,
   CreateMeetingTypeRequest,
   MeetingCancelRequest,
@@ -1363,13 +1372,71 @@ export const doesContactExist = async (identifier: string) => {
   return await internalFetch<boolean>(`/secure/contact/${identifier}/exist`)
 }
 
+
+export const getAvailabilityBlocks = async (): Promise<AvailabilityBlock[]> => {
+  return await internalFetch<AvailabilityBlock[]>(`/availabilities`)
+}
+
+export const createAvailabilityBlock = async ({
+  title,
+  timezone,
+  weekly_availability,
+  is_default,
+}: CreateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(`/availabilities`, 'POST', {
+    title,
+    timezone,
+    weekly_availability,
+    is_default,
+  })
+}
+
+export const getAvailabilityBlock = async (
+  id: string
+): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(`/availabilities/${id}`)
+}
+
+export const updateAvailabilityBlock = async ({
+  id,
+  title,
+  timezone,
+  weekly_availability,
+  is_default,
+}: UpdateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(
+    `/availabilities/${id}`,
+    'PUT',
+    {
+      title,
+      timezone,
+      weekly_availability,
+      is_default,
+    }
+  )
+}
+
+export const deleteAvailabilityBlock = async (id: string): Promise<void> => {
+  return await internalFetch<void>(`/availabilities/${id}`, 'DELETE')
+}
+
+export const duplicateAvailabilityBlock = async ({
+  id,
+  modifiedData,
+}: DuplicateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
+  return await internalFetch<AvailabilityBlock>(
+    `/availabilities/${id}`,
+    'POST',
+    modifiedData
+  )
+
 export const getMeetingTypes = async (
   limit = 10,
   offset = 0
 ): Promise<MeetingType[]> => {
-  const response = (await internalFetch(
+  const response = await internalFetch<MeetingType[]>(
     `/secure/meetings/type?limit=${limit}&offset=${offset}`
-  )) as MeetingType[]
+  )
   return response
 }
 
