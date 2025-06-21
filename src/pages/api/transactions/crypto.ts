@@ -5,7 +5,7 @@ import { ConfirmCryptoTransactionRequest } from '@/types/Requests'
 import {
   ChainNotFound,
   InValidGuests,
-  TransactionNotFoundError,
+  TransactionCouldBeNotFoundError,
 } from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -15,12 +15,12 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (!payload.guest_address && !payload.guest_email) {
         throw new InValidGuests()
       }
-      const transaction = await createCryptoTransaction(payload)
-      return res.status(200).json(transaction)
+      await createCryptoTransaction(payload)
+      return res.status(200).json({ success: true })
     } catch (e: unknown) {
       if (e instanceof InValidGuests) {
         return res.status(400).json({ error: e.message })
-      } else if (e instanceof TransactionNotFoundError) {
+      } else if (e instanceof TransactionCouldBeNotFoundError) {
         res.status(402).json({ error: e.message })
       } else if (e instanceof ChainNotFound) {
         res.status(404).json({ error: e.message })
