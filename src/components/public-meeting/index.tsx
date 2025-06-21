@@ -198,7 +198,7 @@ const PublicPage: FC<IProps> = props => {
         t => t.slug === meeting_type
       )
       if (type) {
-        setSelectedType(type)
+        handleSetSelectedType(type, PublicSchedulingSteps.PAY_FOR_SESSION)
       }
     }
   }, [query.address])
