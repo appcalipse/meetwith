@@ -22,19 +22,14 @@ import {
 import {
   ChainNotFound,
   InValidGuests,
-  TransactionNotFoundError,
+  TransactionCouldBeNotFoundError,
 } from '@utils/errors'
 import React, { Reducer, useContext, useMemo } from 'react'
-import {
-  Bridge,
-  prepareContractCall,
-  sendTransaction,
-  toUnits,
-  waitForReceipt,
-} from 'thirdweb'
+import { prepareContractCall, sendTransaction, waitForReceipt } from 'thirdweb'
 import { useActiveWallet } from 'thirdweb/react'
 import { Wallet } from 'thirdweb/wallets'
 import { Address, formatUnits } from 'viem'
+import { z } from 'zod'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
@@ -45,6 +40,7 @@ import {
   errorReducerSingle,
   ErrorState,
   PaymentInfo,
+  paymentInfoSchema,
   validatePaymentInfo,
 } from '@/utils/schemas'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
@@ -52,13 +48,27 @@ import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
 const ConfirmPaymentInfo = () => {
-  const { setPaymentType, setPaymentStep, paymentType, selectedType, account } =
-    useContext(PublicScheduleContext)
+  const {
+    setPaymentType,
+    setPaymentStep,
+    paymentType,
+    selectedType,
+    account,
+    handleNavigateToBook,
+  } = useContext(PublicScheduleContext)
   const toast = useToast({ position: 'top', isClosable: true })
   const currentAccount = useAccountContext()
   const wallet = useActiveWallet()
   const { needsReconnection, attemptReconnection } = useSmartReconnect()
+  const [errors, dispatchErrors] = React.useReducer<
+    Reducer<
+      ErrorState<keyof PaymentInfo, '', never>,
+      ErrorAction<keyof PaymentInfo>
+    >
+  >(errorReducerSingle, {})
 
+  const [name, setName] = React.useState('')
+  const [email, setEmail] = React.useState('')
   const chain = supportedChains.find(
     val => val.id === selectedType?.plan?.default_chain_id
   ) as ChainInfo
@@ -67,11 +77,34 @@ const ConfirmPaymentInfo = () => {
     token => token.token === AcceptedToken.USDC
   )?.contractAddress as Address
   const tokenPriceFeed = new PriceFeedService()
+  const [loading, setLoading] = React.useState(false)
   const handlePay = async () => {
-    const amount =
-      selectedType!.plan!.price_per_slot! * selectedType!.plan!.no_of_slot!
-    if (paymentType === PaymentType.CRYPTO) {
-      try {
+    dispatchErrors({ type: 'CLEAR_ALL' })
+    try {
+      paymentInfoSchema.parse({ name, email })
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        e.errors.forEach(err => {
+          toast({
+            title: 'Validation Error',
+            description: err.message,
+            status: 'error',
+            duration: 5000,
+          })
+          dispatchErrors({
+            type: 'SET_ERROR',
+            field: err.path.join('.') as keyof PaymentInfo,
+            message: err.message,
+          })
+        })
+      }
+      return
+    }
+    setLoading(true)
+    try {
+      const amount =
+        selectedType!.plan!.price_per_slot! * selectedType!.plan!.no_of_slot!
+      if (paymentType === PaymentType.CRYPTO) {
         let currentWallet: Wallet | undefined | null = wallet
         if (needsReconnection) {
           currentWallet = await attemptReconnection()
@@ -142,9 +175,6 @@ const ConfirmPaymentInfo = () => {
               status: 'success',
               duration: 5000,
             })
-
-            // Handle success - redirect or update state
-            // await handlePaymentSuccess(transactionHash, receipt)
           } else {
             throw new Error('Transaction failed')
           }
@@ -159,57 +189,50 @@ const ConfirmPaymentInfo = () => {
             chain: chain.chain,
             fiat_equivalent: amount,
             guest_address: currentAccount?.address,
+            guest_email: email,
+            guest_name: name,
           }
-          const transactionData = await createCryptoTransaction(payload)
-          // eslint-disable-next-line no-restricted-syntax
-          console.log({ transactionHash, rest, transactionData })
-          // implement transaction store data here
+          await createCryptoTransaction(payload)
+          handleNavigateToBook(transactionHash)
         }
-      } catch (error: unknown) {
-        if (error instanceof TransactionNotFoundError) {
-          toast({
-            title: 'Transaction Not Found',
-            description:
-              error.message || 'Transaction was not found on the blockchain',
-            status: 'error',
-            duration: 5000,
-          })
-        } else if (error instanceof ChainNotFound) {
-          toast({
-            title: 'Chain Not Found',
-            description: error.message || 'The specified chain does not exist',
-            status: 'error',
-            duration: 5000,
-          })
-        } else if (error instanceof InValidGuests) {
-          toast({
-            title: 'Invalid Guests',
-            description: error.message || 'Guest email or address is required.',
-            status: 'error',
-            duration: 5000,
-          })
-        } else if (error instanceof Error) {
-          console.error('Payment failed:', error)
-          toast({
-            title: 'Payment Failed',
-            description: error.message || 'Transaction was rejected or failed',
-            status: 'error',
-            duration: 5000,
-          })
-        }
+      } else {
       }
-    } else {
+    } catch (error: unknown) {
+      if (error instanceof TransactionCouldBeNotFoundError) {
+        toast({
+          title: 'Transaction Not Found',
+          description:
+            error.message || 'Transaction was not found on the blockchain',
+          status: 'error',
+          duration: 5000,
+        })
+      } else if (error instanceof ChainNotFound) {
+        toast({
+          title: 'Chain Not Found',
+          description: error.message || 'The specified chain does not exist',
+          status: 'error',
+          duration: 5000,
+        })
+      } else if (error instanceof InValidGuests) {
+        toast({
+          title: 'Invalid Guests',
+          description: error.message || 'Guest email or address is required.',
+          status: 'error',
+          duration: 5000,
+        })
+      } else if (error instanceof Error) {
+        console.error('Payment failed:', error)
+        toast({
+          title: 'Payment Failed',
+          description: error.message || 'Transaction was rejected or failed',
+          status: 'error',
+          duration: 5000,
+        })
+      }
     }
+    setLoading(false)
   }
-  const [errors, dispatchErrors] = React.useReducer<
-    Reducer<
-      ErrorState<keyof PaymentInfo, '', never>,
-      ErrorAction<keyof PaymentInfo>
-    >
-  >(errorReducerSingle, {})
 
-  const [name, setName] = React.useState('')
-  const [email, setEmail] = React.useState('')
   const handleBack = () => {
     setPaymentType(null)
     setPaymentStep(
@@ -336,7 +359,12 @@ const ConfirmPaymentInfo = () => {
           </HStack>
         ))}
       </VStack>
-      <Button colorScheme="primary" onClick={handlePay}>
+      <Button
+        colorScheme="primary"
+        disabled={!name || !email || !!errors.name || !!errors.email}
+        onClick={handlePay}
+        isLoading={loading}
+      >
         Pay Now
       </Button>
     </VStack>
