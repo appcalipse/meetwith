@@ -3,7 +3,7 @@ import {
   DeleteMeetingTypeRequest,
   UpdateMeetingTypeRequest,
 } from '@meta/Requests'
-import { LastMeetingTypeError } from '@utils/errors'
+import { LastMeetingTypeError, MeetingSlugAlreadyExists } from '@utils/errors'
 import { extractQuery } from '@utils/generic_utils'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -54,7 +54,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
 
     return res.status(404).send('Not found')
   } catch (e) {
-    if (e instanceof LastMeetingTypeError) {
+    if (e instanceof MeetingSlugAlreadyExists) {
+      return res.status(400).send(e.message)
+    } else if (e instanceof LastMeetingTypeError) {
       return res.status(409).send(e.message)
     } else if (e instanceof Error) {
       console.error('Error in meetings/type API:', e.message)
