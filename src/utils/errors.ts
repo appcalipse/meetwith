@@ -381,3 +381,10 @@ export class AllMeetingSlotsUsedError extends Error {
     this.name = 'AllMeetingSlotsUsedError'
   }
 }
+
+export class MeetingSlugAlreadyExists extends Error {
+  constructor(slug: string) {
+    super(`Custom booking link path ${slug} already exists`)
+    this.name = 'MeetingSlugAlreadyExists'
+  }
+}
