@@ -51,11 +51,31 @@ export enum AcceptedToken {
   USDC = 'USDC',
   EUR = 'EUR',
   CELO = 'CELO',
+  CUSD = 'CUSD',
+  CEUR = 'CEUR',
 }
 
 export interface AcceptedTokenInfo {
   token: AcceptedToken
   contractAddress: string
+}
+export const getTokenIcon = (token: AcceptedToken) => {
+  switch (token) {
+    case AcceptedToken.DAI:
+      return '/assets/chains/DAI.svg'
+    case AcceptedToken.USDC:
+      return '/assets/tokens/USDC.svg'
+    case AcceptedToken.CUSD:
+      return '/assets/tokens/CUSD.png'
+    case AcceptedToken.METIS:
+      return '/assets/chains/Metis.svg'
+    case AcceptedToken.MATIC:
+      return '/assets/chains/Polygon.svg'
+    case AcceptedToken.ETHER:
+      return '/assets/chains/ethereum.svg'
+    default:
+      return
+  }
 }
 
 export interface TokenMeta {
@@ -230,11 +250,11 @@ export const supportedChains: ChainInfo[] = [
         contractAddress: '0x471EcE3750Da237f93B8E339c536989b8978a438',
       },
       {
-        token: AcceptedToken.USDC,
+        token: AcceptedToken.CUSD,
         contractAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a', // cUSD
       },
       {
-        token: AcceptedToken.EUR, // cEUR
+        token: AcceptedToken.CEUR, // cEUR
         contractAddress: '0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73',
       },
     ],
@@ -258,7 +278,7 @@ export const supportedChains: ChainInfo[] = [
         contractAddress: '0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9',
       },
       {
-        token: AcceptedToken.USDC,
+        token: AcceptedToken.CUSD,
         contractAddress: '0xF194afDf50B03e69Bd7D057c1Aa9e10c9954E4C9', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
       },
     ],
