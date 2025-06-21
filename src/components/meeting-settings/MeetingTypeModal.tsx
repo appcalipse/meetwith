@@ -47,7 +47,8 @@ import {
   noClearCustomSelectComponent,
   Option,
 } from '@utils/constants/select'
-import { convertMinutes } from '@utils/generic_utils'
+import { MeetingSlugAlreadyExists } from '@utils/errors'
+import { convertMinutes, getSlugFromText } from '@utils/generic_utils'
 import {
   createMeetingSchema,
   ErrorAction,
@@ -64,15 +65,18 @@ import { z } from 'zod'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
+import { AvailabilityBlock } from '@/types/availability'
 interface IProps {
   onClose: () => void
   isOpen: boolean
   isCalendarLoading: boolean
-  calendarOptions: ConnectedCalendarCore[]
+  calendarOptions: Array<ConnectedCalendarCore>
   refetch: () => Promise<void>
   onDelete: () => void
   initialValues?: Partial<MeetingType> | null
   canDelete: boolean
+  availabilityBlocks: Array<AvailabilityBlock>
+  isAvailabilityLoading: boolean
 }
 
 const MeetingTypeModal: FC<IProps> = props => {
@@ -100,12 +104,12 @@ const MeetingTypeModal: FC<IProps> = props => {
   )
   const [availabilityBlock, setAvailabilityBlock] = React.useState<
     Array<Option<string>>
-  >([
-    {
-      value: 'default',
-      label: 'Default',
-    },
-  ])
+  >(
+    props?.initialValues?.availabilities?.map(availability => ({
+      value: availability.id,
+      label: availability.title,
+    })) || []
+  )
   const [cryptoNetwork, setCryptoNetwork] = useState<Option<number>>(
     CryptoNetworkForCardSettlementOptions.find(
       option => option.value === props.initialValues?.plan?.default_chain_id
@@ -243,8 +247,24 @@ const MeetingTypeModal: FC<IProps> = props => {
       // If valid, submit the form (e.g. API call)
       if (props.initialValues.id) {
         await updateMeetingType({ ...payload, id: props.initialValues.id })
+        toast({
+          title: 'Session type updated successfully',
+          description: 'Your session type has been updated.',
+          status: 'success',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else {
         await saveMeetingType(payload)
+        toast({
+          title: 'Session type created successfully',
+          description: 'Your session type has been created.',
+          status: 'success',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       }
       await props.refetch()
       props.onClose()
@@ -256,6 +276,15 @@ const MeetingTypeModal: FC<IProps> = props => {
             field: err.path.join('.') as SchemaKeys,
             message: err.message,
           })
+        })
+      } else if (e instanceof MeetingSlugAlreadyExists) {
+        toast({
+          title: 'Slug already exists',
+          description: 'Please choose a different booking link.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
         })
       }
     }
@@ -452,7 +481,12 @@ const MeetingTypeModal: FC<IProps> = props => {
                 errorBorderColor="red.500"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                onBlur={() => handleBlur('title')}
+                onBlur={() => {
+                  handleBlur('title')
+                  if (!customBookingLink) {
+                    setCustomBookingLink(getSlugFromText(title))
+                  }
+                }}
               />
               {!!errors.title && (
                 <FormErrorMessage>{errors.title}</FormErrorMessage>
@@ -510,7 +544,9 @@ const MeetingTypeModal: FC<IProps> = props => {
                   value={customBookingLink}
                   type="text"
                   placeholder={'your-booking-link'}
-                  onChange={e => setCustomBookingLink(e.target.value)}
+                  onChange={e =>
+                    setCustomBookingLink(e.target.value?.replace(' ', '-'))
+                  }
                   onBlur={() => handleBlur('slug')}
                 />
               </InputGroup>
@@ -525,43 +561,47 @@ const MeetingTypeModal: FC<IProps> = props => {
               isInvalid={!!errors.availability_ids}
             >
               <FormLabel fontSize={'16px'}>Availability block</FormLabel>
-              <ChakraSelect
-                value={availabilityBlock}
-                onChange={handleAvailabilityBlockChangeChange}
-                // eslint-disable-next-line tailwindcss/no-custom-classname
-                className="noLeftBorder timezone-select"
-                options={[
-                  {
-                    value: 'default',
-                    label: 'Default',
-                  },
-                ]}
-                isMulti
-                tagVariant={'solid'}
-                components={noClearCustomSelectComponent}
-                colorScheme="black"
-                chakraStyles={{
-                  container: provided => ({
-                    ...provided,
-                    border: '1px solid',
-                    borderTopColor: 'currentColor',
-                    borderLeftColor: 'currentColor',
-                    borderRightColor: 'currentColor',
-                    borderBottomColor: 'currentColor',
-                    borderColor: 'inherit',
-                    borderRadius: 'md',
-                    maxW: '100%',
-                    display: 'block',
-                    w: '100%',
-                  }),
+              {props.isAvailabilityLoading ? (
+                <Spinner />
+              ) : (
+                <ChakraSelect
+                  value={availabilityBlock}
+                  onChange={handleAvailabilityBlockChangeChange}
+                  // eslint-disable-next-line tailwindcss/no-custom-classname
+                  className="noLeftBorder timezone-select"
+                  options={
+                    props?.availabilityBlocks?.map(availability => ({
+                      value: availability.id,
+                      label: availability.title,
+                    })) || []
+                  }
+                  isMulti
+                  tagVariant={'solid'}
+                  components={noClearCustomSelectComponent}
+                  colorScheme="black"
+                  chakraStyles={{
+                    container: provided => ({
+                      ...provided,
+                      border: '1px solid',
+                      borderTopColor: 'currentColor',
+                      borderLeftColor: 'currentColor',
+                      borderRightColor: 'currentColor',
+                      borderBottomColor: 'currentColor',
+                      borderColor: 'inherit',
+                      borderRadius: 'md',
+                      maxW: '100%',
+                      display: 'block',
+                      w: '100%',
+                    }),
 
-                  placeholder: provided => ({
-                    ...provided,
-                    textAlign: 'left',
-                  }),
-                }}
-                onBlur={() => handleBlur('availability_ids')}
-              />
+                    placeholder: provided => ({
+                      ...provided,
+                      textAlign: 'left',
+                    }),
+                  }}
+                  onBlur={() => handleBlur('availability_ids')}
+                />
+              )}
               <Link
                 color={'primary.400'}
                 href="/dashboard/schedule"
