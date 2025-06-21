@@ -7,6 +7,7 @@ import {
 import { Encrypted } from 'eth-crypto'
 
 import { SupportedChain } from '@/types/chains'
+import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 import { TimeRange } from './Account'
@@ -53,7 +54,9 @@ export interface MeetingCreationRequest {
   allSlotIds?: Array<string>
   meetingPermissions?: Array<MeetingPermissions>
   ignoreOwnerAvailability?: boolean
+  txHash?: Address | null
 }
+
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
   start: Date
@@ -187,7 +190,7 @@ export interface DuplicateAvailabilityBlockRequest {
     is_default: boolean
   }
 }
-  
+
 export interface CreateMeetingTypeRequest {
   title: string
   description?: string
@@ -217,13 +220,14 @@ export interface DeleteMeetingTypeRequest {
 }
 
 export interface ConfirmCryptoTransactionRequest {
-  transaction_hash: `0x${string}`
+  transaction_hash: Address
   amount: number
   meeting_type_id: string
   token_address: string
   token_type: TokenType
   chain: SupportedChain
   fiat_equivalent: number
-  guest_email?: string
   guest_address?: string
+  guest_email: string
+  guest_name: string
 }
