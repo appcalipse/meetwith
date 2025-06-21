@@ -8,7 +8,16 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import { addMonths, format, isSameMonth, isToday, subMonths } from 'date-fns'
+import {
+  addMonths,
+  format,
+  isAfter,
+  isBefore,
+  isSameMonth,
+  isToday,
+  startOfMonth,
+  subMonths,
+} from 'date-fns'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
@@ -93,9 +102,11 @@ function Root({
       <Grid>
         <MonthYear>
           <HStack>
-            <PrevMonth disabled={isAnimating} onClick={handlePrevMonth}>
-              <FaChevronLeft />
-            </PrevMonth>
+            {isAfter(startOfMonth(selectedMonth), startOfMonth(new Date())) && (
+              <PrevMonth disabled={isAnimating} onClick={handlePrevMonth}>
+                <FaChevronLeft />
+              </PrevMonth>
+            )}
 
             <Wrapper>
               <CurrentMonth animation={animation}>
