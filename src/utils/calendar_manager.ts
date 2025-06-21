@@ -41,6 +41,7 @@ import {
   MeetingCreationRequest,
   RequestParticipantMapping,
 } from '@/types/Requests'
+import { Address } from '@/types/Transactions'
 import {
   cancelMeeting as apiCancelMeeting,
   generateMeetingUrl,
@@ -51,6 +52,7 @@ import {
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
   scheduleMeetingFromServer,
+  schedulePaidMeetingAsGuest,
   syncMeeting,
   updateMeeting as apiUpdateMeeting,
 } from '@/utils/api_helper'
@@ -264,7 +266,8 @@ const buildMeetingData = async (
   meetingTitle = 'No Title',
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
+  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST],
+  txHash?: Address | null
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -374,6 +377,7 @@ const buildMeetingData = async (
       participantsMappings.filter(
         mapping => mapping.type === ParticipantType.Owner
       ).length > 1,
+    txHash,
   }
 }
 
@@ -840,7 +844,8 @@ const scheduleMeeting = async (
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
+  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST],
+  txHash?: Address | null
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
@@ -878,7 +883,8 @@ const scheduleMeeting = async (
     meetingTitle,
     meetingReminders,
     meetingRepeat,
-    selectedPermissions
+    selectedPermissions,
+    txHash
   )
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = []
@@ -894,7 +900,8 @@ const scheduleMeeting = async (
                   participant.account_address,
                   startTime,
                   endTime,
-                  meetingTypeId
+                  meetingTypeId,
+                  txHash
                 )
               ).isFree
             ) {
@@ -913,6 +920,8 @@ const scheduleMeeting = async (
     let slot: DBSlot
     if (schedulingType === SchedulingType.GUEST) {
       slot = await scheduleMeetingAsGuest(meeting)
+    } else if (schedulingType === SchedulingType.PAID) {
+      slot = await schedulePaidMeetingAsGuest(meeting)
     } else if (schedulingType === SchedulingType.DISCORD) {
       slot = await scheduleMeetingFromServer(currentAccount!.address, meeting)
     } else {
