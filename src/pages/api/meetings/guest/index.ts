@@ -14,7 +14,7 @@ import {
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
+    const meeting: MeetingCreationRequest = req.body
     const guest = meeting.participants_mapping.filter(
       p => p.guest_email && p.type === ParticipantType.Scheduler
     )[0]

@@ -67,6 +67,7 @@ export const ConnectModal: React.FC = ({}) => {
     createWallet('com.coinbase.wallet'),
     createWallet('me.rainbow'),
     createWallet('walletConnect'),
+    // createWallet(''),
   ]
 
   const doLogin = async (wallet: Wallet) => {
@@ -127,6 +128,7 @@ export const ConnectModal: React.FC = ({}) => {
           showThirdwebBranding={false}
           showAllWallets={false}
           onConnect={onConnect}
+          autoConnect
           appMetadata={{
             name: 'Meetwith',
             url: 'https://meetwith.xyz',

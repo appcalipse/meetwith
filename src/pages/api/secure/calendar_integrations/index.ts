@@ -72,6 +72,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           }
         }
         return {
+          id: it.id,
           provider: it.provider,
           email: it.email,
           calendars: it.calendars,
@@ -80,7 +81,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         }
       })
     )
-    //https://www.googleapis.com/auth/calendar.events.freebusy https://www.googleapis.com/auth/calendar.freebusy https://www.googleapis.com/auth/calendar.events.owned https://www.googleapis.com/auth/calendar.readonly openid https://www.googleapis.com/auth/userinfo.email
   } else if (req.method === 'DELETE') {
     const { email, provider } = req.body
     await removeConnectedCalendar(req.session.account!.address, email, provider)

@@ -1,5 +1,13 @@
+import {
+  PaymentChannel,
+  PlanType,
+  SessionType,
+  TokenType,
+} from '@utils/constants/meeting-types'
 import { Encrypted } from 'eth-crypto'
 
+import { SupportedChain } from '@/types/chains'
+import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 import { TimeRange } from './Account'
@@ -46,7 +54,9 @@ export interface MeetingCreationRequest {
   allSlotIds?: Array<string>
   meetingPermissions?: Array<MeetingPermissions>
   ignoreOwnerAvailability?: boolean
+  txHash?: Address | null
 }
+
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
   start: Date
@@ -179,4 +189,45 @@ export interface DuplicateAvailabilityBlockRequest {
     weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
     is_default: boolean
   }
+}
+
+export interface CreateMeetingTypeRequest {
+  title: string
+  description?: string
+  type: SessionType
+  duration_minutes: number
+  min_notice_minutes: number
+  scheduleGate?: string
+  slug?: string
+  availability_ids?: string[]
+  calendars?: number[]
+  plan?: {
+    type?: PlanType
+    price_per_slot?: number
+    no_of_slot?: number
+    payment_channel?: PaymentChannel
+    payment_address?: string
+    crypto_network?: number
+  }
+}
+
+export interface UpdateMeetingTypeRequest extends CreateMeetingTypeRequest {
+  id: string
+}
+
+export interface DeleteMeetingTypeRequest {
+  typeId: string
+}
+
+export interface ConfirmCryptoTransactionRequest {
+  transaction_hash: Address
+  amount: number
+  meeting_type_id: string
+  token_address: string
+  token_type: TokenType
+  chain: SupportedChain
+  fiat_equivalent: number
+  guest_address?: string
+  guest_email: string
+  guest_name: string
 }

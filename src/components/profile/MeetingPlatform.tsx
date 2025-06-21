@@ -93,7 +93,7 @@ const MeetingPlatform: FC<Props> = props => {
         </Text>
       </VStack>
 
-      <HStack gap={2}>
+      <HStack gap={2} width="100%">
         <Checkbox
           colorScheme="primary"
           value={
@@ -111,13 +111,21 @@ const MeetingPlatform: FC<Props> = props => {
           </Text>
         </Checkbox>
       </HStack>
-      <HStack gap={2} justifyContent="space-between" width="100%">
+      <HStack
+        gap={2}
+        justifyContent="space-between"
+        flexWrap="wrap"
+        width="100%"
+      >
         {PROVIDERS.map(provider => (
           <Checkbox
             key={provider}
             borderRadius={8}
             mt={4}
-            flex={1}
+            flexBasis={{
+              base: '45%',
+              md: '25%',
+            }}
             borderWidth={1}
             borderColor={
               selectedProviders.includes(provider) ? 'primary.200' : 'neutral.0'

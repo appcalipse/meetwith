@@ -1,12 +1,12 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
+import { EditMode } from '@meta/Dashboard'
 import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
 import RedirectHandler from '@/components/redirect'
+import { AccountContext } from '@/providers/AccountProvider'
 import ContactStateProvider from '@/providers/ContactInvitesProvider'
 
-import { AccountContext } from '../../providers/AccountProvider'
-import { EditMode } from '../../types/Dashboard'
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'

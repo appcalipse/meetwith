@@ -27,12 +27,12 @@ import { parseUnits, zeroAddress } from './generic_utils'
 import { checkTransactionError, validateChainToActOn } from './rpc_helper_front'
 import { thirdWebClient } from './user_manager'
 
-export const isProAccount = (account?: Account): boolean => {
+export const isProAccount = (account?: Account | null): boolean => {
   return Boolean(getActiveProSubscription(account))
 }
 
 export const getActiveProSubscription = (
-  account?: Account
+  account?: Account | null
 ): Subscription | undefined => {
   return account?.subscriptions?.find(
     sub => new Date(sub.expiry_time) > new Date()

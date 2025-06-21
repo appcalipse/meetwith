@@ -11,6 +11,7 @@ import {
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
 import { useMutation } from '@tanstack/react-query'
+import { SessionType } from '@utils/constants/meeting-types'
 import {
   addDays,
   addMinutes,
@@ -255,7 +256,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       )
       if (_availability.length > 0) {
         const _availableSlots = _availability.reduce((acc, curr) => {
-          const gap = selectedType.duration
+          const gap = selectedType.duration_minutes
           const startDate = setHours(
             setMinutes(setSeconds(day, 0), parseInt(curr.start.split(':')[1])),
             parseInt(curr.start.split(':')[0])
@@ -306,9 +307,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = account?.preferences?.availableTypes
-        ?.filter(type => !type.deleted)
-        ?.find(t => t.url === typeOnRoute)
-      setPrivateType(!!type?.private)
+        ?.filter(type => !type.deleted_at)
+        ?.find(t => t.slug === typeOnRoute)
+      setPrivateType(type?.type === SessionType.FREE)
     }
   }, [])
 
@@ -322,8 +323,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = account?.preferences?.availableTypes
-        .filter(type => !type.deleted)
-        .find(t => t.url === typeOnRoute)
+        .filter(type => !type.deleted_at)
+        .find(t => t.slug === typeOnRoute)
       setSelectedType(
         (type || account?.preferences?.availableTypes?.[0] || {}) as MeetingType
       )
@@ -406,7 +407,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     const end = addMinutes(
       new Date(start),
       CalendarType.REGULAR === calendarType
-        ? selectedType.duration
+        ? selectedType.duration_minutes
         : teamMeetingRequest!.duration_in_minutes
     )
 
@@ -690,14 +691,14 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const changeType = (typeId: string) => {
     const type = account?.preferences?.availableTypes
-      ?.filter(type => !type.deleted)
+      ?.filter(type => !type.deleted_at)
       ?.find(t => t.id === typeId)
     if (!type) return
     if (!type.scheduleGate) {
       setIsGateValid(undefined)
     }
     setSelectedType(type)
-    router.push(`/${getAccountDomainUrl(account!)}/${type.url}`, undefined, {
+    router.push(`/${getAccountDomainUrl(account!)}/${type.slug}`, undefined, {
       shallow: true,
     })
   }
@@ -705,8 +706,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const validateSlot = (slot: Date): boolean => {
     if (calendarType === CalendarType.REGULAR) {
       return isSlotAvailable(
-        selectedType.duration,
-        selectedType.minAdvanceTime,
+        selectedType.duration_minutes,
+        selectedType.min_notice_minutes,
         slot,
         busySlots,
         account?.preferences?.availabilities || [],
@@ -805,8 +806,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     let minAdvanceTime
 
     if (calendarType === CalendarType.REGULAR) {
-      duration = selectedType.duration
-      minAdvanceTime = selectedType.minAdvanceTime
+      duration = selectedType.duration_minutes
+      minAdvanceTime = selectedType.min_notice_minutes
     } else {
       duration = teamMeetingRequest!.duration_in_minutes
       minAdvanceTime = 0
@@ -933,7 +934,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       isSchedulingExternal={isScheduling}
                       slotDurationInMinutes={
                         CalendarType.REGULAR === calendarType
-                          ? selectedType.duration
+                          ? selectedType.duration_minutes
                           : teamMeetingRequest!.duration_in_minutes
                       }
                       selectedType={selectedType}
