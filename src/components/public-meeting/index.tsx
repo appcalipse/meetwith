@@ -12,6 +12,8 @@ import {
 import { useRouter } from 'next/router'
 import React, { FC, useEffect } from 'react'
 
+import { AcceptedToken, SupportedChain } from '@/types/chains'
+import { Address } from '@/types/Transactions'
 import { getAccountDomainUrl } from '@/utils/calendar_manager'
 
 interface IProps {
@@ -33,14 +35,21 @@ interface IContext {
   paymentStep?: PaymentStep
   setPaymentStep: (step: PaymentStep) => void
   handleSelectPaymentMethod: (type: PaymentType, step: PaymentStep) => void
+  chain: SupportedChain | null
+  setChain: (chain: SupportedChain | null) => void
+  token: AcceptedToken | null
+  setToken: (token: AcceptedToken | null) => void
+  handleSetTokenAndChain: (
+    token: AcceptedToken | null,
+    chain: SupportedChain | null
+  ) => void
+  tx: Address | null
+  handleNavigateToBook: (tx: Address) => void
 }
 const baseState: IContext = {
   account: {} as PublicAccount,
   selectedType: null,
-  handleSetSelectedType: async (
-    type: MeetingType,
-    step: PublicSchedulingSteps
-  ) => {},
+  handleSetSelectedType: async () => {},
   currentStep: PublicSchedulingSteps.SELECT_TYPE,
   setCurrentStep: () => {},
   paymentType: undefined,
@@ -48,6 +57,13 @@ const baseState: IContext = {
   paymentStep: PaymentStep.SELECT_PAYMENT_METHOD,
   setPaymentStep: () => {},
   handleSelectPaymentMethod: () => {},
+  chain: null,
+  setChain: () => {},
+  token: null,
+  setToken: () => {},
+  handleSetTokenAndChain: () => {},
+  tx: null,
+  handleNavigateToBook: () => {},
 }
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
 const PublicPage: FC<IProps> = props => {
@@ -60,13 +76,64 @@ const PublicPage: FC<IProps> = props => {
   const {
     payment_step,
     current_step: currentStep,
-    meeting_type,
     payment_type,
+    chain,
+    token,
+    tx,
   } = query as {
     payment_step?: PaymentStep
     current_step?: PublicSchedulingSteps
-    meeting_type?: string
     payment_type?: PaymentType
+    chain?: SupportedChain
+    token?: AcceptedToken
+    tx?: Address
+  }
+  const setChain = (chain: SupportedChain | null) => {
+    push(
+      {
+        pathname,
+        query: { ...query, chain },
+      },
+      undefined,
+      { shallow: true }
+    )
+  }
+  const handleNavigateToBook = (tx: Address | null) => {
+    push(
+      {
+        pathname,
+        query: {
+          address: query.address,
+          tx,
+          current_step: PublicSchedulingSteps.BOOK_SESSION,
+        },
+      },
+      undefined,
+      { shallow: true }
+    )
+  }
+  const setToken = (token: AcceptedToken | null) => {
+    push(
+      {
+        pathname,
+        query: { ...query, token },
+      },
+      undefined,
+      { shallow: true }
+    )
+  }
+  const handleSetTokenAndChain = (
+    token: AcceptedToken | null,
+    chain: SupportedChain | null
+  ) => {
+    push(
+      {
+        pathname,
+        query: { ...query, token, chain },
+      },
+      undefined,
+      { shallow: true }
+    )
   }
   const setPaymentStep = (step: PaymentStep) => {
     push(
@@ -146,6 +213,13 @@ const PublicPage: FC<IProps> = props => {
     paymentStep: payment_step,
     setPaymentStep,
     handleSelectPaymentMethod,
+    chain: chain || null,
+    setChain,
+    token: token || null,
+    setToken,
+    handleSetTokenAndChain,
+    tx: tx || null,
+    handleNavigateToBook,
   }
   const renderStep = () => {
     switch (currentStep) {
