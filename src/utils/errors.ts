@@ -333,10 +333,10 @@ export class LastMeetingTypeError extends Error {
   }
 }
 
-export class TransactionNotFoundError extends Error {
+export class TransactionCouldBeNotFoundError extends Error {
   constructor(txHash: `0x${string}`) {
     super(`Transaction or receipt not found for hash: ${txHash}`)
-    this.name = 'TransactionNotFoundError'
+    this.name = 'TransactionCouldNotFoundError'
   }
 }
 
@@ -358,5 +358,26 @@ export class InValidGuests extends Error {
   constructor() {
     super(`Guest email or address is required.`)
     this.name = 'InValidGuests'
+  }
+}
+
+export class TransactionIsRequired extends Error {
+  constructor() {
+    super('Transaction hash is required')
+    this.name = 'TransactionIsRequired'
+  }
+}
+
+export class TransactionNotFoundError extends Error {
+  constructor(txHash: `0x${string}`) {
+    super(`Transaction with hash: ${txHash} not found`)
+    this.name = 'TransactionNotFoundError'
+  }
+}
+
+export class AllMeetingSlotsUsedError extends Error {
+  constructor() {
+    super('All meeting slots are already used for this transaction')
+    this.name = 'AllMeetingSlotsUsedError'
   }
 }
