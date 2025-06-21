@@ -1,4 +1,4 @@
-import { Transaction } from '@meta/Transactions'
+import { Address, MeetingSession, Transaction } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -90,6 +90,8 @@ import {
   OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
+  TransactionCouldBeNotFoundError,
+  TransactionIsRequired,
   TransactionNotFoundError,
   UnauthorizedError,
   UrlCreationError,
@@ -304,6 +306,23 @@ export const scheduleMeetingAsGuest = async (
   }
 }
 
+export const schedulePaidMeetingAsGuest = async (
+  meeting: MeetingCreationRequest
+): Promise<DBSlot> => {
+  try {
+    return (await internalFetch(`/meetings/paid`, 'POST', meeting)) as DBSlot
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e instanceof ApiFetchError && e.status === 403) {
+      throw new GateConditionNotValidError()
+    }
+    throw e
+  }
+}
+
 export const updateMeeting = async (
   slotId: string,
   meeting: MeetingUpdateRequest
@@ -354,11 +373,14 @@ export const isSlotFreeApiCall = async (
   account_id: string,
   start: Date,
   end: Date,
-  meetingTypeId?: string
+  meetingTypeId?: string,
+  txHash?: Address | null
 ): Promise<{ isFree: boolean }> => {
   try {
     return (await internalFetch(
-      `/meetings/slot/${account_id}?start=${start.getTime()}&end=${end.getTime()}&meetingTypeId=${meetingTypeId}`
+      `/meetings/slot/${account_id}?start=${start.getTime()}&end=${end.getTime()}&meetingTypeId=${meetingTypeId}&txHash=${
+        txHash || ''
+      }`
     )) as { isFree: boolean }
   } catch (e) {
     return { isFree: false }
@@ -1435,18 +1457,35 @@ export const getMeetingTypes = async (
 
 export const createCryptoTransaction = async (
   transaction: ConfirmCryptoTransactionRequest
-): Promise<Transaction> => {
+): Promise<{ success: true }> => {
   try {
-    return await internalFetch<Transaction>(
+    return await internalFetch<{ success: true }>(
       `/transactions/crypto`,
       'POST',
       transaction
     )
   } catch (e: unknown) {
     if (e instanceof ApiFetchError && e.status === 402) {
-      throw new TransactionNotFoundError(transaction.transaction_hash)
+      throw new TransactionCouldBeNotFoundError(transaction.transaction_hash)
     } else if (e instanceof ApiFetchError && e.status === 404) {
       throw new ChainNotFound(transaction.chain)
+    }
+    throw e
+  }
+}
+
+export const getTransactionByTxHash = async (
+  tx: Address
+): Promise<MeetingSession[]> => {
+  try {
+    return await queryClient.fetchQuery(QueryKeys.transactionHash(tx), () =>
+      internalFetch<MeetingSession[]>(`/transactions/meeting-sessions?tx=${tx}`)
+    )
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 400) {
+      throw new TransactionIsRequired()
+    } else if (e instanceof ApiFetchError && e.status === 404) {
+      throw new TransactionNotFoundError(tx)
     }
     throw e
   }
