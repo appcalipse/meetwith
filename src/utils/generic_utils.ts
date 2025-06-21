@@ -151,21 +151,31 @@ export const convertMinutes = (minutes: number) => {
   }
 }
 
-export const extractQuery = (
+export const extractQuery = <T extends string = string>(
   query: Partial<{
     [key: string]: string | string[]
   }>,
-  key: string
-) => {
+  key: string,
+  validValues?: T[]
+): T | undefined => {
   const value = query[key]
-  if (Array.isArray(value)) {
-    return value[0] || undefined
-  } else if (typeof value === 'string') {
-    return value
-  }
-  return undefined
-}
+  let result: string | undefined
 
+  if (Array.isArray(value)) {
+    result = value[0] || undefined
+  } else if (typeof value === 'string') {
+    result = value
+  }
+
+  if (!result) return undefined
+
+  // If valid values provided, check against them
+  if (validValues && !validValues.includes(result as T)) {
+    return undefined
+  }
+
+  return result as T
+}
 export const formatCurrency = (
   amount: number,
   currency = 'USD',
