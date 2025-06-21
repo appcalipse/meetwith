@@ -2,7 +2,7 @@ import { getRpcClient } from 'thirdweb/rpc'
 import { formatEther } from 'viem'
 
 import { AcceptedToken, getChainInfo, SupportedChain } from '@/types/chains'
-import { TransactionNotFoundError } from '@/utils/errors'
+import { TransactionCouldBeNotFoundError } from '@/utils/errors'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
@@ -28,7 +28,7 @@ export async function getTransactionFeeThirdweb(
     }),
   ])
   if (!tx || !receipt) {
-    throw new TransactionNotFoundError(txHash)
+    throw new TransactionCouldBeNotFoundError(txHash)
   }
   const gasUsed = BigInt(receipt?.gasUsed || 0)
   const gasPrice = BigInt(tx?.gasPrice || 0)
