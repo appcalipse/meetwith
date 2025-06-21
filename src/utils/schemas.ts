@@ -162,7 +162,7 @@ export const validateField = /*<T, J>*/ (
 
 // Payment Info Schema
 export const paymentInfoSchema = z.object({
-  name: z.string(),
+  name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
 })
 export type PaymentInfo = z.infer<typeof paymentInfoSchema>
