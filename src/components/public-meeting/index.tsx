@@ -1,16 +1,18 @@
-import { Container, useColorModeValue, VStack } from '@chakra-ui/react'
+import { Container, Flex, useColorModeValue, VStack } from '@chakra-ui/react'
+import MeetingScheduledDialog from '@components/meeting/MeetingScheduledDialog'
 import BasePage from '@components/public-meeting/BasePage'
 import BookingComponent from '@components/public-meeting/BookingComponent'
 import HeadMeta from '@components/public-meeting/HeadMeta'
 import PaymentComponent from '@components/public-meeting/PaymentComponent'
 import { MeetingType, PublicAccount } from '@meta/Account'
+import { MeetingDecrypted, SchedulingType } from '@meta/Meeting'
 import {
   PaymentStep,
   PaymentType,
   PublicSchedulingSteps,
 } from '@utils/constants/meeting-types'
 import { useRouter } from 'next/router'
-import React, { FC, useEffect } from 'react'
+import React, { FC, useEffect, useMemo, useState } from 'react'
 
 import { AcceptedToken, SupportedChain } from '@/types/chains'
 import { Address } from '@/types/Transactions'
@@ -29,22 +31,37 @@ interface IContext {
     step: PublicSchedulingSteps
   ) => Promise<void>
   currentStep: PublicSchedulingSteps
-  setCurrentStep: (step: PublicSchedulingSteps) => void
+  setCurrentStep: React.Dispatch<React.SetStateAction<PublicSchedulingSteps>>
   paymentType?: PaymentType
-  setPaymentType: (type: PaymentType | null) => void
+  setPaymentType: React.Dispatch<React.SetStateAction<PaymentType | undefined>>
   paymentStep?: PaymentStep
-  setPaymentStep: (step: PaymentStep) => void
-  handleSelectPaymentMethod: (type: PaymentType, step: PaymentStep) => void
-  chain: SupportedChain | null
-  setChain: (chain: SupportedChain | null) => void
-  token: AcceptedToken | null
-  setToken: (token: AcceptedToken | null) => void
+  setPaymentStep: React.Dispatch<React.SetStateAction<PaymentStep | undefined>>
+  handleSelectPaymentMethod: (
+    type: PaymentType,
+    step: PaymentStep
+  ) => Promise<void>
+  chain?: SupportedChain
+  setChain: React.Dispatch<React.SetStateAction<SupportedChain | undefined>>
+  token?: AcceptedToken
+  setToken: React.Dispatch<React.SetStateAction<AcceptedToken | undefined>>
   handleSetTokenAndChain: (
-    token: AcceptedToken | null,
-    chain: SupportedChain | null
+    token?: AcceptedToken,
+    chain?: SupportedChain
   ) => void
-  tx: Address | null
-  handleNavigateToBook: (tx: Address) => void
+  tx?: Address
+  handleNavigateToBook: (tx: Address) => Promise<void>
+  schedulingType: SchedulingType
+  setSchedulingType: React.Dispatch<React.SetStateAction<SchedulingType>>
+  lastScheduledMeeting: MeetingDecrypted | undefined
+  setLastScheduledMeeting: React.Dispatch<
+    React.SetStateAction<MeetingDecrypted | undefined>
+  >
+  hasConnectedCalendar: boolean
+  setHasConnectedCalendar: React.Dispatch<React.SetStateAction<boolean>>
+  notificationsSubs: number
+  setNotificationSubs: React.Dispatch<React.SetStateAction<number>>
+  isContact: boolean
+  setIsContact: React.Dispatch<React.SetStateAction<boolean>>
 }
 const baseState: IContext = {
   account: {} as PublicAccount,
@@ -53,178 +70,140 @@ const baseState: IContext = {
   currentStep: PublicSchedulingSteps.SELECT_TYPE,
   setCurrentStep: () => {},
   paymentType: undefined,
-  setPaymentType: () => {},
+  setPaymentType: async () => {},
   paymentStep: PaymentStep.SELECT_PAYMENT_METHOD,
-  setPaymentStep: () => {},
-  handleSelectPaymentMethod: () => {},
-  chain: null,
+  setPaymentStep: async () => {},
+  handleSelectPaymentMethod: async () => {},
+  chain: undefined,
   setChain: () => {},
-  token: null,
+  token: undefined,
   setToken: () => {},
-  handleSetTokenAndChain: () => {},
-  tx: null,
-  handleNavigateToBook: () => {},
+  handleSetTokenAndChain: async () => {},
+  tx: undefined,
+  handleNavigateToBook: async () => {},
+  schedulingType: SchedulingType.REGULAR,
+  setSchedulingType: () => {},
+  lastScheduledMeeting: undefined,
+  setLastScheduledMeeting: () => {},
+  hasConnectedCalendar: false,
+  setHasConnectedCalendar: () => {},
+  notificationsSubs: 0,
+  setNotificationSubs: () => {},
+  isContact: false,
+  setIsContact: () => {},
 }
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
 const PublicPage: FC<IProps> = props => {
   const bgColor = useColorModeValue('white', 'neutral.900')
-  const [selectedType, setSelectedType] = React.useState<MeetingType | null>(
-    null
-  )
+  const { query, push, isReady } = useRouter()
+  const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
+  const [lastScheduledMeeting, setLastScheduledMeeting] = useState<
+    MeetingDecrypted | undefined
+  >(undefined)
+  const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
+  const [notificationsSubs, setNotificationSubs] = useState(0)
+  const [isContact, setIsContact] = useState(false)
 
-  const { query, pathname, push } = useRouter()
-  const {
-    payment_step,
-    current_step: currentStep,
-    payment_type,
-    chain,
-    token,
-    tx,
-  } = query as {
-    payment_step?: PaymentStep
-    current_step?: PublicSchedulingSteps
-    payment_type?: PaymentType
-    chain?: SupportedChain
-    token?: AcceptedToken
-    tx?: Address
-  }
-  const setChain = (chain: SupportedChain | null) => {
-    push(
-      {
-        pathname,
-        query: { ...query, chain },
-      },
-      undefined,
-      { shallow: true }
+  const selectedType = useMemo(() => {
+    if (!isReady) return null
+    const meeting_type = Array.isArray(query.address)
+      ? query.address[1]
+      : undefined
+    return (
+      props.account?.meetingTypes?.find(t => t.slug === meeting_type) || null
     )
+  }, [query.address, props.account, isReady])
+  const [token, setToken] = useState<AcceptedToken | undefined>(undefined)
+  const [chain, setChain] = useState<SupportedChain | undefined>(undefined)
+  const [paymentType, setPaymentType] = useState<PaymentType | undefined>(
+    undefined
+  )
+  const [paymentStep, setPaymentStep] = useState<PaymentStep | undefined>(
+    undefined
+  )
+  const [tx, setTx] = useState<Address | undefined>(undefined)
+  const [currentStep, setCurrentStep] = useState<PublicSchedulingSteps>(
+    PublicSchedulingSteps.SELECT_TYPE
+  )
+  const handleNavigateToBook = async (tx?: Address) => {
+    setTx(tx)
+    setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
   }
-  const handleNavigateToBook = (tx: Address | null) => {
-    push(
-      {
-        pathname,
-        query: {
-          address: query.address,
-          tx,
-          current_step: PublicSchedulingSteps.BOOK_SESSION,
-        },
-      },
-      undefined,
-      { shallow: true }
-    )
-  }
-  const setToken = (token: AcceptedToken | null) => {
-    push(
-      {
-        pathname,
-        query: { ...query, token },
-      },
-      undefined,
-      { shallow: true }
-    )
-  }
+
   const handleSetTokenAndChain = (
-    token: AcceptedToken | null,
-    chain: SupportedChain | null
+    token?: AcceptedToken,
+    chain?: SupportedChain
   ) => {
-    push(
-      {
-        pathname,
-        query: { ...query, token, chain },
-      },
-      undefined,
-      { shallow: true }
-    )
+    setToken(token)
+    setChain(chain)
   }
-  const setPaymentStep = (step: PaymentStep) => {
-    push(
-      {
-        pathname,
-        query: { ...query, payment_step: step },
-      },
-      undefined,
-      { shallow: true }
-    )
-  }
-  const setCurrentStep = (step: PublicSchedulingSteps) => {
-    push(
-      {
-        pathname,
-        query: { ...query, current_step: step },
-      },
-      undefined,
-      { shallow: true }
-    )
-  }
-  const setPaymentType = (type: PaymentType | null) => {
-    push(
-      {
-        pathname,
-        query: { ...query, payment_type: type },
-      },
-      undefined,
-      { shallow: true }
-    )
-  }
-  const handleSelectPaymentMethod = (type: PaymentType, step: PaymentStep) => {
-    push(
-      {
-        pathname,
-        query: { ...query, payment_type: type, payment_step: step },
-      },
-      undefined,
-      { shallow: true }
-    )
+
+  const handleSelectPaymentMethod = async (
+    type: PaymentType,
+    step: PaymentStep
+  ) => {
+    setPaymentType(type)
+    setPaymentStep(step)
   }
   const handleSetSelectedType = async (
     type: MeetingType,
     current_step: PublicSchedulingSteps
   ) => {
-    setSelectedType(type)
-    await push(
-      {
-        pathname: `/${getAccountDomainUrl(props.account!)}/${type.slug}`,
-        query: { ...query, current_step },
-      },
-      undefined,
-      { shallow: true }
-    )
+    await push({
+      pathname: `/${getAccountDomainUrl(props.account!)}/${type.slug}`,
+    })
+    setCurrentStep(current_step)
   }
   useEffect(() => {
+    if (!isReady) return
     const meeting_type = Array.isArray(query.address)
-      ? query.address[1]
+      ? query.address.at(-1)
       : undefined
     if (meeting_type) {
       const type = props.account?.meetingTypes?.find(
         t => t.slug === meeting_type
       )
       if (type) {
-        setSelectedType(type)
-        if (type?.plan) {
-          setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
-        } else {
-          setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
-        }
+        const nextStep = type?.plan
+          ? PublicSchedulingSteps.PAY_FOR_SESSION
+          : PublicSchedulingSteps.BOOK_SESSION
+
+        // Use immediate push for initial step determination
+        setCurrentStep(nextStep)
       }
     }
   }, [query.address])
+  const _onClose = () => {
+    setLastScheduledMeeting(undefined)
+  }
   const context: IContext = {
     account: props.account,
     selectedType,
     handleSetSelectedType,
     currentStep: currentStep || PublicSchedulingSteps.SELECT_TYPE,
     setCurrentStep,
-    paymentType: payment_type,
+    paymentType,
     setPaymentType,
-    paymentStep: payment_step,
+    paymentStep,
     setPaymentStep,
     handleSelectPaymentMethod,
-    chain: chain || null,
+    chain,
     setChain,
-    token: token || null,
+    token,
     setToken,
     handleSetTokenAndChain,
-    tx: tx || null,
+    tx,
     handleNavigateToBook,
+    schedulingType,
+    setSchedulingType,
+    lastScheduledMeeting,
+    setLastScheduledMeeting,
+    hasConnectedCalendar,
+    setHasConnectedCalendar,
+    notificationsSubs,
+    setNotificationSubs,
+    isContact,
+    setIsContact,
   }
   const renderStep = () => {
     switch (currentStep) {
@@ -256,7 +235,23 @@ const PublicPage: FC<IProps> = props => {
           transitionTimingFunction="ease-in-out"
           position={'relative'}
         >
-          {renderStep()}
+          {lastScheduledMeeting ? (
+            <Flex justify="center">
+              <MeetingScheduledDialog
+                participants={lastScheduledMeeting!.participants}
+                hostAccount={props.account}
+                scheduleType={schedulingType}
+                meeting={lastScheduledMeeting}
+                accountNotificationSubs={notificationsSubs}
+                hasConnectedCalendar={hasConnectedCalendar}
+                isContact={isContact}
+                setIsContact={setIsContact}
+                reset={_onClose}
+              />
+            </Flex>
+          ) : (
+            renderStep()
+          )}
         </Container>
       </VStack>
     </PublicScheduleContext.Provider>
