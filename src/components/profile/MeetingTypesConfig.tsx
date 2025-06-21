@@ -1,5 +1,4 @@
 import { AddIcon } from '@chakra-ui/icons'
-import { Link } from '@chakra-ui/next-js'
 import {
   Box,
   Button,
@@ -17,7 +16,6 @@ import MeetingTypeCard from '@components/meeting-settings/MeetingTypeCard'
 import { Account, MeetingType } from '@meta/Account'
 import { useQuery } from '@tanstack/react-query'
 import { getAccountCalendarUrl } from '@utils/calendar_manager'
-import { isProAccount } from '@utils/subscription_manager'
 import React, { ReactNode, useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -77,7 +75,6 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
     fetchMeetingTypes(true, 10)
   }, [currentAccount?.address])
 
-  const isPro = isProAccount(currentAccount!)
   let content: ReactNode
   const refetch = async () => {
     await fetchMeetingTypes(true, meetingTypes.length + 1)
@@ -178,7 +175,6 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
           >
             <Heading fontSize="2xl">Meeting Types</Heading>
             <Button
-              isDisabled={!isPro}
               colorScheme="primary"
               onClick={openModal}
               leftIcon={<AddIcon width={15} height={15} />}
@@ -192,18 +188,6 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
             justifyContent="space-between"
           >
             <Text color="neutral.400">Here are your meeting types</Text>
-            {!isPro && (
-              <Text pb="6">
-                <Link
-                  href="/dashboard/details#subscriptions"
-                  colorScheme="primary"
-                  fontWeight="bold"
-                >
-                  Go PRO
-                </Link>{' '}
-                to add as many meeting types as you want
-              </Text>
-            )}
           </HStack>
         </VStack>
         {content}
