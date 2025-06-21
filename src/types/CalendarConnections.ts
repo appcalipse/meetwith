@@ -28,6 +28,7 @@ export interface CalendarSyncInfo {
   color?: string
 }
 export interface ConnectedCalendarCore {
+  id: number
   provider: TimeSlotSource
   email: string
   calendars: CalendarSyncInfo[]

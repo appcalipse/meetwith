@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
+import { Address } from '@/types/Transactions'
 import { isSlotFree } from '@/utils/database'
 import { AccountNotFoundError } from '@/utils/errors'
 
@@ -11,7 +12,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         req.query.account_id as string,
         new Date(Number(req.query.start as string)),
         new Date(Number(req.query.end as string)),
-        req.query.meetingTypeId as string
+        req.query.meetingTypeId as string,
+        req.query.txHash as Address
       )
 
       return res.status(200).json({ isFree: free })

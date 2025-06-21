@@ -323,3 +323,61 @@ export class InvalidAvailabilityBlockError extends Error {
     this.name = 'InvalidAvailabilityBlockError'
   }
 }
+
+export class LastMeetingTypeError extends Error {
+  constructor() {
+    super(
+      `You cannot delete your last meeting type, please create a new one first`
+    )
+    this.name = 'LastMeetingTypeError'
+  }
+}
+
+export class TransactionCouldBeNotFoundError extends Error {
+  constructor(txHash: `0x${string}`) {
+    super(`Transaction or receipt not found for hash: ${txHash}`)
+    this.name = 'TransactionCouldNotFoundError'
+  }
+}
+
+export class ChainNotFound extends Error {
+  constructor(chainId: string) {
+    super(`Chain ${chainId} not found`)
+    this.name = 'ChainNotFound'
+  }
+}
+
+export class MeetingTypeNotFound extends Error {
+  constructor() {
+    super(`Meeting type not found`)
+    this.name = 'MeetingTypeNotFound'
+  }
+}
+
+export class InValidGuests extends Error {
+  constructor() {
+    super(`Guest email or address is required.`)
+    this.name = 'InValidGuests'
+  }
+}
+
+export class TransactionIsRequired extends Error {
+  constructor() {
+    super('Transaction hash is required')
+    this.name = 'TransactionIsRequired'
+  }
+}
+
+export class TransactionNotFoundError extends Error {
+  constructor(txHash: `0x${string}`) {
+    super(`Transaction with hash: ${txHash} not found`)
+    this.name = 'TransactionNotFoundError'
+  }
+}
+
+export class AllMeetingSlotsUsedError extends Error {
+  constructor() {
+    super('All meeting slots are already used for this transaction')
+    this.name = 'AllMeetingSlotsUsedError'
+  }
+}

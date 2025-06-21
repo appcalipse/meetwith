@@ -13,8 +13,10 @@ import { validate } from 'uuid'
 import {
   Account,
   AccountPreferences,
+  BaseMeetingType,
   DiscordConnectedAccounts,
   MeetingType,
+  PublicAccount,
   SimpleAccountInfo,
   TgConnectedAccounts,
   TimeRange,
@@ -26,8 +28,9 @@ import {
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
+  ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
-import { SupportedChain } from '@/types/chains'
+import { getChainInfo, SupportedChain } from '@/types/chains'
 import {
   ContactSearch,
   DBContact,
@@ -71,6 +74,8 @@ import {
   ParticipantType,
 } from '@/types/ParticipantInfo'
 import {
+  ConfirmCryptoTransactionRequest,
+  CreateMeetingTypeRequest,
   GroupInviteNotifyRequest,
   MeetingCancelSyncRequest,
   MeetingCreationRequest,
@@ -86,10 +91,26 @@ import {
   GateUsageType,
 } from '@/types/TokenGating'
 import {
+  Address,
+  BaseMeetingSession,
+  BaseTransaction,
+  MeetingSession,
+  Transaction,
+} from '@/types/Transactions'
+import {
+  Currency,
+  PaymentDirection,
+  PaymentStatus,
+  PaymentType,
+  TokenType,
+} from '@/utils/constants/meeting-types'
+import {
   AccountNotFoundError,
   AdminBelowOneError,
+  AllMeetingSlotsUsedError,
   AlreadyGroupMemberError,
   AvailabilityBlockNotFoundError,
+  ChainNotFound,
   ContactAlreadyExists,
   ContactInviteNotForAccount,
   ContactInviteNotFound,
@@ -104,18 +125,23 @@ import {
   GroupNotExistsError,
   InvalidAvailabilityBlockError,
   IsGroupAdminError,
+  LastMeetingTypeError,
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  MeetingTypeNotFound,
   NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
   OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
+  TransactionCouldBeNotFoundError,
+  TransactionNotFoundError,
   UnauthorizedError,
 } from '@/utils/errors'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
+import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
   generateDefaultMeetingType,
@@ -498,6 +524,18 @@ const getAccountFromDB = async (
   throw new AccountNotFoundError(identifier)
 }
 
+const getAccountFromDBPublic = async (
+  identifier: string
+): Promise<PublicAccount> => {
+  const account: PublicAccount = await getAccountFromDB(identifier)
+  const meetingTypes = await getMeetingTypes(account.address, 100, 0)
+  account.meetingTypes = meetingTypes.map(val => ({
+    ...val,
+    calendars: undefined,
+  }))
+  return account
+}
+
 const getSlotsForAccount = async (
   account_address: string,
   start?: Date,
@@ -651,30 +689,38 @@ const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
   return data || []
 }
 
-const isSlotFree = async (
+const isSlotAvailable = async (
   account_address: string,
   start: Date,
   end: Date,
-  meetingTypeId: string
+  meetingTypeId: string,
+  txHash?: Address | null
 ): Promise<boolean> => {
-  const account = await getAccountFromDB(account_address)
+  const meetingType = await getMeetingTypeFromDB(meetingTypeId)
 
-  const minTime = account.preferences?.availableTypes.filter(
-    (mt: MeetingType) => mt.id === meetingTypeId
-  )
+  const minTime = meetingType.min_notice_minutes
+  if (meetingType?.plan) {
+    if (!txHash) {
+      throw new Error('txhash missing')
+    }
+    const transaction = await getTransactionBytxHashAndMeetingType(
+      txHash,
+      meetingTypeId
+    )
+    const meetingSessions = transaction.meeting_sessions || []
+    const isAnyMeetingSlotFree = meetingSessions.some(
+      session => session.used_at === null
+    )
+    if (!isAnyMeetingSlotFree) {
+      throw new AllMeetingSlotsUsedError()
+    }
+  }
 
-  if (
-    minTime &&
-    minTime.length > 0 &&
-    minTime[0].minAdvanceTime &&
-    isAfter(addMinutes(new Date(), minTime[0].minAdvanceTime), start)
-  ) {
+  if (isAfter(addMinutes(new Date(), minTime), start)) {
     return false
   }
 
-  return (
-    (await (await getSlotsForAccount(account_address, start, end)).length) == 0
-  )
+  return (await getSlotsForAccount(account_address, start, end)).length == 0
 }
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
@@ -1005,11 +1051,12 @@ const saveMeeting = async (
             participant?.account_address?.toLowerCase()
         )
         const slotIsTaken = async () =>
-          !(await isSlotFree(
+          !(await isSlotAvailable(
             participant.account_address!,
             new Date(meeting.start),
             new Date(meeting.end),
-            meeting.meetingTypeId
+            meeting.meetingTypeId,
+            meeting.txHash
           ))
         const isTimeAvailable = () =>
           ownerAccount &&
@@ -2491,7 +2538,7 @@ const updateMeeting = async (
         }
 
         const slotIsTaken = async () =>
-          !(await isSlotFree(
+          !(await isSlotAvailable(
             participant.account_address!,
             new Date(meetingUpdateRequest.start),
             new Date(meetingUpdateRequest.end),
@@ -3663,6 +3710,387 @@ export const getAvailabilityBlocks = async (account_address: string) => {
   return blocksWithDefault
 }
 
+const getMeetingTypes = async (
+  account_address: string,
+  limit = 10,
+  offset = 0
+): Promise<Array<MeetingType>> => {
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .select(
+      `
+    *,
+    availabilities: meeting_type_availabilities(availabilities(*)),
+    plan: meeting_type_plan(*),
+    connected_calendars: meeting_type_calendars(
+       connected_calendars(id, email, provider)
+    )
+    `
+    )
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1)
+  if (error) {
+    throw new Error(error.message)
+  }
+  const transformedData = data?.map(meetingType => ({
+    ...meetingType,
+    calendars: meetingType?.connected_calendars?.map(
+      (calendar: { connected_calendars: ConnectedCalendarCore }) =>
+        calendar.connected_calendars
+    ),
+    availabilities: meetingType?.availabilities?.map(
+      (availability: { availabilities: MeetingType['availabilities'][0] }) =>
+        availability.availabilities
+    ),
+    plan: meetingType?.plan?.[0],
+  }))
+
+  return transformedData as MeetingType[]
+}
+const createMeetingType = async (
+  account_address: string,
+  meetingType: CreateMeetingTypeRequest
+) => {
+  const { data: availabilities } = await db.supabase
+    .from('availabilities')
+    .select()
+    .eq('account_owner_address', account_address)
+  const availability = availabilities?.[0]
+  const payload: BaseMeetingType = {
+    account_owner_address: account_address,
+    type: meetingType.type,
+    min_notice_minutes: meetingType.min_notice_minutes,
+    duration_minutes: meetingType.duration_minutes,
+    title: meetingType.title,
+    slug: meetingType.slug,
+    description: meetingType.description,
+  }
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .insert([payload])
+  const meeting_type_id = data?.[0].id
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (
+    meetingType?.availability_ids &&
+    meetingType?.availability_ids.length > 0
+  ) {
+    const { error: meetingTypeAvailaibilityError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .insert(
+        meetingType?.availability_ids?.map(availability_id => ({
+          meeting_type_id,
+          availability_id:
+            availability_id === 'default' ? availability?.id : availability_id,
+        }))
+      )
+    if (meetingTypeAvailaibilityError) {
+      throw new Error(meetingTypeAvailaibilityError.message)
+    }
+  }
+  if (meetingType?.calendars && meetingType?.calendars?.length > 0) {
+    const { error: calendarError } = await db.supabase
+      .from('meeting_type_calendars')
+      .insert(
+        meetingType?.calendars?.map(calendar => ({
+          meeting_type_id,
+          calendar_id: calendar,
+        }))
+      )
+    if (calendarError) {
+      throw new Error(calendarError.message)
+    }
+  }
+  if (meetingType?.plan) {
+    const { error: planError } = await db.supabase
+      .from('meeting_type_plan')
+      .insert([
+        {
+          meeting_type_id,
+          type: meetingType?.plan.type,
+          price_per_slot: meetingType?.plan.price_per_slot,
+          no_of_slot: meetingType?.plan.no_of_slot,
+          payment_channel: meetingType?.plan.payment_channel,
+          payment_address: meetingType?.plan.payment_address,
+          default_chain_id: meetingType?.plan.crypto_network,
+        },
+      ])
+    if (planError) {
+      throw new Error(planError.message)
+    }
+  }
+  return data?.[0] as MeetingType
+}
+const deleteMeetingType = async (
+  account_address: string,
+  meeting_type_id: string
+): Promise<void> => {
+  const { data: meetingTypes, error: MeetingTypeError } = await db.supabase
+    .from('meeting_type')
+    .select(`id`)
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+    .range(0, 2)
+  if (MeetingTypeError) {
+    throw new Error(MeetingTypeError.message)
+  }
+  if (meetingTypes?.length === 1) {
+    throw new LastMeetingTypeError()
+  }
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('account_owner_address', account_address)
+    .eq('id', meeting_type_id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+const updateMeetingType = async (
+  account_address: string,
+  meeting_type_id: string,
+  meetingType: CreateMeetingTypeRequest
+): Promise<MeetingType> => {
+  const { data: availabilities } = await db.supabase
+    .from('availabilities')
+    .select()
+    .eq('account_owner_address', account_address)
+  const availability = availabilities?.[0]
+  const payload: Partial<BaseMeetingType> = {
+    account_owner_address: account_address,
+    min_notice_minutes: meetingType.min_notice_minutes,
+    duration_minutes: meetingType.duration_minutes,
+    title: meetingType.title,
+    slug: meetingType.slug,
+    description: meetingType.description,
+    updated_at: new Date().toISOString(),
+  }
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .update(payload)
+    .eq('account_owner_address', account_address)
+    .eq('id', meeting_type_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (
+    meetingType?.availability_ids &&
+    meetingType?.availability_ids.length > 0
+  ) {
+    const { error: meetingTypeAvailabilityDeleteError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .delete()
+      .eq('meeting_type_id', meeting_type_id)
+    if (meetingTypeAvailabilityDeleteError) {
+      throw new Error(meetingTypeAvailabilityDeleteError.message)
+    }
+    const { error: meetingTypeAvailabilityError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .insert(
+        meetingType?.availability_ids?.map(availability_id => ({
+          meeting_type_id,
+          availability_id:
+            availability_id === 'default' ? availability?.id : availability_id,
+        }))
+      )
+    if (meetingTypeAvailabilityError) {
+      throw new Error(meetingTypeAvailabilityError.message)
+    }
+  }
+  if (meetingType?.calendars && meetingType?.calendars?.length > 0) {
+    const { error: calendarError } = await db.supabase
+      .from('meeting_type_calendars')
+      .delete()
+      .eq('meeting_type_id', meeting_type_id)
+    if (calendarError) {
+      throw new Error(calendarError.message)
+    }
+    const { error: insertCalendarError } = await db.supabase
+      .from('meeting_type_calendars')
+      .insert(
+        meetingType?.calendars?.map(calendar => ({
+          meeting_type_id,
+          calendar_id: calendar,
+        }))
+      )
+    if (insertCalendarError) {
+      throw new Error(insertCalendarError.message)
+    }
+  }
+  if (meetingType?.plan) {
+    const { error: insertPlanError } = await db.supabase
+      .from('meeting_type_plan')
+      .update([
+        {
+          meeting_type_id,
+          type: meetingType?.plan.type,
+          price_per_slot: meetingType?.plan.price_per_slot,
+          no_of_slot: meetingType?.plan.no_of_slot,
+          payment_channel: meetingType?.plan.payment_channel,
+          payment_address: meetingType?.plan.payment_address,
+          default_chain_id: meetingType?.plan.crypto_network,
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .eq('meeting_type_id', meeting_type_id)
+
+    if (insertPlanError) {
+      throw new Error(insertPlanError.message)
+    }
+  }
+  return data?.[0] as MeetingType
+}
+
+const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .select(
+      `
+    *,
+    plan: meeting_type_plan(*)
+    `
+    )
+    .eq('id', id)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new MeetingTypeNotFound()
+  }
+  return data
+}
+const createCryptoTransaction = async (
+  transactionRequest: ConfirmCryptoTransactionRequest
+) => {
+  const chainInfo = getChainInfo(transactionRequest.chain)
+  if (!chainInfo?.id) {
+    throw new ChainNotFound(transactionRequest.chain)
+  }
+  const { feeInUSD, gasUsed, from } = await getTransactionFeeThirdweb(
+    transactionRequest.transaction_hash,
+    transactionRequest.chain
+  )
+  const payload: BaseTransaction = {
+    method: PaymentType.CRYPTO,
+    transaction_hash:
+      transactionRequest.transaction_hash.toLowerCase() as Address,
+    amount: transactionRequest.amount,
+    direction: PaymentDirection.CREDIT,
+    chain_id: chainInfo?.id,
+    token_address: from,
+    fiat_equivalent: transactionRequest.fiat_equivalent,
+    meeting_type_id: transactionRequest?.meeting_type_id,
+    initiator_address: from,
+    status: PaymentStatus.COMPLETED,
+    token_type: TokenType.ERC20,
+    confirmed_at: new Date().toISOString(),
+    currency: Currency.USD,
+    total_fee: feeInUSD,
+    metadata: {},
+    fee_breakdown: {
+      gas_used: gasUsed,
+      fee_in_usd: feeInUSD,
+    },
+  }
+  const { data, error } = await db.supabase.from('transactions').insert(payload)
+  if (error) {
+    throw new Error(error.message)
+  }
+  const meetingType = await getMeetingTypeFromDB(
+    transactionRequest.meeting_type_id
+  )
+  const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
+  const meetingSessions: Array<BaseMeetingSession> = Array.from(
+    { length: totalNoOfSlots },
+    (_, i) => ({
+      meeting_type_id: transactionRequest.meeting_type_id,
+      transaction_id: data[0]?.id,
+      session_number: i + 1,
+      guest_address: transactionRequest?.guest_address,
+      guest_email: transactionRequest?.guest_email,
+      owner_address: meetingType?.account_owner_address,
+    })
+  )
+  const { error: slotError } = await db.supabase
+    .from('meeting_sessions')
+    .insert(meetingSessions)
+  if (slotError) {
+    throw new Error(slotError.message)
+  }
+}
+const getMeetingSessionsByTxHash = async (
+  tx: Address
+): Promise<Array<MeetingSession>> => {
+  const { data: transaction, error: error } = await db.supabase
+    .from('transactions')
+    .select(
+      `
+      meeting_sessions(*)
+      `
+    )
+    .eq('transaction_hash', tx.toLowerCase())
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!transaction) {
+    throw new TransactionNotFoundError(tx)
+  }
+  return transaction.meeting_sessions || []
+}
+
+const getTransactionBytxHashAndMeetingType = async (
+  tx: Address,
+  meeting_type_id: string
+): Promise<Transaction> => {
+  const { data: transaction, error: error } = await db.supabase
+    .from('transactions')
+    .select(
+      `
+    *,
+    meeting_sessions(*)
+    `
+    )
+    .eq('transaction_hash', tx.toLowerCase())
+    .eq('meeting_type_id', meeting_type_id)
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!transaction) {
+    throw new TransactionNotFoundError(tx)
+  }
+  return transaction
+}
+
+const registerMeetingSession = async (tx: Address, meeting_id: string) => {
+  const meetingSessionsRaw = await getMeetingSessionsByTxHash(tx)
+  const meetingSessions = meetingSessionsRaw.sort(
+    (a, b) => a.session_number - b.session_number
+  )
+  const sessionToUpdate = meetingSessions.find(val => val.used_at === null)
+  if (!sessionToUpdate) {
+    throw new AllMeetingSlotsUsedError()
+  }
+  const { error: slotError } = await db.supabase
+    .from('meeting_sessions')
+    .update({
+      meeting_id,
+      used_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionToUpdate.id)
+  if (slotError) {
+    throw new Error(slotError.message)
+  }
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -3671,15 +4099,19 @@ export {
   checkContactExists,
   connectedCalendarExists,
   contactInviteByEmailExists,
+  createCryptoTransaction,
+  createMeetingType,
   createTgConnection,
   deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
+  deleteMeetingType,
   deleteTgConnection,
   editGroup,
   findAccountsByText,
   getAccountFromDB,
+  getAccountFromDBPublic,
   getAccountNonce,
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
@@ -3708,6 +4140,8 @@ export {
   getGroupUsers,
   getGroupUsersInternal,
   getMeetingFromDB,
+  getMeetingSessionsByTxHash,
+  getMeetingTypes,
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
@@ -3723,11 +4157,12 @@ export {
   initDB,
   insertOfficeEventMapping,
   isGroupAdmin,
-  isSlotFree,
+  isSlotAvailable as isSlotFree,
   isUserContact,
   leaveGroup,
   manageGroupInvite,
   publicGroupJoin,
+  registerMeetingSession,
   rejectContactInvite,
   rejectGroupInvite,
   removeConnectedCalendar,
@@ -3745,6 +4180,7 @@ export {
   updateContactInviteCooldown,
   updateCustomSubscriptionDomain,
   updateMeeting,
+  updateMeetingType,
   updateRecurringSlots,
   upsertGateCondition,
   workMeetingTypeGates,
