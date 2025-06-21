@@ -48,9 +48,9 @@ import { isEmptyString, isValidEmail } from '../../../utils/validations'
 interface ScheduleFormProps {
   pickedTime: Date
   isSchedulingExternal: boolean
-  willStartScheduling: (isScheduling: boolean) => void
-  isGateValid: boolean
-  selectedType?: MeetingType
+  willStartScheduling?: (isScheduling: boolean) => void
+  isGateValid?: boolean
+  selectedType?: MeetingType | null
   preferences?: AccountPreferences
   onConfirm: (
     scheduleType: SchedulingType,
@@ -128,12 +128,14 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     await handleConfirm()
   }
   useEffect(() => {
-    if (logged) {
+    if (selectedType?.plan) {
+      setScheduleType(SchedulingType.PAID)
+    } else if (logged) {
       setScheduleType(SchedulingType.REGULAR)
     } else {
       setScheduleType(SchedulingType.GUEST)
     }
-  }, [logged])
+  }, [logged, selectedType])
   const handleConfirm = async () => {
     if (meetingProvider === MeetingProvider.CUSTOM && !meetingUrl) {
       toast({
@@ -208,9 +210,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         meetingRepeat.value
       )
 
-      willStartScheduling(!success)
+      willStartScheduling && willStartScheduling?.(!success)
     } catch (e) {
-      willStartScheduling(true)
+      willStartScheduling && willStartScheduling?.(true)
     }
   }
 
