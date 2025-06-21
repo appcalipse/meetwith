@@ -90,7 +90,13 @@ import {
   GateUsage,
   GateUsageType,
 } from '@/types/TokenGating'
-import { BaseMeetingSession, BaseTransaction } from '@/types/Transactions'
+import {
+  Address,
+  BaseMeetingSession,
+  BaseTransaction,
+  MeetingSession,
+  Transaction,
+} from '@/types/Transactions'
 import {
   Currency,
   PaymentDirection,
@@ -101,6 +107,7 @@ import {
 import {
   AccountNotFoundError,
   AdminBelowOneError,
+  AllMeetingSlotsUsedError,
   AlreadyGroupMemberError,
   AvailabilityBlockNotFoundError,
   ChainNotFound,
@@ -129,6 +136,8 @@ import {
   OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
+  TransactionCouldBeNotFoundError,
+  TransactionNotFoundError,
   UnauthorizedError,
 } from '@/utils/errors'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
@@ -680,30 +689,38 @@ const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
   return data || []
 }
 
-const isSlotFree = async (
+const isSlotAvailable = async (
   account_address: string,
   start: Date,
   end: Date,
-  meetingTypeId: string
+  meetingTypeId: string,
+  txHash?: Address | null
 ): Promise<boolean> => {
-  const account = await getAccountFromDB(account_address)
+  const meetingType = await getMeetingTypeFromDB(meetingTypeId)
 
-  const minTime = account.preferences?.availableTypes.filter(
-    (mt: MeetingType) => mt.id === meetingTypeId
-  )
+  const minTime = meetingType.min_notice_minutes
+  if (meetingType?.plan) {
+    if (!txHash) {
+      throw new Error('txhash missing')
+    }
+    const transaction = await getTransactionBytxHashAndMeetingType(
+      txHash,
+      meetingTypeId
+    )
+    const meetingSessions = transaction.meeting_sessions || []
+    const isAnyMeetingSlotFree = meetingSessions.some(
+      session => session.used_at === null
+    )
+    if (!isAnyMeetingSlotFree) {
+      throw new AllMeetingSlotsUsedError()
+    }
+  }
 
-  if (
-    minTime &&
-    minTime.length > 0 &&
-    minTime[0].min_notice_minutes &&
-    isAfter(addMinutes(new Date(), minTime[0].min_notice_minutes), start)
-  ) {
+  if (isAfter(addMinutes(new Date(), minTime), start)) {
     return false
   }
 
-  return (
-    (await (await getSlotsForAccount(account_address, start, end)).length) == 0
-  )
+  return (await getSlotsForAccount(account_address, start, end)).length == 0
 }
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
@@ -1034,11 +1051,12 @@ const saveMeeting = async (
             participant?.account_address?.toLowerCase()
         )
         const slotIsTaken = async () =>
-          !(await isSlotFree(
+          !(await isSlotAvailable(
             participant.account_address!,
             new Date(meeting.start),
             new Date(meeting.end),
-            meeting.meetingTypeId
+            meeting.meetingTypeId,
+            meeting.txHash
           ))
         const isTimeAvailable = () =>
           ownerAccount &&
@@ -2520,7 +2538,7 @@ const updateMeeting = async (
         }
 
         const slotIsTaken = async () =>
-          !(await isSlotFree(
+          !(await isSlotAvailable(
             participant.account_address!,
             new Date(meetingUpdateRequest.start),
             new Date(meetingUpdateRequest.end),
@@ -3959,7 +3977,8 @@ const createCryptoTransaction = async (
   )
   const payload: BaseTransaction = {
     method: PaymentType.CRYPTO,
-    transaction_hash: transactionRequest.transaction_hash,
+    transaction_hash:
+      transactionRequest.transaction_hash.toLowerCase() as Address,
     amount: transactionRequest.amount,
     direction: PaymentDirection.CREDIT,
     chain_id: chainInfo?.id,
@@ -4003,7 +4022,73 @@ const createCryptoTransaction = async (
   if (slotError) {
     throw new Error(slotError.message)
   }
-  return data[0]
+}
+const getMeetingSessionsByTxHash = async (
+  tx: Address
+): Promise<Array<MeetingSession>> => {
+  const { data: transaction, error: error } = await db.supabase
+    .from('transactions')
+    .select(
+      `
+      meeting_sessions(*)
+      `
+    )
+    .eq('transaction_hash', tx.toLowerCase())
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!transaction) {
+    throw new TransactionNotFoundError(tx)
+  }
+  return transaction.meeting_sessions || []
+}
+
+const getTransactionBytxHashAndMeetingType = async (
+  tx: Address,
+  meeting_type_id: string
+): Promise<Transaction> => {
+  const { data: transaction, error: error } = await db.supabase
+    .from('transactions')
+    .select(
+      `
+    *,
+    meeting_sessions(*)
+    `
+    )
+    .eq('transaction_hash', tx.toLowerCase())
+    .eq('meeting_type_id', meeting_type_id)
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!transaction) {
+    throw new TransactionNotFoundError(tx)
+  }
+  return transaction
+}
+
+const registerMeetingSession = async (tx: Address, meeting_id: string) => {
+  const meetingSessionsRaw = await getMeetingSessionsByTxHash(tx)
+  const meetingSessions = meetingSessionsRaw.sort(
+    (a, b) => a.session_number - b.session_number
+  )
+  const sessionToUpdate = meetingSessions.find(val => val.used_at === null)
+  if (!sessionToUpdate) {
+    throw new AllMeetingSlotsUsedError()
+  }
+  const { error: slotError } = await db.supabase
+    .from('meeting_sessions')
+    .update({
+      meeting_id,
+      used_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionToUpdate.id)
+  if (slotError) {
+    throw new Error(slotError.message)
+  }
 }
 
 export {
@@ -4055,6 +4140,7 @@ export {
   getGroupUsers,
   getGroupUsersInternal,
   getMeetingFromDB,
+  getMeetingSessionsByTxHash,
   getMeetingTypes,
   getNewestCoupon,
   getOfficeEventMappingId,
@@ -4071,11 +4157,12 @@ export {
   initDB,
   insertOfficeEventMapping,
   isGroupAdmin,
-  isSlotFree,
+  isSlotAvailable as isSlotFree,
   isUserContact,
   leaveGroup,
   manageGroupInvite,
   publicGroupJoin,
+  registerMeetingSession,
   rejectContactInvite,
   rejectGroupInvite,
   removeConnectedCalendar,
