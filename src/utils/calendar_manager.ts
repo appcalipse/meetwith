@@ -52,7 +52,6 @@ import {
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
   scheduleMeetingFromServer,
-  schedulePaidMeetingAsGuest,
   syncMeeting,
   updateMeeting as apiUpdateMeeting,
 } from '@/utils/api_helper'
@@ -920,8 +919,6 @@ const scheduleMeeting = async (
     let slot: DBSlot
     if (schedulingType === SchedulingType.GUEST) {
       slot = await scheduleMeetingAsGuest(meeting)
-    } else if (schedulingType === SchedulingType.PAID) {
-      slot = await schedulePaidMeetingAsGuest(meeting)
     } else if (schedulingType === SchedulingType.DISCORD) {
       slot = await scheduleMeetingFromServer(currentAccount!.address, meeting)
     } else {
