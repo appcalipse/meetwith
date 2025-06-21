@@ -129,6 +129,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  MeetingSlugAlreadyExists,
   MeetingTypeNotFound,
   NoActiveSubscription,
   NotGroupAdminError,
@@ -137,6 +138,7 @@ import {
   SubscriptionNotCustom,
   TimeNotAvailableError,
   TransactionCouldBeNotFoundError,
+  TransactionIsRequired,
   TransactionNotFoundError,
   UnauthorizedError,
 } from '@/utils/errors'
@@ -701,7 +703,7 @@ const isSlotAvailable = async (
   const minTime = meetingType.min_notice_minutes
   if (meetingType?.plan) {
     if (!txHash) {
-      throw new Error('txhash missing')
+      throw new TransactionIsRequired()
     }
     const transaction = await getTransactionBytxHashAndMeetingType(
       txHash,
@@ -1011,25 +1013,6 @@ const saveMeeting = async (
     }
   }
 
-  // we create here the root meeting data, with enough data
-  const createdRootMeeting = await saveConferenceMeetingToDB({
-    id: meeting.meeting_id,
-    start: meeting.start,
-    end: meeting.end,
-    meeting_url: meeting.meeting_url,
-    access_type: MeetingAccessType.OPEN_MEETING,
-    provider: meeting.meetingProvider,
-    reminders: meeting.meetingReminders || [],
-    recurrence: meeting.meetingRepeat,
-    version: MeetingVersion.V2,
-    slots: meeting.allSlotIds || [],
-    title: meeting.title,
-  })
-  if (!createdRootMeeting) {
-    throw new Error(
-      'Could not create your meeting right now, get in touch with us if the problem persists'
-    )
-  }
   const timezone = meeting.participants_mapping[0].timeZone
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
@@ -1050,6 +1033,7 @@ const saveMeeting = async (
             val?.account_address?.toLowerCase() ===
             participant?.account_address?.toLowerCase()
         )
+        // check if trhe meeting type allows for the slot to be used
         const slotIsTaken = async () =>
           !(await isSlotAvailable(
             participant.account_address!,
@@ -1122,6 +1106,25 @@ const saveMeeting = async (
     }
   }
 
+  // we create here the root meeting data, with enough data
+  const createdRootMeeting = await saveConferenceMeetingToDB({
+    id: meeting.meeting_id,
+    start: meeting.start,
+    end: meeting.end,
+    meeting_url: meeting.meeting_url,
+    access_type: MeetingAccessType.OPEN_MEETING,
+    provider: meeting.meetingProvider,
+    reminders: meeting.meetingReminders || [],
+    recurrence: meeting.meetingRepeat,
+    version: MeetingVersion.V2,
+    slots: meeting.allSlotIds || [],
+    title: meeting.title,
+  })
+  if (!createdRootMeeting) {
+    throw new Error(
+      'Could not create your meeting right now, get in touch with us if the problem persists'
+    )
+  }
   const { data, error } = await db.supabase.from('slots').insert(slots)
 
   //TODO: handle error
@@ -1158,6 +1161,9 @@ const saveMeeting = async (
     },
   })
 
+  if (meeting.txHash) {
+    await registerMeetingSession(meeting.txHash, meeting.meeting_id)
+  }
   return meetingResponse as DBSlot
 }
 
@@ -3749,15 +3755,34 @@ const getMeetingTypes = async (
 
   return transformedData as MeetingType[]
 }
+const checkSlugExists = async (
+  account_address: string,
+  slug: string,
+  meeting_type_id?: string
+) => {
+  const query = db.supabase
+    .from('meeting_type')
+    .select('id,slug,account_owner_address')
+    .eq('slug', slug)
+    .is('deleted_at', null)
+    .eq('account_owner_address', account_address)
+    .range(0, 2)
+  if (meeting_type_id) {
+    query.neq('id', meeting_type_id)
+  }
+  const { data: meetingTypeExists, error: meetingTypeExistsError } = await query
+  if (meetingTypeExistsError) {
+    throw new Error(meetingTypeExistsError.message)
+  }
+  if (meetingTypeExists && meetingTypeExists.length > 0) {
+    throw new MeetingSlugAlreadyExists(slug || '')
+  }
+}
 const createMeetingType = async (
   account_address: string,
   meetingType: CreateMeetingTypeRequest
 ) => {
-  const { data: availabilities } = await db.supabase
-    .from('availabilities')
-    .select()
-    .eq('account_owner_address', account_address)
-  const availability = availabilities?.[0]
+  await checkSlugExists(account_address, meetingType.slug)
   const payload: BaseMeetingType = {
     account_owner_address: account_address,
     type: meetingType.type,
@@ -3783,8 +3808,7 @@ const createMeetingType = async (
       .insert(
         meetingType?.availability_ids?.map(availability_id => ({
           meeting_type_id,
-          availability_id:
-            availability_id === 'default' ? availability?.id : availability_id,
+          availability_id: availability_id,
         }))
       )
     if (meetingTypeAvailaibilityError) {
@@ -3855,11 +3879,7 @@ const updateMeetingType = async (
   meeting_type_id: string,
   meetingType: CreateMeetingTypeRequest
 ): Promise<MeetingType> => {
-  const { data: availabilities } = await db.supabase
-    .from('availabilities')
-    .select()
-    .eq('account_owner_address', account_address)
-  const availability = availabilities?.[0]
+  await checkSlugExists(account_address, meetingType.slug, meeting_type_id)
   const payload: Partial<BaseMeetingType> = {
     account_owner_address: account_address,
     min_notice_minutes: meetingType.min_notice_minutes,
@@ -3881,61 +3901,90 @@ const updateMeetingType = async (
     meetingType?.availability_ids &&
     meetingType?.availability_ids.length > 0
   ) {
-    const { error: meetingTypeAvailabilityDeleteError } = await db.supabase
+    const { data: current } = await db.supabase
       .from('meeting_type_availabilities')
-      .delete()
+      .select('availability_id')
       .eq('meeting_type_id', meeting_type_id)
-    if (meetingTypeAvailabilityDeleteError) {
-      throw new Error(meetingTypeAvailabilityDeleteError.message)
+
+    const currentIds = current?.map(c => c.availability_id) || []
+    const newIds = meetingType.availability_ids
+
+    const toDelete = currentIds.filter(id => !newIds.includes(id))
+    const toInsert = newIds.filter(id => !currentIds.includes(id))
+
+    if (toDelete.length > 0) {
+      await db.supabase
+        .from('meeting_type_availabilities')
+        .delete()
+        .eq('meeting_type_id', meeting_type_id)
+        .in('availability_id', toDelete)
     }
-    const { error: meetingTypeAvailabilityError } = await db.supabase
-      .from('meeting_type_availabilities')
-      .insert(
-        meetingType?.availability_ids?.map(availability_id => ({
-          meeting_type_id,
-          availability_id:
-            availability_id === 'default' ? availability?.id : availability_id,
-        }))
-      )
-    if (meetingTypeAvailabilityError) {
-      throw new Error(meetingTypeAvailabilityError.message)
+    if (toInsert.length > 0) {
+      const { error: availabilityError } = await db.supabase
+        .from('meeting_type_availabilities')
+        .insert(
+          toInsert.map(availability_id => ({
+            meeting_type_id,
+            availability_id: availability_id,
+          }))
+        )
+      if (availabilityError) {
+        throw new Error(availabilityError.message)
+      }
     }
   }
   if (meetingType?.calendars && meetingType?.calendars?.length > 0) {
-    const { error: calendarError } = await db.supabase
+    const { data: current } = await db.supabase
       .from('meeting_type_calendars')
-      .delete()
+      .select('calendar_id')
       .eq('meeting_type_id', meeting_type_id)
-    if (calendarError) {
-      throw new Error(calendarError.message)
+
+    const currentIds = current?.map(c => c.calendar_id) || []
+    const newIds = meetingType.calendars
+
+    const toDelete = currentIds.filter(id => !newIds.includes(id))
+
+    const toInsert = newIds.filter(id => !currentIds.includes(id))
+
+    if (toDelete.length > 0) {
+      const { error: calendarError } = await db.supabase
+        .from('meeting_type_calendars')
+        .delete()
+        .eq('meeting_type_id', meeting_type_id)
+        .in('calendar_id', toDelete)
+
+      if (calendarError) {
+        throw new Error(calendarError.message)
+      }
     }
-    const { error: insertCalendarError } = await db.supabase
-      .from('meeting_type_calendars')
-      .insert(
-        meetingType?.calendars?.map(calendar => ({
-          meeting_type_id,
-          calendar_id: calendar,
-        }))
-      )
-    if (insertCalendarError) {
-      throw new Error(insertCalendarError.message)
+
+    if (toInsert.length > 0) {
+      const { error: insertCalendarError } = await db.supabase
+        .from('meeting_type_calendars')
+        .insert(
+          toInsert.map(calendar_id => ({
+            meeting_type_id,
+            calendar_id,
+          }))
+        )
+
+      if (insertCalendarError) {
+        throw new Error(insertCalendarError.message)
+      }
     }
   }
   if (meetingType?.plan) {
     const { error: insertPlanError } = await db.supabase
       .from('meeting_type_plan')
-      .update([
-        {
-          meeting_type_id,
-          type: meetingType?.plan.type,
-          price_per_slot: meetingType?.plan.price_per_slot,
-          no_of_slot: meetingType?.plan.no_of_slot,
-          payment_channel: meetingType?.plan.payment_channel,
-          payment_address: meetingType?.plan.payment_address,
-          default_chain_id: meetingType?.plan.crypto_network,
-          updated_at: new Date().toISOString(),
-        },
-      ])
+      .update({
+        type: meetingType?.plan.type,
+        price_per_slot: meetingType?.plan.price_per_slot,
+        no_of_slot: meetingType?.plan.no_of_slot,
+        payment_channel: meetingType?.plan.payment_channel,
+        payment_address: meetingType?.plan.payment_address,
+        default_chain_id: meetingType?.plan.crypto_network,
+        updated_at: new Date().toISOString(),
+      })
       .eq('meeting_type_id', meeting_type_id)
 
     if (insertPlanError) {
@@ -3955,6 +4004,7 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
     `
     )
     .eq('id', id)
+    .is('deleted_at', null)
     .single()
   if (error) {
     throw new Error(error.message)
