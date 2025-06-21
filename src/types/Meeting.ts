@@ -11,6 +11,7 @@ export enum SchedulingType {
   REGULAR,
   GUEST,
   DISCORD,
+  PAID,
 }
 
 export enum ParticipantMappingType {
