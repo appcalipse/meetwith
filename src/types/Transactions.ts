@@ -3,10 +3,10 @@ import {
   PaymentStatus,
   PaymentType,
 } from '@/utils/constants/meeting-types'
-
+export type Address = `0x${string}`
 export interface BaseTransaction {
   method: PaymentType
-  transaction_hash?: string
+  transaction_hash?: Address
   provider_reference_id?: string // from onramp or payment provider
   direction: PaymentDirection
   amount: number
@@ -28,6 +28,7 @@ export interface BaseTransaction {
 export interface Transaction extends BaseTransaction {
   id: string
   created_at?: Date
+  meeting_sessions?: MeetingSession[]
 }
 
 export interface BaseMeetingSession {
@@ -41,7 +42,7 @@ export interface BaseMeetingSession {
 
 export interface MeetingSession extends BaseMeetingSession {
   id: string
-  used_at: Date | string | null
-  created_at: Date | string
-  updated_at: Date | string
+  used_at: Date | null
+  created_at: Date
+  updated_at: Date
 }
