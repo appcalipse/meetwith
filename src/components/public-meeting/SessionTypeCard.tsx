@@ -2,14 +2,22 @@ import { Button, Heading, Tag, Text, VStack } from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { MeetingType } from '@meta/Account'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
-import React, { FC, useContext } from 'react'
+import React, { FC, useContext, useState } from 'react'
 
 import { formatCurrency } from '@/utils/generic_utils'
 type IProps = MeetingType
 const SessionTypeCard: FC<IProps> = props => {
   const { handleSetSelectedType } = useContext(PublicScheduleContext)
+  const [loading, setLoading] = useState(false)
   const handleSelect = async () => {
-    await handleSetSelectedType(props, PublicSchedulingSteps.PAY_FOR_SESSION)
+    setLoading(true)
+    await handleSetSelectedType(
+      props,
+      props?.plan
+        ? PublicSchedulingSteps.PAY_FOR_SESSION
+        : PublicSchedulingSteps.BOOK_SESSION
+    )
+    setLoading(false)
   }
   return (
     <VStack
@@ -41,7 +49,7 @@ const SessionTypeCard: FC<IProps> = props => {
           {props?.plan?.no_of_slot > 1 ? 's' : ''}
         </Tag>
       )}
-      <Button colorScheme="primary" onClick={handleSelect}>
+      <Button colorScheme="primary" onClick={handleSelect} isLoading={loading}>
         Book session
       </Button>
     </VStack>
