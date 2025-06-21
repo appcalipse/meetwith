@@ -89,10 +89,10 @@ const devChains = [
   SupportedChain.CELO_ALFAJORES,
 ]
 const prodChains = [SupportedChain.ARBITRUM, SupportedChain.CELO]
-const chain = isProduction ? prodChains : devChains
+export const supportedPaymentChains = isProduction ? prodChains : devChains
 
 export const CryptoNetworkForCardSettlementOptions = supportedChains
-  .filter(val => (chain || []).includes(val.chain))
+  .filter(val => (supportedPaymentChains || []).includes(val.chain))
   .map(val => ({
     value: val.id,
     label: val.fullName,
@@ -160,3 +160,12 @@ export const getDefaultValues = (): Partial<MeetingType> => ({
 export enum Currency {
   USD = 'USD',
 }
+
+export const networkOptions = supportedChains
+  .filter(val => (supportedPaymentChains || []).includes(val.chain))
+  .map(val => ({
+    id: val.id,
+    name: val.fullName,
+    icon: val.image,
+    value: val.chain,
+  }))
