@@ -22,7 +22,6 @@ import {
   addMinutes,
   addMonths,
   areIntervalsOverlapping,
-  differenceInDays,
   eachMinuteOfInterval,
   endOfMonth,
   getDay,
@@ -33,12 +32,10 @@ import {
   isSameDay,
   isSameMonth,
   isToday,
-  isWithinInterval,
   nextDay,
   setHours,
   setMinutes,
   setSeconds,
-  startOfDay,
   startOfMonth,
   subMonths,
   subSeconds,
@@ -84,11 +81,14 @@ import { getAccountDisplayName } from '@/utils/user_manager'
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface IProps {}
+// TODO: create helper function to merge availaaibilities from availaibility block
+
 import MeetingScheduledDialog from '@/components/meeting/MeetingScheduledDialog'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { scheduleMeeting } from '@/utils/calendar_manager'
 import {
+  AllMeetingSlotsUsedError,
   GateConditionNotValidError,
   GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
@@ -97,6 +97,7 @@ import {
   MeetingWithYourselfError,
   MultipleSchedulersError,
   TimeNotAvailableError,
+  TransactionIsRequired,
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
@@ -106,9 +107,22 @@ const SchedulerPicker = () => {
     ssr: true,
     fallback: false, // return false on the server, and re-evaluate on the client side
   })
-  const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
 
-  const { account, selectedType, tx } = useContext(PublicScheduleContext)
+  const {
+    account,
+    selectedType,
+    tx,
+    schedulingType,
+    setSchedulingType,
+    lastScheduledMeeting,
+    setLastScheduledMeeting,
+    hasConnectedCalendar,
+    setHasConnectedCalendar,
+    notificationsSubs,
+    setNotificationSubs,
+    isContact,
+    setIsContact,
+  } = useContext(PublicScheduleContext)
   const currentAccount = useAccountContext()
   const tzs = timezones.map(tz => {
     return {
@@ -151,15 +165,8 @@ const SchedulerPicker = () => {
   const [selfBusySlots, setSelfBusyslots] = useState([] as Interval[])
 
   const [isScheduling, setIsScheduling] = useState(false)
-  const [notificationsSubs, setNotificationSubs] = useState(0)
-  const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
-    undefined as MeetingDecrypted | undefined
-  )
-  const [isContact, setIsContact] = useState(false)
-
   const toast = useToast()
 
-  const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
   useEffect(() => {
     const blockedAvailabilities = getBlockedAvailabilities(
       account?.preferences?.availabilities
@@ -324,7 +331,7 @@ const SchedulerPicker = () => {
       .some(cal => cal.calendars.some(_cal => _cal.enabled))
 
     setNotificationSubs(subs.notification_types?.length)
-    setHasConnectedCalendar(!!validCals)
+    setHasConnectedCalendar(validCals)
   }
   const confirmSchedule = async (
     scheduleType: SchedulingType,
@@ -499,6 +506,26 @@ const SchedulerPicker = () => {
           title: 'Failed to schedule meeting',
           description:
             'There was an issue generating a meeting url for your meeting. try using a different location',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof AllMeetingSlotsUsedError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'You’ve used all your available meeting slots. Please purchase a new slot to schedule a meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof TransactionIsRequired) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'This meeting type requires payment before scheduling. Please purchase a slot to continue.',
           status: 'error',
           duration: 5000,
           position: 'top',

@@ -198,7 +198,7 @@ export interface CreateMeetingTypeRequest {
   duration_minutes: number
   min_notice_minutes: number
   scheduleGate?: string
-  slug?: string
+  slug: string
   availability_ids?: string[]
   calendars?: number[]
   plan?: {

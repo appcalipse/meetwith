@@ -19,8 +19,13 @@ import { getAccountCalendarUrl } from '@utils/calendar_manager'
 import React, { ReactNode, useEffect, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
+import { AvailabilityBlock } from '@/types/availability'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
-import { getMeetingTypes, listConnectedCalendars } from '@/utils/api_helper'
+import {
+  getAvailabilityBlocks,
+  getMeetingTypes,
+  listConnectedCalendars,
+} from '@/utils/api_helper'
 import { getDefaultValues } from '@/utils/constants/meeting-types'
 
 import MeetingTypeModal from '../meeting-settings/MeetingTypeModal'
@@ -46,10 +51,16 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   const { data: connectedCalendar, isLoading: isQueryLoading } = useQuery<
     ConnectedCalendarCore[]
   >({
-    queryKey: ['connectedCalendars', currentAccount?.id],
+    queryKey: ['connectedCalendars', currentAccount?.address],
     queryFn: () => listConnectedCalendars(),
     enabled: !!currentAccount?.id,
   })
+  const { data: availabilityBlocks, isLoading: isAvailabilityLoading } =
+    useQuery<AvailabilityBlock[]>({
+      queryKey: ['availabilityBlocks', currentAccount?.address],
+      queryFn: () => getAvailabilityBlocks(),
+      enabled: !!currentAccount?.id,
+    })
 
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [meetingTypes, setMeetingTypes] = useState<MeetingType[]>([])
@@ -79,6 +90,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   const refetch = async () => {
     await fetchMeetingTypes(true, meetingTypes.length + 1)
     setCreateKey(uuidv4())
+    setSelectedType(null)
   }
   if (firstFetch) {
     content = (
@@ -142,6 +154,7 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   return (
     <Box width="100%" bg={bgColor} p={8} borderRadius={12}>
       <MeetingTypeModal
+        key={selectedType?.id || createKey}
         isOpen={isModalOpen}
         onClose={() => {
           closeModal()
@@ -152,8 +165,9 @@ const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
         isCalendarLoading={isQueryLoading}
         refetch={refetch}
         initialValues={selectedType || getDefaultValues()}
-        key={selectedType?.id || createKey}
         canDelete={meetingTypes.length > 1}
+        availabilityBlocks={availabilityBlocks || []}
+        isAvailabilityLoading={isAvailabilityLoading}
         onDelete={() => {
           openDeleteConfirmationModal()
           closeModal()

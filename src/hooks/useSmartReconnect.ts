@@ -16,7 +16,6 @@ export const useSmartReconnect = () => {
   const address = currentAccount?.address || null
   const connectionStatus = useActiveWalletConnectionStatus()
   // eslint-disable-next-line no-restricted-syntax
-  console.log({ connectionStatus }, 'connectionStatus')
   const wallet = useActiveWallet()
   const [needsReconnection, setNeedsReconnection] = useState(false)
   const [lastKnownWallet, setLastKnownWallet] = useState<string | null>(null)

@@ -55,6 +55,8 @@ const ConfirmPaymentInfo = () => {
     selectedType,
     account,
     handleNavigateToBook,
+    chain: selectedChain,
+    token,
   } = useContext(PublicScheduleContext)
   const toast = useToast({ position: 'top', isClosable: true })
   const currentAccount = useAccountContext()
@@ -70,11 +72,11 @@ const ConfirmPaymentInfo = () => {
   const [name, setName] = React.useState('')
   const [email, setEmail] = React.useState('')
   const chain = supportedChains.find(
-    val => val.id === selectedType?.plan?.default_chain_id
+    val => val.chain === selectedChain
   ) as ChainInfo
 
   const NATIVE_TOKEN_ADDRESS = chain?.acceptableTokens?.find(
-    token => token.token === AcceptedToken.USDC
+    acceptedToken => acceptedToken.token === token
   )?.contractAddress as Address
   const tokenPriceFeed = new PriceFeedService()
   const [loading, setLoading] = React.useState(false)
@@ -111,7 +113,36 @@ const ConfirmPaymentInfo = () => {
         }
         const signingAccount = currentWallet?.getAccount()
 
-        if (signingAccount) {
+        if (signingAccount && chain) {
+          const currentChainId = await currentWallet?.getChain()?.id
+
+          if (currentChainId !== chain.thirdwebChain.id) {
+            toast({
+              title: 'Network Switch Required',
+              description: `Please switch to ${chain.name} to continue`,
+              status: 'warning',
+              duration: 5000,
+            })
+
+            try {
+              await currentWallet?.switchChain(chain.thirdwebChain)
+              toast({
+                title: 'Network Switched',
+                description: `Successfully switched to ${chain.name}`,
+                status: 'success',
+                duration: 3000,
+              })
+            } catch (switchError) {
+              console.error('Network switch failed:', switchError)
+              toast({
+                title: 'Network Switch Failed',
+                description: 'Please switch networks manually in your wallet',
+                status: 'error',
+                duration: 5000,
+              })
+              return
+            }
+          }
           const balance = await getTokenBalance(
             signingAccount.address,
             NATIVE_TOKEN_ADDRESS,
@@ -234,7 +265,7 @@ const ConfirmPaymentInfo = () => {
   }
 
   const handleBack = () => {
-    setPaymentType(null)
+    setPaymentType(undefined)
     setPaymentStep(
       paymentType === PaymentType.FIAT
         ? PaymentStep.SELECT_PAYMENT_METHOD
@@ -257,8 +288,7 @@ const ConfirmPaymentInfo = () => {
     () => [
       {
         label: 'Plan',
-        value:
-          'Personalized Figma and design system training, for individuals, teams, and companies.',
+        value: selectedType?.title,
       },
       {
         label: 'Number of Sessions',
