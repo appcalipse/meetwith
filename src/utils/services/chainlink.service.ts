@@ -3,6 +3,8 @@ import { getContract, readContract } from 'thirdweb'
 
 import { AcceptedToken, getChainInfo, SupportedChain } from '@/types/chains'
 import { formatUnits } from '@/utils/generic_utils'
+import QueryKeys from '@/utils/query_keys'
+import { queryClient } from '@/utils/react_query'
 import { thirdWebClient } from '@/utils/user_manager'
 
 export class PriceFeedService {
@@ -71,10 +73,18 @@ export class PriceFeedService {
           },
         ],
       })
-      const [, price] = await readContract({
-        contract: chainLinkAggregator,
-        method: 'latestRoundData',
-      })
+      const [, price] = await queryClient.fetchQuery(
+        QueryKeys.chainLinkAggregator(
+          chainLinkAggregator.address,
+          chainLinkAggregator.chain.id,
+          'latestRoundData'
+        ),
+        () =>
+          readContract({
+            contract: chainLinkAggregator,
+            method: 'latestRoundData',
+          })
+      )
       return parseFloat(formatUnits(price, 8)) // Chainlink uses 8 decimals
     } catch (error) {
       captureException(error, {
