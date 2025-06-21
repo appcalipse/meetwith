@@ -128,9 +128,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     await handleConfirm()
   }
   useEffect(() => {
-    if (selectedType?.plan) {
-      setScheduleType(SchedulingType.PAID)
-    } else if (logged) {
+    if (logged) {
       setScheduleType(SchedulingType.REGULAR)
     } else {
       setScheduleType(SchedulingType.GUEST)
