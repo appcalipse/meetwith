@@ -64,6 +64,7 @@ import { GateConditionObject } from '@/types/TokenGating'
 import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
+  AllMeetingSlotsUsedError,
   ApiFetchError,
   CantInviteYourself,
   ChainNotFound,
@@ -86,6 +87,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  MeetingSlugAlreadyExists,
   NoActiveSubscription,
   OwnInviteError,
   SubscriptionNotCustom,
@@ -278,7 +280,11 @@ export const scheduleMeeting = async (
   try {
     return (await internalFetch(`/secure/meetings`, 'POST', meeting)) as DBSlot
   } catch (e: unknown) {
-    if (e instanceof ApiFetchError && e.status === 409) {
+    if (e instanceof ApiFetchError && e.status === 402) {
+      throw new AllMeetingSlotsUsedError()
+    } else if (e instanceof ApiFetchError && e.status === 400) {
+      throw new TransactionIsRequired()
+    } else if (e instanceof ApiFetchError && e.status === 409) {
       throw new TimeNotAvailableError()
     } else if (e instanceof ApiFetchError && e.status === 412) {
       throw new MeetingCreationError()
@@ -295,24 +301,11 @@ export const scheduleMeetingAsGuest = async (
   try {
     return (await internalFetch(`/meetings/guest`, 'POST', meeting)) as DBSlot
   } catch (e: unknown) {
-    if (e instanceof ApiFetchError && e.status === 409) {
-      throw new TimeNotAvailableError()
-    } else if (e instanceof ApiFetchError && e.status === 412) {
-      throw new MeetingCreationError()
-    } else if (e instanceof ApiFetchError && e.status === 403) {
-      throw new GateConditionNotValidError()
-    }
-    throw e
-  }
-}
-
-export const schedulePaidMeetingAsGuest = async (
-  meeting: MeetingCreationRequest
-): Promise<DBSlot> => {
-  try {
-    return (await internalFetch(`/meetings/paid`, 'POST', meeting)) as DBSlot
-  } catch (e: unknown) {
-    if (e instanceof ApiFetchError && e.status === 409) {
+    if (e instanceof ApiFetchError && e.status === 402) {
+      throw new AllMeetingSlotsUsedError()
+    } else if (e instanceof ApiFetchError && e.status === 400) {
+      throw new TransactionIsRequired()
+    } else if (e instanceof ApiFetchError && e.status === 409) {
       throw new TimeNotAvailableError()
     } else if (e instanceof ApiFetchError && e.status === 412) {
       throw new MeetingCreationError()
@@ -383,24 +376,50 @@ export const isSlotFreeApiCall = async (
       }`
     )) as { isFree: boolean }
   } catch (e) {
-    return { isFree: false }
+    if (e instanceof ApiFetchError && e.status === 402) {
+      throw new AllMeetingSlotsUsedError()
+    } else if (e instanceof ApiFetchError && e.status === 400) {
+      throw new TransactionIsRequired()
+    } else {
+      return { isFree: false }
+    }
   }
 }
 
 export const saveMeetingType = async (
   type: CreateMeetingTypeRequest
 ): Promise<MeetingType> => {
-  return await internalFetch<MeetingType>(`/secure/meetings/type`, 'POST', type)
+  try {
+    return await internalFetch<MeetingType>(
+      `/secure/meetings/type`,
+      'POST',
+      type
+    )
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 400) {
+      throw new MeetingSlugAlreadyExists(type.slug)
+    } else {
+      throw e
+    }
+  }
 }
 
 export const updateMeetingType = async (
   type: UpdateMeetingTypeRequest
 ): Promise<MeetingType> => {
-  return await internalFetch<MeetingType>(
-    `/secure/meetings/type`,
-    'PATCH',
-    type
-  )
+  try {
+    return await internalFetch<MeetingType>(
+      `/secure/meetings/type`,
+      'PATCH',
+      type
+    )
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 400) {
+      throw new MeetingSlugAlreadyExists(type.slug)
+    } else {
+      throw e
+    }
+  }
 }
 
 export const removeMeetingType = async (
