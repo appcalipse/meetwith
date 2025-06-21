@@ -38,11 +38,12 @@ const SelectCryptoNetwork = () => {
   const selectedAssetInfo = acceptedTokens?.find(
     acceptedToken => acceptedToken.token === token
   )
+  const [loading, setLoading] = React.useState(false)
   useEffect(() => {
     const chain =
       networkOptions.find(
         network => network.id === selectedType?.plan?.default_chain_id
-      )?.value || null
+      )?.value || undefined
     const selectedNetworkInfo = supportedChains.find(val => val.chain === chain)
     const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(
       token =>
@@ -51,9 +52,12 @@ const SelectCryptoNetwork = () => {
         )
     )
 
-    const token = acceptedTokens?.[0]?.token || null
+    const token = acceptedTokens?.[0]?.token || undefined
     handleSetTokenAndChain(token, chain)
   }, [selectedType])
+  const handleContinue = async () => {
+    setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
+  }
   return (
     <VStack alignItems="flex-start" w={'100%'} spacing={4}>
       <Heading size="lg">Make your Payment</Heading>
@@ -135,7 +139,7 @@ const SelectCryptoNetwork = () => {
               {acceptedTokens?.map(token => (
                 <MenuItem
                   key={token.token}
-                  onClick={() => setToken(token.token)}
+                  onClick={async () => await setToken(token.token)}
                 >
                   <HStack>
                     <Image
@@ -156,9 +160,7 @@ const SelectCryptoNetwork = () => {
       <Button
         colorScheme="primary"
         disabled={!chain || !token}
-        onClick={() => {
-          setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
-        }}
+        onClick={handleContinue}
       >
         Continue
       </Button>
