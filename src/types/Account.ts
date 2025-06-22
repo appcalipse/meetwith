@@ -134,3 +134,9 @@ export interface TgConnectedAccounts extends BaseConnectedAccounts {
 export interface DiscordConnectedAccounts extends BaseConnectedAccounts {
   discord_id: string
 }
+
+export interface PaidMeetingTypes extends MeetingType {
+  session_used: 1
+  session_total: 1
+  transaction_hash: string
+}
