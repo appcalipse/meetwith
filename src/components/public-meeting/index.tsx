@@ -107,7 +107,7 @@ const PublicPage: FC<IProps> = props => {
   const selectedType = useMemo(() => {
     if (!isReady) return null
     const meeting_type = Array.isArray(query.address)
-      ? query.address[1]
+      ? query.address.at(-1)
       : undefined
     return (
       props.account?.meetingTypes?.find(t => t.slug === meeting_type) || null
