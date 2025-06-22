@@ -1479,7 +1479,7 @@ export const createCryptoTransaction = async (
 ): Promise<{ success: true }> => {
   try {
     return await internalFetch<{ success: true }>(
-      `/transactions/crypto`,
+      `/secure/transactions/crypto`,
       'POST',
       transaction
     )
