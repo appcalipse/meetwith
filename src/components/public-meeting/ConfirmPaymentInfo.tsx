@@ -102,6 +102,15 @@ const ConfirmPaymentInfo = () => {
       }
       return
     }
+    if (!currentAccount?.address) {
+      toast({
+        title: 'Account Not Found',
+        description: 'Please connect your wallet to proceed.',
+        status: 'error',
+        duration: 5000,
+      })
+      return
+    }
     setLoading(true)
     try {
       const amount =
