@@ -4015,7 +4015,8 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
   return data
 }
 const createCryptoTransaction = async (
-  transactionRequest: ConfirmCryptoTransactionRequest
+  transactionRequest: ConfirmCryptoTransactionRequest,
+  account_address: string
 ) => {
   const chainInfo = getChainInfo(transactionRequest.chain)
   if (!chainInfo?.id) {
@@ -4035,7 +4036,7 @@ const createCryptoTransaction = async (
     token_address: from,
     fiat_equivalent: transactionRequest.fiat_equivalent,
     meeting_type_id: transactionRequest?.meeting_type_id,
-    initiator_address: from,
+    initiator_address: account_address,
     status: PaymentStatus.COMPLETED,
     token_type: TokenType.ERC20,
     confirmed_at: new Date().toISOString(),
