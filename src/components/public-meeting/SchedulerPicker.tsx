@@ -45,15 +45,18 @@ import React, { useContext, useEffect, useState } from 'react'
 import { FaArrowLeft, FaChevronDown, FaGlobe } from 'react-icons/fa'
 
 import Loading from '@/components/Loading'
+// TODO: create helper function to merge availabilities from availability block
+import MeetingScheduledDialog from '@/components/meeting/MeetingScheduledDialog'
 import Calendar from '@/components/MeetSlotPicker/calendar/index'
 import { Popup, PopupHeader } from '@/components/MeetSlotPicker/Popup'
 import TimeSlots from '@/components/MeetSlotPicker/TimeSlots'
 import { PublicScheduleContext } from '@/components/public-meeting'
 import { ScheduleForm } from '@/components/schedule/schedule-form'
 import useAccountContext from '@/hooks/useAccountContext'
+import { AccountNotifications } from '@/types/AccountNotifications'
+import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import {
-  MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
@@ -71,22 +74,8 @@ import {
   getNotificationSubscriptions,
   listConnectedCalendars,
 } from '@/utils/api_helper'
-import { timezones } from '@/utils/date_helper'
-import {
-  getAvailabilitiesForWeekDay,
-  getBlockedAvailabilities,
-  isSlotAvailable,
-} from '@/utils/slots.helper'
-import { getAccountDisplayName } from '@/utils/user_manager'
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface IProps {}
-// TODO: create helper function to merge availaaibilities from availaibility block
-
-import MeetingScheduledDialog from '@/components/meeting/MeetingScheduledDialog'
-import { AccountNotifications } from '@/types/AccountNotifications'
-import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { scheduleMeeting } from '@/utils/calendar_manager'
+import { timezones } from '@/utils/date_helper'
 import {
   AllMeetingSlotsUsedError,
   GateConditionNotValidError,
@@ -101,7 +90,13 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
+import {
+  getAvailabilitiesForWeekDay,
+  getBlockedAvailabilities,
+  isSlotAvailable,
+} from '@/utils/slots.helper'
 import { saveMeetingsScheduled } from '@/utils/storage'
+import { getAccountDisplayName } from '@/utils/user_manager'
 const SchedulerPicker = () => {
   const [isMobile] = useMediaQuery(['(max-width: 800px)'], {
     ssr: true,

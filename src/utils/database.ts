@@ -16,6 +16,7 @@ import {
   BaseMeetingType,
   DiscordConnectedAccounts,
   MeetingType,
+  PaidMeetingTypes,
   PublicAccount,
   SimpleAccountInfo,
   TgConnectedAccounts,
@@ -4015,7 +4016,8 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
   return data
 }
 const createCryptoTransaction = async (
-  transactionRequest: ConfirmCryptoTransactionRequest
+  transactionRequest: ConfirmCryptoTransactionRequest,
+  account_address: string
 ) => {
   const chainInfo = getChainInfo(transactionRequest.chain)
   if (!chainInfo?.id) {
@@ -4035,7 +4037,7 @@ const createCryptoTransaction = async (
     token_address: from,
     fiat_equivalent: transactionRequest.fiat_equivalent,
     meeting_type_id: transactionRequest?.meeting_type_id,
-    initiator_address: from,
+    initiator_address: account_address,
     status: PaymentStatus.COMPLETED,
     token_type: TokenType.ERC20,
     confirmed_at: new Date().toISOString(),
@@ -4141,6 +4143,20 @@ const registerMeetingSession = async (tx: Address, meeting_id: string) => {
   }
 }
 
+const getPaidSessionsByMeetingType = async (
+  current_account: string,
+  account_address: string
+): Promise<Array<PaidMeetingTypes>> => {
+  const { data: sessions, error } = await db.supabase.rpc('get_paid_sessions', {
+    current_account,
+    account_address,
+  })
+  if (error) {
+    throw new Error(error.message)
+  }
+  return sessions?.map(val => ({ ...val, plan: val.plan?.[0] })) || []
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -4195,6 +4211,7 @@ export {
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
+  getPaidSessionsByMeetingType,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
