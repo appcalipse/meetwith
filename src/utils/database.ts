@@ -16,6 +16,7 @@ import {
   BaseMeetingType,
   DiscordConnectedAccounts,
   MeetingType,
+  PaidMeetingTypes,
   PublicAccount,
   SimpleAccountInfo,
   TgConnectedAccounts,
@@ -4142,6 +4143,20 @@ const registerMeetingSession = async (tx: Address, meeting_id: string) => {
   }
 }
 
+const getPaidSessionsByMeetingType = async (
+  current_account: string,
+  account_address: string
+): Promise<Array<PaidMeetingTypes>> => {
+  const { data: sessions, error } = await db.supabase.rpc('get_paid_sessions', {
+    current_account,
+    account_address,
+  })
+  if (error) {
+    throw new Error(error.message)
+  }
+  return sessions?.map(val => ({ ...val, plan: val.plan?.[0] })) || []
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -4196,6 +4211,7 @@ export {
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
+  getPaidSessionsByMeetingType,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
