@@ -65,7 +65,7 @@ export const useAvailabilityBlockHandlers = ({
   const handleEditBlock = (block: AvailabilityBlock) => {
     setTitle(block.title)
     setTimezone(block.timezone)
-    block.availabilities.forEach(availability => {
+    block.weekly_availability.forEach(availability => {
       updateAvailability(availability.weekday, availability.ranges)
     })
     setIsDefault(block.isDefault)
@@ -78,7 +78,7 @@ export const useAvailabilityBlockHandlers = ({
   const handleDuplicateBlock = (block: AvailabilityBlock) => {
     setTitle(`${block.title} (Copy)`)
     setTimezone(block.timezone)
-    block.availabilities.forEach(availability => {
+    block.weekly_availability.forEach(availability => {
       updateAvailability(availability.weekday, availability.ranges)
     })
     setIsDefault(false)

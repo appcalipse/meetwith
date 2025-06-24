@@ -60,6 +60,7 @@ export interface AccountPreferences {
   availableTypes: MeetingType[]
   description?: string
   availabilities: DayAvailability[]
+  availaibility_id?: string
   socialLinks?: SocialLink[]
   name?: string
   avatar?: string

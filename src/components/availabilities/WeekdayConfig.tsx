@@ -1,16 +1,19 @@
-import { DeleteIcon } from '@chakra-ui/icons'
 import {
   Box,
   Checkbox,
+  Flex,
   HStack,
   IconButton,
-  Spacer,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   Text,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { format, setDay } from 'date-fns'
-import { FaPlusCircle, FaTrash } from 'react-icons/fa'
+import { FaCopy, FaPlusCircle, FaTrash } from 'react-icons/fa'
 
 import { TimeRange } from '@/types/Account'
 
@@ -24,6 +27,12 @@ type DayAvailability = {
 type WeekdayConfigProps = {
   dayAvailability: DayAvailability
   onChange: (weekday: number, times: TimeRange[] | null) => void
+  onCopyToDays?: (
+    sourceWeekday: number,
+    ranges: TimeRange[],
+    copyType: 'all' | 'weekdays' | 'weekends'
+  ) => void
+  useDirectInput?: boolean
 }
 
 const defaultTimeRange = () => ({
@@ -37,12 +46,22 @@ const getNewSlotEnd = (start: string) => {
   return `${endHours}:${minutes}`
 }
 
+const getNextSlotStart = (end: string) => {
+  const [hours, minutes] = end.split(':')
+  const nextHours = (parseInt(hours) + 1).toString().padStart(2, '0')
+  return `${nextHours}:${minutes}`
+}
+
 export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
-  const { dayAvailability, onChange } = props
+  const {
+    dayAvailability,
+    onChange,
+    onCopyToDays,
+    useDirectInput = false,
+  } = props
   const iconColor = useColorModeValue('gray.500', 'gray.200')
   const borderColor = useColorModeValue('gray.300', 'gray.700')
 
-  // Ensure ranges exists and is an array
   const ranges = dayAvailability?.ranges || []
   const isSelected = ranges.length > 0
   const times = [...ranges].sort((a, b) => {
@@ -59,7 +78,8 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
   }
 
   const handleAddSlotClick = () => {
-    const start = times[times.length - 1].end
+    const lastSlot = times[times.length - 1]
+    const start = getNextSlotStart(lastSlot.end)
 
     onChange(dayAvailability.weekday, [
       ...times,
@@ -76,18 +96,23 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
     onChange(dayAvailability.weekday, newTimes.length === 0 ? null : newTimes)
   }
 
+  const handleCopyToDays = (copyType: 'all' | 'weekdays' | 'weekends') => {
+    if (onCopyToDays && isSelected) {
+      onCopyToDays(dayAvailability.weekday, times, copyType)
+    }
+  }
+
   return (
-    <Box py={2} width="100%" borderBottom="1px solid" borderColor={borderColor}>
-      <HStack
-        alignItems="start"
-        minH="40px"
-        width="100%"
-        flexDirection={{ base: 'column', md: 'row' }}
-        gridGap={2}
+    <Box py={3} width="100%" borderBottom="1px solid" borderColor={borderColor}>
+      {/* Header Row */}
+      <Flex
+        justify="space-between"
+        align="center"
+        flexDirection={{ base: 'column', sm: 'row' }}
+        gap={{ base: 2, sm: 0 }}
       >
         <Checkbox
-          pt={2}
-          colorScheme="primary"
+          colorScheme="orange"
           isChecked={isSelected}
           onChange={e => {
             onChange(
@@ -96,53 +121,129 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
             )
           }}
           minW="140px"
+          _focus={{ boxShadow: 'none', border: 'none' }}
+          _focusVisible={{ boxShadow: 'none', border: 'none' }}
+          sx={{
+            '& .chakra-checkbox__control': {
+              borderColor: 'neutral.800',
+              borderRadius: '4px',
+              _checked: {
+                bg: 'primary.200',
+                borderColor: 'primary.200 !important',
+                border: '2px solid !important',
+                borderRadius: '4px',
+                transform: 'scale(1.1)',
+                _hover: {
+                  bg: 'primary.200',
+                  borderColor: 'primary.200 !important',
+                  border: '2px solid !important',
+                  borderRadius: '4px',
+                  transform: 'scale(1.1)',
+                },
+              },
+              _hover: {
+                borderColor: 'neutral.700',
+                borderRadius: '4px',
+              },
+              _focus: {
+                borderColor: 'neutral.700',
+                borderRadius: '4px',
+                boxShadow: 'none !important',
+              },
+            },
+          }}
         >
           <strong>
             {format(setDay(new Date(), dayAvailability.weekday), 'cccc')}
           </strong>
         </Checkbox>
-        <Spacer display={{ base: 'none', sm: 'block' }} />
-        {isSelected ? (
-          <VStack alignItems="start">
-            {times.map((time, index) => (
-              <VStack alignItems="start" key={index}>
-                <HStack gap={{ base: 2, md: 4 }}>
-                  <TimeSelector
-                    onChange={handleChangeTime}
-                    index={index}
-                    start={time.start}
-                    end={time.end}
-                    {...(index > 0 && { previousEnd: times[index - 1].end })}
-                    {...(index < times.length - 1 && {
-                      nextStart: times[index + 1].start,
-                    })}
-                  />
+
+        {/* Action Buttons */}
+        {isSelected && (
+          <HStack spacing={1} flexShrink={0}>
+            {onCopyToDays && (
+              <Menu>
+                <MenuButton
+                  as={IconButton}
+                  color={iconColor}
+                  aria-label="copy to other days"
+                  icon={<FaCopy size={16} />}
+                  size="sm"
+                  variant="ghost"
+                />
+                <MenuList>
+                  <MenuItem onClick={() => handleCopyToDays('all')}>
+                    Copy to all other days
+                  </MenuItem>
+                  <MenuItem onClick={() => handleCopyToDays('weekdays')}>
+                    Copy to weekdays (Mon-Fri)
+                  </MenuItem>
+                  <MenuItem onClick={() => handleCopyToDays('weekends')}>
+                    Copy to weekends (Sat-Sun)
+                  </MenuItem>
+                </MenuList>
+              </Menu>
+            )}
+          </HStack>
+        )}
+      </Flex>
+
+      {/* Time Slots */}
+      {isSelected ? (
+        <VStack align="start" spacing={2} width="100%">
+          {times.map((time, index) => (
+            <Flex
+              key={index}
+              width="100%"
+              align="center"
+              gap={2}
+              flexDirection={{ base: 'column', sm: 'row' }}
+            >
+              <TimeSelector
+                onChange={handleChangeTime}
+                index={index}
+                start={time.start}
+                end={time.end}
+                useDirectInput={useDirectInput}
+                {...(index > 0 && { previousEnd: times[index - 1].end })}
+                {...(index < times.length - 1 && {
+                  nextStart: times[index + 1].start,
+                })}
+              />
+              <HStack spacing={1}>
+                <IconButton
+                  color={iconColor}
+                  aria-label="remove time slot"
+                  icon={<FaTrash size={14} />}
+                  onClick={() => handleTimeRemoveClick(index)}
+                  size="sm"
+                  variant="ghost"
+                  flexShrink={0}
+                  minW="32px"
+                  h="32px"
+                />
+                {index === 0 && (
                   <IconButton
                     color={iconColor}
-                    aria-label="remove"
-                    icon={<FaTrash size={18} />}
-                    onClick={() => handleTimeRemoveClick(index)}
+                    aria-label="add time slot"
+                    icon={<FaPlusCircle size={14} />}
+                    onClick={handleAddSlotClick}
+                    size="sm"
+                    variant="ghost"
+                    flexShrink={0}
+                    minW="32px"
+                    h="32px"
                   />
-                </HStack>
-              </VStack>
-            ))}
-          </VStack>
-        ) : (
-          <Text flex={1} ml={2} pt={2}>
-            Not available
-          </Text>
-        )}
-
-        {isSelected && (
-          <IconButton
-            margin="0"
-            color={iconColor}
-            aria-label="add"
-            icon={<FaPlusCircle size={18} />}
-            onClick={handleAddSlotClick}
-          />
-        )}
-      </HStack>
+                )}
+              </HStack>
+            </Flex>
+          ))}
+        </VStack>
+      ) : (
+        <Text color="neutral.300" fontSize="sm" ml={6}>
+          Not available
+        </Text>
+      )}
     </Box>
   )
 }

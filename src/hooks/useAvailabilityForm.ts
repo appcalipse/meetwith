@@ -2,7 +2,10 @@ import { useState } from 'react'
 
 import { Account } from '@/types/Account'
 import { TimeRange } from '@/types/Account'
-import { initializeEmptyAvailabilities } from '@/utils/availability.helper'
+import {
+  getBestTimezone,
+  initializeDefaultAvailabilities,
+} from '@/utils/availability.helper'
 
 interface FormState {
   title: string
@@ -14,16 +17,16 @@ interface FormState {
 export const useAvailabilityForm = (currentAccount: Account) => {
   const [formState, setFormState] = useState<FormState>({
     title: '',
-    timezone: currentAccount?.preferences.timezone,
-    availabilities: initializeEmptyAvailabilities(),
+    timezone: getBestTimezone(currentAccount),
+    availabilities: initializeDefaultAvailabilities(),
     isDefault: false,
   })
 
   const resetForm = () => {
     setFormState({
       title: '',
-      timezone: currentAccount?.preferences.timezone,
-      availabilities: initializeEmptyAvailabilities(),
+      timezone: getBestTimezone(currentAccount),
+      availabilities: initializeDefaultAvailabilities(),
       isDefault: false,
     })
   }
