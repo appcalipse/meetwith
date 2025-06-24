@@ -49,7 +49,7 @@ interface IContext {
     chain?: SupportedChain
   ) => void
   tx?: Address
-  handleNavigateToBook: (tx: Address) => Promise<void>
+  handleNavigateToBook: (tx: Address) => void
   schedulingType: SchedulingType
   setSchedulingType: React.Dispatch<React.SetStateAction<SchedulingType>>
   lastScheduledMeeting: MeetingDecrypted | undefined
@@ -80,7 +80,7 @@ const baseState: IContext = {
   setToken: () => {},
   handleSetTokenAndChain: async () => {},
   tx: undefined,
-  handleNavigateToBook: async () => {},
+  handleNavigateToBook: () => {},
   schedulingType: SchedulingType.REGULAR,
   setSchedulingType: () => {},
   lastScheduledMeeting: undefined,
@@ -95,7 +95,7 @@ const baseState: IContext = {
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
 const PublicPage: FC<IProps> = props => {
   const bgColor = useColorModeValue('white', 'neutral.900')
-  const { query, push, isReady } = useRouter()
+  const { query, push, isReady, beforePopState, replace, asPath } = useRouter()
   const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState<
     MeetingDecrypted | undefined
@@ -125,7 +125,7 @@ const PublicPage: FC<IProps> = props => {
   const [currentStep, setCurrentStep] = useState<PublicSchedulingSteps>(
     PublicSchedulingSteps.SELECT_TYPE
   )
-  const handleNavigateToBook = async (tx?: Address) => {
+  const handleNavigateToBook = (tx?: Address) => {
     setTx(tx)
     setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
   }
@@ -173,6 +173,36 @@ const PublicPage: FC<IProps> = props => {
       }
     }
   }, [query.address])
+
+  useEffect(() => {
+    const handleBackButton = () => {
+      if (currentStep !== PublicSchedulingSteps.SELECT_TYPE) {
+        switch (currentStep) {
+          case PublicSchedulingSteps.BOOK_SESSION:
+            if (selectedType?.plan && paymentStep) {
+              setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
+              replace(asPath, undefined, { shallow: true })
+            } else {
+              setCurrentStep(PublicSchedulingSteps.SELECT_TYPE)
+            }
+            break
+          case PublicSchedulingSteps.PAY_FOR_SESSION:
+            setCurrentStep(PublicSchedulingSteps.SELECT_TYPE)
+            break
+        }
+        return false
+      }
+
+      return true
+    }
+
+    beforePopState(handleBackButton)
+
+    return () => {
+      beforePopState(() => true)
+    }
+  }, [currentStep, selectedType, beforePopState])
+
   const _onClose = () => {
     setLastScheduledMeeting(undefined)
   }

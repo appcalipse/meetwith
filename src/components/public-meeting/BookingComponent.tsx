@@ -1,32 +1,22 @@
 import { Box, Text, VStack } from '@chakra-ui/react'
-import React, { useContext, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import React, { useContext, useMemo } from 'react'
 
 import Loading from '@/components/Loading'
 import { PublicScheduleContext } from '@/components/public-meeting'
 import ProgressHeader from '@/components/public-meeting/ProgressHeader'
 import SchedulerPicker from '@/components/public-meeting/SchedulerPicker'
 import SessionTypeCardPaymentInfo from '@/components/public-meeting/SessionTypeCardPaymentInfo'
-import { MeetingSession, Transaction } from '@/types/Transactions'
 import { getTransactionByTxHash } from '@/utils/api_helper'
 
 const BookingComponent = () => {
   const { tx } = useContext(PublicScheduleContext)
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [meetingSessions, setMeetingSessions] = React.useState<
-    MeetingSession[] | null
-  >(null)
-  const getTransaction = async () => {
-    if (!tx) return
-    setIsLoading(true)
-    const meeting_sessions = await getTransactionByTxHash(tx)
-    setMeetingSessions(meeting_sessions)
-    setIsLoading(false)
-  }
-  useEffect(() => {
-    if (tx) {
-      void getTransaction()
-    }
-  }, [])
+  const { data: meetingSessions, isLoading } = useQuery({
+    queryKey: ['transaction', tx],
+    queryFn: () => tx && getTransactionByTxHash(tx),
+    enabled: !!tx,
+  })
+
   const availableSessions = useMemo(
     () => meetingSessions?.filter(session => !session.used_at).length ?? 0,
 
@@ -57,9 +47,9 @@ const BookingComponent = () => {
             </Text>{' '}
             remaining for this plan
           </Text>
-          <SchedulerPicker />
         </VStack>
       )}
+      <SchedulerPicker />
     </VStack>
   )
 }

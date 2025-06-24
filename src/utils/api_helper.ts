@@ -5,6 +5,7 @@ import { DAVCalendar } from 'tsdav'
 import {
   Account,
   MeetingType,
+  PaidMeetingTypes,
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
@@ -1479,7 +1480,7 @@ export const createCryptoTransaction = async (
 ): Promise<{ success: true }> => {
   try {
     return await internalFetch<{ success: true }>(
-      `/transactions/crypto`,
+      `/secure/transactions/crypto`,
       'POST',
       transaction
     )
@@ -1508,4 +1509,12 @@ export const getTransactionByTxHash = async (
     }
     throw e
   }
+}
+
+export const getPaidSessions = async (
+  account_address: string
+): Promise<PaidMeetingTypes[]> => {
+  return await internalFetch<PaidMeetingTypes[]>(
+    `/secure/transactions/meeting-sessions?account_address=${account_address}`
+  )
 }
