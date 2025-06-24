@@ -1,34 +1,19 @@
 import { Box, HStack, Text } from '@chakra-ui/layout'
-import {
-  Button,
-  Flex,
-  Heading,
-  IconButton,
-  Link,
-  Tooltip,
-  useColorModeValue,
-  VStack,
-} from '@chakra-ui/react'
-import { Select } from '@chakra-ui/select'
+import { Button, Flex, Heading, VStack } from '@chakra-ui/react'
 import { Avatar } from '@components/profile/components/Avatar'
-import { CalendarType } from '@components/public-calendar'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import SessionTypeCard from '@components/public-meeting/SessionTypeCard'
-import { SocialLinkType } from '@meta/Account'
 import { getAccountDisplayName } from '@utils/user_manager'
 import React, { FC, useContext } from 'react'
 
-const BasePage: FC = props => {
+import useAccountContext from '@/hooks/useAccountContext'
+
+import PaidMeetings from './PaidMeetings'
+
+const BasePage: FC = () => {
   const { account } = useContext(PublicScheduleContext)
-  let [twitter, telegram, discord] = ['', '', '']
-  const iconColor = useColorModeValue('gray.600', 'white')
-  const social = account.preferences?.socialLinks
-  if (social) {
-    twitter = social.filter(s => s.type === SocialLinkType.TWITTER)[0]?.url
-    discord = social.filter(s => s.type === SocialLinkType.DISCORD)[0]?.url
-    telegram = social.filter(s => s.type === SocialLinkType.TELEGRAM)[0]?.url
-  }
-  const socialsExists = social?.some(val => val.url)
+  const currentAccount = useAccountContext()
+  const [paidSessionsExists, setPaidSessionsExists] = React.useState(false)
 
   return (
     <VStack
@@ -81,17 +66,29 @@ const BasePage: FC = props => {
           </Button>
         </Text>
       </Flex>
-      <HStack
-        w={'100%'}
-        justifyContent="space-between"
-        alignItems="center"
-        flexWrap="wrap"
-        rowGap={{ base: 4, md: '1vw' }}
-      >
-        {account?.meetingTypes?.map(val => (
-          <SessionTypeCard key={val.id} {...val} />
-        ))}
-      </HStack>
+      <VStack gap={4} w={'100%'} alignItems="flex-start">
+        {currentAccount?.address && (
+          <PaidMeetings setPaidSessionsExists={setPaidSessionsExists} />
+        )}
+        <VStack gap={4} w={'100%'} alignItems="flex-start">
+          {paidSessionsExists && (
+            <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
+              All Sessions
+            </Heading>
+          )}
+          <HStack
+            w={'100%'}
+            justifyContent="space-between"
+            alignItems="center"
+            flexWrap="wrap"
+            rowGap={{ base: 4, md: '1vw' }}
+          >
+            {account?.meetingTypes?.map(val => (
+              <SessionTypeCard key={val.id} {...val} />
+            ))}
+          </HStack>
+        </VStack>
+      </VStack>
     </VStack>
   )
 }
