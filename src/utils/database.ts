@@ -411,26 +411,30 @@ export const getAccountPreferences = async (
     throw new Error("Couldn't get account's preferences")
   }
 
-  // fix badly migrated accounts - should be removed at some point in the future
-  if (account_preferences[0].availabilities.length === 0) {
-    const defaultAvailabilities = generateEmptyAvailabilities()
-    const { data: newPreferences, error: newPreferencesError } =
-      await db.supabase
-        .from<AccountPreferences>('account_preferences')
-        .update({
-          availabilities: defaultAvailabilities,
-        })
-        .match({ owner_account_address: owner_account_address.toLowerCase() })
+  const preferences = account_preferences[0]
 
-    if (newPreferencesError) {
-      console.error(newPreferences)
-      throw new Error('Error while completing empty preferences')
+  // Get the default availability block and transform it to the expected format
+  if (preferences.availaibility_id) {
+    try {
+      const defaultBlock = await getAvailabilityBlock(
+        preferences.availaibility_id,
+        owner_account_address
+      )
+      if (defaultBlock) {
+        preferences.availabilities = defaultBlock.weekly_availability
+      } else {
+        preferences.availabilities = generateEmptyAvailabilities()
+      }
+    } catch (error) {
+      // If there's an error getting the default block, fall back to empty availabilities
+      preferences.availabilities = generateEmptyAvailabilities()
     }
-
-    return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
+  } else {
+    // No default block set, use empty availabilities
+    preferences.availabilities = generateEmptyAvailabilities()
   }
 
-  return account_preferences[0]
+  return preferences
 }
 
 const getExistingAccountsFromDB = async (
