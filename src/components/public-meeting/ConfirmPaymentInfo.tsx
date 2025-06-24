@@ -7,6 +7,7 @@ import {
   Heading,
   HStack,
   Input,
+  Progress,
   Text,
   useToast,
   VStack,
@@ -71,6 +72,7 @@ const ConfirmPaymentInfo = () => {
 
   const [name, setName] = React.useState('')
   const [email, setEmail] = React.useState('')
+  const [progress, setProgress] = React.useState(0)
   const chain = supportedChains.find(
     val => val.chain === selectedChain
   ) as ChainInfo
@@ -116,6 +118,7 @@ const ConfirmPaymentInfo = () => {
       const amount =
         selectedType!.plan!.price_per_slot! * selectedType!.plan!.no_of_slot!
       if (paymentType === PaymentType.CRYPTO) {
+        setProgress(0)
         let currentWallet: Wallet | undefined | null = wallet
         if (needsReconnection) {
           currentWallet = await attemptReconnection()
@@ -197,6 +200,7 @@ const ConfirmPaymentInfo = () => {
             account: signingAccount,
             transaction,
           })
+          setProgress(40)
           toast({
             title: 'Transaction Submitted',
             description: `Transaction hash: ${transactionHash}`,
@@ -208,6 +212,7 @@ const ConfirmPaymentInfo = () => {
             chain: chain.thirdwebChain,
             transactionHash,
           })
+          setProgress(60)
           if (receipt.status === 'success') {
             toast({
               title: 'Payment Successful!',
@@ -232,7 +237,9 @@ const ConfirmPaymentInfo = () => {
             guest_email: email,
             guest_name: name,
           }
+          setProgress(90)
           await createCryptoTransaction(payload)
+          setProgress(100)
           handleNavigateToBook(transactionHash)
         }
       } else {
@@ -398,14 +405,39 @@ const ConfirmPaymentInfo = () => {
           </HStack>
         ))}
       </VStack>
-      <Button
-        colorScheme="primary"
-        disabled={!name || !email || !!errors.name || !!errors.email}
-        onClick={handlePay}
-        isLoading={loading}
-      >
-        Pay Now
-      </Button>
+      <HStack>
+        <Button
+          colorScheme="primary"
+          disabled={!name || !email || !!errors.name || !!errors.email}
+          onClick={handlePay}
+          isLoading={loading}
+        >
+          Pay Now
+        </Button>
+        {!loading && (
+          <HStack ml={12}>
+            <Progress
+              value={100}
+              w={150}
+              rounded={'full'}
+              borderWidth={2}
+              borderColor="green.400"
+              colorScheme="green"
+              p={'2px'}
+              size="lg"
+              sx={{
+                '& > div': {
+                  backgroundColor: 'green.400',
+                  rounded: 'full',
+                },
+              }}
+            />
+            <Text>
+              {progress === 100 ? 'Payment Successful' : `${progress}%`}
+            </Text>
+          </HStack>
+        )}
+      </HStack>
     </VStack>
   )
 }
