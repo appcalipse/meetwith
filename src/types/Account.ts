@@ -8,6 +8,7 @@ import { ConnectedCalendarCore } from './CalendarConnections'
 import { DiscordAccount } from './Discord'
 import { MeetingProvider } from './Meeting'
 import { Subscription } from './Subscription'
+import { Address } from './Transactions'
 
 export interface AuthToken {
   access_token: string
@@ -136,7 +137,7 @@ export interface DiscordConnectedAccounts extends BaseConnectedAccounts {
 }
 
 export interface PaidMeetingTypes extends MeetingType {
-  session_used: 1
-  session_total: 1
-  transaction_hash: string
+  session_used: number
+  session_total: number
+  transaction_hash: Address
 }
