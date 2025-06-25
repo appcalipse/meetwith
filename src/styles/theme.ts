@@ -1,6 +1,7 @@
 import { extendTheme, ThemeConfig, ThemeProviderProps } from '@chakra-ui/react'
 import { mode } from '@chakra-ui/theme-tools'
-
+import { DM_Sans } from 'next/font/google'
+const dmSans = DM_Sans({ subsets: ['latin'], display: 'swap' })
 const config: ThemeConfig = {
   initialColorMode: 'dark',
   disableTransitionOnChange: false,
@@ -79,8 +80,8 @@ const newTheme = {
     700: '#2a69ac',
   },
   fonts: {
-    heading: 'DM Sans',
-    body: 'DM Sans',
+    heading: dmSans.style.fontFamily,
+    body: dmSans.style.fontFamily,
   },
   components: {
     Link: {

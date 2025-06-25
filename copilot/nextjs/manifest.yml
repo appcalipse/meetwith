@@ -52,3 +52,6 @@ environments:
   production:
     variables:
       NEXT_PUBLIC_ENV: production
+  pre-prod:
+    variables:
+      NEXT_PUBLIC_ENV: production

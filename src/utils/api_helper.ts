@@ -1183,8 +1183,15 @@ export const updateCustomSubscriptionDomain = async (
   }
 }
 
-export const getNewestCoupon = async (): Promise<Coupon> => {
-  return await internalFetch<Coupon>(`/subscriptions/custom`)
+export const getNewestCoupon = async (
+  signal?: AbortSignal
+): Promise<Coupon> => {
+  return await internalFetch<Coupon>(
+    `/subscriptions/custom`,
+    'GET',
+    undefined,
+    { signal }
+  )
 }
 
 export const searchForAccounts = async (query: string, offset = 0) => {
