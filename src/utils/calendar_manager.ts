@@ -886,33 +886,28 @@ const scheduleMeeting = async (
     txHash
   )
   if (!ignoreAvailabilities) {
-    const promises: Promise<boolean>[] = []
-    participants
+    const promises: Promise<boolean>[] = participants
       .filter(p => p.account_address !== currentAccount?.address)
-      .forEach(participant => {
-        promises.push(
-          new Promise<boolean>(async resolve => {
-            if (
-              !participant.account_address ||
-              (
-                await isSlotFreeApiCall(
-                  participant.account_address,
-                  startTime,
-                  endTime,
-                  meetingTypeId,
-                  txHash
-                )
-              ).isFree
-            ) {
-              resolve(true)
-            }
-            resolve(false)
-          })
-        )
-      })
-    const results = await Promise.all(promises)
-    if (results.some(r => !r)) {
-      throw new TimeNotAvailableError()
+      .map(
+        async participant =>
+          !participant.account_address ||
+          (
+            await isSlotFreeApiCall(
+              participant.account_address,
+              startTime,
+              endTime,
+              meetingTypeId
+            )
+          ).isFree
+      )
+
+    try {
+      const results = await Promise.all(promises)
+      if (results.some(r => !r)) {
+        throw new TimeNotAvailableError()
+      }
+    } catch (error) {
+      throw error
     }
   }
   try {
