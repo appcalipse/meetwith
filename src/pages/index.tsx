@@ -1,26 +1,25 @@
-import { Box, DarkMode, useColorMode, useDisclosure } from '@chakra-ui/react'
+import { Box, DarkMode, useColorMode } from '@chakra-ui/react'
 import { getIronSession } from 'iron-session'
 import type { NextPage } from 'next'
-import React, { useContext, useEffect } from 'react'
+import dynamic from 'next/dynamic'
+import { useEffect } from 'react'
 
-import ProAccessPopUp from '@/components/landing/ProAccessPopUp'
+import Loading from '@/components/Loading'
 import { sessionOptions } from '@/middleware'
-import { AccountContext } from '@/providers/AccountProvider'
-import { Coupon } from '@/types/Subscription'
-import { getNewestCoupon } from '@/utils/api_helper'
-import { COUPON_CAMPAIGN_END_DATE } from '@/utils/constants/coupons'
 import redirectTo from '@/utils/redirect'
-import { isProAccount } from '@/utils/subscription_manager'
 
-import { Faq } from '../components/landing/FAQ'
+import Faq from '../components/landing/FAQ'
 import { Features } from '../components/landing/Features'
-import { Hero } from '../components/landing/Hero'
-import { Why } from '../components/landing/Why'
-
+import Hero from '../components/landing/Hero'
+import Why from '../components/landing/Why'
+const ProAccessPopUp = dynamic(
+  () => import('@/components/landing/ProAccessPopUp'),
+  {
+    ssr: false,
+    loading: () => <Loading />,
+  }
+)
 const Home: NextPage = () => {
-  const [coupon, setCoupon] = React.useState<Coupon | undefined>(undefined)
-  const { isOpen, onOpen, onClose } = useDisclosure()
-  const { logged, currentAccount } = useContext(AccountContext)
   const { colorMode, setColorMode } = useColorMode()
 
   useEffect(() => {
@@ -29,38 +28,16 @@ const Home: NextPage = () => {
       setColorMode('dark')
     }
   }, [colorMode, setColorMode])
-  const fetchCoupon = async () => {
-    const data = await getNewestCoupon()
-    setCoupon(data)
-    onOpen()
-  }
-  useEffect(() => {
-    if (
-      (logged && isProAccount(currentAccount ?? undefined)) ||
-      Date.now() > COUPON_CAMPAIGN_END_DATE
-    ) {
-      onClose()
-      return
-    }
-    void fetchCoupon()
-  }, [currentAccount])
+
   return (
     <main data-testid="main-container">
       <DarkMode>
         <Box bg={'neutral.900'} pb={36} fontWeight={500}>
           <Hero />
-          <ProAccessPopUp
-            onDialogClose={onClose}
-            isDialogOpen={isOpen}
-            coupon={coupon}
-          />
           <Why />
-          <Box px={5}>
-            <Features />
-          </Box>
-          <Box px={5}>
-            <Faq />
-          </Box>
+          <Features />
+          <Faq />
+          <ProAccessPopUp />
         </Box>
       </DarkMode>
     </main>

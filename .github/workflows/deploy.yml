@@ -41,4 +41,4 @@ jobs:
       if: ${{ github.ref == 'refs/heads/pre-prod' }}
       run: copilot deploy -e pre-prod --force
       env:
-        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
+        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}

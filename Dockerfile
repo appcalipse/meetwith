@@ -9,10 +9,14 @@ RUN apk add git
 RUN apk add --update python3 make g++\
    && rm -rf /var/cache/apk/*
 
+RUN corepack enable
+RUN corepack prepare yarn@4.9.1 --activate
+
 WORKDIR /app
-COPY package.json yarn.lock ./ 
+COPY package.json yarn.lock .yarnrc.yml ./
 COPY ./patches ./patches
-RUN yarn install --frozen-lockfile --unsafe-perm
+# Install all dependencies since we need them for building
+RUN yarn install --immutable
 
 # Rebuild the source code only when needed
 FROM node:18.19-alpine AS builder
@@ -21,10 +25,14 @@ RUN wget -q -t3 'https://packages.doppler.com/public/cli/rsa.8004D9FF50437357.ke
     echo 'https://packages.doppler.com/public/cli/alpine/any-version/main' | tee -a /etc/apk/repositories && \
     apk add doppler
 
+RUN corepack enable
+RUN corepack prepare yarn@4.9.1 --activate
+
 WORKDIR /app
 ARG DOPPLER_TOKEN
 
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/.yarnrc.yml ./
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
@@ -36,6 +44,10 @@ FROM node:18.19-alpine AS runner
 RUN wget -q -t3 'https://packages.doppler.com/public/cli/rsa.8004D9FF50437357.key' -O /etc/apk/keys/cli@doppler-8004D9FF50437357.rsa.pub && \
     echo 'https://packages.doppler.com/public/cli/alpine/any-version/main' | tee -a /etc/apk/repositories && \
     apk add doppler
+
+RUN corepack enable
+RUN corepack prepare yarn@4.9.1 --activate
+
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED 1
@@ -43,15 +55,18 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# You only need to copy next.config.js if you are NOT using the default configuration
-# COPY --from=builder /app/next.config.js ./
+# Install only production dependencies in the final stage
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY ./patches ./patches
+RUN yarn workspaces focus --all --production
+
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/zoom-token.json ./zoom-token.json
 COPY --from=builder --chown=nextjs:nodejs /app/credentials.json ./credentials.json
 COPY --from=builder --chown=nextjs:nodejs /app/google-master-token.json ./google-master-token.json
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/.yarnrc.yml ./
 COPY --from=builder /app/src/emails ./src/emails
 
 USER nextjs
@@ -60,4 +75,4 @@ ARG PORT
 ENV PORT=${PORT}
 EXPOSE ${PORT}
 
-CMD ["doppler", "run", "--", "node_modules/.bin/next", "start"]
+CMD ["doppler", "run", "--", "yarn", "next", "start"]
