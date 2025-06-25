@@ -33,7 +33,7 @@ const BookingComponent = () => {
     >
       <ProgressHeader />
       <SessionTypeCardPaymentInfo />
-      {isLoading ? (
+      {!tx ? null : isLoading ? (
         <Box mx="auto" mt={8}>
           <Loading />
         </Box>
