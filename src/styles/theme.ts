@@ -31,6 +31,7 @@ export const colors = {
     600: '#52606D',
     700: '#3E4C59',
     800: '#323F4B',
+    825: '#1F2933',
     850: '#181F24',
     900: '#131A20',
   },
@@ -43,6 +44,7 @@ export const colors = {
   orangeButton: {
     200: '#F46739',
     300: '#F35826',
+    800: '#F10000',
   },
   grayButton: {
     200: '#E4E7EB',
@@ -97,6 +99,5 @@ const newTheme = {
 
 // declare a variable for our theme and pass our overrides in the extendTheme method from chakra
 const customTheme = extendTheme(newTheme)
-
 // export our theme
 export default customTheme
