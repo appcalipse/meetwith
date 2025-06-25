@@ -19,7 +19,7 @@ export const generateTimeSlots = (
   selectedDate: Date,
   slotSizeMinutes: number,
   fromStartDate: boolean,
-  timezone: string,
+  timezone = 'UTC',
   endDate?: Date
 ): Interval[] => {
   // Convert to Luxon DateTime in the specified timezone
