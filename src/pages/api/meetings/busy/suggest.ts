@@ -40,7 +40,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     await Promise.all(promises)
 
-    const allSlots = generateTimeSlots(startDate, duration, true, endDate)
+    const allSlots = generateTimeSlots(
+      startDate,
+      duration,
+      true,
+      undefined,
+      endDate
+    )
     const suggestedTimes: Interval[] = []
 
     const busySlots: Interval[] =
