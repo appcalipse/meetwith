@@ -6,8 +6,9 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { format } from 'date-fns'
-import React, { FC, useContext } from 'react'
+import { areIntervalsOverlapping, isSameDay } from 'date-fns'
+import { DateTime } from 'luxon'
+import React, { FC, useContext, useMemo } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
@@ -16,33 +17,67 @@ import { generateTimeSlots } from '@/utils/slots.helper'
 interface IProps {
   pickedDay: Date
   slotSizeMinutes: number
-  validator: (date: Date) => boolean
-  selfAvailabilityCheck: (date: Date) => boolean
   pickTime: (date: Date) => void
   showSelfAvailability: boolean
+  availableSlots: Interval[]
+  busySlots: Interval[]
+  selfAvailableSlots: Interval[]
+  selfBusySlots: Interval[]
+  timezone?: string
 }
 
 const TimeSlots: FC<IProps> = ({
   pickedDay,
   slotSizeMinutes,
-  validator,
   pickTime,
-  selfAvailabilityCheck,
   showSelfAvailability,
+  availableSlots,
+  busySlots,
+  selfAvailableSlots,
+  selfBusySlots,
+  timezone = Intl.DateTimeFormat().resolvedOptions().timeZone, // Default to local timezone
 }) => {
   const { openConnection } = useContext(OnboardingModalContext)
   const { currentAccount } = useContext(AccountContext)
-  const endingOfDay = new Date(pickedDay)
-  endingOfDay.setHours(23, 59, 59, 999)
+  const pickedDayInTimezone = DateTime.fromJSDate(pickedDay).setZone(timezone)
+  const endOfDayInTimezone = pickedDayInTimezone.endOf('day').toJSDate()
   const timeSlots = generateTimeSlots(
     pickedDay,
     slotSizeMinutes,
     false,
-    endingOfDay
+    timezone,
+    endOfDayInTimezone
   )
+  const daySlots = useMemo(() => {
+    return availableSlots.filter(
+      slot =>
+        areIntervalsOverlapping(slot, {
+          start: pickedDayInTimezone.startOf('day').toJSDate(),
+          end: pickedDayInTimezone.endOf('day').toJSDate(),
+        }) || isSameDay(slot.start, pickedDay || new Date())
+    )
+  }, [availableSlots, pickedDay, timezone])
+  const selDaySlots = useMemo(() => {
+    return selfAvailableSlots.filter(
+      slot =>
+        areIntervalsOverlapping(slot, {
+          start: pickedDayInTimezone.startOf('day').toJSDate(),
+          end: pickedDayInTimezone.endOf('day').toJSDate(),
+        }) || isSameDay(slot.start, pickedDay || new Date())
+    )
+  }, [selfAvailableSlots, pickedDay, timezone])
   const filtered = timeSlots.filter(slot => {
-    return validator ? validator(new Date(slot.start)) : true
+    return (
+      daySlots.some(available => areIntervalsOverlapping(slot, available)) &&
+      !busySlots.some(busy => areIntervalsOverlapping(slot, busy))
+    )
   })
+  const selfAvailabilityCheck = (slot: Interval): boolean => {
+    return (
+      selDaySlots.some(selfSlot => areIntervalsOverlapping(slot, selfSlot)) &&
+      !selfBusySlots.some(busySlot => areIntervalsOverlapping(slot, busySlot))
+    )
+  }
   const borderColor = useColorModeValue('neutral.200', 'neutral.500')
   const circleColor = useColorModeValue('primary.500', 'primary.500')
   const textColor = useColorModeValue('primary.500', 'neutral.100')
@@ -50,8 +85,8 @@ const TimeSlots: FC<IProps> = ({
     <>
       {!currentAccount && (
         <HStack
-          maxW="220px"
-          width="100%"
+          width={{ base: '100%', md: '80%', lg: '70%' }}
+          minW="220px"
           border="1px solid"
           borderColor={borderColor}
           bgColor={circleColor}
@@ -68,8 +103,7 @@ const TimeSlots: FC<IProps> = ({
       )}
       {showSelfAvailability && (
         <HStack
-          maxW="220px"
-          width="100%"
+          width={{ base: '100%', md: '80%', lg: '70%' }}
           border="1px solid"
           borderColor={borderColor}
           p={2}
@@ -95,7 +129,7 @@ const TimeSlots: FC<IProps> = ({
               <Flex
                 key={new Date(slot.start).toISOString()}
                 onClick={() => pickTime(new Date(slot.start))}
-                width={{ base: '100%', md: '80%', lg: '60%' }}
+                width={{ base: '100%', md: '80%', lg: '70%' }}
                 borderWidth={2}
                 borderColor={borderColor}
                 px={4}
@@ -117,11 +151,12 @@ const TimeSlots: FC<IProps> = ({
               >
                 {
                   <Text flex={1} fontWeight="bold">
-                    {format(slot.start, 'p')}
+                    {DateTime.fromJSDate(new Date(slot.start))
+                      .setZone(timezone)
+                      .toFormat('h:mm a')}
                   </Text>
                 }
-                {showSelfAvailability &&
-                selfAvailabilityCheck(new Date(slot.start)) ? (
+                {showSelfAvailability && selfAvailabilityCheck(slot) ? (
                   <Flex
                     borderRadius="50%"
                     w="10px"

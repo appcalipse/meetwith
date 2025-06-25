@@ -28,22 +28,26 @@ const SessionTypeCardPaymentInfo = () => {
             {getAccountDisplayName(account)}
           </Text>
         </HStack>
-        {selectedType?.plan?.price_per_slot && (
-          <Tag
-            bg="green.500"
-            px={2}
-            color="black"
-            rounded={'full'}
-            fontSize={'sm'}
-          >
-            {formatCurrency(
-              selectedType?.plan?.price_per_slot *
-                selectedType?.plan?.no_of_slot
-            )}
-            /{selectedType?.plan?.no_of_slot} session
-            {selectedType?.plan?.no_of_slot > 1 ? 's' : ''}
-          </Tag>
-        )}
+        <Tag
+          bg="green.500"
+          px={2}
+          color="black"
+          rounded={'full'}
+          fontSize={'sm'}
+        >
+          {!!selectedType?.plan ? (
+            <>
+              {formatCurrency(
+                selectedType?.plan?.price_per_slot *
+                  selectedType?.plan?.no_of_slot
+              )}
+              /{selectedType?.plan?.no_of_slot} session
+              {selectedType?.plan?.no_of_slot > 1 ? 's' : ''})
+            </>
+          ) : (
+            'Free'
+          )}
+        </Tag>
       </HStack>
       <VStack gap={4} alignItems={'flex-start'} w={'100%'}>
         <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>

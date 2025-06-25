@@ -20,25 +20,25 @@ const ProgressHeaderItem: FC<IProps> = props => {
       {props.activeSteps.includes(props.currentStep) ? (
         <Box
           bg={'primary.400'}
-          w={'44px'}
-          h={'44px'}
-          borderWidth={8}
+          w={{ md: '44px', base: '24px' }}
+          h={{ md: '44px', base: '24px' }}
+          borderWidth={{ md: 8, base: 4 }}
           borderColor="primary.100"
           rounded={'100%'}
           display="block"
-          flexBasis={'44px'}
+          flexBasis={{ md: '44px', base: '24px' }}
         />
       ) : (
         <Box
-          w={'44px'}
-          h={'44px'}
+          w={{ md: '44px', base: '24px' }}
+          h={{ md: '44px', base: '24px' }}
           bg={'primary.100'}
           display="block"
           rounded={'100%'}
-          flexBasis={'44px'}
+          flexBasis={{ md: '44px', base: '24px' }}
         />
       )}
-      <Text fontSize="lg" fontWeight={700}>
+      <Text fontSize={{ md: 'lg', base: 'sm' }} fontWeight={700}>
         {props.label}
       </Text>
     </HStack>

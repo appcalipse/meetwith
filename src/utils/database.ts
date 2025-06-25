@@ -700,7 +700,6 @@ const isSlotAvailable = async (
   txHash?: Address | null
 ): Promise<boolean> => {
   const meetingType = await getMeetingTypeFromDB(meetingTypeId)
-
   const minTime = meetingType.min_notice_minutes
   if (meetingType?.plan) {
     if (!txHash) {
@@ -4013,6 +4012,7 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
   if (!data) {
     throw new MeetingTypeNotFound()
   }
+  data.plan = data.plan?.[0] || null
   return data
 }
 const createCryptoTransaction = async (
