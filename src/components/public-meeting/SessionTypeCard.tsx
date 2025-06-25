@@ -34,21 +34,19 @@ const SessionTypeCard: FC<IProps> = props => {
         </Heading>
         <Text>{props?.duration_minutes} mins per session</Text>
       </VStack>
-      {props?.plan?.price_per_slot && (
-        <Tag
-          bg="green.500"
-          px={2}
-          color="black"
-          rounded={'full'}
-          fontSize={'sm'}
-        >
-          {formatCurrency(
-            props?.plan?.price_per_slot * props?.plan?.no_of_slot
-          )}
-          /{props?.plan?.no_of_slot} session
-          {props?.plan?.no_of_slot > 1 ? 's' : ''}
-        </Tag>
-      )}
+      <Tag bg="green.500" px={2} color="black" rounded={'full'} fontSize={'sm'}>
+        {!!props?.plan ? (
+          <>
+            {formatCurrency(
+              props?.plan?.price_per_slot * props?.plan?.no_of_slot
+            )}
+            /{props?.plan?.no_of_slot} session
+            {props?.plan?.no_of_slot > 1 ? 's' : ''})
+          </>
+        ) : (
+          'Free'
+        )}
+      </Tag>
       <Button colorScheme="primary" onClick={handleSelect} isLoading={loading}>
         Book session
       </Button>
