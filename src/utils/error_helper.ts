@@ -4,7 +4,8 @@ import { isJson } from '@/utils/generic_utils'
 
 const { toast } = createStandaloneToast()
 
-export const handleApiError = (title: string, error: Error) => {
+export const handleApiError = (title: string, err: unknown) => {
+  const error = err as Error
   const isJsonErr = isJson(error.message)
   const errorMessage = isJsonErr
     ? JSON.parse(error.message)?.error || JSON.parse(error.message)?.name

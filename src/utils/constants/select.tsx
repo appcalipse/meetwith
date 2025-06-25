@@ -14,11 +14,11 @@ export const customSelectComponents: Props['components'] = {
   ),
 }
 
-export const MeetingRemindersComponent: Props['components'] = {
+export const noClearCustomSelectComponent: Props['components'] = {
   ClearIndicator: () => null,
   DropdownIndicator: props => (
     <chakraComponents.DropdownIndicator className="noBg" {...props}>
-      <Icon as={FaChevronDown} />
+      <Icon as={FaChevronDown} w={4} h={4} />
     </chakraComponents.DropdownIndicator>
   ),
 }

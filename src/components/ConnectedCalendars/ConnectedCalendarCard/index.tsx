@@ -195,7 +195,7 @@ const ConnectedCalendarCard: React.FC<ConnectedCalendarCardProps> = props => {
             onChange={onSwitch}
             isChecked={calendars[0].sync}
             isDisabled={isUpdating}
-          ></Switch>
+          />
           <Text color={textColor}>
             Add new Meetwith events to this calendar
           </Text>

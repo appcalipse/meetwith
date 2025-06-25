@@ -24,6 +24,7 @@ export interface ParticipantInfo extends ParticipantBaseInfo {
   meeting_id: ConferenceMeeting['id']
   slot_id?: string
   type: ParticipantType
+  isHidden?: boolean
 }
 
 export interface InvitedUser extends ParticipantBaseInfo {
@@ -34,4 +35,5 @@ export interface InvitedUser extends ParticipantBaseInfo {
   invitePending: boolean
   email?: string
   userId?: string
+  contactId?: string
 }

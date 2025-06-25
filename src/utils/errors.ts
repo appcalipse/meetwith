@@ -40,6 +40,13 @@ export class MeetingCreationError extends Error {
   }
 }
 
+export class MultipleSchedulersError extends Error {
+  constructor() {
+    super(`A meeting must have only one scheduler`)
+    this.name = 'MultipleSchedulersError'
+  }
+}
+
 export class NotGroupMemberError extends Error {
   constructor() {
     super(`Not a group member`)
@@ -224,5 +231,74 @@ export class SubscriptionNotCustom extends Error {
   constructor() {
     super(`Subscription is not custom`)
     this.name = 'SubscriptionNotCustom'
+  }
+}
+
+export class ContactAlreadyExists extends Error {
+  constructor() {
+    super(`Contact already exists`)
+    this.name = 'ContactAlreadyExists'
+  }
+}
+export class ContactNotFound extends Error {
+  constructor() {
+    super(`Contact not found`)
+    this.name = 'ContactNotFound'
+  }
+}
+
+export class ContactInviteNotFound extends Error {
+  constructor() {
+    super(`Contact invite not found`)
+    this.name = 'ContactInviteNotFound'
+  }
+}
+
+export class ContactInviteNotForAccount extends Error {
+  constructor() {
+    super(`Contact invite not for this account`)
+    this.name = 'ContactInviteNotForAccount'
+  }
+}
+
+// you can't accept your own invite
+export class OwnInviteError extends Error {
+  constructor() {
+    super(`You can't accept your own invite`)
+    this.name = 'OwnInviteError'
+  }
+}
+
+export class ContactInviteAlreadySent extends Error {
+  constructor() {
+    super(`Contact invite already sent`)
+    this.name = 'ContactInviteAlreadySent'
+  }
+}
+
+export class CantInviteYourself extends Error {
+  constructor() {
+    super(`You can't invite yourself`)
+    this.name = 'CantInviteYourself'
+  }
+}
+
+export class PermissionDenied extends Error {
+  constructor(message = `You do not have permission to perform this action`) {
+    super(message)
+    this.name = 'PermissionDenied'
+  }
+}
+export class GuestListModificationDenied extends PermissionDenied {
+  constructor() {
+    super("You don't have permission to modify the meeting invitees.")
+    this.name = 'GuestListModificationDenied'
+  }
+}
+
+export class MeetingDetailsModificationDenied extends PermissionDenied {
+  constructor() {
+    super("You don't have permission to modify the meeting details")
+    this.name = 'MeetingDetailsModificationDenied'
   }
 }
