@@ -40,6 +40,7 @@ const BasePage: FC = () => {
           p={4}
           w="max-content"
           minW={{ base: '100%', md: '40%' }}
+          gap={1}
         >
           <HStack gap={{ md: 4, base: 2 }} alignItems="center">
             <Box w={10} h={10}>
