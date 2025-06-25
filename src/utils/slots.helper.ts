@@ -11,6 +11,7 @@ import {
   isToday,
 } from 'date-fns'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
+import { DateTime, Interval as LuxonInterval } from 'luxon'
 
 import { DayAvailability } from '@/types/Account'
 
@@ -18,43 +19,50 @@ export const generateTimeSlots = (
   selectedDate: Date,
   slotSizeMinutes: number,
   fromStartDate: boolean,
+  timezone: string,
   endDate?: Date
 ): Interval[] => {
-  const _isToday = isToday(selectedDate)
+  // Convert to Luxon DateTime in the specified timezone
+  const selectedDateTime = DateTime.fromJSDate(selectedDate).setZone(timezone)
+  const _isToday = selectedDateTime.hasSame(
+    DateTime.now().setZone(timezone),
+    'day'
+  )
 
-  let start = new Date(selectedDate)
+  let start = selectedDateTime.startOf('day')
 
   if (!fromStartDate && _isToday) {
-    start.setHours(0, 0, 0, 0)
-    const now = new Date()
-    const offsetHours = getHours(now)
+    const now = DateTime.now().setZone(timezone)
+    // Start from current hour to avoid past slots
+    start = now.startOf('hour')
 
-    // "Pad" the start time with the amount of hours of the current time, to
-    // prevent rendering time slots of the past
-    start = addHours(start, offsetHours)
+    // Round up to next slot boundary
+    const minutesToAdd = slotSizeMinutes - (start.minute % slotSizeMinutes)
+    if (minutesToAdd !== slotSizeMinutes) {
+      start = start.plus({ minutes: minutesToAdd })
+    }
 
-    // The start positions might still be in the past in terms of minutes
-    // So "pad" the start time with the slot size, to prevent rendering time
-    // slots of the past
+    // Ensure we're not in the past
     while (start <= now) {
-      start = addMinutes(start, slotSizeMinutes)
+      start = start.plus({ minutes: slotSizeMinutes })
     }
   } else if (fromStartDate) {
-    start.setMinutes(0)
-    start.setSeconds(0)
-    start.setMilliseconds(0)
+    start = selectedDateTime.startOf('hour')
   }
 
-  const end = endDate || addDays(selectedDate, 1)
+  const end = endDate
+    ? DateTime.fromJSDate(endDate).setZone(timezone)
+    : selectedDateTime.plus({ days: 1 }).startOf('day')
 
-  let slot = { start, end: addMinutes(start, slotSizeMinutes) }
   const timeSlots: Interval[] = []
-  while (slot.start < end) {
-    timeSlots.push(slot)
-    slot = {
-      start: addMinutes(slot.start, slotSizeMinutes),
-      end: addMinutes(slot.end, slotSizeMinutes),
-    }
+  let current = start
+
+  while (current < end) {
+    const slotEnd = current.plus({ minutes: slotSizeMinutes })
+
+    timeSlots.push({ start: current.toJSDate(), end: slotEnd.toJSDate() })
+
+    current = slotEnd
   }
 
   return timeSlots
