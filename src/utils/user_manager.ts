@@ -188,13 +188,15 @@ export const getParticipantBaseInfoFromAccount = (
 
 const getAllParticipantsDisplayName = (
   participants: ParticipantInfo[],
-  currentAccountAddress?: string
+  currentAccountAddress?: string,
+  canSeeGuestList = true
 ): string => {
-  let displayNames = []
+  let displayNames: string[] = []
   const noScheduler =
     !participants.some(
       participant => participant.type === ParticipantType.Scheduler
-    ) && participants.length > 1 //avoid case when guest is scheduling
+    ) && participants.length > 1 // avoid case when guest is scheduling
+
   for (const participant of participants) {
     displayNames.push(
       getParticipantDisplay(participant, noScheduler, currentAccountAddress)
@@ -204,10 +206,40 @@ const getAllParticipantsDisplayName = (
   displayNames = displayNames.sort((a, b) =>
     a.localeCompare(b, undefined, { sensitivity: 'base' })
   )
-  const youIndex = displayNames.findIndex(name => name.includes('You'))
-  const element = displayNames.splice(youIndex, 1)[0]
-  displayNames.splice(0, 0, element)
-  return displayNames.join(', ')
+
+  // Move "You" to the front if present
+  const youIndex = displayNames.findIndex(name => name === 'You')
+  if (youIndex > 0) {
+    const [youName] = displayNames.splice(youIndex, 1)
+    displayNames.unshift(youName)
+  }
+
+  if (canSeeGuestList) {
+    return displayNames.join(', ')
+  } else {
+    // Show "You" (if present) and the scheduler (if present and not "You")
+    const you = displayNames.find(name => name === 'You')
+    const scheduler = displayNames.find(
+      name => name !== 'You' && name.includes('(Scheduler)')
+    )
+
+    // Count other participants (excluding "You" and scheduler)
+    const othersCount = displayNames.filter(
+      name => name !== 'You' && name !== scheduler
+    ).length
+
+    const result = []
+    if (you) result.push(you)
+    if (scheduler) result.push(scheduler)
+    if (othersCount > 0) {
+      result.push(
+        `+ ${othersCount} other participant${
+          othersCount > 1 ? 's' : ''
+        } retracted`
+      )
+    }
+    return result.join(', ')
+  }
 }
 
 export const validateUserPermissions = (

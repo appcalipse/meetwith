@@ -842,7 +842,8 @@ const deleteMeetingFromDB = async (
   guestsToRemove: ParticipantInfo[],
   meeting_id: string,
   timezone: string,
-  reason?: string
+  reason?: string,
+  title?: string
 ) => {
   if (!slotIds?.length) throw new Error('No slot ids provided')
 
@@ -864,6 +865,7 @@ const deleteMeetingFromDB = async (
     start: new Date(oldSlots[0].start),
     end: new Date(oldSlots[0].end),
     created_at: new Date(oldSlots[0].created_at!),
+    title,
     timezone,
     reason,
   }
@@ -1228,7 +1230,8 @@ const getGroupsAndMembers = async (
       .select(
         `
          group_members: group_members(*),
-         preferences: account_preferences(name)
+         preferences: account_preferences(name),
+         calendars: connected_calendars(calendars)
     `
       )
       .in('address', addresses)
@@ -1250,6 +1253,7 @@ const getGroupsAndMembers = async (
           address: member.group_members?.[0]?.member_id as string,
           role: member.group_members?.[0].role,
           invitePending: false,
+          calendarConnected: !!member.calendars[0]?.calendars?.length,
         })),
       })
     }
@@ -1600,6 +1604,7 @@ const getGroupUsers = async (
       group_members: group_members(*),
       group_invites: group_invites(*),
       preferences: account_preferences(name),
+      calendars: connected_calendars(calendars),
       subscriptions: subscriptions(*) 
     `
       )
@@ -1986,10 +1991,9 @@ const getConnectedCalendars = async (
 
   if (!data) return []
 
-  // const connectedCalendars: ConnectedCalendar[] =
-  //   !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
-  // ignore pro for now
-  const connectedCalendars: ConnectedCalendar[] = data
+  const connectedCalendars: ConnectedCalendar[] =
+    !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
+
   if (syncOnly) {
     const calendars: ConnectedCalendar[] = JSON.parse(
       JSON.stringify(connectedCalendars)

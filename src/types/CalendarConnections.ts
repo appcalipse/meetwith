@@ -31,6 +31,8 @@ export interface ConnectedCalendarCore {
   provider: TimeSlotSource
   email: string
   calendars: CalendarSyncInfo[]
+  expectedPermissions?: number
+  grantedPermissions?: number
 }
 export interface ConnectedCalendar extends ConnectedCalendarCore {
   id: number
