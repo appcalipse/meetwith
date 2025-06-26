@@ -1,14 +1,39 @@
 import {
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
   Modal,
   ModalBody,
   ModalCloseButton,
   ModalContent,
+  ModalFooter,
   ModalHeader,
   ModalOverlay,
+  Select,
+  Text,
+  Textarea,
+  useToast,
+  VStack,
 } from '@chakra-ui/react'
-import React, { FC } from 'react'
+import React, { FC, FormEvent, useEffect, useState } from 'react'
 
 import GroupInviteForm from '@/components/group/GroupInviteForm'
+import { GroupInvitePayload, MemberType } from '@/types/Group'
+import { InvitedUser } from '@/types/ParticipantInfo'
+import {
+  getExistingAccounts,
+  getExistingAccountsSimple,
+  inviteUsers,
+} from '@/utils/api_helper'
+import {
+  isEthereumAddressOrDomain,
+  isValidEmail,
+  isValidEVMAddress,
+} from '@/utils/validations'
+
+import InfoTooltip from '../profile/components/Tooltip'
+import InvitedUsersList from './InvitedUsersList'
 
 interface InviteModalProps {
   isOpen: boolean
@@ -24,6 +49,7 @@ const InviteModal: FC<InviteModalProps> = ({
   onClose,
   groupId,
   groupName,
+  onInviteSuccess,
   resetState,
 }) => {
   return (
