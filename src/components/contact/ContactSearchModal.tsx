@@ -29,11 +29,8 @@ import React, { useEffect } from 'react'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { ContactSearch, LeanAccount } from '@/types/Contacts'
 import { searchForAccounts, sendContactListInvite } from '@/utils/api_helper'
-import {
-  CantInviteYourself,
-  ContactAlreadyExists,
-  ContactInviteAlreadySent,
-} from '@/utils/errors'
+import { ContactAlreadyExists, ContactInviteAlreadySent } from '@/utils/errors'
+import { isValidEmail } from '@/utils/validations'
 
 type Props = {
   isOpen: boolean
@@ -127,15 +124,6 @@ const ContactSearchModal = (props: Props) => {
         toast({
           title: 'Error',
           description: e.message,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
-      } else if (e instanceof CantInviteYourself) {
-        toast({
-          title: 'Error',
-          description: 'You can&apos;t invite yourself',
           status: 'error',
           duration: 5000,
           isClosable: true,

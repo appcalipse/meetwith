@@ -7,12 +7,12 @@ import { getContactById, initDB, removeContact } from '@/utils/database'
 import { ContactNotFound } from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
-  initDB()
   const account_address = req.session.account!.address
   if (!account_address) {
     return res.status(401).send('Unauthorized')
   }
   if (req.method === 'GET') {
+    initDB()
     try {
       const dbResult = await getContactById(
         typeof req.query.id === 'string' ? req.query.id : '',
