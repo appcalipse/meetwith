@@ -25,6 +25,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { parseAccounts } from '@utils/schedule.helper'
 import { Select as ChakraSelect } from 'chakra-react-select'
 import {
   addDays,
@@ -72,7 +73,7 @@ import {
 } from '@/utils/constants/schedule'
 import {
   customSelectComponents,
-  MeetingRemindersComponent,
+  noClearCustomSelectComponent,
 } from '@/utils/constants/select'
 import {
   GateConditionNotValidError,
@@ -81,14 +82,13 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingWithYourselfError,
+  MultipleSchedulersError,
   TimeNotAvailableError,
 } from '@/utils/errors'
-import { getAddressFromDomain } from '@/utils/rpc_helper_front'
 import { getSignature } from '@/utils/storage'
 import { isProAccount } from '@/utils/subscription_manager'
 import { parseTime } from '@/utils/time.helper'
 import { ellipsizeAddress } from '@/utils/user_manager'
-import { isValidEmail, isValidEVMAddress } from '@/utils/validations'
 
 import RichTextEditor from '../profile/components/RichTextEditor'
 import { CancelMeetingDialog } from './cancel-dialog'
@@ -138,9 +138,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
   const [inputError, setInputError] = useState(
     undefined as ReactNode | undefined
   )
-  const [meetingUrl, setMeetingUrl] = useState(
-    decryptedMeeting?.meeting_url || ''
-  )
+  const [meetingUrl] = useState(decryptedMeeting?.meeting_url || '')
   const [duration, setDuration] = useState(
     meeting && meeting.id ? differenceInMinutes(meeting.end, meeting.start) : 30
   )
@@ -175,7 +173,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
     currentAccount?.preferences?.meetingProviders
   )
 
-  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
+  const [meetingProvider] = useState<MeetingProvider>(
     decryptedMeeting?.provider || defaultProvider
   )
   if (meetingId) {
@@ -201,35 +199,6 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       return
     }
     setParticipants(_participants)
-  }
-
-  const parseAccounts = async (
-    participants: ParticipantInfo[]
-  ): Promise<{ valid: ParticipantInfo[]; invalid: string[] }> => {
-    const valid: ParticipantInfo[] = []
-    const invalid: string[] = []
-    for (const participant of participants) {
-      if (
-        isValidEVMAddress(participant.account_address || '') ||
-        isValidEmail(participant.guest_email || '')
-      ) {
-        valid.push(participant)
-      } else {
-        const address = await getAddressFromDomain(participant.name || '')
-        if (address) {
-          valid.push({
-            account_address: address,
-            type: ParticipantType.Invitee,
-            slot_id: '',
-            meeting_id: '',
-            status: ParticipationStatus.Pending,
-          })
-        } else {
-          invalid.push(participant.name!)
-        }
-      }
-    }
-    return { valid, invalid }
   }
 
   const buildSelectedStart = () => {
@@ -484,6 +453,15 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'A meeting must have only one scheduler',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else if (e instanceof MeetingChangeConflictError) {
         toast({
           title: 'Failed to update meeting',
@@ -697,6 +675,13 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                 }>
                 // can't select more than 5 notifications
                 if (meetingNotification.length > 5) {
+                  toast({
+                    title: 'Limit reached',
+                    description: 'You can select up to 5 notifications only.',
+                    status: 'warning',
+                    duration: 3000,
+                    isClosable: true,
+                  })
                   return
                 }
                 setMeetingNotification(meetingNotification)
@@ -706,7 +691,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
               isMulti
               tagVariant={'solid'}
               options={MeetingNotificationOptions}
-              components={MeetingRemindersComponent}
+              components={noClearCustomSelectComponent}
               chakraStyles={{
                 container: provided => ({
                   ...provided,
