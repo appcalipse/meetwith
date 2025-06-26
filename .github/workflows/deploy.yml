@@ -1,10 +1,11 @@
 name: Deploy
-    
+
 on:
   push:
-    branches:   
+    branches:
       - 'main'
       - 'develop'
+      - 'pre-prod'
 
 jobs:
   deploy:
@@ -22,7 +23,7 @@ jobs:
       with:
         aws-region: eu-west-1
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
     - name: Deploy in the Preview env
       if: ${{ github.ref == 'refs/heads/develop' }}
@@ -36,3 +37,8 @@ jobs:
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
 
+    - name: Deploy in the Pre-prod env
+      if: ${{ github.ref == 'refs/heads/pre-prod' }}
+      run: copilot deploy -e pre-prod --force
+      env:
+        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}

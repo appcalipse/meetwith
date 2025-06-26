@@ -5,6 +5,7 @@ import {
   FormControl,
   FormLabel,
   HStack,
+  Icon,
   IconButton,
   Input,
   Text,
@@ -15,6 +16,7 @@ import {
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { FC, FormEvent, useEffect, useState } from 'react'
+import { FaChevronDown } from 'react-icons/fa'
 import { LuLink2 } from 'react-icons/lu'
 
 import InvitedUsersList from '@/components/group/InvitedUsersList'

@@ -74,6 +74,8 @@ const ConnectedCalendars: React.FC<{
           email={connection.email}
           icon={ConnectedCalendarIcons[connection.provider]}
           calendars={connection.calendars!}
+          expectedPermissions={connection.expectedPermissions || 0}
+          grantedPermissions={connection.grantedPermissions || 0}
           onDelete={async () => {
             await deleteConnectedCalendar(connection.email, connection.provider)
             await onDelete()

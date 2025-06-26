@@ -314,7 +314,7 @@ export function SchedulePickTime({
   const isAm = (val: Date) => {
     return formatInTimeZone(val, timezone, 'a').toLowerCase() === 'am'
   }
-  const SLOTS = useMemo(
+  const HOURS_SLOTS = useMemo(
     () =>
       getEmptySlots(new Date()).map(val =>
         formatInTimeZone(
@@ -443,7 +443,7 @@ export function SchedulePickTime({
               >
                 <Box h={'48px'} width={'100%'} />
                 <VStack align={'flex-start'} p={1}>
-                  {SLOTS.map((slot, index) => {
+                  {HOURS_SLOTS.map((slot, index) => {
                     return (
                       <HStack
                         key={index}
