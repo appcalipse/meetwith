@@ -80,15 +80,22 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               placeholder="Search contact"
               id="search"
               defaultValue={debouncedValue}
-              rounded={6}
               onChange={e => setValue(e.target.value)}
+              borderColor="neutral.400"
               _placeholder={{
                 color: 'neutral.400',
               }}
             />
           </Box>
 
-          <TabList w="auto" bg="neutral.850" p={1} borderWidth={1} rounded={6}>
+          <TabList
+            w="auto"
+            bg="neutral.850"
+            p={1}
+            borderWidth={1}
+            borderColor="neutral.400"
+            rounded={1.5}
+          >
             <Tab
               rounded={4}
               fontWeight={700}

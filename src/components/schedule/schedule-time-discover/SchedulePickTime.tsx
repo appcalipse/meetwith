@@ -395,6 +395,7 @@ export function SchedulePickTime({
           gap={6}
           w="100%"
           borderWidth={1}
+          borderColor={'neutral.400'}
           px={{ md: 6, base: 2 }}
           py={4}
           rounded={12}
@@ -487,6 +488,7 @@ export function SchedulePickTime({
                         align={'flex-start'}
                         p={1}
                         borderWidth={1}
+                        borderColor={'neutral.400'}
                         borderRadius={5}
                       >
                         {date.slots.map(slot => {

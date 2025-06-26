@@ -11,11 +11,7 @@ import {
   updateContactInviteCooldown,
 } from '@/utils/database'
 import { sendContactInvitationEmail } from '@/utils/email_helper'
-import {
-  CantInviteYourself,
-  ContactAlreadyExists,
-  ContactInviteAlreadySent,
-} from '@/utils/errors'
+import { ContactAlreadyExists, ContactInviteAlreadySent } from '@/utils/errors'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -27,9 +23,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     try {
       const { address, email } = req.body as InviteContact
-      if (address === account_address) {
-        throw new CantInviteYourself()
-      }
+
       let userEmail = email
       if (address) {
         const isContact = await isUserContact(account_address, address)
@@ -77,15 +71,11 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (e instanceof ContactAlreadyExists) {
         return res.status(400).send(e.message)
       }
-      if (e instanceof CantInviteYourself) {
-        return res.status(403).send(e.message)
-      }
       if (e instanceof ContactInviteAlreadySent) {
         return res.status(409).send(e.message)
       }
 
-      console.error('Error sending contact invite:', e)
-      return res.status(500).send('Could not send contact invite')
+      return res.status(500).send(e)
     }
   }
   return res.status(405).send('Method not allowed')

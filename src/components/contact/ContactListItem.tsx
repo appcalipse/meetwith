@@ -7,11 +7,7 @@ import React, { FC } from 'react'
 import { Contact } from '@/types/Contacts'
 import { removeContact, sendContactListInvite } from '@/utils/api_helper'
 import { ContactStatus } from '@/utils/constants/contact'
-import {
-  AccountNotFoundError,
-  CantInviteYourself,
-  ContactAlreadyExists,
-} from '@/utils/errors'
+import { AccountNotFoundError, ContactAlreadyExists } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 type Props = {
@@ -86,15 +82,6 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
           duration: 5000,
           isClosable: true,
         })
-      } else if (e instanceof CantInviteYourself) {
-        toast({
-          title: 'Error',
-          description: 'You can&apos;t invite yourself',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-          position: 'top',
-        })
       } else {
         toast({
           title: 'Error',
@@ -102,7 +89,6 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
           status: 'error',
           duration: 5000,
           isClosable: true,
-          position: 'top',
         })
       }
     }

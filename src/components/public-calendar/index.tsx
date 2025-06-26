@@ -10,7 +10,6 @@ import {
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
-import { useMutation } from '@tanstack/react-query'
 import {
   addDays,
   addMinutes,
@@ -62,14 +61,12 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
-  doesContactExist,
   fetchBusySlotsForMultipleAccounts,
   getAccount,
   getBusySlots,
   getMeeting,
   getNotificationSubscriptions,
   listConnectedCalendars,
-  sendContactListInvite,
 } from '@/utils/api_helper'
 import {
   dateToHumanReadable,
@@ -77,9 +74,6 @@ import {
   scheduleMeeting,
 } from '@/utils/calendar_manager'
 import {
-  CantInviteYourself,
-  ContactAlreadyExists,
-  ContactInviteAlreadySent,
   GateConditionNotValidError,
   GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
@@ -178,22 +172,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     undefined
   )
   const [blockedDates, setBlockedDates] = useState<Date[]>([])
-  const [isContact, setIsContact] = useState(false)
-
-  const handleContactCheck = async () => {
-    try {
-      if (!account?.address) return
-      const contactExists = await doesContactExist(account?.address)
-      setIsContact(contactExists)
-    } catch (e) {
-      Sentry.captureException(e)
-      console.error('Error checking contact existence:', e)
-    }
-  }
-  useEffect(() => {
-    if (!currentAccount?.address || !account?.address) return
-    handleContactCheck()
-  }, [currentAccount, account])
 
   const toast = useToast()
 
@@ -952,13 +930,11 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
             <Flex justify="center">
               <MeetingScheduledDialog
                 participants={lastScheduledMeeting!.participants}
-                hostAccount={account!}
+                schedulerAccount={currentAccount!}
                 scheduleType={schedulingType}
                 meeting={lastScheduledMeeting}
                 accountNotificationSubs={notificationsSubs}
                 hasConnectedCalendar={hasConnectedCalendar}
-                isContact={isContact}
-                setIsContact={setIsContact}
                 reset={_onClose}
               />
             </Flex>

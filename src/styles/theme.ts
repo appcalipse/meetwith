@@ -99,5 +99,6 @@ const newTheme = {
 
 // declare a variable for our theme and pass our overrides in the extendTheme method from chakra
 const customTheme = extendTheme(newTheme)
+
 // export our theme
 export default customTheme
