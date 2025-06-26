@@ -127,7 +127,7 @@ const SchedulerPicker = () => {
     startDate: Date
     endDate: Date
   } | null>(null)
-  const getSetAvailableSlots = async () => {
+  const getSelfAvailableSlots = async () => {
     if (currentAccount) {
       const startDate = startOfMonth(currentMonth)
       const endDate = addMonths(endOfMonth(currentMonth), 2)
@@ -159,7 +159,7 @@ const SchedulerPicker = () => {
     ) {
       return
     }
-    getSetAvailableSlots()
+    getSelfAvailableSlots()
     setCheckingSlots(true)
     const startDate = startOfMonth(currentMonth)
     const endDate = addMonths(endOfMonth(currentMonth), 2)
@@ -595,11 +595,11 @@ const SchedulerPicker = () => {
               slotSizeMinutes={slotDurationInMinutes}
               availableSlots={availableSlots}
               selfAvailableSlots={selfAvailableSlots}
+              busySlots={busySlots}
               selfBusySlots={selfBusySlots}
               pickTime={handlePickTime}
               showSelfAvailability={checkedSelfSlots}
               timezone={timezone.value}
-              busySlots={busySlots}
             />
           )}
         </VStack>
