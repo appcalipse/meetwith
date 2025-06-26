@@ -9,9 +9,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
-import * as Sentry from '@sentry/nextjs'
 import {
-  addDays,
   addMinutes,
   addMonths,
   endOfMonth,
