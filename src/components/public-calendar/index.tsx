@@ -12,27 +12,13 @@ import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
 import { useMutation } from '@tanstack/react-query'
 import {
-  addDays,
   addMinutes,
   addMonths,
-  areIntervalsOverlapping,
-  Day,
   endOfMonth,
   format,
-  getDay,
   Interval,
-  isAfter,
-  isBefore,
-  isEqual,
   isFuture,
-  nextDay,
-  setHours,
-  setMinutes,
-  setSeconds,
   startOfMonth,
-  subMinutes,
-  subMonths,
-  subSeconds,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { useRouter } from 'next/router'
@@ -43,7 +29,6 @@ import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { Account, MeetingType } from '@/types/Account'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
-import { ConditionRelation } from '@/types/common'
 import { MeetingReminders } from '@/types/common'
 import {
   DBSlot,
@@ -76,6 +61,8 @@ import {
   getAccountDomainUrl,
   scheduleMeeting,
 } from '@/utils/calendar_manager'
+import { Option } from '@/utils/constants/select'
+import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import {
   CantInviteYourself,
   ContactAlreadyExists,
@@ -91,11 +78,6 @@ import {
   UrlCreationError,
   ZoomServiceUnavailable,
 } from '@/utils/errors'
-import {
-  getAvailabilitiesForWeekDay,
-  getBlockedAvailabilities,
-  isSlotAvailable,
-} from '@/utils/slots.helper'
 import { saveMeetingsScheduled } from '@/utils/storage'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
@@ -127,7 +109,12 @@ export enum CalendarType {
   REGULAR,
   TEAM,
 }
-
+const tzs = timezones.map(tz => {
+  return {
+    value: String(tz.tzCode),
+    label: tz.name,
+  }
+})
 const PublicCalendar: React.FC<PublicCalendarProps> = ({
   url,
   account,
@@ -138,30 +125,30 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   useEffect(() => {
     setIsSSR(false)
   }, [])
-
-  const router = useRouter()
-
   const { currentAccount, logged } = useContext(AccountContext)
+  const [timezone, setTimezone] = useState<Option<string>>(
+    tzs.find(
+      val =>
+        val.value ===
+        (currentAccount?.preferences?.timezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone)
+    ) || tzs[0]
+  )
+  const router = useRouter()
 
   const calendarType =
     account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
 
   const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
-  const [checkingSlots, setCheckingSlots] = useState(false)
-  const [checkedSelfSlots, setCheckedSelfSlots] = useState(false)
   const [unloggedSchedule, setUnloggedSchedule] = useState(
     null as InternalSchedule | null
   )
   const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
-  const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<Date | undefined>(undefined)
-  const [busySlots, setBusyslots] = useState([] as Interval[])
-  const [selfBusySlots, setSelfBusyslots] = useState([] as Interval[])
   const [selectedType, setSelectedType] = useState({} as MeetingType)
   const [isPrivateType, setPrivateType] = useState(false)
   const [isGateValid, setIsGateValid] = useState<boolean | undefined>(undefined)
-  const [isScheduling, setIsScheduling] = useState(false)
   const [readyToSchedule, setReadyToSchedule] = useState(false)
   const [reset, setReset] = useState(false)
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState(
@@ -177,6 +164,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [rescheduleSlot, setRescheduleSlot] = useState<DBSlot | undefined>(
     undefined
   )
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [availableSlots, setAvailableSlots] = useState<Interval[]>([])
+  const [selfAvailableSlots, setSelfAvailableSlots] = useState<Interval[]>([])
+  const [checkingSlots, setCheckingSlots] = useState(false)
+  const [checkedSelfSlots, setCheckedSelfSlots] = useState(false)
+  const [isScheduling, setIsScheduling] = useState(false)
+  const [busySlots, setBusySlots] = useState<Interval[]>([])
+  const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
+
   const [blockedDates, setBlockedDates] = useState<Date[]>([])
   const [isContact, setIsContact] = useState(false)
 
@@ -195,7 +191,69 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     handleContactCheck()
   }, [currentAccount, account])
 
+
   const toast = useToast()
+  const [cachedRange, setCachedRange] = useState<{
+    startDate: Date
+    endDate: Date
+  } | null>(null)
+  const getSelfAvailableSlots = async () => {
+    if (currentAccount) {
+      const startDate = startOfMonth(currentMonth)
+      const endDate = addMonths(endOfMonth(currentMonth), 2)
+      let busySlots: Interval[] = []
+      try {
+        busySlots = await getBusySlots(
+          currentAccount?.address,
+          startDate,
+          endDate
+        )
+      } catch (error) {}
+      const availabilities = parseMonthAvailabilitiesToDate(
+        currentAccount?.preferences?.availabilities || [],
+        startDate,
+        endDate,
+        currentAccount?.preferences?.timezone || 'UTC'
+      )
+      setSelfAvailableSlots(availabilities)
+      setSelfBusySlots(busySlots)
+      setCheckedSelfSlots(true)
+    }
+  }
+  const getAvailableSlots = async (skipCache = false) => {
+    if (
+      !skipCache &&
+      cachedRange &&
+      currentMonth >= cachedRange.startDate &&
+      currentMonth <= cachedRange.endDate
+    ) {
+      return
+    }
+    void getSelfAvailableSlots()
+    setCheckingSlots(true)
+    const startDate = startOfMonth(currentMonth)
+    const endDate = addMonths(endOfMonth(currentMonth), 2)
+    let busySlots: Interval[] = []
+    if (!account?.address) return
+    try {
+      busySlots = await getBusySlots(account?.address, startDate, endDate)
+    } catch (error) {}
+    const availabilities = parseMonthAvailabilitiesToDate(
+      account?.preferences?.availabilities || [],
+      startDate,
+      endDate,
+      account?.preferences?.timezone || 'UTC'
+    )
+    setBusySlots(busySlots)
+    setAvailableSlots(availabilities)
+    setCachedRange({ startDate, endDate })
+    setCheckingSlots(false)
+  }
+  useEffect(() => {
+    if (account?.preferences?.availabilities) {
+      void getAvailableSlots()
+    }
+  }, [account?.preferences?.availabilities, currentMonth])
 
   const hydrateTeamAccounts = async () => {
     let accountstoFetch: string[] = []
@@ -217,90 +275,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     ssr: true,
     fallback: false, // return false on the server, and re-evaluate on the client side
   })
-  useEffect(() => {
-    const blockedAvailabilities = getBlockedAvailabilities(
-      account?.preferences?.availabilities
-    )
-    // We need to take into consideration 1 month before the beginning of the month
-    // and 1 month after the end of the month in the calculation due to Timezone
-    // spans be able to be inside one month for one user and in another for other
-    // user when we consider first and last days of the month.
-    let startDate = subMonths(startOfMonth(currentMonth), 1)
-    const endDate = addMonths(endOfMonth(currentMonth), 1)
-
-    const unavailableDate = blockedAvailabilities.reduce((acc, curr) => {
-      if (getDay(startDate) === curr.weekday) acc.push(startDate)
-      let _nextDay = nextDay(startDate, curr.weekday as Day)
-      while (isBefore(_nextDay, endDate)) {
-        acc.push(_nextDay)
-        _nextDay = nextDay(_nextDay, curr.weekday as Day)
-      }
-      return acc
-    }, [] as Date[])
-
-    if (isBefore(endDate, new Date())) {
-      setBlockedDates(unavailableDate)
-      return
-    }
-
-    if (isAfter(new Date(), startDate) && isBefore(new Date(), endDate)) {
-      startDate = new Date()
-    }
-
-    let day = startDate
-    while (!isAfter(day, endDate)) {
-      const _availability = getAvailabilitiesForWeekDay(
-        account?.preferences?.availabilities,
-        day
-      )
-      if (_availability.length > 0) {
-        const _availableSlots = _availability.reduce((acc, curr) => {
-          const gap = selectedType.duration
-          const startDate = setHours(
-            setMinutes(setSeconds(day, 0), parseInt(curr.start.split(':')[1])),
-            parseInt(curr.start.split(':')[0])
-          )
-          const endDate = setHours(
-            setMinutes(setSeconds(day, 0), parseInt(curr.end.split(':')[1])),
-            parseInt(curr.end.split(':')[0])
-          )
-
-          let _start = startDate
-          let _end = subSeconds(addMinutes(_start, gap), 1)
-
-          while (isBefore(_end, endDate)) {
-            if (
-              !busySlots.some(
-                slot =>
-                  !isEqual(slot.start, slot.end) &&
-                  areIntervalsOverlapping(
-                    {
-                      start: _start,
-                      end: _end,
-                    },
-                    {
-                      start: slot.start,
-                      end: subSeconds(slot.end, 1),
-                    }
-                  )
-              )
-            )
-              acc.push({
-                start: _start,
-                end: _end,
-              })
-
-            _start = _end
-            _end = addMinutes(_start, gap)
-          }
-          return acc
-        }, [] as Interval[])
-        if (_availableSlots.length === 0) unavailableDate.push(day)
-      }
-      day = addDays(day, 1)
-    }
-    setBlockedDates(unavailableDate)
-  }, [currentMonth, selectedType, busySlots, account])
 
   useEffect(() => {
     if (calendarType === CalendarType.REGULAR) {
@@ -314,7 +288,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   useEffect(() => {
     if (calendarType === CalendarType.TEAM) {
-      hydrateTeamAccounts()
+      void hydrateTeamAccounts()
     }
   }, [calendarType])
 
@@ -327,13 +301,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       setSelectedType(
         (type || account?.preferences?.availableTypes?.[0] || {}) as MeetingType
       )
-      updateSlots()
+      void getAvailableSlots()
       setRescheduleSlotId(router.query.slot as string | undefined)
     }
   }, [account, router.query.address])
 
   useEffect(() => {
-    getSlotInfo()
+    void getSlotInfo()
   }, [rescheduleSlotId])
 
   const getSlotInfo = async () => {
@@ -360,16 +334,16 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       .some(cal => cal.calendars.some(_cal => _cal.enabled))
 
     setNotificationSubs(subs.notification_types?.length)
-    setHasConnectedCalendar(!!validCals)
+    setHasConnectedCalendar(validCals)
   }
 
   useEffect(() => {
     if (logged) {
-      updateSelfSlots()
-      fetchNotificationSubscriptions()
+      void getSelfAvailableSlots()
+      void fetchNotificationSubscriptions()
 
       if (unloggedSchedule) {
-        confirmSchedule(
+        void confirmSchedule(
           unloggedSchedule.scheduleType,
           unloggedSchedule.startTime,
           unloggedSchedule.guestEmail,
@@ -401,7 +375,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
     const start = zonedTimeToUtc(
       startTime,
-      Intl.DateTimeFormat().resolvedOptions().timeZone
+      timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone
     )
     const end = addMinutes(
       new Date(start),
@@ -501,7 +475,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         meetingReminders,
         meetingRepeat
       )
-      await updateSlots()
+      await getAvailableSlots(true)
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
 
@@ -620,74 +594,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     setTimeout(() => setReset(false), 200)
   }
 
-  const updateSelfSlots = async () => {
-    if (currentAccount) {
-      const monthStart = startOfMonth(currentMonth)
-      const monthEnd = endOfMonth(currentMonth)
-
-      try {
-        const busySlots = await getBusySlots(
-          currentAccount?.address,
-          monthStart,
-          monthEnd
-        )
-        setSelfBusyslots(busySlots)
-        setCheckedSelfSlots(true)
-      } catch (e) {}
-    }
-  }
-
-  const updateSlots = async () => {
-    updateSelfSlots()
-    setCheckingSlots(true)
-    const monthStart = startOfMonth(currentMonth)
-    const monthEnd = endOfMonth(currentMonth)
-
-    try {
-      if (calendarType === CalendarType.REGULAR) {
-        const busySlots = await getBusySlots(
-          account!.address,
-          monthStart,
-          monthEnd
-        )
-        setBusyslots(busySlots)
-      } else {
-        let accounts: string[] = []
-        if (teamMeetingRequest!.team_structure.type === GroupMeetingType.TEAM) {
-          // to be implemented
-        } else {
-          accounts = teamMeetingRequest!.team_structure.participants_accounts!
-        }
-
-        const busySlots = await fetchBusySlotsForMultipleAccounts(
-          accounts,
-          monthStart,
-          monthEnd,
-          teamMeetingRequest!.team_structure.relationship
-        )
-        setBusyslots(busySlots)
-      }
-    } catch (e) {
-      Sentry.captureException(e)
-      toast({
-        title: 'Ops!',
-        description: 'Something went wrong :(',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-      router.push('/404')
-      return
-    }
-
-    setCheckingSlots(false)
-  }
-
-  useEffect(() => {
-    updateSlots()
-  }, [currentMonth])
-
   const changeType = (typeId: string) => {
     const type = account?.preferences?.availableTypes
       ?.filter(type => !type.deleted)
@@ -697,90 +603,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       setIsGateValid(undefined)
     }
     setSelectedType(type)
-    router.push(`/${getAccountDomainUrl(account!)}/${type.url}`, undefined, {
-      shallow: true,
-    })
-  }
-
-  const validateSlot = (slot: Date): boolean => {
-    if (calendarType === CalendarType.REGULAR) {
-      return isSlotAvailable(
-        selectedType.duration,
-        selectedType.minAdvanceTime,
-        slot,
-        busySlots,
-        account?.preferences?.availabilities || [],
-        Intl.DateTimeFormat().resolvedOptions().timeZone,
-        account?.preferences?.timezone ||
-          Intl.DateTimeFormat().resolvedOptions().timeZone
-      )
-    } else {
-      if (
-        !isAfter(slot, new Date(teamMeetingRequest!.range_start)) &&
-        !isEqual(slot, new Date(teamMeetingRequest!.range_start))
-      ) {
-        return false
+    void router.push(
+      `/${getAccountDomainUrl(account!)}/${type.url}`,
+      undefined,
+      {
+        shallow: true,
       }
-
-      if (
-        teamMeetingRequest!.range_end &&
-        !isBefore(
-          slot,
-          subMinutes(
-            new Date(teamMeetingRequest!.range_end),
-            teamMeetingRequest!.duration_in_minutes
-          )
-        ) &&
-        !isEqual(
-          slot,
-          subMinutes(
-            new Date(teamMeetingRequest!.range_end),
-            teamMeetingRequest!.duration_in_minutes
-          )
-        )
-      ) {
-        return false
-      }
-
-      if (
-        teamMeetingRequest!.team_structure.relationship ===
-        ConditionRelation.AND
-      ) {
-        for (const eachAccount of groupAccounts) {
-          if (
-            !isSlotAvailable(
-              teamMeetingRequest!.duration_in_minutes,
-              0,
-              slot,
-              busySlots,
-              eachAccount?.preferences?.availabilities,
-              Intl.DateTimeFormat().resolvedOptions().timeZone,
-              eachAccount?.preferences?.timezone
-            )
-          ) {
-            return false
-          }
-        }
-        return true
-      } else {
-        for (const eachAccount of groupAccounts) {
-          if (
-            isSlotAvailable(
-              teamMeetingRequest!.duration_in_minutes,
-              0,
-              slot,
-              busySlots,
-              eachAccount?.preferences?.availabilities,
-              Intl.DateTimeFormat().resolvedOptions().timeZone,
-              eachAccount?.preferences?.timezone
-            )
-          ) {
-            return true
-          }
-        }
-        return false
-      }
-    }
+    )
   }
 
   const textToDisplayDateRange = () => {
@@ -798,30 +627,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       }
     }
     return null
-  }
-
-  const selfAvailabilityCheck = (slot: Date): boolean => {
-    let duration
-    let minAdvanceTime
-
-    if (calendarType === CalendarType.REGULAR) {
-      duration = selectedType.duration
-      minAdvanceTime = selectedType.minAdvanceTime
-    } else {
-      duration = teamMeetingRequest!.duration_in_minutes
-      minAdvanceTime = 0
-    }
-
-    return isSlotAvailable(
-      duration,
-      minAdvanceTime,
-      slot,
-      selfBusySlots,
-      currentAccount?.preferences?.availabilities || [],
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-      currentAccount?.preferences?.timezone ||
-        Intl.DateTimeFormat().resolvedOptions().timeZone
-    )
   }
 
   const dateRangeText = textToDisplayDateRange()
@@ -913,17 +718,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       onMonthChange={setCurrentMonth}
                       onTimeChange={setSelectedTime}
                       isMobile={isMobile}
-                      availabilityInterval={
-                        teamMeetingRequest
-                          ? {
-                              start: new Date(teamMeetingRequest.range_start),
-                              end: new Date(
-                                teamMeetingRequest.range_end || '2999-01-01'
-                              ),
-                            }
-                          : undefined
-                      }
-                      blockedDates={blockedDates}
                       preferences={account?.preferences}
                       onDayChange={setSelectedDay}
                       onSchedule={confirmSchedule}
@@ -938,11 +732,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       }
                       selectedType={selectedType}
                       checkingSlots={checkingSlots}
-                      timeSlotAvailability={validateSlot}
-                      selfAvailabilityCheck={selfAvailabilityCheck}
                       showSelfAvailability={checkedSelfSlots}
                       isGateValid={isGateValid!}
                       notificationsSubs={notificationsSubs}
+                      availableSlots={availableSlots}
+                      selfAvailableSlots={selfAvailableSlots}
+                      busySlots={busySlots}
+                      selfBusySlots={selfBusySlots}
+                      timezone={timezone}
+                      setTimezone={setTimezone}
                     />
                   </Box>
                 )}
