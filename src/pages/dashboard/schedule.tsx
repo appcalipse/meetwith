@@ -822,7 +822,6 @@ const Schedule: NextPage<IInitialProps> = ({
     try {
       const contact = await getContactById(contactId)
       if (contact) {
-        const key = 'no_group'
         const participant: ParticipantInfo = {
           account_address: contact.address,
           name: contact.name,
@@ -832,13 +831,6 @@ const Schedule: NextPage<IInitialProps> = ({
           meeting_id: '',
         }
         setParticipants([participant])
-        const allAddresses = [contact.address]
-        if (currentAccount?.address) {
-          allAddresses.push(currentAccount?.address)
-        }
-        setGroupAvailability({
-          [key]: allAddresses,
-        })
       }
     } catch (error: unknown) {
       handleApiError('Error prefetching contact.', error)
