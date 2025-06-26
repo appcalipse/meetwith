@@ -22,3 +22,8 @@ export const MeetingRemindersComponent: Props['components'] = {
     </chakraComponents.DropdownIndicator>
   ),
 }
+
+export type Option<T, J = string> = {
+  value: T // The actual value of the option
+  label: J // The displayed label of the option
+}
