@@ -13,10 +13,12 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz'
+import { zonedTimeToUtc } from 'date-fns-tz'
+import { DateTime, WeekdayNumbers } from 'luxon'
 import spacetime from 'spacetime'
 import soft from 'timezone-soft'
 
+import { DayAvailability } from '@/types/Account'
 import { CustomTimeRange } from '@/types/common'
 import { MeetingRepeat } from '@/types/Meeting'
 const timezonesObj = ct.getAllTimezones()
@@ -31,7 +33,7 @@ export const timezones = timezonesKeys
     let offset = timeInfo.utcOffset
     // are we in standard time, or daylight time?
     const s = spacetime.now(display?.iana)
-    if (display?.daylight && s.isDST()) {
+    if (s.isDST()) {
       show = timeInfo.dstOffsetStr
       offset = timeInfo.dstOffset
     }
@@ -142,4 +144,66 @@ export const addRecurrence = (
   }
   const newEnd = add(newStart, { minutes: diffMinutes })
   return { start: newStart, end: newEnd }
+}
+
+export const parseMonthAvailabilitiesToDate = (
+  availabilities: Array<DayAvailability>,
+  startDate: Date,
+  endDate: Date,
+  ownerTimezone: string
+) => {
+  const slots = []
+  let currentWeek = DateTime.fromJSDate(startDate, {
+    zone: ownerTimezone,
+  }).startOf('month') // Start of first week
+  const endWeek = DateTime.fromJSDate(endDate, {
+    zone: ownerTimezone,
+  }).endOf('month') // End of last week
+
+  while (currentWeek <= endWeek) {
+    for (const availability of availabilities) {
+      const { ranges, weekday } = availability
+
+      for (const range of ranges) {
+        const { start, end } = range
+        const [startHours, startMinutes] = start.split(':').map(Number)
+        const [endHours, endMinutes] = end.split(':').map(Number)
+        const luxonWeekday: WeekdayNumbers = (
+          weekday === 0 ? 7 : weekday
+        ) as WeekdayNumbers
+        // Create start time in owner timezone for this specific day
+        const startTime = currentWeek
+          .set({ weekday: luxonWeekday }) // Luxon uses 1-7, Sunday = 7
+          .set({
+            hour: startHours,
+            minute: startMinutes,
+            second: 0,
+            millisecond: 0,
+          })
+          .toUTC()
+          .toJSDate()
+
+        // Create end time in owner timezone for this specific day
+        const endTime = currentWeek
+          .set({ weekday: luxonWeekday })
+          .set({
+            hour: endHours,
+            minute: endMinutes,
+            second: 0,
+            millisecond: 0,
+          })
+          .toUTC()
+          .toJSDate()
+
+        slots.push({
+          start: startTime,
+          end: endTime,
+        })
+      }
+    }
+
+    currentWeek = currentWeek.plus({ weeks: 1 }) // Move to next week
+  }
+
+  return slots
 }
