@@ -5,17 +5,14 @@ import { NotificationChannel } from '@/types/AccountNotifications'
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { appUrl } from '@/utils/constants'
 import {
-  addUserToGroup,
   addUserToGroupInvites,
   getAccountFromDB,
   getAccountNotificationSubscriptions,
-  getContactById,
   getGroup,
   getGroupUsersInternal,
   isUserAdminOfGroup,
 } from '@/utils/database'
 import { sendInvitationEmail } from '@/utils/email_helper'
-import { ContactNotFound } from '@/utils/errors'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -55,7 +52,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     )
     if (alreadyInvitedUsers.length > 0) {
       const invitedUsersConcatenated = alreadyInvitedUsers
-        .map(val => val.name || val.address || val.email)
+        .map(val => val.address || val.email)
         .join(', ')
       return res.status(400).json({
         error: `${invitedUsersConcatenated} has already been invited to group.`,
@@ -64,22 +61,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     for (const invitee of invitees) {
-      if (invitee.contactId) {
-        try {
-          const contact = await getContactById(
-            invitee.contactId,
-            currentUserAddress
-          )
-          if (!contact) {
-            console.error('Contact not found')
-            continue
-          }
-          await addUserToGroup(groupId, contact.contact_address, invitee.role)
-        } catch (error) {
-          console.error('Error adding user to group:', error)
-        }
-        continue
-      }
       if (!invitee.email && !invitee.address) {
         console.error('Invitee email or address is undefined')
         continue
@@ -140,9 +121,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       .status(200)
       .json({ success: true, message: 'Invitations sent successfully.' })
   } catch (error) {
-    if (error instanceof ContactNotFound) {
-      return res.status(404).json({ error: error.message })
-    }
     console.error('An error occurred during invitation:', error)
     return res.status(500).json({ error: 'Failed to send invitation' })
   }

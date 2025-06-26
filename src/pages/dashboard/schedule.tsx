@@ -789,6 +789,7 @@ const Schedule: NextPage<IInitialProps> = ({
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
+    setIsPrefetching(true)
     try {
       const group = await getGroup(groupId)
       const fetchedGroupMembers = await getGroupsMembers(groupId)
@@ -847,8 +848,10 @@ const Schedule: NextPage<IInitialProps> = ({
     setIsPrefetching(false)
   }
   useEffect(() => {
-    void handlePrefetch()
-  }, [groupId, contactId])
+    if (groupId) {
+      void handleGroupPrefetch()
+    }
+  }, [groupId])
   const handleFetchMeetingInformation = async () => {
     if (!meetingId) return
     setIsPrefetching(true)
