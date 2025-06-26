@@ -1,4 +1,4 @@
-import { Box, ChakraProvider } from '@chakra-ui/react'
+import { Box, ChakraProvider, ColorModeProvider } from '@chakra-ui/react'
 import React, { ReactNode } from 'react'
 import { CookiesProvider } from 'react-cookie'
 
@@ -9,7 +9,6 @@ import { Navbar } from '@/components/nav/Navbar'
 import DiscordOnboardingModal from '@/components/onboarding/DiscordOnboardingModal'
 import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import customTheme from '@/styles/theme'
-
 export const BaseLayout: React.FC<{
   children: ReactNode
   consentCookie: boolean

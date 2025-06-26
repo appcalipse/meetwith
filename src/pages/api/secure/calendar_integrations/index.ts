@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { googleScopes } from '@/pages/api/secure/calendar_integrations/google/connect'
+import { officeScopes } from '@/pages/api/secure/calendar_integrations/office365/connect'
+import { TimeSlotSource } from '@/types/Meeting'
 import {
   addOrUpdateConnectedCalendar,
   getConnectedCalendars,
@@ -43,12 +46,41 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     return res.status(200).json(
-      calendars.map(it => ({
-        provider: it.provider,
-        email: it.email,
-        calendars: it.calendars,
-      }))
+      calendars.map(it => {
+        let grantedPermissions = 0
+        let expectedPermissions = 0
+        if (it.payload) {
+          const payload = JSON.parse(it.payload)
+          const permissions = payload.scope
+            .split(' ')
+            .filter(
+              (permission: string) =>
+                !['offline_access', 'openid'].includes(permission)
+            )
+          if (it.provider === TimeSlotSource.GOOGLE) {
+            expectedPermissions = googleScopes.length
+            grantedPermissions = permissions.filter((permission: string) =>
+              googleScopes.includes(permission)
+            ).length
+          } else if (it.provider === TimeSlotSource.OFFICE) {
+            expectedPermissions = officeScopes.filter(
+              scope => scope !== 'offline_access'
+            ).length
+            grantedPermissions = permissions.filter((permission: string) =>
+              officeScopes.includes(permission)
+            ).length
+          }
+        }
+        return {
+          provider: it.provider,
+          email: it.email,
+          calendars: it.calendars,
+          expectedPermissions,
+          grantedPermissions,
+        }
+      })
     )
+    //https://www.googleapis.com/auth/calendar.events.freebusy https://www.googleapis.com/auth/calendar.freebusy https://www.googleapis.com/auth/calendar.events.owned https://www.googleapis.com/auth/calendar.readonly openid https://www.googleapis.com/auth/userinfo.email
   } else if (req.method === 'DELETE') {
     const { email, provider } = req.body
     await removeConnectedCalendar(req.session.account!.address, email, provider)

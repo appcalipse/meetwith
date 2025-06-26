@@ -3,6 +3,7 @@ export enum EditMode {
   AVAILABILITY = 'availability',
   MEETING_SETTINGS = 'meeting-settings',
   GROUPS = 'groups',
+  CONTACTS = 'contacts',
   DETAILS = 'details',
   TYPES = 'types',
   CALENDARS = 'calendars',
@@ -16,6 +17,7 @@ export enum Intents {
   USE_COUPON = 'use-coupon',
   UPDATE_MEETING = 'update-meeting',
   CANCEL_MEETING = 'cancel-meeting',
+  ACCEPT_CONTACT = 'accept-contact',
 }
 
 export enum InviteType {
