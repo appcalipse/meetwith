@@ -10,7 +10,6 @@ import {
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
-import { useMutation } from '@tanstack/react-query'
 import {
   addMinutes,
   addMonths,
@@ -48,13 +47,11 @@ import {
 import { logEvent } from '@/utils/analytics'
 import {
   doesContactExist,
-  fetchBusySlotsForMultipleAccounts,
   getAccount,
   getBusySlots,
   getMeeting,
   getNotificationSubscriptions,
   listConnectedCalendars,
-  sendContactListInvite,
 } from '@/utils/api_helper'
 import {
   dateToHumanReadable,
@@ -64,9 +61,6 @@ import {
 import { Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import {
-  CantInviteYourself,
-  ContactAlreadyExists,
-  ContactInviteAlreadySent,
   GateConditionNotValidError,
   GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
@@ -190,7 +184,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (!currentAccount?.address || !account?.address) return
     handleContactCheck()
   }, [currentAccount, account])
-
 
   const toast = useToast()
   const [cachedRange, setCachedRange] = useState<{
