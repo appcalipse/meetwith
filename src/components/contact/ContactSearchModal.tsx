@@ -29,7 +29,7 @@ import React, { useEffect } from 'react'
 import { useDebounceValue } from '@/hooks/useDebounceValue'
 import { ContactSearch, LeanAccount } from '@/types/Contacts'
 import { searchForAccounts, sendContactListInvite } from '@/utils/api_helper'
-import { ContactAlreadyExists, ContactInviteAlreadySent } from '@/utils/errors'
+import { AccountNotFoundError, ContactAlreadyExists } from '@/utils/errors'
 import { isValidEmail } from '@/utils/validations'
 
 type Props = {
@@ -74,9 +74,21 @@ const ContactSearchModal = (props: Props) => {
       query: debouncedValue,
       offset: reset ? 0 : result?.result?.length,
     })
-
-    setResult(search)
-
+    if (isValidEmail(debouncedValue) && search.result === null) {
+      setResult({
+        total_count: 1,
+        result: [
+          {
+            email: debouncedValue,
+            address: '',
+            name: '',
+            is_invited: false,
+          },
+        ],
+      })
+    } else {
+      setResult(search)
+    }
     setPendingForIndex(null)
   }
   const handleLoadMore = async () => {
@@ -118,16 +130,14 @@ const ContactSearchModal = (props: Props) => {
           status: 'error',
           duration: 5000,
           isClosable: true,
-          position: 'top',
         })
-      } else if (e instanceof ContactInviteAlreadySent) {
+      } else if (e instanceof AccountNotFoundError) {
         toast({
           title: 'Error',
           description: e.message,
           status: 'error',
           duration: 5000,
           isClosable: true,
-          position: 'top',
         })
       } else {
         toast({
@@ -136,7 +146,6 @@ const ContactSearchModal = (props: Props) => {
           status: 'error',
           duration: 5000,
           isClosable: true,
-          position: 'top',
         })
       }
     }
@@ -250,16 +259,9 @@ const ContactSearchModal = (props: Props) => {
                             _disabled={{
                               bg: account.is_invited ? 'neutral.400' : '',
                             }}
-                            _hover={{
-                              bg: account.is_invited
-                                ? 'neutral.400'
-                                : 'primary.300',
-                            }}
                             onClick={() => handleInvite(account, index)}
                           >
-                            {account.is_invited
-                              ? 'Request Already Sent'
-                              : 'Send request'}
+                            Send request
                           </Button>
                         </Tooltip>
                       </Td>
