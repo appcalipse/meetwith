@@ -8,12 +8,7 @@ import {
   initDB,
   rejectContactInvite,
 } from '@/utils/database'
-import {
-  ContactAlreadyExists,
-  ContactInviteNotForAccount,
-  ContactInviteNotFound,
-  OwnInviteError,
-} from '@/utils/errors'
+import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -52,15 +47,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const error = e as Error
     if (error instanceof ContactAlreadyExists) {
       return res.status(400).send(error.message)
-    } else if (error instanceof ContactInviteNotForAccount) {
-      return res.status(403).send(error.message)
     } else if (error instanceof ContactInviteNotFound) {
       return res.status(404).send(error.message)
-    } else if (error instanceof OwnInviteError) {
-      return res.status(409).send(error.message)
-    } else {
-      return res.status(500).send(error.message)
     }
+    return res.status(500).send(error.message)
   }
   return res.status(405).send('Method not allowed')
 }

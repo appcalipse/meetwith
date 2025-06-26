@@ -4,14 +4,14 @@ import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { InviteContact } from '@/types/Contacts'
 import { appUrl } from '@/utils/constants'
 import {
+  getAccountFromDB,
   getAccountNotificationSubscriptionEmail,
   getOrCreateContactInvite,
   initDB,
   isUserContact,
-  updateContactInviteCooldown,
 } from '@/utils/database'
 import { sendContactInvitationEmail } from '@/utils/email_helper'
-import { ContactAlreadyExists, ContactInviteAlreadySent } from '@/utils/errors'
+import { AccountNotFoundError, ContactAlreadyExists } from '@/utils/errors'
 import { getAccountDisplayName } from '@/utils/user_manager'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -30,7 +30,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         if (isContact) {
           throw new ContactAlreadyExists()
         }
-
+        const account = await getAccountFromDB(address)
+        if (!account) {
+          throw new AccountNotFoundError(address)
+        }
         const accountEmail = await getAccountNotificationSubscriptionEmail(
           address
         )
@@ -43,26 +46,17 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         address,
         userEmail
       )
-      if (invite.last_invited) {
-        const expires_at = new Date(invite.last_invited)
-        if (expires_at.getTime() > Date.now()) {
-          throw new ContactInviteAlreadySent()
-        }
-      }
       const invitationLink = `${appUrl}/contact/invite-accept?identifier=${invite.id}`
       const inviterName = getAccountDisplayName(req.session.account)
       try {
         if (userEmail) {
-          await sendContactInvitationEmail(
+          sendContactInvitationEmail(
             userEmail || '',
             inviterName,
             invitationLink
           )
-          await updateContactInviteCooldown(invite.id)
         }
-      } catch (e) {
-        console.error('Error sending contact invitation email:', e)
-      }
+      } catch (e) {}
       return res.status(200).json({
         message: 'Invitation sent',
         success: true,
@@ -71,8 +65,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       if (e instanceof ContactAlreadyExists) {
         return res.status(400).send(e.message)
       }
-      if (e instanceof ContactInviteAlreadySent) {
-        return res.status(409).send(e.message)
+      if (e instanceof AccountNotFoundError) {
+        return res.status(404).send(e.message)
       }
 
       return res.status(500).send(e)
