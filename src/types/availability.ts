@@ -7,7 +7,7 @@ export interface AvailabilityBlock {
   title: string
   timezone: string
   isDefault: boolean
-  availabilities: Array<{
+  weekly_availability: Array<{
     weekday: number
     ranges: TimeRange[]
   }>

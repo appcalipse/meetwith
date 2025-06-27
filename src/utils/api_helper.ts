@@ -1409,7 +1409,7 @@ export const doesContactExist = async (identifier: string) => {
 }
 
 export const getAvailabilityBlocks = async (): Promise<AvailabilityBlock[]> => {
-  return await internalFetch<AvailabilityBlock[]>(`/availabilities`)
+  return await internalFetch<AvailabilityBlock[]>(`/secure/availabilities`)
 }
 
 export const createAvailabilityBlock = async ({
@@ -1418,18 +1418,22 @@ export const createAvailabilityBlock = async ({
   weekly_availability,
   is_default,
 }: CreateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
-  return await internalFetch<AvailabilityBlock>(`/availabilities`, 'POST', {
-    title,
-    timezone,
-    weekly_availability,
-    is_default,
-  })
+  return await internalFetch<AvailabilityBlock>(
+    `/secure/availabilities`,
+    'POST',
+    {
+      title,
+      timezone,
+      weekly_availability,
+      is_default,
+    }
+  )
 }
 
 export const getAvailabilityBlock = async (
   id: string
 ): Promise<AvailabilityBlock> => {
-  return await internalFetch<AvailabilityBlock>(`/availabilities/${id}`)
+  return await internalFetch<AvailabilityBlock>(`/secure/availabilities/${id}`)
 }
 
 export const updateAvailabilityBlock = async ({
@@ -1440,7 +1444,7 @@ export const updateAvailabilityBlock = async ({
   is_default,
 }: UpdateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
   return await internalFetch<AvailabilityBlock>(
-    `/availabilities/${id}`,
+    `/secure/availabilities/${id}`,
     'PUT',
     {
       title,
@@ -1452,7 +1456,7 @@ export const updateAvailabilityBlock = async ({
 }
 
 export const deleteAvailabilityBlock = async (id: string): Promise<void> => {
-  return await internalFetch<void>(`/availabilities/${id}`, 'DELETE')
+  return await internalFetch<void>(`/secure/availabilities/${id}`, 'DELETE')
 }
 
 export const duplicateAvailabilityBlock = async ({
@@ -1460,7 +1464,7 @@ export const duplicateAvailabilityBlock = async ({
   modifiedData,
 }: DuplicateAvailabilityBlockRequest): Promise<AvailabilityBlock> => {
   return await internalFetch<AvailabilityBlock>(
-    `/availabilities/${id}`,
+    `/secure/availabilities/${id}`,
     'POST',
     modifiedData
   )

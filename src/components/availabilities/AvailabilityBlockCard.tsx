@@ -83,7 +83,7 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
                 <AiFillClockCircle color="#ffffff" />
               </Box>
               <Text color="neutral.0">
-                {getHoursPerWeek(block.availabilities)}
+                {getHoursPerWeek(block.weekly_availability)}
               </Text>
             </HStack>
           </HStack>
@@ -99,16 +99,18 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
           pb={3}
           width="100%"
         >
-          {getFormattedSchedule(block.availabilities).map((line, index) => (
-            <Text
-              key={index}
-              color="neutral.300"
-              fontWeight={500}
-              fontSize={16}
-            >
-              {line}
-            </Text>
-          ))}
+          {getFormattedSchedule(block.weekly_availability).map(
+            (line, index) => (
+              <Text
+                key={index}
+                color="neutral.300"
+                fontWeight={500}
+                fontSize={16}
+              >
+                {line}
+              </Text>
+            )
+          )}
         </Flex>
 
         <Text color="neutral.300" fontWeight={500} fontSize={16}>
