@@ -816,6 +816,7 @@ const Schedule: NextPage<IInitialProps> = ({
     } catch (error: unknown) {
       handleApiError('Error prefetching group.', error)
     }
+    setIsPrefetching(false)
   }
   const handleContactPrefetch = async () => {}
   const handlePrefetch = async () => {
