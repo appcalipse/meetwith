@@ -14,7 +14,11 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { AcceptedToken, getTokenIcon, supportedChains } from '@meta/chains'
-import { networkOptions, PaymentStep } from '@utils/constants/meeting-types'
+import {
+  networkOptions,
+  PaymentStep,
+  PaymentType,
+} from '@utils/constants/meeting-types'
 import React, { useContext, useEffect } from 'react'
 
 import { PublicScheduleContext } from '@/components/public-meeting'
@@ -28,6 +32,7 @@ const SelectCryptoNetwork = () => {
     setToken,
     handleSetTokenAndChain,
     setPaymentStep,
+    setPaymentType,
   } = useContext(PublicScheduleContext)
   const selectedNetworkInfo = supportedChains.find(val => val.chain === chain)
   const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(token =>
@@ -38,13 +43,16 @@ const SelectCryptoNetwork = () => {
   const selectedAssetInfo = acceptedTokens?.find(
     acceptedToken => acceptedToken.token === token
   )
-  const [loading, setLoading] = React.useState(false)
+
   useEffect(() => {
-    const chain =
+    if (chain && token) return
+    const selectedChain =
       networkOptions.find(
         network => network.id === selectedType?.plan?.default_chain_id
       )?.value || undefined
-    const selectedNetworkInfo = supportedChains.find(val => val.chain === chain)
+    const selectedNetworkInfo = supportedChains.find(
+      val => val.chain === selectedChain
+    )
     const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(
       token =>
         [AcceptedToken.USDC, AcceptedToken.CEUR, AcceptedToken.CUSD].includes(
@@ -52,11 +60,12 @@ const SelectCryptoNetwork = () => {
         )
     )
 
-    const token = acceptedTokens?.[0]?.token || undefined
-    handleSetTokenAndChain(token, chain)
+    const selectedToken = acceptedTokens?.[0]?.token || undefined
+    handleSetTokenAndChain(selectedToken, selectedChain)
   }, [selectedType])
   const handleContinue = async () => {
     setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
+    setPaymentType(PaymentType.CRYPTO)
   }
   return (
     <VStack alignItems="flex-start" w={'100%'} spacing={4}>
@@ -139,7 +148,7 @@ const SelectCryptoNetwork = () => {
               {acceptedTokens?.map(token => (
                 <MenuItem
                   key={token.token}
-                  onClick={async () => await setToken(token.token)}
+                  onClick={async () => setToken(token.token)}
                 >
                   <HStack>
                     <Image
