@@ -25,7 +25,7 @@ const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
   }
 
   const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
-    tzs.filter(tz => tz.value === getBestTimezoneValue())[0] || tzs[0]
+    tzs.find(tz => tz.value === getBestTimezoneValue()) || tzs[0]
   )
 
   useEffect(() => {
