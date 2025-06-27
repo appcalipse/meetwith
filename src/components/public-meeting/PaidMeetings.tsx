@@ -28,7 +28,7 @@ const PaidMeetings: FC<IProps> = ({ setPaidSessionsExists }) => {
   return isLoading ? (
     <Loading />
   ) : paidSessions && paidSessions.length > 0 ? (
-    <VStack rounded={'lg'} gap={4} alignItems="flex-start" w={'100%'}>
+    <VStack rounded={'lg'} gap={4} alignItems="flex-start" w={'100%'} mb={4}>
       <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
         Paid Sessions
       </Heading>
