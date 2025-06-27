@@ -4,6 +4,7 @@ import {
   Heading,
   HStack,
   Icon,
+  Text,
   useColorModeValue,
   useToast,
   VStack,
@@ -18,19 +19,20 @@ import {
   eachMinuteOfInterval,
   endOfMonth,
   Interval,
-  isAfter,
-  isBefore,
-  isFuture,
   isSameDay,
   isSameMonth,
-  isToday,
-  isWithinInterval,
   startOfMonth,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime } from 'luxon'
-import React, { useContext, useEffect, useMemo, useState } from 'react'
-import { FaArrowLeft, FaChevronDown, FaGlobe } from 'react-icons/fa'
+import React, { useContext, useEffect, useState } from 'react'
+import {
+  FaArrowLeft,
+  FaCalendar,
+  FaChevronDown,
+  FaClock,
+  FaGlobe,
+} from 'react-icons/fa'
 
 import Loading from '@/components/Loading'
 // TODO: create helper function to merge availabilities from availability block
@@ -127,7 +129,7 @@ const SchedulerPicker = () => {
     startDate: Date
     endDate: Date
   } | null>(null)
-  const getSetAvailableSlots = async () => {
+  const getSelfAvailableSlots = async () => {
     if (currentAccount) {
       const startDate = startOfMonth(currentMonth)
       const endDate = addMonths(endOfMonth(currentMonth), 2)
@@ -159,7 +161,7 @@ const SchedulerPicker = () => {
     ) {
       return
     }
-    getSetAvailableSlots()
+    getSelfAvailableSlots()
     setCheckingSlots(true)
     const startDate = startOfMonth(currentMonth)
     const endDate = addMonths(endOfMonth(currentMonth), 2)
@@ -526,7 +528,22 @@ const SchedulerPicker = () => {
     setIsScheduling(false)
     return false
   }
+  const startTime = pickedTime || new Date()
 
+  // Use Luxon for duration calculation and timezone handling
+  const startTimeInTimezone = DateTime.fromJSDate(startTime, {
+    zone: timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
+  })
+  const endTimeInTimezone = startTimeInTimezone.plus({
+    minutes: selectedType?.duration_minutes || 0,
+  })
+
+  const formattedStartTime = startTimeInTimezone.toFormat('h:mm a')
+  const formattedEndTime = endTimeInTimezone.toFormat('h:mm a')
+  const formattedDate = DateTime.fromJSDate(startTime)
+    .setZone(timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone)
+    .toFormat('cccc, LLLL d, yyyy')
+  const timeDuration = `${formattedStartTime} - ${formattedEndTime}`
   return (
     <Box
       width="100%"
@@ -595,30 +612,53 @@ const SchedulerPicker = () => {
               slotSizeMinutes={slotDurationInMinutes}
               availableSlots={availableSlots}
               selfAvailableSlots={selfAvailableSlots}
+              busySlots={busySlots}
               selfBusySlots={selfBusySlots}
               pickTime={handlePickTime}
               showSelfAvailability={checkedSelfSlots}
               timezone={timezone.value}
-              busySlots={busySlots}
             />
           )}
         </VStack>
       </HStack>
-      {showConfirm && (
-        <Popup>
-          <PopupHeader>
-            <HStack
-              mb={0}
-              cursor="pointer"
-              onClick={() => setShowConfirm(false)}
-            >
-              <Icon as={FaArrowLeft} size="1.5em" color={color} />
-              <Heading size="md" color={color}>
-                Meeting Information
-              </Heading>
-            </HStack>
-          </PopupHeader>
-
+      <HStack
+        width="100%"
+        justifyContent="space-between"
+        alignItems="flex-start"
+        flexWrap="wrap"
+        display={showConfirm ? 'flex' : 'none'}
+      >
+        <VStack
+          gap={{ md: 8, base: 6 }}
+          w="100%"
+          alignItems="flex-start"
+          mt={{ base: -6, md: 0 }}
+          flexBasis={{ base: '100%', '2xl': '40%' }}
+          mb={{ md: 0, base: 4 }}
+        >
+          <Heading size={'lg'}>{selectedType?.title}</Heading>
+          <HStack>
+            <FaCalendar size={24} />
+            <Text>{`${formattedDate}, ${timeDuration}`}</Text>
+          </HStack>
+          <HStack>
+            <FaClock size={24} />
+            <Text>{selectedType?.duration_minutes} minutes</Text>
+          </HStack>
+          <HStack>
+            <FaGlobe size={24} />
+            <Text align="center" fontSize="base" fontWeight="500">
+              {timezone.label}
+            </Text>
+          </HStack>
+        </VStack>
+        <VStack align="flex-start" flexBasis={{ base: '100%', '2xl': '50%' }}>
+          <HStack mb={0} cursor="pointer" onClick={() => setShowConfirm(false)}>
+            <Icon as={FaArrowLeft} size="1.5em" color={color} />
+            <Heading size="md" color={color}>
+              Meeting Information
+            </Heading>
+          </HStack>
           <ScheduleForm
             onConfirm={confirmSchedule}
             pickedTime={pickedTime!}
@@ -628,8 +668,8 @@ const SchedulerPicker = () => {
             meetingProviders={account?.preferences?.meetingProviders}
             selectedType={selectedType}
           />
-        </Popup>
-      )}
+        </VStack>
+      </HStack>
     </Box>
   )
 }
