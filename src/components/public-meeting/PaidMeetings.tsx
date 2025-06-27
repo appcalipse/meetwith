@@ -1,4 +1,4 @@
-import { Heading, HStack, VStack } from '@chakra-ui/react'
+import { Box, Heading, HStack, VStack } from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { useQuery } from '@tanstack/react-query'
 import React, { FC, useContext, useEffect } from 'react'
@@ -26,7 +26,9 @@ const PaidMeetings: FC<IProps> = ({ setPaidSessionsExists }) => {
     }
   }, [paidSessions])
   return isLoading ? (
-    <Loading />
+    <Box w="100%" display="flex" justifyContent="center" mt={8}>
+      <Loading />
+    </Box>
   ) : paidSessions && paidSessions.length > 0 ? (
     <VStack rounded={'lg'} gap={4} alignItems="flex-start" w={'100%'} mb={4}>
       <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
