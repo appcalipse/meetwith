@@ -35,7 +35,6 @@ import {
 } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
-  getContactById,
   getGroup,
   getGroupsFull,
   getGroupsMembers,
@@ -789,6 +788,7 @@ const Schedule: NextPage<IInitialProps> = ({
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
+    setIsPrefetching(true)
     try {
       const group = await getGroup(groupId)
       const fetchedGroupMembers = await getGroupsMembers(groupId)
@@ -816,34 +816,9 @@ const Schedule: NextPage<IInitialProps> = ({
     } catch (error: unknown) {
       handleApiError('Error prefetching group.', error)
     }
+    setIsPrefetching(false)
   }
-  const handleContactPrefetch = async () => {
-    if (!contactId) return
-    try {
-      const contact = await getContactById(contactId)
-      if (contact) {
-        const key = 'no_group'
-        const participant: ParticipantInfo = {
-          account_address: contact.address,
-          name: contact.name,
-          status: ParticipationStatus.Pending,
-          type: ParticipantType.Invitee,
-          slot_id: '',
-          meeting_id: '',
-        }
-        setParticipants([participant])
-        const allAddresses = [contact.address]
-        if (currentAccount?.address) {
-          allAddresses.push(currentAccount?.address)
-        }
-        setGroupAvailability({
-          [key]: allAddresses,
-        })
-      }
-    } catch (error: unknown) {
-      handleApiError('Error prefetching contact.', error)
-    }
-  }
+  const handleContactPrefetch = async () => {}
   const handlePrefetch = async () => {
     setIsPrefetching(true)
     if (contactId) {
@@ -855,8 +830,10 @@ const Schedule: NextPage<IInitialProps> = ({
     setIsPrefetching(false)
   }
   useEffect(() => {
-    void handlePrefetch()
-  }, [groupId, contactId])
+    if (groupId) {
+      void handleGroupPrefetch()
+    }
+  }, [groupId])
   const handleFetchMeetingInformation = async () => {
     if (!meetingId) return
     setIsPrefetching(true)

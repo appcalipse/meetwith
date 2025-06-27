@@ -24,19 +24,6 @@ const moduleExports = {
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   compress: true,
   poweredByHeader: false,
-  experimental: {
-    optimizePackageImports: [
-      '@chakra-ui/react',
-      '@chakra-ui/icons',
-      '@chakra-ui/theme-tools',
-      'date-fns',
-      'lodash',
-      '@emotion/react',
-      '@emotion/styled',
-      'framer-motion',
-    ],
-  },
-
   images: {
     domains: [],
     deviceSizes: [640, 750, 828, 1080, 1200],

@@ -46,6 +46,7 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
+  fetchBusySlotsForMultipleAccounts,
   doesContactExist,
   getAccount,
   getBusySlots,
@@ -168,22 +169,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
 
   const [blockedDates, setBlockedDates] = useState<Date[]>([])
-  const [isContact, setIsContact] = useState(false)
-
-  const handleContactCheck = async () => {
-    try {
-      if (!account?.address) return
-      const contactExists = await doesContactExist(account?.address)
-      setIsContact(contactExists)
-    } catch (e) {
-      Sentry.captureException(e)
-      console.error('Error checking contact existence:', e)
-    }
-  }
-  useEffect(() => {
-    if (!currentAccount?.address || !account?.address) return
-    handleContactCheck()
-  }, [currentAccount, account])
 
   const toast = useToast()
   const [cachedRange, setCachedRange] = useState<{
@@ -743,13 +728,11 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
             <Flex justify="center">
               <MeetingScheduledDialog
                 participants={lastScheduledMeeting!.participants}
-                hostAccount={account!}
+                schedulerAccount={currentAccount!}
                 scheduleType={schedulingType}
                 meeting={lastScheduledMeeting}
                 accountNotificationSubs={notificationsSubs}
                 hasConnectedCalendar={hasConnectedCalendar}
-                isContact={isContact}
-                setIsContact={setIsContact}
                 reset={_onClose}
               />
             </Flex>
