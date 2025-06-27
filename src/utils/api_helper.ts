@@ -10,13 +10,6 @@ import {
   ConnectResponse,
 } from '@/types/CalendarConnections'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
-import {
-  Contact,
-  ContactInvite,
-  ContactSearch,
-  DBContact,
-  LeanContact,
-} from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
 import { DiscordAccount } from '@/types/Discord'
 import { DiscordUserInfo } from '@/types/DiscordUserInfo'
@@ -53,12 +46,6 @@ import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
   ApiFetchError,
-  CantInviteYourself,
-  ContactAlreadyExists,
-  ContactInviteAlreadySent,
-  ContactInviteNotForAccount,
-  ContactInviteNotFound,
-  ContactNotFound,
   CouponAlreadyUsed,
   CouponExpired,
   CouponNotValid,
@@ -73,7 +60,6 @@ import {
   MeetingCreationError,
   MeetingNotFoundError,
   NoActiveSubscription,
-  OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   UnauthorizedError,
@@ -692,7 +678,7 @@ export const getGoogleAuthConnectUrl = async (state?: string | null) => {
   )
 }
 
-export const getOffice365ConnectUrl = async (state?: string | null) => {
+export const getOffice365ConnectUrl = async (state?: string) => {
   return await internalFetch<ConnectResponse>(
     `/secure/calendar_integrations/office365/connect${
       state ? `?state=${state}` : ''
@@ -1101,22 +1087,7 @@ export const inviteUsers = async (
   groupId: string,
   payload: GroupInvitePayload
 ): Promise<void> => {
-  try {
-    await internalFetch<void>(
-      `/secure/group/${groupId}/invite`,
-      'POST',
-      payload
-    )
-  } catch (e: unknown) {
-    if (e instanceof ApiFetchError) {
-      if (e.status === 404) {
-        throw new ContactNotFound()
-      }
-    }
-
-    Sentry.captureException(e)
-    throw e
-  }
+  await internalFetch<void>(`/secure/group/${groupId}/invite`, 'POST', payload)
 }
 
 export const createTelegramHash = async () => {
@@ -1192,138 +1163,4 @@ export const getNewestCoupon = async (
     undefined,
     { signal }
   )
-}
-
-export const searchForAccounts = async (query: string, offset = 0) => {
-  return await internalFetch<ContactSearch>(
-    `/secure/accounts/search?q=${query}&offset=${offset}`
-  )
-}
-
-export const sendContactListInvite = async (
-  address?: string,
-  email?: string
-) => {
-  try {
-    return await internalFetch<{ success: boolean; message: string }>(
-      `/secure/contact/invite`,
-      'POST',
-      {
-        address,
-        email,
-      }
-    )
-  } catch (e: unknown) {
-    if (e instanceof ApiFetchError) {
-      if (e.status && e.status === 400) {
-        throw new ContactAlreadyExists()
-      }
-      if (e.status && e.status === 403) {
-        throw new CantInviteYourself()
-      } else if (e.status && e.status === 409) {
-        throw new ContactInviteAlreadySent()
-      }
-    }
-  }
-}
-
-export const getContacts = async (limit = 10, offset = 0, query = '') => {
-  return await internalFetch<Array<Contact>>(
-    `/secure/contact?limit=${limit}&offset=${offset}&q=${query}`
-  )
-}
-export const getContactsLean = async (limit = 10, offset = 0, query = '') => {
-  return await internalFetch<Array<LeanContact>>(
-    `/secure/contact?type=lean&limit=${limit}&offset=${offset}&q=${query}`
-  )
-}
-
-export const getContactInviteRequests = async (
-  limit = 10,
-  offset = 0,
-  query = ''
-) => {
-  return await internalFetch<Array<ContactInvite>>(
-    `/secure/contact/requests?limit=${limit}&offset=${offset}&q=${query}`
-  )
-}
-
-export const getContactInviteRequestCount = async () => {
-  return await internalFetch<number>(`/secure/contact/requests/metrics`)
-}
-
-export const acceptContactInvite = async (identifier: string) => {
-  try {
-    return await internalFetch<{ success: boolean }>(
-      `/secure/contact/requests/${identifier}`,
-      'POST'
-    )
-  } catch (e) {
-    if (e instanceof ApiFetchError) {
-      if (e.status && e.status === 400) {
-        throw new ContactAlreadyExists()
-      } else if (e.status && e.status === 403) {
-        throw new ContactInviteNotForAccount()
-      } else if (e.status && e.status === 404) {
-        throw new ContactInviteNotFound()
-      } else if (e.status && e.status === 409) {
-        throw new OwnInviteError()
-      }
-    }
-    throw e
-  }
-}
-
-export const rejectContactInvite = async (identifier: string) => {
-  try {
-    return await internalFetch<{ success: boolean }>(
-      `/secure/contact/requests/${identifier}`,
-      'DELETE'
-    )
-  } catch (e) {
-    if (e instanceof ApiFetchError) {
-      if (e.status && e.status === 400) {
-        throw new ContactAlreadyExists()
-      } else if (e.status && e.status === 403) {
-        throw new ContactInviteNotForAccount()
-      } else if (e.status && e.status === 404) {
-        throw new ContactInviteNotFound()
-      } else if (e.status && e.status === 409) {
-        throw new OwnInviteError()
-      }
-    }
-    throw e
-  }
-}
-
-export const getContactById = async (identifier: string) => {
-  return await internalFetch<Contact>(`/secure/contact/${identifier}`)
-}
-
-export const removeContact = async (contact_address: string) => {
-  return await internalFetch<{ success: boolean }>(
-    `/secure/contact/${contact_address}`,
-    'DELETE'
-  )
-}
-
-export const getContactInviteById = async (identifier: string) => {
-  try {
-    return await internalFetch<ContactInvite>(
-      `/secure/contact/requests/${identifier}`
-    )
-  } catch (e) {
-    if (e instanceof ApiFetchError) {
-      if (e.status && e.status === 400) {
-        throw new ContactAlreadyExists()
-      } else if (e.status && e.status === 404) {
-        throw new ContactInviteNotFound()
-      }
-    }
-    throw e
-  }
-}
-
-export const doesContactExist = async (identifier: string) => {
-  return await internalFetch<boolean>(`/secure/contact/${identifier}/exist`)
 }

@@ -27,14 +27,6 @@ import {
   ConnectedCalendar,
 } from '@/types/CalendarConnections'
 import { SupportedChain } from '@/types/chains'
-import {
-  ContactSearch,
-  DBContact,
-  DBContactInvite,
-  DBContactLean,
-  SingleDBContact,
-  SingleDBContactInvite,
-} from '@/types/Contacts'
 import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
@@ -88,10 +80,6 @@ import {
   AccountNotFoundError,
   AdminBelowOneError,
   AlreadyGroupMemberError,
-  ContactAlreadyExists,
-  ContactInviteNotForAccount,
-  ContactInviteNotFound,
-  ContactNotFound,
   CouponAlreadyUsed,
   CouponExpired,
   CouponNotValid,
@@ -106,7 +94,6 @@ import {
   NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
-  OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   UnauthorizedError,
@@ -118,7 +105,6 @@ import {
   generateEmptyAvailabilities,
 } from './calendar_manager'
 import { apiUrl } from './constants'
-import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import { isTimeInsideAvailabilities } from './slots.helper'
@@ -485,7 +471,9 @@ const getAccountFromDB = async (
       account.address
     )
     if (includePrivateInformation) {
-      account.discord_account = await getDiscordAccount(account.address)
+      const discord_account = await getDiscordAccount(account.address)
+
+      account.discord_account = discord_account
     }
     return account
   } else if (error) {
@@ -913,33 +901,23 @@ const saveMeeting = async (
     meeting.participants_mapping.map(p => p.account_address!)
   )
 
-  const ownerParticipants =
-    meeting.participants_mapping.filter(
-      p => p.type === ParticipantType.Owner
-    ) || []
+  const ownerParticipant =
+    meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
+    null
 
-  const ownerAccounts =
-    ownerParticipants.length > 0
-      ? await Promise.all(
-          ownerParticipants.map(
-            async owner => await getAccountFromDB(owner.account_address!)
-          )
-        )
-      : []
+  const ownerAccount = ownerParticipant
+    ? await getAccountFromDB(ownerParticipant.account_address!)
+    : null
 
   const schedulerAccount =
     meeting.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
 
-  const ownerIsNotScheduler = Boolean(
-    schedulerAccount &&
-      !ownerParticipants.some(
-        val =>
-          val?.account_address?.toLowerCase() ===
-          schedulerAccount.account_address
-      )
-  )
+  const ownerIsNotScheduler =
+    !!ownerParticipant &&
+    !!schedulerAccount &&
+    ownerParticipant.account_address !== schedulerAccount.account_address
 
   if (ownerIsNotScheduler && schedulerAccount) {
     const gatesResponse = await db.supabase
@@ -983,11 +961,6 @@ const saveMeeting = async (
   const timezone = meeting.participants_mapping[0].timeZone
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
-      const ownerAccount = ownerAccounts.find(
-        val =>
-          val?.address?.toLowerCase() ===
-          participant?.account_address?.toLowerCase()
-      )
       if (
         existingAccounts
           .map(account => account.address)
@@ -995,11 +968,12 @@ const saveMeeting = async (
         participant.type === ParticipantType.Owner
       ) {
         // only validate slot if meeting is being scheduled on someone's calendar and not by the person itself (from dashboard for example)
-        const participantIsOwner = ownerParticipants.some(
-          val =>
-            val?.account_address?.toLowerCase() ===
-            participant?.account_address?.toLowerCase()
+        const participantIsOwner = Boolean(
+          ownerParticipant &&
+            ownerParticipant.account_address?.toLowerCase() ===
+              participant.account_address.toLowerCase()
         )
+
         const slotIsTaken = async () =>
           !(await isSlotFree(
             participant.account_address!,
@@ -1008,17 +982,15 @@ const saveMeeting = async (
             meeting.meetingTypeId
           ))
         const isTimeAvailable = () =>
-          ownerAccount &&
           isTimeInsideAvailabilities(
-            utcToZonedTime(meeting.start, ownerAccount?.preferences.timezone),
-            utcToZonedTime(meeting.end, ownerAccount?.preferences.timezone),
-            ownerAccount?.preferences.availabilities || []
+            utcToZonedTime(meeting.start, ownerAccount!.preferences.timezone),
+            utcToZonedTime(meeting.end, ownerAccount!.preferences.timezone),
+            ownerAccount!.preferences.availabilities
           )
         if (
           participantIsOwner &&
           ownerIsNotScheduler &&
-          ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
-            (await slotIsTaken()))
+          (!isTimeAvailable() || (await slotIsTaken()))
         )
           throw new TimeNotAvailableError()
       }
@@ -1095,7 +1067,6 @@ const saveMeeting = async (
     meetingProvider: meeting.meetingProvider,
     meetingReminders: meeting.meetingReminders,
     meetingRepeat: meeting.meetingRepeat,
-    meetingPermissions: meeting.meetingPermissions,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -1259,7 +1230,8 @@ const getGroupsAndMembers = async (
       .select(
         `
          group_members: group_members(*),
-         preferences: account_preferences(name)
+         preferences: account_preferences(name),
+         calendars: connected_calendars(calendars)
     `
       )
       .in('address', addresses)
@@ -1281,6 +1253,7 @@ const getGroupsAndMembers = async (
           address: member.group_members?.[0]?.member_id as string,
           role: member.group_members?.[0].role,
           invitePending: false,
+          calendarConnected: !!member.calendars[0]?.calendars?.length,
         })),
       })
     }
@@ -1444,7 +1417,16 @@ const publicGroupJoin = async (group_id: string, address: string) => {
   if (groupUsers.map(val => val.member_id).includes(address.toLowerCase())) {
     throw new AlreadyGroupMemberError()
   }
-  await addUserToGroup(group_id, address.toLowerCase(), MemberType.MEMBER)
+  const { error: memberError } = await db.supabase
+    .from('group_members')
+    .insert({
+      group_id,
+      member_id: address.toLowerCase(),
+      role: MemberType.MEMBER,
+    })
+  if (memberError) {
+    throw new Error(memberError.message)
+  }
 }
 
 const manageGroupInvite = async (
@@ -1475,20 +1457,15 @@ const manageGroupInvite = async (
   if (reject) {
     return
   }
-  await addUserToGroup(group_id, address.toLowerCase(), data[0].role)
-}
-const addUserToGroup = async (
-  group_id: string,
-  member_id: string,
-  role = MemberType.MEMBER
-) => {
-  const { error } = await db.supabase.from('group_members').insert({
-    group_id,
-    member_id,
-    role,
-  })
-  if (error) {
-    throw new Error(error.message)
+  const { error: memberError } = await db.supabase
+    .from('group_members')
+    .insert({
+      group_id,
+      member_id: address.toLowerCase(),
+      role: data[0].role,
+    })
+  if (memberError) {
+    throw new Error(memberError.message)
   }
 }
 
@@ -1627,6 +1604,7 @@ const getGroupUsers = async (
       group_members: group_members(*),
       group_invites: group_invites(*),
       preferences: account_preferences(name),
+      calendars: connected_calendars(calendars),
       subscriptions: subscriptions(*) 
     `
       )
@@ -2013,10 +1991,9 @@ const getConnectedCalendars = async (
 
   if (!data) return []
 
-  // const connectedCalendars: ConnectedCalendar[] =
-  //   !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
-  // ignore pro for now
-  const connectedCalendars: ConnectedCalendar[] = data
+  const connectedCalendars: ConnectedCalendar[] =
+    !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
+
   if (syncOnly) {
     const calendars: ConnectedCalendar[] = JSON.parse(
       JSON.stringify(connectedCalendars)
@@ -2399,14 +2376,13 @@ const updateMeeting = async (
 ): Promise<DBSlot> => {
   if (
     new Set(
-      meetingUpdateRequest.participants_mapping.map(
-        p => p.account_address || p.guest_email
-      )
+      meetingUpdateRequest.participants_mapping.map(p => p.account_address)
     ).size !== meetingUpdateRequest.participants_mapping.length
   ) {
-    // means there are duplicate participants
+    //means there are duplicate participants
     throw new MeetingCreationError()
   }
+
   const slots = []
   let meetingResponse = {} as DBSlot
   let index = 0
@@ -2415,19 +2391,14 @@ const updateMeeting = async (
   const existingAccounts = await getExistingAccountsFromDB(
     meetingUpdateRequest.participants_mapping.map(p => p.account_address!)
   )
-  const ownerParticipants =
-    meetingUpdateRequest.participants_mapping.filter(
+  const ownerParticipant =
+    meetingUpdateRequest.participants_mapping.find(
       p => p.type === ParticipantType.Owner
-    ) || []
+    ) || null
 
-  const ownerAccounts =
-    ownerParticipants.length > 0
-      ? await Promise.all(
-          ownerParticipants.map(
-            async owner => await getAccountFromDB(owner.account_address!)
-          )
-        )
-      : []
+  const ownerAccount = ownerParticipant
+    ? await getAccountFromDB(ownerParticipant.account_address!)
+    : null
 
   const schedulerAccount =
     meetingUpdateRequest.participants_mapping.find(
@@ -2441,30 +2412,22 @@ const updateMeeting = async (
     const isEditing = participant.mappingType === ParticipantMappingType.KEEP
 
     if (participant.account_address) {
-      const ownerAccount = ownerAccounts.find(
-        val =>
-          val?.address?.toLowerCase() ===
-          participant?.account_address?.toLowerCase()
-      )
       if (
         existingAccounts
           .map(account => account.address)
           .includes(participant.account_address!)
       ) {
         // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
-        const participantIsOwner = ownerParticipants.some(
-          val =>
-            val?.account_address?.toLowerCase() ===
-            participant?.account_address?.toLowerCase()
+        const participantIsOwner = Boolean(
+          ownerParticipant &&
+            ownerParticipant.account_address?.toLowerCase() ===
+              participant.account_address.toLowerCase()
         )
-
         const ownerIsNotScheduler = Boolean(
-          schedulerAccount &&
-            !ownerParticipants.some(
-              val =>
-                val?.account_address?.toLowerCase() ===
-                schedulerAccount.account_address
-            )
+          ownerParticipant &&
+            schedulerAccount &&
+            ownerParticipant.account_address !==
+              schedulerAccount.account_address
         )
 
         let isEditingToSameTime = false
@@ -2495,17 +2458,16 @@ const updateMeeting = async (
           ))
 
         const isTimeAvailable = () =>
-          ownerAccount &&
           isTimeInsideAvailabilities(
             utcToZonedTime(
               meetingUpdateRequest.start,
-              ownerAccount?.preferences.timezone
+              ownerAccount!.preferences.timezone
             ),
             utcToZonedTime(
               meetingUpdateRequest.end,
-              ownerAccount?.preferences.timezone
+              ownerAccount!.preferences.timezone
             ),
-            ownerAccount?.preferences.availabilities
+            ownerAccount!.preferences.availabilities
           )
 
         if (
@@ -2513,9 +2475,7 @@ const updateMeeting = async (
           ownerIsNotScheduler &&
           !isEditingToSameTime &&
           participantActing.account_address !== participant.account_address &&
-          ((!meetingUpdateRequest.ignoreOwnerAvailability &&
-            !isTimeAvailable()) ||
-            (await slotIsTaken()))
+          (!isTimeAvailable() || (await slotIsTaken()))
         )
           throw new TimeNotAvailableError()
       }
@@ -2636,7 +2596,6 @@ const updateMeeting = async (
     changes: changingTime ? { dateChange: changingTime } : undefined,
     meetingReminders: meetingUpdateRequest.meetingReminders,
     meetingRepeat: meetingUpdateRequest.meetingRepeat,
-    meetingPermissions: meetingUpdateRequest.meetingPermissions,
   }
 
   // Doing notifications and syncs asynchronously
@@ -2658,9 +2617,7 @@ const updateMeeting = async (
       meetingUpdateRequest.slotsToRemove,
       meetingUpdateRequest.guestsToRemove,
       meetingUpdateRequest.meeting_id,
-      timezone,
-      undefined,
-      meetingUpdateRequest.title
+      timezone
     )
 
   return meetingResponse
@@ -3000,427 +2957,10 @@ const getDiscordAccounts = async (): Promise<
   }
   return data
 }
-
-const findAccountsByText = async (
-  current_address: string,
-  search: string,
-  limit = 10,
-  offset = 0
-) => {
-  const { data, error } = await db.supabase.rpc<ContactSearch>(
-    'search_accounts',
-    {
-      search,
-      max_results: limit,
-      skip: offset,
-      current_address,
-    }
-  )
-  if (error) {
-    throw new Error(error.message)
-  }
-  return data?.[0]
-}
-
-const getOrCreateContactInvite = async (
-  owner_address: string,
-  address?: string,
-  email?: string
-) => {
-  const { data, error: searchError } = await db.supabase
-    .from('contact_invite')
-    .select()
-    .eq('account_owner_address', owner_address)
-    .eq('destination', address || email)
-  if (searchError) {
-    throw new Error(searchError.message)
-  }
-  if ((data?.length || 0) > 0) {
-    return data?.[0]
-  }
-  let channel = ChannelType.ACCOUNT
-  if (email) {
-    channel = ChannelType.EMAIL
-  }
-  if (address) {
-    channel = ChannelType.ACCOUNT
-  }
-
-  const { data: insertData, error: insertError } = await db.supabase
-    .from('contact_invite')
-    .insert([
-      {
-        account_owner_address: owner_address,
-        destination: address || email,
-        channel,
-      },
-    ])
-  if (insertError) {
-    throw new Error(insertError.message)
-  }
-  return insertData[0]
-}
-const updateContactInviteCooldown = async (id: string) => {
-  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000
-  const { error } = await db.supabase
-    .from('contact_invite')
-    .update({ last_invited: new Date(Date.now() + SEVEN_DAYS) })
-    .eq('id', id)
-  if (error) {
-    throw new Error(error.message)
-  }
-}
-const isUserContact = async (owner_address: string, address: string) => {
-  const { data, error } = await db.supabase
-    .from('contact')
-    .select('*', { count: 'exact', head: true })
-    .eq('account_owner_address', owner_address)
-    .eq('contact_address', address)
-  if (error) {
-    throw new Error(error.message)
-  }
-  return data?.[0]
-}
-
-const getContacts = async (
-  address: string,
-  query = '',
-  limit = 10,
-  offset = 0
-): Promise<DBContact> => {
-  const { data, error } = await db.supabase.rpc('search_contacts', {
-    search: query,
-    max_results: limit,
-    skip: offset,
-    current_account: address,
-  })
-  if (error) {
-    throw new Error(error.message)
-  }
-  return data as unknown as DBContact
-}
-
-const getContactLean = async (
-  address: string,
-  query = '',
-  limit = 10,
-  offset = 0
-): Promise<DBContactLean> => {
-  const { data, error } = await db.supabase.rpc<DBContactLean>(
-    'search_contacts_lean',
-    {
-      search: query,
-      max_results: limit,
-      skip: offset,
-      current_account: address,
-    }
-  )
-  if (error) {
-    throw new Error(error.message)
-  }
-  return data as unknown as DBContactLean
-}
-
-const checkContactExists = async (
-  current_address: string,
-  user_address: string
-): Promise<DBContactLean> => {
-  const { data, error } = await db.supabase.rpc<DBContactLean>(
-    'check_contact_existence',
-    {
-      current_account: current_address,
-      user_address: user_address,
-    }
-  )
-  if (error) {
-    throw new Error(error.message)
-  }
-  return data as unknown as DBContactLean
-}
-
-const getContactById = async (
-  id: string,
-  address: string
-): Promise<SingleDBContact> => {
-  const { data, error } = await db.supabase
-    .from('contact')
-    .select(
-      `
-      id,
-       contact_address,
-        account_owner_address,
-        status,
-        account: accounts(
-          preferences: account_preferences(name, avatar_url, description),
-          calendars_exist: connected_calendars(id),
-          account_notifications(notification_types)
-        )
-    `
-    )
-    .eq('id', id)
-    .eq('account_owner_address', address)
-    .eq('status', ContactStatus.ACTIVE)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-  const contact = data?.[0]
-  if (!contact) {
-    throw new ContactNotFound()
-  }
-  return contact
-}
-
-const getContactInvites = async (
-  address: string,
-  query = '',
-  limit = 10,
-  offset = 0
-): Promise<DBContactInvite> => {
-  const { data, error } = await db.supabase.rpc('search_contact_invites', {
-    search: query,
-    max_results: limit,
-    skip: offset,
-    current_account: address,
-  })
-  if (error) {
-    throw new Error(error.message)
-  }
-  return data as unknown as DBContactInvite
-}
-const getContactByAddress = async (
-  owner_address: string,
-  address: string
-): Promise<DBContact> => {
-  const { data, error } = await db.supabase
-    .from('contact')
-    .select(
-      `
-      id,
-       contact_address,
-        account_owner_address,
-        status,
-        account: accounts(
-          preferences: account_preferences(name, avatar_url, description),
-          calendars_exist: connected_calendars(id),
-          account_notifications(notification_types)
-        )
-    `
-    )
-    .eq('account_owner_address', owner_address)
-    .eq('contact_address', address)
-    .eq('status', ContactStatus.ACTIVE)
-    .single()
-  if (error) {
-    throw new Error(error.message)
-  }
-  return data
-}
-const getContactInvitesCount = async (address: string) => {
-  const { error, count } = await db.supabase
-    .from('contact_invite')
-    .select('id', { count: 'exact' })
-    .eq('destination', address)
-  if (error) {
-    throw new Error(error.message)
-  }
-  return count
-}
-const getContactInviteById = async (
-  id: string
-): Promise<SingleDBContactInvite> => {
-  const { data, error } = await db.supabase
-    .from('contact_invite')
-    .select(
-      `
-      id,
-       destination,
-        account_owner_address,
-        channel,
-        account: accounts(
-          preferences: account_preferences(name, avatar_url, description),
-          calendars_exist: connected_calendars(id),
-          account_notifications(notification_types)
-        )
-    `
-    )
-    .eq('id', id)
-  if (error) {
-    throw new Error(error.message)
-  }
-  const invite = data?.[0]
-  if (!invite) {
-    throw new ContactInviteNotFound()
-  }
-  return invite
-}
-const acceptContactInvite = async (
-  invite_identifier: string,
-  account_address: string
-) => {
-  const { data, error } = await db.supabase
-    .from('contact_invite')
-    .select()
-    .eq('id', invite_identifier)
-  if (error) {
-    throw new Error(error.message)
-  }
-  const invite = data?.[0]
-  if (!invite) {
-    throw new ContactInviteNotFound()
-  }
-
-  // make sure the actual account owner accepts the invite
-  if (
-    invite?.channel === ChannelType.ACCOUNT &&
-    invite?.destination !== account_address
-  ) {
-    throw new ContactInviteNotForAccount()
-  }
-  if (invite?.account_owner_address === account_address) {
-    throw new OwnInviteError()
-  }
-
-  const { data: contactExists } = await db.supabase
-    .from('contact')
-    .select()
-    .in('account_owner_address', [
-      account_address,
-      invite?.account_owner_address,
-    ])
-    .in('contact_address', [account_address, invite?.account_owner_address])
-    .eq('status', ContactStatus.ACTIVE)
-
-  if (contactExists?.length) {
-    await db.supabase
-      .from('contact_invite')
-      .delete()
-      .eq('id', invite_identifier)
-
-    throw new ContactAlreadyExists()
-  }
-
-  const { error: insertError } = await db.supabase.from('contact').insert([
-    {
-      account_owner_address: invite?.account_owner_address,
-      contact_address: account_address,
-      status: ContactStatus.ACTIVE,
-    },
-    {
-      account_owner_address: account_address,
-      contact_address: invite?.account_owner_address,
-      status: ContactStatus.ACTIVE,
-    },
-  ])
-
-  if (insertError) {
-    throw new Error(insertError.message)
-  }
-  // clean up old status contacts
-  const { error: contactClearError } = await db.supabase
-    .from('contact')
-    .delete()
-    .in('account_owner_address', [
-      account_address,
-      invite?.account_owner_address,
-    ])
-    .in('contact_address', [account_address, invite?.account_owner_address])
-    .eq('status', ContactStatus.INACTIVE)
-
-  if (contactClearError) {
-    throw new Error(contactClearError.message)
-  }
-
-  const { error: deleteError } = await db.supabase
-    .from('contact_invite')
-    .delete()
-    .in('account_owner_address', [
-      account_address,
-      invite?.account_owner_address,
-    ])
-    .in('destination', [account_address, invite?.account_owner_address])
-  if (deleteError) {
-    throw new Error(deleteError.message)
-  }
-}
-const rejectContactInvite = async (
-  invite_identifier: string,
-  account_address: string
-) => {
-  const { data, error } = await db.supabase
-    .from('contact_invite')
-    .select()
-    .eq('id', invite_identifier)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-  if (!data?.length) {
-    throw new ContactInviteNotForAccount()
-  }
-  const invite = data[0]
-
-  // make sure the actual account owner rejects the invite
-  if (
-    invite?.channel === ChannelType.ACCOUNT &&
-    invite?.destination !== account_address
-  ) {
-    throw new ContactInviteNotForAccount()
-  }
-  if (invite?.account_owner_address === account_address) {
-    throw new OwnInviteError()
-  }
-
-  const { error: deleteError } = await db.supabase
-    .from('contact_invite')
-    .delete()
-    .eq('id', invite_identifier)
-  if (deleteError) {
-    throw new Error(deleteError.message)
-  }
-}
-const contactInviteByEmailExists = async (email: string) => {
-  const { data, error } = await db.supabase
-    .from('contact_invite')
-    .select()
-    .eq('destination', email)
-    .eq('channel', ChannelType.EMAIL)
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return data?.length > 0
-}
-
-const removeContact = async (address: string, contact_address: string) => {
-  const { error: updateError } = await db.supabase
-    .from('contact')
-    .update({ status: ContactStatus.INACTIVE })
-    .eq('account_owner_address', contact_address)
-    .eq('contact_address', address)
-
-  if (updateError) {
-    throw new Error(updateError.message)
-  }
-  const { error: removeError } = await db.supabase
-    .from('contact')
-    .delete()
-    .eq('account_owner_address', address)
-    .eq('contact_address', contact_address)
-
-  if (removeError) {
-    throw new Error(removeError.message)
-  }
-}
-
 export {
-  acceptContactInvite,
   addOrUpdateConnectedCalendar,
-  addUserToGroup,
   changeGroupRole,
-  checkContactExists,
   connectedCalendarExists,
-  contactInviteByEmailExists,
   createTgConnection,
   deleteAllTgConnections,
   deleteGateCondition,
@@ -3428,7 +2968,6 @@ export {
   deleteMeetingFromDB,
   deleteTgConnection,
   editGroup,
-  findAccountsByText,
   getAccountFromDB,
   getAccountNonce,
   getAccountNotificationSubscriptionEmail,
@@ -3439,12 +2978,6 @@ export {
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
-  getContactById,
-  getContactInviteById,
-  getContactInvites,
-  getContactInvitesCount,
-  getContactLean,
-  getContacts,
   getDiscordAccounts,
   getExistingAccountsFromDB,
   getGateCondition,
@@ -3460,7 +2993,6 @@ export {
   getMeetingFromDB,
   getNewestCoupon,
   getOfficeEventMappingId,
-  getOrCreateContactInvite,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
@@ -3474,14 +3006,11 @@ export {
   insertOfficeEventMapping,
   isGroupAdmin,
   isSlotFree,
-  isUserContact,
   leaveGroup,
   manageGroupInvite,
   publicGroupJoin,
-  rejectContactInvite,
   rejectGroupInvite,
   removeConnectedCalendar,
-  removeContact,
   removeMember,
   saveConferenceMeetingToDB,
   saveEmailToDB,
@@ -3492,7 +3021,6 @@ export {
   updateAccountFromInvite,
   updateAccountPreferences,
   updateAllRecurringSlots,
-  updateContactInviteCooldown,
   updateCustomSubscriptionDomain,
   updateMeeting,
   updateRecurringSlots,

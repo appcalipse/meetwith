@@ -146,9 +146,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const containParams = stateObject.redirectTo.includes('?')
     const redirect_url =
       stateObject?.redirectTo +
-      (newState64 && !stateObject.ignoreState
-        ? `${containParams ? '&' : '?'}calState=${newState64}`
-        : '')
+      (newState64 ? `${containParams ? '&' : '?'}calState=${newState64}` : '')
     return res.redirect(redirect_url)
   }
   return res.redirect(
