@@ -69,7 +69,6 @@ const ConfirmPaymentInfo = () => {
       ErrorAction<keyof PaymentInfo>
     >
   >(errorReducerSingle, {})
-
   const [name, setName] = React.useState('')
   const [email, setEmail] = React.useState('')
   const [progress, setProgress] = React.useState(0)
@@ -164,7 +163,6 @@ const ConfirmPaymentInfo = () => {
             NATIVE_TOKEN_ADDRESS,
             chain.chain
           )
-
           if (!tokenInfo?.decimals) return // Unable to get token details
           const tokenMarketPrice = await tokenPriceFeed.getPrice(
             chain.chain,
@@ -414,10 +412,12 @@ const ConfirmPaymentInfo = () => {
         >
           Pay Now
         </Button>
-        {!loading && (
+        {loading && (
           <HStack ml={12}>
             <Progress
-              value={100}
+              value={progress}
+              min={0}
+              max={100}
               w={150}
               rounded={'full'}
               borderWidth={2}
