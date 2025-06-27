@@ -7,6 +7,7 @@ import { getAccountDisplayName } from '@utils/user_manager'
 import React, { FC, useContext } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 
 import PaidMeetings from './PaidMeetings'
 
@@ -14,6 +15,7 @@ const BasePage: FC = () => {
   const { account } = useContext(PublicScheduleContext)
   const currentAccount = useAccountContext()
   const [paidSessionsExists, setPaidSessionsExists] = React.useState(false)
+  const { openConnection } = useContext(OnboardingModalContext)
 
   return (
     <VStack
@@ -56,18 +58,21 @@ const BasePage: FC = () => {
             <Text fontWeight="700">{account.preferences.description}</Text>
           )}
         </Box>
-        <Text fontWeight={500}>
-          Login to see all plans that you have paid for.{' '}
-          <Button
-            variant="link"
-            colorScheme="primary"
-            color="primary.400"
-            textDecoration="underline"
-            fontWeight={600}
-          >
-            Sign in
-          </Button>
-        </Text>
+        {!currentAccount && (
+          <Text fontWeight={500}>
+            Login to see all plans that you have paid for.{' '}
+            <Button
+              variant="link"
+              colorScheme="primary"
+              color="primary.400"
+              textDecoration="underline"
+              fontWeight={600}
+              onClick={() => openConnection(undefined, false)}
+            >
+              Sign in
+            </Button>
+          </Text>
+        )}
       </Flex>
       <VStack gap={4} w={'100%'} alignItems="flex-start">
         {currentAccount?.address && (
