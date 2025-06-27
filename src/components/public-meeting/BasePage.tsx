@@ -40,7 +40,9 @@ const BasePage: FC = () => {
           p={4}
           w="max-content"
           minW={{ base: '100%', md: '40%' }}
-          gap={1}
+          display="flex"
+          flexDirection="column"
+          gap={2}
         >
           <HStack gap={{ md: 4, base: 2 }} alignItems="center">
             <Box w={10} h={10}>
@@ -74,7 +76,7 @@ const BasePage: FC = () => {
         <VStack gap={4} w={'100%'} alignItems="flex-start">
           {paidSessionsExists && (
             <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
-              All Sessions
+              All Plans
             </Heading>
           )}
           <HStack
