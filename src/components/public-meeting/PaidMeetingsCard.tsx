@@ -25,7 +25,7 @@ const PaidMeetingsCard: FC<IProps> = props => {
   return (
     <VStack
       bg={'neutral.825'}
-      flexBasis={{ base: '100%', md: '49%' }}
+      flexBasis={{ base: '100%', '2xl': '49%' }}
       alignItems={'flex-start'}
       p={6}
       rounded={'lg'}
