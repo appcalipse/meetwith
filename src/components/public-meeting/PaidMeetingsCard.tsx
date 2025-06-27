@@ -1,4 +1,4 @@
-import { Button, Heading, Tag, Text, VStack } from '@chakra-ui/react'
+import { Button, Heading, HStack, Tag, Text, VStack } from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { PaidMeetingTypes } from '@meta/Account'
 import { useRouter } from 'next/router'
@@ -52,9 +52,18 @@ const PaidMeetingsCard: FC<IProps> = props => {
           {props?.plan?.no_of_slot > 1 ? 's' : ''}
         </Tag>
       )}
-      <Button colorScheme="primary" onClick={handleSelect} isLoading={loading}>
-        Book session
-      </Button>
+      <HStack justifyContent="space-between" w={'100%'}>
+        <Button
+          colorScheme="primary"
+          onClick={handleSelect}
+          isLoading={loading}
+        >
+          Schedule Now
+        </Button>
+        <Text color="primary.400" fontWeight={500}>
+          {props.session_used}/{props.session_total} Sessions remaining
+        </Text>
+      </HStack>
     </VStack>
   )
 }
