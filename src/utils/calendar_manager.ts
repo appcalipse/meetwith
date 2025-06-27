@@ -896,7 +896,8 @@ const scheduleMeeting = async (
               participant.account_address,
               startTime,
               endTime,
-              meetingTypeId
+              meetingTypeId,
+              txHash
             )
           ).isFree
       )
