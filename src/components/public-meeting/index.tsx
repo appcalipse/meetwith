@@ -253,7 +253,7 @@ const PublicPage: FC<IProps> = props => {
         <Container
           bg={bgColor}
           maxW={{ base: '100%', md: '95%' }}
-          mt={{ md: 48, base: 0 }}
+          mt={{ md: 36, base: 0 }}
           pt={{ base: 36, md: 20 }}
           flex={1}
           width={'100%'}
