@@ -15,6 +15,7 @@ interface IProps {
   step: PaymentStep
   icon: ComponentWithAs<'svg', IconProps>
   type: PaymentType
+  disabled?: boolean
 }
 const PaymentMethod: FC<IProps> = props => {
   const { handleSelectPaymentMethod } = useContext(PublicScheduleContext)
@@ -50,8 +51,9 @@ const PaymentMethod: FC<IProps> = props => {
           w={'full'}
           onClick={handleSelect}
           isLoading={loading}
+          isDisabled={props.disabled}
         >
-          {props.name}
+          {props.disabled ? 'Coming Soon' : props.name}
         </Button>
       </VStack>
     </VStack>
