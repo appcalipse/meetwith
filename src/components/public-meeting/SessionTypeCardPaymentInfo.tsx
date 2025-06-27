@@ -42,7 +42,7 @@ const SessionTypeCardPaymentInfo = () => {
                   selectedType?.plan?.no_of_slot
               )}
               /{selectedType?.plan?.no_of_slot} session
-              {selectedType?.plan?.no_of_slot > 1 ? 's' : ''})
+              {selectedType?.plan?.no_of_slot > 1 ? 's' : ''}
             </>
           ) : (
             'Free'
