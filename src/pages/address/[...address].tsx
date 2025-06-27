@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { NextPage } from 'next'
 
-import PublicCalendar from '@/components/public-calendar'
+import PublicPage from '@/components/public-meeting'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { Account } from '@/types/Account'
 import { getAccount } from '@/utils/api_helper'
@@ -15,7 +15,7 @@ interface ScheduleProps {
 }
 
 const Schedule: NextPage<ScheduleProps> = ({ currentUrl, ...rest }) => (
-  <PublicCalendar {...rest} url={currentUrl} />
+  <PublicPage {...rest} url={currentUrl} />
 )
 
 const EnhancedSchedule: NextPage = forceAuthenticationCheck(Schedule)

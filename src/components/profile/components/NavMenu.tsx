@@ -77,7 +77,7 @@ export const NavMenu: React.FC<{
         badge: requestCount,
       },
       {
-        name: 'Meeting Settings',
+        name: 'Session Settings',
         icon: FaCalendarWeek,
         mode: EditMode.MEETING_SETTINGS,
       },
