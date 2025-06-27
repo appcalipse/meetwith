@@ -61,7 +61,7 @@ const PaidMeetingsCard: FC<IProps> = props => {
           Schedule Now
         </Button>
         <Text color="primary.400" fontWeight={500}>
-          {props.session_used}/{props.session_total} Sessions remaining
+          {props.session_used}/{props.plan?.no_of_slot} Sessions remaining
         </Text>
       </HStack>
     </VStack>
