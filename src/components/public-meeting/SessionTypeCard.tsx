@@ -41,7 +41,7 @@ const SessionTypeCard: FC<IProps> = props => {
               props?.plan?.price_per_slot * props?.plan?.no_of_slot
             )}
             /{props?.plan?.no_of_slot} session
-            {props?.plan?.no_of_slot > 1 ? 's' : ''})
+            {props?.plan?.no_of_slot > 1 ? 's' : ''}
           </>
         ) : (
           'Free'
