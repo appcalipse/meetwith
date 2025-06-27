@@ -8,6 +8,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import Link from 'next/link'
 
 import CustomLoading from '@/components/CustomLoading'
 import { useAvailabilityBlockHandlers } from '@/hooks/useAvailabilityBlockHandlers'
@@ -101,13 +102,27 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
             </Heading>
             <Text color="neutral.0" fontSize={{ base: 14, md: 16 }}>
               Define when you&apos;re free to meet. Different{' '}
-              <Text as="span" color="primary.200" textDecoration="underline">
-                groups
-              </Text>{' '}
+              <Link href="/dashboard/groups">
+                <Text
+                  as="span"
+                  color="primary.200"
+                  textDecoration="underline"
+                  cursor="pointer"
+                >
+                  groups
+                </Text>
+              </Link>{' '}
               and{' '}
-              <Text as="span" color="primary.200" textDecoration="underline">
-                session types
-              </Text>{' '}
+              <Link href="/dashboard/meeting-settings">
+                <Text
+                  as="span"
+                  color="primary.200"
+                  textDecoration="underline"
+                  cursor="pointer"
+                >
+                  session types
+                </Text>
+              </Link>{' '}
               can use different availability blocks.
             </Text>
           </Box>

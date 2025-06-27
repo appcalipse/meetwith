@@ -26,6 +26,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
+import { AvailabilityBlock } from '@/types/availability'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -427,39 +428,38 @@ export const getAccountPreferences = async (
 ): Promise<AccountPreferences> => {
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
-      .from<AccountPreferences>('account_preferences')
-      .select()
-      .match({ owner_account_address: owner_account_address.toLowerCase() })
+      .from('account_preferences')
+      .select(
+        `
+        *,
+        default_availability:availabilities!account_preferences_availaibility_id_fkey(
+          id,
+          title,
+          timezone,
+          weekly_availability,
+          created_at,
+          updated_at
+        )
+      `
+      )
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .single()
 
-  if (
-    account_preferences_error ||
-    !account_preferences ||
-    account_preferences.length === 0
-  ) {
+  if (account_preferences_error || !account_preferences) {
     console.error(account_preferences_error)
     throw new Error("Couldn't get account's preferences")
   }
 
-  // fix badly migrated accounts - should be removed at some point in the future
-  if (account_preferences[0].availabilities.length === 0) {
-    const defaultAvailabilities = generateEmptyAvailabilities()
-    const { data: newPreferences, error: newPreferencesError } =
-      await db.supabase
-        .from<AccountPreferences>('account_preferences')
-        .update({
-          availabilities: defaultAvailabilities,
-        })
-        .match({ owner_account_address: owner_account_address.toLowerCase() })
+  // Transform the joined data to match the expected format
+  const { default_availability, ...preferences } = account_preferences
 
-    if (newPreferencesError) {
-      console.error(newPreferences)
-      throw new Error('Error while completing empty preferences')
-    }
-
-    return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
+  if (default_availability) {
+    preferences.availabilities = default_availability.weekly_availability
+  } else {
+    preferences.availabilities = generateEmptyAvailabilities()
   }
 
-  return account_preferences[0]
+  return preferences as AccountPreferences
 }
 
 const getExistingAccountsFromDB = async (

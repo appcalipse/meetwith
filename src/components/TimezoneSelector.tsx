@@ -1,6 +1,7 @@
 import { Select, SingleValue } from 'chakra-react-select'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { getBrowserTimezone } from '@/utils/availability.helper'
 import { timezones } from '@/utils/date_helper'
 
 interface TimezoneProps {
@@ -16,9 +17,24 @@ const TimezoneSelector: React.FC<TimezoneProps> = ({ value, onChange }) => {
     }
   })
 
+  const getBestTimezoneValue = (): string => {
+    if (value) {
+      return value
+    }
+    return getBrowserTimezone()
+  }
+
   const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
-    tzs.filter(tz => tz.value === value)[0]
+    tzs.find(tz => tz.value === getBestTimezoneValue()) || tzs[0]
   )
+
+  useEffect(() => {
+    const bestValue = getBestTimezoneValue()
+    const foundTz = tzs.filter(tz => tz.value === bestValue)[0]
+    if (foundTz) {
+      setTz(foundTz)
+    }
+  }, [value])
 
   const _onChange = (
     timezone: SingleValue<{ label: string; value: string }>

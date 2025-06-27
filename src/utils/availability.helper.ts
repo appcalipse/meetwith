@@ -1,4 +1,5 @@
 import { TimeRange } from '@/types/Account'
+import { Account } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 
 export const getHoursPerWeek = (
@@ -139,6 +140,35 @@ export const initializeEmptyAvailabilities = () => {
   return emptyAvailabilities
 }
 
+export const initializeDefaultAvailabilities = () => {
+  const defaultAvailabilities = []
+  for (let i = 0; i <= 6; i++) {
+    if (i >= 1 && i <= 5) {
+      // Monday to Friday (weekdays 1-5)
+      if (i === 1) {
+        // Monday gets two slots: 9:00-17:00 and 18:00-20:00
+        defaultAvailabilities.push({
+          weekday: i,
+          ranges: [
+            { start: '09:00', end: '17:00' },
+            { start: '18:00', end: '19:00' },
+          ],
+        })
+      } else {
+        // Tuesday to Friday get one slot: 9:00-17:00
+        defaultAvailabilities.push({
+          weekday: i,
+          ranges: [{ start: '09:00', end: '17:00' }],
+        })
+      }
+    } else {
+      // Sunday and Saturday remain empty
+      defaultAvailabilities.push({ weekday: i, ranges: [] })
+    }
+  }
+  return defaultAvailabilities
+}
+
 export const validateAvailabilityBlock = (
   title: string,
   availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
@@ -169,4 +199,91 @@ export const getCurrentEditingBlock = (
   editingBlockId: string | null
 ) => {
   return blocks?.find(block => block.id === editingBlockId)
+}
+
+export const getBrowserTimezone = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone
+  } catch (error) {
+    return 'UTC'
+  }
+}
+
+export const getBestTimezone = (account?: Account): string => {
+  // First try account preference
+  if (account?.preferences?.timezone) {
+    return account.preferences.timezone
+  }
+
+  // Fallback to browser timezone
+  return getBrowserTimezone()
+}
+
+export const getDayName = (weekday: number): string => {
+  const dayNames = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ]
+  return dayNames[weekday]
+}
+
+export const handleCopyToDays = (
+  sourceWeekday: number,
+  ranges: TimeRange[],
+  copyType: 'all' | 'weekdays' | 'weekends',
+  availabilities: Array<{ weekday: number; ranges: TimeRange[] }>,
+  onAvailabilityChange: (weekday: number, ranges: TimeRange[]) => void
+) => {
+  let targetWeekdays: number[] = []
+
+  if (copyType === 'all') {
+    targetWeekdays = availabilities
+      .map(availability => availability.weekday)
+      .filter(weekday => weekday !== sourceWeekday)
+  } else if (copyType === 'weekdays') {
+    targetWeekdays = [1, 2, 3, 4, 5]
+  } else if (copyType === 'weekends') {
+    targetWeekdays = [0, 6]
+  }
+
+  targetWeekdays.forEach(weekday => {
+    onAvailabilityChange(weekday, [...ranges])
+  })
+
+  return {
+    targetWeekdays,
+    copyTypeText:
+      copyType === 'all'
+        ? 'all other days'
+        : copyType === 'weekdays'
+        ? 'weekdays (Mon-Fri)'
+        : 'weekends (Sat-Sun)',
+  }
+}
+
+export const validateTimeFormat = (value: string): boolean => {
+  const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
+  if (!timeRegex.test(value)) return false
+
+  const [hours, minutes] = value.split(':').map(Number)
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
+}
+
+export const sortAvailabilitiesByWeekday = (
+  availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
+) => {
+  return availabilities.sort((a, b) => {
+    const getWeekdayOrder = (weekday: number) => {
+      if (weekday === 0) return 6
+      if (weekday === 6) return 7
+      return weekday
+    }
+
+    return getWeekdayOrder(a.weekday) - getWeekdayOrder(b.weekday)
+  })
 }
