@@ -23,6 +23,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
+import { AvailabilityBlock } from '@/types/availability'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -398,43 +399,38 @@ export const getAccountPreferences = async (
 ): Promise<AccountPreferences> => {
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
-      .from<AccountPreferences>('account_preferences')
-      .select()
-      .match({ owner_account_address: owner_account_address.toLowerCase() })
+      .from('account_preferences')
+      .select(
+        `
+        *,
+        default_availability:availabilities!account_preferences_availaibility_id_fkey(
+          id,
+          title,
+          timezone,
+          weekly_availability,
+          created_at,
+          updated_at
+        )
+      `
+      )
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .single()
 
-  if (
-    account_preferences_error ||
-    !account_preferences ||
-    account_preferences.length === 0
-  ) {
+  if (account_preferences_error || !account_preferences) {
     console.error(account_preferences_error)
     throw new Error("Couldn't get account's preferences")
   }
 
-  const preferences = account_preferences[0]
+  // Transform the joined data to match the expected format
+  const { default_availability, ...preferences } = account_preferences
 
-  // Get the default availability block and transform it to the expected format
-  if (preferences.availaibility_id) {
-    try {
-      const defaultBlock = await getAvailabilityBlock(
-        preferences.availaibility_id,
-        owner_account_address
-      )
-      if (defaultBlock) {
-        preferences.availabilities = defaultBlock.weekly_availability
-      } else {
-        preferences.availabilities = generateEmptyAvailabilities()
-      }
-    } catch (error) {
-      // If there's an error getting the default block, fall back to empty availabilities
-      preferences.availabilities = generateEmptyAvailabilities()
-    }
+  if (default_availability) {
+    preferences.availabilities = default_availability.weekly_availability
   } else {
-    // No default block set, use empty availabilities
     preferences.availabilities = generateEmptyAvailabilities()
   }
 
-  return preferences
+  return preferences as AccountPreferences
 }
 
 const getExistingAccountsFromDB = async (
