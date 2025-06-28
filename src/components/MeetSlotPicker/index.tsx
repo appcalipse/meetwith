@@ -1,4 +1,5 @@
 import {
+  Box,
   Flex,
   Heading,
   HStack,
@@ -6,43 +7,36 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import {
-  chakraComponents,
-  Props,
-  Select,
-  SingleValue,
-} from 'chakra-react-select'
+import { chakraComponents, Props, Select } from 'chakra-react-select'
 import {
   addDays,
   addMinutes,
   areIntervalsOverlapping,
-  differenceInDays,
   eachMinuteOfInterval,
-  isBefore,
-  isFuture,
   isSameDay,
   isSameMonth,
-  isToday,
-  isWithinInterval,
-  startOfDay,
 } from 'date-fns'
-import { zonedTimeToUtc } from 'date-fns-tz'
+import { DateTime } from 'luxon'
 import React, { useEffect, useState } from 'react'
 import { FaChevronDown, FaGlobe } from 'react-icons/fa'
 import { FaArrowLeft } from 'react-icons/fa6'
-import { ActionMeta } from 'react-select/dist/declarations/src/types'
 
 import { AccountPreferences, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { Option } from '@/utils/constants/select'
 import { timezones } from '@/utils/date_helper'
+const tzs = timezones.map(tz => {
+  return {
+    value: String(tz.tzCode),
+    label: tz.name,
+  }
+})
+import { captureException } from '@sentry/nextjs'
 
-import {
-  MeetingProvider,
-  MeetingRepeat,
-  SchedulingType,
-} from '../../types/Meeting'
-import { logEvent } from '../../utils/analytics'
+import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
+import { logEvent } from '@/utils/analytics'
+
 import Loading from '../Loading'
 import { ScheduleForm } from '../schedule/schedule-form'
 import Calendar from './calendar'
@@ -51,7 +45,6 @@ import TimeSlots from './time-slots'
 
 interface MeetSlotPickerProps {
   availabilityInterval?: Interval
-  blockedDates?: Date[]
   checkingSlots: boolean
   isGateValid: boolean
   isSchedulingExternal: boolean
@@ -76,17 +69,19 @@ interface MeetSlotPickerProps {
   ) => Promise<boolean>
   preferences?: AccountPreferences
   reset: boolean
-  selfAvailabilityCheck: (slot: Date) => boolean
   showSelfAvailability: boolean
   slotDurationInMinutes: number
-  timeSlotAvailability: (slot: Date) => boolean
   willStartScheduling: (isScheduling: boolean) => void
   isMobile: boolean
+  timezone: Option<string>
+  setTimezone: (timezone: Option<string>) => void
+  availableSlots: Interval[]
+  selfAvailableSlots: Interval[]
+  busySlots: Interval[]
+  selfBusySlots: Interval[]
 }
 
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
-  availabilityInterval,
-  blockedDates,
   checkingSlots,
   isGateValid,
   isSchedulingExternal,
@@ -97,44 +92,29 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   onSchedule,
   preferences,
   reset,
-  selfAvailabilityCheck,
   showSelfAvailability,
   slotDurationInMinutes,
   selectedType,
-  timeSlotAvailability,
   willStartScheduling,
   isMobile,
+  timezone,
+  setTimezone,
+  availableSlots,
+  selfAvailableSlots,
+  busySlots,
+  selfBusySlots,
 }) => {
-  const tzs = timezones.map(tz => {
-    return {
-      value: String(tz.tzCode),
-      label: tz.name,
-    }
-  })
-  const [timezone, setTimezone] = useState<string | null>(
-    preferences?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
-  )
-  const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
-    tzs.filter(
-      val => val.value === Intl.DateTimeFormat().resolvedOptions().timeZone
-    )[0] || tzs[0]
-  )
-
-  const _onChange = (newValue: unknown, actionMeta: ActionMeta<unknown>) => {
+  const _onChange = (newValue: unknown) => {
     if (Array.isArray(newValue)) {
       return
     }
-    const timezone = newValue as SingleValue<{ label: string; value: string }>
-    setTz(timezone)
-    setTimezone(
-      timezone?.value || Intl.DateTimeFormat().resolvedOptions().timeZone
-    )
+    const timezone = newValue as Option<string>
+    setTimezone(timezone)
   }
 
   const [pickedDay, setPickedDay] = useState<Date | null>(null)
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [disablePrev, setDisablePrev] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
 
   useEffect(() => {
@@ -142,20 +122,8 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       setPickedDay(null)
       setPickedTime(null)
       setShowConfirm(false)
-      setDisablePrev(false)
     }
   }, [reset])
-
-  useEffect(() => {
-    if (
-      pickedDay &&
-      differenceInDays(pickedDay, startOfDay(new Date())) === 0
-    ) {
-      setDisablePrev(true)
-    } else {
-      setDisablePrev(false)
-    }
-  }, [pickedDay])
 
   const handlePickDay = (day: Date) => {
     if (pickedDay !== day) {
@@ -199,110 +167,69 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
     }
   }
 
-  function onPreviousDay() {
-    let nextDay: Date | undefined = undefined
-    let possibleDay = findNextDay(pickedDay!, -1)
-    let i = 1
-    while (!nextDay) {
-      if (
-        blockedIntervals?.some(
-          blockedInterval =>
-            isWithinInterval(possibleDay.start, blockedInterval) &&
-            isWithinInterval(possibleDay.end, blockedInterval)
-        )
-      ) {
-        i++
-        possibleDay = findNextDay(pickedDay!, -i)
-      } else {
-        nextDay = new Date(possibleDay.start)
-      }
-    }
-
-    if (isBefore(nextDay, startOfDay(new Date()))) return
-
-    handlePickDay(nextDay)
-  }
-
-  function onNextDay() {
-    setDisablePrev(false)
-    let nextDay: Date | undefined = undefined
-    let possibleDay = findNextDay(pickedDay!, 1)
-    let i = 1
-    while (!nextDay) {
-      if (
-        blockedIntervals?.some(
-          blockedInterval =>
-            isWithinInterval(possibleDay.start, blockedInterval) &&
-            isWithinInterval(possibleDay.end, blockedInterval)
-        )
-      ) {
-        i++
-        possibleDay = findNextDay(pickedDay!, i)
-      } else {
-        nextDay = new Date(possibleDay.start)
-      }
-    }
-
-    handlePickDay(nextDay)
-  }
-
   const color = useColorModeValue('primary.500', 'white')
 
-  const timeZone =
-    preferences?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  const isFutureInTimezone = (date: Date, timezoneValue: string) => {
+    const dateInTimezone = DateTime.fromObject(
+      {
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        day: date.getDate(),
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      },
+      { zone: timezoneValue }
+    )
 
-  const blockedIntervals =
-    blockedDates
-      ?.sort((a, b) => a.getTime() - b.getTime())
-      ?.reduce(
-        (
-          acc: {
-            start: Date
-            end: Date
-          }[],
-          date,
-          index,
-          array
-        ) => {
-          if (acc.length === 0) {
-            return [
-              {
-                start: zonedTimeToUtc(date.setHours(0, 0, 0, 0), timeZone),
-                end: zonedTimeToUtc(date.setHours(23, 59, 59, 59), timeZone),
-              },
-            ]
-          } else {
-            if (isSameDay(date, addDays(array[index - 1], 1))) {
-              return [
-                ...acc.slice(0, -1),
-                {
-                  start: acc[acc.length - 1].start,
-                  end: zonedTimeToUtc(date.setHours(23, 59, 59, 59), timeZone),
-                },
-              ]
-            } else {
-              return [
-                ...acc,
-                {
-                  start: zonedTimeToUtc(date.setHours(0, 0, 0, 0), timeZone),
-                  end: zonedTimeToUtc(date.setHours(23, 59, 59, 59), timeZone),
-                },
-              ]
-            }
-          }
+    const nowInTimezone = DateTime.now().setZone(timezoneValue).startOf('day')
+
+    return dateInTimezone > nowInTimezone
+  }
+
+  const isTodayInTimezone = (date: Date, timezoneValue: string) => {
+    const dateInTimezone = DateTime.fromObject(
+      {
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        day: date.getDate(),
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      },
+      { zone: timezoneValue }
+    )
+
+    const nowInTimezone = DateTime.now().setZone(timezoneValue)
+
+    return (
+      dateInTimezone.year === nowInTimezone.year &&
+      dateInTimezone.month === nowInTimezone.month &&
+      dateInTimezone.day === nowInTimezone.day
+    )
+  }
+  const validator = (date: Date) => {
+    if (!slotDurationInMinutes) return
+    try {
+      const dayInTimezone = DateTime.fromObject(
+        {
+          year: date.getFullYear(),
+          month: date.getMonth() + 1, // JS months are 0-indexed
+          day: date.getDate(),
+          hour: 0,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
         },
-        []
-      ) ?? []
-
-  let validator: (date: Date) => boolean
-  if (availabilityInterval) {
-    validator = (date: Date) => {
-      const startLocalDate = new Date(date)
-      startLocalDate.setHours(0, 0, 0, 0)
-
-      const endLocalDate = new Date(date)
-      endLocalDate.setHours(23, 59, 59, 59)
-
+        {
+          zone:
+            timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }
+      )
+      const startLocalDate = dayInTimezone.startOf('day').toJSDate()
+      const endLocalDate = dayInTimezone.endOf('day').toJSDate()
       const slots = eachMinuteOfInterval(
         { start: startLocalDate, end: endLocalDate },
         { step: slotDurationInMinutes }
@@ -310,16 +237,13 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
         start: s,
         end: addMinutes(s, slotDurationInMinutes),
       }))
-
-      const intervals = blockedIntervals?.filter(interval =>
-        slots.some(slot => areIntervalsOverlapping(slot, interval))
+      const intervals = availableSlots.filter(
+        slot => isSameMonth(slot.start, date) && isSameDay(slot.start, date)
       )
 
       return (
-        (isFuture(date) || isToday(date)) &&
-        (isWithinInterval(date, availabilityInterval) ||
-          isSameDay(date, availabilityInterval.start) ||
-          isSameDay(date, availabilityInterval.end)) &&
+        (isFutureInTimezone(date, timezone.value) ||
+          isTodayInTimezone(date, timezone.value)) &&
         (intervals?.length === 0 ||
           slots.some(
             slot =>
@@ -328,37 +252,15 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
               )
           ))
       )
-    }
-  } else {
-    validator = (date: Date) => {
-      const startLocalDate = new Date(date)
-      startLocalDate.setHours(0, 0, 0, 0)
-
-      const endLocalDate = new Date(date)
-      endLocalDate.setHours(23, 59, 59, 59)
-
-      const slots = eachMinuteOfInterval(
-        { start: startLocalDate, end: endLocalDate },
-        { step: slotDurationInMinutes }
-      ).map(s => ({
-        start: s,
-        end: addMinutes(s, slotDurationInMinutes),
-      }))
-
-      const intervals = blockedIntervals?.filter(interval =>
-        slots.some(slot => areIntervalsOverlapping(slot, interval))
-      )
-
-      return (
-        (isFuture(date) || isToday(date)) &&
-        (intervals?.length === 0 ||
-          slots.some(
-            slot =>
-              !intervals.some(interval =>
-                areIntervalsOverlapping(slot, interval)
-              )
-          ))
-      )
+    } catch (error) {
+      captureException(error, {
+        extra: {
+          date,
+          timezone: timezone.value,
+          slotDurationInMinutes,
+        },
+      })
+      return false
     }
   }
   const customComponents: Props['components'] = {
@@ -384,10 +286,15 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
         width="100%"
         justifyContent="space-between"
         alignItems="flex-start"
-        gap={120}
+        gap={16}
         flexWrap="wrap"
+        display={showConfirm ? 'none' : 'flex'}
       >
-        {!showConfirm && (!isMobile || !pickedDay) && (
+        <Box
+          flex={1.5}
+          minW="300px"
+          display={{ base: !pickedDay ? 'block' : 'none', md: 'block' }}
+        >
           <Calendar
             loading={checkingSlots}
             validator={validator}
@@ -396,8 +303,9 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             pickedDay={pickedDay || new Date()}
             selectedMonth={selectedMonth}
             setSelectedMonth={setSelectedMonth}
+            timezone={timezone.value}
           />
-        )}
+        </Box>
         {/* isSmallerThan800 isSmallerThan800
         /* true and true == true
         /* true and false == false
@@ -406,50 +314,50 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
 
 
         */}
-        {!showConfirm && (!isMobile || pickedDay) && (
-          <VStack flex={1} alignItems={{ md: 'flex-start', base: 'center' }}>
-            <VStack
-              alignItems={{ md: 'flex-start', base: 'center' }}
-              width={'100%'}
-            >
-              <HStack mb={0}>
-                {isMobile && !!pickedDay && (
-                  <Icon
-                    as={FaArrowLeft}
-                    onClick={handleClosePickDay}
-                    size="1.5em"
-                    color={color}
-                    cursor="pointer"
-                  />
-                )}
-                <Heading size="md">Select Time</Heading>
-              </HStack>
-              <Select
-                value={tz}
-                onChange={_onChange}
-                colorScheme="primary"
-                className="hideBorder"
-                options={tzs}
-                components={customComponents}
+        <VStack
+          alignItems={{ md: 'flex-start', base: 'center' }}
+          display={{ base: pickedDay ? 'flex' : 'none', md: 'flex' }}
+          w={{ base: '100%', md: 'auto' }}
+        >
+          <VStack alignItems={'flex-start'} w="100%">
+            <HStack mb={0}>
+              <Icon
+                as={FaArrowLeft}
+                onClick={() => setPickedDay(null)}
+                size="1.5em"
+                color={color}
+                cursor="pointer"
+                display={{ base: 'block', md: 'none' }}
               />
-            </VStack>
-            {checkingSlots ? (
-              <Flex m={8} justifyContent="center">
-                <Loading label="Checking availability" />
-              </Flex>
-            ) : (
-              <TimeSlots
-                pickedDay={pickedDay || new Date()}
-                slotSizeMinutes={slotDurationInMinutes}
-                validator={timeSlotAvailability}
-                selfAvailabilityCheck={selfAvailabilityCheck}
-                pickTime={handlePickTime}
-                showSelfAvailability={showSelfAvailability}
-              />
-            )}
+              <Heading size="md">Select Time</Heading>
+            </HStack>
+            <Select
+              value={timezone}
+              onChange={_onChange}
+              colorScheme="primary"
+              className="hideBorder"
+              options={tzs}
+              components={customComponents}
+            />
           </VStack>
-        )}
-
+          {checkingSlots ? (
+            <Flex m={8} justifyContent="center">
+              <Loading label="Checking availability" />
+            </Flex>
+          ) : (
+            <TimeSlots
+              pickedDay={pickedDay || new Date()}
+              slotSizeMinutes={slotDurationInMinutes}
+              availableSlots={availableSlots}
+              selfAvailableSlots={selfAvailableSlots}
+              busySlots={busySlots}
+              selfBusySlots={selfBusySlots}
+              pickTime={handlePickTime}
+              showSelfAvailability={showSelfAvailability}
+              timezone={timezone.value}
+            />
+          )}
+        </VStack>
         {showConfirm && (
           <Popup>
             <PopupHeader>
