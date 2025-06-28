@@ -39,6 +39,7 @@ import {
 } from '@/types/ParticipantInfo'
 import {
   MeetingCreationRequest,
+  MeetingUpdateRequest,
   RequestParticipantMapping,
 } from '@/types/Requests'
 import {
@@ -52,6 +53,7 @@ import {
   scheduleMeetingAsGuest,
   scheduleMeetingFromServer,
   syncMeeting,
+  updateGuestMeeting as apiUpdateGuestMeeting,
   updateMeeting as apiUpdateMeeting,
 } from '@/utils/api_helper'
 
@@ -961,6 +963,76 @@ const scheduleMeeting = async (
     throw error
   }
 }
+
+const updateGuestMeeting = async (
+  slotId: string,
+  startTime: Date,
+  endTime: Date,
+  participants: ParticipantInfo[],
+  meetingProvider: MeetingProvider,
+  meetingContent?: string,
+  meetingUrl?: string,
+  meetingTitle?: string,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT,
+  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
+): Promise<MeetingDecrypted> => {
+  // Get the existing meeting to validate and get the meeting ID
+  const existingSlot = await getMeeting(slotId)
+
+  // Get the owner account to decrypt the meeting
+  const ownerAccount = await getAccount(existingSlot.account_address)
+
+  // For guest updates, we'll use the existing meeting ID from the slot
+  // We need to decrypt the existing meeting to get the meeting ID
+  const existingMeeting = await decryptMeeting(existingSlot, ownerAccount)
+  if (!existingMeeting) {
+    throw new MeetingChangeConflictError()
+  }
+
+  // Build the meeting data for the update
+  const meeting = await buildMeetingData(
+    SchedulingType.GUEST,
+    'no_type',
+    startTime,
+    endTime,
+    participants,
+    [ownerAccount],
+    { [ownerAccount.address]: existingSlot.id! }, // Keep the existing slot ID
+    meetingProvider,
+    ownerAccount,
+    meetingContent,
+    meetingUrl,
+    existingMeeting.meeting_id, // Use the existing meeting ID
+    meetingTitle,
+    meetingReminders,
+    meetingRepeat,
+    selectedPermissions
+  )
+
+  // Add the version for optimistic locking
+  const updateRequest: MeetingUpdateRequest = {
+    ...meeting,
+    slotsToRemove: [],
+    guestsToRemove: [],
+    version: existingSlot.version + 1,
+  }
+
+  try {
+    const updatedSlot = await apiUpdateGuestMeeting(slotId, updateRequest)
+
+    // Decrypt and return the updated meeting
+    const decryptedMeeting = await decryptMeeting(updatedSlot, ownerAccount)
+    if (!decryptedMeeting) {
+      throw new MeetingCreationError()
+    }
+
+    return decryptedMeeting
+  } catch (error: any) {
+    throw error
+  }
+}
+
 const createAlarm = (indicator: MeetingReminders): Alarm => {
   switch (indicator) {
     case MeetingReminders['15_MINUTES_BEFORE']:
@@ -1437,5 +1509,6 @@ export {
   outLookUrlParsedDate,
   scheduleMeeting,
   selectDefaultProvider,
+  updateGuestMeeting,
   updateMeeting,
 }
