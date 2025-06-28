@@ -34,6 +34,7 @@ import { z } from 'zod'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
+import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AcceptedToken, ChainInfo, supportedChains } from '@/types/chains'
 import { formatCurrency, parseUnits } from '@/utils/generic_utils'
 import {
@@ -71,6 +72,8 @@ const ConfirmPaymentInfo = () => {
   >(errorReducerSingle, {})
   const [name, setName] = React.useState('')
   const [email, setEmail] = React.useState('')
+  const { openConnection } = useContext(OnboardingModalContext)
+
   const [progress, setProgress] = React.useState(0)
   const chain = supportedChains.find(
     val => val.chain === selectedChain
@@ -239,6 +242,15 @@ const ConfirmPaymentInfo = () => {
           await createCryptoTransaction(payload)
           setProgress(100)
           handleNavigateToBook(transactionHash)
+        } else if (!signingAccount) {
+          openConnection(undefined, false)
+          toast({
+            title: 'Wallet Not Connected',
+            description: 'Please connect your wallet to proceed.',
+            status: 'error',
+            duration: 5000,
+          })
+          return
         }
       } else {
       }
