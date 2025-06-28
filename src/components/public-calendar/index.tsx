@@ -76,6 +76,7 @@ import {
   dateToHumanReadable,
   getAccountDomainUrl,
   scheduleMeeting,
+  updateGuestMeeting,
 } from '@/utils/calendar_manager'
 import {
   CantInviteYourself,
@@ -307,8 +308,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = account?.preferences?.availableTypes
-        ?.filter(type => !type.deleted_at)
-        ?.find(t => t.slug === typeOnRoute)
+        .filter(type => !type.deleted_at)
+        .find(t => t.slug === typeOnRoute)
       setPrivateType(type?.type === SessionType.FREE)
     }
   }, [])
@@ -331,7 +332,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       updateSlots()
       setRescheduleSlotId(router.query.slot as string | undefined)
     }
-  }, [account, router.query.address])
+  }, [account, router.query.address, router.query.slot])
 
   useEffect(() => {
     getSlotInfo()
@@ -486,22 +487,42 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     })
 
     try {
-      const meeting = await scheduleMeeting(
-        false,
-        scheduleType,
-        'no_type',
-        start,
-        end,
-        participants,
-        meetingProvider || MeetingProvider.HUDDLE,
-        currentAccount,
-        content,
-        meetingUrl,
-        emailToSendReminders,
-        title,
-        meetingReminders,
-        meetingRepeat
-      )
+      let meeting: MeetingDecrypted
+
+      if (rescheduleSlotId) {
+        // This is a reschedule operation for a guest
+        meeting = await updateGuestMeeting(
+          rescheduleSlotId,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          content,
+          meetingUrl,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      } else {
+        // This is a new meeting creation
+        meeting = await scheduleMeeting(
+          false,
+          scheduleType,
+          'no_type',
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          emailToSendReminders,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      }
+
       await updateSlots()
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
@@ -999,6 +1020,21 @@ const RescheduleInfoBox: React.FC<{
   loading: boolean
   slot?: DBSlot
 }> = ({ loading, slot }) => {
+  const router = useRouter()
+
+  const handleCancel = () => {
+    // Remove the slot parameter from the URL to go back to regular calendar view
+    const { slot, ...queryParams } = router.query
+    router.push(
+      {
+        pathname: router.pathname,
+        query: queryParams,
+      },
+      undefined,
+      { shallow: true }
+    )
+  }
+
   return (
     <Flex p={4} mt={4}>
       {loading ? (
@@ -1019,7 +1055,7 @@ const RescheduleInfoBox: React.FC<{
 
           <Text mt={2}>
             Select another time for the meeting, or{' '}
-            <Button variant="link" colorScheme="primary">
+            <Button variant="link" colorScheme="primary" onClick={handleCancel}>
               cancel
             </Button>{' '}
             it

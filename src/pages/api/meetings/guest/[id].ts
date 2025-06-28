@@ -2,8 +2,19 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { GuestMeetingCancel } from '@/types/Meeting'
-import { getConferenceDataBySlotId, handleGuestCancel } from '@/utils/database'
-import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
+import { MeetingUpdateRequest } from '@/types/Requests'
+import {
+  getConferenceDataBySlotId,
+  handleGuestCancel,
+  updateGuestMeeting,
+} from '@/utils/database'
+import {
+  MeetingChangeConflictError,
+  MeetingCreationError,
+  MeetingNotFoundError,
+  TimeNotAvailableError,
+  UnauthorizedError,
+} from '@/utils/errors'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -26,6 +37,43 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     } catch (err) {
       Sentry.captureException(err)
       return res.status(404).send('Not found')
+    }
+  } else if (req.method === 'PATCH') {
+    const slotId = req.query.id as string
+    if (!slotId) {
+      return res.status(400).send('Required parameter not provided')
+    }
+
+    const meeting: MeetingUpdateRequest = req.body as MeetingUpdateRequest
+    const guest = meeting.participants_mapping.filter(
+      p => p.guest_email && p.type === 'scheduler'
+    )[0]
+
+    if (!guest || !guest.guest_email) {
+      return res.status(500).send('No guest scheduler found')
+    }
+
+    try {
+      const meetingResult = await updateGuestMeeting(
+        {
+          name: guest.name,
+          guest_email: guest.guest_email,
+        },
+        meeting,
+        slotId
+      )
+      return res.status(200).json(meetingResult)
+    } catch (e) {
+      if (e instanceof TimeNotAvailableError) {
+        return res.status(409).send(e)
+      } else if (e instanceof MeetingCreationError) {
+        return res.status(412).send(e)
+      } else if (e instanceof MeetingChangeConflictError) {
+        return res.status(417).send(e)
+      } else {
+        Sentry.captureException(e)
+        return res.status(500).send(e)
+      }
     }
   } else if (req.method === 'DELETE') {
     const { metadata, currentTimezone, reason } = req.body as GuestMeetingCancel
