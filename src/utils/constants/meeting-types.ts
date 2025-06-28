@@ -86,9 +86,11 @@ export const PaymentChannelOptions = (address: string) => [
 const devChains = [
   SupportedChain.SEPOLIA,
   SupportedChain.ARBITRUM_SEPOLIA,
-  SupportedChain.CELO_ALFAJORES,
+  // SupportedChain.CELO_ALFAJORES,
 ]
-const prodChains = [SupportedChain.ARBITRUM, SupportedChain.CELO]
+const prodChains = [
+  SupportedChain.ARBITRUM, //SupportedChain.CELO
+]
 export const supportedPaymentChains = isProduction ? prodChains : devChains
 
 export const CryptoNetworkForCardSettlementOptions = supportedChains
