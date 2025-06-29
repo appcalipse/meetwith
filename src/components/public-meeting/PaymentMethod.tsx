@@ -39,7 +39,11 @@ const PaymentMethod: FC<IProps> = props => {
       borderColor={'neutral.400'}
       w={'50%'}
     >
-      <props.icon width={'auto'} h={'auto'} />
+      <props.icon
+        width={'auto'}
+        h={props.type === PaymentType.CRYPTO ? 16 : 12}
+        mx="auto"
+      />
       <VStack gap={4} w={'100%'} alignItems={'flex-start'}>
         {props.tag && (
           <Tag fontSize="sm" bg="#2D3748">
