@@ -13,6 +13,7 @@
     "prepare": "husky install",
     "postinstall": "patch-package",
     "postbuild": "next-sitemap",
+    "test:local": "NODE_ENV=test jest",
     "test": "NODE_ENV=test doppler run --config tests jest",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch"
@@ -81,6 +82,7 @@
     "ipfs": "^0.59.1",
     "ipfs-http-client": "^54.0.2",
     "iron-session": "^6.3.1",
+    "lodash.debounce": "^4.0.8",
     "luxon": "^3.5.0",
     "next": "^13.4.3",
     "nodemailer": "^6.7.2",
@@ -98,13 +100,13 @@
     "react-timezone-select": "^3.2.8",
     "react-virtualized": "^9.22.3",
     "reflect-metadata": "^0.1.13",
-    "resend": "^4.1.1",
+    "resend": "^4.5.1",
     "sanitize-html": "^2.11.0",
     "slugify": "^1.6.5",
     "spacetime": "^7.7.0",
     "styled-components": "^4.2.0",
     "swiper": "^8.4.5",
-    "thirdweb": "^5.90.0",
+    "thirdweb": "^5.103.0",
     "timezone-soft": "^1.5.2",
     "timezones-list": "^3.0.1",
     "tsdav": "^2.0.2",
@@ -131,6 +133,7 @@
     "@types/ical": "^0.8.0",
     "@types/jest": "^28",
     "@types/jest-when": "^3.5.0",
+    "@types/lodash.debounce": "^4.0.9",
     "@types/luxon": "^3.4.2",
     "@types/node": "16.11.7",
     "@types/nodemailer": "^6.4.4",
@@ -172,9 +175,6 @@
   },
   "_moduleAliases": {
     "@": "src"
-  },
-  "engines": {
-    "node": "18"
   },
   "packageManager": "yarn@1.22.21"
 }

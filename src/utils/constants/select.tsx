@@ -1,5 +1,10 @@
 import { Icon } from '@chakra-ui/react'
-import { chakraComponents, Props } from 'chakra-react-select'
+import {
+  chakraComponents,
+  ChakraStylesConfig,
+  GroupBase,
+  Props,
+} from 'chakra-react-select'
 import { FaChevronDown } from 'react-icons/fa'
 export const customSelectComponents: Props['components'] = {
   ClearIndicator: props => (
@@ -14,11 +19,11 @@ export const customSelectComponents: Props['components'] = {
   ),
 }
 
-export const MeetingRemindersComponent: Props['components'] = {
+export const noClearCustomSelectComponent: Props['components'] = {
   ClearIndicator: () => null,
   DropdownIndicator: props => (
     <chakraComponents.DropdownIndicator className="noBg" {...props}>
-      <Icon as={FaChevronDown} />
+      <Icon as={FaChevronDown} w={4} h={4} />
     </chakraComponents.DropdownIndicator>
   ),
 }
@@ -26,4 +31,29 @@ export const MeetingRemindersComponent: Props['components'] = {
 export type Option<T, J = string> = {
   value: T // The actual value of the option
   label: J // The displayed label of the option
+}
+
+export const fullWidthStyle:
+  | ChakraStylesConfig<unknown, boolean, GroupBase<unknown>>
+  | undefined = {
+  container: provided => ({
+    ...provided,
+    borderColor: 'inherit',
+    borderRadius: 'md',
+    maxW: '100%',
+    display: 'block',
+    width: '100% !important',
+  }),
+  placeholder: provided => ({
+    ...provided,
+    textAlign: 'left',
+  }),
+  input: provided => ({
+    ...provided,
+    textAlign: 'left',
+  }),
+  control: provided => ({
+    ...provided,
+    textAlign: 'left',
+  }),
 }

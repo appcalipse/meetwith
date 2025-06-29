@@ -9,7 +9,7 @@ const credentials = {
   client_secret: process.env.GOOGLE_CLIENT_SECRET,
 }
 
-const scopes = [
+export const googleScopes = [
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/calendar.events.freebusy',
   'https://www.googleapis.com/auth/calendar.freebusy',
@@ -32,7 +32,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const authUrl = oAuth2Client.generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent',
-      scope: scopes,
+      scope: googleScopes,
       state: typeof state === 'string' ? state : undefined,
     })
 

@@ -1,6 +1,14 @@
+import {
+  PaymentChannel,
+  PlanType,
+  SessionType,
+} from '@utils/constants/meeting-types'
+
+import { ConnectedCalendarCore } from './CalendarConnections'
 import { DiscordAccount } from './Discord'
 import { MeetingProvider } from './Meeting'
 import { Subscription } from './Subscription'
+import { Address } from './Transactions'
 
 export interface AuthToken {
   access_token: string
@@ -25,23 +33,62 @@ export interface Account {
   isCalendarConnected?: boolean
 }
 
+export interface PublicAccount extends Account {
+  meetingTypes?: MeetingType[]
+}
+
 export interface SimpleAccountInfo {
   address: string
   internal_pub_key: string
 }
 
-export interface MeetingType {
-  id: string
+export interface BaseMeetingType {
   title: string
-  url: string
-  duration: number
+  account_owner_address: string
+  type: SessionType
   description?: string
-  minAdvanceTime: number
+  slug?: string
+  duration_minutes: number
+  min_notice_minutes: number
+  fixed_link?: boolean
+  custom_link?: string
+  updated_at?: string | Date
+}
+export interface MeetingType extends BaseMeetingType {
+  id: string
   scheduleGate?: string
-  customLink?: string
-  fixedLink?: boolean
-  deleted?: boolean
-  private?: boolean
+  availabilities: Array<Availability>
+  plan?: MeetingTypePlan
+  calendars?: Array<
+    Omit<
+      ConnectedCalendarCore,
+      'calendars' | 'expectedPermissions' | 'grantedPermissions'
+    >
+  >
+  created_at: Date
+  deleted_at: Date
+}
+
+interface Availability {
+  id: string
+  account_owner_address: string
+  timezone: string
+  title: string
+  created_at: Date
+  updated_at: Date
+  weekly_availability: DayAvailability[]
+}
+export interface MeetingTypePlan {
+  id: string
+  meeting_type_id: string
+  type: PlanType
+  price_per_slot: number
+  no_of_slot: number
+  default_chain_id: number
+  payment_channel: PaymentChannel
+  payment_address: string
+  created_at: Date
+  updated_at: Date
 }
 
 export interface DayAvailability {
@@ -60,6 +107,7 @@ export interface AccountPreferences {
   availableTypes: MeetingType[]
   description?: string
   availabilities: DayAvailability[]
+  availaibility_id?: string
   socialLinks?: SocialLink[]
   name?: string
   avatar?: string
@@ -87,4 +135,10 @@ export interface TgConnectedAccounts extends BaseConnectedAccounts {
 
 export interface DiscordConnectedAccounts extends BaseConnectedAccounts {
   discord_id: string
+}
+
+export interface PaidMeetingTypes extends MeetingType {
+  session_used: number
+  session_total: number
+  transaction_hash: Address
 }

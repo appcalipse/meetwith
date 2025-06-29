@@ -1,409 +1,212 @@
 import { AddIcon } from '@chakra-ui/icons'
-import { Link } from '@chakra-ui/next-js'
 import {
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogOverlay,
   Box,
   Button,
-  Flex,
   Heading,
   HStack,
-  Icon,
-  IconButton,
-  SimpleGrid,
   Spacer,
   Text,
   useColorModeValue,
-  useToast,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { useContext, useRef, useState } from 'react'
-import { FaArrowLeft, FaClock, FaTrash } from 'react-icons/fa'
+import Loading from '@components/Loading'
+import DeleteMeetingTypeConfirmation from '@components/meeting-settings/DeleteMeetingTypeConfirmation'
+import MeetingTypeCard from '@components/meeting-settings/MeetingTypeCard'
+import { Account, MeetingType } from '@meta/Account'
+import { useQuery } from '@tanstack/react-query'
+import { getAccountCalendarUrl } from '@utils/calendar_manager'
+import React, { ReactNode, useEffect, useState } from 'react'
+import { v4 as uuidv4 } from 'uuid'
 
-import { removeMeetingType } from '@/utils/api_helper'
-import { ApiFetchError } from '@/utils/errors'
-
-import { AccountContext } from '../../providers/AccountProvider'
-import { Account } from '../../types/Account'
-import { logEvent } from '../../utils/analytics'
+import { AvailabilityBlock } from '@/types/availability'
+import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import {
-  durationToHumanReadable,
-  getAccountCalendarUrl,
-} from '../../utils/calendar_manager'
-import { isProAccount } from '../../utils/subscription_manager'
-import { CopyLinkButton } from './components/CopyLinkButton'
-import MeetingTypeConfig from './components/MeetingTypeConfig'
-import NewMeetingTypeDialog from './NewMeetingTypeDialog'
+  getAvailabilityBlocks,
+  getMeetingTypes,
+  listConnectedCalendars,
+} from '@/utils/api_helper'
+import { getDefaultValues } from '@/utils/constants/meeting-types'
 
+import MeetingTypeModal from '../meeting-settings/MeetingTypeModal'
 const MeetingTypesConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
-  const { login } = useContext(AccountContext)
   const bgColor = useColorModeValue('white', 'neutral.900')
-  const [selectedType, setSelectedType] = useState<string>('')
-  const [typeToRemove, setTypeToRemove] = useState<string | undefined>(
-    undefined
-  )
+  const [selectedType, setSelectedType] = useState<MeetingType | null>(null)
+  const [createKey, setCreateKey] = useState<string>(uuidv4())
 
-  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false)
-  const cancelDialogRef = useRef<any>()
+  const {
+    isOpen: isModalOpen,
+    onOpen: openModal,
+    onClose: closeModal,
+  } = useDisclosure()
 
-  const createType = async () => {
-    logEvent('Clicked to create new meeting type')
-    setIsDialogOpen(true)
+  const {
+    isOpen: isDeleteConfirmationModalOpen,
+    onOpen: openDeleteConfirmationModal,
+    onClose: closeDeleteConfirmationModal,
+  } = useDisclosure()
+
+  const { data: connectedCalendar, isLoading: isQueryLoading } = useQuery<
+    ConnectedCalendarCore[]
+  >({
+    queryKey: ['connectedCalendars', currentAccount?.address],
+    queryFn: () => listConnectedCalendars(),
+    enabled: !!currentAccount?.id,
+  })
+  const { data: availabilityBlocks, isLoading: isAvailabilityLoading } =
+    useQuery<AvailabilityBlock[]>({
+      queryKey: ['availabilityBlocks', currentAccount?.address],
+      queryFn: () => getAvailabilityBlocks(),
+      enabled: !!currentAccount?.id,
+    })
+
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [meetingTypes, setMeetingTypes] = useState<MeetingType[]>([])
+
+  const [noMoreFetch, setNoMoreFetch] = useState(false)
+  const [firstFetch, setFirstFetch] = useState(true)
+  const fetchMeetingTypes = async (reset?: boolean, limit = 10) => {
+    const PAGE_SIZE = limit
+    setIsLoading(true)
+    const netMeetingTypes = await getMeetingTypes(
+      PAGE_SIZE,
+      reset ? 0 : meetingTypes.length
+    )
+
+    if (netMeetingTypes.length < PAGE_SIZE) {
+      setNoMoreFetch(true)
+    }
+    setMeetingTypes((reset ? [] : [...meetingTypes]).concat(netMeetingTypes))
+    setIsLoading(false)
+    setFirstFetch(false)
   }
+  useEffect(() => {
+    fetchMeetingTypes(true, 10)
+  }, [currentAccount?.address])
 
-  const removeType = async (typeId: string) => {
-    setTypeToRemove(typeId)
+  let content: ReactNode
+  const refetch = async () => {
+    await fetchMeetingTypes(true, meetingTypes.length + 1)
+    setCreateKey(uuidv4())
+    setSelectedType(null)
   }
-
-  const typeRemoved = async (account: Account) => {
-    login(account)
+  if (firstFetch) {
+    content = (
+      <Box mx="auto">
+        <Loading />
+      </Box>
+    )
+  } else if (meetingTypes.length === 0) {
+    content = (
+      <Text textAlign="center" w="100%" mx="auto" py={4}>
+        No meeting types found
+      </Text>
+    )
+  } else {
+    content = (
+      <VStack w={'100%'}>
+        <Box
+          justifyContent="space-between"
+          flexWrap="wrap"
+          width="100%"
+          display="flex"
+          flexDirection="row"
+          mt={{ md: 6 }}
+          rowGap={'1vw'}
+        >
+          {meetingTypes.map(type => {
+            const url = `${getAccountCalendarUrl(currentAccount, false)}/${
+              type.slug
+            }`
+            return (
+              <MeetingTypeCard
+                {...type}
+                key={type.id}
+                onSelect={(type: MeetingType) => {
+                  setSelectedType(type)
+                  openModal()
+                }}
+                url={url}
+              />
+            )
+          })}
+        </Box>
+        {!noMoreFetch && !firstFetch && (
+          <VStack mb={8}>
+            <Button
+              isLoading={isLoading}
+              colorScheme="primary"
+              variant="outline"
+              alignSelf="center"
+              my={4}
+              onClick={() => fetchMeetingTypes()}
+            >
+              Load more
+            </Button>
+            <Spacer />
+          </VStack>
+        )}
+      </VStack>
+    )
   }
-
-  const onCloseRemoveDialog = () => {
-    setTypeToRemove(undefined)
-  }
-
-  const isPro = isProAccount(currentAccount!)
-
   return (
     <Box width="100%" bg={bgColor} p={8} borderRadius={12}>
-      {selectedType ? (
-        <TypeConfig
-          typeId={selectedType}
-          account={currentAccount!}
-          goBack={() => setSelectedType('')}
-        />
-      ) : (
-        <VStack width="100%" maxW="100%" alignItems={'flex-start'}>
-          <VStack alignItems="flex-start" width="100%" maxW="100%" gap={2}>
-            <HStack
-              width="100%"
-              alignItems="flex-start"
-              justifyContent="space-between"
-            >
-              <Heading fontSize="2xl">Meeting Types</Heading>
-              <Button
-                isDisabled={!isPro}
-                colorScheme="primary"
-                onClick={createType}
-                leftIcon={<AddIcon width={15} height={15} />}
-              >
-                New Meeting Type
-              </Button>
-            </HStack>
-            <HStack
-              width="100%"
-              alignItems="flex-start"
-              justifyContent="space-between"
-            >
-              <Text color="neutral.400">Here are your meeting types</Text>
-              {!isPro && (
-                <Text pb="6">
-                  <Link
-                    href="/dashboard/details#subscriptions"
-                    colorScheme="primary"
-                    fontWeight="bold"
-                  >
-                    Go PRO
-                  </Link>{' '}
-                  to add as many meeting types as you want
-                </Text>
-              )}
-            </HStack>
-          </VStack>
-          <Box
-            justifyContent="space-between"
-            flexWrap="wrap"
+      <MeetingTypeModal
+        key={selectedType?.id || createKey}
+        isOpen={isModalOpen}
+        onClose={() => {
+          closeModal()
+          setSelectedType(null)
+          setCreateKey(uuidv4())
+        }}
+        calendarOptions={connectedCalendar || []}
+        isCalendarLoading={isQueryLoading}
+        refetch={refetch}
+        initialValues={selectedType || getDefaultValues()}
+        canDelete={meetingTypes.length > 1}
+        availabilityBlocks={availabilityBlocks || []}
+        isAvailabilityLoading={isAvailabilityLoading}
+        onDelete={() => {
+          openDeleteConfirmationModal()
+          closeModal()
+        }}
+      />
+      <DeleteMeetingTypeConfirmation
+        isOpen={isDeleteConfirmationModalOpen}
+        onClose={closeDeleteConfirmationModal}
+        meetingTypeId={selectedType?.id}
+        refetch={refetch}
+      />
+
+      <VStack width="100%" maxW="100%" alignItems={'flex-start'}>
+        <VStack alignItems="flex-start" width="100%" maxW="100%" gap={2}>
+          <HStack
             width="100%"
-            display="flex"
-            flexDirection="row"
-            mt={6}
-          >
-            {currentAccount.preferences.availableTypes
-              .filter(type => !type.deleted)
-              .map((type, index) => {
-                const url = `${getAccountCalendarUrl(currentAccount!, false)}/${
-                  type.url
-                }`
-                return (
-                  <MeetingTypeCard
-                    key={type.id}
-                    onSelect={setSelectedType}
-                    title={type.title}
-                    duration={type.duration}
-                    url={url}
-                    typeId={type.id!}
-                    removeType={removeType}
-                    showRemoval={
-                      currentAccount!.preferences.availableTypes!.filter(
-                        type => !type.deleted
-                      ).length > 1
-                    }
-                  />
-                )
-              })}
-          </Box>
-          <VStack
-            borderRadius={8}
             alignItems="flex-start"
-            height={'100%'}
-            justifyContent="center"
+            justifyContent="space-between"
           >
-            <NewMeetingTypeDialog
-              currentAccount={currentAccount}
-              isDialogOpen={isDialogOpen}
-              cancelDialogRef={cancelDialogRef}
-              onDialogClose={() => setIsDialogOpen(false)}
-            />
-            <RemoveTypeDialog
-              onClose={onCloseRemoveDialog}
-              onSuccessRemoval={typeRemoved}
-              typeId={typeToRemove}
-            />
-          </VStack>
-        </VStack>
-      )}
-    </Box>
-  )
-}
-
-interface CardProps {
-  title?: string
-  typeId: string
-  url: string
-  duration: number
-  onSelect: (typeId: string) => void
-  removeType: (typeId: string) => void
-  showRemoval: boolean
-}
-
-export const MeetingTypeCard: React.FC<CardProps> = ({
-  title,
-  typeId,
-  url,
-  duration,
-  onSelect,
-  removeType,
-  showRemoval,
-}) => {
-  const openType = () => {
-    logEvent('Clicked to edit meeting type')
-    onSelect(typeId)
-  }
-
-  const iconColor = useColorModeValue('gray.500', 'gray.200')
-  const [isHovered, setIsHovered] = useState(false)
-  return (
-    <Box w={'100%'} flexBasis="49%">
-      <VStack
-        borderRadius={12}
-        borderColor="neutral.400"
-        borderWidth={'1px'}
-        p={5}
-        shadow={'sm'}
-        minW="280px"
-        w={'100%'}
-        alignItems="flex-start"
-        height={'100%'}
-        bgColor={useColorModeValue('white', 'neutral.900')}
-      >
-        <Flex width="100%">
-          <VStack alignItems="flex-start" flex={1}>
-            <Text fontWeight="medium" fontSize={20}>
-              {title}
-            </Text>
-          </VStack>
-          <Box role={'group'} minH={10}>
-            <HStack
-              alignItems="center"
-              bg={'neutral.800'}
-              px={2}
-              py={1}
-              borderRadius={8}
-              _groupHover={{
-                display: 'none',
-              }}
-              h={'fit-content'}
+            <Heading fontSize="2xl">Meeting Types</Heading>
+            <Button
+              colorScheme="primary"
+              onClick={openModal}
+              leftIcon={<AddIcon width={15} height={15} />}
             >
-              <FaClock />
-              <Text>{durationToHumanReadable(duration)}</Text>
-            </HStack>
-            {showRemoval && (
-              <Box
-                display={'none'}
-                _groupHover={{
-                  display: 'block',
-                }}
-              >
-                <IconButton
-                  color={iconColor}
-                  aria-label="remove"
-                  icon={<FaTrash size={18} />}
-                  onClick={() => removeType(typeId)}
-                />
-              </Box>
-            )}
-          </Box>
-        </Flex>
-        <HStack width="100%" pt={4} gap={5}>
-          <CopyLinkButton url={url} colorScheme="neutral" px={'38px'} />
-          <Button flex={1} colorScheme="primary" onClick={openType} px={'38px'}>
-            Edit
-          </Button>
-        </HStack>
+              New Meeting Type
+            </Button>
+          </HStack>
+          <HStack
+            width="100%"
+            alignItems="flex-start"
+            justifyContent="space-between"
+          >
+            <Text color="neutral.400">Here are your meeting types</Text>
+          </HStack>
+        </VStack>
+        {content}
       </VStack>
     </Box>
-  )
-}
-
-interface TypeConfigProps {
-  account: Account
-  typeId: string
-  goBack: () => void
-}
-const TypeConfig: React.FC<TypeConfigProps> = ({ goBack, account, typeId }) => {
-  const color = useColorModeValue('primary.500', 'primary.400')
-
-  const typeConfig = account.preferences.availableTypes!.find(
-    type => type.id === typeId
-  )
-  if (!typeConfig) {
-    // TODO handle this
-  }
-
-  const [loading, setLoading] = useState(false)
-
-  const childRef = useRef(null)
-
-  const save = async () => {
-    setLoading(true)
-    await (childRef!.current as any).refSaveType()
-    //TODO handle error
-    setLoading(false)
-  }
-
-  return (
-    <VStack p={4} alignItems="start">
-      <HStack mb={4} cursor="pointer" onClick={goBack}>
-        <Icon as={FaArrowLeft} size="1.5em" color={color} />
-        <Text ml={3} color={color}>
-          Back
-        </Text>
-      </HStack>
-      <MeetingTypeConfig
-        selectedType={typeConfig}
-        currentAccount={account}
-        ref={childRef}
-      />
-      <Spacer />
-      <Button
-        isLoading={loading}
-        alignSelf="start"
-        colorScheme="primary"
-        onClick={save}
-      >
-        Save information
-      </Button>
-    </VStack>
-  )
-}
-
-interface RemoveTypeDialogProps {
-  onClose: () => void
-  typeId?: string
-  onSuccessRemoval: (updatedAccountPreferences: Account) => void
-}
-
-const RemoveTypeDialog: React.FC<RemoveTypeDialogProps> = ({
-  onClose,
-  typeId,
-  onSuccessRemoval,
-}) => {
-  const cancelRef = useRef(null)
-  const [busy, setBusy] = useState(false)
-  const toast = useToast()
-
-  const onDelete = async () => {
-    setBusy(true)
-
-    try {
-      const account = await removeMeetingType(typeId!)
-
-      onSuccessRemoval(account)
-      setBusy(false)
-      onClose()
-      return
-    } catch (err) {
-      if (err instanceof ApiFetchError) {
-        toast({
-          title: 'Cannot remove type',
-          description: err.message,
-          status: 'error',
-          position: 'top',
-          duration: 5000,
-          isClosable: true,
-        })
-        setBusy(false)
-        onClose()
-        return
-      }
-    }
-    toast({
-      title: 'Ops',
-      description: 'Something went wrong removing your meeting type',
-      status: 'error',
-      position: 'top',
-      duration: 5000,
-      isClosable: true,
-    })
-    setBusy(false)
-  }
-
-  return (
-    <AlertDialog
-      isOpen={typeId !== undefined}
-      leastDestructiveRef={cancelRef}
-      onClose={onClose}
-      blockScrollOnMount={false}
-      size="xl"
-      isCentered
-    >
-      <AlertDialogOverlay>
-        <AlertDialogContent>
-          <AlertDialogHeader fontSize="lg" fontWeight="bold">
-            Remove meeting type
-          </AlertDialogHeader>
-
-          <AlertDialogBody>
-            Are you sure you want to remove this type?
-          </AlertDialogBody>
-
-          <AlertDialogFooter>
-            <Button
-              color={useColorModeValue('gray.700', 'gray.300')}
-              ref={cancelRef}
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              colorScheme="red"
-              onClick={onDelete}
-              ml={3}
-              isLoading={busy}
-            >
-              Remove
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialogOverlay>
-    </AlertDialog>
   )
 }
 

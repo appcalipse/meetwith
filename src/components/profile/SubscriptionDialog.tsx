@@ -39,6 +39,7 @@ import {
   AcceptedTokenInfo,
   ChainInfo,
   getChainInfo,
+  getTokenIcon,
   SupportedChain,
   supportedChains,
 } from '../../types/chains'
@@ -77,23 +78,6 @@ export const getChainIcon = (chain: SupportedChain) => {
       return '/assets/chains/ethereum.svg'
     default:
       break
-  }
-}
-
-export const getTokenIcon = (token: AcceptedToken) => {
-  switch (token) {
-    case AcceptedToken.DAI:
-      return '/assets/chains/DAI.svg'
-    case AcceptedToken.USDC:
-      return '/assets/chains/USDC.svg'
-    case AcceptedToken.METIS:
-      return '/assets/chains/Metis.svg'
-    case AcceptedToken.MATIC:
-      return '/assets/chains/Polygon.svg'
-    case AcceptedToken.ETHER:
-      return '/assets/chains/ethereum.svg'
-    default:
-      return
   }
 }
 

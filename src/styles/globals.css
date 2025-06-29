@@ -132,6 +132,7 @@ a {
 }
 
 .timezone-select > div > div > hr,
+.custom-select > div > div > hr,
 .date-select > div > div > hr,
 .hideBorder > div > div > hr {
   display: none;
@@ -206,4 +207,19 @@ a {
   border-radius: inherit;
   padding: 2px;
   background-clip: padding-box;
+}
+th {
+  color: inherit !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+}
+thead tr th {
+  border-color: #7b8794 !important;
+  border-bottom-width: 2px;
+}
+
+.contact-avatar {
+  width: 35px;
+  height: 35px;
+  margin-right: 10px;
 }
