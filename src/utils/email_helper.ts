@@ -29,6 +29,8 @@ const FROM = 'Meetwith <notifications@meetwith.xyz>'
 
 import { CreateEmailOptions, Resend } from 'resend'
 
+import { MeetingPermissions } from './constants/schedule'
+
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
   from: FROM,
@@ -129,14 +131,25 @@ export const newMeetingEmail = async (
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat?: MeetingRepeat,
-  guestInfoEncrypted?: string
+  guestInfoEncrypted?: string,
+  meetingPermissions?: Array<MeetingPermissions>
 ): Promise<boolean> => {
   const email = new Email()
+
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(participantType)
+  const canSeeGuestList =
+    meetingPermissions === undefined ||
+    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
+    isSchedulerOrOwner
 
   const locals = {
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
-      destinationAccountAddress
+      destinationAccountAddress,
+      canSeeGuestList
     ),
     meeting: {
       start: dateToHumanReadable(start, timezone, true),
@@ -156,7 +169,6 @@ export const newMeetingEmail = async (
         )}`
       : undefined,
   }
-
   const isScheduler =
     participantType === ParticipantType.Scheduler ||
     (participantType === ParticipantType.Owner &&
@@ -343,6 +355,7 @@ export const cancelledMeetingEmail = async (
 export const updateMeetingEmail = async (
   toEmail: string,
   currentActorDisplayName: string,
+  participantType: ParticipantType,
   participants: ParticipantInfo[],
   timezone: string,
   start: Date,
@@ -358,11 +371,21 @@ export const updateMeetingEmail = async (
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat?: MeetingRepeat,
-  guestInfoEncrypted?: string
+  guestInfoEncrypted?: string,
+  meetingPermissions?: Array<MeetingPermissions>
 ): Promise<boolean> => {
   if (!changes?.dateChange) {
     return true
   }
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(participantType)
+
+  const canSeeGuestList =
+    meetingPermissions === undefined ||
+    !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
+    isSchedulerOrOwner
   const email = new Email()
   const newDuration = differenceInMinutes(end, start)
   const oldDuration = changes?.dateChange
@@ -376,7 +399,8 @@ export const updateMeetingEmail = async (
     currentActorDisplayName,
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
-      destinationAccountAddress
+      destinationAccountAddress,
+      canSeeGuestList
     ),
     meeting: {
       start: dateToHumanReadable(start, timezone, true),
@@ -543,6 +567,57 @@ export const sendInvitationEmail = async (
       tags: [
         {
           name: 'group',
+          value: 'invite',
+        },
+      ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+
+export const sendContactInvitationEmail = async (
+  toEmail: string,
+  inviterName: string,
+  invitationLink: string
+): Promise<void> => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'contact_invite'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const locals = {
+    inviterName,
+    invitationLink,
+  }
+
+  try {
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
+
+    const msg: CreateEmailOptions = {
+      to: toEmail,
+      from: FROM,
+      subject: subject,
+      html: rendered,
+      text: `${inviterName} invited as a contact. Accept your invite here: ${invitationLink}`,
+      tags: [
+        {
+          name: 'contact',
           value: 'invite',
         },
       ],

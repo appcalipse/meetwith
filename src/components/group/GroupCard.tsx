@@ -187,7 +187,12 @@ const GroupCard: React.FC<IGroupCard> = props => {
           <Heading size="sm" flexBasis="57%" fontWeight={800}>
             Contact
           </Heading>
-          <Flex alignItems="center" flexBasis="15%" gap={0.5}>
+          <Flex
+            alignItems="center"
+            gap={0.5}
+            align="flex-start"
+            flexBasis="30%"
+          >
             <Heading size="sm" fontWeight={800}>
               Role{' '}
             </Heading>

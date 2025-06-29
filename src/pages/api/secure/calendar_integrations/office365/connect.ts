@@ -8,7 +8,7 @@ const credentials = {
   client_secret: process.env.MS_GRAPH_CLIENT_SECRET,
 }
 
-const scopes = [
+export const officeScopes = [
   'User.Read',
   'Calendars.Read',
   'Calendars.ReadWrite',
@@ -28,7 +28,7 @@ export default async function handler(
 
     const params = {
       response_type: 'code',
-      scope: scopes.join(' '),
+      scope: officeScopes.join(' '),
       client_id: credentials.client_id,
       redirect_uri: `${apiUrl}/secure/calendar_integrations/office365/callback`,
       state: typeof state === 'string' ? state : undefined,

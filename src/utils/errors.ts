@@ -40,6 +40,13 @@ export class MeetingCreationError extends Error {
   }
 }
 
+export class MultipleSchedulersError extends Error {
+  constructor() {
+    super(`A meeting must have only one scheduler`)
+    this.name = 'MultipleSchedulersError'
+  }
+}
+
 export class NotGroupMemberError extends Error {
   constructor() {
     super(`Not a group member`)
@@ -224,5 +231,160 @@ export class SubscriptionNotCustom extends Error {
   constructor() {
     super(`Subscription is not custom`)
     this.name = 'SubscriptionNotCustom'
+  }
+}
+
+export class ContactAlreadyExists extends Error {
+  constructor() {
+    super(`Contact already exists`)
+    this.name = 'ContactAlreadyExists'
+  }
+}
+export class ContactNotFound extends Error {
+  constructor() {
+    super(`Contact not found`)
+    this.name = 'ContactNotFound'
+  }
+}
+
+export class ContactInviteNotFound extends Error {
+  constructor() {
+    super(`Contact invite not found`)
+    this.name = 'ContactInviteNotFound'
+  }
+}
+
+export class ContactInviteNotForAccount extends Error {
+  constructor() {
+    super(`Contact invite not for this account`)
+    this.name = 'ContactInviteNotForAccount'
+  }
+}
+
+// you can't accept your own invite
+export class OwnInviteError extends Error {
+  constructor() {
+    super(`You can't accept your own invite`)
+    this.name = 'OwnInviteError'
+  }
+}
+
+export class ContactInviteAlreadySent extends Error {
+  constructor() {
+    super(`Contact invite already sent`)
+    this.name = 'ContactInviteAlreadySent'
+  }
+}
+
+export class CantInviteYourself extends Error {
+  constructor() {
+    super(`You can't invite yourself`)
+    this.name = 'CantInviteYourself'
+  }
+}
+
+export class PermissionDenied extends Error {
+  constructor(message = `You do not have permission to perform this action`) {
+    super(message)
+    this.name = 'PermissionDenied'
+  }
+}
+export class GuestListModificationDenied extends PermissionDenied {
+  constructor() {
+    super("You don't have permission to modify the meeting invitees.")
+    this.name = 'GuestListModificationDenied'
+  }
+}
+
+export class MeetingDetailsModificationDenied extends PermissionDenied {
+  constructor() {
+    super("You don't have permission to modify the meeting details")
+    this.name = 'MeetingDetailsModificationDenied'
+  }
+}
+
+export class AvailabilityBlockNotFoundError extends Error {
+  constructor() {
+    super('Availability block not found')
+    this.name = 'AvailabilityBlockNotFoundError'
+  }
+}
+
+export class DefaultAvailabilityBlockError extends Error {
+  constructor() {
+    super('Cannot delete the default availability block')
+    this.name = 'DefaultAvailabilityBlockError'
+  }
+}
+
+export class InvalidAvailabilityBlockError extends Error {
+  constructor(message: string) {
+    super(message || 'Invalid availability block data')
+    this.name = 'InvalidAvailabilityBlockError'
+  }
+}
+
+export class LastMeetingTypeError extends Error {
+  constructor() {
+    super(
+      `You cannot delete your last meeting type, please create a new one first`
+    )
+    this.name = 'LastMeetingTypeError'
+  }
+}
+
+export class TransactionCouldBeNotFoundError extends Error {
+  constructor(txHash: `0x${string}`) {
+    super(`Transaction or receipt not found for hash: ${txHash}`)
+    this.name = 'TransactionCouldNotFoundError'
+  }
+}
+
+export class ChainNotFound extends Error {
+  constructor(chainId: string) {
+    super(`Chain ${chainId} not found`)
+    this.name = 'ChainNotFound'
+  }
+}
+
+export class MeetingTypeNotFound extends Error {
+  constructor() {
+    super(`Meeting type not found`)
+    this.name = 'MeetingTypeNotFound'
+  }
+}
+
+export class InValidGuests extends Error {
+  constructor() {
+    super(`Guest email or address is required.`)
+    this.name = 'InValidGuests'
+  }
+}
+
+export class TransactionIsRequired extends Error {
+  constructor() {
+    super('Transaction hash is required')
+    this.name = 'TransactionIsRequired'
+  }
+}
+
+export class TransactionNotFoundError extends Error {
+  constructor(txHash: `0x${string}`) {
+    super(`Transaction with hash: ${txHash} not found`)
+    this.name = 'TransactionNotFoundError'
+  }
+}
+
+export class AllMeetingSlotsUsedError extends Error {
+  constructor() {
+    super('All meeting slots are already used for this transaction')
+    this.name = 'AllMeetingSlotsUsedError'
+  }
+}
+
+export class MeetingSlugAlreadyExists extends Error {
+  constructor(slug: string) {
+    super(`Custom booking link path ${slug} already exists`)
+    this.name = 'MeetingSlugAlreadyExists'
   }
 }

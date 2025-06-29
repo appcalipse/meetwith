@@ -9,6 +9,9 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
+import * as Sentry from '@sentry/nextjs'
+import { useMutation } from '@tanstack/react-query'
+import { SessionType } from '@utils/constants/meeting-types'
 import {
   addMinutes,
   addMonths,
@@ -45,11 +48,14 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
+  doesContactExist,
+  fetchBusySlotsForMultipleAccounts,
   getAccount,
   getBusySlots,
   getMeeting,
   getNotificationSubscriptions,
   listConnectedCalendars,
+  sendContactListInvite,
 } from '@/utils/api_helper'
 import {
   dateToHumanReadable,
@@ -59,12 +65,16 @@ import {
 import { Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import {
+  CantInviteYourself,
+  ContactAlreadyExists,
+  ContactInviteAlreadySent,
   GateConditionNotValidError,
   GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
   InvalidURL,
   MeetingCreationError,
   MeetingWithYourselfError,
+  MultipleSchedulersError,
   TimeNotAvailableError,
   UrlCreationError,
   ZoomServiceUnavailable,
@@ -163,6 +173,24 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [isScheduling, setIsScheduling] = useState(false)
   const [busySlots, setBusySlots] = useState<Interval[]>([])
   const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
+  const [blockedDates, setBlockedDates] = useState<Date[]>([])
+  const [isContact, setIsContact] = useState(false)
+
+  const handleContactCheck = async () => {
+    try {
+      if (!account?.address) return
+      const contactExists = await doesContactExist(account?.address)
+      setIsContact(contactExists)
+    } catch (e) {
+      Sentry.captureException(e)
+      console.error('Error checking contact existence:', e)
+    }
+  }
+  useEffect(() => {
+    if (!currentAccount?.address || !account?.address) return
+    handleContactCheck()
+  }, [currentAccount, account])
+
   const toast = useToast()
   const [cachedRange, setCachedRange] = useState<{
     startDate: Date
@@ -251,9 +279,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = account?.preferences?.availableTypes
-        ?.filter(type => !type.deleted)
-        ?.find(t => t.url === typeOnRoute)
-      setPrivateType(!!type?.private)
+        ?.filter(type => !type.deleted_at)
+        ?.find(t => t.slug === typeOnRoute)
+      setPrivateType(type?.type === SessionType.FREE)
     }
   }, [])
 
@@ -267,8 +295,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = account?.preferences?.availableTypes
-        .filter(type => !type.deleted)
-        .find(t => t.url === typeOnRoute)
+        .filter(type => !type.deleted_at)
+        .find(t => t.slug === typeOnRoute)
       setSelectedType(
         (type || account?.preferences?.availableTypes?.[0] || {}) as MeetingType
       )
@@ -351,7 +379,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     const end = addMinutes(
       new Date(start),
       CalendarType.REGULAR === calendarType
-        ? selectedType.duration
+        ? selectedType.duration_minutes
         : teamMeetingRequest!.duration_in_minutes
     )
 
@@ -495,6 +523,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'A meeting must have only one scheduler',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else if (e instanceof InvalidURL) {
         toast({
           title: 'Failed to schedule meeting',
@@ -558,7 +595,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const changeType = (typeId: string) => {
     const type = account?.preferences?.availableTypes
-      ?.filter(type => !type.deleted)
+      ?.filter(type => !type.deleted_at)
       ?.find(t => t.id === typeId)
     if (!type) return
     if (!type.scheduleGate) {
@@ -689,7 +726,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       isSchedulingExternal={isScheduling}
                       slotDurationInMinutes={
                         CalendarType.REGULAR === calendarType
-                          ? selectedType.duration
+                          ? selectedType.duration_minutes
                           : teamMeetingRequest!.duration_in_minutes
                       }
                       selectedType={selectedType}
@@ -712,11 +749,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
             <Flex justify="center">
               <MeetingScheduledDialog
                 participants={lastScheduledMeeting!.participants}
-                schedulerAccount={currentAccount!}
+                hostAccount={account!}
                 scheduleType={schedulingType}
                 meeting={lastScheduledMeeting}
                 accountNotificationSubs={notificationsSubs}
                 hasConnectedCalendar={hasConnectedCalendar}
+                isContact={isContact}
+                setIsContact={setIsContact}
                 reset={_onClose}
               />
             </Flex>

@@ -314,7 +314,7 @@ export function SchedulePickTime({
   const isAm = (val: Date) => {
     return formatInTimeZone(val, timezone, 'a').toLowerCase() === 'am'
   }
-  const SLOTS = useMemo(
+  const HOURS_SLOTS = useMemo(
     () =>
       getEmptySlots(new Date()).map(val =>
         formatInTimeZone(
@@ -395,7 +395,6 @@ export function SchedulePickTime({
           gap={6}
           w="100%"
           borderWidth={1}
-          borderColor={'neutral.400'}
           px={{ md: 6, base: 2 }}
           py={4}
           rounded={12}
@@ -443,7 +442,7 @@ export function SchedulePickTime({
               >
                 <Box h={'48px'} width={'100%'} />
                 <VStack align={'flex-start'} p={1}>
-                  {SLOTS.map((slot, index) => {
+                  {HOURS_SLOTS.map((slot, index) => {
                     return (
                       <HStack
                         key={index}
@@ -488,7 +487,6 @@ export function SchedulePickTime({
                         align={'flex-start'}
                         p={1}
                         borderWidth={1}
-                        borderColor={'neutral.400'}
                         borderRadius={5}
                       >
                         {date.slots.map(slot => {
