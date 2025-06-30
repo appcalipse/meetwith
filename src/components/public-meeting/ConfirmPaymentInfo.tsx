@@ -154,6 +154,7 @@ const ConfirmPaymentInfo = () => {
                 status: 'error',
                 duration: 5000,
               })
+              setLoading(false)
               return
             }
           }
@@ -186,6 +187,7 @@ const ConfirmPaymentInfo = () => {
               status: 'error',
               duration: 5000,
             })
+            setLoading(false)
             return
           }
           const transaction = prepareContractCall({
@@ -250,6 +252,7 @@ const ConfirmPaymentInfo = () => {
             status: 'error',
             duration: 5000,
           })
+          setLoading(false)
           return
         }
       } else {
