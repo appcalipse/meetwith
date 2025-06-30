@@ -14845,7 +14845,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ethereumjs-abi@https://registry.npmjs.org/ethereumjs-abi/-/ethereumjs-abi-0.6.8.tgz":
+"ethereumjs-abi@npm:0.6.8":
   version: 0.6.8
   resolution: "ethereumjs-abi@npm:0.6.8"
   dependencies:
