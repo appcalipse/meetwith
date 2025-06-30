@@ -6,7 +6,6 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { captureException } from '@sentry/nextjs'
 import { areIntervalsOverlapping, isSameDay } from 'date-fns'
 import { DateTime } from 'luxon'
 import React, { FC, useContext, useMemo } from 'react'
@@ -50,44 +49,22 @@ const TimeSlots: FC<IProps> = ({
     endOfDayInTimezone
   )
   const daySlots = useMemo(() => {
-    return availableSlots.filter(slot => {
-      try {
-        return (
-          areIntervalsOverlapping(slot, {
-            start: pickedDayInTimezone.startOf('day').toJSDate(),
-            end: pickedDayInTimezone.endOf('day').toJSDate(),
-          }) || isSameDay(slot.start, pickedDay || new Date())
-        )
-      } catch (error) {
-        captureException(error, {
-          extra: {
-            pickedDay,
-            timezone,
-          },
-        })
-        return false
-      }
-    })
+    return availableSlots.filter(
+      slot =>
+        areIntervalsOverlapping(slot, {
+          start: pickedDayInTimezone.startOf('day').toJSDate(),
+          end: pickedDayInTimezone.endOf('day').toJSDate(),
+        }) || isSameDay(slot.start, pickedDay || new Date())
+    )
   }, [availableSlots, pickedDay, timezone])
   const selDaySlots = useMemo(() => {
-    return selfAvailableSlots.filter(slot => {
-      try {
-        return (
-          areIntervalsOverlapping(slot, {
-            start: pickedDayInTimezone.startOf('day').toJSDate(),
-            end: pickedDayInTimezone.endOf('day').toJSDate(),
-          }) || isSameDay(slot.start, pickedDay || new Date())
-        )
-      } catch (error) {
-        captureException(error, {
-          extra: {
-            pickedDay,
-            timezone,
-          },
-        })
-        return false
-      }
-    })
+    return selfAvailableSlots.filter(
+      slot =>
+        areIntervalsOverlapping(slot, {
+          start: pickedDayInTimezone.startOf('day').toJSDate(),
+          end: pickedDayInTimezone.endOf('day').toJSDate(),
+        }) || isSameDay(slot.start, pickedDay || new Date())
+    )
   }, [selfAvailableSlots, pickedDay, timezone])
   const filtered = timeSlots.filter(slot => {
     return (

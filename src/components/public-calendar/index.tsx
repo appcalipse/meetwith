@@ -45,6 +45,8 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
+  fetchBusySlotsForMultipleAccounts,
+  doesContactExist,
   getAccount,
   getBusySlots,
   getMeeting,
@@ -165,6 +167,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [isScheduling, setIsScheduling] = useState(false)
   const [busySlots, setBusySlots] = useState<Interval[]>([])
   const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
+
+  const [blockedDates, setBlockedDates] = useState<Date[]>([])
+
   const toast = useToast()
   const [cachedRange, setCachedRange] = useState<{
     startDate: Date
