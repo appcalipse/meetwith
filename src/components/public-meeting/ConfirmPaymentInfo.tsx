@@ -73,7 +73,6 @@ const ConfirmPaymentInfo = () => {
   const [name, setName] = React.useState('')
   const [email, setEmail] = React.useState('')
   const { openConnection } = useContext(OnboardingModalContext)
-
   const [progress, setProgress] = React.useState(0)
   const chain = supportedChains.find(
     val => val.chain === selectedChain
@@ -107,6 +106,7 @@ const ConfirmPaymentInfo = () => {
       return
     }
     if (!currentAccount?.address) {
+      openConnection(undefined, false)
       toast({
         title: 'Account Not Found',
         description: 'Please connect your wallet to proceed.',
