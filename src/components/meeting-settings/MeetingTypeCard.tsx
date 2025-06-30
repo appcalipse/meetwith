@@ -91,7 +91,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
         </Flex>
         <HStack justifyContent="space-between" w="100%">
           {props?.availabilities?.[0] && (
-            <Tag colorScheme="neutral" flexBasis={'70%'} py={1}>
+            <Tag colorScheme="neutral" w="fit-content" maxW={'70%'} py={1}>
               Availability block: {props?.availabilities?.[0]?.title}{' '}
               {no_of_remaining_availability > 0 &&
                 ` and ${no_of_remaining_availability} more`}
