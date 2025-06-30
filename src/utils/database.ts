@@ -2957,6 +2957,130 @@ const getDiscordAccounts = async (): Promise<
   }
   return data
 }
+
+const updateGuestMeeting = async (
+  participantActing: { name: string; guest_email: string },
+  meetingUpdateRequest: MeetingUpdateRequest,
+  slotId: string
+): Promise<DBSlot> => {
+  // Get the existing conference meeting to validate the slot belongs to it
+  const conferenceMeeting = await getConferenceDataBySlotId(slotId)
+  if (!conferenceMeeting) {
+    throw new MeetingNotFoundError(slotId)
+  }
+
+  // Validate that the slot exists in the conference meeting
+  if (!conferenceMeeting.slots.includes(slotId)) {
+    throw new MeetingNotFoundError(slotId)
+  }
+
+  // Get the existing slot to validate version and ownership
+  const existingSlot = await getMeetingFromDB(slotId)
+
+  // For guest updates, we need to validate that the version matches
+  if (existingSlot.version + 1 !== meetingUpdateRequest.version) {
+    throw new MeetingChangeConflictError()
+  }
+
+  // Get all existing slots for this meeting to update them
+  const existingSlots = await getSlotsByIds(conferenceMeeting.slots)
+
+  // Find the owner slot (the calendar owner's slot)
+  const ownerSlot = existingSlots.find(slot =>
+    meetingUpdateRequest.participants_mapping.some(
+      p =>
+        p.account_address === slot.account_address &&
+        p.type === ParticipantType.Owner
+    )
+  )
+
+  if (!ownerSlot) {
+    throw new MeetingCreationError()
+  }
+
+  // Update the owner slot with new meeting information
+  const updatedOwnerSlot: DBSlot = {
+    id: ownerSlot.id,
+    start: new Date(meetingUpdateRequest.start),
+    end: new Date(meetingUpdateRequest.end),
+    account_address: ownerSlot.account_address,
+    version: meetingUpdateRequest.version,
+    meeting_info_encrypted:
+      meetingUpdateRequest.participants_mapping.find(
+        p => p.account_address === ownerSlot.account_address
+      )?.privateInfo || ownerSlot.meeting_info_encrypted,
+    recurrence: meetingUpdateRequest.meetingRepeat,
+  }
+
+  // Update the owner slot in the database
+  const { data, error } = await db.supabase
+    .from('slots')
+    .upsert([updatedOwnerSlot], { onConflict: 'id' })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  // Update the conference meeting with new information
+  const updatedConferenceMeeting = await saveConferenceMeetingToDB({
+    id: conferenceMeeting.id,
+    start: meetingUpdateRequest.start,
+    end: meetingUpdateRequest.end,
+    meeting_url: meetingUpdateRequest.meeting_url,
+    access_type: MeetingAccessType.OPEN_MEETING,
+    provider: meetingUpdateRequest.meetingProvider,
+    recurrence: meetingUpdateRequest.meetingRepeat,
+    version: MeetingVersion.V2,
+    title: meetingUpdateRequest.title,
+    slots: conferenceMeeting.slots, // Keep the same slots
+  })
+
+  if (!updatedConferenceMeeting) {
+    throw new Error(
+      'Could not update your meeting right now, get in touch with us if the problem persists'
+    )
+  }
+
+  // Send notifications and syncs asynchronously
+  const body: MeetingCreationSyncRequest = {
+    participantActing: {
+      name: participantActing.name,
+      guest_email: participantActing.guest_email,
+    },
+    meeting_id: conferenceMeeting.id,
+    start: meetingUpdateRequest.start,
+    end: meetingUpdateRequest.end,
+    created_at: existingSlot.created_at!,
+    timezone: meetingUpdateRequest.participants_mapping[0].timeZone,
+    meeting_url: meetingUpdateRequest.meeting_url,
+    meetingProvider: meetingUpdateRequest.meetingProvider,
+    participants: meetingUpdateRequest.participants_mapping,
+    title: meetingUpdateRequest.title,
+    content: meetingUpdateRequest.content,
+    changes: {
+      dateChange: {
+        oldStart: new Date(existingSlot.start),
+        oldEnd: new Date(existingSlot.end),
+      },
+    },
+    meetingReminders: meetingUpdateRequest.meetingReminders,
+    meetingRepeat: meetingUpdateRequest.meetingRepeat,
+    meetingPermissions: meetingUpdateRequest.meetingPermissions,
+  }
+
+  // Doing notifications and syncs asynchronously
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  return updatedOwnerSlot
+}
+
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
@@ -3022,6 +3146,7 @@ export {
   updateAccountPreferences,
   updateAllRecurringSlots,
   updateCustomSubscriptionDomain,
+  updateGuestMeeting,
   updateMeeting,
   updateRecurringSlots,
   upsertGateCondition,

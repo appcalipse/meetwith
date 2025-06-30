@@ -653,6 +653,28 @@ export const guestMeetingCancel = async (
   }
 }
 
+export const updateGuestMeeting = async (
+  slot_id: string,
+  meeting: MeetingUpdateRequest
+): Promise<DBSlot> => {
+  try {
+    return (await internalFetch(
+      `/meetings/guest/${slot_id}`,
+      'PATCH',
+      meeting
+    )) as DBSlot
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e instanceof ApiFetchError && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e instanceof ApiFetchError && e.status === 417) {
+      throw new MeetingChangeConflictError()
+    }
+    throw e
+  }
+}
+
 export const getNotificationSubscriptions =
   async (): Promise<AccountNotifications> => {
     return (await internalFetch(

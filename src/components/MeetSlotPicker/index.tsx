@@ -32,6 +32,8 @@ const tzs = timezones.map(tz => {
     label: tz.name,
   }
 })
+import { captureException } from '@sentry/nextjs'
+
 import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 
@@ -210,6 +212,58 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   }
   const validator = (date: Date) => {
     if (!slotDurationInMinutes) return
+
+    try {
+      const dayInTimezone = DateTime.fromObject(
+        {
+          year: date.getFullYear(),
+          month: date.getMonth() + 1, // JS months are 0-indexed
+          day: date.getDate(),
+          hour: 0,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
+        },
+        {
+          zone:
+            timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }
+      )
+      const startLocalDate = dayInTimezone.startOf('day').toJSDate()
+      const endLocalDate = dayInTimezone.endOf('day').toJSDate()
+      const slots = eachMinuteOfInterval(
+        { start: startLocalDate, end: endLocalDate },
+        { step: slotDurationInMinutes }
+      ).map(s => ({
+        start: s,
+        end: addMinutes(s, slotDurationInMinutes),
+      }))
+      const intervals = availableSlots.filter(
+        slot => isSameMonth(slot.start, date) && isSameDay(slot.start, date)
+      )
+
+      return (
+        (isFutureInTimezone(date, timezone.value) ||
+          isTodayInTimezone(date, timezone.value)) &&
+        (intervals?.length === 0 ||
+          slots.some(
+            slot =>
+              !intervals.some(interval =>
+                areIntervalsOverlapping(slot, interval)
+              )
+          ))
+      )
+    } catch (error) {
+      captureException(error, {
+        extra: {
+          date,
+          timezone: timezone.value,
+          slotDurationInMinutes,
+        },
+      })
+      return false
+    }
+
     const dayInTimezone = DateTime.fromObject(
       {
         year: date.getFullYear(),
@@ -249,6 +303,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             !intervals.some(interval => areIntervalsOverlapping(slot, interval))
         ))
     )
+
   }
   const customComponents: Props['components'] = {
     Control: props => (

@@ -160,6 +160,11 @@ export const newMeetingEmail = async (
     },
     changeUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      : guestInfoEncrypted && participantType === ParticipantType.Scheduler
+      ? `${appUrl}/address/${
+          participants.find(p => p.type === ParticipantType.Owner)
+            ?.account_address
+        }?slot=${slot_id}`
       : undefined,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
@@ -411,6 +416,11 @@ export const updateMeetingEmail = async (
     },
     changeUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      : guestInfoEncrypted && participantType === ParticipantType.Scheduler
+      ? `${appUrl}/address/${
+          participants.find(p => p.type === ParticipantType.Owner)
+            ?.account_address
+        }?slot=${slot_id}`
       : undefined,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
