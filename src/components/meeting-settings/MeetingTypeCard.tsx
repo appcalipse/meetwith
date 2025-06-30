@@ -38,7 +38,7 @@ const MeetingTypeCard: React.FC<CardProps> = ({
     }
     onSelect(meetingType)
   }
-
+  const no_of_remaining_availability = props?.availabilities?.length - 1
   return (
     <Box
       w={'100%'}
@@ -92,7 +92,9 @@ const MeetingTypeCard: React.FC<CardProps> = ({
         <HStack justifyContent="space-between" w="100%">
           {props?.availabilities?.[0] && (
             <Tag colorScheme="neutral">
-              Availability block: {props?.availabilities?.[0]?.title}
+              Availability block: {props?.availabilities?.[0]?.title}{' '}
+              {no_of_remaining_availability > 0 &&
+                `(+${no_of_remaining_availability})`}
             </Tag>
           )}
           {props?.plan?.price_per_slot && (
