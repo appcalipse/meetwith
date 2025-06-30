@@ -46,7 +46,6 @@ import {
 import { logEvent } from '@/utils/analytics'
 import {
   fetchBusySlotsForMultipleAccounts,
-  doesContactExist,
   getAccount,
   getBusySlots,
   getMeeting,
