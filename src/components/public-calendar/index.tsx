@@ -9,7 +9,6 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
-import * as Sentry from '@sentry/nextjs'
 import {
   addMinutes,
   addMonths,
@@ -167,9 +166,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [isScheduling, setIsScheduling] = useState(false)
   const [busySlots, setBusySlots] = useState<Interval[]>([])
   const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
-
-  const [blockedDates, setBlockedDates] = useState<Date[]>([])
-
   const toast = useToast()
   const [cachedRange, setCachedRange] = useState<{
     startDate: Date

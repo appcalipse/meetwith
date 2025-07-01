@@ -32,6 +32,9 @@ const tzs = timezones.map(tz => {
     label: tz.name,
   }
 })
+
+import { captureException } from '@sentry/nextjs'
+
 import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 
@@ -200,6 +203,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       { zone: timezoneValue }
     )
 
+
     const nowInTimezone = DateTime.now().setZone(timezoneValue)
 
     return (
@@ -210,45 +214,57 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   }
   const validator = (date: Date) => {
     if (!slotDurationInMinutes) return
-    const dayInTimezone = DateTime.fromObject(
-      {
-        year: date.getFullYear(),
-        month: date.getMonth() + 1, // JS months are 0-indexed
-        day: date.getDate(),
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      },
-      {
-        zone:
-          timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      }
-    )
-    const startLocalDate = dayInTimezone.startOf('day').toJSDate()
-    const endLocalDate = dayInTimezone.endOf('day').toJSDate()
 
-    const slots = eachMinuteOfInterval(
-      { start: startLocalDate, end: endLocalDate },
-      { step: slotDurationInMinutes }
-    ).map(s => ({
-      start: s,
-      end: addMinutes(s, slotDurationInMinutes),
-    }))
+    try {
+      const dayInTimezone = DateTime.fromObject(
+        {
+          year: date.getFullYear(),
+          month: date.getMonth() + 1, // JS months are 0-indexed
+          day: date.getDate(),
+          hour: 0,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
+        },
+        {
+          zone:
+            timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }
+      )
+      const startLocalDate = dayInTimezone.startOf('day').toJSDate()
+      const endLocalDate = dayInTimezone.endOf('day').toJSDate()
+      const slots = eachMinuteOfInterval(
+        { start: startLocalDate, end: endLocalDate },
+        { step: slotDurationInMinutes }
+      ).map(s => ({
+        start: s,
+        end: addMinutes(s, slotDurationInMinutes),
+      }))
+      const intervals = availableSlots.filter(
+        slot => isSameMonth(slot.start, date) && isSameDay(slot.start, date)
+      )
 
-    const intervals = availableSlots.filter(
-      slot => isSameMonth(slot.start, date) && isSameDay(slot.start, date)
-    )
-
-    return (
-      (isFutureInTimezone(date, timezone.value) ||
-        isTodayInTimezone(date, timezone.value)) &&
-      (intervals?.length === 0 ||
-        slots.some(
-          slot =>
-            !intervals.some(interval => areIntervalsOverlapping(slot, interval))
-        ))
-    )
+      return (
+        (isFutureInTimezone(date, timezone.value) ||
+          isTodayInTimezone(date, timezone.value)) &&
+        (intervals?.length === 0 ||
+          slots.some(
+            slot =>
+              !intervals.some(interval =>
+                areIntervalsOverlapping(slot, interval)
+              )
+          ))
+      )
+    } catch (error) {
+      captureException(error, {
+        extra: {
+          date,
+          timezone: timezone.value,
+          slotDurationInMinutes,
+        },
+      })
+      return false
+    }
   }
   const customComponents: Props['components'] = {
     Control: props => (
@@ -345,31 +361,31 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             />
           )}
         </VStack>
-        {showConfirm && (
-          <Popup>
-            <PopupHeader>
-              <HStack mb={0} cursor="pointer" onClick={handleCloseConfirm}>
-                <Icon as={FaArrowLeft} size="1.5em" color={color} />
-                <Heading size="md" color={color}>
-                  Meeting Information
-                </Heading>
-              </HStack>
-            </PopupHeader>
-
-            <ScheduleForm
-              onConfirm={onSchedule}
-              willStartScheduling={willStartScheduling}
-              pickedTime={pickedTime!}
-              isSchedulingExternal={isSchedulingExternal}
-              isGateValid={isGateValid}
-              notificationsSubs={notificationsSubs}
-              preferences={preferences}
-              meetingProviders={preferences?.meetingProviders}
-              selectedType={selectedType}
-            />
-          </Popup>
-        )}
       </HStack>
+      {showConfirm && (
+        <Popup>
+          <PopupHeader>
+            <HStack mb={0} cursor="pointer" onClick={handleCloseConfirm}>
+              <Icon as={FaArrowLeft} size="1.5em" color={color} />
+              <Heading size="md" color={color}>
+                Meeting Information
+              </Heading>
+            </HStack>
+          </PopupHeader>
+
+          <ScheduleForm
+            onConfirm={onSchedule}
+            willStartScheduling={willStartScheduling}
+            pickedTime={pickedTime!}
+            isSchedulingExternal={isSchedulingExternal}
+            isGateValid={isGateValid}
+            notificationsSubs={notificationsSubs}
+            preferences={preferences}
+            meetingProviders={preferences?.meetingProviders}
+            selectedType={selectedType}
+          />
+        </Popup>
+      )}
     </PopupWrapper>
   )
 }
