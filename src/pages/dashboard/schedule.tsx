@@ -152,8 +152,8 @@ interface IScheduleContext {
   >
   meetingOwners: Array<ParticipantInfo>
   setMeetingOwners: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
-  canEdit: boolean
-  setCanEdit: React.Dispatch<React.SetStateAction<boolean>>
+  canEditMeetingDetails: boolean
+  setCanEditMeetingDetails: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 const DEFAULT_CONTEXT: IScheduleContext = {
@@ -204,8 +204,8 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setSelectedPermissions: () => {},
   meetingOwners: [],
   setMeetingOwners: () => {},
-  canEdit: false,
-  setCanEdit: () => {},
+  canEditMeetingDetails: false,
+  setCanEditMeetingDetails: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -275,7 +275,7 @@ const Schedule: NextPage<IInitialProps> = ({
   >([MeetingPermissions.SEE_GUEST_LIST])
   const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
-  const [canEdit, setCanEdit] = useState(false)
+  const [canEditMeetingDetails, setCanEditMeetingDetails] = useState(true)
   const fetchGroups = async () => {
     setIsGroupPrefetching(true)
     try {
@@ -790,8 +790,8 @@ const Schedule: NextPage<IInitialProps> = ({
     setSelectedPermissions,
     meetingOwners,
     setMeetingOwners,
-    canEdit,
-    setCanEdit,
+    canEditMeetingDetails,
+    setCanEditMeetingDetails,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -909,7 +909,9 @@ const Schedule: NextPage<IInitialProps> = ({
         decryptedMeeting.provider ||
           selectDefaultProvider(currentAccount?.preferences.meetingProviders)
       )
+
       setSelectedPermissions(decryptedMeeting.permissions || undefined)
+
       if (decryptedMeeting.permissions) {
         const isSchedulerOrOwner = [
           ParticipantType.Scheduler,
@@ -919,6 +921,11 @@ const Schedule: NextPage<IInitialProps> = ({
             p => p.account_address === currentAccount?.address
           )?.type || ParticipantType?.Invitee
         )
+        const canEditMeetingDetails =
+          !!decryptedMeeting?.permissions?.includes(
+            MeetingPermissions.EDIT_MEETING
+          ) || isSchedulerOrOwner
+        setCanEditMeetingDetails(canEditMeetingDetails)
         const canViewParticipants =
           decryptedMeeting.permissions.includes(
             MeetingPermissions.SEE_GUEST_LIST
