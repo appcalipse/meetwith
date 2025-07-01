@@ -70,7 +70,9 @@ const ConfirmPaymentInfo = () => {
       ErrorAction<keyof PaymentInfo>
     >
   >(errorReducerSingle, {})
-  const [name, setName] = React.useState('')
+  const [name, setName] = React.useState(
+    currentAccount?.preferences?.name || ''
+  )
   const [email, setEmail] = React.useState('')
   const { openConnection } = useContext(OnboardingModalContext)
   const [progress, setProgress] = React.useState(0)
