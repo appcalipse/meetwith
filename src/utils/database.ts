@@ -2599,6 +2599,18 @@ const updateMeeting = async (
     meetingUpdateRequest.meeting_id
   )
   // now that everything happened without error, it is safe to update the root meeting data
+  const existingSlots =
+    meeting.slots?.filter(
+      val => !meetingUpdateRequest.slotsToRemove.includes(val)
+    ) || []
+
+  // Add unique slot IDs from allSlotIds that aren't already present
+  const allSlotIds = meetingUpdateRequest.allSlotIds || []
+  const uniqueNewSlots = allSlotIds.filter(
+    slotId => !existingSlots.includes(slotId)
+  )
+  const updatedSlots = [...existingSlots, ...uniqueNewSlots]
+
   const createdRootMeeting = await saveConferenceMeetingToDB({
     id: meetingUpdateRequest.meeting_id,
     start: meetingUpdateRequest.start,
@@ -2609,9 +2621,7 @@ const updateMeeting = async (
     recurrence: meetingUpdateRequest.meetingRepeat,
     version: MeetingVersion.V2,
     title: meetingUpdateRequest.title,
-    slots: meeting.slots?.filter(
-      val => !meetingUpdateRequest.slotsToRemove.includes(val)
-    ),
+    slots: updatedSlots,
   })
 
   if (!createdRootMeeting)
