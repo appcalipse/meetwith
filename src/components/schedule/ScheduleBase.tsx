@@ -227,11 +227,13 @@ const ScheduleBase = () => {
       <DiscoverATimeInfoModal
         isOpen={openWhatIsThis}
         onClose={() => setOpenWhatIsThis(false)}
+        key={'discover-a-time-info-modal'}
       />
       <ScheduleParticipantsOwnersModal
         isOpen={isOpen}
         onClose={onClose}
         participants={mergedParticipants}
+        key="schedule-participants-owners-modal"
       />
       <ScheduleGroupModal onClose={closeGroupModal} isOpen={isGroupModalOpen} />
       <VStack
