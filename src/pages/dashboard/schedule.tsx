@@ -275,6 +275,7 @@ const Schedule: NextPage<IInitialProps> = ({
   >([MeetingPermissions.SEE_GUEST_LIST])
   const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
+  const [canEdit, setCanEdit] = useState(false)
   const fetchGroups = async () => {
     setIsGroupPrefetching(true)
     try {
@@ -789,6 +790,8 @@ const Schedule: NextPage<IInitialProps> = ({
     setSelectedPermissions,
     meetingOwners,
     setMeetingOwners,
+    canEdit,
+    setCanEdit,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
