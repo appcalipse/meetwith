@@ -210,6 +210,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const showEdit =
     isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
     isAfter(meeting.start, new Date())
+
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
     meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
@@ -337,11 +338,31 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                           color={iconColor}
                           aria-label="edit"
                           icon={<FaEdit size={16} />}
-                          onClick={() => {
-                            if (decryptedMeeting)
-                              void push(
-                                `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
-                              )
+                          onClick={async () => {
+                            if (decryptedMeeting) {
+                              try {
+                                await push(
+                                  `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
+                                )
+                              } catch (error) {
+                                toast({
+                                  title: 'Navigation Error',
+                                  description:
+                                    'Failed to navigate to edit page.',
+                                  status: 'error',
+                                  duration: 5000,
+                                  isClosable: true,
+                                })
+                              }
+                            } else {
+                              toast({
+                                title: 'Meeting Data Unavailable',
+                                description: 'Unable to edit this meeting.',
+                                status: 'warning',
+                                duration: 5000,
+                                isClosable: true,
+                              })
+                            }
                           }}
                         />
                         <IconButton
