@@ -1,4 +1,4 @@
-import { AddIcon, InfoIcon } from '@chakra-ui/icons'
+import { AddIcon, InfoIcon, WarningTwoIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
@@ -108,6 +108,7 @@ const ScheduleBase = () => {
     groupParticipants,
     meetingOwners,
     setMeetingOwners,
+    canEditMeetingDetails,
   } = useContext(ScheduleContext)
   const handleSubmit = () => {
     if (!title) {
@@ -237,11 +238,13 @@ const ScheduleBase = () => {
       <DiscoverATimeInfoModal
         isOpen={openWhatIsThis}
         onClose={() => setOpenWhatIsThis(false)}
+        key={'discover-a-time-info-modal'}
       />
       <ScheduleParticipantsOwnersModal
         isOpen={isOpen}
         onClose={onClose}
         participants={mergedParticipants}
+        key="schedule-participants-owners-modal"
       />
       <ScheduleParticipantsSchedulerModal
         isOpen={isSchedulerDeleteOpen}
@@ -255,6 +258,7 @@ const ScheduleBase = () => {
         openSchedulerModal={onSchedulerDeleteOpen}
       />
       <ScheduleGroupModal onClose={closeGroupModal} isOpen={isGroupModalOpen} />
+
       <VStack
         gap={6}
         width="fit-content"
@@ -265,6 +269,21 @@ const ScheduleBase = () => {
         m="auto"
         alignItems="flex-start"
       >
+        {!canEditMeetingDetails && (
+          <HStack
+            bg={'yellow.300'}
+            color={'neutral.900'}
+            py={3}
+            px={4}
+            gap={3}
+            borderRadius={'6px'}
+          >
+            <WarningTwoIcon w={5} h={5} />
+            <Text fontWeight="500">
+              You do not have permission to edit this meeting.
+            </Text>
+          </HStack>
+        )}
         <Heading fontSize="x-large">
           {query.intent === Intents.UPDATE_MEETING
             ? 'Update meeting'
@@ -272,7 +291,10 @@ const ScheduleBase = () => {
         </Heading>
         <VStack width="100%" gap={4}>
           <Flex width="100%" gap={4}>
-            <FormControl isInvalid={!isTitleValid}>
+            <FormControl
+              isInvalid={!isTitleValid}
+              isDisabled={!canEditMeetingDetails || isScheduling}
+            >
               <FormLabel
                 _invalid={{
                   color: 'red.500',
@@ -289,7 +311,6 @@ const ScheduleBase = () => {
                   color: 'neutral.400',
                 }}
                 borderColor="neutral.400"
-                disabled={isScheduling}
                 value={title}
                 onChange={e => {
                   if (!isTitleValid && e.target.value) {
@@ -306,7 +327,10 @@ const ScheduleBase = () => {
                 </FormHelperText>
               )}
             </FormControl>
-            <FormControl w={'max-content'}>
+            <FormControl
+              w={'max-content'}
+              isDisabled={!canEditMeetingDetails || isScheduling}
+            >
               <FormLabel htmlFor="date">
                 Duration
                 <Text color="red.500" display="inline">
@@ -337,7 +361,11 @@ const ScheduleBase = () => {
               )}
             </FormControl>
           </Flex>
-          <FormControl w="100%" maxW="100%">
+          <FormControl
+            w="100%"
+            maxW="100%"
+            isDisabled={!canEditMeetingDetails || isScheduling}
+          >
             <FormLabel htmlFor="participants">
               Participants
               <Text color="red.500" display="inline">
@@ -366,6 +394,7 @@ const ScheduleBase = () => {
                   isInvalid: !isParticipantsValid,
                   errorBorderColor: 'red.500',
                 }}
+                isReadOnly={!canEditMeetingDetails || isScheduling}
                 button={
                   <Button
                     pos="absolute"
@@ -405,7 +434,7 @@ const ScheduleBase = () => {
               {MeetingSchedulePermissions.map(permission => (
                 <Checkbox
                   key={permission.value}
-                  isChecked={selectedPermissions.includes(permission.value)}
+                  isChecked={selectedPermissions?.includes(permission.value)}
                   w="100%"
                   colorScheme="primary"
                   flexDir="row-reverse"
@@ -417,17 +446,12 @@ const ScheduleBase = () => {
                   p={0}
                   marginInlineStart={0}
                   onChange={e => {
-                    const isChecked = e.target.checked
-                    if (isChecked) {
-                      setSelectedPermissions(prev => [
-                        ...prev,
-                        permission.value,
-                      ])
-                    } else {
-                      setSelectedPermissions(prev =>
-                        prev.filter(p => p !== permission.value)
-                      )
-                    }
+                    const { checked } = e.target
+                    setSelectedPermissions(prev =>
+                      checked
+                        ? (prev || []).concat(permission.value)
+                        : prev?.filter(p => p !== permission.value) || []
+                    )
                   }}
                 >
                   <HStack marginInlineStart={-2} gap={0}>
@@ -493,6 +517,7 @@ const ScheduleBase = () => {
               h={'auto'}
               colorScheme="primary"
               onClick={handleSubmit}
+              isDisabled={!canEditMeetingDetails || isScheduling}
             >
               Discover a time
             </Button>
@@ -511,7 +536,10 @@ const ScheduleBase = () => {
           </Text>
           <Divider />
         </HStack>
-        <FormControl w={'100%'}>
+        <FormControl
+          w={'100%'}
+          isDisabled={!canEditMeetingDetails || isScheduling}
+        >
           <FormLabel htmlFor="date">When</FormLabel>
           <HStack w={'100%'}>
             <SingleDatepicker
@@ -558,6 +586,7 @@ const ScheduleBase = () => {
               onChange={(val: MeetingProvider) => setMeetingProvider(val)}
               value={meetingProvider}
               w={'100%'}
+              isDisabled={!canEditMeetingDetails || isScheduling}
             >
               <VStack w={'100%'} gap={4}>
                 {meetingProviders.map(provider => (
@@ -592,7 +621,11 @@ const ScheduleBase = () => {
             )}
           </VStack>
         )}
-        <FormControl w="100%" maxW="100%">
+        <FormControl
+          w="100%"
+          maxW="100%"
+          isDisabled={!canEditMeetingDetails || isScheduling}
+        >
           <FormLabel>Meeting reminders</FormLabel>
           <ChakraSelect
             value={meetingNotification}
@@ -642,7 +675,11 @@ const ScheduleBase = () => {
             }}
           />
         </FormControl>
-        <FormControl w="100%" maxW="100%">
+        <FormControl
+          w="100%"
+          maxW="100%"
+          isDisabled={!canEditMeetingDetails || isScheduling}
+        >
           <FormLabel>Meeting Repeat</FormLabel>
           <ChakraSelect
             value={meetingRepeat}
@@ -682,13 +719,14 @@ const ScheduleBase = () => {
             }}
           />
         </FormControl>
-        <FormControl>
+        <FormControl isDisabled={!canEditMeetingDetails || isScheduling}>
           <FormLabel htmlFor="info">Description (optional)</FormLabel>
           <RichTextEditor
             id="info"
             value={content}
             onValueChange={handleContentChange}
             placeholder="Any information you want to share prior to the meeting?"
+            isDisabled={!canEditMeetingDetails || isScheduling}
           />
         </FormControl>
         <HStack w="100%" flexWrap="wrap">
@@ -703,7 +741,11 @@ const ScheduleBase = () => {
             onClick={handleSchedule}
             isLoading={isScheduling}
             isDisabled={
-              participants.length === 0 || !title || !duration || !pickedTime
+              participants.length === 0 ||
+              !title ||
+              !duration ||
+              !pickedTime ||
+              !canEditMeetingDetails
             }
           >
             {query.intent === Intents.UPDATE_MEETING
