@@ -146,12 +146,14 @@ interface IScheduleContext {
   isDeleting: boolean
   canDelete: boolean
   isScheduler: boolean
-  selectedPermissions: Array<MeetingPermissions>
+  selectedPermissions: Array<MeetingPermissions> | undefined
   setSelectedPermissions: React.Dispatch<
-    React.SetStateAction<Array<MeetingPermissions>>
+    React.SetStateAction<Array<MeetingPermissions> | undefined>
   >
   meetingOwners: Array<ParticipantInfo>
   setMeetingOwners: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
+  canEdit: boolean
+  setCanEdit: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 const DEFAULT_CONTEXT: IScheduleContext = {
@@ -202,6 +204,8 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setSelectedPermissions: () => {},
   meetingOwners: [],
   setMeetingOwners: () => {},
+  canEdit: false,
+  setCanEdit: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -267,7 +271,7 @@ const Schedule: NextPage<IInitialProps> = ({
     label: 'Does not repeat',
   })
   const [selectedPermissions, setSelectedPermissions] = useState<
-    Array<MeetingPermissions>
+    Array<MeetingPermissions> | undefined
   >([MeetingPermissions.SEE_GUEST_LIST])
   const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
@@ -902,9 +906,7 @@ const Schedule: NextPage<IInitialProps> = ({
         decryptedMeeting.provider ||
           selectDefaultProvider(currentAccount?.preferences.meetingProviders)
       )
-      setSelectedPermissions(
-        decryptedMeeting.permissions || [MeetingPermissions.SEE_GUEST_LIST]
-      )
+      setSelectedPermissions(decryptedMeeting.permissions || undefined)
       if (decryptedMeeting.permissions) {
         const isSchedulerOrOwner = [
           ParticipantType.Scheduler,

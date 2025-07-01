@@ -265,7 +265,7 @@ const buildMeetingData = async (
   meetingTitle = 'No Title',
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
+  selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -412,7 +412,7 @@ const updateMeeting = async (
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
+  selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -454,7 +454,7 @@ const updateMeeting = async (
       decryptedMeeting?.provider !== meetingProvider ||
       decryptedMeeting?.reminders?.length !== meetingReminders?.length ||
       decryptedMeeting?.recurrence !== meetingRepeat ||
-      decryptedMeeting?.permissions?.length !== selectedPermissions.length ||
+      decryptedMeeting?.permissions?.length !== selectedPermissions?.length ||
       new Date(decryptedMeeting?.start).getTime() !==
         new Date(startTime).getTime() ||
       new Date(decryptedMeeting?.end).getTime() !== new Date(endTime).getTime())
@@ -822,7 +822,7 @@ const scheduleMeeting = async (
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
+  selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
