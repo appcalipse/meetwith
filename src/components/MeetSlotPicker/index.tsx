@@ -32,6 +32,7 @@ const tzs = timezones.map(tz => {
     label: tz.name,
   }
 })
+
 import { captureException } from '@sentry/nextjs'
 
 import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
@@ -202,6 +203,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       { zone: timezoneValue }
     )
 
+
     const nowInTimezone = DateTime.now().setZone(timezoneValue)
 
     return (
@@ -212,6 +214,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   }
   const validator = (date: Date) => {
     if (!slotDurationInMinutes) return
+
     try {
       const dayInTimezone = DateTime.fromObject(
         {
