@@ -384,7 +384,7 @@ const ScheduleBase = () => {
               {MeetingSchedulePermissions.map(permission => (
                 <Checkbox
                   key={permission.value}
-                  isChecked={selectedPermissions.includes(permission.value)}
+                  isChecked={selectedPermissions?.includes(permission.value)}
                   w="100%"
                   colorScheme="primary"
                   flexDir="row-reverse"
@@ -396,17 +396,12 @@ const ScheduleBase = () => {
                   p={0}
                   marginInlineStart={0}
                   onChange={e => {
-                    const isChecked = e.target.checked
-                    if (isChecked) {
-                      setSelectedPermissions(prev => [
-                        ...prev,
-                        permission.value,
-                      ])
-                    } else {
-                      setSelectedPermissions(prev =>
-                        prev.filter(p => p !== permission.value)
-                      )
-                    }
+                    const { checked } = e.target
+                    setSelectedPermissions(prev =>
+                      checked
+                        ? (prev || []).concat(permission.value)
+                        : prev?.filter(p => p !== permission.value) || []
+                    )
                   }}
                 >
                   <HStack marginInlineStart={-2} gap={0}>
