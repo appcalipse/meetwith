@@ -293,7 +293,6 @@ const buildMeetingData = async (
     recurrence: meetingRepeat,
     permissions: selectedPermissions,
   }
-
   // first pass to make sure that we are keeping the existing slot id
   for (const participant of sanitizedParticipants) {
     const existingSlotId = participantsToKeep[participant.account_address || '']
@@ -596,6 +595,7 @@ const updateMeeting = async (
     meetingRepeat,
     selectedPermissions
   )
+
   const payload = {
     ...meetingData,
     slotsToRemove: toRemove.map(it => accountSlotMap[it]),
@@ -1121,6 +1121,7 @@ const decryptMeeting = async (
   if (!content) return null
 
   const meetingInfo = JSON.parse(content) as MeetingInfo
+
   if (
     meeting?.conferenceData &&
     meeting?.conferenceData.version === MeetingVersion.V2
