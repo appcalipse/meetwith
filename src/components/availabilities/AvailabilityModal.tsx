@@ -25,7 +25,10 @@ import { MdKeyboard, MdMouse } from 'react-icons/md'
 
 import TimezoneSelector from '@/components/TimezoneSelector'
 import { useAllMeetingTypes } from '@/hooks/useAllMeetingTypes'
-import { useAvailabilityBlockMeetingTypes } from '@/hooks/useAvailabilityBlockMeetingTypes'
+import {
+  useAvailabilityBlockMeetingTypes,
+  useUpdateAvailabilityBlockMeetingTypes,
+} from '@/hooks/useAvailabilityBlockMeetingTypes'
 import { TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import {
@@ -93,15 +96,16 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
 
   const { meetingTypes: allMeetingTypes } = useAllMeetingTypes()
 
-  const {
-    meetingTypes: currentMeetingTypes,
-    updateMeetingTypes,
-    isUpdating: isUpdatingMeetingTypes,
-  } = useAvailabilityBlockMeetingTypes(
+  const blockId =
     isOpen && (editingBlockId || duplicatingBlockId)
       ? editingBlockId || duplicatingBlockId || ''
       : ''
-  )
+
+  const { meetingTypes: currentMeetingTypes } =
+    useAvailabilityBlockMeetingTypes(blockId)
+
+  const { updateMeetingTypes, isUpdating: isUpdatingMeetingTypes } =
+    useUpdateAvailabilityBlockMeetingTypes(blockId)
 
   const meetingTypeOptions: Option<string>[] = allMeetingTypes.map(type => ({
     value: type.id,

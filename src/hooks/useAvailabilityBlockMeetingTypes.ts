@@ -9,8 +9,6 @@ import {
 export const useAvailabilityBlockMeetingTypes = (
   availabilityBlockId: string
 ) => {
-  const queryClient = useQueryClient()
-
   const {
     data: meetingTypes,
     isLoading,
@@ -20,6 +18,18 @@ export const useAvailabilityBlockMeetingTypes = (
     queryFn: () => getMeetingTypesForAvailabilityBlock(availabilityBlockId),
     enabled: !!availabilityBlockId,
   })
+
+  return {
+    meetingTypes: meetingTypes || [],
+    isLoading,
+    error,
+  }
+}
+
+export const useUpdateAvailabilityBlockMeetingTypes = (
+  availabilityBlockId: string
+) => {
+  const queryClient = useQueryClient()
 
   const updateMutation = useMutation({
     mutationFn: (meetingTypeIds: string[]) =>
@@ -35,9 +45,6 @@ export const useAvailabilityBlockMeetingTypes = (
   })
 
   return {
-    meetingTypes: meetingTypes || [],
-    isLoading,
-    error,
     updateMeetingTypes: updateMutation.mutate,
     isUpdating: updateMutation.isLoading,
   }
