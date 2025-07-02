@@ -37,12 +37,10 @@ import {
 import Loading from '@/components/Loading'
 // TODO: create helper function to merge availabilities from availability block
 import Calendar from '@/components/MeetSlotPicker/calendar/index'
-import { Popup, PopupHeader } from '@/components/MeetSlotPicker/Popup'
 import TimeSlots from '@/components/MeetSlotPicker/TimeSlots'
 import { PublicScheduleContext } from '@/components/public-meeting'
 import { ScheduleForm } from '@/components/schedule/schedule-form'
 import useAccountContext from '@/hooks/useAccountContext'
-import availabilities from '@/pages/api/availabilities'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
