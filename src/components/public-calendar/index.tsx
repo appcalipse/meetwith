@@ -10,7 +10,6 @@ import {
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
-import { useMutation } from '@tanstack/react-query'
 import { SessionType } from '@utils/constants/meeting-types'
 import {
   addMinutes,
@@ -49,13 +48,11 @@ import {
 import { logEvent } from '@/utils/analytics'
 import {
   doesContactExist,
-  fetchBusySlotsForMultipleAccounts,
   getAccount,
   getBusySlots,
   getMeeting,
   getNotificationSubscriptions,
   listConnectedCalendars,
-  sendContactListInvite,
 } from '@/utils/api_helper'
 import {
   dateToHumanReadable,
@@ -65,9 +62,6 @@ import {
 import { Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import {
-  CantInviteYourself,
-  ContactAlreadyExists,
-  ContactInviteAlreadySent,
   GateConditionNotValidError,
   GoogleServiceUnavailable,
   Huddle01ServiceUnavailable,
