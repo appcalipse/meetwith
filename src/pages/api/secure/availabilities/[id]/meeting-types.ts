@@ -5,7 +5,7 @@ import { UpdateAvailabilityBlockMeetingTypesRequest } from '@/types/Requests'
 import {
   getMeetingTypesForAvailabilityBlock,
   updateAvailabilityBlockMeetingTypes,
-} from '@/utils/availability_meeting_types'
+} from '@/utils/database'
 import {
   AvailabilityBlockNotFoundError,
   UnauthorizedError,
