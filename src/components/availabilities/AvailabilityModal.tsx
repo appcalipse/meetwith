@@ -7,6 +7,7 @@ import {
   HStack,
   IconButton,
   Input,
+  Link,
   Modal,
   ModalBody,
   ModalContent,
@@ -14,13 +15,17 @@ import {
   ModalOverlay,
   Switch,
   Text,
+  Tooltip,
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { Select as ChakraSelect } from 'chakra-react-select'
+import { useEffect, useRef, useState } from 'react'
 import { MdKeyboard, MdMouse } from 'react-icons/md'
 
 import TimezoneSelector from '@/components/TimezoneSelector'
+import { useAllMeetingTypes } from '@/hooks/useAllMeetingTypes'
+import { useAvailabilityBlockMeetingTypes } from '@/hooks/useAvailabilityBlockMeetingTypes'
 import { TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import {
@@ -29,6 +34,7 @@ import {
   handleCopyToDays,
   sortAvailabilitiesByWeekday,
 } from '@/utils/availability.helper'
+import { Option } from '@/utils/constants/select'
 
 import { WeekdayConfig } from './WeekdayConfig'
 
@@ -55,6 +61,7 @@ interface AvailabilityModalProps {
   onShowDeleteConfirmation: () => void
   isLoading: boolean
   currentEditingBlock?: AvailabilityBlock
+  onMeetingTypesChange?: (meetingTypeIds: string[]) => void
 }
 
 export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
@@ -75,9 +82,104 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
   onShowDeleteConfirmation,
   isLoading,
   currentEditingBlock,
+  onMeetingTypesChange,
 }) => {
   const [useDirectInput, setUseDirectInput] = useState(false)
   const toast = useToast()
+  const [selectedMeetingTypes, setSelectedMeetingTypes] = useState<
+    Option<string>[]
+  >([])
+  const hasInitialized = useRef(false)
+
+  const { meetingTypes: allMeetingTypes } = useAllMeetingTypes()
+
+  const {
+    meetingTypes: currentMeetingTypes,
+    updateMeetingTypes,
+    isUpdating: isUpdatingMeetingTypes,
+  } = useAvailabilityBlockMeetingTypes(
+    isOpen && (editingBlockId || duplicatingBlockId)
+      ? editingBlockId || duplicatingBlockId || ''
+      : ''
+  )
+
+  const meetingTypeOptions: Option<string>[] = allMeetingTypes.map(type => ({
+    value: type.id,
+    label: type.title,
+  }))
+
+  const initializeMeetingTypes = () => {
+    if (isEditing && editingBlockId && currentMeetingTypes.length > 0) {
+      const meetingTypeOptions = currentMeetingTypes.map(type => ({
+        value: type.id,
+        label: type.title,
+      }))
+      setSelectedMeetingTypes(meetingTypeOptions)
+      if (onMeetingTypesChange) {
+        onMeetingTypesChange(meetingTypeOptions.map(option => option.value))
+      }
+    } else if (duplicatingBlockId && currentMeetingTypes.length > 0) {
+      const meetingTypeOptions = currentMeetingTypes.map(type => ({
+        value: type.id,
+        label: type.title,
+      }))
+      setSelectedMeetingTypes(meetingTypeOptions)
+      if (onMeetingTypesChange) {
+        onMeetingTypesChange(meetingTypeOptions.map(option => option.value))
+      }
+    } else if (!isEditing && !duplicatingBlockId) {
+      setSelectedMeetingTypes([])
+      if (onMeetingTypesChange) {
+        onMeetingTypesChange([])
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      if (
+        currentMeetingTypes.length > 0 &&
+        selectedMeetingTypes.length === 0 &&
+        !hasInitialized.current
+      ) {
+        initializeMeetingTypes()
+        hasInitialized.current = true
+      }
+    } else {
+      if (selectedMeetingTypes.length > 0) {
+        setSelectedMeetingTypes([])
+        if (onMeetingTypesChange) {
+          onMeetingTypesChange([])
+        }
+      }
+      hasInitialized.current = false
+    }
+  }, [
+    isOpen,
+    currentMeetingTypes.length,
+    selectedMeetingTypes.length,
+    isEditing,
+    editingBlockId,
+    duplicatingBlockId,
+  ])
+
+  const handleMeetingTypesChange = (selectedOptions: Option<string>[]) => {
+    setSelectedMeetingTypes(selectedOptions)
+    if (onMeetingTypesChange) {
+      const meetingTypeIds = selectedOptions.map(option => option.value)
+      onMeetingTypesChange(meetingTypeIds)
+    }
+  }
+
+  const handleSave = async () => {
+    if (isEditing && editingBlockId) {
+      onSave()
+      const meetingTypeIds = selectedMeetingTypes.map(option => option.value)
+      updateMeetingTypes(meetingTypeIds)
+    } else {
+      onSave()
+    }
+  }
 
   const handleCopyToDaysLocal = (
     sourceWeekday: number,
@@ -172,7 +274,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       color="neutral.800"
                       _hover={{ bg: 'primary.200' }}
                       size="sm"
-                      onClick={onSave}
+                      onClick={handleSave}
                       width={{ base: '60px', md: '70px' }}
                       height={{ base: '36px', md: '40px' }}
                       borderRadius={8}
@@ -239,6 +341,41 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                     />
                   </FormControl>
 
+                  <FormControl>
+                    <FormLabel
+                      color="neutral.0"
+                      fontSize={15}
+                      fontWeight={500}
+                      mb={2}
+                    >
+                      Associated Meeting Types
+                    </FormLabel>
+                    <ChakraSelect
+                      value={selectedMeetingTypes}
+                      onChange={(newValue: unknown) => {
+                        const newSelectedTypes =
+                          (newValue as Option<string>[]) || []
+                        handleMeetingTypesChange(newSelectedTypes)
+                      }}
+                      options={meetingTypeOptions}
+                      isMulti
+                      placeholder="Select meeting types to associate with this block..."
+                      isDisabled={isUpdatingMeetingTypes}
+                      chakraStyles={{
+                        control: provided => ({
+                          ...provided,
+                          background: 'neutral.900',
+                          borderColor: 'neutral.800',
+                          color: 'neutral.0',
+                        }),
+                      }}
+                    />
+                    <Text color="neutral.300" fontSize={14} mt={2}>
+                      Select which meeting types should use this availability
+                      block.
+                    </Text>
+                  </FormControl>
+
                   <Box>
                     <Flex
                       justify="space-between"
@@ -256,25 +393,36 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                             ? 'Direct input mode'
                             : 'Dropdown mode'}
                         </Text>
-                        <IconButton
-                          color="neutral.300"
-                          aria-label="toggle input mode"
-                          icon={
-                            useDirectInput ? (
-                              <MdMouse size={16} />
-                            ) : (
-                              <MdKeyboard size={16} />
-                            )
-                          }
-                          onClick={toggleInputMode}
-                          title={
+                        <Tooltip
+                          label={
                             useDirectInput
-                              ? 'Switch to dropdown'
-                              : 'Switch to direct input'
+                              ? 'Switch to dropdown mode'
+                              : 'Switch to direct input mode'
                           }
-                          size="sm"
-                          variant="ghost"
-                        />
+                          placement="top"
+                          hasArrow
+                          bg="neutral.800"
+                          color="neutral.0"
+                          borderRadius="md"
+                          fontSize="sm"
+                          px={3}
+                          py={2}
+                        >
+                          <IconButton
+                            color="neutral.300"
+                            aria-label="toggle input mode"
+                            icon={
+                              useDirectInput ? (
+                                <MdMouse size={16} />
+                              ) : (
+                                <MdKeyboard size={16} />
+                              )
+                            }
+                            onClick={toggleInputMode}
+                            size="sm"
+                            variant="ghost"
+                          />
+                        </Tooltip>
                       </HStack>
                     </Flex>
                     <Box overflowX="hidden">
@@ -324,7 +472,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                           color="neutral.800"
                           _hover={{ bg: 'primary.200' }}
                           size="sm"
-                          onClick={onSave}
+                          onClick={handleSave}
                           width={{ base: '100%', sm: '70px' }}
                           height="48px"
                           borderRadius={8}
@@ -412,9 +560,14 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       </Text>
                     </VStack>
 
+                    {/* Session types association section */}
+                    <SessionTypesAssociationSection
+                      blockId={currentEditingBlock?.id}
+                    />
+
                     <Text color="red.500" fontSize={16} fontWeight={500} mb={6}>
                       Deleting this availability block will affect your
-                      availability in groups and session types you have.
+                      availability in those groups and session types you have.
                     </Text>
                   </Box>
 
@@ -461,5 +614,50 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
         </Box>
       </ModalContent>
     </Modal>
+  )
+}
+
+const SessionTypesAssociationSection: React.FC<{ blockId?: string }> = ({
+  blockId,
+}) => {
+  const { meetingTypes: associatedMeetingTypes, isLoading } =
+    useAvailabilityBlockMeetingTypes(blockId || '')
+
+  if (!blockId) return null
+
+  if (!isLoading && associatedMeetingTypes.length === 0) return null
+
+  return (
+    <Box mb={4}>
+      <Text color="neutral.0" fontSize={20} fontWeight={500} mt={6} mb={2}>
+        Which is connected to these Session types
+      </Text>
+      <Text color="neutral.0" fontWeight={500} fontSize={16} mb={1}>
+        Session types
+      </Text>
+      {isLoading ? (
+        <Text color="neutral.400" fontSize={14}>
+          Loading...
+        </Text>
+      ) : (
+        <VStack align="start" spacing={1} mb={2}>
+          {associatedMeetingTypes.map(type => (
+            <Link
+              key={type.id}
+              color="primary.200"
+              textDecoration="underline"
+              fontSize={16}
+              fontWeight={500}
+              href={`/dashboard/meeting-settings?highlight=${type.id}`}
+              isExternal
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {type.title}
+            </Link>
+          ))}
+        </VStack>
+      )}
+    </Box>
   )
 }
