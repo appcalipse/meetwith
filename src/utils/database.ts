@@ -4157,6 +4157,59 @@ const getPaidSessionsByMeetingType = async (
   return sessions?.map(val => ({ ...val, plan: val.plan?.[0] })) || []
 }
 
+const updateAvailabilityBlockMeetingTypes = async (
+  availability_block_id: string,
+  meeting_type_ids: string[]
+) => {
+  const { error: deleteError } = await db.supabase
+    .from('meeting_type_availabilities')
+    .delete()
+    .eq('availability_id', availability_block_id)
+
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+
+  if (meeting_type_ids.length > 0) {
+    const associations = meeting_type_ids.map(meeting_type_id => ({
+      availability_id: availability_block_id,
+      meeting_type_id,
+    }))
+
+    const { error: insertError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .insert(associations)
+
+    if (insertError) {
+      throw new Error(insertError.message)
+    }
+  }
+}
+
+const getMeetingTypesForAvailabilityBlock = async (
+  availability_block_id: string
+) => {
+  const { data, error } = await db.supabase
+    .from('meeting_type_availabilities')
+    .select(
+      `
+      meeting_type: meeting_type(
+        id,
+        title,
+        slug,
+        description
+      )
+    `
+    )
+    .eq('availability_id', availability_block_id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data?.map(item => item.meeting_type) || []
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -4208,6 +4261,7 @@ export {
   getMeetingFromDB,
   getMeetingSessionsByTxHash,
   getMeetingTypes,
+  getMeetingTypesForAvailabilityBlock,
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
@@ -4244,6 +4298,7 @@ export {
   updateAccountFromInvite,
   updateAccountPreferences,
   updateAllRecurringSlots,
+  updateAvailabilityBlockMeetingTypes,
   updateContactInviteCooldown,
   updateCustomSubscriptionDomain,
   updateMeeting,

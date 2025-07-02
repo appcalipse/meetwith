@@ -9,6 +9,7 @@ import {
   MenuItem,
   MenuList,
   Text,
+  Tooltip,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
@@ -163,14 +164,26 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
           <HStack spacing={1} flexShrink={0}>
             {onCopyToDays && (
               <Menu>
-                <MenuButton
-                  as={IconButton}
-                  color={iconColor}
-                  aria-label="copy to other days"
-                  icon={<FaCopy size={16} />}
-                  size="sm"
-                  variant="ghost"
-                />
+                <Tooltip
+                  label="Copy time slots to other days"
+                  placement="top"
+                  hasArrow
+                  bg="neutral.800"
+                  color="neutral.0"
+                  borderRadius="md"
+                  fontSize="sm"
+                  px={3}
+                  py={2}
+                >
+                  <MenuButton
+                    as={IconButton}
+                    color={iconColor}
+                    aria-label="copy to other days"
+                    icon={<FaCopy size={16} />}
+                    size="sm"
+                    variant="ghost"
+                  />
+                </Tooltip>
                 <MenuList>
                   <MenuItem onClick={() => handleCopyToDays('all')}>
                     Copy to all other days
@@ -211,29 +224,53 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
                 })}
               />
               <HStack spacing={1}>
-                <IconButton
-                  color={iconColor}
-                  aria-label="remove time slot"
-                  icon={<FaTrash size={14} />}
-                  onClick={() => handleTimeRemoveClick(index)}
-                  size="sm"
-                  variant="ghost"
-                  flexShrink={0}
-                  minW="32px"
-                  h="32px"
-                />
-                {index === 0 && (
+                <Tooltip
+                  label="Remove time slot"
+                  placement="top"
+                  hasArrow
+                  bg="neutral.800"
+                  color="neutral.0"
+                  borderRadius="md"
+                  fontSize="sm"
+                  px={3}
+                  py={2}
+                >
                   <IconButton
                     color={iconColor}
-                    aria-label="add time slot"
-                    icon={<FaPlusCircle size={14} />}
-                    onClick={handleAddSlotClick}
+                    aria-label="remove time slot"
+                    icon={<FaTrash size={14} />}
+                    onClick={() => handleTimeRemoveClick(index)}
                     size="sm"
                     variant="ghost"
                     flexShrink={0}
                     minW="32px"
                     h="32px"
                   />
+                </Tooltip>
+                {index === 0 && (
+                  <Tooltip
+                    label="Add another time slot"
+                    placement="top"
+                    hasArrow
+                    bg="neutral.800"
+                    color="neutral.0"
+                    borderRadius="md"
+                    fontSize="sm"
+                    px={3}
+                    py={2}
+                  >
+                    <IconButton
+                      color={iconColor}
+                      aria-label="add time slot"
+                      icon={<FaPlusCircle size={14} />}
+                      onClick={handleAddSlotClick}
+                      size="sm"
+                      variant="ghost"
+                      flexShrink={0}
+                      minW="32px"
+                      h="32px"
+                    />
+                  </Tooltip>
                 )}
               </HStack>
             </Flex>
