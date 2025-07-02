@@ -3791,6 +3791,9 @@ const createMeetingType = async (
     title: meetingType.title,
     slug: meetingType.slug,
     description: meetingType.description,
+    custom_link: meetingType.custom_link,
+    fixed_link: meetingType.fixed_link,
+    meeting_platforms: meetingType.meeting_platforms,
   }
   const { data, error } = await db.supabase
     .from('meeting_type')
@@ -3888,6 +3891,9 @@ const updateMeetingType = async (
     slug: meetingType.slug,
     description: meetingType.description,
     updated_at: new Date().toISOString(),
+    custom_link: meetingType.custom_link,
+    fixed_link: meetingType.fixed_link,
+    meeting_platforms: meetingType.meeting_platforms,
   }
   const { data, error } = await db.supabase
     .from('meeting_type')
