@@ -3616,6 +3616,64 @@ export const updateAvailabilityBlock = async (
   return data
 }
 
+const updateAvailabilityBlockMeetingTypes = async (
+  account_address: string,
+  availability_block_id: string,
+  meeting_type_ids: string[]
+) => {
+  // First verify the availability block exists and belongs to the account
+  const { data: block, error: blockError } = await db.supabase
+    .from('availabilities')
+    .select('id')
+    .eq('id', availability_block_id)
+    .eq('account_owner_address', account_address)
+    .single()
+
+  if (blockError || !block) {
+    throw new AvailabilityBlockNotFoundError()
+  }
+
+  // Get current meeting type associations
+  const { data: current } = await db.supabase
+    .from('meeting_type_availabilities')
+    .select('meeting_type_id')
+    .eq('availability_id', availability_block_id)
+
+  const currentIds =
+    current?.map((c: { meeting_type_id: string }) => c.meeting_type_id) || []
+  const newIds = meeting_type_ids
+
+  const toDelete = currentIds.filter((id: string) => !newIds.includes(id))
+  const toInsert = newIds.filter((id: string) => !currentIds.includes(id))
+
+  if (toDelete.length > 0) {
+    const { error: deleteError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .delete()
+      .eq('availability_id', availability_block_id)
+      .in('meeting_type_id', toDelete)
+
+    if (deleteError) {
+      throw new Error('Failed to remove meeting type associations')
+    }
+  }
+
+  if (toInsert.length > 0) {
+    const { error: insertError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .insert(
+        toInsert.map(meeting_type_id => ({
+          availability_id: availability_block_id,
+          meeting_type_id: meeting_type_id,
+        }))
+      )
+
+    if (insertError) {
+      throw new Error('Failed to add meeting type associations')
+    }
+  }
+}
+
 export const deleteAvailabilityBlock = async (
   id: string,
   account_address: string
@@ -3762,6 +3820,64 @@ const getMeetingTypes = async (
 
   return transformedData as MeetingType[]
 }
+
+const getMeetingTypesForAvailabilityBlock = async (
+  account_address: string,
+  availability_block_id: string
+): Promise<MeetingType[]> => {
+  // First verify the availability block exists and belongs to the account
+  const { data: block, error: blockError } = await db.supabase
+    .from('availabilities')
+    .select('id')
+    .eq('id', availability_block_id)
+    .eq('account_owner_address', account_address)
+    .single()
+
+  if (blockError || !block) {
+    throw new AvailabilityBlockNotFoundError()
+  }
+
+  const { data, error } = await db.supabase
+    .from('meeting_type_availabilities')
+    .select(
+      `
+      meeting_type: meeting_type(
+        *,
+        availabilities: meeting_type_availabilities(availabilities(*)),
+        plan: meeting_type_plan(*),
+        connected_calendars: meeting_type_calendars(
+           connected_calendars(id, email, provider)
+        )
+      )
+    `
+    )
+    .eq('availability_id', availability_block_id)
+    .eq('meeting_type.account_owner_address', account_address)
+    .is('meeting_type.deleted_at', null)
+
+  if (error) {
+    throw new Error('Failed to fetch meeting types')
+  }
+
+  const transformedData = data?.map(item => {
+    const meetingType = item.meeting_type
+    return {
+      ...meetingType,
+      calendars: meetingType?.connected_calendars?.map(
+        (calendar: { connected_calendars: ConnectedCalendar }) =>
+          calendar.connected_calendars
+      ),
+      availabilities: meetingType?.availabilities?.map(
+        (availability: { availabilities: AvailabilityBlock }) =>
+          availability.availabilities
+      ),
+      plan: meetingType?.plan?.[0],
+    }
+  })
+
+  return transformedData as MeetingType[]
+}
+
 const checkSlugExists = async (
   account_address: string,
   slug: string,
@@ -4162,121 +4278,6 @@ const getPaidSessionsByMeetingType = async (
     throw new Error(error.message)
   }
   return sessions?.map(val => ({ ...val, plan: val.plan?.[0] })) || []
-}
-
-const updateAvailabilityBlockMeetingTypes = async (
-  account_address: string,
-  availability_block_id: string,
-  meeting_type_ids: string[]
-) => {
-  // First verify the availability block exists and belongs to the account
-  const { data: block, error: blockError } = await db.supabase
-    .from('availabilities')
-    .select('id')
-    .eq('id', availability_block_id)
-    .eq('account_owner_address', account_address)
-    .single()
-
-  if (blockError || !block) {
-    throw new AvailabilityBlockNotFoundError()
-  }
-
-  // Get current meeting type associations
-  const { data: current } = await db.supabase
-    .from('meeting_type_availabilities')
-    .select('meeting_type_id')
-    .eq('availability_id', availability_block_id)
-
-  const currentIds =
-    current?.map((c: { meeting_type_id: string }) => c.meeting_type_id) || []
-  const newIds = meeting_type_ids
-
-  const toDelete = currentIds.filter((id: string) => !newIds.includes(id))
-  const toInsert = newIds.filter((id: string) => !currentIds.includes(id))
-
-  if (toDelete.length > 0) {
-    const { error: deleteError } = await db.supabase
-      .from('meeting_type_availabilities')
-      .delete()
-      .eq('availability_id', availability_block_id)
-      .in('meeting_type_id', toDelete)
-
-    if (deleteError) {
-      throw new Error('Failed to remove meeting type associations')
-    }
-  }
-
-  if (toInsert.length > 0) {
-    const { error: insertError } = await db.supabase
-      .from('meeting_type_availabilities')
-      .insert(
-        toInsert.map(meeting_type_id => ({
-          availability_id: availability_block_id,
-          meeting_type_id: meeting_type_id,
-        }))
-      )
-
-    if (insertError) {
-      throw new Error('Failed to add meeting type associations')
-    }
-  }
-}
-
-const getMeetingTypesForAvailabilityBlock = async (
-  account_address: string,
-  availability_block_id: string
-): Promise<MeetingType[]> => {
-  // First verify the availability block exists and belongs to the account
-  const { data: block, error: blockError } = await db.supabase
-    .from('availabilities')
-    .select('id')
-    .eq('id', availability_block_id)
-    .eq('account_owner_address', account_address)
-    .single()
-
-  if (blockError || !block) {
-    throw new AvailabilityBlockNotFoundError()
-  }
-
-  const { data, error } = await db.supabase
-    .from('meeting_type_availabilities')
-    .select(
-      `
-      meeting_type: meeting_type(
-        *,
-        availabilities: meeting_type_availabilities(availabilities(*)),
-        plan: meeting_type_plan(*),
-        connected_calendars: meeting_type_calendars(
-           connected_calendars(id, email, provider)
-        )
-      )
-    `
-    )
-    .eq('availability_id', availability_block_id)
-    .eq('meeting_type.account_owner_address', account_address)
-    .is('meeting_type.deleted_at', null)
-
-  if (error) {
-    throw new Error('Failed to fetch meeting types')
-  }
-
-  const transformedData = data?.map(item => {
-    const meetingType = item.meeting_type
-    return {
-      ...meetingType,
-      calendars: meetingType?.connected_calendars?.map(
-        (calendar: { connected_calendars: ConnectedCalendar }) =>
-          calendar.connected_calendars
-      ),
-      availabilities: meetingType?.availabilities?.map(
-        (availability: { availabilities: AvailabilityBlock }) =>
-          availability.availabilities
-      ),
-      plan: meetingType?.plan?.[0],
-    }
-  })
-
-  return transformedData as MeetingType[]
 }
 
 export {
