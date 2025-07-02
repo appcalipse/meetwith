@@ -603,7 +603,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     }
     setSelectedType(type)
     void router.push(
-      `/${getAccountDomainUrl(account!)}/${type.url}`,
+      `/${getAccountDomainUrl(account!)}/${type.slug}`,
       undefined,
       {
         shallow: true,
