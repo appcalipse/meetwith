@@ -455,6 +455,7 @@ export const getAccountPreferences = async (
 
   if (default_availability) {
     preferences.availabilities = default_availability.weekly_availability
+    preferences.timezone = default_availability.timezone
   } else {
     preferences.availabilities = generateEmptyAvailabilities()
   }
