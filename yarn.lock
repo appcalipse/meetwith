@@ -9068,9 +9068,9 @@ camelize@^1.0.0:
   integrity sha512-dU+Tx2fsypxTgtLoE36npi3UqcjSSMNYfkqgmoEhtZrraP5VWq0K7FkWVTYa8eMPtnU/G2txVsfdCJTn9uzpuQ==
 
 caniuse-lite@^1.0.30001406, caniuse-lite@^1.0.30001669:
-  version "1.0.30001673"
-  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001673.tgz"
-  integrity sha512-WTrjUCSMp3LYX0nE12ECkV0a+e6LC85E0Auz75555/qr78Oc8YWhEPNfDd6SHdtlCMSzqtuXY0uyEMNRcsKpKw==
+  version "1.0.30001726"
+  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001726.tgz"
+  integrity sha512-VQAUIUzBiZ/UnlM28fSp2CRF3ivUn1BWEvxMcVTNwpw91Py1pGbPIyIKtd+tzct9C3ouceCVdGAXxZOpZAsgdw==
 
 capital-case@^1.0.4:
   version "1.0.4"
