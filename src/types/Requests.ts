@@ -198,9 +198,12 @@ export interface CreateMeetingTypeRequest {
   duration_minutes: number
   min_notice_minutes: number
   scheduleGate?: string
+  custom_link?: string
+  fixed_link?: boolean
   slug: string
   availability_ids?: string[]
   calendars?: number[]
+  meeting_platforms?: MeetingProvider[]
   plan?: {
     type?: PlanType
     price_per_slot?: number
