@@ -42,6 +42,7 @@ import TimeSlots from '@/components/MeetSlotPicker/TimeSlots'
 import { PublicScheduleContext } from '@/components/public-meeting'
 import { ScheduleForm } from '@/components/schedule/schedule-form'
 import useAccountContext from '@/hooks/useAccountContext'
+import availabilities from '@/pages/api/availabilities'
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
@@ -100,6 +101,7 @@ const SchedulerPicker = () => {
     setNotificationSubs,
     setIsContact,
   } = useContext(PublicScheduleContext)
+
   const currentAccount = useAccountContext()
   const slotDurationInMinutes = selectedType?.duration_minutes || 0
   const [timezone, setTimezone] = useState<Option<string>>(
@@ -170,14 +172,32 @@ const SchedulerPicker = () => {
     try {
       busySlots = await getBusySlots(account?.address, startDate, endDate)
     } catch (error) {}
-    const availabilities = parseMonthAvailabilitiesToDate(
-      account?.preferences?.availabilities || [],
-      startDate,
-      endDate,
-      account?.preferences?.timezone || 'UTC'
+    const availabilities =
+      selectedType?.availabilities?.flatMap(availability =>
+        parseMonthAvailabilitiesToDate(
+          availability.weekly_availability || [],
+          startDate,
+          endDate,
+          availability.timezone || account?.preferences?.timezone || 'UTC'
+        )
+      ) || []
+
+    // Deduplicate overlapping time slots
+    const deduplicatedAvailabilities = availabilities.reduce<Interval[]>(
+      (acc, current) => {
+        const hasOverlap = acc.some(existing =>
+          areIntervalsOverlapping(current, existing, { inclusive: true })
+        )
+        if (!hasOverlap) {
+          acc.push(current)
+        }
+        return acc
+      },
+      []
     )
+
     setBusySlots(busySlots)
-    setAvailableSlots(availabilities)
+    setAvailableSlots(deduplicatedAvailabilities)
     setCachedRange({ startDate, endDate })
     setCheckingSlots(false)
   }

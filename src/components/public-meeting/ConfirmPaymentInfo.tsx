@@ -70,10 +70,11 @@ const ConfirmPaymentInfo = () => {
       ErrorAction<keyof PaymentInfo>
     >
   >(errorReducerSingle, {})
-  const [name, setName] = React.useState('')
+  const [name, setName] = React.useState(
+    currentAccount?.preferences?.name || ''
+  )
   const [email, setEmail] = React.useState('')
   const { openConnection } = useContext(OnboardingModalContext)
-
   const [progress, setProgress] = React.useState(0)
   const chain = supportedChains.find(
     val => val.chain === selectedChain
@@ -107,6 +108,7 @@ const ConfirmPaymentInfo = () => {
       return
     }
     if (!currentAccount?.address) {
+      openConnection(undefined, false)
       toast({
         title: 'Account Not Found',
         description: 'Please connect your wallet to proceed.',
@@ -154,6 +156,7 @@ const ConfirmPaymentInfo = () => {
                 status: 'error',
                 duration: 5000,
               })
+              setLoading(false)
               return
             }
           }
@@ -186,6 +189,7 @@ const ConfirmPaymentInfo = () => {
               status: 'error',
               duration: 5000,
             })
+            setLoading(false)
             return
           }
           const transaction = prepareContractCall({
@@ -250,6 +254,7 @@ const ConfirmPaymentInfo = () => {
             status: 'error',
             duration: 5000,
           })
+          setLoading(false)
           return
         }
       } else {
