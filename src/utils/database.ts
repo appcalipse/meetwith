@@ -4170,7 +4170,8 @@ const createCryptoTransaction = async (
     throw new Error(slotError.message)
   }
   try {
-    await sendReceiptEmail(
+    // don't wait for receipt to be sent before serving a response
+    sendReceiptEmail(
       transactionRequest.guest_email,
       transactionRequest.guest_name,
       {
