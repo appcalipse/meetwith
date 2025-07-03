@@ -139,7 +139,6 @@ import {
   OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
-  TransactionCouldBeNotFoundError,
   TransactionIsRequired,
   TransactionNotFoundError,
   UnauthorizedError,
@@ -155,6 +154,7 @@ import { apiUrl } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
+import { sendReceiptEmail } from './email_helper'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
@@ -4169,6 +4169,25 @@ const createCryptoTransaction = async (
   if (slotError) {
     throw new Error(slotError.message)
   }
+  try {
+    await sendReceiptEmail(
+      transactionRequest.guest_email,
+      transactionRequest.guest_name,
+      {
+        full_name: transactionRequest.guest_name,
+        email_address: transactionRequest.guest_email,
+        plan: meetingType.title,
+        number_of_sessions: totalNoOfSlots.toString(),
+        price: transactionRequest.amount.toString(),
+        payment_method: PaymentType.CRYPTO,
+        transaction_fee: '0',
+        transaction_status: PaymentStatus.COMPLETED,
+        transaction_hash: transactionRequest.transaction_hash,
+      }
+    )
+  } catch (e) {
+    console.error(e)
+  }
 }
 const getMeetingSessionsByTxHash = async (
   tx: Address
@@ -4188,6 +4207,7 @@ const getMeetingSessionsByTxHash = async (
   if (!transaction) {
     throw new TransactionNotFoundError(tx)
   }
+
   return transaction.meeting_sessions || []
 }
 
