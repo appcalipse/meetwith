@@ -191,6 +191,11 @@ export interface DuplicateAvailabilityBlockRequest {
   }
 }
 
+export interface UpdateAvailabilityBlockMeetingTypesRequest {
+  availability_block_id: string
+  meeting_type_ids: string[]
+}
+
 export interface CreateMeetingTypeRequest {
   title: string
   description?: string

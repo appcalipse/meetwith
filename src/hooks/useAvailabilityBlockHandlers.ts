@@ -29,6 +29,7 @@ interface UseAvailabilityBlockHandlersProps {
   setIsDefault: (isDefault: boolean) => void
   onOpen: () => void
   onClose: () => void
+  onMeetingTypesSave?: (blockId: string) => Promise<void>
 }
 
 export const useAvailabilityBlockHandlers = ({
@@ -44,6 +45,7 @@ export const useAvailabilityBlockHandlers = ({
   setIsDefault,
   onOpen,
   onClose,
+  onMeetingTypesSave,
 }: UseAvailabilityBlockHandlersProps) => {
   const toast = useToast()
   const [isEditing, setIsEditing] = useState(false)
@@ -52,6 +54,7 @@ export const useAvailabilityBlockHandlers = ({
     null
   )
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleCreateBlock = () => {
     resetForm()
@@ -90,12 +93,12 @@ export const useAvailabilityBlockHandlers = ({
   }
 
   const handleClose = () => {
+    onClose()
     resetForm()
     setIsEditing(false)
     setEditingBlockId(null)
     setDuplicatingBlockId(null)
     setShowDeleteConfirmation(false)
-    onClose()
   }
 
   const handleSaveNewBlock = async () => {
@@ -119,6 +122,8 @@ export const useAvailabilityBlockHandlers = ({
       return
     }
 
+    setIsSaving(true)
+
     try {
       if (isEditing && editingBlockId) {
         await updateBlock.mutateAsync({
@@ -129,6 +134,10 @@ export const useAvailabilityBlockHandlers = ({
           is_default: formState.isDefault,
         })
 
+        if (onMeetingTypesSave && editingBlockId) {
+          await onMeetingTypesSave(editingBlockId)
+        }
+
         toast({
           title: 'Availability block updated',
           description: `${formState.title} has been updated successfully.`,
@@ -137,6 +146,8 @@ export const useAvailabilityBlockHandlers = ({
           position: 'top',
           isClosable: true,
         })
+
+        handleClose()
       } else if (duplicatingBlockId) {
         const duplicatedBlock = await duplicateBlock.mutateAsync({
           id: duplicatingBlockId,
@@ -148,6 +159,10 @@ export const useAvailabilityBlockHandlers = ({
           },
         })
 
+        if (onMeetingTypesSave && duplicatedBlock?.id) {
+          await onMeetingTypesSave(duplicatedBlock.id)
+        }
+
         toast({
           title: 'Availability block duplicated',
           description: `${duplicatedBlock.title} has been created successfully.`,
@@ -156,13 +171,19 @@ export const useAvailabilityBlockHandlers = ({
           position: 'top',
           isClosable: true,
         })
+
+        handleClose()
       } else {
-        await createBlock.mutateAsync({
+        const newBlock = await createBlock.mutateAsync({
           title: formState.title,
           timezone: formState.timezone || 'Africa/Lagos',
           weekly_availability: formState.availabilities,
           is_default: formState.isDefault,
         })
+
+        if (onMeetingTypesSave && newBlock?.id) {
+          await onMeetingTypesSave(newBlock.id)
+        }
 
         toast({
           title: 'Availability block created',
@@ -172,9 +193,9 @@ export const useAvailabilityBlockHandlers = ({
           position: 'top',
           isClosable: true,
         })
-      }
 
-      handleClose()
+        handleClose()
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -184,6 +205,8 @@ export const useAvailabilityBlockHandlers = ({
         position: 'top',
         isClosable: true,
       })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -199,8 +222,8 @@ export const useAvailabilityBlockHandlers = ({
           position: 'top',
           isClosable: true,
         })
-        handleClose()
-      } catch (error: any) {
+        onClose()
+      } catch (error: unknown) {
         let errorMessage =
           'Failed to delete availability block. Please try again.'
 
@@ -246,10 +269,10 @@ export const useAvailabilityBlockHandlers = ({
     editingBlockId,
     duplicatingBlockId,
     showDeleteConfirmation,
+    isSaving,
     handleCreateBlock,
     handleEditBlock,
     handleDuplicateBlock,
-    handleClose,
     handleSaveNewBlock,
     handleDeleteBlock,
     handleShowDeleteConfirmation,
