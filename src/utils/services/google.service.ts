@@ -33,7 +33,9 @@ export class MWWGoogleAuth extends google.auth.OAuth2 {
   }
 }
 
-export default class GoogleCalendarService implements CalendarService {
+export default class GoogleCalendarService
+  implements CalendarService<TimeSlotSource.GOOGLE>
+{
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
   private email: string
   constructor(
@@ -185,6 +187,45 @@ export default class GoogleCalendarService implements CalendarService {
       )
     })
   }
+  async listEvents(
+    calendarId: string,
+    dateFrom: Date,
+    dateTo: Date
+  ): Promise<calendar_v3.Schema$Event[]> {
+    return new Promise((resolve, reject) =>
+      this.auth.getToken().then(myGoogleAuth => {
+        const calendar = google.calendar({
+          version: 'v3',
+          auth: myGoogleAuth,
+        })
+
+        calendar.events.list(
+          {
+            calendarId,
+            timeMin: dateFrom.toISOString(),
+            timeMax: dateTo.toISOString(),
+            singleEvents: true,
+            orderBy: 'updated',
+            q: 'meetingId',
+            showDeleted: true,
+            updatedMin: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+          },
+          (err, res) => {
+            if (err) {
+              console.error(
+                'There was an error contacting google calendar service: ',
+                err
+              )
+              return reject(err)
+            }
+            const events = res?.data.items || []
+            return resolve(events)
+          }
+        )
+      })
+    )
+  }
+
   private createReminder(indicator: MeetingReminders) {
     switch (indicator) {
       case MeetingReminders['15_MINUTES_BEFORE']:
@@ -582,6 +623,98 @@ export default class GoogleCalendarService implements CalendarService {
         )
       })
     )
+  }
+
+  async setWebhookUrl(webhookUrl: string, calendarId = 'primary') {
+    try {
+      const auth = await this.auth.getToken()
+      const calendar = google.calendar({ version: 'v3', auth })
+
+      // Generate a unique channel ID for this webhook
+      const channelId = `mww-${calendarId
+        .replace('@', '-')
+        .replace('.com', '')}-${Date.now()}`
+
+      // Set up the watch request
+      const watchRequest = {
+        calendarId,
+        requestBody: {
+          id: channelId,
+          type: 'web_hook',
+          address: webhookUrl,
+          // Optional: Set expiration (max 1 week for calendar API)
+          expiration: (Date.now() + 7 * 24 * 60 * 60 * 1000).toString(), // 1 week from now
+          token: process.env.SERVER_SECRET,
+        },
+      }
+
+      const response = await calendar.events.watch(watchRequest)
+
+      console.trace('Google Calendar webhook registered:', {
+        channelId,
+        calendarId,
+        webhookUrl,
+        expiration: response.data.expiration,
+        resourceId: response.data.resourceId,
+      })
+
+      return {
+        channelId: response.data.id,
+        resourceId: response.data.resourceId,
+        expiration: response.data.expiration,
+        calendarId,
+        webhookUrl,
+      }
+    } catch (error) {
+      console.error('Failed to register Google Calendar webhook:', error)
+      Sentry.captureException(error, {
+        tags: { service: 'google_calendar', action: 'webhook_setup' },
+        extra: { webhookUrl, calendarId, email: this.email },
+      })
+      throw error
+    }
+  }
+
+  async stopWebhook(channelId: string, resourceId: string): Promise<void> {
+    try {
+      const auth = await this.auth.getToken()
+      const calendar = google.calendar({ version: 'v3', auth })
+
+      await calendar.channels.stop({
+        requestBody: {
+          id: channelId,
+          resourceId,
+        },
+      })
+    } catch (error) {
+      console.error('Failed to stop Google Calendar webhook:', error)
+      Sentry.captureException(error, {
+        tags: { service: 'google_calendar', action: 'webhook_stop' },
+        extra: { channelId, resourceId, email: this.email },
+      })
+      throw error
+    }
+  }
+
+  async refreshWebhook(
+    oldChannelId: string,
+    oldResourceId: string,
+    webhookUrl: string,
+    calendarId = 'primary'
+  ) {
+    try {
+      // Stop the old webhook first
+      await this.stopWebhook(oldChannelId, oldResourceId)
+      // Create a new webhook
+      return await this.setWebhookUrl(webhookUrl, calendarId)
+    } catch (error) {
+      console.error('Failed to refresh Google Calendar webhook:', error)
+      Sentry.captureException(error, {
+        tags: { service: 'google_calendar', action: 'webhook_refresh' },
+        extra: { oldChannelId, webhookUrl, calendarId, email: this.email },
+      })
+      throw error
+    }
   }
 }
 
