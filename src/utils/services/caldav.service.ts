@@ -19,7 +19,7 @@ import {
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
 import { Intents } from '@/types/Dashboard'
-import { MeetingChangeType } from '@/types/Meeting'
+import { MeetingChangeType, TimeSlotSource } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -69,7 +69,9 @@ export interface CaldavCredentials {
  * - username (usually an email)
  * - password
  */
-export default class CaldavCalendarService implements CalendarService {
+export default class CaldavCalendarService
+  implements CalendarService<TimeSlotSource.ICLOUD>
+{
   private url = ''
   private credentials: Record<string, string> = {}
   private headers: Record<string, string> = {}
