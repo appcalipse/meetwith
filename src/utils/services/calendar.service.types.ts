@@ -1,7 +1,9 @@
 import {
+  CalendarEvent,
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
+import { TimeSlotSource } from '@/types/Meeting'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 export type EventBusyDate = Record<'start' | 'end', Date | string>
@@ -9,7 +11,7 @@ export type EventBusyDate = Record<'start' | 'end', Date | string>
 /**
  * Calendar Service  Contract
  */
-export interface CalendarService {
+export interface CalendarService<T extends TimeSlotSource> {
   /** which email is the calendar owner */
   getConnectedEmail: () => string
   /**
@@ -17,6 +19,11 @@ export interface CalendarService {
    */
   refreshConnection(): Promise<CalendarSyncInfo[]>
 
+  listEvents(
+    calendarId: string,
+    dateFrom: Date,
+    dateTo: Date
+  ): Promise<CalendarEvent[]>
   /**
    * Creates a new event on target external calendar
    *
@@ -63,4 +70,58 @@ export interface CalendarService {
    * @param slot_id the event id to delete
    */
   deleteEvent(meeting_id: string, calendarId: string): Promise<void>
+
+  /**
+   * Sets up a webhook URL for calendar change notifications
+   * Only available for Google Calendar service
+   *
+   * @param webhookUrl the URL to receive webhook notifications
+   * @param calendarId the calendar ID to watch (defaults to 'primary')
+   */
+  setWebhookUrl?: T extends TimeSlotSource.GOOGLE
+    ? (
+        webhookUrl: string,
+        calendarId?: string
+      ) => Promise<{
+        channelId: string | null | undefined
+        resourceId: string | null | undefined
+        expiration: string | null | undefined
+        calendarId: string
+        webhookUrl: string
+      }>
+    : never
+
+  /**
+   * Stops an active webhook subscription
+   * Only available for Google Calendar service
+   *
+   * @param channelId the channel ID of the webhook to stop
+   * @param resourceId the resource ID of the webhook to stop
+   */
+  stopWebhook?: T extends TimeSlotSource.GOOGLE
+    ? (channelId: string, resourceId: string) => Promise<void>
+    : never
+
+  /**
+   * Refreshes an existing webhook subscription
+   * Only available for Google Calendar service
+   *
+   * @param channelId the current channel ID
+   * @param webhookUrl the webhook URL
+   * @param calendarId the calendar ID
+   */
+  refreshWebhook?: T extends TimeSlotSource.GOOGLE
+    ? (
+        oldChannelId: string,
+        oldResourceId: string,
+        webhookUrl: string,
+        calendarId?: string
+      ) => Promise<{
+        channelId: string | null | undefined
+        resourceId: string | null | undefined
+        expiration: string | null | undefined
+        calendarId: string
+        webhookUrl: string
+      }>
+    : never
 }
