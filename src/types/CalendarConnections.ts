@@ -53,44 +53,6 @@ export type NewCalendarEventType = {
   url: string
   additionalInfo: Record<string, any>
 }
-export interface CalendarEvent {
-  uid: string
-  kind: 'calendar#event'
-  etag: string
-  id: string
-  status: 'confirmed' | 'tentative' | 'cancelled'
-  htmlLink: string
-  created: string
-  updated: string
-  summary: string
-  description: string
-  location: string
-  creator: { email: string; self: boolean }
-  organizer: { email: string; self: boolean }
-  start: { dateTime: string; timeZone: string }
-  end: { dateTime: string; timeZone: string }
-  recurringEventId: string
-  originalStartTime: { dateTime: string; timeZone: string }
-  iCalUID: string
-  sequence: number
-  attendees: Array<{
-    email: string
-    displayName: string
-    responseStatus: 'needsAction' | 'accepted' | 'declined'
-  }>
-  reminders: {
-    useDefault: boolean
-    overrides: Array<{
-      method: 'email' | 'popup' | 'sms'
-      minutes: number
-    }>
-    eventType: 'default' | 'conference' | 'reminder'
-    additionalInfo: { hangoutLink: string }
-    type: string
-    password: string
-    url: string
-  }
-}
 
 export enum Office365RecurrenceType {
   DAILY = 'daily',
