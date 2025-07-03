@@ -62,7 +62,12 @@ const handleSecureRoute = async (req: NextRequest) => {
 }
 
 const handleServerRoute = async (req: NextRequest) => {
-  if (req.headers.get('X-Server-Secret') === process.env.SERVER_SECRET) {
+  const serverSecret = process.env.SERVER_SECRET
+  const authHeader =
+    req.headers.get('X-Server-Secret') ||
+    req.headers.get('X-Goog-Channel-Token')
+
+  if (authHeader === serverSecret) {
     return NextResponse.next()
   }
 
