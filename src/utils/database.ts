@@ -3616,64 +3616,6 @@ export const updateAvailabilityBlock = async (
   return data
 }
 
-const updateAvailabilityBlockMeetingTypes = async (
-  account_address: string,
-  availability_block_id: string,
-  meeting_type_ids: string[]
-) => {
-  // First verify the availability block exists and belongs to the account
-  const { data: block, error: blockError } = await db.supabase
-    .from('availabilities')
-    .select('id')
-    .eq('id', availability_block_id)
-    .eq('account_owner_address', account_address)
-    .single()
-
-  if (blockError || !block) {
-    throw new AvailabilityBlockNotFoundError()
-  }
-
-  // Get current meeting type associations
-  const { data: current } = await db.supabase
-    .from('meeting_type_availabilities')
-    .select('meeting_type_id')
-    .eq('availability_id', availability_block_id)
-
-  const currentIds =
-    current?.map((c: { meeting_type_id: string }) => c.meeting_type_id) || []
-  const newIds = meeting_type_ids
-
-  const toDelete = currentIds.filter((id: string) => !newIds.includes(id))
-  const toInsert = newIds.filter((id: string) => !currentIds.includes(id))
-
-  if (toDelete.length > 0) {
-    const { error: deleteError } = await db.supabase
-      .from('meeting_type_availabilities')
-      .delete()
-      .eq('availability_id', availability_block_id)
-      .in('meeting_type_id', toDelete)
-
-    if (deleteError) {
-      throw new Error('Failed to remove meeting type associations')
-    }
-  }
-
-  if (toInsert.length > 0) {
-    const { error: insertError } = await db.supabase
-      .from('meeting_type_availabilities')
-      .insert(
-        toInsert.map(meeting_type_id => ({
-          availability_id: availability_block_id,
-          meeting_type_id: meeting_type_id,
-        }))
-      )
-
-    if (insertError) {
-      throw new Error('Failed to add meeting type associations')
-    }
-  }
-}
-
 export const deleteAvailabilityBlock = async (
   id: string,
   account_address: string
@@ -3997,6 +3939,57 @@ const deleteMeetingType = async (
     throw new Error(error.message)
   }
 }
+
+// shared helper function to update associations between meeting types and availability blocks
+const updateAssociations = async <T extends string | number>(
+  table: string,
+  primaryId: string,
+  primaryField: string,
+  secondaryField: string,
+  newSecondaryIds: T[],
+  errorMessage: string
+) => {
+  // Get current associations
+  const { data: current } = await db.supabase
+    .from(table)
+    .select(secondaryField)
+    .eq(primaryField, primaryId)
+
+  const currentIds =
+    current?.map((c: Record<string, T>) => c[secondaryField]) || []
+  const newIds = newSecondaryIds
+
+  const toDelete = currentIds.filter(id => !newIds.includes(id))
+  const toInsert = newIds.filter(id => !currentIds.includes(id))
+
+  // Delete removed associations
+  if (toDelete.length > 0) {
+    const { error: deleteError } = await db.supabase
+      .from(table)
+      .delete()
+      .eq(primaryField, primaryId)
+      .in(secondaryField, toDelete)
+
+    if (deleteError) {
+      throw new Error(`Failed to remove ${errorMessage}`)
+    }
+  }
+
+  // Insert new associations
+  if (toInsert.length > 0) {
+    const { error: insertError } = await db.supabase.from(table).insert(
+      toInsert.map(secondaryId => ({
+        [primaryField]: primaryId,
+        [secondaryField]: secondaryId,
+      }))
+    )
+
+    if (insertError) {
+      throw new Error(`Failed to add ${errorMessage}`)
+    }
+  }
+}
+
 const updateMeetingType = async (
   account_address: string,
   meeting_type_id: string,
@@ -4020,81 +4013,27 @@ const updateMeetingType = async (
   if (error) {
     throw new Error(error.message)
   }
-  if (
-    meetingType?.availability_ids &&
-    meetingType?.availability_ids.length > 0
-  ) {
-    const { data: current } = await db.supabase
-      .from('meeting_type_availabilities')
-      .select('availability_id')
-      .eq('meeting_type_id', meeting_type_id)
-
-    const currentIds = current?.map(c => c.availability_id) || []
-    const newIds = meetingType.availability_ids
-
-    const toDelete = currentIds.filter(id => !newIds.includes(id))
-    const toInsert = newIds.filter(id => !currentIds.includes(id))
-
-    if (toDelete.length > 0) {
-      await db.supabase
-        .from('meeting_type_availabilities')
-        .delete()
-        .eq('meeting_type_id', meeting_type_id)
-        .in('availability_id', toDelete)
-    }
-    if (toInsert.length > 0) {
-      const { error: availabilityError } = await db.supabase
-        .from('meeting_type_availabilities')
-        .insert(
-          toInsert.map(availability_id => ({
-            meeting_type_id,
-            availability_id: availability_id,
-          }))
-        )
-      if (availabilityError) {
-        throw new Error(availabilityError.message)
-      }
-    }
+  // Handle availability associations
+  if (meetingType?.availability_ids !== undefined) {
+    await updateAssociations(
+      'meeting_type_availabilities',
+      meeting_type_id,
+      'meeting_type_id',
+      'availability_id',
+      meetingType.availability_ids,
+      'availability associations'
+    )
   }
-  if (meetingType?.calendars && meetingType?.calendars?.length > 0) {
-    const { data: current } = await db.supabase
-      .from('meeting_type_calendars')
-      .select('calendar_id')
-      .eq('meeting_type_id', meeting_type_id)
-
-    const currentIds = current?.map(c => c.calendar_id) || []
-    const newIds = meetingType.calendars
-
-    const toDelete = currentIds.filter(id => !newIds.includes(id))
-
-    const toInsert = newIds.filter(id => !currentIds.includes(id))
-
-    if (toDelete.length > 0) {
-      const { error: calendarError } = await db.supabase
-        .from('meeting_type_calendars')
-        .delete()
-        .eq('meeting_type_id', meeting_type_id)
-        .in('calendar_id', toDelete)
-
-      if (calendarError) {
-        throw new Error(calendarError.message)
-      }
-    }
-
-    if (toInsert.length > 0) {
-      const { error: insertCalendarError } = await db.supabase
-        .from('meeting_type_calendars')
-        .insert(
-          toInsert.map(calendar_id => ({
-            meeting_type_id,
-            calendar_id,
-          }))
-        )
-
-      if (insertCalendarError) {
-        throw new Error(insertCalendarError.message)
-      }
-    }
+  // Handle calendar associations
+  if (meetingType?.calendars !== undefined) {
+    await updateAssociations(
+      'meeting_type_calendars',
+      meeting_type_id,
+      'meeting_type_id',
+      'calendar_id',
+      meetingType.calendars,
+      'calendar associations'
+    )
   }
   if (meetingType?.plan) {
     const { error: insertPlanError } = await db.supabase
@@ -4115,6 +4054,33 @@ const updateMeetingType = async (
     }
   }
   return data?.[0] as MeetingType
+}
+
+const updateAvailabilityBlockMeetingTypes = async (
+  account_address: string,
+  availability_block_id: string,
+  meeting_type_ids: string[]
+) => {
+  // First verify the availability block exists and belongs to the account
+  const { data: block, error: blockError } = await db.supabase
+    .from('availabilities')
+    .select('id')
+    .eq('id', availability_block_id)
+    .eq('account_owner_address', account_address)
+    .single()
+
+  if (blockError || !block) {
+    throw new AvailabilityBlockNotFoundError()
+  }
+
+  await updateAssociations(
+    'meeting_type_availabilities',
+    availability_block_id,
+    'availability_id',
+    'meeting_type_id',
+    meeting_type_ids,
+    'meeting type associations'
+  )
 }
 
 const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
