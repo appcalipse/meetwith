@@ -4297,6 +4297,7 @@ const handleWebhookEvent = async (channelId: string, resourceId: string) => {
   const actions = await Promise.all(
     recentlyUpdated.map(event => handleSyncEvent(event, calendar))
   )
+  return actions
 }
 const handleSyncEvent = async (
   event: calendar_v3.Schema$Event,
@@ -4336,6 +4337,7 @@ const handleSyncEvent = async (
   if (canEdit) {
     // TODO: updateMeetingServer
   }
+  return true
 }
 export {
   acceptContactInvite,
