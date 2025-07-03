@@ -1,13 +1,14 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import CryptoJS from 'crypto-js'
-import { addMinutes, addMonths, isAfter } from 'date-fns'
+import { add, addMinutes, addMonths, isAfter } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { calendar_v3 } from 'googleapis'
 import { validate } from 'uuid'
 
 import {
@@ -148,13 +149,19 @@ import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
+  extractSlotIdFromDescription,
+  getBaseEventId,
+} from './calendar_helpers'
+import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
 } from './calendar_manager'
-import { apiUrl } from './constants'
+import { apiUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
+import { MeetingPermissions } from './constants/schedule'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
+import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
@@ -1086,6 +1093,7 @@ const saveMeeting = async (
         version: 0,
         meeting_info_encrypted: participant.privateInfo,
         recurrence: meeting.meetingRepeat,
+        role: participant.type,
       }
 
       slots.push(dbSlot)
@@ -1119,6 +1127,7 @@ const saveMeeting = async (
     version: MeetingVersion.V2,
     slots: meeting.allSlotIds || [],
     title: meeting.title,
+    permissions: meeting.meetingPermissions,
   })
   if (!createdRootMeeting) {
     throw new Error(
@@ -2059,10 +2068,7 @@ const getConnectedCalendars = async (
     .eq('account_address', address.toLowerCase())
     .order('id', { ascending: true })
 
-  const [{ data, error }, account] = await Promise.all([
-    query,
-    getAccountFromDB(address),
-  ])
+  const { data, error } = await query
 
   if (error) {
     throw new Error(error.message)
@@ -2604,6 +2610,7 @@ const updateMeeting = async (
         version: meetingUpdateRequest.version,
         meeting_info_encrypted: participant.privateInfo,
         recurrence: meetingUpdateRequest.meetingRepeat,
+        role: participant.type,
       }
 
       slots.push(dbSlot)
@@ -2671,6 +2678,7 @@ const updateMeeting = async (
     slots: meeting.slots?.filter(
       val => !meetingUpdateRequest.slotsToRemove.includes(val)
     ),
+    permissions: meetingUpdateRequest.meetingPermissions,
   })
 
   if (!createdRootMeeting)
@@ -4157,6 +4165,178 @@ const getPaidSessionsByMeetingType = async (
   return sessions?.map(val => ({ ...val, plan: val.plan?.[0] })) || []
 }
 
+const syncWebhooks = async (provider: TimeSlotSource) => {
+  const { data, error } = await db.supabase
+    .from<ConnectedCalendar>('connected_calendars')
+    .select('*')
+    .eq('provider', provider)
+    .eq('account_address', '0x546f67e57a3980f41251b1cace8abd10d764cc3f')
+    .filter('calendars', 'cs', '[{"sync": true}]')
+  if (error) {
+    throw new Error(error.message)
+  }
+  const calendarPromises = []
+  for (const calendar of data || []) {
+    const integration = getConnectedCalendarIntegration(
+      calendar.account_address,
+      calendar.email,
+      calendar.provider,
+      calendar.payload
+    )
+    for (const cal of calendar.calendars.filter(c => c.enabled && c.sync)) {
+      calendarPromises.push(
+        (async () => {
+          if (!integration.setWebhookUrl) return null
+          const result = await integration.setWebhookUrl(
+            WEBHOOK_URL,
+            cal.calendarId
+          )
+          const { calendarId, channelId, expiration, resourceId } = result
+          const { error: updateError } = await db.supabase
+            .from('calendar_webhooks')
+            .insert({
+              channel_id: channelId,
+              resource_id: resourceId,
+              calendar_id: calendarId,
+              connected_calendar_id: calendar.id,
+              expires_at: new Date(Number(expiration)).toISOString(),
+            })
+          if (updateError) {
+            return { error: updateError }
+          }
+          return { ...result, error: null }
+        })()
+      )
+    }
+  }
+  const results = await Promise.all(calendarPromises)
+  const errors = results.filter(result => result?.error)
+  if (errors.length > 0) {
+    throw new Error(
+      `Failed to sync webhooks: ${errors
+        .map(e => e?.error?.message)
+        .join(', ')}`
+    )
+  }
+}
+
+const handleWebhookEvent = async (channelId: string, resourceId: string) => {
+  console.trace(
+    `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
+  )
+  const { data } = await db.supabase
+    .from('calendar_webhooks')
+    .select(
+      `
+      *,
+      connected_calendar: connected_calendars!inner(*)
+      `
+    )
+    .eq('channel_id', channelId)
+    .eq('resource_id', resourceId)
+    .single()
+  if (!data) {
+    throw new Error(
+      `No webhook found for channel: ${channelId}, resource: ${resourceId}`
+    )
+  }
+  const calendar: ConnectedCalendar = data?.connected_calendar
+  if (!calendar) return
+  let lower_limit = new Date(calendar?.updated || calendar?.created)
+  const upper_limit = add(new Date(), {
+    years: 1,
+  })
+
+  if (lower_limit < add(upper_limit, { years: -1.5 })) {
+    lower_limit = add(upper_limit, { years: -1 })
+  }
+
+  const integration = getConnectedCalendarIntegration(
+    calendar.account_address,
+    calendar.email,
+    calendar.provider,
+    calendar.payload
+  )
+
+  let calendar_availabilities =
+    (await integration.listEvents?.(
+      data.calendar_id,
+      lower_limit,
+      upper_limit
+    )) || []
+  const uniqueRecurringEventId = new Set<string>()
+  calendar_availabilities = calendar_availabilities
+    .sort((a, b) => {
+      // Group by recurringEventId first
+      const aKey = a.recurringEventId || a.id || ''
+      const bKey = b.recurringEventId || b.id || ''
+
+      if (aKey !== bKey) return aKey.localeCompare(bKey)
+
+      // Within same group, sort by sequence (highest first)
+      return (b.sequence || 0) - (a.sequence || 0)
+    })
+    .filter(event => {
+      if (!event.recurringEventId) return true
+      if (uniqueRecurringEventId.has(event.recurringEventId)) {
+        return false // Skip duplicate UID
+      }
+      uniqueRecurringEventId.add(event.recurringEventId)
+      return true // Keep first occurrence
+    })
+  const recentlyUpdated = calendar_availabilities.filter(event => {
+    const recordChangeDate = event.updated || event.created
+    if (!recordChangeDate) return
+    const eventDate = new Date(recordChangeDate)
+    return eventDate > add(new Date(), { minutes: -5 })
+  })
+  if (recentlyUpdated.length === 0) {
+    console.error('No recently updated events found')
+    return
+  }
+  const actions = await Promise.all(
+    recentlyUpdated.map(event => handleSyncEvent(event, calendar))
+  )
+}
+const handleSyncEvent = async (
+  event: calendar_v3.Schema$Event,
+  calendar: ConnectedCalendar
+) => {
+  if (!event.id) return
+  const meetingId = getBaseEventId(event.id)
+  if (!meetingId) {
+    console.warn(`Skipping event ${event.id} due to missing  meetingId`)
+    return
+  }
+  const meeting = await getConferenceMeetingFromDB(meetingId)
+  if (!meeting) {
+    console.warn(`Skipping event ${event.id} due to missing meeting in db`)
+    return
+  }
+  const slotIds = meeting.slots
+  const slots = await getSlotsByIds(slotIds)
+  if (!slots || slots.length === 0) {
+    console.warn(`Skipping event ${event.id} due to no slots found`)
+    return
+  }
+  const actorSlot = slots.find(
+    slot => slot.account_address === calendar.account_address
+  )
+  const roleExists = !!actorSlot?.role
+  const permissionExists = !!meeting.permissions
+  const isSchedulerOrOwner = [
+    ParticipantType.Scheduler,
+    ParticipantType.Owner,
+  ].includes(actorSlot?.role || ParticipantType?.Invitee)
+  const canEdit =
+    !roleExists ||
+    permissionExists ||
+    isSchedulerOrOwner ||
+    meeting.permissions?.includes(MeetingPermissions.EDIT_MEETING)
+  if (canEdit) {
+    // TODO: updateMeetingServer
+  }
+}
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -4220,6 +4400,7 @@ export {
   getUserGroups,
   handleGuestCancel,
   handleMeetingCancelSync,
+  handleWebhookEvent,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
@@ -4241,6 +4422,7 @@ export {
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   subscribeWithCoupon,
+  syncWebhooks,
   updateAccountFromInvite,
   updateAccountPreferences,
   updateAllRecurringSlots,
