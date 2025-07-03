@@ -5,7 +5,7 @@ import { ConditionRelation } from '@/types/common'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
 import { MeetingReminders } from './common'
-import { ParticipantInfo } from './ParticipantInfo'
+import { ParticipantInfo, ParticipantType } from './ParticipantInfo'
 
 export enum SchedulingType {
   REGULAR,
@@ -39,6 +39,7 @@ export interface DBSlot extends TimeSlot {
   meeting_info_encrypted: Encrypted
   recurrence: MeetingRepeat
   public_decrypted_data?: MeetingDecrypted
+  role?: ParticipantType
 }
 export interface ExtendedDBSlot extends DBSlot {
   conferenceData?: ConferenceMeeting
@@ -99,6 +100,7 @@ export interface ConferenceMeeting {
   created_at: Date
   slots: Array<string>
   version: MeetingVersion
+  permissions?: Array<MeetingPermissions>
 }
 
 export interface MeetingInfo {
