@@ -1,5 +1,6 @@
+import { calendar_v3 } from 'googleapis'
+
 import {
-  CalendarEvent,
   CalendarSyncInfo,
   NewCalendarEventType,
 } from '@/types/CalendarConnections'
@@ -19,11 +20,13 @@ export interface CalendarService<T extends TimeSlotSource> {
    */
   refreshConnection(): Promise<CalendarSyncInfo[]>
 
-  listEvents(
-    calendarId: string,
-    dateFrom: Date,
-    dateTo: Date
-  ): Promise<CalendarEvent[]>
+  listEvents?: T extends TimeSlotSource.GOOGLE
+    ? (
+        calendarId: string,
+        dateFrom: Date,
+        dateTo: Date
+      ) => Promise<calendar_v3.Schema$Event[]>
+    : never
   /**
    * Creates a new event on target external calendar
    *
@@ -37,7 +40,6 @@ export interface CalendarService<T extends TimeSlotSource> {
     calendarId: string,
     shouldGenerateLink?: boolean
   ): Promise<NewCalendarEventType>
-
   /**
    * List user availability on target external calendar
    *
