@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
+import pdf from 'html-pdf'
 import path from 'path'
 
 import { MeetingReminders } from '@/types/common'
@@ -28,6 +29,8 @@ import { getAllParticipantsDisplayName } from './user_manager'
 const FROM = 'Meetwith <notifications@meetwith.xyz>'
 
 import { CreateEmailOptions, Resend } from 'resend'
+
+import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
 
 import { MeetingPermissions } from './constants/schedule'
 
@@ -619,6 +622,144 @@ export const sendContactInvitationEmail = async (
         {
           name: 'contact',
           value: 'invite',
+        },
+      ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+const createPdfBuffer = (html: string): Promise<Buffer> => {
+  return new Promise((resolve, reject) => {
+    pdf
+      .create(html, {
+        format: 'A4',
+        border: {
+          top: '0',
+          right: '0',
+          bottom: '0',
+          left: '0',
+        },
+      })
+      .toBuffer((err, buffer) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(buffer)
+        }
+      })
+  })
+}
+export const sendReceiptEmail = async (
+  toEmail: string,
+  userName: string,
+  receiptMetadata: ReceiptMetadata
+) => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'receipt'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const locals = {
+    ...receiptMetadata,
+  }
+
+  try {
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
+    const pdfBuffer: Buffer = await createPdfBuffer(rendered)
+
+    const msg: CreateEmailOptions = {
+      to: toEmail,
+      subject: subject,
+      html: rendered,
+      text: `Receipt for your payment: ${receiptMetadata.plan}`,
+      ...defaultResendOptions,
+      attachments: [
+        {
+          content: pdfBuffer,
+          filename: `receipt-${
+            receiptMetadata.transaction_hash || Date.now()
+          }.pdf`,
+          contentType: 'application/pdf',
+        },
+      ],
+      tags: [
+        {
+          name: 'receipt',
+          value: 'email',
+        },
+      ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+
+export const sendInvoiceEmail = async (
+  toEmail: string,
+  userName: string,
+  receiptMetadata: InvoiceMetadata
+) => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'invoice'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const locals = {
+    ...receiptMetadata,
+  }
+
+  try {
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
+    const pdfBuffer: Buffer = await createPdfBuffer(rendered)
+
+    const msg: CreateEmailOptions = {
+      to: toEmail,
+      subject: subject,
+      html: rendered,
+      text: `Invoice for your payment: ${receiptMetadata.plan}`,
+      ...defaultResendOptions,
+      attachments: [
+        {
+          content: pdfBuffer,
+          filename: `invoice-${receiptMetadata.plan}-${Date.now()}.pdf`,
+          contentType: 'application/pdf',
+        },
+      ],
+      tags: [
+        {
+          name: 'invoice',
+          value: 'email',
         },
       ],
     }
