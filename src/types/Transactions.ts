@@ -54,6 +54,7 @@ export interface InvoiceMetadata {
   number_of_sessions: string
   price: string
   payment_method: string
+  url?: string
 }
 
 export interface ReceiptMetadata extends InvoiceMetadata {
