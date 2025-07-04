@@ -4323,6 +4323,7 @@ export {
   getGroupUsersInternal,
   getMeetingFromDB,
   getMeetingSessionsByTxHash,
+  getMeetingTypeFromDB,
   getMeetingTypes,
   getMeetingTypesForAvailabilityBlock,
   getNewestCoupon,
