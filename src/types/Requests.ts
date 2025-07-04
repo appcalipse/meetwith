@@ -1,5 +1,6 @@
 import {
   PaymentChannel,
+  PaymentType,
   PlanType,
   SessionType,
   TokenType,
@@ -238,4 +239,12 @@ export interface ConfirmCryptoTransactionRequest {
   guest_address?: string
   guest_email: string
   guest_name: string
+}
+
+export interface RequestInvoiceRequest {
+  guest_email: string
+  guest_name: string
+  meeting_type_id: string
+  payment_method: PaymentType
+  url: string
 }
