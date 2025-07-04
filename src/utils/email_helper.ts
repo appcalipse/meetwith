@@ -1,8 +1,10 @@
 import * as Sentry from '@sentry/nextjs'
+import chromium from '@sparticuz/chromium'
 import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
-import puppeteer from 'puppeteer'
+import puppeteerLocal from 'puppeteer'
+import puppeteer from 'puppeteer-core'
 
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
@@ -633,23 +635,84 @@ export const sendContactInvitationEmail = async (
   }
 }
 const createPdfBuffer = async (html: string): Promise<Buffer> => {
-  const browser = await puppeteer.launch()
-  const page = await browser.newPage()
-  await page.setContent(html, { waitUntil: 'networkidle0' })
-  const buffer = await page.pdf({
-    format: 'A4',
-    printBackground: true,
-    preferCSSPageSize: true,
-    pageRanges: '1',
-    margin: {
-      top: '0mm',
-      right: '0mm',
-      bottom: '0mm',
-      left: '0mm',
-    },
-  })
-  await browser.close()
-  return Buffer.from(buffer)
+  let browser
+
+  try {
+    // Check if we're running locally or in production
+    const isLocal = process.env.IS_LOCAL === 'true'
+
+    if (isLocal) {
+      browser = await puppeteerLocal.launch({
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-web-security',
+        ],
+      })
+    } else {
+      // Ensure chromium is available
+      await chromium.executablePath()
+
+      // Use chromium for serverless environments
+      browser = await puppeteer.launch({
+        args: [
+          ...chromium.args,
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--single-process',
+          '--no-zygote',
+        ],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+      })
+    }
+
+    const page = await browser.newPage()
+
+    await page.setContent(html, {
+      waitUntil: 'networkidle0',
+      timeout: 30000,
+    })
+
+    const buffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      pageRanges: '1',
+      scale: 0.8,
+      margin: {
+        top: '0mm',
+        right: '0mm',
+        bottom: '0mm',
+        left: '0mm',
+      },
+    })
+
+    return Buffer.from(buffer)
+  } catch (error) {
+    console.error('PDF generation error:', error)
+    Sentry.captureException(error)
+
+    // Fallback: return empty buffer or throw
+    throw new Error(
+      `PDF generation failed: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    )
+  } finally {
+    if (browser) {
+      try {
+        await browser.close()
+      } catch (closeError) {
+        console.warn('Error closing browser:', closeError)
+      }
+    }
+  }
 }
 export const sendReceiptEmail = async (
   toEmail: string,
