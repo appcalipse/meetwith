@@ -45,8 +45,6 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
-  fetchBusySlotsForMultipleAccounts,
-  doesContactExist,
   getAccount,
   getBusySlots,
   getMeeting,
@@ -57,6 +55,7 @@ import {
   dateToHumanReadable,
   getAccountDomainUrl,
   scheduleMeeting,
+  updateMeetingAsGuest,
 } from '@/utils/calendar_manager'
 import { Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
@@ -433,22 +432,43 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     })
 
     try {
-      const meeting = await scheduleMeeting(
-        false,
-        scheduleType,
-        'no_type',
-        start,
-        end,
-        participants,
-        meetingProvider || MeetingProvider.HUDDLE,
-        currentAccount,
-        content,
-        meetingUrl,
-        emailToSendReminders,
-        title,
-        meetingReminders,
-        meetingRepeat
-      )
+      let meeting: MeetingDecrypted
+
+      // Check if this is a reschedule operation
+      if (rescheduleSlotId) {
+        // This is a reschedule operation - use updateMeetingAsGuest
+        meeting = await updateMeetingAsGuest(
+          rescheduleSlotId,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          content,
+          meetingUrl,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      } else {
+        // This is a new meeting - use scheduleMeeting
+        meeting = await scheduleMeeting(
+          false,
+          scheduleType,
+          'no_type',
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          emailToSendReminders,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      }
+
       await getAvailableSlots(true)
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
@@ -457,6 +477,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       logEvent('Scheduled a meeting', {
         fromPublicCalendar: true,
         participantsSize: meeting.participants.length,
+        isReschedule: !!rescheduleSlotId,
       })
       setIsScheduling(false)
       return true
@@ -768,6 +789,14 @@ const RescheduleInfoBox: React.FC<{
   loading: boolean
   slot?: DBSlot
 }> = ({ loading, slot }) => {
+  const router = useRouter()
+
+  const handleCancel = () => {
+    if (slot?.id) {
+      router.push(`/meeting/cancel/${slot.id}`)
+    }
+  }
+
   return (
     <Flex p={4} mt={4}>
       {loading ? (
@@ -788,7 +817,7 @@ const RescheduleInfoBox: React.FC<{
 
           <Text mt={2}>
             Select another time for the meeting, or{' '}
-            <Button variant="link" colorScheme="primary">
+            <Button variant="link" colorScheme="primary" onClick={handleCancel}>
               cancel
             </Button>{' '}
             it

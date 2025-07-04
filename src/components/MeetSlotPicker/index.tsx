@@ -203,7 +203,6 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
       { zone: timezoneValue }
     )
 
-
     const nowInTimezone = DateTime.now().setZone(timezoneValue)
 
     return (
