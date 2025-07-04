@@ -54,6 +54,7 @@ import {
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
+  RequestInvoiceRequest,
   UpdateAvailabilityBlockMeetingTypesRequest,
   UpdateAvailabilityBlockRequest,
   UpdateMeetingTypeRequest,
@@ -1540,5 +1541,15 @@ export const getMeetingTypesForAvailabilityBlock = async (
 ): Promise<MeetingType[]> => {
   return await internalFetch<MeetingType[]>(
     `/secure/availabilities/${availability_block_id}/meeting-types`
+  )
+}
+
+export const requestInvoice = async (
+  payload: RequestInvoiceRequest
+): Promise<{ success: true }> => {
+  return await internalFetch<{ success: true }>(
+    `/transactions/invoice`,
+    'POST',
+    payload
   )
 }

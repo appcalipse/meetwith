@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { ConfirmCryptoTransactionRequest } from '@meta/Requests'
-import { createCryptoTransaction } from '@utils/api_helper'
+import { createCryptoTransaction, requestInvoice } from '@utils/api_helper'
 import {
   PaymentStep,
   PaymentType,
@@ -36,6 +36,8 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AcceptedToken, ChainInfo, supportedChains } from '@/types/chains'
+import { getAccountDomainUrl } from '@/utils/calendar_manager'
+import { appUrl } from '@/utils/constants'
 import { formatCurrency, parseUnits } from '@/utils/generic_utils'
 import {
   ErrorAction,
@@ -75,6 +77,7 @@ const ConfirmPaymentInfo = () => {
   )
   const [email, setEmail] = React.useState('')
   const { openConnection } = useContext(OnboardingModalContext)
+  const [isInvoiceLoading, setIsInvoiceLoading] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
   const chain = supportedChains.find(
     val => val.chain === selectedChain
@@ -120,7 +123,8 @@ const ConfirmPaymentInfo = () => {
     setLoading(true)
     try {
       const amount =
-        selectedType!.plan!.price_per_slot! * selectedType!.plan!.no_of_slot!
+        (selectedType?.plan?.price_per_slot || 0) *
+        (selectedType?.plan?.no_of_slot || 0)
       if (paymentType === PaymentType.CRYPTO) {
         setProgress(0)
         let currentWallet: Wallet | undefined | null = wallet
@@ -294,6 +298,45 @@ const ConfirmPaymentInfo = () => {
     }
     setLoading(false)
   }
+  const handleRequestInvoice = async () => {
+    setIsInvoiceLoading(true)
+    try {
+      let url = `${appUrl}/${getAccountDomainUrl(account)}/${
+        selectedType?.slug || ''
+      }?payment_type=${paymentType}`
+      if (paymentType === PaymentType.CRYPTO) {
+        url += `&token=${token}&chain=${selectedChain}`
+      }
+      const response = await requestInvoice({
+        guest_email: email,
+        guest_name: name,
+        meeting_type_id: selectedType?.id || '',
+        payment_method: paymentType || PaymentType.FIAT,
+        url,
+      })
+      if (response.success) {
+        toast({
+          title: 'Invoice Requested',
+          description:
+            "We've received your invoice request! It'll be sent to your email shortly.",
+          status: 'success',
+          duration: 5000,
+        })
+      }
+    } catch (error) {
+      console.error('Error requesting invoice:', error)
+      if (error instanceof Error) {
+        toast({
+          title: 'Invoice Request Failed',
+          description:
+            error.message || 'An error occurred while requesting the invoice.',
+          status: 'error',
+          duration: 5000,
+        })
+      }
+    }
+    setIsInvoiceLoading(false)
+  }
 
   const handleBack = () => {
     setPaymentType(undefined)
@@ -420,40 +463,50 @@ const ConfirmPaymentInfo = () => {
           </HStack>
         ))}
       </VStack>
-      <HStack>
+      <HStack w="100%" justifyContent="space-between">
+        <HStack>
+          <Button
+            colorScheme="primary"
+            disabled={!name || !email || !!errors.name || !!errors.email}
+            onClick={handlePay}
+            isLoading={loading}
+          >
+            Pay Now
+          </Button>
+          {loading && (
+            <HStack ml={12}>
+              <Progress
+                value={progress}
+                min={0}
+                max={100}
+                w={150}
+                rounded={'full'}
+                borderWidth={2}
+                borderColor="green.400"
+                colorScheme="green"
+                p={'2px'}
+                size="lg"
+                sx={{
+                  '& > div': {
+                    backgroundColor: 'green.400',
+                    rounded: 'full',
+                  },
+                }}
+              />
+              <Text>
+                {progress === 100 ? 'Payment Successful' : `${progress}%`}
+              </Text>
+            </HStack>
+          )}
+        </HStack>
         <Button
+          variant="outline"
           colorScheme="primary"
-          disabled={!name || !email || !!errors.name || !!errors.email}
-          onClick={handlePay}
-          isLoading={loading}
+          onClick={() => handleRequestInvoice()}
+          isLoading={isInvoiceLoading}
         >
-          Pay Now
+          Request Invoice
         </Button>
-        {loading && (
-          <HStack ml={12}>
-            <Progress
-              value={progress}
-              min={0}
-              max={100}
-              w={150}
-              rounded={'full'}
-              borderWidth={2}
-              borderColor="green.400"
-              colorScheme="green"
-              p={'2px'}
-              size="lg"
-              sx={{
-                '& > div': {
-                  backgroundColor: 'green.400',
-                  rounded: 'full',
-                },
-              }}
-            />
-            <Text>
-              {progress === 100 ? 'Payment Successful' : `${progress}%`}
-            </Text>
-          </HStack>
-        )}
       </HStack>
     </VStack>
   )
