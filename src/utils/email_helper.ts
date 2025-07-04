@@ -1,8 +1,8 @@
 import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
-import pdf from 'html-pdf'
 import path from 'path'
+import puppeteer from 'puppeteer'
 
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
@@ -632,26 +632,24 @@ export const sendContactInvitationEmail = async (
     Sentry.captureException(err)
   }
 }
-const createPdfBuffer = (html: string): Promise<Buffer> => {
-  return new Promise((resolve, reject) => {
-    pdf
-      .create(html, {
-        format: 'A4',
-        border: {
-          top: '0',
-          right: '0',
-          bottom: '0',
-          left: '0',
-        },
-      })
-      .toBuffer((err, buffer) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(buffer)
-        }
-      })
+const createPdfBuffer = async (html: string): Promise<Buffer> => {
+  const browser = await puppeteer.launch()
+  const page = await browser.newPage()
+  await page.setContent(html, { waitUntil: 'networkidle0' })
+  const buffer = await page.pdf({
+    format: 'A4',
+    printBackground: true,
+    preferCSSPageSize: true,
+    pageRanges: '1',
+    margin: {
+      top: '0mm',
+      right: '0mm',
+      bottom: '0mm',
+      left: '0mm',
+    },
   })
+  await browser.close()
+  return Buffer.from(buffer)
 }
 export const sendReceiptEmail = async (
   toEmail: string,

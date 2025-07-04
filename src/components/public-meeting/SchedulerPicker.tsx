@@ -280,10 +280,6 @@ const SchedulerPicker = () => {
     )
     const startLocalDate = dayInTimezone.startOf('day').toJSDate()
     const endLocalDate = dayInTimezone.endOf('day').toJSDate()
-    const minScheduleTime = DateTime.now()
-      .setZone(timezone.value)
-      .plus({ minutes: minTime })
-      .toJSDate()
     const slots = eachMinuteOfInterval(
       { start: startLocalDate, end: endLocalDate },
       { step: slotDurationInMinutes }
@@ -293,10 +289,7 @@ const SchedulerPicker = () => {
     }))
 
     const intervals = availableSlots.filter(
-      slot =>
-        isSameMonth(slot.start, date) &&
-        isSameDay(slot.start, date) &&
-        isAfter(minScheduleTime, slot.start)
+      slot => isSameMonth(slot.start, date) && isSameDay(slot.start, date)
     )
 
     return (
@@ -643,6 +636,7 @@ const SchedulerPicker = () => {
               pickTime={handlePickTime}
               showSelfAvailability={checkedSelfSlots}
               timezone={timezone.value}
+              selectedType={selectedType}
             />
           )}
         </VStack>

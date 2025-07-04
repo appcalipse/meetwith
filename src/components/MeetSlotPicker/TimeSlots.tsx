@@ -30,7 +30,7 @@ interface IProps {
   selfAvailableSlots: Interval[]
   selfBusySlots: Interval[]
   timezone?: string
-  selectedType?: MeetingType
+  selectedType?: MeetingType | null
 }
 
 const TimeSlots: FC<IProps> = ({
