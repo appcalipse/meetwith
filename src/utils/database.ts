@@ -2633,6 +2633,61 @@ const updateMeeting = async (
   return meetingResponse
 }
 
+const updateMeetingForGuest = async (
+  slotId: string,
+  meetingUpdateRequest: MeetingUpdateRequest
+): Promise<DBSlot> => {
+  // Get the existing slot to verify it exists and get the meeting information
+  const existingSlot = await getMeetingFromDB(slotId)
+  if (!existingSlot) {
+    throw new MeetingNotFoundError(slotId)
+  }
+
+  // Get the conference meeting to understand the full meeting structure
+  const conferenceMeeting = await getConferenceDataBySlotId(slotId)
+  if (!conferenceMeeting) {
+    throw new MeetingNotFoundError(slotId)
+  }
+
+  // Get all existing slots for this meeting
+  const existingSlots = await getSlotsByIds(conferenceMeeting.slots)
+
+  // Find the owner's slot (the calendar owner's slot)
+  const ownerSlot = existingSlots.find(
+    slot =>
+      slot.account_address ===
+      conferenceMeeting.slots.find(
+        slotId =>
+          existingSlots.find(s => s.id === slotId)?.account_address ===
+          slot.account_address
+      )
+  )
+
+  if (!ownerSlot) {
+    throw new MeetingNotFoundError(slotId)
+  }
+
+  // Create participant acting info for the guest
+  const participantActing: ParticipantBaseInfo = {
+    name:
+      meetingUpdateRequest.participants_mapping.find(p => p.guest_email)
+        ?.name || 'Guest',
+    guest_email:
+      meetingUpdateRequest.participants_mapping.find(p => p.guest_email)
+        ?.guest_email || '',
+    account_address: '',
+  }
+
+  // Update the meeting with the existing slot IDs preserved
+  const updatedMeeting = await updateMeeting(participantActing, {
+    ...meetingUpdateRequest,
+    // Ensure we're using the existing slot IDs from the conference meeting
+    allSlotIds: conferenceMeeting.slots,
+  })
+
+  return updatedMeeting
+}
+
 const selectTeamMeetingRequest = async (
   id: string
 ): Promise<GroupMeetingRequest | null> => {
@@ -3003,6 +3058,7 @@ export {
   getMeetingFromDB,
   getNewestCoupon,
   getOfficeEventMappingId,
+  getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
@@ -3033,6 +3089,7 @@ export {
   updateAllRecurringSlots,
   updateCustomSubscriptionDomain,
   updateMeeting,
+  updateMeetingForGuest,
   updateRecurringSlots,
   upsertGateCondition,
   workMeetingTypeGates,

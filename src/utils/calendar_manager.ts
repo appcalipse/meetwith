@@ -53,6 +53,7 @@ import {
   scheduleMeetingFromServer,
   syncMeeting,
   updateMeeting as apiUpdateMeeting,
+  updateMeetingAsGuest as apiUpdateMeetingAsGuest,
 } from '@/utils/api_helper'
 
 import { diff, intersec } from './collections'
@@ -957,7 +958,78 @@ const scheduleMeeting = async (
       version: 0,
       meeting_info_encrypted: slot.meeting_info_encrypted,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    throw error
+  }
+}
+
+const updateMeetingAsGuest = async (
+  slotId: string,
+  startTime: Date,
+  endTime: Date,
+  participants: ParticipantInfo[],
+  meetingProvider: MeetingProvider,
+  meetingContent?: string,
+  meetingUrl?: string,
+  meetingTitle?: string,
+  meetingReminders?: Array<MeetingReminders>,
+  meetingRepeat = MeetingRepeat.NO_REPEAT,
+  selectedPermissions?: MeetingPermissions[]
+): Promise<MeetingDecrypted> => {
+  const existingSlot = await getMeeting(slotId)
+
+  // Build participant data
+  const participantData = await handleParticipants(participants, null)
+
+  const participantsToKeep: { [accountOrEmail: string]: string } = {}
+
+  // Use the existing slot ID for the owner (this is the slot we're updating)
+  participantsToKeep[existingSlot.account_address] = slotId
+
+  const meetingData = await buildMeetingData(
+    SchedulingType.REGULAR,
+    'no_type',
+    startTime,
+    endTime,
+    participantData.sanitizedParticipants,
+    participantData.allAccounts,
+    participantsToKeep,
+    meetingProvider,
+    null,
+    meetingContent,
+    meetingUrl,
+    existingSlot.id!,
+    meetingTitle,
+    meetingReminders,
+    meetingRepeat,
+    selectedPermissions
+  )
+
+  const payload = {
+    ...meetingData,
+    slotsToRemove: [],
+    guestsToRemove: [],
+    version: existingSlot.version + 1,
+  }
+
+  try {
+    const slot: DBSlot = await apiUpdateMeetingAsGuest(slotId, payload)
+
+    return {
+      id: slot.id!,
+      meeting_id: slot.id!,
+      created_at: new Date(),
+      participants: meetingData.participants_mapping,
+      content: meetingData.content,
+      title: meetingData.title,
+      meeting_url: meetingData.meeting_url,
+      start: meetingData.start,
+      end: meetingData.end,
+      related_slot_ids: meetingData.allSlotIds || [],
+      version: slot.version,
+      meeting_info_encrypted: slot.meeting_info_encrypted,
+    }
+  } catch (error: unknown) {
     throw error
   }
 }
@@ -1439,4 +1511,5 @@ export {
   scheduleMeeting,
   selectDefaultProvider,
   updateMeeting,
+  updateMeetingAsGuest,
 }

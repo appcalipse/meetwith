@@ -2,7 +2,12 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { GuestMeetingCancel } from '@/types/Meeting'
-import { getConferenceDataBySlotId, handleGuestCancel } from '@/utils/database'
+import { MeetingUpdateRequest } from '@/types/Requests'
+import {
+  getConferenceDataBySlotId,
+  handleGuestCancel,
+  updateMeetingForGuest,
+} from '@/utils/database'
 import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -26,6 +31,33 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     } catch (err) {
       Sentry.captureException(err)
       return res.status(404).send('Not found')
+    }
+  } else if (req.method === 'PUT') {
+    const slotId = req.query.id as string
+    if (!slotId) {
+      return res.status(400).send('Required parameter not provided')
+    }
+
+    const meetingUpdateRequest: MeetingUpdateRequest =
+      req.body as MeetingUpdateRequest
+    if (!meetingUpdateRequest) {
+      return res.status(400).send('Invalid update request')
+    }
+
+    try {
+      const meetingResult = await updateMeetingForGuest(
+        slotId,
+        meetingUpdateRequest
+      )
+      return res.status(200).json(meetingResult)
+    } catch (e) {
+      Sentry.captureException(e)
+      if (e instanceof MeetingNotFoundError) {
+        return res.status(404).send(e.message)
+      } else if (e instanceof UnauthorizedError) {
+        return res.status(401).send(e.message)
+      }
+      return res.status(500).send(e)
     }
   } else if (req.method === 'DELETE') {
     const { metadata, currentTimezone, reason } = req.body as GuestMeetingCancel
