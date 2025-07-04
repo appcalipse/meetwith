@@ -6,12 +6,18 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import { areIntervalsOverlapping, isSameDay } from 'date-fns'
+import {
+  addMinutes,
+  areIntervalsOverlapping,
+  isAfter,
+  isSameDay,
+} from 'date-fns'
 import { DateTime } from 'luxon'
 import React, { FC, useContext, useMemo } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { MeetingType } from '@/types/Account'
 import { generateTimeSlots } from '@/utils/slots.helper'
 
 interface IProps {
@@ -24,6 +30,7 @@ interface IProps {
   selfAvailableSlots: Interval[]
   selfBusySlots: Interval[]
   timezone?: string
+  selectedType?: MeetingType
 }
 
 const TimeSlots: FC<IProps> = ({
@@ -35,12 +42,14 @@ const TimeSlots: FC<IProps> = ({
   busySlots,
   selfAvailableSlots,
   selfBusySlots,
+  selectedType,
   timezone = Intl.DateTimeFormat().resolvedOptions().timeZone, // Default to local timezone
 }) => {
   const { openConnection } = useContext(OnboardingModalContext)
   const { currentAccount } = useContext(AccountContext)
   const pickedDayInTimezone = DateTime.fromJSDate(pickedDay).setZone(timezone)
   const endOfDayInTimezone = pickedDayInTimezone.endOf('day').toJSDate()
+  const minTime = selectedType?.min_notice_minutes || 0
   const timeSlots = generateTimeSlots(
     pickedDay,
     slotSizeMinutes,
@@ -67,6 +76,15 @@ const TimeSlots: FC<IProps> = ({
     )
   }, [selfAvailableSlots, pickedDay, timezone])
   const filtered = timeSlots.filter(slot => {
+    const minScheduleTime = DateTime.now()
+      .setZone(timezone)
+      .plus({ minutes: minTime })
+      .toJSDate()
+
+    if (isAfter(minScheduleTime, slot.start)) {
+      return false
+    }
+
     return (
       daySlots.some(available => areIntervalsOverlapping(slot, available)) &&
       !busySlots.some(busy => areIntervalsOverlapping(slot, busy))
