@@ -211,9 +211,10 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                                   td
                                     h1(style='font-weight:500; font-size: 16px;') #{payment_method}
                                 tr
-                                 td(colspan='2')
-                                  a(href='https://meetwith.xyz/dashboard/notifications', style='text-decoration: none;') 
-                                    button(style='padding: 8px 16px; border-radius: 8px; background-color: #F9B19A; color: #191D27; border: none; height: 48px; font-weight: 700;margin-top: 52px; font-size: 16px;') Pay Now
+                                  td(colspan='2')
+                                    <a href="#{url}" style="text-decoration: none; cursor: pointer;">
+                                        button(style='padding: 8px 16px; border-radius: 8px; background-color: #F9B19A; color: #191D27; border: none; height: 48px; font-weight: 700;margin-top: 52px; font-size: 16px; cursor: pointer;') Pay Now
+                                    </a>
 
                                    
 
