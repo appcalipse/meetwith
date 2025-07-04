@@ -660,6 +660,22 @@ export const sendReceiptEmail = async (
 ) => {
   const email = new Email({
     views: {
+      root: path.resolve('src', 'emails', 'receipt_email'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const pdf_email = new Email({
+    views: {
       root: path.resolve('src', 'emails', 'receipt'),
       options: {
         extension: 'pug',
@@ -681,7 +697,9 @@ export const sendReceiptEmail = async (
   try {
     const rendered = await email.render('html', locals)
     const subject = await email.render('subject', locals)
-    const pdfBuffer: Buffer = await createPdfBuffer(rendered)
+    const pdfBuffer: Buffer = await createPdfBuffer(
+      await pdf_email.render('html', locals)
+    )
 
     const msg: CreateEmailOptions = {
       to: toEmail,
@@ -720,6 +738,21 @@ export const sendInvoiceEmail = async (
 ) => {
   const email = new Email({
     views: {
+      root: path.resolve('src', 'emails', 'invoice_email'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+  const pdf_email = new Email({
+    views: {
       root: path.resolve('src', 'emails', 'invoice'),
       options: {
         extension: 'pug',
@@ -741,7 +774,9 @@ export const sendInvoiceEmail = async (
   try {
     const rendered = await email.render('html', locals)
     const subject = await email.render('subject', locals)
-    const pdfBuffer: Buffer = await createPdfBuffer(rendered)
+    const pdfBuffer: Buffer = await createPdfBuffer(
+      await pdf_email.render('html', locals)
+    )
 
     const msg: CreateEmailOptions = {
       to: toEmail,
