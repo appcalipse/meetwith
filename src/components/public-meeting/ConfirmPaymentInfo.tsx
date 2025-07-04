@@ -467,7 +467,7 @@ const ConfirmPaymentInfo = () => {
         <HStack>
           <Button
             colorScheme="primary"
-            disabled={!name || !email || !!errors.name || !!errors.email}
+            isDisabled={!name || !email || !!errors.name || !!errors.email}
             onClick={handlePay}
             isLoading={loading}
           >
@@ -504,6 +504,7 @@ const ConfirmPaymentInfo = () => {
           colorScheme="primary"
           onClick={() => handleRequestInvoice()}
           isLoading={isInvoiceLoading}
+          isDisabled={!name || !email || !!errors.name || !!errors.email}
         >
           Request Invoice
         </Button>
