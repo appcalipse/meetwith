@@ -9,10 +9,24 @@ RUN apk add git
 RUN apk add --update python3 make g++\
    && rm -rf /var/cache/apk/*
 
+# Installs Chromium (100) package.
+RUN apk add --no-cache \
+      chromium \
+      nss \
+      freetype \
+      harfbuzz \
+      ca-certificates \
+      ttf-freefont
+
+# Set Puppeteer to use installed Chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
 WORKDIR /app
-COPY package.json yarn.lock ./ 
+COPY package.json yarn.lock ./
 COPY ./patches ./patches
 RUN yarn install --frozen-lockfile --unsafe-perm
+RUN yarn add puppeteer@13.5.0
 
 # Rebuild the source code only when needed
 FROM node:20.17.0-alpine AS builder
@@ -36,12 +50,19 @@ FROM node:20.17.0-alpine AS runner
 RUN wget -q -t3 'https://packages.doppler.com/public/cli/rsa.8004D9FF50437357.key' -O /etc/apk/keys/cli@doppler-8004D9FF50437357.rsa.pub && \
     echo 'https://packages.doppler.com/public/cli/alpine/any-version/main' | tee -a /etc/apk/repositories && \
     apk add doppler
+
+
+
 WORKDIR /app
+
 
 ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+RUN mkdir -p /home/nextjs/Downloads && \
+    chown -R nextjs:nodejs /home/nextjs
+
 
 # You only need to copy next.config.js if you are NOT using the default configuration
 # COPY --from=builder /app/next.config.js ./
