@@ -318,7 +318,7 @@ const ConfirmPaymentInfo = () => {
         toast({
           title: 'Invoice Requested',
           description:
-            'Your invoice has been requested successfully. and would be sent to your email.',
+            "We've received your invoice request! It'll be sent to your email shortly.",
           status: 'success',
           duration: 5000,
         })
