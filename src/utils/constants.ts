@@ -22,7 +22,7 @@ const NO_REPLY_EMAIL = 'no-reply@meetwithwallet.xyz'
 
 const WEBHOOK_URL = `${
   // apiUrl
-  'https://f0f2-217-138-254-60.ngrok-free.app/api'
+  'https://e1acc08379fb.ngrok-free.app/api'
 }/server/webhook/calendar/sync`
 
 export enum OnboardingSubject {
