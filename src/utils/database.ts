@@ -149,8 +149,10 @@ import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
+  extractMeetingDescription,
   extractSlotIdFromDescription,
   getBaseEventId,
+  updateMeetingServer,
 } from './calendar_helpers'
 import {
   generateDefaultMeetingType,
@@ -378,6 +380,19 @@ const workMeetingTypeGates = async (meetingTypes: MeetingType[]) => {
   }
 }
 
+const findAccountByIdentifier = async (
+  identifier: string
+): Promise<Array<Account>> => {
+  const { data, error } = await db.supabase.rpc<Account>('find_account', {
+    identifier: identifier,
+  })
+  if (error) {
+    Sentry.captureException(error)
+    return []
+  }
+  return data
+}
+
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
   const preferences = { ...account.preferences! }
   preferences.name = preferences.name?.trim()
@@ -468,11 +483,18 @@ export const getAccountPreferences = async (
 
   return preferences as AccountPreferences
 }
-
-const getExistingAccountsFromDB = async (
+async function getExistingAccountsFromDB(
+  addresses: string[],
+  fullInformation: true
+): Promise<Account[]>
+async function getExistingAccountsFromDB(
+  addresses: string[],
+  fullInformation?: false
+): Promise<SimpleAccountInfo[]>
+async function getExistingAccountsFromDB(
   addresses: string[],
   fullInformation?: boolean
-): Promise<SimpleAccountInfo[] | Account[]> => {
+): Promise<SimpleAccountInfo[] | Account[]> {
   let queryString = ` 
       address,
       internal_pub_key
@@ -2458,7 +2480,8 @@ const getAppToken = async (tokenType: string): Promise<any | null> => {
 
 const updateMeeting = async (
   participantActing: ParticipantBaseInfo,
-  meetingUpdateRequest: MeetingUpdateRequest
+  meetingUpdateRequest: MeetingUpdateRequest,
+  updateActorCalendar = true
 ): Promise<DBSlot> => {
   if (
     new Set(
@@ -4303,40 +4326,27 @@ const handleSyncEvent = async (
   event: calendar_v3.Schema$Event,
   calendar: ConnectedCalendar
 ) => {
+  // eslint-disable-next-line no-restricted-syntax
+  console.log(event)
   if (!event.id) return
   const meetingId = getBaseEventId(event.id)
   if (!meetingId) {
     console.warn(`Skipping event ${event.id} due to missing  meetingId`)
     return
   }
-  const meeting = await getConferenceMeetingFromDB(meetingId)
-  if (!meeting) {
-    console.warn(`Skipping event ${event.id} due to missing meeting in db`)
-    return
-  }
-  const slotIds = meeting.slots
-  const slots = await getSlotsByIds(slotIds)
-  if (!slots || slots.length === 0) {
-    console.warn(`Skipping event ${event.id} due to no slots found`)
-    return
-  }
-  const actorSlot = slots.find(
-    slot => slot.account_address === calendar.account_address
+  if (!event.start?.dateTime || !event.end?.dateTime) return
+  const meeting = await updateMeetingServer(
+    meetingId,
+    calendar.account_address,
+    calendar.email,
+    new Date(event.start?.dateTime),
+    new Date(event.end?.dateTime),
+    event.attendees || [],
+    extractMeetingDescription(event.description || '') || '',
+    event.location || '',
+    event.summary || ''
   )
-  const roleExists = !!actorSlot?.role
-  const permissionExists = !!meeting.permissions
-  const isSchedulerOrOwner = [
-    ParticipantType.Scheduler,
-    ParticipantType.Owner,
-  ].includes(actorSlot?.role || ParticipantType?.Invitee)
-  const canEdit =
-    !roleExists ||
-    permissionExists ||
-    isSchedulerOrOwner ||
-    meeting.permissions?.includes(MeetingPermissions.EDIT_MEETING)
-  if (canEdit) {
-    // TODO: updateMeetingServer
-  }
+
   return true
 }
 export {
@@ -4357,6 +4367,7 @@ export {
   deleteMeetingType,
   deleteTgConnection,
   editGroup,
+  findAccountByIdentifier,
   findAccountsByText,
   getAccountFromDB,
   getAccountFromDBPublic,
@@ -4394,6 +4405,7 @@ export {
   getOfficeEventMappingId,
   getOrCreateContactInvite,
   getPaidSessionsByMeetingType,
+  getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
