@@ -53,6 +53,7 @@ export type NewCalendarEventType = {
   url: string
   additionalInfo: Record<string, any>
 }
+
 export enum Office365RecurrenceType {
   DAILY = 'daily',
   WEEKLY = 'weekly',
