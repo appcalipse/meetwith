@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import CryptoJS from 'crypto-js'
-import { add, addMinutes, addMonths, isAfter } from 'date-fns'
+import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
@@ -27,7 +27,6 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
-import { AvailabilityBlock } from '@/types/availability'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -131,6 +130,7 @@ import {
   LastMeetingTypeError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  MeetingDetailsModificationDenied,
   MeetingNotFoundError,
   MeetingSlugAlreadyExists,
   MeetingTypeNotFound,
@@ -140,7 +140,6 @@ import {
   OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
-  TransactionCouldBeNotFoundError,
   TransactionIsRequired,
   TransactionNotFoundError,
   UnauthorizedError,
@@ -150,17 +149,16 @@ import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
   extractMeetingDescription,
-  extractSlotIdFromDescription,
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_helpers'
 import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
+  noNoReplyEmailForAccount,
 } from './calendar_manager'
 import { apiUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
-import { MeetingPermissions } from './constants/schedule'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
@@ -390,7 +388,14 @@ const findAccountByIdentifier = async (
     Sentry.captureException(error)
     return []
   }
-  return data
+  return await Promise.all(
+    data.map(async account => {
+      account.preferences = await getAccountPreferences(
+        account.address.toLowerCase()
+      )
+      return account
+    })
+  )
 }
 
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
@@ -483,6 +488,7 @@ export const getAccountPreferences = async (
 
   return preferences as AccountPreferences
 }
+
 async function getExistingAccountsFromDB(
   addresses: string[],
   fullInformation: true
@@ -1375,6 +1381,7 @@ const getGroupsAndMembers = async (
   }
   return groups
 }
+
 async function findGroupsWithSingleMember(
   groupIDs: Array<string>
 ): Promise<Array<EmptyGroupsResponse>> {
@@ -2078,7 +2085,7 @@ const getConnectedCalendars = async (
   address: string,
   {
     syncOnly,
-    activeOnly,
+    activeOnly: _activeOnly,
   }: {
     syncOnly?: boolean
     activeOnly?: boolean
@@ -2480,8 +2487,7 @@ const getAppToken = async (tokenType: string): Promise<any | null> => {
 
 const updateMeeting = async (
   participantActing: ParticipantBaseInfo,
-  meetingUpdateRequest: MeetingUpdateRequest,
-  updateActorCalendar = true
+  meetingUpdateRequest: MeetingUpdateRequest
 ): Promise<DBSlot> => {
   if (
     new Set(
@@ -3276,7 +3282,7 @@ const getContactInvites = async (
   }
   return data as unknown as DBContactInvite
 }
-const getContactByAddress = async (
+const _getContactByAddress = async (
   owner_address: string,
   address: string
 ): Promise<DBContact> => {
@@ -3895,7 +3901,7 @@ const deleteMeetingType = async (
   if (meetingTypes?.length === 1) {
     throw new LastMeetingTypeError()
   }
-  const { data, error } = await db.supabase
+  const { error } = await db.supabase
     .from('meeting_type')
     .update({ deleted_at: new Date().toISOString() })
     .eq('account_owner_address', account_address)
@@ -4193,7 +4199,6 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
     .from<ConnectedCalendar>('connected_calendars')
     .select('*')
     .eq('provider', provider)
-    .eq('account_address', '0x546f67e57a3980f41251b1cace8abd10d764cc3f')
     .filter('calendars', 'cs', '[{"sync": true}]')
   if (error) {
     throw new Error(error.message)
@@ -4209,7 +4214,42 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
     for (const cal of calendar.calendars.filter(c => c.enabled && c.sync)) {
       calendarPromises.push(
         (async () => {
-          if (!integration.setWebhookUrl) return null
+          if (!integration.setWebhookUrl || !integration.refreshWebhook)
+            return null
+          const { data } = await db.supabase
+            .from('calendar_webhooks')
+            .select('*')
+            .eq('calendar_id', cal.calendarId)
+            .eq('connected_calendar_id', calendar.id)
+          const calendarwbhk = data?.[0]
+          if (calendarwbhk) {
+            if (
+              new Date(calendarwbhk.expires_at) < add(new Date(), { days: 1 })
+            ) {
+              const result = await integration.refreshWebhook(
+                calendarwbhk.channel_id,
+                calendarwbhk.resource_id,
+                WEBHOOK_URL,
+                cal.calendarId
+              )
+              const { calendarId, channelId, expiration, resourceId } = result
+              const { error: updateError } = await db.supabase
+                .from('calendar_webhooks')
+                .update({
+                  channel_id: channelId,
+                  resource_id: resourceId,
+                  calendar_id: calendarId,
+                  expires_at: new Date(Number(expiration)).toISOString(),
+                })
+                .eq('id', calendarwbhk.id)
+
+              if (updateError) {
+                return { error: updateError, type: 'creation' }
+              }
+              return { ...result, error: null, type: 'refresh' }
+            }
+            return { ...calendarwbhk, error: null, type: 'no-change' }
+          }
           const result = await integration.setWebhookUrl(
             WEBHOOK_URL,
             cal.calendarId
@@ -4225,25 +4265,19 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
               expires_at: new Date(Number(expiration)).toISOString(),
             })
           if (updateError) {
-            return { error: updateError }
+            return { error: updateError, type: 'creation' }
           }
-          return { ...result, error: null }
+          return { ...result, error: null, type: 'creation' }
         })()
       )
     }
   }
-  const results = await Promise.all(calendarPromises)
-  const errors = results.filter(result => result?.error)
-  if (errors.length > 0) {
-    throw new Error(
-      `Failed to sync webhooks: ${errors
-        .map(e => e?.error?.message)
-        .join(', ')}`
-    )
-  }
 }
 
-const handleWebhookEvent = async (channelId: string, resourceId: string) => {
+const handleWebhookEvent = async (
+  channelId: string,
+  resourceId: string
+): Promise<boolean> => {
   console.trace(
     `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
   )
@@ -4264,7 +4298,7 @@ const handleWebhookEvent = async (channelId: string, resourceId: string) => {
     )
   }
   const calendar: ConnectedCalendar = data?.connected_calendar
-  if (!calendar) return
+  if (!calendar) return false
   let lower_limit = new Date(calendar?.updated || calendar?.created)
   const upper_limit = add(new Date(), {
     years: 1,
@@ -4308,46 +4342,151 @@ const handleWebhookEvent = async (channelId: string, resourceId: string) => {
       return true // Keep first occurrence
     })
   const recentlyUpdated = calendar_availabilities.filter(event => {
+    const now = new Date()
+    // We can't update recently updated meeting to prevent infinite syncing when we update or create meetings
+    if (event.extendedProperties?.private?.lastUpdatedAt) {
+      const eventLastUpdatedAt = new Date(
+        event.extendedProperties?.private?.lastUpdatedAt
+      )
+      if (eventLastUpdatedAt > sub(now, { minutes: 2 })) {
+        return false
+      }
+    }
     const recordChangeDate = event.updated || event.created
     if (!recordChangeDate) return
     const eventDate = new Date(recordChangeDate)
-    return eventDate > add(new Date(), { minutes: -5 })
+
+    return eventDate > add(now, { minutes: -2 })
   })
   if (recentlyUpdated.length === 0) {
     console.error('No recently updated events found')
-    return
+    return false
   }
   const actions = await Promise.all(
-    recentlyUpdated.map(event => handleSyncEvent(event, calendar))
+    recentlyUpdated.map(event =>
+      handleSyncEvent(event, calendar, data.calendar_id)
+    )
   )
-  return actions
+  return actions.length > 0
 }
 const handleSyncEvent = async (
   event: calendar_v3.Schema$Event,
-  calendar: ConnectedCalendar
+  calendar: ConnectedCalendar,
+  calendarId: string
 ) => {
-  // eslint-disable-next-line no-restricted-syntax
-  console.log(event)
+  try {
+    // eslint-disable-next-line no-restricted-syntax
+    console.log(event)
+    if (!event.id) return
+    const meetingId = getBaseEventId(event.id)
+    if (!meetingId) {
+      console.warn(`Skipping event ${event.id} due to missing  meetingId`)
+      return
+    }
+    if (!event.start?.dateTime || !event.end?.dateTime) return
+    const meeting = await updateMeetingServer(
+      meetingId,
+      calendar.account_address,
+      calendar.email,
+      new Date(event.start?.dateTime),
+      new Date(event.end?.dateTime),
+      event.attendees || [],
+      extractMeetingDescription(event.description || '') || '',
+      event.location || '',
+      event.summary || ''
+    )
+
+    return meeting
+  } catch (e) {
+    console.error(e)
+    if (e instanceof MeetingDetailsModificationDenied) {
+      // update only the rsvp on other calendars
+      return await handleCalendarRsvps(event, calendar, calendarId)
+    } else {
+      throw e
+    }
+  }
+}
+const handleCalendarRsvps = async (
+  event: calendar_v3.Schema$Event,
+  calendar: ConnectedCalendar,
+  calendarId: string
+) => {
   if (!event.id) return
   const meetingId = getBaseEventId(event.id)
-  if (!meetingId) {
-    console.warn(`Skipping event ${event.id} due to missing  meetingId`)
+  const existingMeeting = await getConferenceMeetingFromDB(meetingId)
+  const slotIds = existingMeeting.slots
+  const existingSlot = await getSlotsByIds(slotIds)
+  const otherMeetingAddress = existingSlot
+    .map(slot => slot.account_address.toLowerCase())
+    .filter(address => address !== calendar.account_address)
+  const actorAccount = await getAccountFromDB(calendar.account_address)
+  if (!actorAccount) return
+  const actor = event.attendees?.find(attendee => attendee.self)
+  const actingParticipant = existingSlot?.find(
+    user => user.account_address === calendar.account_address
+  )
+  if (!actingParticipant || !actor || !actor?.responseStatus) {
     return
   }
-  if (!event.start?.dateTime || !event.end?.dateTime) return
-  const meeting = await updateMeetingServer(
-    meetingId,
+  // Update RSVP status on other participants' calendars
+  for (const address of otherMeetingAddress) {
+    try {
+      const calendars = await getConnectedCalendars(address, {
+        syncOnly: true,
+      })
+
+      for (const calendar of calendars) {
+        const integration = getConnectedCalendarIntegration(
+          calendar.account_address,
+          calendar.email,
+          calendar.provider,
+          calendar.payload
+        )
+
+        if (integration.updateEventRSVP && actor?.responseStatus) {
+          const actorEmail = noNoReplyEmailForAccount(
+            (actorAccount.preferences.name || actorAccount.address)!
+          )
+
+          for (const cal of calendar.calendars) {
+            try {
+              await integration.updateEventRSVP(
+                meetingId,
+                actorEmail,
+                actor.responseStatus,
+                cal.calendarId
+              )
+              // Add delay to respect rate limits
+              await new Promise(resolve => setTimeout(resolve, 1000))
+            } catch (error: unknown) {
+              console.error('Error updating RSVP status:', error)
+              // If rate limited, wait longer before continuing
+              const isRateLimitError =
+                (error as Error)?.message?.includes('Rate Limit') ||
+                (error as { response?: { status?: number } })?.response
+                  ?.status === 429
+
+              if (isRateLimitError) {
+                await new Promise(resolve => setTimeout(resolve, 5000))
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+  // Update the acting participant's RSVP status in the database
+  const integration = getConnectedCalendarIntegration(
     calendar.account_address,
     calendar.email,
-    new Date(event.start?.dateTime),
-    new Date(event.end?.dateTime),
-    event.attendees || [],
-    extractMeetingDescription(event.description || '') || '',
-    event.location || '',
-    event.summary || ''
+    calendar.provider,
+    calendar.payload
   )
-
-  return true
+  integration.updateEventExtendedProperties &&
+    integration.updateEventExtendedProperties(meetingId, calendarId)
 }
 export {
   acceptContactInvite,
