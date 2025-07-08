@@ -4325,8 +4325,8 @@ const handleWebhookEvent = async (
   calendar_availabilities = calendar_availabilities
     .sort((a, b) => {
       // Group by recurringEventId first
-      const aKey = a.recurringEventId || a.id || ''
-      const bKey = b.recurringEventId || b.id || ''
+      const aKey = a.id || ''
+      const bKey = b.id || ''
 
       if (aKey !== bKey) return aKey.localeCompare(bKey)
 
@@ -4335,11 +4335,6 @@ const handleWebhookEvent = async (
     })
     .filter(event => {
       if (!event.recurringEventId) return true
-      if (uniqueRecurringEventId.has(event.recurringEventId)) {
-        return false // Skip duplicate UID
-      }
-      uniqueRecurringEventId.add(event.recurringEventId)
-      return true // Keep first occurrence
     })
   const recentlyUpdated = calendar_availabilities.filter(event => {
     const now = new Date()
