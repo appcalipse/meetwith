@@ -10,7 +10,7 @@ RUN apk add --update python3 make g++\
    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
-COPY package.json yarn.lock ./ 
+COPY package.json yarn.lock ./
 COPY ./patches ./patches
 RUN yarn install --frozen-lockfile --unsafe-perm
 
@@ -36,9 +36,23 @@ FROM node:20.17.0-alpine AS runner
 RUN wget -q -t3 'https://packages.doppler.com/public/cli/rsa.8004D9FF50437357.key' -O /etc/apk/keys/cli@doppler-8004D9FF50437357.rsa.pub && \
     echo 'https://packages.doppler.com/public/cli/alpine/any-version/main' | tee -a /etc/apk/repositories && \
     apk add doppler
+
+# Install Chromium for Puppeteer
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    && rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED 1
+# Tell Puppeteer to skip installing Chromium. We'll be using the installed package.
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

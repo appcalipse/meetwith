@@ -46,3 +46,19 @@ export interface MeetingSession extends BaseMeetingSession {
   created_at: Date
   updated_at: Date
 }
+
+export interface InvoiceMetadata {
+  full_name: string
+  email_address: string
+  plan: string
+  number_of_sessions: string
+  price: string
+  payment_method: string
+  url?: string
+}
+
+export interface ReceiptMetadata extends InvoiceMetadata {
+  transaction_fee: string
+  transaction_status: string
+  transaction_hash: string
+}

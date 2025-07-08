@@ -54,6 +54,8 @@ import {
   MeetingCancelRequest,
   MeetingCreationRequest,
   MeetingUpdateRequest,
+  RequestInvoiceRequest,
+  UpdateAvailabilityBlockMeetingTypesRequest,
   UpdateAvailabilityBlockRequest,
   UpdateMeetingTypeRequest,
   UrlCreationRequest,
@@ -1520,5 +1522,34 @@ export const getPaidSessions = async (
 ): Promise<PaidMeetingTypes[]> => {
   return await internalFetch<PaidMeetingTypes[]>(
     `/secure/transactions/meeting-sessions?account_address=${account_address}`
+  )
+}
+
+export const updateAvailabilityBlockMeetingTypes = async ({
+  availability_block_id,
+  meeting_type_ids,
+}: UpdateAvailabilityBlockMeetingTypesRequest): Promise<void> => {
+  return await internalFetch<void>(
+    `/secure/availabilities/${availability_block_id}/meeting-types`,
+    'PATCH',
+    { meeting_type_ids }
+  )
+}
+
+export const getMeetingTypesForAvailabilityBlock = async (
+  availability_block_id: string
+): Promise<MeetingType[]> => {
+  return await internalFetch<MeetingType[]>(
+    `/secure/availabilities/${availability_block_id}/meeting-types`
+  )
+}
+
+export const requestInvoice = async (
+  payload: RequestInvoiceRequest
+): Promise<{ success: true }> => {
+  return await internalFetch<{ success: true }>(
+    `/transactions/invoice`,
+    'POST',
+    payload
   )
 }

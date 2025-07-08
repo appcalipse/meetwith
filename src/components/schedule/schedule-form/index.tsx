@@ -84,7 +84,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const toast = useToast()
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    selectDefaultProvider(preferences?.meetingProviders)
+    selectDefaultProvider(
+      selectedType?.meeting_platforms || preferences?.meetingProviders
+    )
   )
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{

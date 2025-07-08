@@ -19,6 +19,7 @@ import {
   eachMinuteOfInterval,
   endOfMonth,
   Interval,
+  isAfter,
   isSameDay,
   isSameMonth,
   startOfMonth,
@@ -37,7 +38,6 @@ import {
 import Loading from '@/components/Loading'
 // TODO: create helper function to merge availabilities from availability block
 import Calendar from '@/components/MeetSlotPicker/calendar/index'
-import { Popup, PopupHeader } from '@/components/MeetSlotPicker/Popup'
 import TimeSlots from '@/components/MeetSlotPicker/TimeSlots'
 import { PublicScheduleContext } from '@/components/public-meeting'
 import { ScheduleForm } from '@/components/schedule/schedule-form'
@@ -100,6 +100,7 @@ const SchedulerPicker = () => {
     setNotificationSubs,
     setIsContact,
   } = useContext(PublicScheduleContext)
+
   const currentAccount = useAccountContext()
   const slotDurationInMinutes = selectedType?.duration_minutes || 0
   const [timezone, setTimezone] = useState<Option<string>>(
@@ -170,14 +171,32 @@ const SchedulerPicker = () => {
     try {
       busySlots = await getBusySlots(account?.address, startDate, endDate)
     } catch (error) {}
-    const availabilities = parseMonthAvailabilitiesToDate(
-      account?.preferences?.availabilities || [],
-      startDate,
-      endDate,
-      account?.preferences?.timezone || 'UTC'
+    const availabilities =
+      selectedType?.availabilities?.flatMap(availability =>
+        parseMonthAvailabilitiesToDate(
+          availability.weekly_availability || [],
+          startDate,
+          endDate,
+          availability.timezone || account?.preferences?.timezone || 'UTC'
+        )
+      ) || []
+
+    // Deduplicate overlapping time slots
+    const deduplicatedAvailabilities = availabilities.reduce<Interval[]>(
+      (acc, current) => {
+        const hasOverlap = acc.some(existing =>
+          areIntervalsOverlapping(current, existing, { inclusive: true })
+        )
+        if (!hasOverlap) {
+          acc.push(current)
+        }
+        return acc
+      },
+      []
     )
+
     setBusySlots(busySlots)
-    setAvailableSlots(availabilities)
+    setAvailableSlots(deduplicatedAvailabilities)
     setCachedRange({ startDate, endDate })
     setCheckingSlots(false)
   }
@@ -241,6 +260,7 @@ const SchedulerPicker = () => {
       dateInTimezone.day === nowInTimezone.day
     )
   }
+  const minTime = selectedType?.min_notice_minutes || 0
   const validator = (date: Date) => {
     if (!slotDurationInMinutes) return
     const dayInTimezone = DateTime.fromObject(
@@ -260,7 +280,6 @@ const SchedulerPicker = () => {
     )
     const startLocalDate = dayInTimezone.startOf('day').toJSDate()
     const endLocalDate = dayInTimezone.endOf('day').toJSDate()
-
     const slots = eachMinuteOfInterval(
       { start: startLocalDate, end: endLocalDate },
       { step: slotDurationInMinutes }
@@ -617,6 +636,7 @@ const SchedulerPicker = () => {
               pickTime={handlePickTime}
               showSelfAvailability={checkedSelfSlots}
               timezone={timezone.value}
+              selectedType={selectedType}
             />
           )}
         </VStack>

@@ -156,23 +156,41 @@ const PublicPage: FC<IProps> = props => {
   }
   useEffect(() => {
     if (!isReady) return
-    const meeting_type = Array.isArray(query.address)
-      ? query.address.at(-1)
-      : undefined
-    if (meeting_type) {
-      const type = props.account?.meetingTypes?.find(
-        t => t.slug === meeting_type
-      )
-      if (type) {
-        const nextStep = type?.plan
-          ? PublicSchedulingSteps.PAY_FOR_SESSION
-          : PublicSchedulingSteps.BOOK_SESSION
+    if (query.address) {
+      const meeting_type = Array.isArray(query.address)
+        ? query.address.at(-1)
+        : undefined
+      if (meeting_type) {
+        const type = props.account?.meetingTypes?.find(
+          t => t.slug === meeting_type
+        )
+        if (type) {
+          const nextStep = type?.plan
+            ? PublicSchedulingSteps.PAY_FOR_SESSION
+            : PublicSchedulingSteps.BOOK_SESSION
 
-        // Use immediate push for initial step determination
-        setCurrentStep(nextStep)
+          // Use immediate push for initial step determination
+          setCurrentStep(nextStep)
+        }
       }
     }
-  }, [query.address])
+    if (query.payment_type) {
+      const paymentType = query.payment_type as PaymentType
+      setPaymentType(paymentType)
+      setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
+      if (paymentType === PaymentType.CRYPTO) {
+        const { chain, token } = query as {
+          chain?: SupportedChain
+          token?: AcceptedToken
+        }
+        if (typeof chain === 'string' && typeof token === 'string') {
+          setChain(chain)
+          setToken(token)
+        }
+      }
+    }
+  }, [query])
+  useEffect(() => {}, [])
 
   useEffect(() => {
     const handleBackButton = () => {

@@ -91,6 +91,7 @@
     "path": "^0.12.7",
     "postinstall-postinstall": "^2.1.0",
     "prism-react-renderer": "^0.1.6",
+    "puppeteer": "13.5.0",
     "radix-ui": "^0.0.1",
     "react": "^18.2.0",
     "react-cookie": "^4.1.1",

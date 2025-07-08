@@ -1,5 +1,6 @@
 import {
   PaymentChannel,
+  PaymentType,
   PlanType,
   SessionType,
   TokenType,
@@ -191,6 +192,11 @@ export interface DuplicateAvailabilityBlockRequest {
   }
 }
 
+export interface UpdateAvailabilityBlockMeetingTypesRequest {
+  availability_block_id: string
+  meeting_type_ids: string[]
+}
+
 export interface CreateMeetingTypeRequest {
   title: string
   description?: string
@@ -198,9 +204,12 @@ export interface CreateMeetingTypeRequest {
   duration_minutes: number
   min_notice_minutes: number
   scheduleGate?: string
+  custom_link?: string
+  fixed_link?: boolean
   slug: string
   availability_ids?: string[]
   calendars?: number[]
+  meeting_platforms?: MeetingProvider[]
   plan?: {
     type?: PlanType
     price_per_slot?: number
@@ -230,4 +239,12 @@ export interface ConfirmCryptoTransactionRequest {
   guest_address?: string
   guest_email: string
   guest_name: string
+}
+
+export interface RequestInvoiceRequest {
+  guest_email: string
+  guest_name: string
+  meeting_type_id: string
+  payment_method: PaymentType
+  url: string
 }

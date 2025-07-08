@@ -53,6 +53,7 @@ export interface BaseMeetingType {
   fixed_link?: boolean
   custom_link?: string
   updated_at?: string | Date
+  meeting_platforms?: Array<MeetingProvider>
 }
 export interface MeetingType extends BaseMeetingType {
   id: string
@@ -103,7 +104,7 @@ export interface TimeRange {
 
 export interface AccountPreferences {
   id?: string
-  timezone: string
+  timezone: string | undefined
   availableTypes: MeetingType[]
   description?: string
   availabilities: DayAvailability[]

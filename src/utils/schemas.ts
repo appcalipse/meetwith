@@ -27,6 +27,8 @@ export const createMeetingSchema = z.object({
       'Slug must be alphanumeric with dashes'
     )
     .optional(), // Optional slug
+  custom_link: z.string().url('Invalid custom link URL').optional(), // Optional custom link URL
+  fixed_link: z.boolean().optional(), // Optional boolean for fixed link
   availability_ids: z.array(z.string()).min(1, {
     message: 'At least one availability block must be selected.',
   }),
