@@ -49,10 +49,10 @@ const extractMeetingDescription = (summaryMessage: string): string | null => {
   const sections = summaryMessage.split('\n\n')
 
   if (sections.length >= 2) {
-    const lastSection = sections[sections.length - 1]
+    const lastSection = sections.slice(2)
 
     if (!lastSection.includes('To reschedule or cancel the meeting')) {
-      return lastSection.trim()
+      return lastSection.join('\n\n').trim()
     }
   }
 
@@ -184,7 +184,7 @@ const updateMeetingServer = async (
   ].includes(actorSlot?.role || ParticipantType?.Invitee)
   const canEdit =
     !roleExists ||
-    permissionExists ||
+    !permissionExists ||
     isSchedulerOrOwner ||
     existingMeeting.permissions?.includes(MeetingPermissions.EDIT_MEETING)
   const currentAccount = await getAccountFromDB(currentAccountAddress)
@@ -197,36 +197,16 @@ const updateMeetingServer = async (
     slot.account_address.toLowerCase()
   )
 
-  const actingParticipant = existingSlot?.find(
-    user => user.account_address === currentAccountAddress
-  )
-  if (!actingParticipant) {
-    throw new MeetingChangeConflictError()
-  }
-
   // We want a copy we can modify
   const existingMeetingAccountsCopy = [...existingMeetingAccounts]
   const parsedParticipants: Array<ParticipantInfo> = await Promise.all(
     baseParticipants.map(async (val): Promise<ParticipantInfo | undefined> => {
       try {
         // TODO: Get users actual status from their calendar RSVP
-        const status = getParticipationStatus(val.responseStatus || '')
 
-        if (val.email === currentAccountEmailAddress) {
-          const slot = existingSlot?.find(
-            slot => slot.account_address === currentAccountAddress
-          )
-          return {
-            account_address: currentAccountAddress,
-            type: slot?.role || ParticipantType.Invitee,
-            meeting_id: meetingId,
-            slot_id: slot?.id,
-            status,
-            name: val?.displayName || currentAccountAddress,
-          }
-        }
-        if (!val.displayName) return
-        const accounts = (await findAccountByIdentifier(val.displayName)) || []
+        const accounts = await findAccountByIdentifier(
+          val.self ? currentAccountAddress : val.displayName || ''
+        )
 
         const account = accounts?.find(acc => {
           const valueExists = existingMeetingAccountsCopy.includes(
@@ -248,11 +228,13 @@ const updateMeetingServer = async (
           type: slot?.role || ParticipantType.Invitee,
           meeting_id: meetingId,
           slot_id: slot?.id,
-          status,
-          name: val?.displayName,
-          guest_email: !val.email?.includes('meetwith')
-            ? val.email || ''
-            : undefined,
+          status: getParticipationStatus(val.responseStatus || ''),
+          name:
+            account?.preferences?.name || val.displayName || account?.address,
+          guest_email:
+            !val.email?.includes('meetwith') && !account?.address
+              ? val.email || ''
+              : undefined,
         }
       } catch (e) {
         console.error(e)
@@ -318,7 +300,7 @@ const updateMeetingServer = async (
   if (!participantActing) {
     throw new MeetingChangeConflictError()
   }
-  return await updateMeeting(participantActing, payload, false)
+  return await updateMeeting(participantActing, payload)
 }
 
 export {
