@@ -148,15 +148,15 @@ import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
-  extractMeetingDescription,
-  getBaseEventId,
-  updateMeetingServer,
-} from './calendar_helpers'
-import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
   noNoReplyEmailForAccount,
 } from './calendar_manager'
+import {
+  extractMeetingDescription,
+  getBaseEventId,
+  updateMeetingServer,
+} from './calendar_sync_helpers'
 import { apiUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
