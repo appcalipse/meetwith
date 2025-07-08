@@ -62,7 +62,9 @@ export type O365AuthCredentials = {
   refresh_token: string
 }
 
-export default class Office365CalendarService implements CalendarService {
+export default class Office365CalendarService
+  implements CalendarService<TimeSlotSource.OFFICE>
+{
   private auth: { getToken: () => Promise<string> }
   private email: string
 

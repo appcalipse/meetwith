@@ -1,11 +1,22 @@
 import { parseFromString } from 'dom-parser'
+import htmlTags from 'html-tags'
 
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 
 import { getAllParticipantsDisplayName } from '../user_manager'
 
 export const CalendarServiceHelper = {
+  isHtml: (str: string) => {
+    const full = new RegExp(
+      htmlTags.map(tag => `<${tag}\\b[^>]*>`).join('|'),
+      'i'
+    )
+    return full.test(str)
+  },
   convertHtmlToPlainText: (html: string) => {
+    if (!CalendarServiceHelper.isHtml(html)) {
+      return html
+    }
     const doc = parseFromString(html)
     const paragraphs = doc.getElementsByTagName('p')
     let plainText = ''

@@ -202,6 +202,7 @@ const loadMeetingAccountAddresses = async (
     ...otherSlots.map(it => it.account_address.toLowerCase()),
   ]
 }
+
 const handleParticipants = async (
   participants: ParticipantInfo[],
   currentAccount?: Account | null
@@ -1310,6 +1311,18 @@ const noNoReplyEmailForAccount = (account_address: string): string => {
   )
   return `no_reply_${content}@meetwith.xyz`
 }
+const extractAccountFromNoReplyEmail = (email: string): string | null => {
+  const regex = /^no_reply_(.+)@meetwith\.xyz$/
+  const match = email.match(regex)
+
+  if (!match) {
+    return null
+  }
+
+  const sanitizedContent = match[1]
+
+  return sanitizedContent.replace(/_/g, ' ')
+}
 
 const decodeMeeting = async (
   meeting: DBSlot,
@@ -1419,8 +1432,10 @@ const selectDefaultProvider = (providers?: Array<MeetingProvider>) => {
       return MeetingProvider.HUDDLE
   }
 }
+
 export {
   allSlots,
+  buildMeetingData,
   cancelMeeting,
   dateToHumanReadable,
   dateToLocalizedRange,
