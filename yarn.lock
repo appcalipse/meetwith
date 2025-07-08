@@ -13223,6 +13223,11 @@ html-tags@^3.1.0:
   resolved "https://registry.npmjs.org/html-tags/-/html-tags-3.3.1.tgz"
   integrity sha512-ztqyC3kLto0e9WbNp0aeP+M3kTt+nbaIveGmUxAtZa+8iFgKLUOD4YKM5j+f3QD89bra7UeumolZHKuOXnTmeQ==
 
+html-tags@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/html-tags/-/html-tags-5.0.0.tgz#10b9e775aa5f426d3d836428f11d7a4d2527f293"
+  integrity sha512-B+gtpb1dowUw9GSItJLR53mnZXxxx9RhyIFNJvEb3WpEvjJSGwr/2Wy/afmseTFPu7uGL/ugb3Dz8Mso5YqXqg==
+
 html-to-text@9.0.5:
   version "9.0.5"
   resolved "https://registry.npmjs.org/html-to-text/-/html-to-text-9.0.5.tgz"
