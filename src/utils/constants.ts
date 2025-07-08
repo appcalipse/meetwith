@@ -20,10 +20,7 @@ const discordRedirectUrl = `${baseURL}/dashboard/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwithwallet.xyz'
 
-const WEBHOOK_URL = `${
-  // apiUrl
-  'https://a62f722f9069.ngrok-free.app/api'
-}/server/webhook/calendar/sync`
+const WEBHOOK_URL = `${apiUrl}/server/webhook/calendar/sync`
 
 export enum OnboardingSubject {
   Discord = 'discord',
