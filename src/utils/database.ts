@@ -27,6 +27,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
+import { AvailabilityBlock } from '@/types/availability'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
@@ -161,11 +162,8 @@ import { apiUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
-
-import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
-
 import { sendReceiptEmail } from './email_helper'
-
+import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
@@ -4392,6 +4390,7 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
       )
     }
   }
+  await Promise.all(calendarPromises)
 }
 
 const handleWebhookEvent = async (
