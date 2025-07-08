@@ -2,6 +2,7 @@ import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons'
 import { Link } from '@chakra-ui/next-js'
 import {
   Button,
+  Checkbox,
   Collapse,
   FormControl,
   FormErrorMessage,
@@ -18,8 +19,10 @@ import {
   ModalHeader,
   ModalOverlay,
   Spinner,
+  Switch,
   Text,
   Textarea,
+  useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -48,7 +51,11 @@ import {
   Option,
 } from '@utils/constants/select'
 import { MeetingSlugAlreadyExists } from '@utils/errors'
-import { convertMinutes, getSlugFromText } from '@utils/generic_utils'
+import {
+  convertMinutes,
+  getSlugFromText,
+  renderProviderName,
+} from '@utils/generic_utils'
 import {
   createMeetingSchema,
   ErrorAction,
@@ -60,12 +67,13 @@ import {
   validateField,
 } from '@utils/schemas'
 import { Select as ChakraSelect } from 'chakra-react-select'
-import React, { FC, Reducer, useState } from 'react'
+import React, { FC, Reducer, useMemo, useState } from 'react'
 import { z } from 'zod'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
+import { MeetingProvider } from '@/types/Meeting'
 interface IProps {
   onClose: () => void
   isOpen: boolean
@@ -154,7 +162,29 @@ const MeetingTypeModal: FC<IProps> = props => {
       ? props?.initialValues?.plan?.payment_address || ''
       : ''
   )
+  const [selectedProviders, setSelectedProviders] = useState<
+    Array<MeetingProvider>
+  >(
+    props?.initialValues?.meeting_platforms ||
+      currentAccount?.preferences?.meetingProviders ||
+      []
+  )
   const [isLoading, setIsLoading] = useState(false)
+  const bgColor = useColorModeValue('white', 'neutral.900')
+  const PROVIDERS = useMemo(() => {
+    return [
+      MeetingProvider.GOOGLE_MEET,
+      MeetingProvider.ZOOM,
+      MeetingProvider.HUDDLE,
+      MeetingProvider.JITSI_MEET,
+    ]
+  }, [])
+  const [customLink, setCustomLink] = useState<string>(
+    props.initialValues?.custom_link || ''
+  )
+  const [fixedLink, setFixedLink] = useState<boolean>(
+    props.initialValues?.fixed_link || false
+  )
   const toast = useToast()
   // TODO: validate data with zod.
   const handleSessionChange = (value: unknown) => {
@@ -201,6 +231,24 @@ const MeetingTypeModal: FC<IProps> = props => {
     setMinAdvanceType(newValue)
   }
   const domainUrl = getAccountDomainUrl(currentAccount)
+  const handleMeetingPlatformChange = async (
+    value: MeetingProvider | 'ALL' | 'RESET'
+  ) => {
+    setSelectedProviders(prevProviders => {
+      switch (value) {
+        case 'ALL':
+          return [...PROVIDERS]
+
+        case 'RESET':
+          return []
+
+        default:
+          return prevProviders.includes(value)
+            ? prevProviders.filter(provider => provider !== value)
+            : [...prevProviders, value]
+      }
+    })
+  }
   const handleSave = async () => {
     setIsLoading(true)
     dispatchErrors({
@@ -225,7 +273,10 @@ const MeetingTypeModal: FC<IProps> = props => {
       calendars: calendars.map(c => c.value),
       availability_ids: availabilityBlock.map(val => val.value),
       description,
+      custom_link: customLink,
+      fixed_link: fixedLink,
       // TODO: validate backend request data
+      meeting_platforms: selectedProviders,
       plan:
         sessionType.value === SessionType.FREE
           ? undefined
@@ -322,6 +373,12 @@ const MeetingTypeModal: FC<IProps> = props => {
             : minAdvanceTime.type === 'hours'
             ? 60
             : 60 * 24)
+        break
+      case 'fixed_link':
+        value = fixedLink
+        break
+      case 'custom_link':
+        value = customLink
         break
       case 'plan.type':
         value = planType.value
@@ -485,6 +542,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                   handleBlur('title')
                   if (!customBookingLink) {
                     setCustomBookingLink(getSlugFromText(title))
+                    handleBlur('slug')
                   }
                 }}
               />
@@ -755,6 +813,115 @@ const MeetingTypeModal: FC<IProps> = props => {
                 </HStack>
               </FormControl>
             </HStack>
+            <VStack alignItems="flex-start" width="100%" bg={bgColor} gap={2}>
+              <VStack alignItems="flex-start" width="100%">
+                <Heading fontSize="2xl">Meeting Platform</Heading>
+                <Text color="neutral.400" mt={2}>
+                  Choose your default Meeting Platform
+                </Text>
+              </VStack>
+
+              <HStack gap={2} width="100%">
+                <Checkbox
+                  colorScheme="primary"
+                  value={
+                    selectedProviders.length === PROVIDERS.length
+                      ? 'RESET'
+                      : 'ALL'
+                  }
+                  size="lg"
+                  borderColor="primary.200"
+                  isChecked={selectedProviders.length === PROVIDERS.length}
+                  onChange={e => {
+                    handleMeetingPlatformChange(
+                      e.target.value as MeetingProvider
+                    )
+                  }}
+                >
+                  <Text fontWeight="600" color={'primary.200'}>
+                    Select all
+                  </Text>
+                </Checkbox>
+              </HStack>
+              <HStack
+                gap={2}
+                justifyContent="space-between"
+                flexWrap="wrap"
+                width="100%"
+              >
+                {PROVIDERS.map(provider => (
+                  <Checkbox
+                    key={provider}
+                    borderRadius={8}
+                    mt={4}
+                    flexBasis={{
+                      base: '45%',
+                    }}
+                    borderWidth={1}
+                    borderColor={
+                      selectedProviders.includes(provider)
+                        ? 'primary.200'
+                        : 'neutral.0'
+                    }
+                    colorScheme="primary"
+                    value={provider}
+                    p={4}
+                    isChecked={selectedProviders.includes(provider)}
+                    onChange={e => {
+                      handleMeetingPlatformChange(
+                        e.target.value as MeetingProvider
+                      )
+                    }}
+                    flexDirection="row-reverse"
+                    justifyContent="space-between"
+                    w="100%"
+                  >
+                    <Text
+                      fontWeight="600"
+                      color={
+                        selectedProviders.includes(provider)
+                          ? 'primary.200'
+                          : 'neutral.0'
+                      }
+                      cursor="pointer"
+                    >
+                      {renderProviderName(provider)}
+                    </Text>
+                  </Checkbox>
+                ))}
+              </HStack>
+              <FormControl
+                pt={5}
+                display="flex"
+                flexDirection="column"
+                gap={3}
+                isInvalid={!!errors.custom_link}
+              >
+                <Text>Custom Meeting location</Text>
+                <VStack gap={0} alignItems="flex-start" width="100%">
+                  <Input
+                    width={'345px'}
+                    type="text"
+                    placeholder="Google Meet, Zoom, Discord anywhere"
+                    value={customLink}
+                    onChange={e => setCustomLink(e.target.value)}
+                    onBlur={() => handleBlur('custom_link')}
+                  />
+                  {!!errors.custom_link && (
+                    <FormErrorMessage>{errors.custom_link}</FormErrorMessage>
+                  )}
+                </VStack>
+                <HStack>
+                  <Switch
+                    colorScheme="primary"
+                    size="md"
+                    isChecked={fixedLink}
+                    onChange={e => setFixedLink(e.target.checked)}
+                  />
+                  <Text>Allow scheduler to edit custom meeting location</Text>
+                </HStack>
+              </FormControl>
+            </VStack>
             <Collapse
               in={sessionType.value === SessionType.PAID}
               animateOpacity

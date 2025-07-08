@@ -53,6 +53,7 @@ const SessionTypeCardPaymentInfo = () => {
         <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
           {selectedType?.title}
         </Heading>
+        {selectedType?.description && <Text>{selectedType?.description}</Text>}
         <Text>{selectedType?.duration_minutes} mins per session</Text>
       </VStack>
     </VStack>

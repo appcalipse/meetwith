@@ -18,6 +18,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         throw new InValidGuests()
       }
       await createCryptoTransaction(payload, account_address)
+
       return res.status(200).json({ success: true })
     } catch (e: unknown) {
       if (e instanceof InValidGuests) {

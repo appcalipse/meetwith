@@ -9,12 +9,14 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import Link from 'next/link'
+import { useState } from 'react'
 
 import CustomLoading from '@/components/CustomLoading'
 import { useAvailabilityBlockHandlers } from '@/hooks/useAvailabilityBlockHandlers'
 import { useAvailabilityBlocks } from '@/hooks/useAvailabilityBlocks'
 import { useAvailabilityForm } from '@/hooks/useAvailabilityForm'
 import { Account } from '@/types/Account'
+import { updateAvailabilityBlockMeetingTypes } from '@/utils/api_helper'
 
 import { AvailabilityBlockCard } from './AvailabilityBlockCard'
 import { AvailabilityEmptyState } from './AvailabilityEmptyState'
@@ -24,11 +26,13 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const [selectedMeetingTypeIds, setSelectedMeetingTypeIds] = useState<
+    string[]
+  >([])
 
   const {
     blocks: availabilityBlocks,
     isLoading,
-    isFetching,
     createBlock,
     updateBlock,
     deleteBlock,
@@ -44,15 +48,32 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     setIsDefault,
   } = useAvailabilityForm(currentAccount)
 
+  const handleMeetingTypesChange = (meetingTypeIds: string[]) => {
+    setSelectedMeetingTypeIds(meetingTypeIds)
+  }
+
+  const handleMeetingTypesSave = async (blockId: string) => {
+    await updateAvailabilityBlockMeetingTypes({
+      availability_block_id: blockId,
+      meeting_type_ids: selectedMeetingTypeIds,
+    })
+    setSelectedMeetingTypeIds([])
+  }
+
+  const handleSaveWithMeetingTypes = async () => {
+    await handleSaveNewBlock()
+  }
+
   const {
     isEditing,
     editingBlockId,
     duplicatingBlockId,
     showDeleteConfirmation,
+    isSaving,
     handleCreateBlock,
     handleEditBlock,
     handleDuplicateBlock,
-    handleClose,
+    // handleClose,
     handleSaveNewBlock,
     handleDeleteBlock,
     handleShowDeleteConfirmation,
@@ -70,9 +91,10 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     setIsDefault,
     onOpen,
     onClose,
+    onMeetingTypesSave: handleMeetingTypesSave,
   })
 
-  if (isLoading || isFetching) {
+  if (isLoading) {
     return <CustomLoading text="Loading your availability blocks..." />
   }
 
@@ -158,7 +180,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
       <AvailabilityModal
         isOpen={isOpen}
-        onClose={handleClose}
+        onClose={onClose}
         isEditing={isEditing}
         editingBlockId={editingBlockId}
         duplicatingBlockId={duplicatingBlockId}
@@ -168,7 +190,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
         onTimezoneChange={setTimezone}
         onAvailabilityChange={updateAvailability}
         onIsDefaultChange={setIsDefault}
-        onSave={handleSaveNewBlock}
+        onSave={handleSaveWithMeetingTypes}
         onDelete={handleDeleteBlock}
         onCancelDelete={handleCancelDelete}
         onShowDeleteConfirmation={handleShowDeleteConfirmation}
@@ -176,11 +198,13 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
           createBlock.isLoading ||
           updateBlock.isLoading ||
           duplicateBlock.isLoading ||
-          deleteBlock.isLoading
+          deleteBlock.isLoading ||
+          isSaving
         }
         currentEditingBlock={availabilityBlocks?.find(
           block => block.id === editingBlockId
         )}
+        onMeetingTypesChange={handleMeetingTypesChange}
       />
     </VStack>
   )
