@@ -20,6 +20,12 @@ export interface CalendarService<T extends TimeSlotSource> {
    */
   refreshConnection(): Promise<CalendarSyncInfo[]>
 
+  /**
+   * Lists events over a specific date range on target calendar
+   * @param calendarId the calendar ID to list events from
+   * @param dateFrom the start date to list events from
+   * @param dateTo the end date to list events from
+   */
   listEvents?: T extends TimeSlotSource.GOOGLE
     ? (
         calendarId: string,
@@ -27,11 +33,47 @@ export interface CalendarService<T extends TimeSlotSource> {
         dateTo: Date
       ) => Promise<calendar_v3.Schema$Event[]>
     : never
+
+  /**
+   * Updates the RSVP status of an attendee for a specific event
+   * @param meeting_id
+   * @param attendeeEmail
+   * @param responseStatus
+   * @param _calendarId
+   */
+
+  updateEventRSVP?: T extends TimeSlotSource.GOOGLE
+    ? (
+        meeting_id: string,
+        attendeeEmail: string,
+        responseStatus: string,
+        _calendarId?: string
+      ) => Promise<NewCalendarEventType>
+    : never
+
+  /**
+   * Updates the extended properties of an event
+   * This is used to update the meeting link or other custom properties
+   * Only available for Google Calendar service
+   * @param meeting_id the event ID to update
+   * @param _calendarId the calendar ID to update the event in (optional)
+   */
+
+  updateEventExtendedProperties?: T extends TimeSlotSource.GOOGLE
+    ? (
+        meeting_id: string,
+        _calendarId?: string
+      ) => Promise<NewCalendarEventType>
+    : never
+
   /**
    * Creates a new event on target external calendar
    *
    * @param owner the owner address
-   * @param details details if the event
+   * @param meetingDetails details if the event
+   * @param meeting_creation_time the time when the event was created
+   * @param calendarId the calendar ID to create the event in
+   * @param shouldGenerateLink whether to generate a meeting link (default: false)
    */
   createEvent(
     owner: string,
