@@ -218,7 +218,7 @@ const handleParticipants = async (
 
     for (const p of participant) {
       p.name = p.name || getAccountDisplayName(account)
-      p.status = p.status || ParticipationStatus.Pending
+      p.status = p.status
       p.type = p.type || ParticipantType.Invitee
       p.slot_id = uuidv4()
     }
@@ -345,9 +345,10 @@ const buildMeetingData = async (
       name: participant.name || '',
       guest_email: participant.guest_email,
       status:
-        participant.type === ParticipantType.Scheduler
+        participant.status ||
+        (participant.type === ParticipantType.Scheduler
           ? ParticipationStatus.Accepted
-          : ParticipationStatus.Pending,
+          : ParticipationStatus.Pending),
       mappingType: !!participantsToKeep[
         participant.account_address || participant.guest_email || ''
       ]
