@@ -12,7 +12,11 @@ export default async function recurrenceSync(
       await syncWebhooks(TimeSlotSource.GOOGLE)
       return res.status(200).json('OK')
     } catch (error) {
-      return res.status(500).json({ error: (error as Error).message })
+      if (error instanceof Error) {
+        return res.status(500).json({ error: error.message })
+      } else {
+        return res.status(500).json({ error: 'Internal server error' })
+      }
     }
   }
 
