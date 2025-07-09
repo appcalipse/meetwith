@@ -73,6 +73,7 @@ import { z } from 'zod'
 import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
+import { EditMode } from '@/types/Dashboard'
 import { MeetingProvider } from '@/types/Meeting'
 interface IProps {
   onClose: () => void
@@ -677,7 +678,7 @@ const MeetingTypeModal: FC<IProps> = props => {
               )}
               <Link
                 color={'primary.400'}
-                href="/dashboard/schedule"
+                href={`/dashboard/${EditMode.AVAILABILITY}`}
                 borderBottom="1px solid"
                 pb={-4}
               >

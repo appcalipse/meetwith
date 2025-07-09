@@ -181,7 +181,6 @@ const SchedulerPicker = () => {
         )
       ) || []
 
-    // Deduplicate overlapping time slots
     const deduplicatedAvailabilities = availabilities.reduce<Interval[]>(
       (acc, current) => {
         const hasOverlap = acc.some(existing =>
