@@ -1,0 +1,38 @@
+// Mock for html-tags module
+// This is a subset of common HTML tags for testing purposes
+const htmlTags = [
+  'a',
+  'div',
+  'p',
+  'span',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'img',
+  'br',
+  'hr',
+  'input',
+  'button',
+  'form',
+  'table',
+  'tr',
+  'td',
+  'th',
+  'ul',
+  'ol',
+  'li',
+  'strong',
+  'em',
+  'b',
+  'i',
+  'u',
+  'script',
+  'style',
+  'link',
+  'meta',
+]
+
+module.exports = htmlTags
