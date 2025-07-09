@@ -33,10 +33,7 @@ export const createMeetingSchema = z.object({
     message: 'At least one availability block must be selected.',
   }),
 
-  calendars: z
-    .array(z.number())
-    .min(1, 'At least one calendar must be selected')
-    .optional(), // Array of calendar IDs
+  calendars: z.array(z.number()).optional(), // Array of calendar IDs
 
   plan: z
     .object({
