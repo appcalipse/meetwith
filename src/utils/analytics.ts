@@ -1,4 +1,3 @@
-import amplitude from 'amplitude-js'
 import posthog from 'posthog-js'
 
 import { isProduction } from './constants'
