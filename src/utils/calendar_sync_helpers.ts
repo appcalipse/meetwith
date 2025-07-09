@@ -148,7 +148,7 @@ const updateMeetingServer = async (
       `Skipping event ${meetingId.replace(
         '-',
         ''
-      )} due to missing meeting in db`
+      )} ${currentAccountAddress} due to missing meeting in db`
     )
     return
   }
