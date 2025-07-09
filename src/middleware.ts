@@ -58,7 +58,7 @@ const handleSecureRoute = async (req: NextRequest) => {
     },
   })
 
-  if (response.status !== 200) return notAuthorized
+  if (response.status !== 200) return notAuthorized()
 }
 
 const handleServerRoute = async (req: NextRequest) => {
@@ -75,5 +75,5 @@ const handleServerRoute = async (req: NextRequest) => {
     return NextResponse.next()
   }
 
-  return notAuthorized
+  return notAuthorized()
 }
