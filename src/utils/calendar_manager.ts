@@ -218,7 +218,7 @@ const handleParticipants = async (
 
     for (const p of participant) {
       p.name = p.name || getAccountDisplayName(account)
-      p.status = p.status || ParticipationStatus.Pending
+      p.status = p.status
       p.type = p.type || ParticipantType.Invitee
       p.slot_id = uuidv4()
     }
