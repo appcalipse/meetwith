@@ -760,7 +760,6 @@ const isSlotAvailable = async (
   if (isAfter(addMinutes(new Date(), minTime), start)) {
     return false
   }
-
   return (await getSlotsForAccount(account_address, start, end)).length == 0
 }
 
@@ -1094,13 +1093,14 @@ const saveMeeting = async (
             ),
             ownerAccount?.preferences.availabilities || []
           )
-        if (
-          participantIsOwner &&
-          ownerIsNotScheduler &&
-          ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
-            (await slotIsTaken()))
-        )
-          throw new TimeNotAvailableError()
+        // TODO: check slots by meeting type and not users default Availaibility
+        //   if (
+        //     participantIsOwner &&
+        //     ownerIsNotScheduler &&
+        //     ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
+        //       (await slotIsTaken()))
+        //   )
+        //     throw new TimeNotAvailableError()
       }
 
       let account: Account
