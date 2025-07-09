@@ -9,10 +9,9 @@ import {
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantInfo, ParticipationStatus } from '@/types/ParticipantInfo'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
-import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
@@ -347,36 +346,14 @@ export default class GoogleCalendarService
             auth: myGoogleAuth,
           })
 
-          // Use a Set to track unique emails and avoid duplicates
-          const addedEmails = new Set<string>()
+          // Build deduplicated attendees list using helper
+          const attendees = CalendarServiceHelper.buildAttendeesList(
+            meetingDetails.participants,
+            calendarOwnerAccountAddress,
+            () => this.getConnectedEmail()
+          )
 
-          for (const participant of meetingDetails.participants) {
-            const email =
-              calendarOwnerAccountAddress === participant.account_address
-                ? this.getConnectedEmail()
-                : participant.guest_email ||
-                  noNoReplyEmailForAccount(
-                    (participant.name || participant.account_address)!
-                  )
-
-            // Only add if we haven't already added this email
-            if (!addedEmails.has(email)) {
-              addedEmails.add(email)
-              payload.attendees!.push({
-                email,
-                displayName:
-                  participant.name ||
-                  participant.account_address ||
-                  email.split('@')[0],
-                responseStatus:
-                  participant.status === ParticipationStatus.Accepted
-                    ? 'accepted'
-                    : participant.status === ParticipationStatus.Rejected
-                    ? 'declined'
-                    : 'needsAction',
-              })
-            }
-          }
+          payload.attendees = attendees
 
           calendar.events.insert(
             {
@@ -500,53 +477,16 @@ export default class GoogleCalendarService
         participant => participant.guest_email
       )
 
-      if (guest) {
-        payload.attendees!.push({
-          email: guest.guest_email,
-          displayName:
-            guest.name || guest.guest_email?.split('@')[0] || 'Guest',
-          responseStatus: 'accepted',
-        })
-      }
+      // Build deduplicated attendees list using helper
+      const attendees = CalendarServiceHelper.buildAttendeesListForUpdate(
+        meetingDetails.participants,
+        calendarOwnerAccountAddress,
+        () => this.getConnectedEmail(),
+        actorStatus || undefined,
+        guest
+      )
 
-      // Use a Set to track unique emails and avoid duplicates
-      const addedEmails = new Set<string>()
-
-      // If guest was added, track their email
-      if (guest?.guest_email) {
-        addedEmails.add(guest.guest_email)
-      }
-
-      for (const participant of meetingDetails.participants) {
-        const email =
-          calendarOwnerAccountAddress === participant.account_address
-            ? this.getConnectedEmail()
-            : participant.guest_email ||
-              noNoReplyEmailForAccount(
-                (participant.name || participant.account_address)!
-              )
-
-        // Only add if we haven't already added this email
-        if (!addedEmails.has(email)) {
-          addedEmails.add(email)
-          payload.attendees!.push({
-            email,
-            displayName:
-              participant.name ||
-              participant.account_address ||
-              email.split('@')[0],
-            responseStatus:
-              calendarOwnerAccountAddress === participant.account_address &&
-              actorStatus
-                ? actorStatus
-                : participant.status === ParticipationStatus.Accepted
-                ? 'accepted'
-                : participant.status === ParticipationStatus.Rejected
-                ? 'declined'
-                : 'needsAction',
-          })
-        }
-      }
+      payload.attendees = attendees
 
       const calendar = google.calendar({
         version: 'v3',
