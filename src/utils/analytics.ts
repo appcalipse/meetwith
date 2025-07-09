@@ -1,20 +1,25 @@
 import amplitude from 'amplitude-js'
+import posthog from 'posthog-js'
 
 import { isProduction } from './constants'
 
 const initAnalytics = async () => {
-  if (isProduction) {
-    await amplitude.getInstance().init(process.env.NEXT_PUBLIC_AMPLITUDE_KEY!)
-    ;(window as any).amplitude = amplitude
-  }
+  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+    api_host: '/ingest',
+    ui_host: 'https://eu.posthog.com',
+    defaults: '2025-05-24',
+    capture_exceptions: true,
+    debug: false,
+    autocapture: isProduction,
+  })
 }
 
 const logEvent = (eventName: string, properties?: object) => {
-  isProduction && amplitude.getInstance().logEvent(eventName, properties)
+  isProduction && posthog.capture(eventName, properties)
 }
 
 const pageView = (path: string) => {
-  isProduction && amplitude.getInstance().logEvent('Page viewed', { path })
+  isProduction && posthog.capture('Page viewed', { path })
 }
 
 export { initAnalytics, logEvent, pageView }
