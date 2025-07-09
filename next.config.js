@@ -33,6 +33,27 @@ const moduleExports = {
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+
+  async rewrites() {
+    return [
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://eu-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://eu.i.posthog.com/:path*',
+      },
+      {
+        source: '/ingest/decide',
+        destination: 'https://eu.i.posthog.com/decide',
+      },
+    ]
+  },
+
+  // This is required to support PostHog trailing slash API requests
+  skipTrailingSlashRedirect: true,
+
   async headers() {
     return [
       {
