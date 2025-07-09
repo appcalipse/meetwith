@@ -62,6 +62,10 @@ const handleSecureRoute = async (req: NextRequest) => {
 }
 
 const handleServerRoute = async (req: NextRequest) => {
+  // eslint-disable-next-line no-restricted-syntax
+  console.log(req)
+  // eslint-disable-next-line no-restricted-syntax
+  console.log(req.headers)
   const serverSecret = process.env.SERVER_SECRET
   const authHeader =
     req.headers.get('X-Server-Secret') ||
