@@ -6,7 +6,7 @@ const createJestConfig = nextJest({
   dir: './',
 })
 
-const esModules = ['@wagmi'].join('|')
+const esModules = ['@wagmi', 'html-tags'].join('|')
 
 // Add any custom config to be passed to Jest
 
@@ -38,6 +38,7 @@ const customJestConfig = {
   },
   testTimeout: 30000,
   preset: 'ts-jest/presets/default-esm',
+  transformIgnorePatterns: [`node_modules/(?!(${esModules})/)`],
   globals: {
     Uint8Array,
     ArrayBuffer,
