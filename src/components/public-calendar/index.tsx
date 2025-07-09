@@ -45,8 +45,6 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
-  doesContactExist,
-  fetchBusySlotsForMultipleAccounts,
   getAccount,
   getBusySlots,
   getMeeting,
