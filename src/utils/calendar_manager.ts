@@ -345,9 +345,10 @@ const buildMeetingData = async (
       name: participant.name || '',
       guest_email: participant.guest_email,
       status:
-        participant.type === ParticipantType.Scheduler
+        participant.status ||
+        (participant.type === ParticipantType.Scheduler
           ? ParticipationStatus.Accepted
-          : ParticipationStatus.Pending,
+          : ParticipationStatus.Pending),
       mappingType: !!participantsToKeep[
         participant.account_address || participant.guest_email || ''
       ]
