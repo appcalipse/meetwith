@@ -7,6 +7,8 @@ import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
+import posthog from 'posthog-js'
+import { PostHogProvider } from 'posthog-js/react'
 import * as React from 'react'
 import { ThirdwebProvider } from 'thirdweb/react'
 
@@ -37,6 +39,8 @@ function MyApp({
   currentAccount,
   checkAuthOnClient,
 }: MyAppProps) {
+  // Initialize PostHog on client
+
   React.useEffect(() => {
     if (appDidInit) return
     const initApp = async () => {
@@ -66,25 +70,27 @@ function MyApp({
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={true} />
-      )}
-      <ThirdwebProvider>
-        <OnboardingModalProvider>
-          <AccountProvider
-            currentAccount={currentAccount}
-            logged={!!currentAccount}
-          >
-            <Head />
-            <BaseLayout consentCookie={consentCookie ?? false}>
-              <Component {...customProps} />
-            </BaseLayout>
-            <ConnectModal />
-          </AccountProvider>
-        </OnboardingModalProvider>
-      </ThirdwebProvider>
-    </QueryClientProvider>
+    <PostHogProvider client={posthog}>
+      <QueryClientProvider client={queryClient}>
+        {process.env.NODE_ENV === 'development' && (
+          <ReactQueryDevtools initialIsOpen={true} />
+        )}
+        <ThirdwebProvider>
+          <OnboardingModalProvider>
+            <AccountProvider
+              currentAccount={currentAccount}
+              logged={!!currentAccount}
+            >
+              <Head />
+              <BaseLayout consentCookie={consentCookie ?? false}>
+                <Component {...customProps} />
+              </BaseLayout>
+              <ConnectModal />
+            </AccountProvider>
+          </OnboardingModalProvider>
+        </ThirdwebProvider>
+      </QueryClientProvider>
+    </PostHogProvider>
   )
 }
 
