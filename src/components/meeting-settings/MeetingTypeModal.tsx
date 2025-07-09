@@ -541,11 +541,22 @@ const MeetingTypeModal: FC<IProps> = props => {
                 onBlur={() => {
                   handleBlur('title')
                   if (!customBookingLink) {
-                    setCustomBookingLink(getSlugFromText(title))
+                    const newSlug = getSlugFromText(title)
+                    setCustomBookingLink(newSlug)
                     if (!!errors.slug) {
-                      setTimeOut(() => {
-                        handleBlur('slug')
-                      }, 500)
+                      const { isValid, error } = validateField('slug', newSlug)
+                      if (!isValid && error) {
+                        dispatchErrors({
+                          type: 'SET_ERROR',
+                          field: 'slug',
+                          message: error,
+                        })
+                      } else {
+                        dispatchErrors({
+                          type: 'CLEAR_ERROR',
+                          field: 'slug',
+                        })
+                      }
                     }
                   }
                 }}
