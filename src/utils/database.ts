@@ -163,6 +163,7 @@ import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import { sendReceiptEmail } from './email_helper'
+import { CalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
@@ -2209,16 +2210,82 @@ const addOrUpdateConnectedCalendar = async (
       provider,
     })
   }
-
   const { data, error } = await queryPromise
 
   if (error) {
     throw new Error(error.message)
   }
+  const calendar = data[0] as ConnectedCalendar
+  try {
+    const integration = getConnectedCalendarIntegration(
+      address.toLowerCase(),
+      email,
+      provider,
+      payload
+    )
+    for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+      await handleWebHook(cal.calendarId, calendar.id, integration)
+    }
+  } catch (e) {}
 
-  return data[0] as ConnectedCalendar
+  return calendar
 }
+const handleWebHook = async (
+  calId: string,
+  connectedCalendarId: number,
+  integration: CalendarService<TimeSlotSource>
+) => {
+  try {
+    if (!integration.setWebhookUrl || !integration.refreshWebhook) return
+    const { data } = await db.supabase
+      .from('calendar_webhooks')
+      .select('*')
+      .eq('calendar_id', calId)
+      .eq('connected_calendar_id', connectedCalendarId)
+    const calendarwbhk = data?.[0]
+    if (calendarwbhk) {
+      if (new Date(calendarwbhk.expires_at) < add(new Date(), { days: 1 })) {
+        const result = await integration.refreshWebhook(
+          calendarwbhk.channel_id,
+          calendarwbhk.resource_id,
+          WEBHOOK_URL,
+          calId
+        )
+        const { calendarId, channelId, expiration, resourceId } = result
+        const { error: updateError } = await db.supabase
+          .from('calendar_webhooks')
+          .update({
+            channel_id: channelId,
+            resource_id: resourceId,
+            calendar_id: calendarId,
+            expires_at: new Date(Number(expiration)).toISOString(),
+          })
+          .eq('id', calendarwbhk.id)
 
+        if (updateError) {
+          console.error(updateError)
+        }
+        return
+      }
+    }
+    const result = await integration.setWebhookUrl(WEBHOOK_URL, calId)
+    const { calendarId, channelId, expiration, resourceId } = result
+    const { error: updateError } = await db.supabase
+      .from('calendar_webhooks')
+      .insert({
+        channel_id: channelId,
+        resource_id: resourceId,
+        calendar_id: calendarId,
+        connected_calendar_id: connectedCalendarId,
+        expires_at: new Date(Number(expiration)).toISOString(),
+      })
+    if (updateError) {
+      console.error(updateError)
+    }
+  } catch (e) {
+    console.error('Error refreshing webhook:', e)
+  }
+}
 const removeConnectedCalendar = async (
   address: string,
   email: string,
@@ -4330,8 +4397,7 @@ const syncWebhooks = async (provider: TimeSlotSource) => {
     )
     for (const cal of calendar.calendars.filter(c => c.enabled && c.sync)) {
       try {
-        if (!integration.setWebhookUrl || !integration.refreshWebhook)
-          return null
+        if (!integration.setWebhookUrl || !integration.refreshWebhook) continue
         const { data } = await db.supabase
           .from('calendar_webhooks')
           .select('*')
