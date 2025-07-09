@@ -542,6 +542,11 @@ const MeetingTypeModal: FC<IProps> = props => {
                   handleBlur('title')
                   if (!customBookingLink) {
                     setCustomBookingLink(getSlugFromText(title))
+                    if (!!errors.slug) {
+                      setTimeOut(() => {
+                        handleBlur('slug')
+                      }, 500)
+                    }
                   }
                 }}
               />
