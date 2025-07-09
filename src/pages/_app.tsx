@@ -39,8 +39,6 @@ function MyApp({
   currentAccount,
   checkAuthOnClient,
 }: MyAppProps) {
-  // Initialize PostHog on client
-
   React.useEffect(() => {
     if (appDidInit) return
     const initApp = async () => {
