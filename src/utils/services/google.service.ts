@@ -52,7 +52,7 @@ const retryCondition = (error: unknown) => {
       !!(
         error?.response?.status &&
         error?.response?.status >= 500 &&
-        error?.response?.status < 6000
+        error?.response?.status < 600
       )
 
     return isRateLimit || isQuotaExceeded || isNetworkError
