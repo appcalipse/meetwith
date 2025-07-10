@@ -848,7 +848,7 @@ const RescheduleInfoBox: React.FC<{
         <Spinner margin="auto" />
       ) : (
         <Box>
-          <Text fontSize={22}>
+          <Text fontSize={20}>
             <b>Former time</b>
           </Text>
           <Text p={2}>
