@@ -42,6 +42,7 @@ interface IProps {
   scheduleType: SchedulingType
   hasConnectedCalendar: boolean
   reset: () => void
+  isReschedule?: boolean
 }
 
 const MeetingScheduledDialog: React.FC<IProps> = ({
@@ -52,6 +53,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   scheduleType,
   hasConnectedCalendar,
   reset,
+  isReschedule,
 }) => {
   const { currentAccount } = useContext(AccountContext)
 
@@ -155,7 +157,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 meeting!.start,
                 Intl.DateTimeFormat().resolvedOptions().timeZone,
                 false
-              )} was scheduled successfully.`}
+              )} was ${isReschedule ? 'updated' : 'scheduled'} successfully.`}
             </Text>
           )}
           <Image
