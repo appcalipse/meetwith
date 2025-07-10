@@ -4636,7 +4636,7 @@ const handleCalendarRsvps = async (
                 cal.calendarId
               )
               // Add delay to respect rate limits
-              await new Promise(resolve => setTimeout(resolve, 1000))
+              await new Promise(resolve => setTimeout(resolve, 2000))
             } catch (error: unknown) {
               console.error('Error updating RSVP status:', error)
               // If rate limited, wait longer before continuing
