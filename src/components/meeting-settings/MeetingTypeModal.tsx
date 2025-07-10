@@ -694,7 +694,9 @@ const MeetingTypeModal: FC<IProps> = props => {
               alignItems="flex-start"
               isInvalid={!!errors.calendars}
             >
-              <FormLabel fontSize={'16px'}>Calendar to Add event to</FormLabel>
+              <FormLabel fontSize={'16px'}>
+                Calendar to Add event to (Optional)
+              </FormLabel>
               {props.isCalendarLoading ? (
                 <Spinner />
               ) : (
