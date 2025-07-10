@@ -739,16 +739,6 @@ const getConferenceDataBySlotId = async (
   return data[0]
 }
 
-export const getCorrectSlotIdForMeeting = async (
-  meetingId: string
-): Promise<string | null> => {
-  try {
-    const conferenceMeeting = await getConferenceDataBySlotId(meetingId)
-    return conferenceMeeting.slots[0] || null
-  } catch (error) {
-    return null
-  }
-}
 const handleGuestCancel = async (
   metadata: string,
   slotId: string,
@@ -1089,15 +1079,20 @@ const saveMeeting = async (
     meetingReminders: meeting.meetingReminders,
     meetingRepeat: meeting.meetingRepeat,
   }
-  // Doing notifications and syncs asynchronously
-  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
-    method: 'POST',
-    body: JSON.stringify(body),
-    headers: {
-      'X-Server-Secret': process.env.SERVER_SECRET!,
-      'Content-Type': 'application/json',
-    },
-  })
+
+  // For guest scheduling, don't send email notification here
+  // It will be sent manually after finding the valid slot ID
+  if (meeting.type !== SchedulingType.GUEST) {
+    // Doing notifications and syncs asynchronously
+    fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: {
+        'X-Server-Secret': process.env.SERVER_SECRET!,
+        'Content-Type': 'application/json',
+      },
+    })
+  }
 
   return meetingResponse as DBSlot
 }
@@ -2658,27 +2653,16 @@ const updateMeetingForGuest = async (
   slotId: string,
   meetingUpdateRequest: MeetingUpdateRequest
 ): Promise<DBSlot> => {
-  // Get the existing slot to verify it exists and get the meeting information
+  // Check if slot exists
   const existingSlot = await getMeetingFromDB(slotId)
   if (!existingSlot) {
     throw new MeetingNotFoundError(slotId)
   }
 
+  // Get conference meeting for metadata updates
   const conferenceMeeting = await getConferenceDataBySlotId(slotId)
   if (!conferenceMeeting) {
     throw new MeetingNotFoundError(slotId)
-  }
-
-  // For guest rescheduling, we only need to update the slot
-  const firstValidSlotId = conferenceMeeting.slots[0]
-  if (!firstValidSlotId) {
-    throw new MeetingNotFoundError(slotId)
-  }
-
-  // Get the first slot to update
-  const firstSlot = await getMeetingFromDB(firstValidSlotId)
-  if (!firstSlot) {
-    throw new MeetingNotFoundError(firstValidSlotId)
   }
 
   // Update only the slot's start, end, and version
@@ -2687,9 +2671,9 @@ const updateMeetingForGuest = async (
     .update({
       start: meetingUpdateRequest.start,
       end: meetingUpdateRequest.end,
-      version: firstSlot.version + 1,
+      version: existingSlot.version + 1,
     })
-    .eq('id', firstValidSlotId)
+    .eq('id', slotId)
     .select()
 
   if (error) {
@@ -2697,7 +2681,7 @@ const updateMeetingForGuest = async (
   }
 
   if (!data || data.length === 0) {
-    throw new MeetingNotFoundError(firstValidSlotId)
+    throw new MeetingNotFoundError(slotId)
   }
 
   // Update the conference meeting with new start/end times
@@ -2750,8 +2734,8 @@ const updateMeetingForGuest = async (
     meetingRepeat: meetingUpdateRequest.meetingRepeat,
     changes: {
       dateChange: {
-        oldStart: new Date(firstSlot.start),
-        oldEnd: new Date(firstSlot.end),
+        oldStart: new Date(existingSlot.start),
+        oldEnd: new Date(existingSlot.end),
       },
     },
   }
@@ -3102,6 +3086,7 @@ const getDiscordAccounts = async (): Promise<
   }
   return data
 }
+
 export {
   addOrUpdateConnectedCalendar,
   changeGroupRole,
