@@ -614,6 +614,19 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const _onClose = () => {
     setReset(true)
     setLastScheduledMeeting(undefined)
+
+    if (rescheduleSlotId) {
+      setRescheduleSlotId(undefined)
+      setRescheduleSlot(undefined)
+      setExistingMeetingData(null)
+
+      // Remove the slot parameter from the URL
+      const currentPath = router.asPath
+      const url = new URL(currentPath, window.location.origin)
+      url.searchParams.delete('slot')
+      router.replace(url.pathname + url.search, undefined, { shallow: true })
+    }
+
     setTimeout(() => setReset(false), 200)
   }
 
@@ -726,7 +739,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   )}
 
                   {calendarType === CalendarType.REGULAR &&
-                    rescheduleSlotId && (
+                    rescheduleSlotId &&
+                    !readyToSchedule && (
                       <RescheduleInfoBox
                         loading={!rescheduleSlot}
                         slot={rescheduleSlot}
@@ -781,6 +795,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 accountNotificationSubs={notificationsSubs}
                 hasConnectedCalendar={hasConnectedCalendar}
                 reset={_onClose}
+                isReschedule={!!rescheduleSlotId}
               />
             </Flex>
           )}
@@ -828,24 +843,24 @@ const RescheduleInfoBox: React.FC<{
   }
 
   return (
-    <Flex p={4} mt={4}>
+    <Flex pt={4} mt={4}>
       {loading ? (
         <Spinner margin="auto" />
       ) : (
         <Box>
-          <Text>
+          <Text fontSize={22}>
             <b>Former time</b>
           </Text>
-          <Text>
+          <Text p={2}>
             {dateToHumanReadable(
               new Date(slot!.start),
               Intl.DateTimeFormat().resolvedOptions().timeZone,
               false
             )}
           </Text>
-          <Text>{Intl.DateTimeFormat().resolvedOptions().timeZone}</Text>
+          <Text pl={2}>{Intl.DateTimeFormat().resolvedOptions().timeZone}</Text>
 
-          <Text mt={2}>
+          <Text mt={2} pl={2}>
             Select another time for the meeting, or{' '}
             <Button variant="link" colorScheme="primary" onClick={handleCancel}>
               cancel
