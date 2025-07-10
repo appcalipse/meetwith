@@ -29,7 +29,9 @@ import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import {
+  ConferenceMeeting,
   DBSlot,
+  ExistingMeetingData,
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
@@ -48,6 +50,7 @@ import {
   getAccount,
   getBusySlots,
   getMeeting,
+  getMeetingGuest,
   getNotificationSubscriptions,
   listConnectedCalendars,
 } from '@/utils/api_helper'
@@ -157,6 +160,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [rescheduleSlot, setRescheduleSlot] = useState<DBSlot | undefined>(
     undefined
   )
+  const [existingMeetingData, setExistingMeetingData] =
+    useState<ExistingMeetingData | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [availableSlots, setAvailableSlots] = useState<Interval[]>([])
   const [selfAvailableSlots, setSelfAvailableSlots] = useState<Interval[]>([])
@@ -285,13 +290,36 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const getSlotInfo = async () => {
     if (rescheduleSlotId) {
-      const slot = await getMeeting(rescheduleSlotId!)
-      if (slot) {
-        if (slot.account_address !== account!.address) {
+      try {
+        const meeting = (await getMeetingGuest(
+          rescheduleSlotId!
+        )) as unknown as ConferenceMeeting
+        if (!meeting) {
           await router.push('/404')
-        } else {
-          setRescheduleSlot(slot)
+          return
         }
+
+        const mockSlot: DBSlot = {
+          id: rescheduleSlotId,
+          account_address: account!.address,
+          start: new Date(meeting.start),
+          end: new Date(meeting.end),
+          version: 0,
+          meeting_info_encrypted: {} as any,
+          recurrence: meeting.recurrence || MeetingRepeat.NO_REPEAT,
+        }
+
+        setRescheduleSlot(mockSlot)
+
+        // Extract meeting data for form population
+        setExistingMeetingData({
+          title: meeting.title,
+          start: new Date(meeting.start),
+          end: new Date(meeting.end),
+        })
+      } catch (error) {
+        setRescheduleSlot(undefined)
+        setExistingMeetingData(null)
       }
     }
   }
@@ -736,6 +764,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       selfBusySlots={selfBusySlots}
                       timezone={timezone}
                       setTimezone={setTimezone}
+                      existingMeetingData={existingMeetingData}
+                      isReschedule={!!rescheduleSlotId}
                     />
                   </Box>
                 )}

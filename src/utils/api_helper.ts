@@ -24,6 +24,7 @@ import {
 import {
   ConferenceMeeting,
   DBSlot,
+  ExtendedDBSlot,
   GroupMeetingRequest,
   GuestMeetingCancel,
   MeetingDecrypted,
@@ -286,6 +287,8 @@ export const updateMeetingAsGuest = async (
       throw new MeetingChangeConflictError()
     } else if (e.status && e.status === 404) {
       throw new MeetingNotFoundError(slotId)
+    } else if (e.status && e.status === 401) {
+      throw new UnauthorizedError()
     }
     throw e
   }
@@ -463,12 +466,12 @@ export const getMeetingsForDashboard = async (
   end: Date,
   limit: number,
   offset: number
-): Promise<DBSlot[]> => {
+): Promise<ExtendedDBSlot[]> => {
   const response = (await internalFetch(
     `/meetings/${accountIdentifier}?upcoming=true&limit=${
       limit || undefined
     }&offset=${offset || 0}&end=${end.getTime()}`
-  )) as DBSlot[]
+  )) as ExtendedDBSlot[]
   return response?.map(slot => ({
     ...slot,
     start: new Date(slot.start),
