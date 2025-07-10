@@ -20,6 +20,7 @@ import {
   dateToHumanReadable,
   durationToHumanReadable,
   generateIcs,
+  getOwnerPublicUrl,
 } from './calendar_manager'
 import { appUrl } from './constants'
 import { mockEncrypted } from './cryptography'
@@ -167,7 +168,7 @@ export const newMeetingEmail = async (
     changeUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
       : ownerAccountAddress
-      ? `${appUrl}/address/${ownerAccountAddress}?slot=${slot_id}`
+      ? `${await getOwnerPublicUrl(ownerAccountAddress)}?slot=${slot_id}`
       : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
@@ -425,7 +426,7 @@ export const updateMeetingEmail = async (
     changeUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
       : ownerAccountAddress
-      ? `${appUrl}/address/${ownerAccountAddress}?slot=${slot_id}`
+      ? `${await getOwnerPublicUrl(ownerAccountAddress)}?slot=${slot_id}`
       : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
