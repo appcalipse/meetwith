@@ -2769,6 +2769,18 @@ const updateMeeting = async (
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
   )
+  const existingSlots =
+    meeting.slots?.filter(
+      val => !meetingUpdateRequest.slotsToRemove.includes(val)
+    ) || []
+
+  // Add unique slot IDs from allSlotIds that aren't already present
+  const allSlotIds = meetingUpdateRequest.allSlotIds || []
+  const uniqueNewSlots = allSlotIds.filter(
+    slotId => !existingSlots.includes(slotId)
+  )
+  const updatedSlots = [...existingSlots, ...uniqueNewSlots]
+
   // now that everything happened without error, it is safe to update the root meeting data
   const createdRootMeeting = await saveConferenceMeetingToDB({
     id: meetingUpdateRequest.meeting_id,
@@ -2780,9 +2792,7 @@ const updateMeeting = async (
     recurrence: meetingUpdateRequest.meetingRepeat,
     version: MeetingVersion.V2,
     title: meetingUpdateRequest.title,
-    slots: meeting.slots?.filter(
-      val => !meetingUpdateRequest.slotsToRemove.includes(val)
-    ),
+    slots: updatedSlots,
     permissions: meetingUpdateRequest.meetingPermissions,
   })
 
@@ -4636,7 +4646,7 @@ const handleCalendarRsvps = async (
                 cal.calendarId
               )
               // Add delay to respect rate limits
-              await new Promise(resolve => setTimeout(resolve, 1000))
+              await new Promise(resolve => setTimeout(resolve, 2000))
             } catch (error: unknown) {
               console.error('Error updating RSVP status:', error)
               // If rate limited, wait longer before continuing
