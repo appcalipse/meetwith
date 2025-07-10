@@ -132,9 +132,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     account !== undefined ? CalendarType.REGULAR : CalendarType.TEAM
 
   const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
-  const [unloggedSchedule, setUnloggedSchedule] = useState(
-    null as InternalSchedule | null
-  )
+
   const [groupAccounts, setTeamAccounts] = useState<Account[]>([])
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<Date | undefined>(undefined)
@@ -313,18 +311,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (logged) {
       void getSelfAvailableSlots()
       void fetchNotificationSubscriptions()
-
-      if (unloggedSchedule) {
-        void confirmSchedule(
-          unloggedSchedule.scheduleType,
-          unloggedSchedule.startTime,
-          unloggedSchedule.guestEmail,
-          unloggedSchedule.name,
-          unloggedSchedule.content,
-          unloggedSchedule.meetingUrl,
-          unloggedSchedule.title
-        )
-      }
     }
   }, [currentAccount])
 
@@ -342,7 +328,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     meetingReminders?: Array<MeetingReminders>,
     meetingRepeat?: MeetingRepeat
   ): Promise<boolean> => {
-    setUnloggedSchedule(null)
+    if (isScheduling) return false
     setIsScheduling(true)
 
     const start = zonedTimeToUtc(
