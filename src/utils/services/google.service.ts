@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { format, getWeekOfMonth } from 'date-fns'
+import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
 
 import {
@@ -16,6 +17,8 @@ import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
+import { withRetry } from './retry.service'
+
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
 export class MWWGoogleAuth extends google.auth.OAuth2 {
@@ -32,11 +35,36 @@ export class MWWGoogleAuth extends google.auth.OAuth2 {
   }
 }
 
+const retryCondition = (error: unknown) => {
+  if (error instanceof GaxiosError) {
+    const isRateLimit =
+      error?.message?.includes('Rate Limit') ||
+      error?.response?.status === 403 ||
+      error?.code === 'RATE_LIMIT_EXCEEDED'
+
+    const isQuotaExceeded =
+      error?.message?.includes('quotaExceeded') ||
+      error?.message?.includes('rateLimitExceeded')
+
+    const isNetworkError =
+      error?.code === 'ECONNRESET' ||
+      error?.code === 'ETIMEDOUT' ||
+      !!(
+        error?.response?.status &&
+        error?.response?.status >= 500 &&
+        error?.response?.status < 6000
+      )
+
+    return isRateLimit || isQuotaExceeded || isNetworkError
+  }
+  return false
+}
 export default class GoogleCalendarService
   implements CalendarService<TimeSlotSource.GOOGLE>
 {
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
   private email: string
+
   constructor(
     address: string,
     email: string,
@@ -48,58 +76,6 @@ export default class GoogleCalendarService
       typeof credential === 'string' ? JSON.parse(credential) : credential
     )
     this.email = email
-  }
-
-  private googleAuth = (
-    address: string,
-    email: string,
-    googleCredentials: Auth.Credentials
-  ) => {
-    const [client_secret, client_id] = [
-      process.env.GOOGLE_CLIENT_SECRET!,
-      process.env.GOOGLE_CLIENT_ID!,
-    ]
-    const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
-
-    const myGoogleAuth = new MWWGoogleAuth(
-      client_id,
-      client_secret,
-      redirect_uri
-    )
-    myGoogleAuth.setCredentials(googleCredentials)
-
-    const isExpired = () => {
-      const expired = myGoogleAuth.isTokenExpiring()
-      return expired
-    }
-
-    const refreshAccessToken = () =>
-      myGoogleAuth
-        .refreshToken(googleCredentials.refresh_token)
-        .then(async res => {
-          const token = res.res?.data
-          googleCredentials.access_token = token.access_token
-          googleCredentials.expiry_date = token.expiry_date
-
-          await updateCalendarPayload(
-            address,
-            email,
-            TimeSlotSource.GOOGLE,
-            googleCredentials
-          )
-          myGoogleAuth.setCredentials(googleCredentials)
-          return myGoogleAuth
-        })
-        .catch(err => {
-          Sentry.captureException(err)
-          return myGoogleAuth
-        })
-
-    return {
-      email,
-      getToken: () =>
-        !isExpired() ? Promise.resolve(myGoogleAuth) : refreshAccessToken(),
-    }
   }
 
   async refreshConnection(): Promise<CalendarSyncInfo[]> {
@@ -143,6 +119,7 @@ export default class GoogleCalendarService
   getConnectedEmail(): string {
     return this.email
   }
+
   async getEventById(
     meeting_id: string,
     _calendarId?: string
@@ -176,6 +153,7 @@ export default class GoogleCalendarService
       )
     })
   }
+
   async listEvents(
     calendarId: string,
     dateFrom: Date,
@@ -215,23 +193,6 @@ export default class GoogleCalendarService
     )
   }
 
-  private createReminder(indicator: MeetingReminders) {
-    switch (indicator) {
-      case MeetingReminders['15_MINUTES_BEFORE']:
-        return { minutes: 15, method: 'popup' }
-      case MeetingReminders['30_MINUTES_BEFORE']:
-        return { minutes: 30, method: 'popup' }
-      case MeetingReminders['1_HOUR_BEFORE']:
-        return { minutes: 60, method: 'popup' }
-      case MeetingReminders['1_DAY_BEFORE']:
-        return { minutes: 1440, method: 'popup' }
-      case MeetingReminders['1_WEEK_BEFORE']:
-        return { minutes: 10080, method: 'popup' }
-      case MeetingReminders['10_MINUTES_BEFORE']:
-      default:
-        return { minutes: 10, method: 'popup' }
-    }
-  }
   async createEvent(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
@@ -393,7 +354,7 @@ export default class GoogleCalendarService
     )
   }
 
-  async updateEvent(
+  async _updateEvent(
     calendarOwnerAccountAddress: string,
     meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
@@ -524,6 +485,29 @@ export default class GoogleCalendarService
         }
       )
     })
+  }
+
+  async updateEvent(
+    calendarOwnerAccountAddress: string,
+    meeting_id: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    _calendarId: string
+  ): Promise<NewCalendarEventType> {
+    return withRetry<NewCalendarEventType>(
+      async () =>
+        this._updateEvent(
+          calendarOwnerAccountAddress,
+          meeting_id,
+          meetingDetails,
+          _calendarId
+        ),
+      {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 30000,
+        retryCondition,
+      }
+    )
   }
 
   async deleteEvent(meeting_id: string, _calendarId: string): Promise<void> {
@@ -706,7 +690,7 @@ export default class GoogleCalendarService
     }
   }
 
-  async updateEventRSVP(
+  async _updateEventRSVP(
     meeting_id: string,
     attendeeEmail: string,
     responseStatus: string,
@@ -725,6 +709,8 @@ export default class GoogleCalendarService
 
         // First, get the current event
         const event = await this.getEventById(meeting_id, _calendarId)
+        await new Promise(resolve => setTimeout(resolve, 5000)) // Wait for 5 seconds to ensure the event is fetched and rate limit not blocked
+        // If the event is not found, reject the promise
         if (!event) {
           return reject(new Error(`Event ${meeting_id} not found`))
         }
@@ -790,6 +776,30 @@ export default class GoogleCalendarService
       }
     })
   }
+
+  async updateEventRSVP(
+    meeting_id: string,
+    attendeeEmail: string,
+    responseStatus: string,
+    _calendarId?: string
+  ): Promise<NewCalendarEventType> {
+    return withRetry<NewCalendarEventType>(
+      async () =>
+        this._updateEventRSVP(
+          meeting_id,
+          attendeeEmail,
+          responseStatus,
+          _calendarId
+        ),
+      {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 30000,
+        retryCondition,
+      }
+    )
+  }
+
   async updateEventExtendedProperties(
     meeting_id: string,
     _calendarId?: string
@@ -859,6 +869,76 @@ export default class GoogleCalendarService
         reject(error)
       }
     })
+  }
+
+  private googleAuth = (
+    address: string,
+    email: string,
+    googleCredentials: Auth.Credentials
+  ) => {
+    const [client_secret, client_id] = [
+      process.env.GOOGLE_CLIENT_SECRET!,
+      process.env.GOOGLE_CLIENT_ID!,
+    ]
+    const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
+
+    const myGoogleAuth = new MWWGoogleAuth(
+      client_id,
+      client_secret,
+      redirect_uri
+    )
+    myGoogleAuth.setCredentials(googleCredentials)
+
+    const isExpired = () => {
+      const expired = myGoogleAuth.isTokenExpiring()
+      return expired
+    }
+
+    const refreshAccessToken = () =>
+      myGoogleAuth
+        .refreshToken(googleCredentials.refresh_token)
+        .then(async res => {
+          const token = res.res?.data
+          googleCredentials.access_token = token.access_token
+          googleCredentials.expiry_date = token.expiry_date
+
+          await updateCalendarPayload(
+            address,
+            email,
+            TimeSlotSource.GOOGLE,
+            googleCredentials
+          )
+          myGoogleAuth.setCredentials(googleCredentials)
+          return myGoogleAuth
+        })
+        .catch(err => {
+          Sentry.captureException(err)
+          return myGoogleAuth
+        })
+
+    return {
+      email,
+      getToken: () =>
+        !isExpired() ? Promise.resolve(myGoogleAuth) : refreshAccessToken(),
+    }
+  }
+
+  private createReminder(indicator: MeetingReminders) {
+    switch (indicator) {
+      case MeetingReminders['15_MINUTES_BEFORE']:
+        return { minutes: 15, method: 'popup' }
+      case MeetingReminders['30_MINUTES_BEFORE']:
+        return { minutes: 30, method: 'popup' }
+      case MeetingReminders['1_HOUR_BEFORE']:
+        return { minutes: 60, method: 'popup' }
+      case MeetingReminders['1_DAY_BEFORE']:
+        return { minutes: 1440, method: 'popup' }
+      case MeetingReminders['1_WEEK_BEFORE']:
+        return { minutes: 10080, method: 'popup' }
+      case MeetingReminders['10_MINUTES_BEFORE']:
+      default:
+        return { minutes: 10, method: 'popup' }
+    }
   }
 }
 
