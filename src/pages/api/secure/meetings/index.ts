@@ -24,7 +24,7 @@ import { isValidEmail } from '@/utils/validations'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   const account_address = req.session.account!.address
-  const meeting: MeetingCreationRequest = req.body as MeetingCreationRequest
+  const meeting: MeetingCreationRequest = req.body
 
   return handleMeetingSchedule(account_address, meeting, req, res)
 }

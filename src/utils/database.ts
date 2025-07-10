@@ -8,6 +8,7 @@ import EthCrypto, {
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { GaxiosError } from 'gaxios'
 import { calendar_v3 } from 'googleapis'
 import { validate } from 'uuid'
 
@@ -4650,13 +4651,14 @@ const handleCalendarRsvps = async (
             } catch (error: unknown) {
               console.error('Error updating RSVP status:', error)
               // If rate limited, wait longer before continuing
-              const isRateLimitError =
-                (error as Error)?.message?.includes('Rate Limit') ||
-                (error as { response?: { status?: number } })?.response
-                  ?.status === 429
+              if (error instanceof GaxiosError) {
+                const isRateLimitError =
+                  error?.message?.includes('Rate Limit') ||
+                  error?.response?.status === 403
 
-              if (isRateLimitError) {
-                await new Promise(resolve => setTimeout(resolve, 5000))
+                if (isRateLimitError) {
+                  await new Promise(resolve => setTimeout(resolve, 10000))
+                }
               }
             }
           }
