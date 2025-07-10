@@ -39,6 +39,7 @@ export async function withRetry<T>(
 
         return isRateLimit || isNetworkError
       }
+      return false
     },
   } = options
 
