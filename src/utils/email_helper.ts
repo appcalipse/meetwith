@@ -164,7 +164,11 @@ export const newMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
+    changeUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      : ownerAccountAddress
+      ? `${appUrl}/address/${ownerAccountAddress}?slot=${slot_id}`
+      : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted
@@ -418,7 +422,11 @@ export const updateMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
+    changeUrl: destinationAccountAddress
+      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      : ownerAccountAddress
+      ? `${appUrl}/address/${ownerAccountAddress}?slot=${slot_id}`
+      : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted

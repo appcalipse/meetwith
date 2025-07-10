@@ -47,6 +47,7 @@ import {
   getAccount,
   getExistingAccounts,
   getMeeting,
+  getMeetingGuest,
   isSlotFreeApiCall,
   scheduleMeeting as apiScheduleMeeting,
   scheduleMeetingAsGuest,
@@ -204,11 +205,14 @@ const loadMeetingAccountAddresses = async (
 }
 const handleParticipants = async (
   participants: ParticipantInfo[],
-  currentAccount?: Account | null
+  currentAccount?: Account | null,
+  isGuestScheduling = false
 ) => {
   const allAccounts: Account[] = await getExistingAccounts(
     participants.filter(p => p.account_address).map(p => p.account_address!)
   )
+
+  const sharedSlotId = isGuestScheduling ? uuidv4() : undefined
 
   for (const account of allAccounts) {
     const participant = participants.filter(
@@ -219,14 +223,17 @@ const handleParticipants = async (
       p.name = p.name || getAccountDisplayName(account)
       p.status = p.status || ParticipationStatus.Pending
       p.type = p.type || ParticipantType.Invitee
-      p.slot_id = uuidv4()
+      p.slot_id = isGuestScheduling ? sharedSlotId : uuidv4()
     }
   }
 
   const sanitizedParticipants = sanitizeParticipants(participants)
-  //Ensure all slot_ids are filled given we are messing with this all around
+
+  // Ensure all participants have slot IDs
   for (const participant of sanitizedParticipants) {
-    participant.slot_id = participant.slot_id || uuidv4()
+    if (!participant.slot_id) {
+      participant.slot_id = isGuestScheduling ? sharedSlotId! : uuidv4()
+    }
   }
 
   if (
@@ -265,7 +272,8 @@ const buildMeetingData = async (
   meetingTitle = 'No Title',
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions?: MeetingPermissions[]
+  selectedPermissions?: MeetingPermissions[],
+  isGuestScheduling = false
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -293,20 +301,27 @@ const buildMeetingData = async (
     recurrence: meetingRepeat,
     permissions: selectedPermissions,
   }
-  // first pass to make sure that we are keeping the existing slot id
+
+  // Apply existing slot IDs for participants to keep
   for (const participant of sanitizedParticipants) {
-    const existingSlotId = participantsToKeep[participant.account_address || '']
-    participant.slot_id = existingSlotId || participant.slot_id
+    const existingSlotId =
+      participantsToKeep[
+        participant.account_address || participant.guest_email || ''
+      ]
+    if (existingSlotId) {
+      participant.slot_id = existingSlotId
+    }
   }
 
-  const allAccountSlotIds = sanitizedParticipants
-    .filter(p => p.account_address)
-    .map(it => it.slot_id)
-    .filter(val => val !== undefined) as string[]
-
-  const allSlotIds = sanitizedParticipants
-    .map(it => it.slot_id!)
-    .filter(val => val !== undefined)
+  let allSlotIds: string[]
+  if (isGuestScheduling) {
+    const sharedSlotId = sanitizedParticipants[0]?.slot_id
+    allSlotIds = sharedSlotId ? [sharedSlotId] : []
+  } else {
+    allSlotIds = sanitizedParticipants
+      .map(p => p.slot_id)
+      .filter((id): id is string => !!id)
+  }
 
   const participantsMappings = []
 
@@ -322,10 +337,9 @@ const buildMeetingData = async (
 
     const privateInfoComplete = JSON.stringify({
       ...privateInfo,
-      // we need to store the other related slots in other to update the meeting later
-      related_slot_ids: allAccountSlotIds.filter(
-        id => id !== participant.slot_id
-      ),
+      related_slot_ids: isGuestScheduling
+        ? []
+        : allSlotIds.filter(id => id !== participant.slot_id),
     } as MeetingInfo)
 
     const participantMapping: RequestParticipantMapping = {
@@ -573,7 +587,11 @@ const updateMeeting = async (
       })
     await Promise.all(promises)
   }
-  const participantData = await handleParticipants(participants, currentAccount)
+  const participantData = await handleParticipants(
+    participants,
+    currentAccount,
+    false
+  )
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     meetingTypeId,
@@ -593,7 +611,8 @@ const updateMeeting = async (
     meetingTitle,
     meetingReminders,
     meetingRepeat,
-    selectedPermissions
+    selectedPermissions,
+    false
   )
 
   const payload = {
@@ -737,7 +756,11 @@ const deleteMeeting = async (
       })
     await Promise.all(promises)
   }
-  const participantData = await handleParticipants(participants, currentAccount)
+  const participantData = await handleParticipants(
+    participants,
+    currentAccount,
+    false
+  )
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
     meetingTypeId,
@@ -756,7 +779,9 @@ const deleteMeeting = async (
     rootMeetingId,
     decryptedMeeting?.title || '',
     decryptedMeeting?.reminders || [],
-    decryptedMeeting?.recurrence || MeetingRepeat.NO_REPEAT
+    decryptedMeeting?.recurrence || MeetingRepeat.NO_REPEAT,
+    undefined,
+    false
   )
   const payload = {
     ...meetingData,
@@ -844,7 +869,12 @@ const scheduleMeeting = async (
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
-  const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
+  const isGuestScheduling = schedulingType === SchedulingType.GUEST
+  const participantData = await handleParticipants(
+    participants,
+    currentAccount,
+    isGuestScheduling
+  ) // check participants before proceeding
 
   const meeting_url =
     meetingUrl ||
@@ -879,7 +909,8 @@ const scheduleMeeting = async (
     meetingTitle,
     meetingReminders,
     meetingRepeat,
-    selectedPermissions
+    selectedPermissions,
+    isGuestScheduling
   )
   if (!ignoreAvailabilities) {
     const promises: Promise<boolean>[] = []
@@ -976,15 +1007,32 @@ const updateMeetingAsGuest = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
-  const existingSlot = await getMeeting(slotId)
+  const existingMeeting = (await getMeetingGuest(slotId)) as any
+  if (!existingMeeting) {
+    throw new Error('Meeting not found')
+  }
+
+  const existingSlot: DBSlot = {
+    id: slotId,
+    account_address: existingMeeting.account_address || '',
+    start: new Date(existingMeeting.start),
+    end: new Date(existingMeeting.end),
+    version: existingMeeting.version || 0,
+    meeting_info_encrypted: {} as any,
+    recurrence: existingMeeting.recurrence || MeetingRepeat.NO_REPEAT,
+  }
 
   // Build participant data
-  const participantData = await handleParticipants(participants, null)
+  const participantData = await handleParticipants(participants, null, true)
 
   const participantsToKeep: { [accountOrEmail: string]: string } = {}
 
-  // Use the existing slot ID for the owner (this is the slot we're updating)
-  participantsToKeep[existingSlot.account_address] = slotId
+  for (const participant of participantData.sanitizedParticipants) {
+    const key = participant.account_address || participant.guest_email || ''
+    if (key) {
+      participantsToKeep[key] = slotId
+    }
+  }
 
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
@@ -1002,7 +1050,8 @@ const updateMeetingAsGuest = async (
     meetingTitle,
     meetingReminders,
     meetingRepeat,
-    selectedPermissions
+    selectedPermissions,
+    true
   )
 
   const payload = {

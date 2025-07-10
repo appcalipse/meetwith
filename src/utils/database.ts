@@ -54,6 +54,7 @@ import {
   MeetingRepeat,
   MeetingVersion,
   ParticipantMappingType,
+  SchedulingType,
   TimeSlotSource,
 } from '@/types/Meeting'
 import {
@@ -737,6 +738,17 @@ const getConferenceDataBySlotId = async (
 
   return data[0]
 }
+
+export const getCorrectSlotIdForMeeting = async (
+  meetingId: string
+): Promise<string | null> => {
+  try {
+    const conferenceMeeting = await getConferenceDataBySlotId(meetingId)
+    return conferenceMeeting.slots[0] || null
+  } catch (error) {
+    return null
+  }
+}
 const handleGuestCancel = async (
   metadata: string,
   slotId: string,
@@ -939,6 +951,11 @@ const saveMeeting = async (
     }
   }
 
+  const isGuestScheduling = meeting.type === SchedulingType.GUEST
+  const firstValidSlotId = isGuestScheduling
+    ? meeting.participants_mapping.find(p => p.slot_id)?.slot_id
+    : null
+
   // we create here the root meeting data, with enough data
   const createdRootMeeting = await saveConferenceMeetingToDB({
     id: meeting.meeting_id,
@@ -1014,9 +1031,13 @@ const saveMeeting = async (
         )
       }
 
+      const slotId = isGuestScheduling
+        ? firstValidSlotId || participant.slot_id
+        : participant.slot_id
+
       // Not adding source here given on our database the source is always MWW
       const dbSlot: DBSlot = {
-        id: participant.slot_id,
+        id: slotId,
         start: meeting.start,
         end: meeting.end,
         account_address: account.address,
@@ -2643,28 +2664,61 @@ const updateMeetingForGuest = async (
     throw new MeetingNotFoundError(slotId)
   }
 
-  // Get the conference meeting to understand the full meeting structure
   const conferenceMeeting = await getConferenceDataBySlotId(slotId)
   if (!conferenceMeeting) {
     throw new MeetingNotFoundError(slotId)
   }
 
-  // Get all existing slots for this meeting
-  const existingSlots = await getSlotsByIds(conferenceMeeting.slots)
-
-  // Find the owner's slot (the calendar owner's slot)
-  const ownerSlot = existingSlots.find(
-    slot =>
-      slot.account_address ===
-      conferenceMeeting.slots.find(
-        slotId =>
-          existingSlots.find(s => s.id === slotId)?.account_address ===
-          slot.account_address
-      )
-  )
-
-  if (!ownerSlot) {
+  // For guest rescheduling, we only need to update the slot
+  const firstValidSlotId = conferenceMeeting.slots[0]
+  if (!firstValidSlotId) {
     throw new MeetingNotFoundError(slotId)
+  }
+
+  // Get the first slot to update
+  const firstSlot = await getMeetingFromDB(firstValidSlotId)
+  if (!firstSlot) {
+    throw new MeetingNotFoundError(firstValidSlotId)
+  }
+
+  // Update only the slot's start, end, and version
+  const { data, error } = await db.supabase
+    .from('slots')
+    .update({
+      start: meetingUpdateRequest.start,
+      end: meetingUpdateRequest.end,
+      version: firstSlot.version + 1,
+    })
+    .eq('id', firstValidSlotId)
+    .select()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data || data.length === 0) {
+    throw new MeetingNotFoundError(firstValidSlotId)
+  }
+
+  // Update the conference meeting with new start/end times
+  const updatedConferenceMeeting = await saveConferenceMeetingToDB({
+    id: conferenceMeeting.id,
+    start: meetingUpdateRequest.start,
+    end: meetingUpdateRequest.end,
+    meeting_url:
+      meetingUpdateRequest.meeting_url || conferenceMeeting.meeting_url,
+    access_type: conferenceMeeting.access_type,
+    provider: conferenceMeeting.provider,
+    reminders: conferenceMeeting.reminders,
+    recurrence:
+      meetingUpdateRequest.meetingRepeat || conferenceMeeting.recurrence,
+    version: conferenceMeeting.version,
+    slots: conferenceMeeting.slots,
+    title: meetingUpdateRequest.title || conferenceMeeting.title,
+  })
+
+  if (!updatedConferenceMeeting) {
+    throw new Error('Could not update conference meeting')
   }
 
   // Create participant acting info for the guest
@@ -2678,14 +2732,40 @@ const updateMeetingForGuest = async (
     account_address: '',
   }
 
-  // Update the meeting with the existing slot IDs preserved
-  const updatedMeeting = await updateMeeting(participantActing, {
-    ...meetingUpdateRequest,
-    // Ensure we're using the existing slot IDs from the conference meeting
-    allSlotIds: conferenceMeeting.slots,
+  // Send notification about the meeting update
+  const body: MeetingCreationSyncRequest = {
+    participantActing,
+    meeting_id: conferenceMeeting.id,
+    start: meetingUpdateRequest.start,
+    end: meetingUpdateRequest.end,
+    created_at: data[0].created_at,
+    timezone: meetingUpdateRequest.participants_mapping[0]?.timeZone || 'UTC',
+    meeting_url:
+      meetingUpdateRequest.meeting_url || conferenceMeeting.meeting_url,
+    participants: meetingUpdateRequest.participants_mapping,
+    title: meetingUpdateRequest.title || conferenceMeeting.title,
+    content: meetingUpdateRequest.content,
+    meetingProvider: meetingUpdateRequest.meetingProvider,
+    meetingReminders: meetingUpdateRequest.meetingReminders,
+    meetingRepeat: meetingUpdateRequest.meetingRepeat,
+    changes: {
+      dateChange: {
+        oldStart: new Date(firstSlot.start),
+        oldEnd: new Date(firstSlot.end),
+      },
+    },
+  }
+
+  fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    headers: {
+      'X-Server-Secret': process.env.SERVER_SECRET!,
+      'Content-Type': 'application/json',
+    },
   })
 
-  return updatedMeeting
+  return data[0] as DBSlot
 }
 
 const selectTeamMeetingRequest = async (
