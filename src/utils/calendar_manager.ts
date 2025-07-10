@@ -275,7 +275,7 @@ const buildMeetingData = async (
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[],
-  isGuestScheduling = false
+  _isGuestScheduling = false
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -1029,23 +1029,20 @@ const updateMeetingAsGuest = async (
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
   // Validate that the slot exists and get meeting information
-  const existingMeeting = (await getMeetingGuest(slotId)) as any
+  const existingMeeting = await getMeetingGuest(slotId)
   if (!existingMeeting) {
     throw new Error('Meeting not found')
   }
 
-  const existingSlot: DBSlot = {
-    id: slotId,
-    account_address: existingMeeting.account_address || '',
-    start: new Date(existingMeeting.start),
-    end: new Date(existingMeeting.end),
-    version: existingMeeting.version || 0,
-    meeting_info_encrypted: {} as any,
-    recurrence: existingMeeting.recurrence || MeetingRepeat.NO_REPEAT,
-  }
+  // Get the current version for the update operation
+  const currentVersion = existingMeeting.version || 0
 
   // Build participant data
-  const participantData = await handleParticipants(participants, null, true)
+  const participantData = await handleParticipants(
+    participants,
+    undefined,
+    true
+  )
 
   const participantsToKeep: { [accountOrEmail: string]: string } = {}
 
@@ -1068,7 +1065,7 @@ const updateMeetingAsGuest = async (
     null,
     meetingContent,
     meetingUrl,
-    existingSlot.id!,
+    slotId,
     meetingTitle,
     meetingReminders,
     meetingRepeat,
@@ -1080,7 +1077,7 @@ const updateMeetingAsGuest = async (
     ...meetingData,
     slotsToRemove: [],
     guestsToRemove: [],
-    version: existingSlot.version + 1,
+    version: currentVersion + 1,
   }
 
   try {
@@ -1413,6 +1410,18 @@ const getAccountCalendarUrl = (
 
 const getCalendarRegularUrl = (account_address: string) => {
   return `${appUrl}/address/${account_address}`
+}
+
+export const getOwnerPublicUrl = async (
+  ownerAccountAddress: string
+): Promise<string> => {
+  try {
+    const ownerAccount = await getAccount(ownerAccountAddress)
+    return getAccountCalendarUrl(ownerAccount)
+  } catch (error) {
+    // Fallback if account not found
+    return `${appUrl}/address/${ownerAccountAddress}`
+  }
 }
 
 const generateDefaultMeetingType = (): MeetingType => {

@@ -468,11 +468,11 @@ export const getMeetingsForDashboard = async (
   limit: number,
   offset: number
 ): Promise<ExtendedDBSlot[]> => {
-  const response = (await internalFetch(
+  const response = await internalFetch<ExtendedDBSlot[]>(
     `/meetings/${accountIdentifier}?upcoming=true&limit=${
       limit || undefined
     }&offset=${offset || 0}&end=${end.getTime()}`
-  )) as ExtendedDBSlot[]
+  )
   return response?.map(slot => ({
     ...slot,
     start: new Date(slot.start),
