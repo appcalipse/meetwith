@@ -36,6 +36,7 @@ import {
   ChangeGroupAdminRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
+  MeetingCreationSyncRequest,
   MeetingUpdateRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
@@ -664,8 +665,20 @@ export const getConferenceDataBySlotId = async (
 }
 
 export const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
+  if (!slotIds || slotIds.length === 0) {
+    console.warn('getSlotsByIds called with empty slot IDs array')
+    return []
+  }
+
+  const validSlotIds = slotIds.filter(id => id && id.trim() !== '')
+
+  if (validSlotIds.length === 0) {
+    console.warn('getSlotsByIds called with no valid slot IDs')
+    return []
+  }
+
   const response = (await internalFetch(
-    `/meetings/slots?ids=${slotIds.join(',')}`
+    `/meetings/slots?ids=${validSlotIds.join(',')}`
   )) as DBSlot[]
   return response.map(slot => ({
     ...slot,
@@ -1220,4 +1233,95 @@ export const getNewestCoupon = async (
     undefined,
     { signal }
   )
+}
+
+export const findValidSlotForGuestScheduling = async (
+  meetingId: string
+): Promise<string | null> => {
+  try {
+    // Get the conference meeting using the conference endpoint
+    const conferenceMeeting = await getConferenceMeeting(meetingId)
+    if (!conferenceMeeting) {
+      console.error(`No conference meeting found for meeting ${meetingId}`)
+      return null
+    }
+
+    // Get the list of slot IDs from the meeting
+    const slotIds = conferenceMeeting.slots || []
+    if (slotIds.length === 0) {
+      console.error(
+        `No slots found for conference meeting ${conferenceMeeting.id}`
+      )
+      return null
+    }
+
+    // Check which of these slot IDs actually exist in the slots table
+    const existingSlots = await getSlotsByIds(slotIds)
+    if (!existingSlots || existingSlots.length === 0) {
+      console.error(
+        `No existing slots found for conference meeting ${conferenceMeeting.id}`
+      )
+      return null
+    }
+
+    // Return the first valid slot ID, this is the slot ID that will be used for the guest's reschedule link
+    return existingSlots[0]?.id || null
+  } catch (error) {
+    console.error(
+      `Error finding valid slot for guest scheduling ${meetingId}:`,
+      error
+    )
+    return null
+  }
+}
+
+export const sendGuestNotification = async (
+  meeting: MeetingCreationRequest,
+  validSlotId: string,
+  newMeetingId: string
+): Promise<void> => {
+  try {
+    // Send email notification with the valid slot ID
+    const updatedParticipants = meeting.participants_mapping.map(
+      (participant, i) => ({
+        ...participant,
+        slot_id: validSlotId, // Use the valid slot ID for all participants
+      })
+    )
+
+    const body: MeetingCreationSyncRequest = {
+      participantActing: {
+        name:
+          meeting.participants_mapping.find(p => p.guest_email)?.name ||
+          'Guest',
+        guest_email:
+          meeting.participants_mapping.find(p => p.guest_email)?.guest_email ||
+          '',
+        account_address: '',
+      },
+      meeting_id: newMeetingId,
+      start: meeting.start,
+      end: meeting.end,
+      created_at: new Date(),
+      timezone: meeting.participants_mapping[0]?.timeZone || 'UTC',
+      meeting_url: meeting.meeting_url,
+      participants: updatedParticipants,
+      title: meeting.title,
+      content: meeting.content,
+      meetingProvider: meeting.meetingProvider,
+      meetingReminders: meeting.meetingReminders,
+      meetingRepeat: meeting.meetingRepeat,
+    }
+
+    // Send email notification via API call
+    await fetch(`${apiUrl}/meetings/guest/notify`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  } catch (error) {
+    console.error('Failed to send guest notification:', error)
+  }
 }

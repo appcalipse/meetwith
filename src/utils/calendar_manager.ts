@@ -57,6 +57,10 @@ import {
   updateMeetingAsGuest as apiUpdateMeetingAsGuest,
 } from '@/utils/api_helper'
 
+import {
+  findValidSlotForGuestScheduling,
+  sendGuestNotification,
+} from './api_helper'
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
 import { MeetingPermissions } from './constants/schedule'
@@ -212,8 +216,6 @@ const handleParticipants = async (
     participants.filter(p => p.account_address).map(p => p.account_address!)
   )
 
-  const sharedSlotId = isGuestScheduling ? uuidv4() : undefined
-
   for (const account of allAccounts) {
     const participant = participants.filter(
       p => p.account_address?.toLowerCase() === account.address.toLowerCase()
@@ -223,7 +225,7 @@ const handleParticipants = async (
       p.name = p.name || getAccountDisplayName(account)
       p.status = p.status || ParticipationStatus.Pending
       p.type = p.type || ParticipantType.Invitee
-      p.slot_id = isGuestScheduling ? sharedSlotId : uuidv4()
+      p.slot_id = uuidv4() // All participants get unique slot IDs
     }
   }
 
@@ -232,7 +234,7 @@ const handleParticipants = async (
   // Ensure all participants have slot IDs
   for (const participant of sanitizedParticipants) {
     if (!participant.slot_id) {
-      participant.slot_id = isGuestScheduling ? sharedSlotId! : uuidv4()
+      participant.slot_id = uuidv4() // All participants get unique slot IDs
     }
   }
 
@@ -313,15 +315,10 @@ const buildMeetingData = async (
     }
   }
 
-  let allSlotIds: string[]
-  if (isGuestScheduling) {
-    const sharedSlotId = sanitizedParticipants[0]?.slot_id
-    allSlotIds = sharedSlotId ? [sharedSlotId] : []
-  } else {
-    allSlotIds = sanitizedParticipants
-      .map(p => p.slot_id)
-      .filter((id): id is string => !!id)
-  }
+  // All participants get unique slot IDs
+  const allSlotIds = sanitizedParticipants
+    .map(p => p.slot_id)
+    .filter((id): id is string => !!id)
 
   const participantsMappings = []
 
@@ -337,9 +334,7 @@ const buildMeetingData = async (
 
     const privateInfoComplete = JSON.stringify({
       ...privateInfo,
-      related_slot_ids: isGuestScheduling
-        ? []
-        : allSlotIds.filter(id => id !== participant.slot_id),
+      related_slot_ids: allSlotIds.filter(id => id !== participant.slot_id),
     } as MeetingInfo)
 
     const participantMapping: RequestParticipantMapping = {
@@ -974,6 +969,32 @@ const scheduleMeeting = async (
         })
       )
     })
+
+    // For guest scheduling, find the valid slot ID for the guest
+    if (schedulingType === SchedulingType.GUEST) {
+      const validSlotId = await findValidSlotForGuestScheduling(newMeetingId)
+      if (validSlotId) {
+        // Send email notification with the valid slot ID
+        await sendGuestNotification(meeting, validSlotId, newMeetingId)
+
+        return {
+          id: validSlotId,
+          ...meeting,
+          created_at: meeting.start,
+          participants: meeting.participants_mapping,
+          content: meeting.content,
+          title: meeting.title,
+          meeting_id: newMeetingId,
+          meeting_url: meeting.meeting_url,
+          start: meeting.start,
+          end: meeting.end,
+          related_slot_ids: [],
+          version: 0,
+          meeting_info_encrypted: slot.meeting_info_encrypted,
+        }
+      }
+    }
+
     return {
       id: slot.id!,
       ...meeting,
@@ -1007,6 +1028,7 @@ const updateMeetingAsGuest = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
+  // Validate that the slot exists and get meeting information
   const existingMeeting = (await getMeetingGuest(slotId)) as any
   if (!existingMeeting) {
     throw new Error('Meeting not found')
