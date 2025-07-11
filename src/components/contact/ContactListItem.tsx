@@ -110,7 +110,12 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
   return (
     <Tr bg={index % 2 === 0 ? 'neutral.825' : 'none'} color="white">
       <Th w="fit-content" py={8}>
-        <HStack w="fit-content">
+        <HStack w="fit-content" pos={'relative'}>
+          {account.status === ContactStatus.INACTIVE && (
+            <Text pos="absolute" top={-6} left={1} color="primary.200">
+              Removed you as a contact
+            </Text>
+          )}
           <Jazzicon
             address={account.address || ''}
             className="contact-avatar"
