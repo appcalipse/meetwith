@@ -692,7 +692,7 @@ export const getGoogleAuthConnectUrl = async (state?: string | null) => {
   )
 }
 
-export const getOffice365ConnectUrl = async (state?: string) => {
+export const getOffice365ConnectUrl = async (state?: string | null) => {
   return await internalFetch<ConnectResponse>(
     `/secure/calendar_integrations/office365/connect${
       state ? `?state=${state}` : ''
