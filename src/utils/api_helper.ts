@@ -53,6 +53,7 @@ import { apiUrl } from './constants'
 import {
   AccountNotFoundError,
   ApiFetchError,
+  CantInviteYourself,
   ContactAlreadyExists,
   ContactInviteAlreadySent,
   ContactInviteNotForAccount,
@@ -1216,6 +1217,9 @@ export const sendContactListInvite = async (
     if (e instanceof ApiFetchError) {
       if (e.status && e.status === 400) {
         throw new ContactAlreadyExists()
+      }
+      if (e.status && e.status === 403) {
+        throw new CantInviteYourself()
       } else if (e.status && e.status === 409) {
         throw new ContactInviteAlreadySent()
       }
@@ -1318,4 +1322,8 @@ export const getContactInviteById = async (identifier: string) => {
     }
     throw e
   }
+}
+
+export const doesContactExist = async (identifier: string) => {
+  return await internalFetch<boolean>(`/secure/contact/${identifier}/exist`)
 }
