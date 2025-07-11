@@ -134,7 +134,16 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
         <Text>{ellipsizeAddress(account.address)}</Text>
       </Th>
       <Th>
-        {account.status === ContactStatus.ACTIVE ? (
+        {!account.calendar_exists ? (
+          <Text
+            maxW={{ base: '120px', md: '200px' }}
+            wordBreak="break-word"
+            whiteSpace="normal"
+            overflow="hidden"
+          >
+            Calendar not connected
+          </Text>
+        ) : account.status === ContactStatus.ACTIVE ? (
           <Button
             colorScheme="primary"
             onClick={() => {
