@@ -120,13 +120,13 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
             address={account.address || ''}
             className="contact-avatar"
           />
-          <Text maxW={200} isTruncated>
+          <Text maxW={{ base: 120, md: 200 }} isTruncated>
             {account.name || account.address || account.email_address}
           </Text>
         </HStack>
       </Th>
       <Th>
-        <Text isTruncated maxWidth={200}>
+        <Text isTruncated maxWidth={{ base: 120, md: 200 }}>
           {account.description}
         </Text>
       </Th>
@@ -164,6 +164,7 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
         <Button
           colorScheme="primary"
           isLoading={isRemoving}
+          aria-busy={isRemoving}
           variant="outline"
           onClick={handleRemove}
         >

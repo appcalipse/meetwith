@@ -243,7 +243,7 @@ const ContactSearchModal = (props: Props) => {
                             address={account.address || ''}
                             className="contact-avatar"
                           />
-                          <Text maxW={200} isTruncated>
+                          <Text maxW={{ base: 120, md: 200 }} isTruncated>
                             {account.name || account.address || account.email}
                           </Text>
                         </HStack>
