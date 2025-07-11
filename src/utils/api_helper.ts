@@ -54,6 +54,8 @@ import {
   AccountNotFoundError,
   ApiFetchError,
   ContactAlreadyExists,
+  ContactInviteAlreadySent,
+  ContactInviteNotForAccount,
   ContactInviteNotFound,
   ContactNotFound,
   CouponAlreadyUsed,
@@ -70,6 +72,7 @@ import {
   MeetingCreationError,
   MeetingNotFoundError,
   NoActiveSubscription,
+  OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   UnauthorizedError,
@@ -1213,8 +1216,8 @@ export const sendContactListInvite = async (
     if (e instanceof ApiFetchError) {
       if (e.status && e.status === 400) {
         throw new ContactAlreadyExists()
-      } else if (e.status && e.status === 404 && address) {
-        throw new AccountNotFoundError(address)
+      } else if (e.status && e.status === 409) {
+        throw new ContactInviteAlreadySent()
       }
     }
   }
@@ -1255,8 +1258,12 @@ export const acceptContactInvite = async (identifier: string) => {
     if (e instanceof ApiFetchError) {
       if (e.status && e.status === 400) {
         throw new ContactAlreadyExists()
+      } else if (e.status && e.status === 403) {
+        throw new ContactInviteNotForAccount()
       } else if (e.status && e.status === 404) {
         throw new ContactInviteNotFound()
+      } else if (e.status && e.status === 409) {
+        throw new OwnInviteError()
       }
     }
     throw e
@@ -1273,8 +1280,12 @@ export const rejectContactInvite = async (identifier: string) => {
     if (e instanceof ApiFetchError) {
       if (e.status && e.status === 400) {
         throw new ContactAlreadyExists()
+      } else if (e.status && e.status === 403) {
+        throw new ContactInviteNotForAccount()
       } else if (e.status && e.status === 404) {
         throw new ContactInviteNotFound()
+      } else if (e.status && e.status === 409) {
+        throw new OwnInviteError()
       }
     }
     throw e
