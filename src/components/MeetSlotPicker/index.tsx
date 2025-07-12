@@ -32,6 +32,7 @@ const tzs = timezones.map(tz => {
     label: tz.name,
   }
 })
+
 import { captureException } from '@sentry/nextjs'
 
 import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
@@ -212,6 +213,7 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   }
   const validator = (date: Date) => {
     if (!slotDurationInMinutes) return
+
     try {
       const dayInTimezone = DateTime.fromObject(
         {
@@ -358,31 +360,31 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             />
           )}
         </VStack>
-        {showConfirm && (
-          <Popup>
-            <PopupHeader>
-              <HStack mb={0} cursor="pointer" onClick={handleCloseConfirm}>
-                <Icon as={FaArrowLeft} size="1.5em" color={color} />
-                <Heading size="md" color={color}>
-                  Meeting Information
-                </Heading>
-              </HStack>
-            </PopupHeader>
-
-            <ScheduleForm
-              onConfirm={onSchedule}
-              willStartScheduling={willStartScheduling}
-              pickedTime={pickedTime!}
-              isSchedulingExternal={isSchedulingExternal}
-              isGateValid={isGateValid}
-              notificationsSubs={notificationsSubs}
-              preferences={preferences}
-              meetingProviders={preferences?.meetingProviders}
-              selectedType={selectedType}
-            />
-          </Popup>
-        )}
       </HStack>
+      {showConfirm && (
+        <Popup>
+          <PopupHeader>
+            <HStack mb={0} cursor="pointer" onClick={handleCloseConfirm}>
+              <Icon as={FaArrowLeft} size="1.5em" color={color} />
+              <Heading size="md" color={color}>
+                Meeting Information
+              </Heading>
+            </HStack>
+          </PopupHeader>
+
+          <ScheduleForm
+            onConfirm={onSchedule}
+            willStartScheduling={willStartScheduling}
+            pickedTime={pickedTime!}
+            isSchedulingExternal={isSchedulingExternal}
+            isGateValid={isGateValid}
+            notificationsSubs={notificationsSubs}
+            preferences={preferences}
+            meetingProviders={preferences?.meetingProviders}
+            selectedType={selectedType}
+          />
+        </Popup>
+      )}
     </PopupWrapper>
   )
 }

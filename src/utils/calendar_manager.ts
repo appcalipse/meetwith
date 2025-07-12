@@ -266,7 +266,7 @@ const buildMeetingData = async (
   meetingTitle = 'No Title',
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST],
+  selectedPermissions?: MeetingPermissions[],
   txHash?: Address | null
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
@@ -295,7 +295,6 @@ const buildMeetingData = async (
     recurrence: meetingRepeat,
     permissions: selectedPermissions,
   }
-
   // first pass to make sure that we are keeping the existing slot id
   for (const participant of sanitizedParticipants) {
     const existingSlotId = participantsToKeep[participant.account_address || '']
@@ -416,7 +415,7 @@ const updateMeeting = async (
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST]
+  selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
   // Sanity check
   if (!decryptedMeeting.id) {
@@ -458,7 +457,7 @@ const updateMeeting = async (
       decryptedMeeting?.provider !== meetingProvider ||
       decryptedMeeting?.reminders?.length !== meetingReminders?.length ||
       decryptedMeeting?.recurrence !== meetingRepeat ||
-      decryptedMeeting?.permissions?.length !== selectedPermissions.length ||
+      decryptedMeeting?.permissions?.length !== selectedPermissions?.length ||
       new Date(decryptedMeeting?.start).getTime() !==
         new Date(startTime).getTime() ||
       new Date(decryptedMeeting?.end).getTime() !== new Date(endTime).getTime())
@@ -600,6 +599,7 @@ const updateMeeting = async (
     meetingRepeat,
     selectedPermissions
   )
+
   const payload = {
     ...meetingData,
     slotsToRemove: toRemove.map(it => accountSlotMap[it]),
@@ -845,7 +845,7 @@ const scheduleMeeting = async (
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions = [MeetingPermissions.SEE_GUEST_LIST],
+  selectedPermissions?: MeetingPermissions[],
   txHash?: Address | null
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
@@ -1143,6 +1143,7 @@ const decryptMeeting = async (
   if (!content) return null
 
   const meetingInfo = JSON.parse(content) as MeetingInfo
+
   if (
     meeting?.conferenceData &&
     meeting?.conferenceData.version === MeetingVersion.V2

@@ -35,7 +35,6 @@ import {
 } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
-  getContactById,
   getGroup,
   getGroupsFull,
   getGroupsMembers,
@@ -146,12 +145,14 @@ interface IScheduleContext {
   isDeleting: boolean
   canDelete: boolean
   isScheduler: boolean
-  selectedPermissions: Array<MeetingPermissions>
+  selectedPermissions: Array<MeetingPermissions> | undefined
   setSelectedPermissions: React.Dispatch<
-    React.SetStateAction<Array<MeetingPermissions>>
+    React.SetStateAction<Array<MeetingPermissions> | undefined>
   >
   meetingOwners: Array<ParticipantInfo>
   setMeetingOwners: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
+  canEditMeetingDetails: boolean
+  setCanEditMeetingDetails: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 const DEFAULT_CONTEXT: IScheduleContext = {
@@ -202,6 +203,8 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setSelectedPermissions: () => {},
   meetingOwners: [],
   setMeetingOwners: () => {},
+  canEditMeetingDetails: false,
+  setCanEditMeetingDetails: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -267,10 +270,11 @@ const Schedule: NextPage<IInitialProps> = ({
     label: 'Does not repeat',
   })
   const [selectedPermissions, setSelectedPermissions] = useState<
-    Array<MeetingPermissions>
+    Array<MeetingPermissions> | undefined
   >([MeetingPermissions.SEE_GUEST_LIST])
   const [groups, setGroups] = useState<Array<GetGroupsFullResponse>>([])
   const [isGroupPrefetching, setIsGroupPrefetching] = useState(false)
+  const [canEditMeetingDetails, setCanEditMeetingDetails] = useState(true)
   const fetchGroups = async () => {
     setIsGroupPrefetching(true)
     try {
@@ -786,6 +790,8 @@ const Schedule: NextPage<IInitialProps> = ({
     setSelectedPermissions,
     meetingOwners,
     setMeetingOwners,
+    canEditMeetingDetails,
+    setCanEditMeetingDetails,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
@@ -816,34 +822,9 @@ const Schedule: NextPage<IInitialProps> = ({
     } catch (error: unknown) {
       handleApiError('Error prefetching group.', error)
     }
+    setIsPrefetching(false)
   }
-  const handleContactPrefetch = async () => {
-    if (!contactId) return
-    try {
-      const contact = await getContactById(contactId)
-      if (contact) {
-        const key = 'no_group'
-        const participant: ParticipantInfo = {
-          account_address: contact.address,
-          name: contact.name,
-          status: ParticipationStatus.Pending,
-          type: ParticipantType.Invitee,
-          slot_id: '',
-          meeting_id: '',
-        }
-        setParticipants([participant])
-        const allAddresses = [contact.address]
-        if (currentAccount?.address) {
-          allAddresses.push(currentAccount?.address)
-        }
-        setGroupAvailability({
-          [key]: allAddresses,
-        })
-      }
-    } catch (error: unknown) {
-      handleApiError('Error prefetching contact.', error)
-    }
-  }
+  const handleContactPrefetch = async () => {}
   const handlePrefetch = async () => {
     setIsPrefetching(true)
     if (contactId) {
@@ -900,9 +881,9 @@ const Schedule: NextPage<IInitialProps> = ({
         decryptedMeeting.provider ||
           selectDefaultProvider(currentAccount?.preferences.meetingProviders)
       )
-      setSelectedPermissions(
-        decryptedMeeting.permissions || [MeetingPermissions.SEE_GUEST_LIST]
-      )
+
+      setSelectedPermissions(decryptedMeeting.permissions || undefined)
+
       if (decryptedMeeting.permissions) {
         const isSchedulerOrOwner = [
           ParticipantType.Scheduler,
@@ -912,6 +893,11 @@ const Schedule: NextPage<IInitialProps> = ({
             p => p.account_address === currentAccount?.address
           )?.type || ParticipantType?.Invitee
         )
+        const canEditMeetingDetails =
+          !!decryptedMeeting?.permissions?.includes(
+            MeetingPermissions.EDIT_MEETING
+          ) || isSchedulerOrOwner
+        setCanEditMeetingDetails(canEditMeetingDetails)
         const canViewParticipants =
           decryptedMeeting.permissions.includes(
             MeetingPermissions.SEE_GUEST_LIST
