@@ -59,7 +59,6 @@ export function ScheduleParticipants({
       py={isMobile ? 10 : 7}
       px={5}
       borderWidth={1}
-      borderColor={'neutral.400'}
       rounded={12}
       gap={5}
       minH="80vh"
@@ -115,7 +114,7 @@ export function ScheduleParticipants({
                     textOverflow="ellipsis"
                     w={'fit-content'}
                   >
-                    {participant.name}
+                    {participant.name || 'You'}
                   </Heading>
                   {currentAccount?.address === participant.account_address && (
                     <Text fontSize={'sm'} color={'neutral.200'}>
