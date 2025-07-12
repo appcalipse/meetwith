@@ -44,7 +44,7 @@ const handleSecureRoute = async (req: NextRequest) => {
 
   const session = await getIronSession(req, res, sessionOptions)
 
-  if (!session?.account) return notAuthorized
+  if (!session?.account) return notAuthorized()
 
   const response = await fetch(`${apiUrl}/server/accounts/check`, {
     method: 'POST',
