@@ -124,6 +124,15 @@ export interface MeetingDecrypted extends MeetingInfo {
   meeting_info_encrypted: Encrypted
 }
 
+export interface ExistingMeetingData {
+  title?: string
+  content?: string
+  meetingUrl?: string
+  participants?: ParticipantInfo[]
+  start?: Date
+  end?: Date
+}
+
 export enum GroupMeetingType {
   TEAM = 'team',
   CUSTOM = 'custom',

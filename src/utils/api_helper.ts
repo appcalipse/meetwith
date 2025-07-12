@@ -31,6 +31,7 @@ import {
 import {
   ConferenceMeeting,
   DBSlot,
+  ExtendedDBSlot,
   GroupMeetingRequest,
   GuestMeetingCancel,
   MeetingDecrypted,
@@ -42,6 +43,7 @@ import {
   ChangeGroupAdminRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
+  MeetingCreationSyncRequest,
   MeetingUpdateRequest,
   UrlCreationRequest,
 } from '@/types/Requests'
@@ -281,6 +283,32 @@ export const scheduleMeetingAsGuest = async (
   }
 }
 
+export const updateMeetingAsGuest = async (
+  slotId: string,
+  meeting: MeetingUpdateRequest
+): Promise<DBSlot> => {
+  try {
+    return (await internalFetch(
+      `/meetings/guest/${slotId}`,
+      'PUT',
+      meeting
+    )) as DBSlot
+  } catch (e: any) {
+    if (e.status && e.status === 409) {
+      throw new TimeNotAvailableError()
+    } else if (e.status && e.status === 412) {
+      throw new MeetingCreationError()
+    } else if (e.status && e.status === 417) {
+      throw new MeetingChangeConflictError()
+    } else if (e.status && e.status === 404) {
+      throw new MeetingNotFoundError(slotId)
+    } else if (e.status && e.status === 401) {
+      throw new UnauthorizedError()
+    }
+    throw e
+  }
+}
+
 export const updateMeeting = async (
   slotId: string,
   meeting: MeetingUpdateRequest
@@ -453,12 +481,12 @@ export const getMeetingsForDashboard = async (
   end: Date,
   limit: number,
   offset: number
-): Promise<DBSlot[]> => {
-  const response = (await internalFetch(
+): Promise<ExtendedDBSlot[]> => {
+  const response = await internalFetch<ExtendedDBSlot[]>(
     `/meetings/${accountIdentifier}?upcoming=true&limit=${
       limit || undefined
     }&offset=${offset || 0}&end=${end.getTime()}`
-  )) as DBSlot[]
+  )
   return response?.map(slot => ({
     ...slot,
     start: new Date(slot.start),
@@ -631,15 +659,63 @@ export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
     end: new Date(response.end),
   }
 }
-export const getMeetingGuest = async (slot_id: string): Promise<DBSlot> => {
+
+export const getConferenceDataBySlotId = async (
+  slotId: string
+): Promise<ConferenceMeeting> => {
   const response = await queryClient.fetchQuery(
-    QueryKeys.meeting(slot_id),
-    () => internalFetch(`/meetings/guest/${slot_id}`) as Promise<DBSlot>
+    QueryKeys.meeting(slotId),
+    () =>
+      internalFetch(`/meetings/guest/${slotId}`) as Promise<ConferenceMeeting>
   )
   return {
     ...response,
     start: new Date(response.start),
     end: new Date(response.end),
+    created_at: response.created_at
+      ? new Date(response.created_at)
+      : new Date(),
+  }
+}
+
+export const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
+  if (!slotIds || slotIds.length === 0) {
+    console.warn('getSlotsByIds called with empty slot IDs array')
+    return []
+  }
+
+  const validSlotIds = slotIds.filter(id => id && id.trim() !== '')
+
+  if (validSlotIds.length === 0) {
+    console.warn('getSlotsByIds called with no valid slot IDs')
+    return []
+  }
+
+  const response = (await internalFetch(
+    `/meetings/slots?ids=${validSlotIds.join(',')}`
+  )) as DBSlot[]
+  return response.map(slot => ({
+    ...slot,
+    start: new Date(slot.start),
+    end: new Date(slot.end),
+  }))
+}
+
+export const getMeetingGuest = async (
+  slot_id: string
+): Promise<ConferenceMeeting> => {
+  const response = await queryClient.fetchQuery(
+    QueryKeys.meeting(slot_id),
+    () =>
+      internalFetch(`/meetings/guest/${slot_id}`) as Promise<ConferenceMeeting>
+  )
+  return {
+    ...response,
+    start: new Date(response.start),
+    end: new Date(response.end),
+    created_at: response.created_at
+      ? new Date(response.created_at)
+      : new Date(),
   }
 }
 

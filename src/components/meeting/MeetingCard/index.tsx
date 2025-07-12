@@ -34,7 +34,7 @@ import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Intents } from '@/types/Dashboard'
 import {
-  DBSlot,
+  ExtendedDBSlot,
   MeetingChangeType,
   MeetingDecrypted,
   MeetingRepeat,
@@ -54,7 +54,7 @@ import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 interface MeetingCardProps {
-  meeting: DBSlot
+  meeting: ExtendedDBSlot
   timezone: string
   onCancel: (removed: string[]) => void
 }
@@ -294,7 +294,11 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                 <VStack flex={1} alignItems="start">
                   <Flex flex={1} alignItems="center" gap={3}>
                     <Heading fontSize="24px">
-                      <strong>{decryptedMeeting?.title || 'No Title'}</strong>
+                      <strong>
+                        {meeting.conferenceData?.title ||
+                          decryptedMeeting?.title ||
+                          'No Title'}
+                      </strong>
                     </Heading>
                   </Flex>
                   <Text fontSize="16px" alignItems="start">

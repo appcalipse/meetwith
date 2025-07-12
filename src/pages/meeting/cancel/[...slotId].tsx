@@ -24,7 +24,7 @@ import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 
 import Loading from '@/components/Loading'
-import { DBSlot } from '@/types/Meeting'
+import { ConferenceMeeting } from '@/types/Meeting'
 import { getMeetingGuest, guestMeetingCancel } from '@/utils/api_helper'
 import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
 
@@ -32,7 +32,7 @@ const CancelMeetingPage: NextPage = () => {
   const router = useRouter()
   const { slotId, metadata } = router.query
   const [loading, setLoading] = useState(true)
-  const [meeting, setMeeting] = useState<DBSlot>()
+  const [meeting, setMeeting] = useState<ConferenceMeeting>()
   const [isCancelling, setIsCancelling] = useState(false)
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const [reason, setReason] = useState('')
