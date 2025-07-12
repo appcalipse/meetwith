@@ -701,15 +701,21 @@ export const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
   }))
 }
 
-export const getMeetingGuest = async (slot_id: string): Promise<DBSlot> => {
+export const getMeetingGuest = async (
+  slot_id: string
+): Promise<ConferenceMeeting> => {
   const response = await queryClient.fetchQuery(
     QueryKeys.meeting(slot_id),
-    () => internalFetch(`/meetings/guest/${slot_id}`) as Promise<DBSlot>
+    () =>
+      internalFetch(`/meetings/guest/${slot_id}`) as Promise<ConferenceMeeting>
   )
   return {
     ...response,
     start: new Date(response.start),
     end: new Date(response.end),
+    created_at: response.created_at
+      ? new Date(response.created_at)
+      : new Date(),
   }
 }
 

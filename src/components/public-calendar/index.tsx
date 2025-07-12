@@ -310,9 +310,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const getSlotInfo = async () => {
     if (rescheduleSlotId) {
       try {
-        const meeting = (await getMeetingGuest(
-          rescheduleSlotId!
-        )) as unknown as ConferenceMeeting
+        const meeting = await getMeetingGuest(rescheduleSlotId!)
         if (!meeting) {
           await router.push('/404')
           return
@@ -632,7 +630,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     return false
   }
 
-  const _onClose = () => {
+  const _onClose = async () => {
     setReset(true)
     setLastScheduledMeeting(undefined)
 
@@ -645,7 +643,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       const currentPath = router.asPath
       const url = new URL(currentPath, window.location.origin)
       url.searchParams.delete('slot')
-      router.replace(url.pathname + url.search, undefined, { shallow: true })
+      await router.replace(url.pathname + url.search, undefined, {
+        shallow: true,
+      })
     }
 
     setTimeout(() => setReset(false), 200)
