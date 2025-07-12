@@ -9,7 +9,7 @@ import {
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
+import { ParticipantInfo, ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { noNoReplyEmailForAccount } from '../calendar_manager'
@@ -310,6 +310,26 @@ export default class Office365CalendarService implements CalendarService {
       p => p.account_address === calendarOwnerAccountAddress
     )[0].slot_id
 
+    // Determine the correct URL format
+    const hasGuests = details.participants.some(p => p.guest_email)
+    let changeUrl: string
+
+    if (hasGuests) {
+      // For meetings with guests, use public calendar URL format
+      const ownerParticipant = details.participants.find(
+        p => p.type === ParticipantType.Owner
+      )
+      const ownerAddress = ownerParticipant?.account_address
+      if (ownerAddress) {
+        changeUrl = `${appUrl}/address/${ownerAddress}?slot=${slot_id}`
+      } else {
+        changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      }
+    } else {
+      // For regular users, use dashboard format
+      changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+    }
+
     const payload: Record<string, any> = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
@@ -321,7 +341,7 @@ export default class Office365CalendarService implements CalendarService {
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
           details.meeting_url,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+          changeUrl
         ),
       },
       start: {

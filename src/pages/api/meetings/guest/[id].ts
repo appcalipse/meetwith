@@ -6,9 +6,13 @@ import { MeetingUpdateRequest } from '@/types/Requests'
 import {
   getConferenceDataBySlotId,
   handleGuestCancel,
-  updateMeetingForGuest,
+  updateMeeting,
 } from '@/utils/database'
-import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
+import {
+  MeetingChangeConflictError,
+  MeetingNotFoundError,
+  UnauthorizedError,
+} from '@/utils/errors'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -45,8 +49,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
-      const meetingResult = await updateMeetingForGuest(
-        slotId,
+      const meetingResult = await updateMeeting(
+        {
+          name: 'Guest',
+          guest_email: '',
+          account_address: '',
+        },
         meetingUpdateRequest
       )
       return res.status(200).json(meetingResult)
@@ -56,6 +64,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(404).send(e.message)
       } else if (e instanceof UnauthorizedError) {
         return res.status(401).send(e.message)
+      } else if (e instanceof MeetingChangeConflictError) {
+        return res.status(417).send(e)
       }
       return res.status(500).send(e)
     }

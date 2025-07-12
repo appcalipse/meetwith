@@ -31,7 +31,6 @@ import {
 import { MeetingPermissions } from './constants/schedule'
 import {
   getAccountFromDB,
-  getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
   getGroupInternal,
 } from './database'
@@ -246,81 +245,55 @@ const workNotifications = async (
             meetingPermissions
           )
         )
-      } else if (participant.account_address) {
-        // Always send email notifications to account holders
-        const accountEmail = await getAccountNotificationSubscriptionEmail(
-          participant.account_address
-        )
-        if (accountEmail) {
-          const tempParticipant = {
-            ...participant,
-            guest_email: accountEmail,
-          }
-          promises.push(
-            getEmailNotification(
-              changeType,
-              participantActing,
-              tempParticipant,
-              participantsInfo,
-              start,
-              end,
-              created_at,
-              participant.timezone,
-              meeting_url,
-              title,
-              description,
-              changes,
-              meetingProvider,
-              meetingReminders,
-              meetingRepeat,
-              undefined,
-              meetingPermissions
-            )
-          )
-        }
-
-        // Also send notifications based on their preferences (Discord, Telegram, etc.)
-        if (
-          participant.notifications &&
-          participant.notifications.notification_types &&
-          participant.notifications.notification_types.length > 0
+      } else if (
+        participant.account_address &&
+        participant.notifications &&
+        participant.notifications?.notification_types.length > 0
+      ) {
+        for (
+          let j = 0;
+          j < participant.notifications.notification_types.length;
+          j++
         ) {
-          for (
-            let j = 0;
-            j < participant.notifications!.notification_types!.length;
-            j++
-          ) {
-            const notification_type =
-              participant.notifications!.notification_types![j]
-            if (!notification_type.disabled) {
-              switch (notification_type.channel) {
-                case NotificationChannel.DISCORD:
-                  const accountForDiscord = await getAccountFromDB(
-                    participant.account_address
+          const notification_type =
+            participant.notifications.notification_types[j]
+          if (!notification_type.disabled) {
+            switch (notification_type.channel) {
+              case NotificationChannel.EMAIL:
+                promises.push(
+                  getEmailNotification(
+                    changeType,
+                    participantActing,
+                    participant,
+                    participantsInfo,
+                    start,
+                    end,
+                    created_at,
+                    participant.timezone,
+                    meeting_url,
+                    title,
+                    description,
+                    changes,
+                    meetingProvider,
+                    meetingReminders,
+                    meetingRepeat,
+                    undefined,
+                    meetingPermissions
                   )
-                  // Dont DM if you are the person is the one scheduling the meeting
-                  if (
-                    isProAccount(accountForDiscord) &&
-                    participantActing.account_address?.toLowerCase() !==
-                      participant.account_address.toLowerCase()
-                  ) {
-                    promises.push(
-                      getDiscordNotification(
-                        changeType,
-                        participantActing,
-                        participant,
-                        start,
-                        end,
-                        participantsInfo,
-                        changes,
-                        meetingPermissions
-                      )
-                    )
-                  }
-                  break
-                case NotificationChannel.TELEGRAM:
+                )
+                break
+              case NotificationChannel.DISCORD:
+                const accountForDiscord = await getAccountFromDB(
+                  participant.account_address
+                )
+                // Dont DM if you are the person is the one scheduling the meeting
+                if (
+                  isProAccount(accountForDiscord) &&
+                  participantActing.account_address?.toLowerCase() !==
+                    participant.account_address.toLowerCase()
+                ) {
                   promises.push(
-                    getTelegramNotification(
+                    getDiscordNotification(
                       changeType,
                       participantActing,
                       participant,
@@ -331,9 +304,23 @@ const workNotifications = async (
                       meetingPermissions
                     )
                   )
-                  break
-                default:
-              }
+                }
+                break
+              case NotificationChannel.TELEGRAM:
+                promises.push(
+                  getTelegramNotification(
+                    changeType,
+                    participantActing,
+                    participant,
+                    start,
+                    end,
+                    participantsInfo,
+                    changes,
+                    meetingPermissions
+                  )
+                )
+                break
+              default:
             }
           }
         }
