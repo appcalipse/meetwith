@@ -63,7 +63,10 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
   const connectedCalendarsComplete = useCallback(async () => {
     const request = await listConnectedCalendars(false)
 
-    return !!request?.length
+    return (
+      !!request?.length &&
+      request.some(val => val.grantedPermissions === val.expectedPermissions)
+    )
   }, [currentAccount, reloadTrigger])
 
   const completeSteps = useCallback(async () => {

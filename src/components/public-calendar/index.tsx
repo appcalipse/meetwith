@@ -9,6 +9,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
+import * as Sentry from '@sentry/nextjs'
 import {
   addMinutes,
   addMonths,
@@ -47,6 +48,7 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
+  doesContactExist,
   getAccount,
   getBusySlots,
   getMeeting,
@@ -160,6 +162,23 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [rescheduleSlot, setRescheduleSlot] = useState<DBSlot | undefined>(
     undefined
   )
+  const [isContact, setIsContact] = useState(false)
+
+  const handleContactCheck = async () => {
+    try {
+      if (!account?.address) return
+      const contactExists = await doesContactExist(account?.address)
+      setIsContact(contactExists)
+    } catch (e) {
+      Sentry.captureException(e)
+      console.error('Error checking contact existence:', e)
+    }
+  }
+  useEffect(() => {
+    if (!currentAccount?.address || !account?.address) return
+    handleContactCheck()
+  }, [currentAccount, account])
+
   const [existingMeetingData, setExistingMeetingData] =
     useState<ExistingMeetingData | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -791,11 +810,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
             <Flex justify="center">
               <MeetingScheduledDialog
                 participants={lastScheduledMeeting!.participants}
-                schedulerAccount={currentAccount!}
+                hostAccount={account!}
                 scheduleType={schedulingType}
                 meeting={lastScheduledMeeting}
                 accountNotificationSubs={notificationsSubs}
                 hasConnectedCalendar={hasConnectedCalendar}
+                isContact={isContact}
+                setIsContact={setIsContact}
                 reset={_onClose}
                 isReschedule={!!rescheduleSlotId}
               />
