@@ -299,12 +299,14 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           return
         }
 
+        const slotData = await getMeeting(rescheduleSlotId!)
+
         const mockSlot: DBSlot = {
           id: rescheduleSlotId,
           account_address: account!.address,
           start: new Date(meeting.start),
           end: new Date(meeting.end),
-          version: 0,
+          version: slotData.version,
           meeting_info_encrypted: {} as any,
           recurrence: meeting.recurrence || MeetingRepeat.NO_REPEAT,
         }

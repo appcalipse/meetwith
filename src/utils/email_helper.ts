@@ -165,11 +165,12 @@ export const newMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : ownerAccountAddress
-      ? `${await getOwnerPublicUrl(ownerAccountAddress)}?slot=${slot_id}`
-      : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
+    // Only include reschedule link for guests
+    changeUrl: !destinationAccountAddress
+      ? ownerAccountAddress
+        ? `${await getOwnerPublicUrl(ownerAccountAddress)}?slot=${slot_id}`
+        : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      : undefined,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted
@@ -423,11 +424,12 @@ export const updateMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : ownerAccountAddress
-      ? `${await getOwnerPublicUrl(ownerAccountAddress)}?slot=${slot_id}`
-      : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
+    // Only include reschedule link for guests
+    changeUrl: !destinationAccountAddress
+      ? ownerAccountAddress
+        ? `${await getOwnerPublicUrl(ownerAccountAddress)}?slot=${slot_id}`
+        : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      : undefined,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted
