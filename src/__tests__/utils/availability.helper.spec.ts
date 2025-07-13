@@ -240,7 +240,7 @@ describe('availability helper functions', () => {
       const sorted = sortAvailabilitiesByWeekday(availabilities)
       const weekdays = sorted.map(a => a.weekday)
 
-      expect(weekdays).toEqual([1, 2, 3, 4, 5, 0, 6]) // Mon, Tue, Wed, Thu, Fri, Sun, Sat
+      expect(weekdays).toEqual([1, 2, 3, 4, 5, 6, 0]) // Mon, Tue, Wed, Thu, Fri, Sat, Sun
     })
 
     it('preserves original data structure', () => {

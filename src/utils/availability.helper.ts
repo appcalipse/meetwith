@@ -46,12 +46,22 @@ export const getFormattedSchedule = (
 
   if (workingDays.length === 0) return []
 
-  // Group consecutive days with same time ranges
-  const scheduleLines: string[] = []
+  // Sort days by weekday order
+  const sortedDays = workingDays.sort((a, b) => {
+    const getWeekdayOrder = (weekday: number) => {
+      if (weekday === 0) return 7
+      if (weekday === 6) return 6
+      return weekday
+    }
+    return getWeekdayOrder(a.weekday) - getWeekdayOrder(b.weekday)
+  })
+
+  // group consecutive days with same time ranges
+  const consecutiveGroups: Array<{ days: number[]; timeRange: string }> = []
   let currentGroup: number[] = []
   let currentTimeRange = ''
 
-  workingDays.forEach((day, index) => {
+  sortedDays.forEach((day, index) => {
     const timeRange =
       day.ranges && day.ranges.length > 0
         ? `${formatTime(day.ranges[0].start)} - ${formatTime(
@@ -63,7 +73,7 @@ export const getFormattedSchedule = (
       currentGroup = [day.weekday]
       currentTimeRange = timeRange
     } else {
-      const prevDay = workingDays[index - 1]
+      const prevDay = sortedDays[index - 1]
       const prevTimeRange =
         prevDay.ranges && prevDay.ranges.length > 0
           ? `${formatTime(prevDay.ranges[0].start)} - ${formatTime(
@@ -73,25 +83,50 @@ export const getFormattedSchedule = (
 
       if (
         timeRange === prevTimeRange &&
-        day.weekday === currentGroup[currentGroup.length - 1] + 1
+        (day.weekday === currentGroup[currentGroup.length - 1] + 1 ||
+          (currentGroup[currentGroup.length - 1] === 6 && day.weekday === 0))
       ) {
         // Same time range and consecutive day
         currentGroup.push(day.weekday)
       } else {
-        // Different time range or non-consecutive day, finish current group
-        const groupText = formatDayGroup(currentGroup, currentTimeRange)
-        if (groupText) scheduleLines.push(groupText)
-
+        // Different time range or non-consecutive day
+        if (currentGroup.length > 0) {
+          consecutiveGroups.push({
+            days: [...currentGroup],
+            timeRange: currentTimeRange,
+          })
+        }
         currentGroup = [day.weekday]
         currentTimeRange = timeRange
       }
     }
 
     // Handle last group
-    if (index === workingDays.length - 1) {
-      const groupText = formatDayGroup(currentGroup, currentTimeRange)
-      if (groupText) scheduleLines.push(groupText)
+    if (index === sortedDays.length - 1) {
+      if (currentGroup.length > 0) {
+        consecutiveGroups.push({
+          days: [...currentGroup],
+          timeRange: currentTimeRange,
+        })
+      }
     }
+  })
+
+  // Now group non-consecutive days with same time ranges
+  const timeRangeMap: Map<string, number[]> = new Map()
+
+  consecutiveGroups.forEach(group => {
+    if (!timeRangeMap.has(group.timeRange)) {
+      timeRangeMap.set(group.timeRange, [])
+    }
+    timeRangeMap.get(group.timeRange)!.push(...group.days)
+  })
+
+  // Convert to formatted strings
+  const scheduleLines: string[] = []
+  timeRangeMap.forEach((days, timeRange) => {
+    const groupText = formatDayGroup(days, timeRange)
+    if (groupText) scheduleLines.push(groupText)
   })
 
   return scheduleLines
@@ -104,18 +139,12 @@ export const formatDayGroup = (days: number[], timeRange: string): string => {
 
   if (days.length === 1) {
     return `${dayNames[days[0]]} : ${timeRange}`
-  } else if (days.length === 2) {
-    // Check if consecutive
-    if (days[1] === days[0] + 1) {
-      return `${dayNames[days[0]]} - ${dayNames[days[1]]} : ${timeRange}`
-    } else {
-      return `${dayNames[days[0]]}, ${dayNames[days[1]]} : ${timeRange}`
-    }
   } else {
-    // Check if consecutive
     let consecutive = true
     for (let i = 1; i < days.length; i++) {
-      if (days[i] !== days[i - 1] + 1) {
+      const isConsecutive =
+        days[i] === days[i - 1] + 1 || (days[i - 1] === 6 && days[i] === 0)
+      if (!isConsecutive) {
         consecutive = false
         break
       }
@@ -295,8 +324,8 @@ export const sortAvailabilitiesByWeekday = (
 ) => {
   return availabilities.sort((a, b) => {
     const getWeekdayOrder = (weekday: number) => {
-      if (weekday === 0) return 6
-      if (weekday === 6) return 7
+      if (weekday === 0) return 7
+      if (weekday === 6) return 6
       return weekday
     }
 
