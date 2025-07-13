@@ -4058,6 +4058,14 @@ const deleteMeetingType = async (
   if (error) {
     throw new Error(error.message)
   }
+
+  const { error: assocError } = await db.supabase
+    .from('meeting_type_availabilities')
+    .delete()
+    .eq('meeting_type_id', meeting_type_id)
+  if (assocError) {
+    throw new Error(assocError.message)
+  }
 }
 
 // shared helper function to update associations between meeting types and availability blocks

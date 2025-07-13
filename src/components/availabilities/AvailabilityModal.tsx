@@ -24,11 +24,11 @@ import { useEffect, useRef, useState } from 'react'
 import { MdKeyboard, MdMouse } from 'react-icons/md'
 
 import TimezoneSelector from '@/components/TimezoneSelector'
-import { useAllMeetingTypes } from '@/hooks/useAllMeetingTypes'
 import {
   useAvailabilityBlockMeetingTypes,
   useUpdateAvailabilityBlockMeetingTypes,
-} from '@/hooks/useAvailabilityBlockMeetingTypes'
+} from '@/hooks/availability'
+import { useAllMeetingTypes } from '@/hooks/useAllMeetingTypes'
 import { TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
 import {
@@ -112,9 +112,13 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
     label: type.title,
   }))
 
+  const validCurrentMeetingTypes = (currentMeetingTypes || []).filter(
+    type => type && type.title
+  )
+
   const initializeMeetingTypes = () => {
-    if (isEditing && editingBlockId && currentMeetingTypes.length > 0) {
-      const meetingTypeOptions = currentMeetingTypes.map(type => ({
+    if (isEditing && editingBlockId && validCurrentMeetingTypes.length > 0) {
+      const meetingTypeOptions = validCurrentMeetingTypes.map(type => ({
         value: type.id,
         label: type.title,
       }))
@@ -122,8 +126,8 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
       if (onMeetingTypesChange) {
         onMeetingTypesChange(meetingTypeOptions.map(option => option.value))
       }
-    } else if (duplicatingBlockId && currentMeetingTypes.length > 0) {
-      const meetingTypeOptions = currentMeetingTypes.map(type => ({
+    } else if (duplicatingBlockId && validCurrentMeetingTypes.length > 0) {
+      const meetingTypeOptions = validCurrentMeetingTypes.map(type => ({
         value: type.id,
         label: type.title,
       }))
@@ -627,9 +631,13 @@ const SessionTypesAssociationSection: React.FC<{ blockId?: string }> = ({
   const { meetingTypes: associatedMeetingTypes, isLoading } =
     useAvailabilityBlockMeetingTypes(blockId || '')
 
+  const validAssociatedMeetingTypes = (associatedMeetingTypes || []).filter(
+    type => type && type.title
+  )
+
   if (!blockId) return null
 
-  if (!isLoading && associatedMeetingTypes.length === 0) return null
+  if (!isLoading && validAssociatedMeetingTypes.length === 0) return null
 
   return (
     <Box mb={4}>
@@ -645,7 +653,7 @@ const SessionTypesAssociationSection: React.FC<{ blockId?: string }> = ({
         </Text>
       ) : (
         <VStack align="start" spacing={1} mb={2}>
-          {associatedMeetingTypes.map(type => (
+          {validAssociatedMeetingTypes.map(type => (
             <Link
               key={type.id}
               color="primary.200"

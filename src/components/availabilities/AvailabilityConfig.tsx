@@ -12,9 +12,11 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 import CustomLoading from '@/components/CustomLoading'
-import { useAvailabilityBlockHandlers } from '@/hooks/useAvailabilityBlockHandlers'
-import { useAvailabilityBlocks } from '@/hooks/useAvailabilityBlocks'
-import { useAvailabilityForm } from '@/hooks/useAvailabilityForm'
+import {
+  useAvailabilityBlockHandlers,
+  useAvailabilityBlocks,
+  useAvailabilityForm,
+} from '@/hooks/availability'
 import { Account } from '@/types/Account'
 import { updateAvailabilityBlockMeetingTypes } from '@/utils/api_helper'
 

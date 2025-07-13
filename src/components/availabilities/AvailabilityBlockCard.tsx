@@ -10,7 +10,7 @@ import {
 } from '@chakra-ui/react'
 import { AiFillClockCircle } from 'react-icons/ai'
 
-import { useAvailabilityBlockMeetingTypes } from '@/hooks/useAvailabilityBlockMeetingTypes'
+import { useAvailabilityBlockMeetingTypes } from '@/hooks/availability'
 import { AvailabilityBlock } from '@/types/availability'
 import {
   getFormattedSchedule,
@@ -131,21 +131,23 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
             <Text color="neutral.400" fontSize={14}>
               Loading...
             </Text>
-          ) : meetingTypes.length > 0 ? (
+          ) : meetingTypes.filter(type => type && type.title).length > 0 ? (
             <Flex flexWrap="wrap" gap={2}>
-              {meetingTypes.map(meetingType => (
-                <Badge
-                  key={meetingType.id}
-                  background="neutral.700"
-                  color="neutral.0"
-                  borderRadius={6}
-                  fontSize={12}
-                  px={2}
-                  py={1}
-                >
-                  {meetingType.title}
-                </Badge>
-              ))}
+              {meetingTypes
+                .filter(type => type && type.title)
+                .map(meetingType => (
+                  <Badge
+                    key={meetingType.id}
+                    background="neutral.700"
+                    color="neutral.0"
+                    borderRadius={6}
+                    fontSize={12}
+                    px={2}
+                    py={1}
+                  >
+                    {meetingType.title}
+                  </Badge>
+                ))}
             </Flex>
           ) : (
             <Text color="neutral.400" fontSize={14}>
