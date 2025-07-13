@@ -17,6 +17,10 @@ import { format, setDay } from 'date-fns'
 import { FaCopy, FaPlusCircle, FaTrash } from 'react-icons/fa'
 
 import { TimeRange } from '@/types/Account'
+import {
+  validateTimeFormat,
+  validateTimeRange,
+} from '@/utils/availability.helper'
 
 import { TimeSelector } from './TimeSelector'
 
@@ -34,6 +38,7 @@ type WeekdayConfigProps = {
     copyType: 'all' | 'weekdays' | 'weekends'
   ) => void
   useDirectInput?: boolean
+  onValidationChange?: (weekday: number, isValid: boolean) => void
 }
 
 const defaultTimeRange = () => ({
@@ -53,12 +58,31 @@ const getNextSlotStart = (end: string) => {
   return `${nextHours}:${minutes}`
 }
 
+const TimeSelectorError: React.FC<{ start: string; end: string }> = ({
+  start,
+  end,
+}) => {
+  const isValid =
+    validateTimeFormat(start) &&
+    validateTimeFormat(end) &&
+    validateTimeRange(start, end)
+
+  if (isValid) return null
+
+  return (
+    <Text fontSize="xs" color="red.500">
+      Start time must be before end time
+    </Text>
+  )
+}
+
 export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
   const {
     dayAvailability,
     onChange,
     onCopyToDays,
     useDirectInput = false,
+    onValidationChange,
   } = props
   const iconColor = useColorModeValue('gray.500', 'gray.200')
   const borderColor = useColorModeValue('gray.300', 'gray.700')
@@ -76,6 +100,12 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
     const newTimes = [...times]
     newTimes[index] = { start, end }
     onChange(dayAvailability.weekday, newTimes)
+  }
+
+  const handleValidationChange = (index: number, isValid: boolean) => {
+    if (onValidationChange) {
+      onValidationChange(dayAvailability.weekday, isValid)
+    }
   }
 
   const handleAddSlotClick = () => {
@@ -205,51 +235,28 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
       {isSelected ? (
         <VStack align="start" spacing={2} width="100%">
           {times.map((time, index) => (
-            <Flex
-              key={index}
-              width="100%"
-              align="center"
-              gap={2}
-              flexDirection={{ base: 'column', sm: 'row' }}
-            >
-              <TimeSelector
-                onChange={handleChangeTime}
-                index={index}
-                start={time.start}
-                end={time.end}
-                useDirectInput={useDirectInput}
-                {...(index > 0 && { previousEnd: times[index - 1].end })}
-                {...(index < times.length - 1 && {
-                  nextStart: times[index + 1].start,
-                })}
-              />
-              <HStack spacing={1}>
-                <Tooltip
-                  label="Remove time slot"
-                  placement="top"
-                  hasArrow
-                  bg="neutral.800"
-                  color="neutral.0"
-                  borderRadius="md"
-                  fontSize="sm"
-                  px={3}
-                  py={2}
-                >
-                  <IconButton
-                    color={iconColor}
-                    aria-label="remove time slot"
-                    icon={<FaTrash size={14} />}
-                    onClick={() => handleTimeRemoveClick(index)}
-                    size="sm"
-                    variant="ghost"
-                    flexShrink={0}
-                    minW="32px"
-                    h="32px"
-                  />
-                </Tooltip>
-                {index === 0 && (
+            <VStack key={index} align="start" spacing={1} width="100%">
+              <Flex
+                width="100%"
+                align="center"
+                gap={2}
+                flexDirection={{ base: 'column', sm: 'row' }}
+              >
+                <TimeSelector
+                  onChange={handleChangeTime}
+                  index={index}
+                  start={time.start}
+                  end={time.end}
+                  useDirectInput={useDirectInput}
+                  onValidationChange={handleValidationChange}
+                  {...(index > 0 && { previousEnd: times[index - 1].end })}
+                  {...(index < times.length - 1 && {
+                    nextStart: times[index + 1].start,
+                  })}
+                />
+                <HStack spacing={1}>
                   <Tooltip
-                    label="Add another time slot"
+                    label="Remove time slot"
                     placement="top"
                     hasArrow
                     bg="neutral.800"
@@ -261,9 +268,9 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
                   >
                     <IconButton
                       color={iconColor}
-                      aria-label="add time slot"
-                      icon={<FaPlusCircle size={14} />}
-                      onClick={handleAddSlotClick}
+                      aria-label="remove time slot"
+                      icon={<FaTrash size={14} />}
+                      onClick={() => handleTimeRemoveClick(index)}
                       size="sm"
                       variant="ghost"
                       flexShrink={0}
@@ -271,9 +278,37 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
                       h="32px"
                     />
                   </Tooltip>
-                )}
-              </HStack>
-            </Flex>
+                  {index === 0 && (
+                    <Tooltip
+                      label="Add another time slot"
+                      placement="top"
+                      hasArrow
+                      bg="neutral.800"
+                      color="neutral.0"
+                      borderRadius="md"
+                      fontSize="sm"
+                      px={3}
+                      py={2}
+                    >
+                      <IconButton
+                        color={iconColor}
+                        aria-label="add time slot"
+                        icon={<FaPlusCircle size={14} />}
+                        onClick={handleAddSlotClick}
+                        size="sm"
+                        variant="ghost"
+                        flexShrink={0}
+                        minW="32px"
+                        h="32px"
+                      />
+                    </Tooltip>
+                  )}
+                </HStack>
+              </Flex>
+              {useDirectInput && (
+                <TimeSelectorError start={time.start} end={time.end} />
+              )}
+            </VStack>
           ))}
         </VStack>
       ) : (

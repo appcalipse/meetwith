@@ -33,6 +33,7 @@ interface UseAvailabilityBlockHandlersProps {
   onOpen: () => void
   onClose: () => void
   onMeetingTypesSave?: (blockId: string) => Promise<void>
+  existingBlocks?: AvailabilityBlock[]
 }
 
 export const useAvailabilityBlockHandlers = ({
@@ -49,6 +50,7 @@ export const useAvailabilityBlockHandlers = ({
   onOpen,
   onClose,
   onMeetingTypesSave,
+  existingBlocks,
 }: UseAvailabilityBlockHandlersProps) => {
   // UI State Management
   const {
@@ -56,6 +58,8 @@ export const useAvailabilityBlockHandlers = ({
     editingBlockId,
     duplicatingBlockId,
     showDeleteConfirmation,
+    showSelectDefaultModal,
+    selectDefaultModalConfig,
     isSaving,
     setIsSaving,
     resetUIState,
@@ -63,6 +67,8 @@ export const useAvailabilityBlockHandlers = ({
     setDuplicatingState,
     setCreateState,
     setShowDeleteConfirmation,
+    setShowSelectDefaultModal,
+    setSelectDefaultModalConfig,
   } = useAvailabilityBlockUIState()
 
   // Validation and Toast Management
@@ -133,6 +139,58 @@ export const useAvailabilityBlockHandlers = ({
 
     try {
       if (isEditing && editingBlockId) {
+        // Check if we're unsetting a default block
+        const currentBlock = existingBlocks?.find(
+          block => block.id === editingBlockId
+        )
+        const isCurrentlyDefault = currentBlock?.isDefault
+        const isUnsettingDefault = isCurrentlyDefault && !formState.isDefault
+
+        if (isUnsettingDefault) {
+          // Show modal to select new default
+          handleShowSelectDefaultModal(
+            'Select New Default Availability',
+            'You cannot unset the default availability block. Please select a new default availability block first.',
+            'Set as Default',
+            async (selectedBlockId: string) => {
+              try {
+                setIsSaving(true)
+                // Get the selected block data
+                const selectedBlock = existingBlocks?.find(
+                  block => block.id === selectedBlockId
+                )
+                if (!selectedBlock) {
+                  throw new Error('Selected block not found')
+                }
+
+                // First set the selected block as default
+                await updateBlock.mutateAsync({
+                  id: selectedBlockId,
+                  title: selectedBlock.title,
+                  timezone: selectedBlock.timezone,
+                  weekly_availability: selectedBlock.weekly_availability,
+                  is_default: true,
+                })
+                // Then update the original block
+                await updateExistingBlock(formState, editingBlockId)
+                showSuccessToast(
+                  'Availability block updated',
+                  `${formState.title} has been updated successfully.`
+                )
+                handleClose()
+              } catch (updateError: unknown) {
+                showErrorToast(
+                  'Error',
+                  'Failed to update default availability block.'
+                )
+              } finally {
+                setIsSaving(false)
+              }
+            }
+          )
+          return
+        }
+
         await updateExistingBlock(formState, editingBlockId)
         showSuccessToast(
           'Availability block updated',
@@ -157,7 +215,7 @@ export const useAvailabilityBlockHandlers = ({
         )
         handleClose()
       }
-    } catch (error) {
+    } catch (error: unknown) {
       showErrorToast(
         'Error',
         'Failed to save availability block. Please try again.'
@@ -177,6 +235,63 @@ export const useAvailabilityBlockHandlers = ({
         )
         onClose()
       } catch (error: unknown) {
+        // Check if it's a default block deletion error
+        if (error instanceof Error) {
+          try {
+            const parsed = JSON.parse(error.message)
+            if (
+              parsed.error === 'Cannot delete the default availability block'
+            ) {
+              // Show modal to select new default
+              handleShowSelectDefaultModal(
+                'Select New Default Availability',
+                'You cannot delete the default availability block. Please select a new default availability block first.',
+                'Set as Default & Delete',
+                async (selectedBlockId: string) => {
+                  try {
+                    setIsSaving(true)
+                    // Get the selected block data
+                    const selectedBlock = existingBlocks?.find(
+                      block => block.id === selectedBlockId
+                    )
+                    if (!selectedBlock) {
+                      throw new Error('Selected block not found')
+                    }
+
+                    // First set the selected block as default
+                    await updateBlock.mutateAsync({
+                      id: selectedBlockId,
+                      title: selectedBlock.title,
+                      timezone: selectedBlock.timezone,
+                      weekly_availability: selectedBlock.weekly_availability,
+                      is_default: true,
+                    })
+                    // Then delete the original block
+                    await deleteExistingBlock(editingBlockId)
+                    showSuccessToast(
+                      'Availability block deleted',
+                      'The availability block has been deleted successfully.'
+                    )
+                    onClose()
+                  } catch (updateError: unknown) {
+                    showErrorToast(
+                      'Error',
+                      'Failed to update default availability block.'
+                    )
+                  } finally {
+                    setIsSaving(false)
+                  }
+                }
+              )
+              return
+            }
+          } catch {
+            showErrorToast(
+              'Error',
+              'Failed to delete availability block. Please try again.'
+            )
+          }
+        }
         showDeleteErrorToast(error)
       }
     }
@@ -190,18 +305,43 @@ export const useAvailabilityBlockHandlers = ({
     setShowDeleteConfirmation(false)
   }
 
+  const handleShowSelectDefaultModal = (
+    title: string,
+    description: string,
+    confirmButtonText: string,
+    onConfirm: (selectedBlockId: string) => void
+  ) => {
+    setSelectDefaultModalConfig({
+      title,
+      description,
+      confirmButtonText,
+      onConfirm,
+    })
+    setShowSelectDefaultModal(true)
+  }
+
+  const handleCloseSelectDefaultModal = () => {
+    setShowSelectDefaultModal(false)
+    setSelectDefaultModalConfig(null)
+  }
+
   return {
     isEditing,
     editingBlockId,
     duplicatingBlockId,
     showDeleteConfirmation,
+    showSelectDefaultModal,
+    selectDefaultModalConfig,
     isSaving,
     handleCreateBlock,
     handleEditBlock,
     handleDuplicateBlock,
+    handleClose,
     handleSaveNewBlock,
     handleDeleteBlock,
     handleShowDeleteConfirmation,
     handleCancelDelete,
+    handleShowSelectDefaultModal,
+    handleCloseSelectDefaultModal,
   }
 }

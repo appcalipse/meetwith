@@ -13,6 +13,9 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
+  Radio,
+  RadioGroup,
+  Stack,
   Switch,
   Text,
   Tooltip,
@@ -48,6 +51,16 @@ interface AvailabilityModalProps {
   editingBlockId: string | null
   duplicatingBlockId: string | null
   showDeleteConfirmation: boolean
+  showSelectDefaultModal?: boolean
+  selectDefaultModalConfig?: {
+    title: string
+    description: string
+    confirmButtonText: string
+    onConfirm: (selectedBlockId: string) => void
+  }
+  availableBlocks?: AvailabilityBlock[]
+  currentDefaultBlockId?: string
+  onCloseSelectDefaultModal?: () => void
   formState: {
     title: string
     timezone: string | null | undefined
@@ -74,6 +87,11 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
   editingBlockId,
   duplicatingBlockId,
   showDeleteConfirmation,
+  showSelectDefaultModal,
+  selectDefaultModalConfig,
+  availableBlocks,
+  currentDefaultBlockId,
+  onCloseSelectDefaultModal,
   formState,
   onTitleChange,
   onTimezoneChange,
@@ -88,10 +106,14 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
   onMeetingTypesChange,
 }) => {
   const [useDirectInput, setUseDirectInput] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<Set<number>>(
+    new Set()
+  )
   const toast = useToast()
   const [selectedMeetingTypes, setSelectedMeetingTypes] = useState<
     Option<string>[]
   >([])
+  const [selectedBlockId, setSelectedBlockId] = useState<string>('')
   const hasInitialized = useRef(false)
 
   const { meetingTypes: allMeetingTypes } = useAllMeetingTypes()
@@ -214,12 +236,33 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
     })
   }
 
+  const handleValidationChange = (weekday: number, isValid: boolean) => {
+    setValidationErrors(prev => {
+      const newErrors = new Set(prev)
+      if (isValid) {
+        newErrors.delete(weekday)
+      } else {
+        newErrors.add(weekday)
+      }
+      return newErrors
+    })
+  }
+
+  const hasValidationErrors = validationErrors.size > 0
+
   const toggleInputMode = () => {
     setUseDirectInput(!useDirectInput)
   }
 
+  const handleClose = () => {
+    if (showSelectDefaultModal) {
+      setSelectedBlockId('')
+    }
+    onClose()
+  }
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+    <Modal isOpen={isOpen} onClose={handleClose} isCentered>
       <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
       <ModalContent
         bg="neutral.900"
@@ -261,21 +304,156 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
             },
           }}
         >
-          {!showDeleteConfirmation ? (
+          {showSelectDefaultModal ? (
             <>
               <ModalHeader color="neutral.0" pb={2}>
-                <Flex justify="space-between" align="center">
-                  <Flex alignItems="flex-end" gap={2}>
+                <Text color="neutral.0" fontWeight={700} fontSize={22}>
+                  {selectDefaultModalConfig?.title}
+                </Text>
+              </ModalHeader>
+
+              <ModalBody pb={6} px={{ base: 4, md: 6 }}>
+                <VStack spacing={6} align="stretch">
+                  <Text color="neutral.300" fontSize={16}>
+                    {selectDefaultModalConfig?.description}
+                  </Text>
+
+                  {availableBlocks && availableBlocks.length === 0 ? (
+                    <Box
+                      bg="neutral.800"
+                      borderRadius={8}
+                      p={4}
+                      border="1px solid"
+                      borderColor="neutral.700"
+                    >
+                      <Text color="neutral.300" fontSize={14}>
+                        No other availability blocks available. Please create
+                        another availability block first.
+                      </Text>
+                    </Box>
+                  ) : (
+                    <RadioGroup
+                      value={selectedBlockId}
+                      onChange={setSelectedBlockId}
+                    >
+                      <Stack spacing={3}>
+                        {availableBlocks
+                          ?.filter(block => block.id !== currentDefaultBlockId)
+                          .map(block => (
+                            <Box
+                              key={block.id}
+                              bg="neutral.850"
+                              borderRadius={8}
+                              p={4}
+                              border="1px solid"
+                              borderColor={
+                                selectedBlockId === block.id
+                                  ? 'primary.200'
+                                  : 'neutral.700'
+                              }
+                              _hover={{
+                                borderColor: 'primary.200',
+                              }}
+                              cursor="pointer"
+                              onClick={() => setSelectedBlockId(block.id)}
+                            >
+                              <Radio
+                                value={block.id}
+                                colorScheme="orange"
+                                isChecked={selectedBlockId === block.id}
+                              >
+                                <VStack align="start" spacing={1} ml={2}>
+                                  <Text
+                                    color="neutral.0"
+                                    fontWeight={500}
+                                    fontSize={16}
+                                  >
+                                    {block.title}
+                                  </Text>
+                                  <Text color="neutral.300" fontSize={14}>
+                                    {block.timezone}
+                                  </Text>
+                                </VStack>
+                              </Radio>
+                            </Box>
+                          ))}
+                      </Stack>
+                    </RadioGroup>
+                  )}
+
+                  <Flex
+                    justify="space-between"
+                    align="center"
+                    pt={4}
+                    gap={4}
+                    flexDirection={{ base: 'column', sm: 'row' }}
+                  >
+                    <Button
+                      bg="transparent"
+                      color="primary.200"
+                      _hover={{ bg: 'transparent' }}
+                      fontSize={16}
+                      fontWeight={700}
+                      width={{ base: '100%', sm: '100px' }}
+                      height="48px"
+                      border="1px solid"
+                      borderColor="primary.200"
+                      borderRadius={8}
+                      onClick={() => {
+                        setSelectedBlockId('')
+                        if (onCloseSelectDefaultModal) {
+                          onCloseSelectDefaultModal()
+                        }
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      colorScheme="orange"
+                      bg="primary.200"
+                      color="neutral.800"
+                      _hover={{ bg: 'primary.200' }}
+                      size="sm"
+                      onClick={() => {
+                        if (selectedBlockId && selectDefaultModalConfig) {
+                          selectDefaultModalConfig.onConfirm(selectedBlockId)
+                          setSelectedBlockId('')
+                        }
+                      }}
+                      px={6}
+                      height="48px"
+                      borderRadius={8}
+                      isLoading={isLoading}
+                      isDisabled={
+                        !selectedBlockId ||
+                        !availableBlocks ||
+                        availableBlocks.length === 0
+                      }
+                    >
+                      {selectDefaultModalConfig?.confirmButtonText}
+                    </Button>
+                  </Flex>
+                </VStack>
+              </ModalBody>
+            </>
+          ) : !showDeleteConfirmation ? (
+            <>
+              {/* Sticky header for edit and duplicate modes */}
+              {(isEditing || duplicatingBlockId) && (
+                <Box
+                  position="sticky"
+                  top={0}
+                  bg="neutral.900"
+                  zIndex={1}
+                  px={{ base: 4, md: 6 }}
+                  py={4}
+                >
+                  <Flex justify="space-between" align="center">
                     <Text color="neutral.0" fontWeight={700} fontSize={22}>
                       {isEditing
-                        ? 'Edit'
-                        : duplicatingBlockId
-                        ? 'Duplicate'
-                        : 'New'}{' '}
-                      Availability Block
+                        ? 'Edit Availability Block'
+                        : 'New Availability Block'}
                     </Text>
-                  </Flex>
-                  {(isEditing || duplicatingBlockId) && (
                     <Button
                       colorScheme="orange"
                       bg="primary.200"
@@ -283,32 +461,43 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       _hover={{ bg: 'primary.200' }}
                       size="sm"
                       onClick={handleSave}
-                      width={{ base: '60px', md: '70px' }}
+                      width={{ base: '100px', md: '120px' }}
                       height={{ base: '36px', md: '40px' }}
                       borderRadius={8}
                       isLoading={isLoading}
-                      isDisabled={isLoading}
+                      isDisabled={isLoading || hasValidationErrors}
                     >
-                      Save
+                      Save changes
                     </Button>
-                  )}
-                </Flex>
-                <HStack spacing={4} mt={5}>
-                  <Switch
-                    size="lg"
-                    colorScheme="primary"
-                    isChecked={formState.isDefault}
-                    _active={{ border: 'none' }}
-                    onChange={e => onIsDefaultChange(e.target.checked)}
-                  />
-                  <Text color="neutral.0" fontSize={16} fontWeight={700}>
-                    Set as default
+                  </Flex>
+                </Box>
+              )}
+
+              {/* Regular header for create mode */}
+              {!isEditing && !duplicatingBlockId && (
+                <ModalHeader color="neutral.0" pb={2}>
+                  <Text color="neutral.0" fontWeight={700} fontSize={22}>
+                    New Availability Block
                   </Text>
-                </HStack>
-              </ModalHeader>
+                </ModalHeader>
+              )}
 
               <ModalBody pb={6} px={{ base: 4, md: 6 }}>
                 <VStack spacing={6} align="stretch">
+                  {/* Set as default switch - moved from header to body */}
+                  <HStack spacing={4}>
+                    <Switch
+                      size="lg"
+                      colorScheme="primary"
+                      isChecked={formState.isDefault}
+                      _active={{ border: 'none' }}
+                      onChange={e => onIsDefaultChange(e.target.checked)}
+                    />
+                    <Text color="neutral.0" fontSize={16} fontWeight={700}>
+                      Set as default
+                    </Text>
+                  </HStack>
+
                   <FormControl>
                     <FormLabel
                       color="neutral.0"
@@ -445,6 +634,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                           onChange={onAvailabilityChange}
                           onCopyToDays={handleCopyToDaysLocal}
                           useDirectInput={useDirectInput}
+                          onValidationChange={handleValidationChange}
                         />
                       ))}
                     </Box>
@@ -481,13 +671,13 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                           _hover={{ bg: 'primary.200' }}
                           size="sm"
                           onClick={handleSave}
-                          width={{ base: '100%', sm: '70px' }}
+                          width={{ base: '100%', sm: '120px' }}
                           height="48px"
                           borderRadius={8}
                           isLoading={isLoading}
-                          isDisabled={isLoading}
+                          isDisabled={isLoading || hasValidationErrors}
                         >
-                          Save
+                          Create block
                         </Button>
                       )}
                       {isEditing && (
@@ -498,7 +688,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                           _hover={{ bg: 'red.600' }}
                           size="sm"
                           onClick={onShowDeleteConfirmation}
-                          width={{ base: '100%', sm: '253px' }}
+                          px={6}
                           height="48px"
                           borderRadius={8}
                           fontSize={16}

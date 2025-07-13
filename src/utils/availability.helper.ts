@@ -274,6 +274,22 @@ export const validateTimeFormat = (value: string): boolean => {
   return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
 }
 
+export const validateTimeRange = (start: string, end: string): boolean => {
+  // First validate the time format
+  if (!validateTimeFormat(start) || !validateTimeFormat(end)) {
+    return false
+  }
+
+  const [startHours, startMinutes] = start.split(':').map(Number)
+  const [endHours, endMinutes] = end.split(':').map(Number)
+
+  const startTotalMinutes = startHours * 60 + startMinutes
+  const endTotalMinutes = endHours * 60 + endMinutes
+
+  // Start time should be before end time
+  return startTotalMinutes < endTotalMinutes
+}
+
 export const sortAvailabilitiesByWeekday = (
   availabilities: Array<{ weekday: number; ranges: TimeRange[] }>
 ) => {
