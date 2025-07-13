@@ -71,15 +71,18 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     editingBlockId,
     duplicatingBlockId,
     showDeleteConfirmation,
+    showSelectDefaultModal,
+    selectDefaultModalConfig,
     isSaving,
     handleCreateBlock,
     handleEditBlock,
     handleDuplicateBlock,
-    // handleClose,
+    handleClose,
     handleSaveNewBlock,
     handleDeleteBlock,
     handleShowDeleteConfirmation,
     handleCancelDelete,
+    handleCloseSelectDefaultModal,
   } = useAvailabilityBlockHandlers({
     createBlock,
     updateBlock,
@@ -94,6 +97,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     onOpen,
     onClose,
     onMeetingTypesSave: handleMeetingTypesSave,
+    existingBlocks: availabilityBlocks,
   })
 
   if (isLoading) {
@@ -182,11 +186,16 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
       <AvailabilityModal
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={handleClose}
         isEditing={isEditing}
         editingBlockId={editingBlockId}
         duplicatingBlockId={duplicatingBlockId}
         showDeleteConfirmation={showDeleteConfirmation}
+        showSelectDefaultModal={showSelectDefaultModal}
+        selectDefaultModalConfig={selectDefaultModalConfig || undefined}
+        availableBlocks={availabilityBlocks}
+        currentDefaultBlockId={editingBlockId || undefined}
+        onCloseSelectDefaultModal={handleCloseSelectDefaultModal}
         formState={formState}
         onTitleChange={setTitle}
         onTimezoneChange={setTimezone}

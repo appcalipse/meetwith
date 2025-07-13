@@ -26,34 +26,42 @@ export const useAvailabilityBlockMutations = ({
   onMeetingTypesSave,
 }: UseAvailabilityBlockMutationsProps) => {
   const createNewBlock = async (formState: FormState) => {
-    const newBlock = await createBlock.mutateAsync({
-      title: formState.title,
-      timezone: formState.timezone || 'Africa/Lagos',
-      weekly_availability: formState.availabilities,
-      is_default: formState.isDefault,
-    })
+    try {
+      const newBlock = await createBlock.mutateAsync({
+        title: formState.title,
+        timezone: formState.timezone || 'Africa/Lagos',
+        weekly_availability: formState.availabilities,
+        is_default: formState.isDefault,
+      })
 
-    if (onMeetingTypesSave && newBlock?.id) {
-      await onMeetingTypesSave(newBlock.id)
+      if (onMeetingTypesSave && newBlock?.id) {
+        await onMeetingTypesSave(newBlock.id)
+      }
+
+      return newBlock
+    } catch (error: unknown) {
+      throw error
     }
-
-    return newBlock
   }
 
   const updateExistingBlock = async (
     formState: FormState,
     editingBlockId: string
   ) => {
-    await updateBlock.mutateAsync({
-      id: editingBlockId,
-      title: formState.title,
-      timezone: formState.timezone || 'Africa/Lagos',
-      weekly_availability: formState.availabilities,
-      is_default: formState.isDefault,
-    })
+    try {
+      await updateBlock.mutateAsync({
+        id: editingBlockId,
+        title: formState.title,
+        timezone: formState.timezone || 'Africa/Lagos',
+        weekly_availability: formState.availabilities,
+        is_default: formState.isDefault,
+      })
 
-    if (onMeetingTypesSave && editingBlockId) {
-      await onMeetingTypesSave(editingBlockId)
+      if (onMeetingTypesSave && editingBlockId) {
+        await onMeetingTypesSave(editingBlockId)
+      }
+    } catch (error: unknown) {
+      throw error
     }
   }
 

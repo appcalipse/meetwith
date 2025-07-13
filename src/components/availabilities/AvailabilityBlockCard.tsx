@@ -123,38 +123,38 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
         </Text>
 
         {/* Associated Meeting Types */}
-        <Box width="100%">
-          <Text color="neutral.300" fontWeight={500} fontSize={16} mb={2}>
-            Associated Meeting Types:
-          </Text>
-          {isMeetingTypesLoading ? (
-            <Text color="neutral.400" fontSize={14}>
-              Loading...
-            </Text>
-          ) : meetingTypes.filter(type => type && type.title).length > 0 ? (
-            <Flex flexWrap="wrap" gap={2}>
-              {meetingTypes
-                .filter(type => type && type.title)
-                .map(meetingType => (
-                  <Badge
-                    key={meetingType.id}
-                    background="neutral.700"
-                    color="neutral.0"
-                    borderRadius={6}
-                    fontSize={12}
-                    px={2}
-                    py={1}
-                  >
-                    {meetingType.title}
-                  </Badge>
-                ))}
+        {meetingTypes.filter(type => type && type.title).length > 0 && (
+          <Box width="100%">
+            <Flex align="center" gap={2} flexWrap="wrap">
+              <Text color="neutral.300" fontWeight={500} fontSize={16}>
+                Associated Meeting Types:
+              </Text>
+              {isMeetingTypesLoading ? (
+                <Text color="neutral.400" fontSize={14}>
+                  Loading...
+                </Text>
+              ) : (
+                <Flex flexWrap="wrap" gap={2}>
+                  {meetingTypes
+                    .filter(type => type && type.title)
+                    .map(meetingType => (
+                      <Badge
+                        key={meetingType.id}
+                        background="neutral.700"
+                        color="neutral.0"
+                        borderRadius={6}
+                        fontSize={12}
+                        px={2}
+                        py={1}
+                      >
+                        {meetingType.title}
+                      </Badge>
+                    ))}
+                </Flex>
+              )}
             </Flex>
-          ) : (
-            <Text color="neutral.400" fontSize={14}>
-              No meeting types associated
-            </Text>
-          )}
-        </Box>
+          </Box>
+        )}
       </VStack>
 
       <Flex

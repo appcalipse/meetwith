@@ -7,6 +7,13 @@ export const useAvailabilityBlockUIState = () => {
     null
   )
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+  const [showSelectDefaultModal, setShowSelectDefaultModal] = useState(false)
+  const [selectDefaultModalConfig, setSelectDefaultModalConfig] = useState<{
+    title: string
+    description: string
+    confirmButtonText: string
+    onConfirm: (selectedBlockId: string) => void
+  } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
   const resetUIState = () => {
@@ -14,6 +21,8 @@ export const useAvailabilityBlockUIState = () => {
     setEditingBlockId(null)
     setDuplicatingBlockId(null)
     setShowDeleteConfirmation(false)
+    setShowSelectDefaultModal(false)
+    setSelectDefaultModalConfig(null)
     setIsSaving(false)
   }
 
@@ -43,6 +52,8 @@ export const useAvailabilityBlockUIState = () => {
     editingBlockId,
     duplicatingBlockId,
     showDeleteConfirmation,
+    showSelectDefaultModal,
+    selectDefaultModalConfig,
     isSaving,
     setIsSaving,
     resetUIState,
@@ -50,5 +61,7 @@ export const useAvailabilityBlockUIState = () => {
     setDuplicatingState,
     setCreateState,
     setShowDeleteConfirmation,
+    setShowSelectDefaultModal,
+    setSelectDefaultModalConfig,
   }
 }
