@@ -380,113 +380,6 @@ const buildMeetingData = async (
   }
 }
 
-const buildGuestMeetingData = async (
-  schedulingType: SchedulingType,
-  startTime: Date,
-  endTime: Date,
-  sanitizedParticipants: ParticipantInfo[],
-  meetingProvider: MeetingProvider,
-  meetingContent?: string,
-  meetingUrl = '',
-  meetingId = '',
-  meetingTitle = 'No Title',
-  meetingReminders?: Array<MeetingReminders>,
-  meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions?: MeetingPermissions[],
-  participantsToKeep?: { [accountOrEmail: string]: string }
-): Promise<MeetingCreationRequest> => {
-  if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
-    if (isValidEmail(meetingUrl)) {
-      throw new InvalidURL()
-    }
-    if (!isValidUrl(meetingUrl)) {
-      meetingUrl = `https://${meetingUrl}`
-      if (!isValidUrl(meetingUrl)) {
-        throw new InvalidURL()
-      }
-    }
-  }
-
-  const privateInfo: MeetingInfo = {
-    created_at: new Date(),
-    participants: sanitizedParticipants,
-    title: meetingTitle,
-    content: meetingContent,
-    meeting_url: meetingUrl,
-    change_history_paths: [],
-    related_slot_ids: [],
-    meeting_id: meetingId,
-    reminders: meetingReminders,
-    provider: meetingProvider,
-    recurrence: meetingRepeat,
-    permissions: selectedPermissions,
-  }
-  // first pass to make sure that we are keeping the existing slot id
-  for (const participant of sanitizedParticipants) {
-    const existingSlotId =
-      participantsToKeep?.[
-        participant.account_address || participant.guest_email || ''
-      ]
-    participant.slot_id = existingSlotId || participant.slot_id
-  }
-
-  const allSlotIds = sanitizedParticipants
-    .map(it => it.slot_id!)
-    .filter(val => val !== undefined)
-
-  const participantsMappings = []
-
-  for (const participant of sanitizedParticipants) {
-    const encodingKey = process.env.NEXT_PUBLIC_SERVER_PUB_KEY!
-
-    const privateInfoComplete = JSON.stringify({
-      ...privateInfo,
-      related_slot_ids: allSlotIds.filter(id => id !== participant.slot_id),
-    } as MeetingInfo)
-
-    const participantMapping: RequestParticipantMapping = {
-      account_address: participant.account_address || '',
-      slot_id: participant.slot_id,
-      type: participant.type,
-      meeting_id: meetingId,
-      privateInfo: await encryptWithPublicKey(encodingKey, privateInfoComplete),
-      privateInfoHash: simpleHash(privateInfoComplete),
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      name: participant.name || '',
-      guest_email: participant.guest_email,
-      status:
-        participant.type === ParticipantType.Scheduler
-          ? ParticipationStatus.Accepted
-          : ParticipationStatus.Pending,
-      mappingType: !!participantsToKeep?.[
-        participant.account_address || participant.guest_email || ''
-      ]
-        ? ParticipantMappingType.KEEP
-        : ParticipantMappingType.ADD,
-    }
-
-    participantsMappings.push(participantMapping)
-  }
-
-  return {
-    type: schedulingType,
-    start: startTime,
-    end: endTime,
-    meeting_id: meetingId,
-    participants_mapping: participantsMappings,
-    meetingTypeId: '',
-    meeting_url: privateInfo['meeting_url'],
-    content: privateInfo['content'],
-    title: privateInfo['title'],
-    meetingProvider,
-    meetingReminders,
-    meetingRepeat,
-    allSlotIds,
-    meetingPermissions: selectedPermissions,
-    ignoreOwnerAvailability: false,
-  }
-}
-
 const updateMeetingAsGuest = async (
   slotId: string,
   startTime: Date,
@@ -500,20 +393,18 @@ const updateMeetingAsGuest = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
-  // Get the slot to find the meeting ID
-  const existingSlot = await getMeetingGuest(slotId)
-  if (!existingSlot) {
-    throw new Error('Meeting not found')
+  const guestMeetingData = await getMeetingGuest(slotId)
+  if (!guestMeetingData) {
+    throw new Error('Guest meeting data not found')
   }
 
-  // Get the meeting that corresponds to this slot
-  const existingMeeting = await getConferenceMeeting(existingSlot.id!)
-  if (!existingMeeting) {
-    throw new Error('Meeting not found')
+  const fullMeetingData = await getConferenceMeeting(guestMeetingData.id!)
+  if (!fullMeetingData) {
+    throw new Error('Full meeting data not found')
   }
 
   // Get all slots for this meeting from the database
-  const allSlots = await getSlotsByIds(existingMeeting.slots)
+  const allSlots = await getSlotsByIds(fullMeetingData.slots)
 
   // Find a slot that actually exists in the db
   const validSlot = allSlots.find(
@@ -525,39 +416,76 @@ const updateMeetingAsGuest = async (
 
   const validSlotId = validSlot.id
 
-  // Get the current version for the update operation
   const currentVersion = validSlot.version
 
-  // Get existing slot IDs from the meeting slots
-  const existingSlotIds = existingMeeting.slots || []
+  const existingSlotIds = fullMeetingData.slots || []
+
+  const existingParticipants: ParticipantInfo[] = []
+
+  for (const slot of allSlots) {
+    if (slot.account_address) {
+      existingParticipants.push({
+        account_address: slot.account_address,
+        type: ParticipantType.Owner,
+        slot_id: slot.id!,
+        meeting_id: guestMeetingData.id,
+        status: ParticipationStatus.Accepted,
+        name: '', // Will be filled by handleParticipants
+      })
+    }
+  }
+
+  // Combine existing participants with new participants
+  const allParticipants = [...existingParticipants, ...participants]
 
   const participantsToKeep: { [participantKey: string]: string } = {}
 
-  participants.forEach((participant, index) => {
+  existingParticipants.forEach((participant, index) => {
     const participantKey =
-      participant.guest_email || participant.account_address || ''
+      participant.account_address || participant.guest_email || ''
     if (index < existingSlotIds.length) {
       participantsToKeep[participantKey] = existingSlotIds[index]
     }
   })
 
-  // Build participant data for guests
-  const participantData = await handleParticipants(participants, undefined)
+  // Map existing guest participants to their slot IDs from the original meeting
+  for (const participant of participants) {
+    if (participant.guest_email) {
+      participantsToKeep[participant.guest_email] = slotId
+    }
+  }
 
-  const meetingData = await buildGuestMeetingData(
+  // Build participant data for guests
+  const participantData = await handleParticipants(allParticipants, undefined)
+
+  for (const participant of participantData.sanitizedParticipants) {
+    if (
+      participant.guest_email &&
+      participantsToKeep[participant.guest_email]
+    ) {
+      participant.slot_id = participantsToKeep[participant.guest_email]
+    }
+  }
+
+  const finalMeetingUrl = meetingUrl || fullMeetingData.meeting_url || ''
+
+  const meetingData = await buildMeetingData(
     SchedulingType.GUEST,
+    'no_type',
     startTime,
     endTime,
     participantData.sanitizedParticipants,
+    participantData.allAccounts,
+    participantsToKeep,
     meetingProvider,
+    undefined,
     meetingContent,
-    '', // Empty meeting URL - will be preserved by database
-    existingSlot.id,
+    finalMeetingUrl,
+    guestMeetingData.id,
     meetingTitle,
     meetingReminders,
     meetingRepeat,
-    selectedPermissions,
-    participantsToKeep
+    selectedPermissions
   )
 
   const payload = {

@@ -2592,36 +2592,14 @@ const updateMeeting = async (
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
+  // TODO: for now
+  let meetingProvider = MeetingProvider.CUSTOM
+  if (meetingUpdateRequest.meeting_url.includes('huddle')) {
+    meetingProvider = MeetingProvider.HUDDLE
+  }
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
   )
-
-  // Check if this is a guest update
-  const isGuestUpdate = !participantActing.account_address
-
-  let meetingUrl = meetingUpdateRequest.meeting_url
-  let meetingProvider =
-    meetingUpdateRequest.meetingProvider || MeetingProvider.CUSTOM
-
-  if (isGuestUpdate) {
-    // Preserve existing meeting URL and provider for guest updates
-    meetingUrl = meeting.meeting_url || ''
-    meetingProvider = meeting.provider || MeetingProvider.CUSTOM
-  } else {
-    // For regular updates, detect provider from URL
-    if (meetingUpdateRequest.meeting_url.includes('huddle')) {
-      meetingProvider = MeetingProvider.HUDDLE
-    } else if (meetingUpdateRequest.meeting_url.includes('meet.google.com')) {
-      meetingProvider = MeetingProvider.GOOGLE_MEET
-    } else if (meetingUpdateRequest.meeting_url.includes('zoom.us')) {
-      meetingProvider = MeetingProvider.ZOOM
-    } else if (meetingUpdateRequest.meeting_url.includes('jitsi')) {
-      meetingProvider = MeetingProvider.JITSI_MEET
-    } else {
-      meetingProvider = MeetingProvider.CUSTOM
-    }
-  }
-
   // now that everything happened without error, it is safe to update the root meeting data
   const existingSlots =
     meeting.slots?.filter(
@@ -2639,7 +2617,7 @@ const updateMeeting = async (
     id: meetingUpdateRequest.meeting_id,
     start: meetingUpdateRequest.start,
     end: meetingUpdateRequest.end,
-    meeting_url: meetingUrl,
+    meeting_url: meetingUpdateRequest.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
     provider: meetingProvider,
     recurrence: meetingUpdateRequest.meetingRepeat,
@@ -2653,25 +2631,6 @@ const updateMeeting = async (
       'Could not update your meeting right now, get in touch with us if the problem persists'
     )
 
-  // For guest updates, we need to use the calendar owner's slot ID for update links
-  let participantsForNotification = meetingUpdateRequest.participants_mapping
-  if (isGuestUpdate) {
-    // Find the calendar owner's slot ID
-    const ownerParticipant = meetingUpdateRequest.participants_mapping.find(
-      p => p.type === ParticipantType.Owner
-    )
-    const ownerSlotId = ownerParticipant?.slot_id
-
-    if (ownerSlotId) {
-      // Replace all slot IDs with the owner's slot ID for consistent update links
-      participantsForNotification =
-        meetingUpdateRequest.participants_mapping.map(participant => ({
-          ...participant,
-          slot_id: ownerSlotId,
-        }))
-    }
-  }
-
   const body: MeetingCreationSyncRequest = {
     participantActing,
     meeting_id: meetingUpdateRequest.meeting_id,
@@ -2679,9 +2638,9 @@ const updateMeeting = async (
     end: meetingUpdateRequest.end,
     created_at: meetingResponse.created_at!,
     timezone,
-    meeting_url: meetingUrl,
-    meetingProvider: meetingProvider,
-    participants: participantsForNotification,
+    meeting_url: meetingUpdateRequest.meeting_url,
+    meetingProvider: meetingUpdateRequest.meetingProvider,
+    participants: meetingUpdateRequest.participants_mapping,
     title: meetingUpdateRequest.title,
     content: meetingUpdateRequest.content,
     changes: changingTime ? { dateChange: changingTime } : undefined,
