@@ -437,6 +437,7 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
 
   return account
 }
+// TODO: use custom error here
 const updatePreferenceAvatar = async (
   address: string,
   filename: string,
@@ -465,9 +466,14 @@ const updatePreferenceAvatar = async (
     Sentry.captureException(urlError)
     throw new Error("Couldn't get avatar URL")
   }
-
-  // console.log(data, publicURL)
-  return data
+  const { error: updateError } = await db.supabase
+    .from('account_preferences')
+    .update({ avatar_url: publicURL })
+    .eq('owner_account_address', address.toLowerCase())
+  if (updateError) {
+    throw new Error("Couldn't update avatar URL in preferences")
+  }
+  return publicURL
 }
 const getAccountNonce = async (identifier: string): Promise<number> => {
   const query = validate(identifier)
