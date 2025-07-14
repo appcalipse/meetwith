@@ -41,7 +41,7 @@ const EditImageModal = (props: IEditImageModalProps) => {
           props.imageSrc,
           croppedAreaPixels
         )
-        console.log('donee', { croppedImage })
+        // console.log('donee', { croppedImage })
         setCroppedImage(croppedImage)
       } catch (e) {
         console.error(e)
@@ -56,7 +56,7 @@ const EditImageModal = (props: IEditImageModalProps) => {
     try {
       if (!croppedImage) return
       const blob = new Blob([croppedImage], { type: 'image/jpeg' })
-      console.log(blob)
+      // console.log(blob)
       const formdata = new FormData()
       formdata.append(
         'avatar',
