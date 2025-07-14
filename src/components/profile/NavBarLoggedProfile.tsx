@@ -74,9 +74,9 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         backgroundColor={'neutral.50'}
       >
         <Box width="24px" height="24px" mr={{ base: 0, lg: 2 }}>
-          {props.account.preferences?.avatar ? (
+          {props.account.preferences?.avatar_url ? (
             <Image
-              src={props.account.preferences.avatar}
+              src={props.account.preferences.avatar_url}
               alt="Account avatar"
               width="24px"
               height="24px"
