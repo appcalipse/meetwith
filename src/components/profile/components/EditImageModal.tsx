@@ -12,10 +12,11 @@ import {
   SliderThumb,
   SliderTrack,
   Text,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { saveAvatar } from '@utils/api_helper'
-import { arrayBufferToDataUrl, getCroppedImg } from '@utils/image-utils'
+import { getCroppedImg } from '@utils/image-utils'
 import React, { useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { Area } from 'react-easy-crop/types'
@@ -24,7 +25,8 @@ interface IEditImageModalProps {
   isDialogOpen: boolean
   onDialogClose: () => void
   imageSrc: string | undefined
-  accountAdress: string | undefined
+  accountAddress: string | undefined
+  changeAvatar: (image: string) => void
 }
 
 const EditImageModal = (props: IEditImageModalProps) => {
@@ -33,6 +35,7 @@ const EditImageModal = (props: IEditImageModalProps) => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [croppedImage, setCroppedImage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const toast = useToast()
 
   const showCroppedImage = async () => {
     if (croppedAreaPixels && props.imageSrc) {
@@ -55,22 +58,35 @@ const EditImageModal = (props: IEditImageModalProps) => {
     setSaving(true)
     try {
       if (!croppedImage) return
-      const blob = new Blob([croppedImage], { type: 'image/jpeg' })
-      // console.log(blob)
+
+      const response = await fetch(croppedImage)
+      const blob = await response.blob()
       const formdata = new FormData()
       formdata.append(
         'avatar',
         blob,
-        `cropped-avatar-${props.accountAdress}.jpg`
+        `cropped-avatar-${props.accountAddress}.jpg`
       )
-      await saveAvatar(formdata, props.accountAdress as string)
+      const url = await saveAvatar(formdata, props.accountAddress as string)
+      if (url) {
+        props.changeAvatar(url)
+      } else {
+        toast({
+          title: 'Error saving image',
+          description:
+            'There was an error saving your image. Please try again.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+      }
     } catch (e) {
     } finally {
-      props.onDialogClose()
       setCroppedImage(null)
       setCroppedAreaPixels(null)
       setCrop({ x: 0, y: 0 })
       setZoom(1)
+      props.onDialogClose()
     }
     setSaving(false)
   }
