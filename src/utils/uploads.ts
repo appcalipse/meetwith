@@ -20,7 +20,7 @@ type NextApiHandlerWithFile = (
   req: handlerReqWithFile,
   res: NextApiResponse
 ) => void | Promise<void>
-
+// TODO: custom validator logic
 export function withFileUpload(handler: NextApiHandlerWithFile) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     if (req.method !== 'POST') {
