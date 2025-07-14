@@ -8546,6 +8546,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/busboy@npm:^1":
+  version: 1.5.4
+  resolution: "@types/busboy@npm:1.5.4"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/0bdd209069a445d5a71277e558978ec0db1b1a3d108335da96477d017177ae349c4d81d604db0bea19e3c99c10af2d60dbac20e36cef7cb7a517e5a4760738bd
+  languageName: node
+  linkType: hard
+
 "@types/caseless@npm:*":
   version: 0.12.5
   resolution: "@types/caseless@npm:0.12.5"
@@ -11892,7 +11901,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"busboy@npm:1.6.0":
+"busboy@npm:1.6.0, busboy@npm:^1.6.0":
   version: 1.6.0
   resolution: "busboy@npm:1.6.0"
   dependencies:
@@ -22832,6 +22841,7 @@ __metadata:
     "@tiptap/react": "npm:^2.2.1"
     "@tiptap/starter-kit": "npm:^2.2.1"
     "@types/amplitude-js": "npm:^8.0.2"
+    "@types/busboy": "npm:^1"
     "@types/crypto-js": "npm:^4.0.2"
     "@types/email-templates": "npm:^8.0.4"
     "@types/ical": "npm:^0.8.0"
@@ -22854,6 +22864,7 @@ __metadata:
     abitype: "npm:^1.0.2"
     amplitude-js: "npm:^8.12.0"
     arrow-keys-react: "npm:^1.0.6"
+    busboy: "npm:^1.6.0"
     chakra-react-select: "npm:^4.7.6"
     cookie: "npm:0.7.0"
     countries-and-timezones: "npm:^3.6.0"
@@ -22912,6 +22923,7 @@ __metadata:
     react-cookie: "npm:^4.1.1"
     react-countdown: "npm:^2.3.6"
     react-dom: "npm:^18.2.0"
+    react-easy-crop: "npm:^5.5.0"
     react-icons: "npm:^4.3.1"
     react-intersection-observer: "npm:^9.4.1"
     react-timezone-select: "npm:^3.2.8"
@@ -24526,6 +24538,13 @@ __metadata:
   version: 4.5.1
   resolution: "normalize-url@npm:4.5.1"
   checksum: 10c0/6362e9274fdcc310f8b17e20de29754c94e1820d864114f03d3bfd6286a0028fc51705fb3fd4e475013357b5cd7421fc17f3aba93f2289056779a9bb23bccf59
+  languageName: node
+  linkType: hard
+
+"normalize-wheel@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "normalize-wheel@npm:1.0.1"
+  checksum: 10c0/5daf4c97e39f36658a5263a6499bbc148676ae2bd85f12c8d03c46ffe7bc3c68d44564c00413d88d0457ac0d94450559bb1c24c2ce7ae0c107031f82d093ac06
   languageName: node
   linkType: hard
 
@@ -27159,6 +27178,19 @@ __metadata:
   peerDependencies:
     react: ^18.2.0
   checksum: 10c0/66dfc5f93e13d0674e78ef41f92ed21dfb80f9c4ac4ac25a4b51046d41d4d2186abc915b897f69d3d0ebbffe6184e7c5876f2af26bfa956f179225d921be713a
+  languageName: node
+  linkType: hard
+
+"react-easy-crop@npm:^5.5.0":
+  version: 5.5.0
+  resolution: "react-easy-crop@npm:5.5.0"
+  dependencies:
+    normalize-wheel: "npm:^1.0.1"
+    tslib: "npm:^2.0.1"
+  peerDependencies:
+    react: ">=16.4.0"
+    react-dom: ">=16.4.0"
+  checksum: 10c0/6cb29a82ecc2b856b81810ba77bf58aef944cccd6ae695a03d8b9fd0558d005eb2530945952851643f6b627d442dbd8e6258ba1a606d44a2582629263379f383
   languageName: node
   linkType: hard
 
@@ -30415,6 +30447,13 @@ __metadata:
   version: 2.7.0
   resolution: "tslib@npm:2.7.0"
   checksum: 10c0/469e1d5bf1af585742128827000711efa61010b699cb040ab1800bcd3ccdd37f63ec30642c9e07c4439c1db6e46345582614275daca3e0f4abae29b0083f04a6
+  languageName: node
+  linkType: hard
+
+"tslib@npm:^2.0.1":
+  version: 2.8.1
+  resolution: "tslib@npm:2.8.1"
+  checksum: 10c0/9c4759110a19c53f992d9aae23aac5ced636e99887b51b9e61def52611732872ff7668757d4e4c61f19691e36f4da981cd9485e869b4a7408d689f6bf1f14e62
   languageName: node
   linkType: hard
 
