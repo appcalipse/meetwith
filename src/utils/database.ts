@@ -437,7 +437,38 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
 
   return account
 }
+const updatePreferenceAvatar = async (
+  address: string,
+  filename: string,
+  buffer: Buffer
+) => {
+  const contentType = `image/${
+    filename.split('.').pop()?.toLowerCase() || 'png'
+  }`
+  const { data, error } = await db.supabase.storage
+    .from('avatars')
+    .upload(`uploads/${Date.now()}-${filename}`, buffer, {
+      contentType,
+      upsert: true,
+    })
+  if (error) {
+    Sentry.captureException(error)
+    throw new Error("Couldn't upload avatar")
+  }
+  if (!data?.Key) {
+    throw new Error("Couldn't get avatar key")
+  }
+  const { publicURL, error: urlError } = db.supabase.storage
+    .from('avatars')
+    .getPublicUrl(data?.Key?.replace('avatars/', ''))
+  if (urlError) {
+    Sentry.captureException(urlError)
+    throw new Error("Couldn't get avatar URL")
+  }
 
+  // console.log(data, publicURL)
+  return data
+}
 const getAccountNonce = async (identifier: string): Promise<number> => {
   const query = validate(identifier)
     ? `id.eq.${identifier}`
@@ -4776,6 +4807,7 @@ export {
   updateCustomSubscriptionDomain,
   updateMeeting,
   updateMeetingType,
+  updatePreferenceAvatar,
   updateRecurringSlots,
   upsertGateCondition,
   workMeetingTypeGates,
