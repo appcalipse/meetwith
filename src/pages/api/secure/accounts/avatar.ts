@@ -18,15 +18,15 @@ const handler = async (req: handlerReqWithFile, res: NextApiResponse) => {
     }
     const { filename, buffer } = avatar
 
-    const account = await updatePreferenceAvatar(
+    const userAvatar = await updatePreferenceAvatar(
       req.session.account!.address,
       filename,
       buffer
     )
-    if (!account) {
+    if (!userAvatar) {
       return res.status(500).json({ error: 'Failed to update avatar' })
     }
-    return res.status(200).json(account)
+    return res.status(200).json(userAvatar)
   }
 
   return res.status(404).send('Not found')
