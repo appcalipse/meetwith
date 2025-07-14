@@ -96,7 +96,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
     currentAccount?.preferences?.avatar_url
   )
-  const [previewUrl, setPreviewUrl] = useState<string | undefined>(null)
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | undefined>()
   const {
     isOpen: isEditImageModalOpen,
@@ -149,6 +148,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         : undefined
     )
     setNewProDomain(currentAccount?.subscriptions?.[0]?.domain ?? '')
+    setAvatarUrl(currentAccount?.preferences?.avatar_url || undefined)
   }
 
   const updateAccountSubs = async () => {
@@ -440,7 +440,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     }
     input.click()
   }
-
   return (
     <VStack gap={4} mb={8} alignItems="start" flex={1}>
       <Block>
@@ -452,12 +451,17 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
             imageSrc={selectedImageUrl}
             isDialogOpen={isEditImageModalOpen}
             onDialogClose={closeEditImageModal}
-            accountAdress={currentAccount?.address}
+            accountAddress={currentAccount?.address}
+            changeAvatar={avatar => {
+              setAvatarUrl(avatar)
+              currentAccount.preferences.avatar_url = avatar
+              login(currentAccount)
+            }}
           />
           <FormControl pt={2}>
             <HStack width="100%" textAlign="center" mb={6}>
               <Box width="64px" height="64px">
-                <Avatar account={currentAccount} />
+                <Avatar account={currentAccount} url={avatarUrl} />
               </Box>
 
               <VStack ml={2} flex={1} alignItems="flex-start">
