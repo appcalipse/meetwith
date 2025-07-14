@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { GuestMeetingCancel } from '@/types/Meeting'
+import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingUpdateRequest } from '@/types/Requests'
 import {
   getConferenceDataBySlotId,
@@ -49,12 +50,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
+      const schedulerParticipant =
+        meetingUpdateRequest.participants_mapping.find(
+          p => p.type === ParticipantType.Scheduler
+        )
+
+      const participantActing = {
+        name: schedulerParticipant?.name || 'Guest',
+        guest_email: schedulerParticipant?.guest_email || '',
+        account_address: schedulerParticipant?.account_address || '',
+      }
+
       const meetingResult = await updateMeeting(
-        {
-          name: 'Guest',
-          guest_email: '',
-          account_address: '',
-        },
+        participantActing,
         meetingUpdateRequest
       )
       return res.status(200).json(meetingResult)
