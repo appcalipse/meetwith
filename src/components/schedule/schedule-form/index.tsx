@@ -487,7 +487,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               <Input
                 type="text"
                 placeholder="insert a custom meeting url"
-                isDisabled={isSchedulingExternal}
+                isDisabled={isSchedulingExternal || selectedType?.fixed_link}
                 my={4}
                 value={meetingUrl}
                 onChange={e => setMeetingUrl(e.target.value)}
