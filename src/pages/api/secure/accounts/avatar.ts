@@ -1,4 +1,6 @@
+import * as Sentry from '@sentry/nextjs'
 import { updatePreferenceAvatar } from '@utils/database'
+import { UploadError } from '@utils/errors'
 import { handlerReqWithFile, withFileUpload } from '@utils/uploads'
 import { NextApiResponse } from 'next'
 
@@ -12,21 +14,41 @@ export const config = {
 
 const handler = async (req: handlerReqWithFile, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    const { avatar } = req.body?.files
-    if (!avatar) {
-      return res.status(400).json({ error: 'File is required' })
-    }
-    const { filename, buffer } = avatar
+    try {
+      if (!req.session.account?.address) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const { avatar } = req.body?.files
+      if (!avatar) {
+        return res.status(400).json({ error: 'File is required' })
+      }
+      const { filename, buffer, mimeType } = avatar
 
-    const userAvatar = await updatePreferenceAvatar(
-      req.session.account!.address,
-      filename,
-      buffer
-    )
-    if (!userAvatar) {
-      return res.status(500).json({ error: 'Failed to update avatar' })
+      const userAvatar = await updatePreferenceAvatar(
+        req.session.account?.address,
+        filename,
+        buffer,
+        mimeType
+      )
+      if (!userAvatar) {
+        return res.status(500).json({ error: 'Failed to update avatar' })
+      }
+      return res.status(200).json(userAvatar)
+    } catch (e) {
+      if (e instanceof UploadError) {
+        return res.status(400).json({ error: e.message })
+      }
+      Sentry.captureException(e, {
+        tags: {
+          route: 'api/secure/accounts/avatar',
+          method: req.method,
+        },
+      })
+      return res.status(500).json({
+        error:
+          'Something went wrong with your avatar upload. Please try again or contact support if the issue persists.',
+      })
     }
-    return res.status(200).json(userAvatar)
   }
 
   return res.status(404).send('Not found')
