@@ -27,10 +27,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MdKeyboard, MdMouse } from 'react-icons/md'
 
 import TimezoneSelector from '@/components/TimezoneSelector'
-import {
-  useAvailabilityBlockMeetingTypes,
-  useUpdateAvailabilityBlockMeetingTypes,
-} from '@/hooks/availability'
+import { useUpdateAvailabilityBlockMeetingTypes } from '@/hooks/availability'
 import { useAllMeetingTypes } from '@/hooks/useAllMeetingTypes'
 import { TimeRange } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
@@ -123,8 +120,8 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
       ? editingBlockId || duplicatingBlockId || ''
       : ''
 
-  const { meetingTypes: currentMeetingTypes } =
-    useAvailabilityBlockMeetingTypes(blockId)
+  const currentBlock = availableBlocks?.find(block => block.id === blockId)
+  const currentMeetingTypes = currentBlock?.meetingTypes || []
 
   const { updateMeetingTypes, isUpdating: isUpdatingMeetingTypes } =
     useUpdateAvailabilityBlockMeetingTypes(blockId)
@@ -352,15 +349,23 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                                   : 'neutral.700'
                               }
                               _hover={{
-                                borderColor: 'primary.200',
+                                borderColor: isLoading
+                                  ? 'neutral.700'
+                                  : 'primary.200',
                               }}
-                              cursor="pointer"
-                              onClick={() => setSelectedBlockId(block.id)}
+                              cursor={isLoading ? 'not-allowed' : 'pointer'}
+                              onClick={() => {
+                                if (!isLoading) {
+                                  setSelectedBlockId(block.id)
+                                }
+                              }}
+                              opacity={isLoading ? 0.6 : 1}
                             >
                               <Radio
                                 value={block.id}
                                 colorScheme="orange"
                                 isChecked={selectedBlockId === block.id}
+                                isDisabled={isLoading}
                               >
                                 <VStack align="start" spacing={1} ml={2}>
                                   <Text
@@ -400,11 +405,11 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       borderColor="primary.200"
                       borderRadius={8}
                       onClick={() => {
-                        setSelectedBlockId('')
                         if (onCloseSelectDefaultModal) {
                           onCloseSelectDefaultModal()
                         }
                       }}
+                      isDisabled={isLoading}
                     >
                       Cancel
                     </Button>
@@ -417,7 +422,6 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       onClick={() => {
                         if (selectedBlockId && selectDefaultModalConfig) {
                           selectDefaultModalConfig.onConfirm(selectedBlockId)
-                          setSelectedBlockId('')
                         }
                       }}
                       px={6}
@@ -427,7 +431,8 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       isDisabled={
                         !selectedBlockId ||
                         !availableBlocks ||
-                        availableBlocks.length === 0
+                        availableBlocks.length === 0 ||
+                        isLoading
                       }
                     >
                       {selectDefaultModalConfig?.confirmButtonText}
@@ -761,6 +766,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                     {/* Session types association section */}
                     <SessionTypesAssociationSection
                       blockId={currentEditingBlock?.id}
+                      availableBlocks={availableBlocks}
                     />
 
                     <Text color="red.500" fontSize={16} fontWeight={500} mb={6}>
@@ -815,19 +821,20 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
   )
 }
 
-const SessionTypesAssociationSection: React.FC<{ blockId?: string }> = ({
-  blockId,
-}) => {
-  const { meetingTypes: associatedMeetingTypes, isLoading } =
-    useAvailabilityBlockMeetingTypes(blockId || '')
-
-  const validAssociatedMeetingTypes = (associatedMeetingTypes || []).filter(
+const SessionTypesAssociationSection: React.FC<{
+  blockId?: string
+  availableBlocks?: AvailabilityBlock[]
+}> = ({ blockId, availableBlocks }) => {
+  // Find the block and get its meeting types
+  const block = availableBlocks?.find(b => b.id === blockId)
+  const associatedMeetingTypes = block?.meetingTypes || []
+  const validAssociatedMeetingTypes = associatedMeetingTypes.filter(
     type => type && type.title
   )
 
   if (!blockId) return null
 
-  if (!isLoading && validAssociatedMeetingTypes.length === 0) return null
+  if (validAssociatedMeetingTypes.length === 0) return null
 
   return (
     <Box mb={4}>
@@ -837,29 +844,23 @@ const SessionTypesAssociationSection: React.FC<{ blockId?: string }> = ({
       <Text color="neutral.0" fontWeight={500} fontSize={16} mb={1}>
         Session types
       </Text>
-      {isLoading ? (
-        <Text color="neutral.400" fontSize={14}>
-          Loading...
-        </Text>
-      ) : (
-        <VStack align="start" spacing={1} mb={2}>
-          {validAssociatedMeetingTypes.map(type => (
-            <Link
-              key={type.id}
-              color="primary.200"
-              textDecoration="underline"
-              fontSize={16}
-              fontWeight={500}
-              href={`/dashboard/meeting-settings?highlight=${type.id}`}
-              isExternal
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {type.title}
-            </Link>
-          ))}
-        </VStack>
-      )}
+      <VStack align="start" spacing={1} mb={2}>
+        {validAssociatedMeetingTypes.map(type => (
+          <Link
+            key={type.id}
+            color="primary.200"
+            textDecoration="underline"
+            fontSize={16}
+            fontWeight={500}
+            href={`/dashboard/meeting-settings?highlight=${type.id}`}
+            isExternal
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {type.title}
+          </Link>
+        ))}
+      </VStack>
     </Box>
   )
 }

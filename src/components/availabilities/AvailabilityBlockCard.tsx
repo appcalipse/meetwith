@@ -10,7 +10,6 @@ import {
 } from '@chakra-ui/react'
 import { AiFillClockCircle } from 'react-icons/ai'
 
-import { useAvailabilityBlockMeetingTypes } from '@/hooks/availability'
 import { AvailabilityBlock } from '@/types/availability'
 import {
   getFormattedSchedule,
@@ -28,9 +27,7 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
   onEdit,
   onDuplicate,
 }) => {
-  // Get meeting types associated with this availability block
-  const { meetingTypes, isLoading: isMeetingTypesLoading } =
-    useAvailabilityBlockMeetingTypes(block.id)
+  const meetingTypes = block.meetingTypes || []
 
   return (
     <Box
@@ -129,29 +126,23 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
               <Text color="neutral.300" fontWeight={500} fontSize={16}>
                 Associated Meeting Types:
               </Text>
-              {isMeetingTypesLoading ? (
-                <Text color="neutral.400" fontSize={14}>
-                  Loading...
-                </Text>
-              ) : (
-                <Flex flexWrap="wrap" gap={2}>
-                  {meetingTypes
-                    .filter(type => type && type.title)
-                    .map(meetingType => (
-                      <Badge
-                        key={meetingType.id}
-                        background="neutral.700"
-                        color="neutral.0"
-                        borderRadius={6}
-                        fontSize={12}
-                        px={2}
-                        py={1}
-                      >
-                        {meetingType.title}
-                      </Badge>
-                    ))}
-                </Flex>
-              )}
+              <Flex flexWrap="wrap" gap={2}>
+                {meetingTypes
+                  .filter(type => type && type.title)
+                  .map(meetingType => (
+                    <Badge
+                      key={meetingType.id}
+                      background="neutral.700"
+                      color="neutral.0"
+                      borderRadius={6}
+                      fontSize={12}
+                      px={2}
+                      py={1}
+                    >
+                      {meetingType.title}
+                    </Badge>
+                  ))}
+              </Flex>
             </Flex>
           </Box>
         )}

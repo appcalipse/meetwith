@@ -2,6 +2,7 @@ import {
   AvailabilityBlock,
   UseAvailabilityBlocksResult,
 } from '@/types/availability'
+import { useToastHelpers } from '@/utils/toasts'
 
 import { useAvailabilityBlockFormHandlers } from './useAvailabilityBlockFormHandlers'
 import { useAvailabilityBlockMutations } from './useAvailabilityBlockMutations'
@@ -72,12 +73,9 @@ export const useAvailabilityBlockHandlers = ({
   } = useAvailabilityBlockUIState()
 
   // Validation and Toast Management
-  const {
-    validateForm,
-    showSuccessToast,
-    showErrorToast,
-    showDeleteErrorToast,
-  } = useAvailabilityBlockValidation()
+  const { validateForm, showDeleteErrorToast } =
+    useAvailabilityBlockValidation()
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
 
   // Mutation Operations
   const {
@@ -216,10 +214,20 @@ export const useAvailabilityBlockHandlers = ({
         handleClose()
       }
     } catch (error: unknown) {
-      showErrorToast(
-        'Error',
-        'Failed to save availability block. Please try again.'
-      )
+      if (error instanceof Error) {
+        try {
+          const parsedError = JSON.parse(error.message)
+          const errorMessage = parsedError.error || error.message
+          showErrorToast('Error', errorMessage)
+        } catch {
+          showErrorToast('Error', error.message)
+        }
+      } else {
+        showErrorToast(
+          'Error',
+          'Failed to save availability block. Please try again.'
+        )
+      }
     } finally {
       setIsSaving(false)
     }
@@ -233,7 +241,7 @@ export const useAvailabilityBlockHandlers = ({
           'Availability block deleted',
           'The availability block has been deleted successfully.'
         )
-        onClose()
+        handleClose()
       } catch (error: unknown) {
         // Check if it's a default block deletion error
         if (error instanceof Error) {
@@ -272,7 +280,7 @@ export const useAvailabilityBlockHandlers = ({
                       'Availability block deleted',
                       'The availability block has been deleted successfully.'
                     )
-                    onClose()
+                    handleClose()
                   } catch (updateError: unknown) {
                     showErrorToast(
                       'Error',

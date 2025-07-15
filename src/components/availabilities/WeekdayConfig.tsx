@@ -139,7 +139,7 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
       <Flex
         justify="space-between"
         align="center"
-        flexDirection={{ base: 'column', sm: 'row' }}
+        flexDirection="row"
         gap={{ base: 2, sm: 0 }}
       >
         <Checkbox
@@ -236,12 +236,7 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
         <VStack align="start" spacing={2} width="100%">
           {times.map((time, index) => (
             <VStack key={index} align="start" spacing={1} width="100%">
-              <Flex
-                width="100%"
-                align="center"
-                gap={2}
-                flexDirection={{ base: 'column', sm: 'row' }}
-              >
+              <Flex width="100%" align="center" gap={2} flexDirection="row">
                 <TimeSelector
                   onChange={handleChangeTime}
                   index={index}
