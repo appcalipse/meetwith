@@ -41,6 +41,9 @@ export const useUpdateAvailabilityBlockMeetingTypes = (
       queryClient.invalidateQueries({
         queryKey: ['availabilityBlockMeetingTypes', availabilityBlockId],
       })
+      queryClient.invalidateQueries({
+        queryKey: ['availabilityBlocks'],
+      })
     },
   })
 

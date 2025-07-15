@@ -1,6 +1,5 @@
-import { useToast } from '@chakra-ui/react'
-
 import { validateAvailabilityBlock } from '@/utils/availability.helper'
+import { useToastHelpers } from '@/utils/toasts'
 
 interface FormState {
   title: string
@@ -13,7 +12,7 @@ interface FormState {
 }
 
 export const useAvailabilityBlockValidation = () => {
-  const toast = useToast()
+  const { showErrorToast } = useToastHelpers()
 
   const validateForm = (formState: FormState): boolean => {
     const validation = validateAvailabilityBlock(
@@ -22,43 +21,16 @@ export const useAvailabilityBlockValidation = () => {
     )
 
     if (!validation.isValid) {
-      toast({
-        title: validation.error,
-        description:
-          validation.error === 'Title required'
-            ? 'Please enter a title for your availability block.'
-            : 'Please add at least one availability time slot.',
-        status: 'error',
-        duration: 3000,
-        position: 'top',
-        isClosable: true,
-      })
+      showErrorToast(
+        validation.error || 'Validation Error',
+        validation.error === 'Title required'
+          ? 'Please enter a title for your availability block.'
+          : 'Please add at least one availability time slot.'
+      )
       return false
     }
 
     return true
-  }
-
-  const showSuccessToast = (title: string, description: string) => {
-    toast({
-      title,
-      description,
-      status: 'success',
-      duration: 3000,
-      position: 'top',
-      isClosable: true,
-    })
-  }
-
-  const showErrorToast = (title: string, description: string) => {
-    toast({
-      title,
-      description,
-      status: 'error',
-      duration: 3000,
-      position: 'top',
-      isClosable: true,
-    })
   }
 
   const showDeleteErrorToast = (error: unknown) => {
@@ -86,8 +58,6 @@ export const useAvailabilityBlockValidation = () => {
 
   return {
     validateForm,
-    showSuccessToast,
-    showErrorToast,
     showDeleteErrorToast,
   }
 }

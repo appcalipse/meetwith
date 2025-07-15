@@ -3606,6 +3606,36 @@ const getDefaultAvailabilityBlockId = async (
   return accountPrefs?.availaibility_id || null
 }
 
+const checkTitleExists = async (
+  account_address: string,
+  title: string,
+  excludeBlockId?: string
+): Promise<void> => {
+  const trimmedTitle = title.trim()
+
+  let query = db.supabase
+    .from('availabilities')
+    .select('id')
+    .eq('account_owner_address', account_address)
+    .eq('title', trimmedTitle)
+
+  if (excludeBlockId) {
+    query = query.neq('id', excludeBlockId)
+  }
+
+  const { data: existingBlock, error: checkError } = await query.single()
+
+  if (checkError && checkError.code !== 'PGRST116') {
+    throw checkError
+  }
+
+  if (existingBlock) {
+    throw new InvalidAvailabilityBlockError(
+      'An availability block with this title already exists'
+    )
+  }
+}
+
 const isAvailabilityBlockDefault = async (
   id: string,
   account_address: string
@@ -3621,29 +3651,15 @@ export const createAvailabilityBlock = async (
   weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
   is_default = false
 ) => {
-  const { data: existingBlock, error: checkError } = await db.supabase
-    .from('availabilities')
-    .select('id')
-    .eq('account_owner_address', account_address)
-    .eq('title', title.trim())
-    .single()
-
-  if (checkError && checkError.code !== 'PGRST116') {
-    throw checkError
-  }
-
-  if (existingBlock) {
-    throw new InvalidAvailabilityBlockError(
-      'An availability block with this title already exists'
-    )
-  }
+  const trimmedTitle = title.trim()
+  await checkTitleExists(account_address, title)
 
   // Create the availability block
   const { data: block, error: blockError } = await db.supabase
     .from('availabilities')
     .insert([
       {
-        title,
+        title: trimmedTitle,
         timezone,
         weekly_availability,
         account_owner_address: account_address,
@@ -3706,24 +3722,8 @@ export const updateAvailabilityBlock = async (
   weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
   is_default = false
 ) => {
-  // Check if a block with the same title already exists for this account (excluding current block)
-  const { data: existingBlock, error: checkError } = await db.supabase
-    .from('availabilities')
-    .select('id')
-    .eq('account_owner_address', account_address)
-    .eq('title', title.trim())
-    .neq('id', id)
-    .single()
-
-  if (checkError && checkError.code !== 'PGRST116') {
-    throw checkError
-  }
-
-  if (existingBlock) {
-    throw new InvalidAvailabilityBlockError(
-      'An availability block with this title already exists'
-    )
-  }
+  const trimmedTitle = title.trim()
+  await checkTitleExists(account_address, title, id)
 
   // Get current account preferences to check if this block is currently default
   const isCurrentlyDefault = await isAvailabilityBlockDefault(
@@ -3750,7 +3750,7 @@ export const updateAvailabilityBlock = async (
   const { data, error } = await db.supabase
     .from('availabilities')
     .update({
-      title,
+      title: trimmedTitle,
       timezone,
       weekly_availability,
     })
@@ -3804,12 +3804,17 @@ export const duplicateAvailabilityBlock = async (
     throw new AvailabilityBlockNotFoundError()
   }
 
+  const newTitle = modifiedData?.title || `${block.title} (Copy)`
+  const trimmedTitle = newTitle.trim()
+
+  await checkTitleExists(account_address, newTitle)
+
   // Create a new block with the same data but a new ID, applying any modifications
   const { data: newBlock, error: blockError } = await db.supabase
     .from('availabilities')
     .insert([
       {
-        title: modifiedData?.title || `${block.title} (Copy)`,
+        title: trimmedTitle,
         timezone: modifiedData?.timezone || block.timezone,
         weekly_availability:
           modifiedData?.weekly_availability || block.weekly_availability,
@@ -3849,10 +3854,21 @@ export const isDefaultAvailabilityBlock = async (
 }
 
 export const getAvailabilityBlocks = async (account_address: string) => {
-  // Get all availability blocks
+  // Get all availability blocks with their associated meeting types in a single query
   const { data: blocks, error } = await db.supabase
     .from('availabilities')
-    .select('*')
+    .select(
+      `
+      *,
+      meeting_types: meeting_type_availabilities(
+        meeting_type(
+          id,
+          title,
+          deleted_at
+        )
+      )
+    `
+    )
     .eq('account_owner_address', account_address)
     .order('created_at', { ascending: true })
 
@@ -3861,11 +3877,27 @@ export const getAvailabilityBlocks = async (account_address: string) => {
   // Get account preferences to determine default block
   const defaultBlockId = await getDefaultAvailabilityBlockId(account_address)
 
-  // Add isDefault flag to each block based on availaibility_id
-  const blocksWithDefault = blocks.map(block => ({
-    ...block,
-    isDefault: defaultBlockId === block.id,
-  }))
+  const blocksWithDefault = blocks.map(block => {
+    const meetingTypes =
+      block.meeting_types
+        ?.map(
+          (item: {
+            meeting_type: MeetingType & { deleted_at?: string | null }
+          }) => {
+            const meetingType = item.meeting_type
+            if (!meetingType || meetingType.deleted_at) return null
+
+            return meetingType
+          }
+        )
+        .filter(Boolean) || []
+
+    return {
+      ...block,
+      isDefault: defaultBlockId === block.id,
+      meetingTypes,
+    }
+  })
 
   // Sort blocks
   const sortedBlocks = blocksWithDefault.sort((a, b) => {
