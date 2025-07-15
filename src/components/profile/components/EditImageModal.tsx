@@ -1,9 +1,11 @@
+import { ArrowBackIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
   HStack,
   Image,
   Modal,
+  ModalCloseButton,
   ModalContent,
   ModalHeader,
   ModalOverlay,
@@ -16,6 +18,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { saveAvatar } from '@utils/api_helper'
+import { handleApiError } from '@utils/error_helper'
 import { getCroppedImg } from '@utils/image-utils'
 import React, { useState } from 'react'
 import Cropper from 'react-easy-crop'
@@ -35,21 +38,22 @@ const EditImageModal = (props: IEditImageModalProps) => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [croppedImage, setCroppedImage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const toast = useToast()
+  const [isCropping, setIsCropping] = useState(false)
 
   const showCroppedImage = async () => {
+    setIsCropping(true)
     if (croppedAreaPixels && props.imageSrc) {
       try {
         const croppedImage = await getCroppedImg(
           props.imageSrc,
           croppedAreaPixels
         )
-        // console.log('donee', { croppedImage })
         setCroppedImage(croppedImage)
       } catch (e) {
         console.error(e)
       }
     }
+    setIsCropping(false)
   }
   const onCropComplete = (croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels)
@@ -65,36 +69,28 @@ const EditImageModal = (props: IEditImageModalProps) => {
       formdata.append(
         'avatar',
         blob,
-        `cropped-avatar-${props.accountAddress}.jpg`
+        `cropped-avatar-${props.accountAddress}.${blob.type.split('/')[1]}`
       )
       const url = await saveAvatar(formdata, props.accountAddress as string)
-      if (url) {
-        props.changeAvatar(url)
-      } else {
-        toast({
-          title: 'Error saving image',
-          description:
-            'There was an error saving your image. Please try again.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        })
-      }
-    } catch (e) {
-    } finally {
-      setCroppedImage(null)
-      setCroppedAreaPixels(null)
-      setCrop({ x: 0, y: 0 })
-      setZoom(1)
-      props.onDialogClose()
+      props.changeAvatar(url)
+      handleClose()
+    } catch (e: unknown) {
+      handleApiError('Error saving cropped image', e)
     }
     setSaving(false)
+  }
+  const handleClose = () => {
+    setCroppedImage(null)
+    setCroppedAreaPixels(null)
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+    props.onDialogClose()
   }
   return (
     <Modal
       blockScrollOnMount={false}
       isOpen={props.isDialogOpen}
-      onClose={props.onDialogClose}
+      onClose={handleClose}
       isCentered
     >
       <ModalOverlay />
@@ -103,9 +99,35 @@ const EditImageModal = (props: IEditImageModalProps) => {
         color={'neutral.200'}
         pb={4}
       >
-        <ModalHeader>Edit Image</ModalHeader>
+        <ModalHeader w={'100%'} pos={'relative'}>
+          Edit Image
+          <Box>
+            <ModalCloseButton
+              size={'xl'}
+              my={'auto'}
+              mr={4}
+              insetY={0}
+              px={2}
+              _hover={{
+                bg: 'none',
+              }}
+            />
+          </Box>
+        </ModalHeader>
         {croppedImage ? (
-          <VStack>
+          <VStack w={'100%'} p={4}>
+            <HStack
+              alignSelf={'flex-start'}
+              color={'primary.400'}
+              onClick={() => setCroppedImage(null)}
+              left={6}
+              w={'fit-content'}
+              cursor="pointer"
+              role={'button'}
+            >
+              <ArrowBackIcon w={6} h={6} />
+              <Text fontSize={16}>Back</Text>
+            </HStack>
             <Box height={{ base: 200, md: 400 }} w="100%" pos={'relative'}>
               <Image
                 src={croppedImage}
@@ -167,7 +189,11 @@ const EditImageModal = (props: IEditImageModalProps) => {
                   <SliderThumb />
                 </Slider>
               </HStack>
-              <Button onClick={showCroppedImage} colorScheme="primary">
+              <Button
+                onClick={showCroppedImage}
+                colorScheme="primary"
+                isLoading={isCropping}
+              >
                 Apply Crop
               </Button>
             </VStack>
