@@ -114,9 +114,6 @@ const MeetingTypeModal: FC<IProps> = props => {
       option => option.value === props.initialValues?.plan?.payment_channel
     ) || channelOptions[0]
   )
-  const [allowCustomLink, setAllowCustomLink] = React.useState(
-    !!props.initialValues?.custom_link
-  )
   const [availabilityBlock, setAvailabilityBlock] = React.useState<
     Array<Option<string>>
   >(
@@ -253,7 +250,7 @@ const MeetingTypeModal: FC<IProps> = props => {
     setMinAdvanceType(newValue)
   }
   const domainUrl = getAccountDomainUrl(currentAccount)
-  const handleMeetingPlatformChange = async (
+  const handleMeetingPlatformChange = (
     value: MeetingProvider | 'ALL' | 'RESET'
   ) => {
     setSelectedProviders(prevProviders => {
@@ -904,16 +901,32 @@ const MeetingTypeModal: FC<IProps> = props => {
                   borderRadius={8}
                   borderWidth={1}
                   maxW={{ md: 420, base: '75%' }}
-                  borderColor={fixedLink ? 'primary.200' : 'neutral.0'}
+                  borderColor={
+                    selectedProviders.includes(MeetingProvider.CUSTOM)
+                      ? 'primary.200'
+                      : 'neutral.0'
+                  }
                   colorScheme="primary"
                   p={4}
-                  isChecked={fixedLink}
-                  onChange={e => setFixedLink(e.target.checked)}
+                  isChecked={selectedProviders.includes(MeetingProvider.CUSTOM)}
+                  onChange={() =>
+                    handleMeetingPlatformChange(MeetingProvider.CUSTOM)
+                  }
                   flexDirection="row-reverse"
                   justifyContent="space-between"
                   w="100%"
                 >
-                  <Text>Allow guest to add custom location</Text>
+                  <Text
+                    fontWeight="600"
+                    color={
+                      selectedProviders.includes(MeetingProvider.CUSTOM)
+                        ? 'primary.200'
+                        : 'neutral.0'
+                    }
+                    cursor="pointer"
+                  >
+                    Allow guest to add custom location
+                  </Text>
                 </Checkbox>
                 <FormControl
                   display="flex"
@@ -927,7 +940,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                     borderColor={
                       !!errors.custom_link
                         ? 'red.300'
-                        : allowCustomLink
+                        : fixedLink
                         ? 'primary.200'
                         : 'neutral.0'
                     }
@@ -949,7 +962,7 @@ const MeetingTypeModal: FC<IProps> = props => {
                       bg={'neutral.450'}
                       border={'none'}
                       borderRadius={8}
-                      isDisabled={!allowCustomLink}
+                      isDisabled={!fixedLink}
                       _disabled={{
                         cursor: 'not-allowed',
                         _placeholder: {
@@ -964,13 +977,11 @@ const MeetingTypeModal: FC<IProps> = props => {
                     <Checkbox
                       key={'custom_link_checkbox'}
                       colorScheme="primary"
-                      isChecked={allowCustomLink}
-                      borderColor={
-                        allowCustomLink ? 'primary.200' : 'neutral.0'
-                      }
+                      isChecked={fixedLink}
+                      borderColor={fixedLink ? 'primary.200' : 'neutral.0'}
                       p={4}
                       onChange={e => {
-                        setAllowCustomLink(e.target.checked)
+                        setFixedLink(e.target.checked)
                         if (!e.target.checked) {
                           setCustomLink('')
                           dispatchErrors({
