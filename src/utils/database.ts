@@ -145,6 +145,7 @@ import {
   TransactionIsRequired,
   TransactionNotFoundError,
   UnauthorizedError,
+  UploadError,
 } from '@/utils/errors'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
@@ -437,44 +438,53 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
 
   return account
 }
-// TODO: use custom error here
+
 const updatePreferenceAvatar = async (
   address: string,
   filename: string,
-  buffer: Buffer
+  buffer: Buffer,
+  mimeType: string
 ) => {
-  const contentType = `image/${
-    filename.split('.').pop()?.toLowerCase() || 'png'
-  }`
-  const { data, error } = await db.supabase.storage
+  const contentType = mimeType
+  const file = `uploads/${Date.now()}-${filename}`
+  const { error } = await db.supabase.storage
     .from('avatars')
-    .upload(`uploads/${Date.now()}-${filename}`, buffer, {
+    .upload(file, buffer, {
       contentType,
       upsert: true,
     })
+
   if (error) {
     Sentry.captureException(error)
-    throw new Error("Couldn't upload avatar")
+    throw new UploadError(
+      'Unable to upload avatar. Please try again or contact support if the problem persists.'
+    )
   }
-  if (!data?.Key) {
-    throw new Error("Couldn't get avatar key")
+
+  const { data } = db.supabase.storage.from('avatars').getPublicUrl(file)
+
+  const publicUrl = data?.publicURL
+  if (!publicUrl) {
+    Sentry.captureException(new Error('Public URL is undefined after upload'))
+    throw new UploadError(
+      "Avatar upload completed but couldn't generate preview URL. Please refresh and try again."
+    )
   }
-  const { publicURL, error: urlError } = db.supabase.storage
-    .from('avatars')
-    .getPublicUrl(data?.Key?.replace('avatars/', ''))
-  if (urlError) {
-    Sentry.captureException(urlError)
-    throw new Error("Couldn't get avatar URL")
-  }
+
   const { error: updateError } = await db.supabase
     .from('account_preferences')
-    .update({ avatar_url: publicURL })
+    .update({ avatar_url: publicUrl })
     .eq('owner_account_address', address.toLowerCase())
   if (updateError) {
-    throw new Error("Couldn't update avatar URL in preferences")
+    Sentry.captureException(updateError)
+    throw new UploadError(
+      "Avatar uploaded successfully but couldn't update your profile. Please refresh and try again."
+    )
   }
-  return publicURL
+
+  return publicUrl
 }
+
 const getAccountNonce = async (identifier: string): Promise<number> => {
   const query = validate(identifier)
     ? `id.eq.${identifier}`
