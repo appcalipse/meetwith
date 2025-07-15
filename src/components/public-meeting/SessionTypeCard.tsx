@@ -1,4 +1,4 @@
-import { Button, Heading, Tag, Text, VStack } from '@chakra-ui/react'
+import { Button, Heading, Tag, Text, Tooltip, VStack } from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { MeetingType } from '@meta/Account'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
@@ -29,9 +29,19 @@ const SessionTypeCard: FC<IProps> = props => {
       gap={4}
     >
       <VStack gap={2} alignItems={'flex-start'} w={'100%'}>
-        <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
-          {props.title}
-        </Heading>
+        <Tooltip label={props.title}>
+          <Heading
+            fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}
+            maxW={{ '2xl': '400px', lg: 270, xl: 300, base: 200 }}
+            w="fit-content"
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            cursor={'pointer'}
+          >
+            {props.title}
+          </Heading>
+        </Tooltip>
         <Text>{props?.duration_minutes} mins per session</Text>
       </VStack>
       <Tag bg="green.500" px={2} color="black" rounded={'full'} fontSize={'sm'}>
