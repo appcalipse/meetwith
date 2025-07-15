@@ -112,20 +112,25 @@ export const internalFetch = async <T>(
   path: string,
   method = 'GET',
   body?: unknown,
-  options = {},
-  headers = {}
+  options: RequestInit = {},
+  headers = {},
+  isFormData = false
 ) => {
   try {
     const response = await fetch(`${apiUrl}${path}`, {
       method,
       mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        ...headers,
-      },
+      headers: isFormData
+        ? undefined
+        : {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            ...headers,
+          },
       ...options,
-      body: (!!body && (JSON.stringify(body) as string)) || null,
+      body: isFormData
+        ? (body as FormData)
+        : (!!body && (JSON.stringify(body) as string)) || null,
     })
     if (response.status >= 200 && response.status < 300) {
       return (await response.json()) as T
@@ -227,6 +232,23 @@ export const saveAccountChanges = async (
   await queryClient.invalidateQueries(
     QueryKeys.account(account.address?.toLowerCase())
   )
+  return response
+}
+export const saveAvatar = async (
+  formData: FormData,
+  address: string
+): Promise<string> => {
+  const response = await internalFetch<string>(
+    `/secure/accounts/avatar`,
+    'POST',
+    formData,
+    {},
+    {
+      'Content-Type': 'multipart/form-data',
+    },
+    true
+  )
+  await queryClient.invalidateQueries(QueryKeys.account(address?.toLowerCase()))
   return response
 }
 

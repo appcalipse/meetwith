@@ -145,6 +145,7 @@ import {
   TransactionIsRequired,
   TransactionNotFoundError,
   UnauthorizedError,
+  UploadError,
 } from '@/utils/errors'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
@@ -436,6 +437,52 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
   account.subscriptions = await getSubscriptionFromDBForAccount(account.address)
 
   return account
+}
+
+const updatePreferenceAvatar = async (
+  address: string,
+  filename: string,
+  buffer: Buffer,
+  mimeType: string
+) => {
+  const contentType = mimeType
+  const file = `uploads/${Date.now()}-${filename}`
+  const { error } = await db.supabase.storage
+    .from('avatars')
+    .upload(file, buffer, {
+      contentType,
+      upsert: true,
+    })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new UploadError(
+      'Unable to upload avatar. Please try again or contact support if the problem persists.'
+    )
+  }
+
+  const { data } = db.supabase.storage.from('avatars').getPublicUrl(file)
+
+  const publicUrl = data?.publicURL
+  if (!publicUrl) {
+    Sentry.captureException(new Error('Public URL is undefined after upload'))
+    throw new UploadError(
+      "Avatar upload completed but couldn't generate preview URL. Please refresh and try again."
+    )
+  }
+
+  const { error: updateError } = await db.supabase
+    .from('account_preferences')
+    .update({ avatar_url: publicUrl })
+    .eq('owner_account_address', address.toLowerCase())
+  if (updateError) {
+    Sentry.captureException(updateError)
+    throw new UploadError(
+      "Avatar uploaded successfully but couldn't update your profile. Please refresh and try again."
+    )
+  }
+
+  return publicUrl
 }
 
 const getAccountNonce = async (identifier: string): Promise<number> => {
@@ -4776,6 +4823,7 @@ export {
   updateCustomSubscriptionDomain,
   updateMeeting,
   updateMeetingType,
+  updatePreferenceAvatar,
   updateRecurringSlots,
   upsertGateCondition,
   workMeetingTypeGates,
