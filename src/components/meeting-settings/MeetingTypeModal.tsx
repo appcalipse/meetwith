@@ -901,18 +901,32 @@ const MeetingTypeModal: FC<IProps> = props => {
                   borderRadius={8}
                   borderWidth={1}
                   maxW={{ md: 420, base: '75%' }}
-                  borderColor={fixedLink ? 'primary.200' : 'neutral.0'}
+                  borderColor={
+                    selectedProviders.includes(MeetingProvider.CUSTOM)
+                      ? 'primary.200'
+                      : 'neutral.0'
+                  }
                   colorScheme="primary"
                   p={4}
                   isChecked={selectedProviders.includes(MeetingProvider.CUSTOM)}
-                  onChange={e =>
+                  onChange={() =>
                     handleMeetingPlatformChange(MeetingProvider.CUSTOM)
                   }
                   flexDirection="row-reverse"
                   justifyContent="space-between"
                   w="100%"
                 >
-                  <Text>Allow guest to add custom location</Text>
+                  <Text
+                    fontWeight="600"
+                    color={
+                      selectedProviders.includes(MeetingProvider.CUSTOM)
+                        ? 'primary.200'
+                        : 'neutral.0'
+                    }
+                    cursor="pointer"
+                  >
+                    Allow guest to add custom location
+                  </Text>
                 </Checkbox>
                 <FormControl
                   display="flex"
