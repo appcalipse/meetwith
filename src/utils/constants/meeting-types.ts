@@ -44,7 +44,7 @@ export const DurationOptions = [
     label: '30 Mins',
   },
   {
-    value: 30,
+    value: 45,
     label: '45 Mins',
   },
   {
