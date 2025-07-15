@@ -30,7 +30,11 @@ export async function getCroppedImg(
     width: number
     height: number
   },
-  flip = { horizontal: false, vertical: false }
+  flip = { horizontal: false, vertical: false },
+  options: {
+    format?: 'image/jpeg' | 'image/png' | 'image/webp'
+    quality?: number // 0.0 to 1.0, only works with jpeg and webp
+  } = {}
 ) {
   const image = await createImage(imageSrc)
   const canvas = document.createElement('canvas')
@@ -71,18 +75,6 @@ export async function getCroppedImg(
     pixelCrop.width,
     pixelCrop.height
   )
-  // Draw the cropped image as usual
-  croppedCtx.drawImage(
-    canvas,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  )
 
   croppedCtx.globalCompositeOperation = 'destination-in'
   croppedCtx.beginPath()
@@ -97,13 +89,18 @@ export async function getCroppedImg(
   croppedCtx.fill()
 
   return new Promise<string>((resolve, reject) => {
-    croppedCanvas.toBlob(file => {
-      if (!file) {
-        reject('Canvas is empty')
-      } else {
-        resolve(URL.createObjectURL(file))
-      }
-    }, 'image/png')
+    const { format = 'image/webp', quality = 0.8 } = options
+    croppedCanvas.toBlob(
+      file => {
+        if (!file) {
+          reject('Canvas is empty')
+        } else {
+          resolve(URL.createObjectURL(file))
+        }
+      },
+      format,
+      quality
+    )
   })
 }
 
