@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
+import { CreateEmailOptions, Resend } from 'resend'
 
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
@@ -22,14 +23,11 @@ import {
   generateIcs,
 } from './calendar_manager'
 import { appUrl } from './constants'
+import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = 'Meetwith <notifications@meetwith.xyz>'
-
-import { CreateEmailOptions, Resend } from 'resend'
-
-import { MeetingPermissions } from './constants/schedule'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
@@ -614,7 +612,9 @@ export const sendContactInvitationEmail = async (
       from: FROM,
       subject: subject,
       html: rendered,
-      text: `${inviterName} invited as a contact. Accept your invite here: ${invitationLink}`,
+      text: `${inviterName} invited you to join their contact list on MeetWith.
+            Click here to accept the invitation: ${invitationLink}
+          If you weren’t expecting this, you can safely ignore this email.`,
       tags: [
         {
           name: 'contact',
