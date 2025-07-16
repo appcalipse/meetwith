@@ -346,13 +346,15 @@ export const updateMeeting = async (
   meeting: MeetingUpdateRequest
 ): Promise<DBSlot> => {
   try {
-    return (await internalFetch(
+    const response = await internalFetch<DBSlot>(
       `/secure/meetings/${slotId}`,
       'POST',
       meeting
-    )) as DBSlot
+    )
+    await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
+    return response
   } catch (e: unknown) {
-    if (e instanceof ApiFetchError && e.status === 409) {
+    if (e instanceof ApiFetchError && e.status && e.status === 409) {
       throw new TimeNotAvailableError()
     } else if (e instanceof ApiFetchError && e.status === 412) {
       throw new MeetingCreationError()

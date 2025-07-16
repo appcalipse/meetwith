@@ -854,27 +854,12 @@ const Schedule: NextPage<IInitialProps> = ({
       handleApiError('Error prefetching contact.', error)
     }
   }
-  const handlePrefetch = async () => {
-    setIsPrefetching(true)
-    if (contactId) {
-      await handleContactPrefetch()
-    }
-    if (groupId) {
-      await handleGroupPrefetch()
-    }
-    setIsPrefetching(false)
-  }
-  useEffect(() => {
-    void handlePrefetch()
-  }, [groupId, contactId])
   const handleFetchMeetingInformation = async () => {
     if (!meetingId) return
-    setIsPrefetching(true)
     try {
       const meeting = await getMeeting(meetingId)
       const decryptedMeeting = await decodeMeeting(meeting, currentAccount!)
       if (!decryptedMeeting) {
-        setIsPrefetching(false)
         return
       }
       setDecryptedMeeting(decryptedMeeting)
@@ -982,13 +967,25 @@ const Schedule: NextPage<IInitialProps> = ({
     } catch (error: unknown) {
       handleApiError('Error fetching meeting information.', error)
     }
+  }
+  const handlePrefetch = async () => {
+    setIsPrefetching(true)
+    const promises = []
+    if (contactId) {
+      promises.push(handleContactPrefetch())
+    }
+    if (groupId) {
+      promises.push(handleGroupPrefetch())
+    }
+    if (intent === Intents.UPDATE_MEETING && meetingId) {
+      promises.push(handleFetchMeetingInformation())
+    }
+    await Promise.all(promises)
     setIsPrefetching(false)
   }
   useEffect(() => {
-    if (intent === Intents.UPDATE_MEETING && meetingId) {
-      void handleFetchMeetingInformation()
-    }
-  }, [intent, meetingId, currentAccount?.address])
+    void handlePrefetch()
+  }, [groupId, contactId, intent, meetingId, currentAccount?.address])
 
   return (
     <ScheduleContext.Provider value={context}>

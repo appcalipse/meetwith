@@ -617,7 +617,9 @@ export const sendContactInvitationEmail = async (
       from: FROM,
       subject: subject,
       html: rendered,
-      text: `${inviterName} invited as a contact. Accept your invite here: ${invitationLink}`,
+      text: `${inviterName} invited you to join their contact list on MeetWith.
+            Click here to accept the invitation: ${invitationLink}
+          If you weren’t expecting this, you can safely ignore this email.`,
       tags: [
         {
           name: 'contact',
