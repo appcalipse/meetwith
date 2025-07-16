@@ -74,18 +74,7 @@ const NavBarLoggedProfile: React.FC<NavBarLoggedProfileProps> = props => {
         backgroundColor={'neutral.50'}
       >
         <Box width="24px" height="24px" mr={{ base: 0, lg: 2 }}>
-          {props.account.preferences?.avatar ? (
-            <Image
-              src={props.account.preferences.avatar}
-              alt="Account avatar"
-              width="24px"
-              height="24px"
-              borderRadius="50%"
-              objectFit="cover"
-            />
-          ) : (
-            <Avatar account={props.account} />
-          )}
+          <Avatar account={props.account} />
         </Box>
         {props.isOpen && (
           <Text fontSize={'sm'} ml={2}>

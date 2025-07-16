@@ -1,14 +1,15 @@
 import { useColorMode } from '@chakra-ui/color-mode'
+import { Center, Flex, Heading, HStack, Text, VStack } from '@chakra-ui/react'
 import {
-  Box,
-  Center,
-  Flex,
-  Heading,
-  HStack,
-  Text,
-  VStack,
-} from '@chakra-ui/react'
-import { addMonths, format, isSameMonth, isToday, subMonths } from 'date-fns'
+  addMonths,
+  format,
+  isAfter,
+  isSameMonth,
+  isToday,
+  startOfMonth,
+  subMonths,
+} from 'date-fns'
+import { DateTime } from 'luxon'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
@@ -35,6 +36,7 @@ function Root({
   setSelectedMonth,
   loading,
   pickedDay,
+  timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
 }) {
   const [fakeMonth, setFakeMonth] = useState(selectedMonth)
   const [animation, setAnimation] = useState('')
@@ -79,23 +81,60 @@ function Root({
     if (isAnimating) {
       return
     }
-
-    pickDay(day)
+    const dayInTimezone = DateTime.fromObject(
+      {
+        year: day.getFullYear(),
+        month: day.getMonth() + 1, // JS months are 0-indexed
+        day: day.getDate(),
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      },
+      { zone: timezone }
+    )
+    pickDay(dayInTimezone.toJSDate())
+  }
+  const isTodayInTimezone = date => {
+    const dt = DateTime.fromJSDate(date, { zone: timezone })
+    const now = DateTime.now().setZone(timezone)
+    return dt.year === now.year && dt.month === now.month && dt.day === now.day
+  }
+  const checkIsToday = day => {
+    if (pickedDay) {
+      const pickedDt = DateTime.fromJSDate(pickedDay, { zone: timezone })
+      const dayInTimezone = DateTime.fromObject(
+        {
+          year: day.getFullYear(),
+          month: day.getMonth() + 1, // JS months are 0-indexed
+          day: day.getDate(),
+          hour: 0,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
+        },
+        { zone: timezone }
+      )
+      return (
+        pickedDt.day === dayInTimezone.day &&
+        pickedDt.month === dayInTimezone.month &&
+        pickedDt.year === dayInTimezone.year
+      )
+    }
+    return isTodayInTimezone(day)
   }
 
   return (
-    <VStack
-      flex={1.5}
-      alignItems={{ md: 'flex-start', base: 'center' }}
-      minW="300px"
-    >
+    <VStack w="100%" alignItems={{ md: 'flex-start', base: 'center' }}>
       <Heading size="md">Select Date</Heading>
       <Grid>
         <MonthYear>
           <HStack>
-            <PrevMonth disabled={isAnimating} onClick={handlePrevMonth}>
-              <FaChevronLeft />
-            </PrevMonth>
+            {isAfter(startOfMonth(selectedMonth), startOfMonth(new Date())) && (
+              <PrevMonth disabled={isAnimating} onClick={handlePrevMonth}>
+                <FaChevronLeft />
+              </PrevMonth>
+            )}
 
             <Wrapper>
               <CurrentMonth animation={animation}>
@@ -145,9 +184,7 @@ function Root({
                       return <MonthDay key={day} />
                     }
                     const formatted = format(day, 'd')
-                    const _isToday = pickedDay
-                      ? pickedDay.getDate() === day.getDate()
-                      : isToday(day)
+                    const _isToday = checkIsToday(day)
                     const _isWeekend = [0, 6].includes(day.getDay())
                     const isValid = validator ? validator(day) : true
                     return (
@@ -214,6 +251,7 @@ Root.propTypes = {
   monthChanged: PropTypes.func,
   pickedDay: PropTypes.instanceOf(Date),
   selectedMonth: PropTypes.instanceOf(Date).isRequired,
+  timezone: PropTypes.string,
 }
 
 export default Root

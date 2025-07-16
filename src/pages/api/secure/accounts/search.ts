@@ -33,11 +33,19 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
               email: req.query.q as string,
               address: '',
               name: '',
-              is_invited: !!inviteExists,
+              is_invited: inviteExists,
             },
           ],
         })
       }
+      results.result = results.result?.map(val => ({
+        ...val,
+        email:
+          val.email ||
+          (isValidEmail(req.query.q as string)
+            ? (req.query.q as string)
+            : undefined),
+      }))
       return res.status(200).json(results)
     } catch (e) {
       return res.status(500).send(e)

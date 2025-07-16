@@ -40,7 +40,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     await Promise.all(promises)
 
-    const allSlots = generateTimeSlots(startDate, duration, true, endDate)
+    const allSlots = generateTimeSlots(
+      startDate,
+      duration,
+      true,
+      undefined,
+      endDate
+    )
     const suggestedTimes: Interval[] = []
 
     const busySlots: Interval[] =
@@ -61,8 +67,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         const tz = account.preferences.timezone
         if (
           !isTimeInsideAvailabilities(
-            utcToZonedTime(slot.start as Date, tz),
-            utcToZonedTime(slot.end as Date, tz),
+            utcToZonedTime(slot.start as Date, tz || 'UTC'),
+            utcToZonedTime(slot.end as Date, tz || 'UTC'),
             availabilities
           )
         ) {

@@ -77,7 +77,7 @@ export const NavMenu: React.FC<{
         badge: requestCount,
       },
       {
-        name: 'Meeting Settings',
+        name: 'Session Settings',
         icon: FaCalendarWeek,
         mode: EditMode.MEETING_SETTINGS,
       },
@@ -209,7 +209,7 @@ export const NavMenu: React.FC<{
 
   if (!currentAccount) return null
 
-  const accountUrl = getAccountCalendarUrl(currentAccount!, false)
+  const accountUrl = getAccountCalendarUrl(currentAccount, false)
 
   const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })
