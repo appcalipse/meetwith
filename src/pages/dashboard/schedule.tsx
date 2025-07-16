@@ -209,12 +209,14 @@ const DEFAULT_CONTEXT: IScheduleContext = {
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
+
 interface IInitialProps {
   groupId: string
   intent: Intents
   meetingId: string
   contactId: string
 }
+
 const Schedule: NextPage<IInitialProps> = ({
   groupId,
   intent,
