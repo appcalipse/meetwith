@@ -311,8 +311,8 @@ export class AvailabilityBlockNotFoundError extends Error {
 }
 
 export class DefaultAvailabilityBlockError extends Error {
-  constructor() {
-    super('Cannot delete the default availability block')
+  constructor(message?: string) {
+    super(message || 'Cannot delete the default availability block')
     this.name = 'DefaultAvailabilityBlockError'
   }
 }
