@@ -1,6 +1,7 @@
 import { UseMutationResult } from '@tanstack/react-query'
 
 import { TimeRange } from './Account'
+import { MeetingType } from './Account'
 
 export interface AvailabilityBlock {
   id: string
@@ -11,6 +12,7 @@ export interface AvailabilityBlock {
     weekday: number
     ranges: TimeRange[]
   }>
+  meetingTypes?: MeetingType[]
 }
 
 export interface UseAvailabilityBlocksResult {
