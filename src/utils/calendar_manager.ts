@@ -443,7 +443,19 @@ const updateMeetingAsGuest = async (
   existingParticipants.forEach((participant, index) => {
     const participantKey =
       participant.account_address || participant.guest_email || ''
-    if (index < existingSlotIds.length) {
+
+    // For account participants, find the actual slot that belongs to them
+    if (participant.account_address) {
+      const participantSlot = allSlots.find(
+        slot => slot.account_address === participant.account_address
+      )
+      if (participantSlot && participantSlot.id) {
+        participantsToKeep[participantKey] = participantSlot.id
+      }
+    }
+
+    // Fallback logic for both account participants (if slot not found) and guests
+    if (!participantsToKeep[participantKey] && index < existingSlotIds.length) {
       participantsToKeep[participantKey] = existingSlotIds[index]
     }
   })
@@ -467,7 +479,27 @@ const updateMeetingAsGuest = async (
     }
   }
 
-  const finalMeetingUrl = meetingUrl || fullMeetingData.meeting_url || ''
+  let finalMeetingUrl = meetingUrl || fullMeetingData.meeting_url || ''
+  // If no meetingUrl is provided or the provider has changed, generate a new one (unless CUSTOM)
+  if (
+    (!meetingUrl && meetingProvider !== MeetingProvider.CUSTOM) ||
+    (meetingProvider !== MeetingProvider.CUSTOM &&
+      meetingProvider !== fullMeetingData.provider)
+  ) {
+    const generated = await generateMeetingUrl({
+      meeting_id: guestMeetingData.id,
+      title: meetingTitle || fullMeetingData.title || 'No Title',
+      end: endTime,
+      start: startTime,
+      meetingProvider,
+      participants_mapping: participantData.sanitizedParticipants,
+      accounts: participantData.allAccounts,
+      content: meetingContent,
+      meetingReminders,
+      meetingRepeat,
+    })
+    finalMeetingUrl = generated.url
+  }
 
   const meetingData = await buildMeetingData(
     SchedulingType.GUEST,
