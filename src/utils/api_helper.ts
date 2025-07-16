@@ -14,7 +14,6 @@ import {
   Contact,
   ContactInvite,
   ContactSearch,
-  DBContact,
   LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
@@ -286,11 +285,13 @@ export const updateMeeting = async (
   meeting: MeetingUpdateRequest
 ): Promise<DBSlot> => {
   try {
-    return (await internalFetch(
+    const response = await internalFetch<DBSlot>(
       `/secure/meetings/${slotId}`,
       'POST',
       meeting
-    )) as DBSlot
+    )
+    await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
+    return response
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
