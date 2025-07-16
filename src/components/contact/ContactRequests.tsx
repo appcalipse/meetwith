@@ -93,6 +93,8 @@ const ContactRequests = ({ currentAccount, search, reloadContacts }: Props) => {
       setSelectedContact(contact)
       if (intent === Intents.ACCEPT_CONTACT) {
         openAcceptModal()
+      } else if (intent === Intents.DECLINE_CONTACT) {
+        openRejectModal()
       }
     } catch (e) {
       if (e instanceof ContactAlreadyExists) {
