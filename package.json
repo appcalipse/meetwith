@@ -5,6 +5,7 @@
     "dev": "next dev",
     "dev-doppler": "doppler run --config dev next dev",
     "build": "doppler run next build",
+    "build:local": "next build",
     "static": "next build && next export",
     "start": "next start",
     "lint": "next lint",
@@ -13,6 +14,7 @@
     "prepare": "husky install",
     "postinstall": "patch-package",
     "postbuild": "next-sitemap",
+    "test:local": "NODE_ENV=test jest",
     "test": "NODE_ENV=test doppler run --config tests jest",
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch"
@@ -59,6 +61,7 @@
     "abitype": "^1.0.2",
     "amplitude-js": "^8.12.0",
     "arrow-keys-react": "^1.0.6",
+    "busboy": "^1.6.0",
     "chakra-react-select": "^4.7.6",
     "cookie": "0.7.0",
     "countries-and-timezones": "^3.6.0",
@@ -76,6 +79,7 @@
     "google-auth-library": "^9.15.0",
     "googleapis": "92.0.0",
     "graphql": "^16.5.0",
+    "html-tags": "^5.0.0",
     "ical.js": "^1.5.0",
     "ics": "3.7.6",
     "ipfs": "^0.59.1",
@@ -85,27 +89,30 @@
     "luxon": "^3.5.0",
     "next": "^13.4.3",
     "nodemailer": "^6.7.2",
-    "patch-package": "^6 .4.7",
+    "patch-package": "^6.4.7",
     "path": "^0.12.7",
     "postinstall-postinstall": "^2.1.0",
     "prism-react-renderer": "^0.1.6",
+    "puppeteer": "13.5.0",
     "radix-ui": "^0.0.1",
     "react": "^18.2.0",
     "react-cookie": "^4.1.1",
     "react-countdown": "^2.3.6",
     "react-dom": "^18.2.0",
+    "react-easy-crop": "^5.5.0",
     "react-icons": "^4.3.1",
     "react-intersection-observer": "^9.4.1",
     "react-timezone-select": "^3.2.8",
     "react-virtualized": "^9.22.3",
     "reflect-metadata": "^0.1.13",
     "resend": "^4.5.1",
-    "sanitize-html": "^2.11.0",
+    "sanitize-html": "2.12.1",
+    "sharp": "^0.34.1",
     "slugify": "^1.6.5",
     "spacetime": "^7.7.0",
     "styled-components": "^4.2.0",
     "swiper": "^8.4.5",
-    "thirdweb": "^5.90.0",
+    "thirdweb": "^5.103.0",
     "timezone-soft": "^1.5.2",
     "timezones-list": "^3.0.1",
     "tsdav": "^2.0.2",
@@ -116,17 +123,13 @@
     "zod": "^3.23.4"
   },
   "devDependencies": {
-    "@babel/core": "^7.22.5",
-    "@babel/plugin-proposal-class-properties": "^7.16.0",
-    "@babel/plugin-proposal-decorators": "^7.16.4",
-    "@babel/preset-env": "^7.22.5",
-    "@babel/preset-typescript": "^7.22.5",
     "@faker-js/faker": "^6.2.0",
     "@peculiar/webcrypto": "^1.4.6",
     "@sentry/types": "^7.83.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",
     "@types/amplitude-js": "^8.0.2",
+    "@types/busboy": "^1",
     "@types/crypto-js": "^4.0.2",
     "@types/email-templates": "^8.0.4",
     "@types/ical": "^0.8.0",
@@ -142,9 +145,6 @@
     "@types/sanitize-html": "^2.11.0",
     "@types/uuid": "^8.3.1",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
-    "babel-jest": "^29.5.0",
-    "babel-plugin-transform-remove-console": "^6.9.4",
-    "babel-plugin-transform-typescript-metadata": "^0.3.2",
     "eslint": "7",
     "eslint-config-next": "^13.4.3",
     "eslint-config-prettier": "^8.3.0",
@@ -170,13 +170,13 @@
     "typescript": "^5.3.2"
   },
   "resolutions": {
-    "ethereumjs-abi": "https://registry.npmjs.org/ethereumjs-abi/-/ethereumjs-abi-0.6.8.tgz"
+    "ethereumjs-abi": "0.6.8"
   },
   "_moduleAliases": {
     "@": "src"
   },
   "engines": {
-    "node": "18"
+    "node": "20"
   },
-  "packageManager": "yarn@1.22.21"
+  "packageManager": "yarn@4.9.1"
 }

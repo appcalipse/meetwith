@@ -360,7 +360,8 @@ describe('calendar manager', () => {
       targetAccount,
       startTime,
       endTime,
-      meetingTypeId
+      meetingTypeId,
+      undefined
     )
 
     expect(result).toMatchObject({
@@ -459,7 +460,8 @@ describe('calendar manager', () => {
       targetAccount,
       startTime,
       endTime,
-      meetingTypeId
+      meetingTypeId,
+      undefined
     )
 
     expect(result).toMatchObject({

@@ -72,7 +72,7 @@ export const notifyForGroupInviteJoinOrReject = async (
       account_address: address,
       name: account.preferences?.name,
       notifications: await getAccountNotificationSubscriptions(address),
-      timezone: account.preferences.timezone,
+      timezone: account.preferences.timezone || 'UTC',
     })
   }
   await runPromises(
@@ -91,7 +91,8 @@ export const notifyForMeetingCancellation = async (
   end: Date,
   created_at: Date,
   timezone: string,
-  reason?: string
+  reason?: string,
+  title?: string
 ): Promise<void> => {
   const participantsInfo: ParticipantInfoForNotification[] = []
 
@@ -110,7 +111,7 @@ export const notifyForMeetingCancellation = async (
       account_address: address,
       name: account.preferences?.name,
       notifications: await getAccountNotificationSubscriptions(address),
-      timezone: account.preferences.timezone,
+      timezone: account.preferences.timezone || 'UTC',
       type: ParticipantType.Invitee,
       meeting_id,
       status: ParticipationStatus.Rejected,
@@ -127,6 +128,7 @@ export const notifyForMeetingCancellation = async (
       end,
       created_at!,
       '',
+      title,
       reason
     )
   )
@@ -458,9 +460,9 @@ const getEmailNotification = async (
         ),
         participant.meeting_id,
         participant.account_address,
-        '',
+        title,
         created_at,
-        title // reason for cancelling meeting if any
+        description // reason for cancelling meeting if any
       )
     case MeetingChangeType.UPDATE:
       return updateMeetingEmail(

@@ -1,6 +1,6 @@
 import { erc20Abi } from 'abitype/abis'
 import { Abi } from 'abitype/zod'
-import { getContract, readContract } from 'thirdweb'
+import { getContract, readContract, ThirdwebContract } from 'thirdweb'
 import { viemAdapter } from 'thirdweb/adapters/viem'
 import { Address } from 'viem'
 
@@ -68,7 +68,9 @@ export const getTokenMeta = async (
 export const getTokenInfo = async (
   tokenAddress: `0x${string}`,
   chain: SupportedChain
-): Promise<TokenGateElement | null> => {
+): Promise<
+  (TokenGateElement & { contract: ThirdwebContract<typeof erc20Abi> }) | null
+> => {
   const chainInfo = getChainInfo(chain)
   const erc20Contract = getContract({
     client: thirdWebClient,
@@ -76,6 +78,7 @@ export const getTokenInfo = async (
     address: tokenAddress,
     abi: erc20Abi,
   })
+
   const nftContract = getContract({
     client: thirdWebClient,
     chain: chainInfo!.thirdwebChain,
@@ -131,6 +134,7 @@ export const getTokenInfo = async (
       chain: chain,
       type: isNFT ? GateInterface.ERC721 : GateInterface.ERC20,
       minimumBalance: 0n,
+      contract: erc20Contract,
     }
   } catch (error) {
     return null

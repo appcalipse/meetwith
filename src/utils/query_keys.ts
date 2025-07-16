@@ -1,3 +1,5 @@
+import { Address } from '@/types/Transactions'
+
 export default class QueryKeys {
   static connectedCalendars(syncOnly?: boolean) {
     return ['connectedCalendars', syncOnly]
@@ -28,5 +30,16 @@ export default class QueryKeys {
 
   static discordUserInfo(address?: string) {
     return ['discordUserInfo', address]
+  }
+
+  static transactionHash(tx?: Address) {
+    return ['transactionHash', tx]
+  }
+  static chainLinkAggregator(
+    feedAddress: string,
+    chainId: number,
+    method: string
+  ) {
+    return ['chainLinkAggregator', feedAddress, chainId, method]
   }
 }

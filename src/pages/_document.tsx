@@ -6,7 +6,7 @@ import theme from '../styles/theme'
 class MyDocument extends Document {
   render() {
     return (
-      <Html>
+      <Html suppressHydrationWarning>
         <Head />
         <body>
           <ColorModeScript

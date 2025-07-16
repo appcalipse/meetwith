@@ -97,7 +97,9 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         slotsToRemove,
         guestsToRemove,
         request.meeting.meeting_id,
-        request.currentTimezone
+        request.currentTimezone,
+        undefined,
+        request.meeting?.title
       )
       return res.status(200).json({ removed: slotsToRemove })
     } catch (e) {

@@ -12,6 +12,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { Account } from '@meta/Account'
 import { useMutation } from '@tanstack/react-query'
 import router from 'next/router'
 import { useContext, useState } from 'react'
@@ -41,8 +42,6 @@ import {
 import { getMeetingsScheduled } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 import { isValidEmail } from '@/utils/validations'
-
-import { Account } from '../../types/Account'
 
 interface IProps {
   participants: ParticipantInfo[]
