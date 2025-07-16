@@ -1,16 +1,15 @@
+import PublicPage from '@components/public-meeting'
+import { Account } from '@meta/Account'
 import * as Sentry from '@sentry/nextjs'
+import { getAccount } from '@utils/api_helper'
+import { AccountNotFoundError } from '@utils/errors'
+import { isProAccount } from '@utils/subscription_manager'
+import { isValidEVMAddress } from '@utils/validations'
 import { NextPage } from 'next'
 import React from 'react'
 
+import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import redirectTo from '@/utils/redirect'
-
-import PublicCalendar from '../components/public-calendar'
-import { forceAuthenticationCheck } from '../session/forceAuthenticationCheck'
-import { Account } from '../types/Account'
-import { getAccount } from '../utils/api_helper'
-import { AccountNotFoundError } from '../utils/errors'
-import { isProAccount } from '../utils/subscription_manager'
-import { isValidEVMAddress } from '../utils/validations'
 
 interface ScheduleProps {
   currentUrl: string
@@ -19,7 +18,7 @@ interface ScheduleProps {
 }
 
 const Schedule: NextPage<ScheduleProps> = ({ currentUrl, ...rest }) => {
-  return <PublicCalendar {...rest} url={currentUrl} />
+  return <PublicPage {...rest} url={currentUrl} />
 }
 
 const EnhancedSchedule = forceAuthenticationCheck(Schedule)

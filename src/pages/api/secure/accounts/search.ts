@@ -39,6 +39,14 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
           ],
         })
       }
+      results.result = results.result?.map(val => ({
+        ...val,
+        email:
+          val.email ||
+          (isValidEmail(req.query.q as string)
+            ? (req.query.q as string)
+            : undefined),
+      }))
       return res.status(200).json(results)
     } catch (e) {
       return res.status(500).send(e)
