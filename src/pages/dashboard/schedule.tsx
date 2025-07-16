@@ -35,6 +35,7 @@ import {
 } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
+  getContactById,
   getGroup,
   getGroupsFull,
   getGroupsMembers,
@@ -208,12 +209,14 @@ const DEFAULT_CONTEXT: IScheduleContext = {
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
+
 interface IInitialProps {
   groupId: string
   intent: Intents
   meetingId: string
   contactId: string
 }
+
 const Schedule: NextPage<IInitialProps> = ({
   groupId,
   intent,
@@ -824,7 +827,33 @@ const Schedule: NextPage<IInitialProps> = ({
     }
     setIsPrefetching(false)
   }
-  const handleContactPrefetch = async () => {}
+  const handleContactPrefetch = async () => {
+    if (!contactId) return
+    try {
+      const contact = await getContactById(contactId)
+      if (contact) {
+        const key = 'no_group'
+        const participant: ParticipantInfo = {
+          account_address: contact.address,
+          name: contact.name,
+          status: ParticipationStatus.Pending,
+          type: ParticipantType.Invitee,
+          slot_id: '',
+          meeting_id: '',
+        }
+        setParticipants([participant])
+        const allAddresses = [contact.address]
+        if (currentAccount?.address) {
+          allAddresses.push(currentAccount?.address)
+        }
+        setGroupAvailability({
+          [key]: allAddresses,
+        })
+      }
+    } catch (error: unknown) {
+      handleApiError('Error prefetching contact.', error)
+    }
+  }
   const handlePrefetch = async () => {
     setIsPrefetching(true)
     if (contactId) {
