@@ -303,7 +303,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
             <VStack gap={0} alignItems="start">
               <Heading
                 size={'lg'}
-                maxW="400px"
+                maxW={{ '2xl': '400px', lg: 270, xl: 300, base: 200 }}
                 w="fit-content"
                 whiteSpace="nowrap"
                 overflow="hidden"

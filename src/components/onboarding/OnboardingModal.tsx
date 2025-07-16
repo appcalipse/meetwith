@@ -49,7 +49,7 @@ import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { isValidEmail } from '@/utils/validations'
 
-import { WeekdayConfig } from '../availabilities/weekday-config'
+import { WeekdayConfig } from '../availabilities/WeekdayConfig'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
 import TimezoneSelector from '../TimezoneSelector'
 

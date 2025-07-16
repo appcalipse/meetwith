@@ -136,3 +136,54 @@ export const renderProviderName = (provider: MeetingProvider) => {
       return 'Custom'
   }
 }
+
+export const convertMinutes = (minutes: number) => {
+  if (minutes < 60) {
+    return { amount: minutes, type: 'minutes', isEmpty: false }
+  } else if (minutes < 60 * 24) {
+    return { amount: Math.floor(minutes / 60), type: 'hours', isEmpty: false }
+  } else {
+    return {
+      amount: Math.floor(minutes / (60 * 24)),
+      type: 'days',
+      isEmpty: false,
+    }
+  }
+}
+
+export const extractQuery = <T extends string = string>(
+  query: Partial<{
+    [key: string]: string | string[]
+  }>,
+  key: string,
+  validValues?: T[]
+): T | undefined => {
+  const value = query[key]
+  let result: string | undefined
+
+  if (Array.isArray(value)) {
+    result = value[0] || undefined
+  } else if (typeof value === 'string') {
+    result = value
+  }
+
+  if (!result) return undefined
+
+  // If valid values provided, check against them
+  if (validValues && !validValues.includes(result as T)) {
+    return undefined
+  }
+
+  return result as T
+}
+export const formatCurrency = (
+  amount: number,
+  currency = 'USD',
+  minimumFractionDigits = 0
+) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits,
+  }).format(amount)
+}
