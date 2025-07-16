@@ -580,7 +580,8 @@ export const sendInvitationEmail = async (
 export const sendContactInvitationEmail = async (
   toEmail: string,
   inviterName: string,
-  invitationLink: string
+  invitationLink: string,
+  declineLink: string
 ): Promise<void> => {
   const email = new Email({
     views: {
@@ -601,6 +602,7 @@ export const sendContactInvitationEmail = async (
   const locals = {
     inviterName,
     invitationLink,
+    declineLink,
   }
 
   try {
