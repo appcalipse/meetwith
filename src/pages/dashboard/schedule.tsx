@@ -35,6 +35,7 @@ import {
 } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
+  getContactById,
   getGroup,
   getGroupsFull,
   getGroupsMembers,
@@ -824,7 +825,25 @@ const Schedule: NextPage<IInitialProps> = ({
     }
     setIsPrefetching(false)
   }
-  const handleContactPrefetch = async () => {}
+  const handleContactPrefetch = async () => {
+    if (!contactId) return
+    try {
+      const contact = await getContactById(contactId)
+      if (contact) {
+        const participant: ParticipantInfo = {
+          account_address: contact.address,
+          name: contact.name,
+          status: ParticipationStatus.Pending,
+          type: ParticipantType.Invitee,
+          slot_id: '',
+          meeting_id: '',
+        }
+        setParticipants([participant])
+      }
+    } catch (error: unknown) {
+      handleApiError('Error prefetching contact.', error)
+    }
+  }
   const handlePrefetch = async () => {
     setIsPrefetching(true)
     if (contactId) {
