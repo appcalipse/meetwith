@@ -7,6 +7,13 @@ import React from 'react'
 
 const paymentMethods = [
   {
+    id: 'pay-with-crypto',
+    name: 'Pay with Crypto',
+    step: PaymentStep.SELECT_CRYPTO_NETWORK,
+    icon: ChainLogo,
+    type: PaymentType.CRYPTO,
+  },
+  {
     id: 'pay-with-card',
     name: 'Pay with Card',
     tag: 'Your fiat cards',
@@ -14,13 +21,6 @@ const paymentMethods = [
     icon: FiatLogo,
     type: PaymentType.FIAT,
     disabled: true,
-  },
-  {
-    id: 'pay-with-crypto',
-    name: 'Pay with Crypto',
-    step: PaymentStep.SELECT_CRYPTO_NETWORK,
-    icon: ChainLogo,
-    type: PaymentType.CRYPTO,
   },
 ]
 
