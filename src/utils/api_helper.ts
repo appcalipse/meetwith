@@ -14,7 +14,6 @@ import {
   Contact,
   ContactInvite,
   ContactSearch,
-  DBContact,
   LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
@@ -177,15 +176,18 @@ export const getExistingAccounts = async (
   fullInformation = true
 ): Promise<Account[]> => {
   try {
-    return (await internalFetch(`/accounts/existing`, 'POST', {
-      addresses,
-      fullInformation: true,
-    })) as Account[]
+    return await queryClient.fetchQuery(
+      QueryKeys.existingAccounts(addresses, fullInformation),
+      () =>
+        internalFetch(`/accounts/existing`, 'POST', {
+          addresses,
+          fullInformation,
+        }) as Promise<Account[]>
+    )
   } catch (e: any) {
     throw e
   }
 }
-
 export const saveAccountChanges = async (
   account: Account
 ): Promise<Account> => {
