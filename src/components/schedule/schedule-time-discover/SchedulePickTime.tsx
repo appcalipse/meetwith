@@ -482,16 +482,8 @@ export function SchedulePickTime() {
                         {date.slots.map(slot => {
                           return (
                             <ScheduleTimeSlot
-                              key={
-                                slot.start.toFormat('DDDD,MMMM,yyyy, hh:mm,a') +
-                                slot.end.toFormat('DDDD,MMMM,yyyy, hh:mm,a') +
-                                duration +
-                                timezone +
-                                availableSlots.size +
-                                busySlots.size
-                              }
+                              key={`${slot.start.toMillis()}-${duration}`}
                               slot={slot}
-                              date={date.date}
                               busySlots={busySlots}
                               availableSlots={availableSlots}
                               pickedTime={pickedTime}
