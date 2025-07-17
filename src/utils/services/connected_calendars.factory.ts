@@ -18,7 +18,7 @@ export const getConnectedCalendarIntegration = (
     | Auth.Credentials
     | O365AuthCredentials
     | CaldavCredentials
-): CalendarService => {
+): CalendarService<typeof provider> => {
   switch (provider) {
     case TimeSlotSource.GOOGLE:
       return new GoogleCalendarService(

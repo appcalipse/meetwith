@@ -41,6 +41,7 @@ import {
   MeetingCreationRequest,
   RequestParticipantMapping,
 } from '@/types/Requests'
+import { Address } from '@/types/Transactions'
 import {
   cancelMeeting as apiCancelMeeting,
   generateMeetingUrl,
@@ -201,6 +202,7 @@ const loadMeetingAccountAddresses = async (
     ...otherSlots.map(it => it.account_address.toLowerCase()),
   ]
 }
+
 const handleParticipants = async (
   participants: ParticipantInfo[],
   currentAccount?: Account | null
@@ -216,7 +218,7 @@ const handleParticipants = async (
 
     for (const p of participant) {
       p.name = p.name || getAccountDisplayName(account)
-      p.status = p.status || ParticipationStatus.Pending
+      p.status = p.status
       p.type = p.type || ParticipantType.Invitee
       p.slot_id = uuidv4()
     }
@@ -264,7 +266,8 @@ const buildMeetingData = async (
   meetingTitle = 'No Title',
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions?: MeetingPermissions[]
+  selectedPermissions?: MeetingPermissions[],
+  txHash?: Address | null
 ): Promise<MeetingCreationRequest> => {
   if (meetingProvider == MeetingProvider.CUSTOM && meetingUrl) {
     if (isValidEmail(meetingUrl)) {
@@ -341,9 +344,10 @@ const buildMeetingData = async (
       name: participant.name || '',
       guest_email: participant.guest_email,
       status:
-        participant.type === ParticipantType.Scheduler
+        participant.status ||
+        (participant.type === ParticipantType.Scheduler
           ? ParticipationStatus.Accepted
-          : ParticipationStatus.Pending,
+          : ParticipationStatus.Pending),
       mappingType: !!participantsToKeep[
         participant.account_address || participant.guest_email || ''
       ]
@@ -373,6 +377,7 @@ const buildMeetingData = async (
       participantsMappings.filter(
         mapping => mapping.type === ParticipantType.Owner
       ).length > 1,
+    txHash,
   }
 }
 
@@ -840,7 +845,8 @@ const scheduleMeeting = async (
   meetingTitle?: string,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat = MeetingRepeat.NO_REPEAT,
-  selectedPermissions?: MeetingPermissions[]
+  selectedPermissions?: MeetingPermissions[],
+  txHash?: Address | null
 ): Promise<MeetingDecrypted> => {
   const newMeetingId = uuidv4()
   const participantData = await handleParticipants(participants, currentAccount) // check participants before proceeding
@@ -878,35 +884,33 @@ const scheduleMeeting = async (
     meetingTitle,
     meetingReminders,
     meetingRepeat,
-    selectedPermissions
+    selectedPermissions,
+    txHash
   )
   if (!ignoreAvailabilities) {
-    const promises: Promise<boolean>[] = []
-    participants
+    const promises: Promise<boolean>[] = participants
       .filter(p => p.account_address !== currentAccount?.address)
-      .forEach(participant => {
-        promises.push(
-          new Promise<boolean>(async resolve => {
-            if (
-              !participant.account_address ||
-              (
-                await isSlotFreeApiCall(
-                  participant.account_address,
-                  startTime,
-                  endTime,
-                  meetingTypeId
-                )
-              ).isFree
-            ) {
-              resolve(true)
-            }
-            resolve(false)
-          })
-        )
-      })
-    const results = await Promise.all(promises)
-    if (results.some(r => !r)) {
-      throw new TimeNotAvailableError()
+      .map(
+        async participant =>
+          !participant.account_address ||
+          (
+            await isSlotFreeApiCall(
+              participant.account_address,
+              startTime,
+              endTime,
+              meetingTypeId,
+              txHash
+            )
+          ).isFree
+      )
+
+    try {
+      const results = await Promise.all(promises)
+      if (results.some(r => !r)) {
+        throw new TimeNotAvailableError()
+      }
+    } catch (error) {
+      throw error
     }
   }
   try {
@@ -1247,9 +1251,12 @@ const dateToLocalizedRange = (
   return start + end
 }
 
-const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
-  if (isProAccount(account)) {
-    const domain = account.subscriptions?.find(
+const getAccountDomainUrl = (
+  account?: Account | null,
+  ellipsize?: boolean
+): string => {
+  if (isProAccount(account!)) {
+    const domain = account?.subscriptions?.find(
       sub => new Date(sub.expiry_time) > new Date()
     )?.domain
     if (domain) {
@@ -1257,12 +1264,12 @@ const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
     }
   }
   return `address/${
-    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+    ellipsize ? ellipsizeAddress(account?.address) : account?.address
   }`
 }
 
 const getAccountCalendarUrl = (
-  account: Account,
+  account?: Account,
   ellipsize?: boolean
 ): string => {
   return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
@@ -1277,10 +1284,10 @@ const generateDefaultMeetingType = (): MeetingType => {
   const meetingType: MeetingType = {
     id: uuidv4(),
     title,
-    url: getSlugFromText(title),
-    duration: 30,
-    minAdvanceTime: 60,
-  }
+    slug: getSlugFromText(title),
+    duration_minutes: 30,
+    min_notice_minutes: 60,
+  } as any
 
   return meetingType
 }
@@ -1305,6 +1312,18 @@ const noNoReplyEmailForAccount = (account_address: string): string => {
     account_address.replaceAll(' ', '_').toLowerCase()
   )
   return `no_reply_${content}@meetwith.xyz`
+}
+const extractAccountFromNoReplyEmail = (email: string): string | null => {
+  const regex = /^no_reply_(.+)@meetwith\.xyz$/
+  const match = email.match(regex)
+
+  if (!match) {
+    return null
+  }
+
+  const sanitizedContent = match[1]
+
+  return sanitizedContent.replace(/_/g, ' ')
 }
 
 const decodeMeeting = async (
@@ -1415,8 +1434,10 @@ const selectDefaultProvider = (providers?: Array<MeetingProvider>) => {
       return MeetingProvider.HUDDLE
   }
 }
+
 export {
   allSlots,
+  buildMeetingData,
   cancelMeeting,
   dateToHumanReadable,
   dateToLocalizedRange,

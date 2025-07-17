@@ -1,7 +1,17 @@
+import {
+  PaymentChannel,
+  PaymentType,
+  PlanType,
+  SessionType,
+  TokenType,
+} from '@utils/constants/meeting-types'
 import { Encrypted } from 'eth-crypto'
 
+import { SupportedChain } from '@/types/chains'
+import { Address } from '@/types/Transactions'
 import { MeetingPermissions } from '@/utils/constants/schedule'
 
+import { TimeRange } from './Account'
 import { Account } from './Account'
 import { MeetingReminders } from './common'
 import { MemberType } from './Group'
@@ -45,7 +55,9 @@ export interface MeetingCreationRequest {
   allSlotIds?: Array<string>
   meetingPermissions?: Array<MeetingPermissions>
   ignoreOwnerAvailability?: boolean
+  txHash?: Address | null
 }
+
 export interface UrlCreationRequest {
   participants_mapping: (ParticipantInfo | RequestParticipantMapping)[]
   start: Date
@@ -156,4 +168,83 @@ export interface CouponSubscriptionRequest {
 
 export interface SubscriptionUpdateRequest {
   domain: string
+}
+
+export interface CreateAvailabilityBlockRequest {
+  title: string
+  timezone: string
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+  is_default?: boolean
+}
+
+export interface UpdateAvailabilityBlockRequest
+  extends CreateAvailabilityBlockRequest {
+  id: string
+}
+
+export interface DuplicateAvailabilityBlockRequest {
+  id: string
+  modifiedData: {
+    title: string
+    timezone: string
+    weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>
+    is_default: boolean
+  }
+}
+
+export interface UpdateAvailabilityBlockMeetingTypesRequest {
+  availability_block_id: string
+  meeting_type_ids: string[]
+}
+
+export interface CreateMeetingTypeRequest {
+  title: string
+  description?: string
+  type: SessionType
+  duration_minutes: number
+  min_notice_minutes: number
+  scheduleGate?: string
+  custom_link?: string
+  fixed_link?: boolean
+  slug: string
+  availability_ids?: string[]
+  calendars?: number[]
+  meeting_platforms?: MeetingProvider[]
+  plan?: {
+    type?: PlanType
+    price_per_slot?: number
+    no_of_slot?: number
+    payment_channel?: PaymentChannel
+    payment_address?: string
+    crypto_network?: number
+  }
+}
+
+export interface UpdateMeetingTypeRequest extends CreateMeetingTypeRequest {
+  id: string
+}
+
+export interface DeleteMeetingTypeRequest {
+  typeId: string
+}
+
+export interface ConfirmCryptoTransactionRequest {
+  transaction_hash: Address
+  amount: number
+  meeting_type_id: string
+  token_address: string
+  token_type: TokenType
+  chain: SupportedChain
+  fiat_equivalent: number
+  guest_address?: string
+  guest_email: string
+  guest_name: string
+}
+
+export interface RequestInvoiceRequest {
+  guest_email: string
+  guest_name: string
+  meeting_type_id: string
+  payment_method: PaymentType
+  url: string
 }
