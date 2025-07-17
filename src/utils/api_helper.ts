@@ -212,15 +212,18 @@ export const getExistingAccounts = async (
   fullInformation = true
 ): Promise<Account[]> => {
   try {
-    return (await internalFetch(`/accounts/existing`, 'POST', {
-      addresses,
-      fullInformation: true,
-    })) as Account[]
-  } catch (e: unknown) {
+    return await queryClient.fetchQuery(
+      QueryKeys.existingAccounts(addresses, fullInformation),
+      () =>
+        internalFetch(`/accounts/existing`, 'POST', {
+          addresses,
+          fullInformation,
+        }) as Promise<Account[]>
+    )
+  } catch (e: any) {
     throw e
   }
 }
-
 export const saveAccountChanges = async (
   account: Account
 ): Promise<Account> => {
