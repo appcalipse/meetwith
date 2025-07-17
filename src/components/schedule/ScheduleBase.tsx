@@ -561,7 +561,7 @@ const ScheduleBase = () => {
             />
             <InputTimePicker
               value={format(pickedTime || new Date(), 'p')}
-              onChange={handleTimePick}
+              onChange={time => handleTimePick(new Date(time))}
               currentDate={pickedTime || new Date()}
               inputProps={{
                 height: 'auto',
