@@ -4,15 +4,14 @@ import {
   ModalContent,
   ModalOverlay,
 } from '@chakra-ui/react'
+import { Account } from '@meta/Account'
 import React from 'react'
 
-import { MeetingMembers } from '../ScheduleTimeDiscover'
 import { ScheduleParticipants } from './ScheduleParticipants'
 
 export interface IMobileScheduleParticipantModal {
   onClose: () => void
   isOpen: boolean
-  meetingMembers: MeetingMembers[]
 }
 
 const MobileScheduleParticipantModal: React.FC<
@@ -29,7 +28,7 @@ const MobileScheduleParticipantModal: React.FC<
       <ModalOverlay />
       <ModalContent w="fit-content" h="fit-content">
         <ModalCloseButton />
-        <ScheduleParticipants meetingMembers={props.meetingMembers} isMobile />
+        <ScheduleParticipants isMobile />
       </ModalContent>
     </Modal>
   )
