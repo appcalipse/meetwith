@@ -102,7 +102,6 @@ const ScheduleTimeDiscover = () => {
           <MobileScheduleParticipantModal
             onClose={() => setIsOpen(false)}
             isOpen={isOpen}
-            meetingMembers={meetingMembers}
           />
           <ScheduleParticipants />
           <SchedulePickTime />

@@ -12,7 +12,6 @@ import { ScheduleParticipants } from './ScheduleParticipants'
 export interface IMobileScheduleParticipantModal {
   onClose: () => void
   isOpen: boolean
-  meetingMembers: Account[]
 }
 
 const MobileScheduleParticipantModal: React.FC<
@@ -29,7 +28,7 @@ const MobileScheduleParticipantModal: React.FC<
       <ModalOverlay />
       <ModalContent w="fit-content" h="fit-content">
         <ModalCloseButton />
-        <ScheduleParticipants meetingMembers={props.meetingMembers} isMobile />
+        <ScheduleParticipants isMobile />
       </ModalContent>
     </Modal>
   )
