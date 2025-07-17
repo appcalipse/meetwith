@@ -14,13 +14,14 @@ import {
   startOfWeek,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import { DateTime, WeekdayNumbers } from 'luxon'
+import { DateTime, Interval as LuxonInterval, WeekdayNumbers } from 'luxon'
 import spacetime from 'spacetime'
 import soft from 'timezone-soft'
 
 import { DayAvailability } from '@/types/Account'
 import { CustomTimeRange } from '@/types/common'
 import { MeetingRepeat } from '@/types/Meeting'
+
 const timezonesObj = ct.getAllTimezones()
 const timezonesKeys = Object.keys(timezonesObj) as Array<
   keyof typeof timezonesObj
@@ -206,4 +207,56 @@ export const parseMonthAvailabilitiesToDate = (
   }
 
   return slots
+}
+
+export const isBeginningOfHour = (dateTime: DateTime): boolean => {
+  return dateTime.minute === 0
+}
+export const getMeetingBoundaries = (
+  slot: LuxonInterval<true>,
+  meetingDurationMinutes: number
+) => {
+  const slotDurationMinutes = slot.toDuration('minutes').minutes
+  const meetingDurationHours = meetingDurationMinutes / 60
+
+  if (meetingDurationHours >= 1) {
+    const slotsInMeeting = meetingDurationMinutes / slotDurationMinutes
+    const totalMinutesFromStartOfDay = slot.start.hour * 60 + slot.start.minute
+    const currentSlotInSequence = Math.floor(
+      totalMinutesFromStartOfDay / slotDurationMinutes
+    )
+
+    return {
+      isTopElement: currentSlotInSequence % slotsInMeeting === 0,
+      isBottomElement: (currentSlotInSequence + 1) % slotsInMeeting === 0,
+    }
+  }
+
+  return {
+    isTopElement: isBeginningOfHour(slot.start),
+    isBottomElement: isBeginningOfHour(slot.end),
+  }
+}
+
+export const formatWithOrdinal = (dateTime: LuxonInterval<true>) => {
+  const zonedStart = dateTime.start
+  const zonedEnd = dateTime.end
+
+  const day = zonedStart.day
+  const suffix = ['th', 'st', 'nd', 'rd'][day % 10 > 3 ? 0 : day % 10]
+
+  // Same day interval
+  if (zonedStart.hasSame(zonedEnd, 'day')) {
+    return (
+      zonedStart
+        .toFormat('EEE, {**} MMMM - h:mm')
+        .replace('{**}', `${day}${suffix}`) +
+      ` - ${zonedEnd.toFormat('h:mm a')}`
+    )
+  }
+
+  // Cross-day interval (rare for most meeting slots)
+  return `${zonedStart.toFormat('EEE, d MMM h:mm')} - ${zonedEnd.toFormat(
+    'EEE, d MMM h:mm a'
+  )}`
 }
