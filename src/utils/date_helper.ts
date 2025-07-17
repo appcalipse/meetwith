@@ -238,7 +238,7 @@ export const getMeetingBoundaries = (
   }
 }
 
-export const formatWithOrdinal = (dateTime: LuxonInterval) => {
+export const formatWithOrdinal = (dateTime: LuxonInterval<true>) => {
   const zonedStart = dateTime.start
   const zonedEnd = dateTime.end
 
