@@ -1,15 +1,11 @@
 import { Flex, Heading, HStack, Icon, VStack } from '@chakra-ui/react'
-import { useContext, useEffect, useState } from 'react'
+import { Account } from '@meta/Account'
+import { useContext, useEffect, useId, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
-import { CustomDayAvailability } from '@/types/common'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
+import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { getExistingAccounts } from '@/utils/api_helper'
 
 import { Grid4 } from '../icons/Grid4'
@@ -21,21 +17,19 @@ import { SchedulePickTime } from './schedule-time-discover/SchedulePickTime'
 export type MeetingMembers = ParticipantInfo & { isCalendarConnected?: boolean }
 
 const ScheduleTimeDiscover = () => {
-  const { handlePageSwitch } = useContext(ScheduleContext)
+  const {
+    participants,
+    groupParticipants,
+    handlePageSwitch,
+    meetingMembers,
+    setMeetingMembers,
+  } = useContext(ScheduleContext)
+  const id = useId()
   const [isOpen, setIsOpen] = useState(false)
   const { currentAccount } = useContext(AccountContext)
   const handleClose = () => {
     handlePageSwitch(Page.SCHEDULE)
   }
-
-  const { participants, groupParticipants } = useContext(ScheduleContext)
-
-  const [meetingMembers, setMeetingMembers] = useState<Array<MeetingMembers>>(
-    []
-  )
-  const [accountAvailabilities, setAccountAvailabilities] = useState<
-    Record<string, Array<CustomDayAvailability>>
-  >({})
 
   const [loading, setLoading] = useState(false)
   const fetchGroupMembers = async () => {
@@ -55,38 +49,9 @@ const ScheduleTimeDiscover = () => {
           ])
       ),
     ]
-    const members = await getExistingAccounts(actualMembers, false)
-    setMeetingMembers(
-      members.map(val => ({
-        account_address: val.address?.toLowerCase(),
-        name: val.preferences.name,
-        status: ParticipationStatus.Pending,
-        type: ParticipantType.Invitee,
-        slot_id: '',
-        meeting_id: '',
-        isCalendarConnected: val.isCalendarConnected,
-      }))
-    )
-    for (const member of members) {
-      const timezone = member.preferences.timezone
-      const availabilities = member.preferences.availabilities?.map(val => {
-        return {
-          ...val,
-          ranges: val.ranges.map(timeRange => {
-            return {
-              start: timeRange.start,
-              end: timeRange.end,
-              timezone,
-              weekday: val.weekday,
-            }
-          }),
-        }
-      })
-      setAccountAvailabilities(prev => ({
-        ...prev,
-        [member.address?.toLowerCase()]: availabilities || [],
-      }))
-    }
+    const members = await getExistingAccounts(actualMembers)
+
+    setMeetingMembers(members)
     setLoading(false)
   }
   useEffect(() => {
@@ -139,11 +104,8 @@ const ScheduleTimeDiscover = () => {
             isOpen={isOpen}
             meetingMembers={meetingMembers}
           />
-          <ScheduleParticipants meetingMembers={meetingMembers} />
-          <SchedulePickTime
-            accountAvailabilities={accountAvailabilities}
-            meetingMembers={meetingMembers}
-          />
+          <ScheduleParticipants />
+          <SchedulePickTime />
         </HStack>
       )}
     </VStack>
