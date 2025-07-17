@@ -14,6 +14,7 @@ import ScheduleTimeDiscover from '@/components/schedule/ScheduleTimeDiscover'
 import { AccountContext } from '@/providers/AccountProvider'
 import { forceAuthenticationCheck } from '@/session/forceAuthenticationCheck'
 import { withLoginRedirect } from '@/session/requireAuthentication'
+import { Account } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
 import { GetGroupsFullResponse } from '@/types/Group'
@@ -103,8 +104,8 @@ interface IScheduleContext {
   handleTitleChange: (title: string) => void
   handleContentChange: (content: string) => void
   handleDurationChange: (duration: number) => void
-  pickedTime: Date | number | null
-  handleTimePick: (time: Date | number) => void
+  pickedTime: Date | null
+  handleTimePick: (time: Date) => void
   currentMonth: Date
   setCurrentMonth: React.Dispatch<React.SetStateAction<Date>>
   timezone: string
@@ -154,6 +155,8 @@ interface IScheduleContext {
   setMeetingOwners: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
   canEditMeetingDetails: boolean
   setCanEditMeetingDetails: React.Dispatch<React.SetStateAction<boolean>>
+  meetingMembers: Array<Account>
+  setMeetingMembers: React.Dispatch<React.SetStateAction<Array<Account>>>
 }
 
 const DEFAULT_CONTEXT: IScheduleContext = {
@@ -206,6 +209,8 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   setMeetingOwners: () => {},
   canEditMeetingDetails: false,
   setCanEditMeetingDetails: () => {},
+  meetingMembers: [],
+  setMeetingMembers: () => {},
 }
 export const ScheduleContext =
   React.createContext<IScheduleContext>(DEFAULT_CONTEXT)
@@ -238,7 +243,8 @@ const Schedule: NextPage<IInitialProps> = ({
   const [title, setTitle] = React.useState('')
   const [content, setContent] = useState('')
   const [duration, setDuration] = React.useState(30)
-  const [pickedTime, setPickedTime] = useState<Date | number | null>(null)
+  const [pickedTime, setPickedTime] = useState<Date | null>(null)
+  const [meetingMembers, setMeetingMembers] = useState<Array<Account>>([])
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [isPrefetching, setIsPrefetching] = useState(false)
   const [currentSelectedDate, setCurrentSelectedDate] = useState(new Date())
@@ -293,7 +299,7 @@ const Schedule: NextPage<IInitialProps> = ({
   useEffect(() => {
     void fetchGroups()
   }, [])
-  const handleTimePick = (time: Date | number) => setPickedTime(time)
+  const handleTimePick = (time: Date) => setPickedTime(time)
   const handleAddGroup = (group: IGroupParticipant) => {
     setParticipants(prev => {
       const groupAdded = prev.some(val => {
@@ -795,6 +801,8 @@ const Schedule: NextPage<IInitialProps> = ({
     setMeetingOwners,
     canEditMeetingDetails,
     setCanEditMeetingDetails,
+    meetingMembers,
+    setMeetingMembers,
   }
   const handleGroupPrefetch = async () => {
     if (!groupId) return
