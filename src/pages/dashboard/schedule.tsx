@@ -36,6 +36,7 @@ import {
 } from '@/types/schedule'
 import { logEvent } from '@/utils/analytics'
 import {
+  getContactById,
   getGroup,
   getGroupsFull,
   getGroupsMembers,
@@ -834,28 +835,39 @@ const Schedule: NextPage<IInitialProps> = ({
     }
     setIsPrefetching(false)
   }
-  const handleContactPrefetch = async () => {}
-  const handlePrefetch = async () => {
-    setIsPrefetching(true)
-    if (contactId) {
-      await handleContactPrefetch()
+  const handleContactPrefetch = async () => {
+    if (!contactId) return
+    try {
+      const contact = await getContactById(contactId)
+      if (contact) {
+        const key = 'no_group'
+        const participant: ParticipantInfo = {
+          account_address: contact.address,
+          name: contact.name,
+          status: ParticipationStatus.Pending,
+          type: ParticipantType.Invitee,
+          slot_id: '',
+          meeting_id: '',
+        }
+        setParticipants([participant])
+        const allAddresses = [contact.address]
+        if (currentAccount?.address) {
+          allAddresses.push(currentAccount?.address)
+        }
+        setGroupAvailability({
+          [key]: allAddresses,
+        })
+      }
+    } catch (error: unknown) {
+      handleApiError('Error prefetching contact.', error)
     }
-    if (groupId) {
-      await handleGroupPrefetch()
-    }
-    setIsPrefetching(false)
   }
-  useEffect(() => {
-    void handlePrefetch()
-  }, [groupId, contactId])
   const handleFetchMeetingInformation = async () => {
     if (!meetingId) return
-    setIsPrefetching(true)
     try {
       const meeting = await getMeeting(meetingId)
       const decryptedMeeting = await decodeMeeting(meeting, currentAccount!)
       if (!decryptedMeeting) {
-        setIsPrefetching(false)
         return
       }
       setDecryptedMeeting(decryptedMeeting)
@@ -963,13 +975,25 @@ const Schedule: NextPage<IInitialProps> = ({
     } catch (error: unknown) {
       handleApiError('Error fetching meeting information.', error)
     }
+  }
+  const handlePrefetch = async () => {
+    setIsPrefetching(true)
+    const promises = []
+    if (contactId) {
+      promises.push(handleContactPrefetch())
+    }
+    if (groupId) {
+      promises.push(handleGroupPrefetch())
+    }
+    if (intent === Intents.UPDATE_MEETING && meetingId) {
+      promises.push(handleFetchMeetingInformation())
+    }
+    await Promise.all(promises)
     setIsPrefetching(false)
   }
   useEffect(() => {
-    if (intent === Intents.UPDATE_MEETING && meetingId) {
-      void handleFetchMeetingInformation()
-    }
-  }, [intent, meetingId, currentAccount?.address])
+    void handlePrefetch()
+  }, [groupId, contactId, intent, meetingId, currentAccount?.address])
 
   return (
     <ScheduleContext.Provider value={context}>

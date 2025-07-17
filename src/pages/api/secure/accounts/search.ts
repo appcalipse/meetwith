@@ -24,6 +24,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       if (!results?.result?.length && isValidEmail(req.query.q as string)) {
         const inviteExists = await contactInviteByEmailExists(
+          account_address,
           req.query.q as string
         )
         return res.status(200).json({
@@ -33,11 +34,19 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
               email: req.query.q as string,
               address: '',
               name: '',
-              is_invited: !!inviteExists,
+              is_invited: inviteExists,
             },
           ],
         })
       }
+      results.result = results.result?.map(val => ({
+        ...val,
+        email:
+          val.email ||
+          (isValidEmail(req.query.q as string)
+            ? (req.query.q as string)
+            : undefined),
+      }))
       return res.status(200).json(results)
     } catch (e) {
       return res.status(500).send(e)

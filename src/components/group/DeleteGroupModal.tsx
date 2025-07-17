@@ -13,10 +13,8 @@ import {
   ModalHeader,
   ModalOverlay,
   Text,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useRouter } from 'next/router'
 import React, { useState } from 'react'
 
 import { deleteGroup } from '@/utils/api_helper'

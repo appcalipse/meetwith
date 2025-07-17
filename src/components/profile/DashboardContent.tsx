@@ -1,13 +1,13 @@
 import { Box, Flex, HStack } from '@chakra-ui/react'
+import { EditMode } from '@meta/Dashboard'
 import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
 import RedirectHandler from '@/components/redirect'
+import { AccountContext } from '@/providers/AccountProvider'
 import ContactStateProvider from '@/providers/ContactInvitesProvider'
 
-import { AccountContext } from '../../providers/AccountProvider'
-import { EditMode } from '../../types/Dashboard'
-import AvailabilityConfig from '../availabilities/availability-config'
+import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
 import NotificationsConfig from '../notifications/NotificationConfig'
 import AccountDetails from './AccountDetails'
@@ -54,7 +54,12 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         justifyContent="space-between"
       >
         <RedirectHandler />
-        <Box flex={{ base: '0', lg: '4' }} mr={{ base: 0, lg: 18 }}>
+        <Box
+          flex={{ base: '0', lg: '4' }}
+          mr={{ base: 0, lg: 18 }}
+          position="sticky"
+          top={40}
+        >
           <NavMenu currentSection={currentSection} />
         </Box>
         <Box

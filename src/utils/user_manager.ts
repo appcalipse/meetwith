@@ -141,7 +141,7 @@ const getAddressDisplayForInput = (input: string) => {
   return input
 }
 
-const ellipsizeAddress = (address: string) =>
+const ellipsizeAddress = (address?: string) =>
   `${address?.substring(0, 5)}...${address?.substring(address.length - 5)}`
 
 const getParticipantDisplay = (
