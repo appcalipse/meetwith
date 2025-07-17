@@ -69,7 +69,7 @@ const ScheduleTimeDiscover = () => {
       <HStack justifyContent={'space-between'}>
         <HStack mb={0} cursor="pointer" onClick={handleClose}>
           <Icon as={FaArrowLeft} size="1.5em" color={'primary.500'} />
-          <Heading size="md" color="primary.500">
+          <Heading fontSize={16} color="primary.500">
             Back
           </Heading>
         </HStack>

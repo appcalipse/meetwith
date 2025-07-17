@@ -17,7 +17,6 @@ import React, { useEffect, useMemo } from 'react'
 import { getBgColor, State } from './SchedulePickTime'
 
 export interface ScheduleTimeSlotProps {
-  date: Date
   slot: Interval<true>
   busySlots: Map<string, Interval<true>[]>
   availableSlots: Map<string, Interval<true>[]>
@@ -35,7 +34,6 @@ type UserState = {
 
 const ScheduleTimeSlot = (props: ScheduleTimeSlotProps) => {
   const {
-    date,
     slot,
     busySlots,
     availableSlots,

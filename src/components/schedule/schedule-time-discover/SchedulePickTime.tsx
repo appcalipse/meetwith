@@ -22,6 +22,7 @@ import {
   sub,
 } from 'date-fns'
 import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
+import debounce from 'lodash.debounce'
 import { DateTime, Interval } from 'luxon'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
@@ -102,23 +103,6 @@ export function SchedulePickTime() {
   const [busySlots, setBusySlots] = useState<Map<string, Interval<true>[]>>(
     new Map()
   )
-  const getMonthsForYear = () => {
-    const year = currentMonth.getFullYear()
-    const months = []
-    for (let month = 0; month < 12; month++) {
-      if (month < new Date().getMonth() && year === new Date().getFullYear()) {
-        continue
-      }
-      const date = new Date(year, month, 1)
-      months.push({
-        value: String(month),
-        label: `${new Intl.DateTimeFormat('en-US', { month: 'long' }).format(
-          date
-        )} ${year}`,
-      })
-    }
-    return months
-  }
   const getEmptySlots = (
     time: Date,
     scheduleDuration = duration
@@ -141,7 +125,30 @@ export function SchedulePickTime() {
     }
     return slots
   }
-  const months = useMemo(() => getMonthsForYear(), [currentMonth])
+  const months = useMemo(() => {
+    const year = currentMonth.getFullYear()
+    const monthsArray = []
+    const formatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
+    const currentDateInTimezone = DateTime.now().setZone(timezone)
+    for (let month = 0; month < 12; month++) {
+      if (
+        month < currentDateInTimezone.month &&
+        year === currentDateInTimezone.year
+      ) {
+        continue
+      }
+      const monthDateTime = DateTime.fromObject({
+        year,
+        month: month + 1,
+        day: 1,
+      }).setZone(timezone)
+      monthsArray.push({
+        value: String(month),
+        label: `${formatter.format(monthDateTime.toJSDate())} ${year}`,
+      })
+    }
+    return monthsArray
+  }, [currentMonth.getFullYear()])
   const [dates, setDates] = useState<Array<Dates>>([])
   const [monthValue, setMonthValue] = useState<
     SingleValue<{ label: string; value: string }>
@@ -166,15 +173,17 @@ export function SchedulePickTime() {
     }
   }
 
-  const tzs = timezones.map(tz => {
-    return {
-      value: String(tz.tzCode),
-      label: tz.name,
-    }
-  })
+  const tzOptions = useMemo(
+    () =>
+      timezones.map(tz => ({
+        value: tz.tzCode,
+        label: tz.name,
+      })),
+    []
+  )
 
   const [tz, setTz] = useState<SingleValue<{ label: string; value: string }>>(
-    tzs.filter(val => val.value === timezone)[0] || tzs[0]
+    tzOptions.filter(val => val.value === timezone)[0] || tzOptions[0]
   )
 
   const _onChange = (newValue: unknown) => {
@@ -213,6 +222,8 @@ export function SchedulePickTime() {
   async function handleSlotLoad() {
     setIsLoading(true)
     try {
+      setAvailableSlots(new Map())
+      setBusySlots(new Map())
       const monthStart = startOfMonth(currentMonth)
       const monthEnd = endOfMonth(currentMonth)
       const accounts = [...new Set(Object.values(groupAvailability).flat())]
@@ -301,18 +312,26 @@ export function SchedulePickTime() {
       setCurrentSelectedDate(addDays(currentSelectedDate, 7))
     }
   }
-  const isAm = (val: DateTime) => {
-    return val.toFormat('a') === 'am'
-  }
-  const HOURS_SLOTS = useMemo(
+  const HOURS_SLOTS = useMemo(() => {
+    const slots = getEmptySlots(new Date(), duration >= 45 ? duration : 60)
+    return slots.map(val => {
+      const zonedTime = val.start.setZone(timezone)
+      return zonedTime.toFormat(zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a')
+    })
+  }, [duration, timezone])
+  const debouncedTimezoneChange = useMemo(
     () =>
-      getEmptySlots(new Date(), duration >= 45 ? duration : 60).map(val =>
-        val.start
-          .setZone(timezone)
-          .toFormat(isAm(val.start) ? 'HH:mm a' : 'hh:mm a')
-      ),
-    [duration, timezone]
+      debounce((newTimezone: string) => {
+        setTimezone(newTimezone)
+      }, 300),
+    []
   )
+  const isBackDisabled = useMemo(() => {
+    const selectedDate =
+      DateTime.fromJSDate(currentSelectedDate).setZone(timezone)
+    const currentDate = DateTime.now().setZone(timezone)
+    return selectedDate < currentDate || isLoading
+  }, [currentSelectedDate, timezone, isLoading])
 
   return (
     <Tooltip.Provider delayDuration={400}>
@@ -341,7 +360,7 @@ export function SchedulePickTime() {
               colorScheme="primary"
               onChange={_onChange}
               className="noLeftBorder timezone-select"
-              options={tzs}
+              options={tzOptions}
               components={customSelectComponents}
             />
           </VStack>
@@ -392,12 +411,7 @@ export function SchedulePickTime() {
               aria-label={'left-icon'}
               icon={<FaChevronLeft />}
               onClick={handleScheduledTimeBack}
-              isDisabled={
-                isBefore(
-                  currentSelectedDate,
-                  utcToZonedTime(new Date(), timezone)
-                ) || isLoading
-              }
+              isDisabled={isBackDisabled}
             />
             <Box maxW="350px" textAlign="center">
               <Heading fontSize="16px">Available times</Heading>
@@ -482,7 +496,7 @@ export function SchedulePickTime() {
                         {date.slots.map(slot => {
                           return (
                             <ScheduleTimeSlot
-                              key={`${slot.start.toMillis()}-${duration}`}
+                              key={`${date.date.toDateString()}-${index}-${duration}`}
                               slot={slot}
                               busySlots={busySlots}
                               availableSlots={availableSlots}
