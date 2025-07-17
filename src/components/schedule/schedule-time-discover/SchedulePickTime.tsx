@@ -15,33 +15,26 @@ import { Select, SingleValue } from 'chakra-react-select'
 import {
   add,
   addDays,
-  addHours,
   endOfMonth,
   isBefore,
-  isSameDay,
   isSameMonth,
-  isWithinInterval,
   startOfMonth,
   sub,
 } from 'date-fns'
-import { formatInTimeZone, utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
-import { DateTime } from 'luxon'
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
+import { DateTime, Interval } from 'luxon'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
 import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
-import { DayAvailability } from '@/types/Account'
-import { CustomTimeRange } from '@/types/common'
-import { TimeSlot } from '@/types/Meeting'
 import { fetchBusySlotsRawForMultipleAccounts } from '@/utils/api_helper'
 import { customSelectComponents } from '@/utils/constants/select'
-import { timezones } from '@/utils/date_helper'
+import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
 
-import { MeetingMembers } from '../ScheduleTimeDiscover'
-import { ScheduleTimeSlot } from './ScheduleTimeSlot'
+import ScheduleTimeSlot from './ScheduleTimeSlot'
 
 export enum State {
   ALL_AVAILABLE,
@@ -49,6 +42,7 @@ export enum State {
   SOME_AVAILABLE,
   NONE_AVAILABLE,
 }
+
 export const getBgColor = (state: State) => {
   switch (state) {
     case State.ALL_AVAILABLE:
@@ -82,21 +76,10 @@ const GUIDES = [
 
 type Dates = {
   date: Date
-  slots: Array<{
-    start: Date
-    end: Date
-  }>
-  busySlots: Array<Array<TimeSlot>>
-  availabilities: Array<Record<string, Array<CustomTimeRange>>>
+  slots: Array<Interval<true>>
 }
-interface SchedulePickTimeProps {
-  accountAvailabilities: Record<string, Array<DayAvailability>>
-  meetingMembers: MeetingMembers[]
-}
-export function SchedulePickTime({
-  accountAvailabilities,
-  meetingMembers,
-}: SchedulePickTimeProps) {
+
+export function SchedulePickTime() {
   const {
     groupAvailability,
     currentMonth,
@@ -108,11 +91,17 @@ export function SchedulePickTime({
     setCurrentSelectedDate,
     handlePageSwitch,
     pickedTime,
+    duration,
+    meetingMembers,
   } = useContext(ScheduleContext)
 
-  const [accountSlots, setAccountSlots] = useState<Array<TimeSlot[]>>([])
   const [isLoading, setIsLoading] = useState(false)
-
+  const [availableSlots, setAvailableSlots] = useState<
+    Map<string, Interval<true>[]>
+  >(new Map())
+  const [busySlots, setBusySlots] = useState<Map<string, Interval<true>[]>>(
+    new Map()
+  )
   const getMonthsForYear = () => {
     const year = currentMonth.getFullYear()
     const months = []
@@ -130,24 +119,25 @@ export function SchedulePickTime({
     }
     return months
   }
-  const getEmptySlots = (time: Date) => {
-    const slots = []
+  const getEmptySlots = (
+    time: Date,
+    scheduleDuration = duration
+  ): Array<Interval<true>> => {
+    const slots: Array<Interval<true>> = []
+    const slotsPerHour = 60 / (scheduleDuration || 30)
+    const totalSlots = 24 * slotsPerHour
 
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < totalSlots; i++) {
+      const minutesFromStart = i * (scheduleDuration || 30)
       const start = DateTime.fromJSDate(time)
         .setZone(timezone)
         .set({
-          hour: i,
-          minute: 0,
+          hour: Math.floor(minutesFromStart / 60),
+          minute: minutesFromStart % 60,
           second: 0,
         })
-        .toJSDate()
-      const end = zonedTimeToUtc(addHours(start, 1), timezone)
-      const slot = {
-        start,
-        end,
-      }
-      slots.push(slot)
+      const slot = Interval.after(start, { minute: scheduleDuration || 30 })
+      if (slot.isValid) slots.push(slot)
     }
     return slots
   }
@@ -198,12 +188,12 @@ export function SchedulePickTime({
     )
   }
 
-  const getDates = (accountSlots: Array<TimeSlot[]>) => {
+  const getDates = (scheduleDuration = duration) => {
     const days = Array.from({ length: 7 }, (v, k) => k)
       .map(k => addDays(currentSelectedDate, k))
       .filter(val => isSameMonth(val, currentMonth))
     return days.map(date => {
-      const slots = getEmptySlots(date)
+      const slots = getEmptySlots(date, scheduleDuration)
       date = DateTime.fromJSDate(date)
         .setZone(timezone)
         .set({
@@ -212,35 +202,14 @@ export function SchedulePickTime({
           second: 0,
         })
         .toJSDate()
-      const busySlots = accountSlots.map(val => {
-        return val.filter(slot => {
-          return isWithinInterval(date, slot) || isSameDay(date, slot.start)
-        })
-      })
-
-      const availabilities: Array<Record<string, Array<CustomTimeRange>>> = []
-      const accounts = Object.values(groupAvailability).flat()
-      for (const [key, entry] of Object.entries(accountAvailabilities)) {
-        const ranges = []
-        for (const availability of entry) {
-          ranges.push(...(availability.ranges as Array<CustomTimeRange>))
-        }
-
-        if (accounts.includes(key)) {
-          availabilities.push({
-            [key]: ranges,
-          })
-        }
-      }
 
       return {
         date,
         slots,
-        busySlots,
-        availabilities,
       }
     })
   }
+
   async function handleSlotLoad() {
     setIsLoading(true)
     try {
@@ -255,19 +224,40 @@ export function SchedulePickTime({
       const accountSlots = accounts.map(account => {
         return availableSlots.filter(slot => slot.account_address === account)
       })
-      setAccountSlots(accountSlots)
-      setDates(getDates(accountSlots))
+      const map: Map<string, Interval[]> = new Map<string, Interval[]>()
+      for (const memberAccount of meetingMembers) {
+        if (!memberAccount.address) continue
+        const availabilities = parseMonthAvailabilitiesToDate(
+          memberAccount?.preferences?.availabilities || [],
+          monthStart,
+          monthEnd,
+          memberAccount?.preferences?.timezone || 'UTC'
+        ).map(({ start, end }) => Interval.fromDateTimes(start, end))
+        map.set(memberAccount.address.toLowerCase(), availabilities)
+      }
+      setAvailableSlots(map)
+      const busySlotsMap: Map<string, Interval[]> = new Map()
+      for (const account of accountSlots) {
+        const busySlots = account.map(slot => {
+          return Interval.fromDateTimes(
+            new Date(slot.start),
+            new Date(slot.end)
+          )
+        })
+        busySlotsMap.set(account[0].account_address.toLowerCase(), busySlots)
+      }
+      setBusySlots(busySlotsMap)
+      setDates(getDates(duration))
     } catch (error: unknown) {
-      handleApiError('Error merging availabilities', error as Error)
+      handleApiError('Error merging availabilities', error)
     }
     setIsLoading(false)
   }
-
   useEffect(() => {
     handleSlotLoad()
-  }, [groupAvailability, currentMonth, timezone])
+  }, [groupAvailability, currentMonth, duration, meetingMembers])
   useEffect(() => {
-    setDates(getDates(accountSlots))
+    setDates(getDates())
   }, [currentSelectedDate, timezone])
   const handleScheduledTimeBack = () => {
     const currentDay = currentSelectedDate.getDate()
@@ -311,19 +301,17 @@ export function SchedulePickTime({
       setCurrentSelectedDate(addDays(currentSelectedDate, 7))
     }
   }
-  const isAm = (val: Date) => {
-    return formatInTimeZone(val, timezone, 'a').toLowerCase() === 'am'
+  const isAm = (val: DateTime) => {
+    return val.toFormat('a') === 'am'
   }
   const HOURS_SLOTS = useMemo(
     () =>
-      getEmptySlots(new Date()).map(val =>
-        formatInTimeZone(
-          val.start,
-          timezone,
-          isAm(val.start) ? 'HH:mm a' : 'hh:mm a'
-        )
+      getEmptySlots(new Date(), duration >= 45 ? duration : 60).map(val =>
+        val.start
+          .setZone(timezone)
+          .toFormat(isAm(val.start) ? 'HH:mm a' : 'hh:mm a')
       ),
-    []
+    [duration, timezone]
   )
 
   return (
@@ -441,7 +429,7 @@ export function SchedulePickTime({
                 gap={2}
               >
                 <Box h={'48px'} width={'100%'} />
-                <VStack align={'flex-start'} p={1}>
+                <VStack align={'flex-start'} p={1} gap={0}>
                   {HOURS_SLOTS.map((slot, index) => {
                     return (
                       <HStack
@@ -450,6 +438,7 @@ export function SchedulePickTime({
                         justify={'center'}
                         align={'center'}
                         h={12}
+                        my={'1px'}
                       >
                         <Text
                           fontWeight={'500'}
@@ -485,23 +474,28 @@ export function SchedulePickTime({
                       <VStack
                         width="100%"
                         align={'flex-start'}
-                        p={1}
                         borderWidth={1}
                         borderRadius={5}
+                        gap={'-1px'}
+                        p={1}
                       >
                         {date.slots.map(slot => {
                           return (
                             <ScheduleTimeSlot
-                              key={formatInTimeZone(
-                                slot.start,
-                                timezone,
-                                'DDDD,MMMM,yyyy, hh:mm,a'
-                              )}
+                              key={
+                                slot.start.toFormat('DDDD,MMMM,yyyy, hh:mm,a') +
+                                slot.end.toFormat('DDDD,MMMM,yyyy, hh:mm,a') +
+                                duration +
+                                timezone +
+                                availableSlots.size +
+                                busySlots.size
+                              }
                               slot={slot}
                               date={date.date}
-                              busySlots={date.busySlots}
-                              availabilities={date.availabilities}
+                              busySlots={busySlots}
+                              availableSlots={availableSlots}
                               pickedTime={pickedTime}
+                              duration={duration}
                               meetingMembers={meetingMembers}
                               handleTimePick={time => {
                                 handleTimePick(time)
