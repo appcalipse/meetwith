@@ -33,8 +33,6 @@ import { CreateEmailOptions, Resend } from 'resend'
 
 import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
 
-import { MeetingPermissions } from './constants/schedule'
-
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
   from: FROM,
