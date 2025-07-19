@@ -67,6 +67,7 @@ import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import {
   GateConditionNotValidError,
   GoogleServiceUnavailable,
+  GuestRescheduleForbiddenError,
   Huddle01ServiceUnavailable,
   InvalidURL,
   MeetingCreationError,
@@ -619,6 +620,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           title: 'Failed to schedule meeting',
           description:
             'There was an issue generating a meeting url for your meeting. try using a different location',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GuestRescheduleForbiddenError) {
+        toast({
+          title: 'Reschedule not allowed',
+          description: (e as GuestRescheduleForbiddenError).message,
           status: 'error',
           duration: 5000,
           position: 'top',
