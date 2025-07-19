@@ -4666,7 +4666,12 @@ const handleWebhookEvent = async (
       const eventLastUpdatedAt = new Date(
         event.extendedProperties?.private?.lastUpdatedAt
       )
-      if (eventLastUpdatedAt > sub(now, { minutes: 2 })) {
+      if (
+        eventLastUpdatedAt >
+        sub(now, {
+          seconds: 30,
+        })
+      ) {
         return false
       }
     }
