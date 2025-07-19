@@ -421,7 +421,9 @@ const updateMeetingAsGuest = async (
   const existingSlotIds = fullMeetingData.slots || []
 
   const existingParticipants: ParticipantInfo[] = []
-
+  if (allSlots.length > 1) {
+    // Add a custom error here
+  }
   for (const slot of allSlots) {
     if (slot.account_address) {
       existingParticipants.push({
@@ -462,7 +464,10 @@ const updateMeetingAsGuest = async (
 
   // Map existing guest participants to their slot IDs from the original meeting
   for (const participant of participants) {
-    if (participant.guest_email) {
+    if (
+      participant.guest_email &&
+      participant.type === ParticipantType.Scheduler
+    ) {
       participantsToKeep[participant.guest_email] = slotId
     }
   }

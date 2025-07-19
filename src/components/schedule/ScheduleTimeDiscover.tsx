@@ -59,7 +59,7 @@ const ScheduleTimeDiscover = () => {
     setMeetingMembers(
       members.map(val => ({
         account_address: val.address?.toLowerCase(),
-        name: val.preferences.name,
+        name: val.preferences?.name,
         status: ParticipationStatus.Pending,
         type: ParticipantType.Invitee,
         slot_id: '',
