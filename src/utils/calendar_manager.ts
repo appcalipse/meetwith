@@ -65,6 +65,7 @@ import { MeetingPermissions } from './constants/schedule'
 import { getContentFromEncrypted, simpleHash } from './cryptography'
 import {
   GuestListModificationDenied,
+  GuestRescheduleForbiddenError,
   InvalidURL,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
@@ -422,7 +423,7 @@ const updateMeetingAsGuest = async (
 
   const existingParticipants: ParticipantInfo[] = []
   if (allSlots.length > 1) {
-    // Add a custom error here
+    throw new GuestRescheduleForbiddenError()
   }
   for (const slot of allSlots) {
     if (slot.account_address) {
