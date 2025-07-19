@@ -72,7 +72,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       </HStack>
       <Divider bg={'neutral.400'} />
       <VStack gap={4} w="100%">
-        {meetingMembers.map((participant, index) => {
+        {meetingMembers?.map((participant, index) => {
           return (
             <HStack
               key={index}
