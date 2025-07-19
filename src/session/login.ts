@@ -57,25 +57,23 @@ export const useLogin = () => {
             const email = await getUserEmail({ client: thirdWebClient })
             if (email) {
               stateObj.email = email
-              if (!shouldRedirect) {
-                // force-set email notification for users signing up from pages with no onboarding redirection
-                const subs = {
-                  account_address: account.address,
-                  notification_types: [],
-                } as AccountNotifications
 
-                subs.notification_types.push({
-                  channel: NotificationChannel.EMAIL,
-                  destination: email,
-                  disabled: false,
-                })
+              const subs = {
+                account_address: account.address,
+                notification_types: [],
+              } as AccountNotifications
 
-                await setNotificationSubscriptions(subs)
+              subs.notification_types.push({
+                channel: NotificationChannel.EMAIL,
+                destination: email,
+                disabled: false,
+              })
 
-                logEvent('Set notifications', {
-                  channels: subs.notification_types.map(sub => sub.channel),
-                })
-              }
+              await setNotificationSubscriptions(subs)
+
+              logEvent('Set notifications', {
+                channels: subs.notification_types.map(sub => sub.channel),
+              })
             }
           }
           if (redirectPath) {
