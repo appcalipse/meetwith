@@ -150,6 +150,7 @@ import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
+  generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
   noNoReplyEmailForAccount,
@@ -257,6 +258,25 @@ const initAccountDBForWallet = async (
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
+
+    // Create default availability block for new users
+    const defaultWeeklyAvailability = generateDefaultAvailabilities()
+
+    const defaultBlock = await createAvailabilityBlock(
+      user_account.address,
+      'Default',
+      timezone,
+      defaultWeeklyAvailability,
+      true // Set as default
+    )
+
+    // Update account preferences to reference the default availability block
+    await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: defaultBlock.id,
+      })
+      .eq('owner_account_address', user_account.address)
 
     user_account.preferences = preferences
     user_account.is_invited = is_invited || false
