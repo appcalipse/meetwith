@@ -20,10 +20,11 @@ export default function LogoutPage() {
   const params = new URLSearchParams(query as Record<string, string>)
   const { logged } = useContext(AccountContext)
   const queryString = params.toString()
-  const ACCEPT_URL = `/dashboard/${EditMode.CONTACTS}?${queryString}&intent=${Intents.ACCEPT_CONTACT}`
+
+  const DECLINE_URL = `/dashboard/${EditMode.CONTACTS}?${queryString}&intent=${Intents.DECLINE_CONTACT}`
   useEffect(() => {
     if (logged) {
-      void push(ACCEPT_URL)
+      void push(DECLINE_URL)
     }
   }, [logged])
 
@@ -48,7 +49,7 @@ export default function LogoutPage() {
         <Image width="100px" p={2} src="/assets/logo.svg" alt="Meetwith" />
         <Image
           src="/assets/join-illustration.svg"
-          alt="Join illustration"
+          alt="Decline illustration"
           width="300px"
           height="auto"
         />
@@ -58,15 +59,15 @@ export default function LogoutPage() {
         <Button
           onClick={() => {
             if (logged) {
-              void push(ACCEPT_URL)
+              void push(DECLINE_URL)
             } else {
-              openConnection(ACCEPT_URL)
+              openConnection(DECLINE_URL)
             }
           }}
           colorScheme="primary"
           w="100%"
         >
-          Join Contact
+          Decline invite
         </Button>
       </VStack>
     </Container>

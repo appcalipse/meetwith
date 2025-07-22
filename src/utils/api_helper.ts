@@ -14,7 +14,6 @@ import {
   Contact,
   ContactInvite,
   ContactSearch,
-  DBContact,
   LeanContact,
 } from '@/types/Contacts'
 import { InviteType } from '@/types/Dashboard'
@@ -179,15 +178,18 @@ export const getExistingAccounts = async (
   fullInformation = true
 ): Promise<Account[]> => {
   try {
-    return (await internalFetch(`/accounts/existing`, 'POST', {
-      addresses,
-      fullInformation: true,
-    })) as Account[]
+    return await queryClient.fetchQuery(
+      QueryKeys.existingAccounts(addresses, fullInformation),
+      () =>
+        internalFetch(`/accounts/existing`, 'POST', {
+          addresses,
+          fullInformation,
+        }) as Promise<Account[]>
+    )
   } catch (e: any) {
     throw e
   }
 }
-
 export const saveAccountChanges = async (
   account: Account
 ): Promise<Account> => {
@@ -314,11 +316,13 @@ export const updateMeeting = async (
   meeting: MeetingUpdateRequest
 ): Promise<DBSlot> => {
   try {
-    return (await internalFetch(
+    const response = await internalFetch<DBSlot>(
       `/secure/meetings/${slotId}`,
       'POST',
       meeting
-    )) as DBSlot
+    )
+    await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
+    return response
   } catch (e: any) {
     if (e.status && e.status === 409) {
       throw new TimeNotAvailableError()
