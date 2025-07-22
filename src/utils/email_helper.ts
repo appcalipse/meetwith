@@ -620,7 +620,8 @@ export const sendInvitationEmail = async (
 export const sendContactInvitationEmail = async (
   toEmail: string,
   inviterName: string,
-  invitationLink: string
+  invitationLink: string,
+  declineLink: string
 ): Promise<void> => {
   const email = new Email({
     views: {
@@ -641,6 +642,7 @@ export const sendContactInvitationEmail = async (
   const locals = {
     inviterName,
     invitationLink,
+    declineLink,
   }
 
   try {
@@ -652,7 +654,9 @@ export const sendContactInvitationEmail = async (
       from: FROM,
       subject: subject,
       html: rendered,
-      text: `${inviterName} invited as a contact. Accept your invite here: ${invitationLink}`,
+      text: `${inviterName} invited you to join their contact list on MeetWith.
+            Click here to accept the invitation: ${invitationLink}
+          If you weren’t expecting this, you can safely ignore this email.`,
       tags: [
         {
           name: 'contact',

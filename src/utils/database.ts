@@ -1288,6 +1288,7 @@ const getGroupsAndMembers = async (
   }
   return groups
 }
+
 async function findGroupsWithSingleMember(
   groupIDs: Array<string>
 ): Promise<Array<EmptyGroupsResponse>> {
@@ -3390,12 +3391,16 @@ const rejectContactInvite = async (
     throw new Error(deleteError.message)
   }
 }
-const contactInviteByEmailExists = async (email: string) => {
+const contactInviteByEmailExists = async (
+  owner_address: string,
+  email: string
+) => {
   const { data, error } = await db.supabase
     .from('contact_invite')
     .select()
     .eq('destination', email)
     .eq('channel', ChannelType.EMAIL)
+    .eq('account_owner_address', owner_address)
   if (error) {
     throw new Error(error.message)
   }

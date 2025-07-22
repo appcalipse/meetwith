@@ -1,4 +1,8 @@
 export default class QueryKeys {
+  static existingAccounts(addresses: string[], fullInformation: boolean) {
+    return ['existingAccounts', addresses.sort(), fullInformation]
+  }
+
   static connectedCalendars(syncOnly?: boolean) {
     return ['connectedCalendars', syncOnly]
   }
