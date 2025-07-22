@@ -117,13 +117,14 @@ import {
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
 } from './calendar_manager'
-import { apiUrl } from './constants'
+import { apiUrl, appUrl } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
+import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
 
 // TODO: better typing
@@ -3428,6 +3429,39 @@ const removeContact = async (address: string, contact_address: string) => {
   }
 }
 
+const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
+  if (isProAccount(account)) {
+    const domain = account.subscriptions?.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )?.domain
+    if (domain) {
+      return domain
+    }
+  }
+  return `address/${
+    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+  }`
+}
+
+const getAccountCalendarUrl = (
+  account: Account,
+  ellipsize?: boolean
+): string => {
+  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+}
+
+const getOwnerPublicUrlServer = async (
+  ownerAccountAddress: string
+): Promise<string> => {
+  try {
+    const ownerAccount = await getAccountFromDB(ownerAccountAddress)
+    return getAccountCalendarUrl(ownerAccount)
+  } catch (error) {
+    // Fallback if account not found
+    return `${appUrl}/address/${ownerAccountAddress}`
+  }
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -3476,6 +3510,8 @@ export {
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
+  getOwnerPublicUrlServer,
+  getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
