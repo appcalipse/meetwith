@@ -25,6 +25,7 @@ import {
 import { appUrl } from './constants'
 import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
+import { getOwnerPublicUrlServer } from './database'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = 'Meetwith <notifications@meetwith.xyz>'
@@ -35,6 +36,24 @@ const defaultResendOptions = {
   headers: {
     'List-Unsubscribe': `<${appUrl}/dashboard/${EditMode.NOTIFICATIONS}>`,
   },
+}
+
+// Helper function to generate change URL for meeting emails
+const generateChangeUrl = async (
+  destinationAccountAddress: string | undefined,
+  ownerAccountAddress: string | undefined,
+  slot_id: string,
+  participantType: ParticipantType
+): Promise<string | undefined> => {
+  return !destinationAccountAddress
+    ? ownerAccountAddress
+      ? participantType === ParticipantType.Scheduler
+        ? `${await getOwnerPublicUrlServer(
+            ownerAccountAddress
+          )}?slot=${slot_id}`
+        : undefined
+      : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+    : undefined
 }
 export const newGroupInviteEmail = async (
   toEmail: string,
@@ -143,6 +162,19 @@ export const newMeetingEmail = async (
     !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
     isSchedulerOrOwner
 
+  // Find the owner's account address for generating the public calendar URL
+  const ownerParticipant = participants.find(
+    p => p.type === ParticipantType.Owner
+  )
+  const ownerAccountAddress = ownerParticipant?.account_address
+
+  const changeUrl = await generateChangeUrl(
+    destinationAccountAddress,
+    ownerAccountAddress,
+    slot_id,
+    participantType
+  )
+
   const locals = {
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
@@ -156,9 +188,8 @@ export const newMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    // Only include reschedule link for guests
+    changeUrl,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted
@@ -213,9 +244,7 @@ export const newMeetingEmail = async (
     },
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
-    destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    changeUrl,
     false,
     destinationAccountAddress
       ? {
@@ -384,6 +413,20 @@ export const updateMeetingEmail = async (
     meetingPermissions === undefined ||
     !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
     isSchedulerOrOwner
+
+  // Find the owner's account address for generating the public calendar URL
+  const ownerParticipant = participants.find(
+    p => p.type === ParticipantType.Owner
+  )
+  const ownerAccountAddress = ownerParticipant?.account_address
+
+  const changeUrl = await generateChangeUrl(
+    destinationAccountAddress,
+    ownerAccountAddress,
+    slot_id,
+    participantType
+  )
+
   const email = new Email()
   const newDuration = differenceInMinutes(end, start)
   const oldDuration = changes?.dateChange
@@ -407,9 +450,8 @@ export const updateMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    // Only include reschedule link for guests
+    changeUrl,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted
@@ -471,9 +513,7 @@ export const updateMeetingEmail = async (
     },
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
-    destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    changeUrl,
     false,
     destinationAccountAddress
       ? {

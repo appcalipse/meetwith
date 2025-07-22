@@ -53,6 +53,7 @@ interface IProps {
   reset: () => void
   isContact: boolean
   setIsContact: (isContact: boolean) => void
+  isReschedule?: boolean
 }
 
 const MeetingScheduledDialog: React.FC<IProps> = ({
@@ -65,6 +66,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   isContact,
   setIsContact,
   reset,
+  isReschedule,
 }) => {
   const { currentAccount } = useContext(AccountContext)
 
@@ -230,7 +232,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 meeting!.start,
                 Intl.DateTimeFormat().resolvedOptions().timeZone,
                 false
-              )} was scheduled successfully.`}
+              )} was ${isReschedule ? 'updated' : 'scheduled'} successfully.`}
             </Text>
           )}
           <Image
