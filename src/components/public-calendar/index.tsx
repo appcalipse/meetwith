@@ -331,10 +331,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (isScheduling) return false
     setIsScheduling(true)
 
-    const start = zonedTimeToUtc(
-      startTime,
-      timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone
-    )
+    const start = new Date(startTime)
     const end = addMinutes(
       new Date(start),
       CalendarType.REGULAR === calendarType
@@ -635,6 +632,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       selectedTime={selectedTime}
                       selectedDay={selectedDay}
                       isMobile={isMobile}
+                      timezone={timezone.value || ''}
                     />
                   ) : (
                     <GroupScheduleCalendarProfile
