@@ -714,6 +714,10 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                 accountNotificationSubs={notificationsSubs}
                 hasConnectedCalendar={hasConnectedCalendar}
                 reset={_onClose}
+                timezone={
+                  timezone.value ||
+                  Intl.DateTimeFormat().resolvedOptions().timeZone
+                }
               />
             </Flex>
           )}
