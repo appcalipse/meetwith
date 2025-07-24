@@ -42,6 +42,7 @@ interface IProps {
   scheduleType: SchedulingType
   hasConnectedCalendar: boolean
   reset: () => void
+  timezone?: string
 }
 
 const MeetingScheduledDialog: React.FC<IProps> = ({
@@ -52,6 +53,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   scheduleType,
   hasConnectedCalendar,
   reset,
+  timezone,
 }) => {
   const { currentAccount } = useContext(AccountContext)
 
@@ -153,7 +155,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 schedulerAccount?.address
               )} at ${dateToHumanReadable(
                 meeting!.start,
-                Intl.DateTimeFormat().resolvedOptions().timeZone,
+                timezone || '',
                 false
               )} was scheduled successfully.`}
             </Text>
