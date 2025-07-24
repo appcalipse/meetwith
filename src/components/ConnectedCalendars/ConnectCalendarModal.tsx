@@ -10,7 +10,7 @@ import {
   ModalOverlay,
   VStack,
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { FaApple, FaCalendarAlt, FaGoogle, FaMicrosoft } from 'react-icons/fa'
 
 import { TimeSlotSource } from '@/types/Meeting'
@@ -24,11 +24,13 @@ import WebDavDetailsPanel from './WebDavCalendarDetail'
 interface ConnectCalendarProps {
   isOpen: boolean
   onClose: () => void
+  state?: string | null
 }
 
 const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
   isOpen,
   onClose,
+  state,
 }) => {
   const [loading, setLoading] = useState<TimeSlotSource | undefined>()
   const [selectedProvider, setSelectedProvider] = useState<
@@ -39,11 +41,11 @@ const ConnectCalendarModal: React.FC<ConnectCalendarProps> = ({
 
     switch (provider) {
       case TimeSlotSource.GOOGLE:
-        const googleResponse = await getGoogleAuthConnectUrl()
+        const googleResponse = await getGoogleAuthConnectUrl(state)
         !!googleResponse && window.location.assign(googleResponse.url)
         return
       case TimeSlotSource.OFFICE:
-        const officeResponse = await getOffice365ConnectUrl()
+        const officeResponse = await getOffice365ConnectUrl(state)
         !!officeResponse && window.location.assign(officeResponse.url)
         return
       case TimeSlotSource.ICLOUD:
