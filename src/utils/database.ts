@@ -4803,6 +4803,123 @@ const handleCalendarRsvps = async (
   integration.updateEventExtendedProperties &&
     integration.updateEventExtendedProperties(meetingId, calendarId)
 }
+
+const getWalletTransactionsFromDB = async (
+  wallet_address: string,
+  token_address?: string,
+  chain_id?: number
+) => {
+  const db = initDB()
+
+  // Build query
+  let query = db.supabase
+    .from('transactions')
+    .select(
+      `
+      *,
+      meeting_sessions (
+        guest_name,
+        guest_email,
+        meeting_type_id
+      ),
+      meeting_types!meeting_sessions(meeting_type_id) (
+        title
+      )
+    `
+    )
+    .eq('initiator_address', wallet_address.toLowerCase())
+
+  // Add optional filters
+  if (token_address) {
+    query = query.eq('token_address', token_address.toLowerCase())
+  }
+
+  if (chain_id) {
+    query = query.eq('chain_id', chain_id)
+  }
+
+  // Execute query
+  const { data: transactions, error } = await query.order('confirmed_at', {
+    ascending: false,
+  })
+
+  if (error) {
+    throw new Error(`Failed to fetch transactions: ${error.message}`)
+  }
+
+  // Process the data to flatten the structure
+  const processedTransactions =
+    transactions?.map((tx: any) => {
+      const meetingSession = tx.meeting_sessions?.[0]
+      const meetingType = tx.meeting_types?.[0]
+
+      return {
+        id: tx.id,
+        transaction_hash: tx.transaction_hash,
+        amount: tx.amount,
+        direction: tx.direction,
+        chain_id: tx.chain_id,
+        token_address: tx.token_address,
+        fiat_equivalent: tx.fiat_equivalent,
+        status: tx.status,
+        confirmed_at: tx.confirmed_at,
+        currency: tx.currency,
+        total_fee: tx.total_fee,
+        fee_breakdown: tx.fee_breakdown,
+        // Meeting-related fields (if available)
+        guest_name: meetingSession?.guest_name,
+        guest_email: meetingSession?.guest_email,
+        plan_title: meetingType?.title,
+        // For pure crypto transfers, we'll show wallet addresses
+        sender_address: tx.direction === 'credit' ? tx.token_address : null,
+        recipient_address: tx.direction === 'debit' ? tx.token_address : null,
+      }
+    }) || []
+
+  return processedTransactions
+}
+
+const getWalletBalanceFromDB = async (wallet_address: string) => {
+  const db = initDB()
+
+  const [creditResult, debitResult] = await Promise.all([
+    db.supabase
+      .from('transactions')
+      .select('fiat_equivalent, amount')
+      .eq('initiator_address', wallet_address.toLowerCase())
+      .eq('direction', 'credit'),
+    db.supabase
+      .from('transactions')
+      .select('fiat_equivalent, amount')
+      .eq('initiator_address', wallet_address.toLowerCase())
+      .eq('direction', 'debit'),
+  ])
+
+  if (creditResult.error) {
+    throw new Error(
+      `Failed to fetch credit transactions: ${creditResult.error.message}`
+    )
+  }
+
+  if (debitResult.error) {
+    throw new Error(
+      `Failed to fetch debit transactions: ${debitResult.error.message}`
+    )
+  }
+
+  const totalCredits =
+    creditResult.data?.reduce((acc: number, tx: any) => {
+      return acc + (tx.fiat_equivalent || tx.amount)
+    }, 0) || 0
+
+  const totalDebits =
+    debitResult.data?.reduce((acc: number, tx: any) => {
+      return acc + (tx.fiat_equivalent || tx.amount)
+    }, 0) || 0
+
+  return totalCredits - totalDebits
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -4868,6 +4985,8 @@ export {
   getTgConnection,
   getTgConnectionByTgId,
   getUserGroups,
+  getWalletBalanceFromDB,
+  getWalletTransactionsFromDB,
   handleGuestCancel,
   handleMeetingCancelSync,
   handleWebhookEvent,
