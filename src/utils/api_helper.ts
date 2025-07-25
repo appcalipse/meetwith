@@ -1582,3 +1582,21 @@ export const requestInvoice = async (
     payload
   )
 }
+
+export const getWalletTransactions = async (
+  wallet_address: string,
+  token_address?: string,
+  chain_id?: number
+) => {
+  return await internalFetch(`/secure/transactions/wallet`, 'POST', {
+    wallet_address,
+    token_address,
+    chain_id,
+  })
+}
+
+export const getWalletBalance = async (wallet_address: string) => {
+  return await internalFetch(`/secure/transactions/balance`, 'POST', {
+    wallet_address,
+  })
+}

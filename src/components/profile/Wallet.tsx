@@ -12,6 +12,7 @@ import {
   ModalOverlay,
   Radio,
   RadioGroup,
+  Spinner,
   Stack,
   Text,
   VStack,
@@ -29,7 +30,11 @@ import {
 import { TbWallet } from 'react-icons/tb'
 import { TbSettings2 } from 'react-icons/tb'
 
+import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { Account } from '@/types/Account'
+
+import ReceiveFundsModal from './ReceiveFundsModal'
+import SendFundsModal from './SendFundsModal'
 
 interface WalletProps {
   currentAccount: Account
@@ -46,6 +51,8 @@ interface CryptoAsset {
   // Additional fields for crypto details
   fullBalance?: string
   currencyIcon?: string
+  tokenAddress: string
+  chainId: number
 }
 
 interface Currency {
@@ -57,6 +64,7 @@ interface Currency {
 interface Network {
   name: string
   icon: string
+  chainId: number
 }
 
 interface Transaction {
@@ -92,6 +100,12 @@ const Wallet: React.FC<WalletProps> = () => {
     useState<Transaction | null>(null)
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoAsset | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false)
+  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false)
+
+  // Use real wallet balance hook
+  const { totalBalance, isLoading: balanceLoading } =
+    useWalletBalance(selectedCurrency)
 
   const currencies: Currency[] = [
     { name: 'US Dollar', code: 'USD', flag: '/assets/currencies/usd.png' },
@@ -104,9 +118,9 @@ const Wallet: React.FC<WalletProps> = () => {
   ]
 
   const networks: Network[] = [
-    { name: 'All networks', icon: '/assets/chains/Default.svg' },
-    { name: 'Celo', icon: '/assets/chains/Celo.svg' },
-    { name: 'Arbitrum', icon: '/assets/chains/Arbitrum.svg' },
+    { name: 'All networks', icon: '/assets/chains/Default.svg', chainId: 0 },
+    { name: 'Celo', icon: '/assets/chains/Celo.svg', chainId: 42220 },
+    { name: 'Arbitrum', icon: '/assets/chains/Arbitrum.svg', chainId: 42161 },
   ]
 
   const cryptoAssets: CryptoAsset[] = [
@@ -120,6 +134,8 @@ const Wallet: React.FC<WalletProps> = () => {
       usdValue: '1,230 USD',
       fullBalance: '30,454.34',
       currencyIcon: '/assets/tokens/CUSD.png',
+      tokenAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a',
+      chainId: 42220,
     },
     {
       name: 'US Dollar Coin',
@@ -131,6 +147,8 @@ const Wallet: React.FC<WalletProps> = () => {
       usdValue: '1,230 USD',
       fullBalance: '25,000.00',
       currencyIcon: '/assets/tokens/USDC.svg',
+      tokenAddress: '0xA0b86a33E6441b8c4C8C8C8C8C8C8C8C8C8C8C8',
+      chainId: 42161,
     },
     {
       name: 'US Dollar Coin',
@@ -142,6 +160,8 @@ const Wallet: React.FC<WalletProps> = () => {
       usdValue: '1,230 USD',
       fullBalance: '15,000.00',
       currencyIcon: '/assets/tokens/USDC.svg',
+      tokenAddress: '0xB0b86a33E6441b8c4C8C8C8C8C8C8C8C8C8C8C8',
+      chainId: 42161,
     },
   ]
 
@@ -202,7 +222,7 @@ const Wallet: React.FC<WalletProps> = () => {
     },
   ]
 
-  const ActionButton = ({ icon, label, isActive = false }: any) => (
+  const ActionButton = ({ icon, label, isActive = false, onClick }: any) => (
     <VStack spacing={3}>
       <Box
         w="68px"
@@ -219,6 +239,7 @@ const Wallet: React.FC<WalletProps> = () => {
         boxShadow="0px 1px 2px rgba(0, 0, 0, 0.05)"
         border={isActive ? '2px solid' : 'none'}
         borderColor="neutral.0"
+        onClick={onClick}
       >
         <Icon
           as={icon}
@@ -561,8 +582,13 @@ const Wallet: React.FC<WalletProps> = () => {
                 icon={PiPlusCircleLight}
                 label="Receive funds"
                 isActive
+                onClick={() => setIsReceiveModalOpen(true)}
               />
-              <ActionButton icon={PiArrowCircleRight} label="Send funds" />
+              <ActionButton
+                icon={PiArrowCircleRight}
+                label="Send funds"
+                onClick={() => setIsSendModalOpen(true)}
+              />
             </HStack>
           </Box>
 
@@ -758,14 +784,25 @@ const Wallet: React.FC<WalletProps> = () => {
                   _hover={{ color: 'neutral.300' }}
                 />
               </HStack>
-              <Text
-                fontSize="48px"
-                fontWeight="500"
-                color="white"
-                lineHeight="1"
-              >
-                {showBalance ? '$30,454.34' : '••••••••'}
-              </Text>
+              {balanceLoading ? (
+                <HStack spacing={3} align="center">
+                  <Spinner color="neutral.400" size="md" />
+                  <Text fontSize="16px" color="neutral.400" fontWeight="500">
+                    Loading balance...
+                  </Text>
+                </HStack>
+              ) : (
+                <Text
+                  fontSize="48px"
+                  fontWeight="500"
+                  color="white"
+                  lineHeight="1"
+                >
+                  {showBalance
+                    ? `$${totalBalance.toLocaleString()}`
+                    : '••••••••'}
+                </Text>
+              )}
             </VStack>
 
             {/* Action Buttons */}
@@ -778,8 +815,13 @@ const Wallet: React.FC<WalletProps> = () => {
                 icon={PiPlusCircleLight}
                 label="Receive funds"
                 isActive
+                onClick={() => setIsReceiveModalOpen(true)}
               />
-              <ActionButton icon={PiArrowCircleRight} label="Send funds" />
+              <ActionButton
+                icon={PiArrowCircleRight}
+                label="Send funds"
+                onClick={() => setIsSendModalOpen(true)}
+              />
             </HStack>
           </Box>
 
@@ -1105,19 +1147,15 @@ const Wallet: React.FC<WalletProps> = () => {
           </ModalHeader>
           <ModalBody pb={6}>
             <RadioGroup value={selectedCurrency} onChange={setSelectedCurrency}>
-              <Stack spacing={4}>
+              <VStack spacing={6} align="stretch">
                 {currencies.map(currency => (
                   <Radio
                     key={currency.code}
                     value={currency.code}
                     colorScheme="orange"
                     size="lg"
-                    _checked={{
-                      '& .chakra-radio__control': {
-                        bg: 'primary.400',
-                        borderColor: 'primary.400',
-                      },
-                    }}
+                    variant="filled"
+                    py={1}
                   >
                     <HStack spacing={3}>
                       <Image
@@ -1133,7 +1171,7 @@ const Wallet: React.FC<WalletProps> = () => {
                     </HStack>
                   </Radio>
                 ))}
-              </Stack>
+              </VStack>
             </RadioGroup>
           </ModalBody>
         </ModalContent>
@@ -1158,19 +1196,15 @@ const Wallet: React.FC<WalletProps> = () => {
           </ModalHeader>
           <ModalBody pb={6}>
             <RadioGroup value={selectedNetwork} onChange={setSelectedNetwork}>
-              <Stack spacing={4}>
+              <VStack spacing={6} align="stretch">
                 {networks.map(network => (
                   <Radio
                     key={network.name}
                     value={network.name}
                     colorScheme="orange"
                     size="lg"
-                    _checked={{
-                      '& .chakra-radio__control': {
-                        bg: 'primary.400',
-                        borderColor: 'primary.400',
-                      },
-                    }}
+                    variant="filled"
+                    py={1}
                   >
                     <HStack spacing={3}>
                       <Box
@@ -1196,11 +1230,23 @@ const Wallet: React.FC<WalletProps> = () => {
                     </HStack>
                   </Radio>
                 ))}
-              </Stack>
+              </VStack>
             </RadioGroup>
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      {/* Send Funds Modal */}
+      <SendFundsModal
+        isOpen={isSendModalOpen}
+        onClose={() => setIsSendModalOpen(false)}
+      />
+
+      {/* Receive Funds Modal */}
+      <ReceiveFundsModal
+        isOpen={isReceiveModalOpen}
+        onClose={() => setIsReceiveModalOpen(false)}
+      />
     </Box>
   )
 }
