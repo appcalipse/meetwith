@@ -260,7 +260,12 @@ const Schedule: NextPage<IInitialProps> = ({
       value: MeetingReminders
       label?: string
     }>
-  >([])
+  >([
+    {
+      value: MeetingReminders['1_HOUR_BEFORE'],
+      label: '1 hour before',
+    },
+  ])
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',

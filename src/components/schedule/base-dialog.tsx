@@ -156,9 +156,16 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
       label?: string
     }>
   >(
-    MeetingNotificationOptions.filter(val =>
-      decryptedMeeting?.reminders?.includes(val.value)
-    )
+    decryptedMeeting?.reminders && decryptedMeeting.reminders.length > 0
+      ? MeetingNotificationOptions.filter(val =>
+          decryptedMeeting.reminders!.includes(val.value)
+        )
+      : [
+          {
+            value: MeetingReminders['1_HOUR_BEFORE'],
+            label: '1 hour before',
+          },
+        ]
   )
   const [meetingRepeat, setMeetingRepeat] = useState(
     MeetingRepeatOptions?.find(
@@ -664,7 +671,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
             </FormControl>
           )}
           <FormControl w="100%" maxW="100%">
-            <FormLabel>Meeting reminders (optional)</FormLabel>
+            <FormLabel>Meeting reminders</FormLabel>
             <ChakraSelect
               value={meetingNotification}
               colorScheme="gray"
@@ -684,6 +691,7 @@ export const BaseMeetingDialog: React.FC<BaseMeetingDialogProps> = ({
                   })
                   return
                 }
+
                 setMeetingNotification(meetingNotification)
               }}
               className="hideBorder"

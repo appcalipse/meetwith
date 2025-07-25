@@ -91,7 +91,12 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       value: MeetingReminders
       label?: string
     }>
-  >([])
+  >([
+    {
+      value: MeetingReminders['1_HOUR_BEFORE'],
+      label: '1 hour before',
+    },
+  ])
 
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
@@ -360,7 +365,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           </FormControl>
         )}
         <FormControl w="100%" maxW="100%">
-          <FormLabel>Meeting reminders (optional)</FormLabel>
+          <FormLabel>Meeting reminders</FormLabel>
           <Select
             value={meetingNotification}
             colorScheme="gray"
@@ -380,6 +385,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                 })
                 return
               }
+
               setMeetingNotification(meetingNotification)
             }}
             className="hideBorder"
