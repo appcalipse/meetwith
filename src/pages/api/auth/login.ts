@@ -29,6 +29,8 @@ const loginRoute = async (req: NextApiRequest, res: NextApiResponse) => {
 
       //avoid exploding cookie size
       req.session.account.preferences = {
+        // add users name to preferences
+        name: account.preferences?.name,
         timezone: '',
         availableTypes: [],
         availabilities: [],
