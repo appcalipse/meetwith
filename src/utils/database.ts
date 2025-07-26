@@ -161,6 +161,7 @@ import {
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_sync_helpers'
+import { apiUrl, appUrl } from './constants'
 import { apiUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
@@ -171,6 +172,7 @@ import { getConnectedCalendarIntegration } from './services/connected_calendars.
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
+import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
 
 // TODO: better typing
@@ -2837,6 +2839,8 @@ const updateMeeting = async (
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
   )
+
+  // now that everything happened without error, it is safe to update the root meeting data
   const existingSlots =
     meeting.slots?.filter(
       val => !meetingUpdateRequest.slotsToRemove.includes(val)
@@ -4832,6 +4836,39 @@ const handleCalendarRsvps = async (
   integration.updateEventExtendedProperties &&
     integration.updateEventExtendedProperties(meetingId, calendarId)
 }
+const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
+  if (isProAccount(account)) {
+    const domain = account.subscriptions?.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )?.domain
+    if (domain) {
+      return domain
+    }
+  }
+  return `address/${
+    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+  }`
+}
+
+const getAccountCalendarUrl = (
+  account: Account,
+  ellipsize?: boolean
+): string => {
+  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+}
+
+const getOwnerPublicUrlServer = async (
+  ownerAccountAddress: string
+): Promise<string> => {
+  try {
+    const ownerAccount = await getAccountFromDB(ownerAccountAddress)
+    return getAccountCalendarUrl(ownerAccount)
+  } catch (error) {
+    // Fallback if account not found
+    return `${appUrl}/address/${ownerAccountAddress}`
+  }
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -4889,6 +4926,7 @@ export {
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
+  getOwnerPublicUrlServer,
   getPaidSessionsByMeetingType,
   getSlotsByIds,
   getSlotsForAccount,

@@ -10,6 +10,11 @@ import {
 import { MeetingReminders } from '@/types/common'
 import { Intents } from '@/types/Dashboard'
 import { MeetingRepeat, TimeSlotSource } from '@/types/Meeting'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
@@ -235,6 +240,26 @@ export default class GoogleCalendarService
             p => p.account_address === calendarOwnerAccountAddress
           )?.slot_id
 
+          // Determine the correct URL format
+          const hasGuests = meetingDetails.participants.some(p => p.guest_email)
+          let changeUrl: string
+
+          if (hasGuests) {
+            // For meetings with guests, use public calendar URL format
+            const ownerParticipant = meetingDetails.participants.find(
+              p => p.type === ParticipantType.Owner
+            )
+            const ownerAddress = ownerParticipant?.account_address
+            if (ownerAddress) {
+              changeUrl = `${appUrl}/address/${ownerAddress}?slot=${slot_id}`
+            } else {
+              changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+            }
+          } else {
+            // For regular users, use dashboard format
+            changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+          }
+
           const payload: calendar_v3.Schema$Event = {
             // yes, google event ids allows only letters and numbers
             id: meetingDetails.meeting_id.replaceAll('-', ''), // required to edit events later
@@ -246,7 +271,7 @@ export default class GoogleCalendarService
             description: CalendarServiceHelper.getMeetingSummary(
               meetingDetails.content,
               meetingDetails.meeting_url,
-              `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+              changeUrl
             ),
             start: {
               dateTime: new Date(meetingDetails.start).toISOString(),
@@ -382,6 +407,26 @@ export default class GoogleCalendarService
         p => p.account_address === calendarOwnerAccountAddress
       )?.slot_id
 
+      // Determine the correct URL format based on whether participants are guests
+      const hasGuests = meetingDetails.participants.some(p => p.guest_email)
+      let changeUrl: string
+
+      if (hasGuests) {
+        // For meetings with guests, use public calendar URL format
+        const ownerParticipant = meetingDetails.participants.find(
+          p => p.type === ParticipantType.Owner
+        )
+        const ownerAddress = ownerParticipant?.account_address
+        if (ownerAddress) {
+          changeUrl = `${appUrl}/address/${ownerAddress}?slot=${slot_id}`
+        } else {
+          changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+        }
+      } else {
+        // For regular users, use dashboard format
+        changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+      }
+
       const payload: calendar_v3.Schema$Event = {
         id: meeting_id.replaceAll('-', ''), // required to edit events later
         summary: CalendarServiceHelper.getMeetingTitle(
@@ -392,7 +437,7 @@ export default class GoogleCalendarService
         description: CalendarServiceHelper.getMeetingSummary(
           meetingDetails.content,
           meetingDetails.meeting_url,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+          changeUrl
         ),
         start: {
           dateTime: new Date(meetingDetails.start).toISOString(),
