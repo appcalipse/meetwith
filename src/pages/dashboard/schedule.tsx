@@ -1,6 +1,6 @@
 import { Container, Flex, useDisclosure, useToast } from '@chakra-ui/react'
 import { addMinutes, differenceInMinutes } from 'date-fns'
-import { zonedTimeToUtc } from 'date-fns-tz'
+import { utcToZonedTime } from 'date-fns-tz'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
@@ -273,7 +273,12 @@ const Schedule: NextPage<IInitialProps> = ({
       value: MeetingReminders
       label?: string
     }>
-  >([])
+  >([
+    {
+      value: MeetingReminders['1_HOUR_BEFORE'],
+      label: '1 hour before',
+    },
+  ])
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
@@ -890,8 +895,8 @@ const Schedule: NextPage<IInitialProps> = ({
       setGroupAvailability({
         no_group: allAddresses,
       })
-      const start = zonedTimeToUtc(meeting.start, timezone)
-      const end = zonedTimeToUtc(meeting.end, timezone)
+      const start = utcToZonedTime(meeting.start, timezone)
+      const end = utcToZonedTime(meeting.end, timezone)
       const diffInMinutes = differenceInMinutes(end, start)
       setParticipants(participants)
 
