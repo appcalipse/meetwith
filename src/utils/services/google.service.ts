@@ -15,7 +15,6 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'

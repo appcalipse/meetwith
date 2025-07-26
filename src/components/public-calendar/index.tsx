@@ -162,14 +162,6 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [rescheduleSlot, setRescheduleSlot] = useState<DBSlot | undefined>(
     undefined
   )
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [availableSlots, setAvailableSlots] = useState<Interval[]>([])
-  const [selfAvailableSlots, setSelfAvailableSlots] = useState<Interval[]>([])
-  const [checkingSlots, setCheckingSlots] = useState(false)
-  const [checkedSelfSlots, setCheckedSelfSlots] = useState(false)
-  const [isScheduling, setIsScheduling] = useState(false)
-  const [busySlots, setBusySlots] = useState<Interval[]>([])
-  const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
   const [blockedDates, setBlockedDates] = useState<Date[]>([])
   const [isContact, setIsContact] = useState(false)
 

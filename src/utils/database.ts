@@ -161,8 +161,7 @@ import {
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_sync_helpers'
-import { apiUrl, appUrl } from './constants'
-import { apiUrl, WEBHOOK_URL } from './constants'
+import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'

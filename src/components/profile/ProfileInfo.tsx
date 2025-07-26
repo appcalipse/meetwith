@@ -89,7 +89,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
   const startTime = props.selectedTime || new Date()
   const startDateTime = DateTime.fromJSDate(startTime).setZone(props.timezone)
   const endDateTime = startDateTime.plus({
-    minutes: props.selectedType.duration,
+    minutes: props.selectedType.duration_minutes,
   })
 
   const formattedStartTime = startDateTime.toFormat('h:mm a')

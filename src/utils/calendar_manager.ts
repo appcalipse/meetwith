@@ -436,7 +436,7 @@ const updateMeetingAsGuest = async (
         account_address: slot.account_address,
         type: ParticipantType.Owner,
         slot_id: slot.id!,
-        meeting_id: guestMeetingData.id,
+        meeting_id: guestMeetingData.id || '',
         status: ParticipationStatus.Accepted,
         name: '', // Will be filled by handleParticipants
       })
@@ -498,7 +498,7 @@ const updateMeetingAsGuest = async (
       meetingProvider !== fullMeetingData.provider)
   ) {
     const generated = await generateMeetingUrl({
-      meeting_id: guestMeetingData.id,
+      meeting_id: guestMeetingData.id || '',
       title: meetingTitle || fullMeetingData.title || 'No Title',
       end: endTime,
       start: startTime,
