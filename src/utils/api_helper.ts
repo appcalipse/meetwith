@@ -814,8 +814,12 @@ export const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
   }))
 }
 
-export const getMeetingGuest = async (slot_id: string): Promise<DBSlot> => {
-  const response = await internalFetch<DBSlot>(`/meetings/guest/${slot_id}`)
+export const getMeetingGuest = async (
+  slot_id: string
+): Promise<ConferenceMeeting> => {
+  const response = await internalFetch<ConferenceMeeting>(
+    `/meetings/guest/${slot_id}`
+  )
   return {
     ...response,
     start: new Date(response.start),
