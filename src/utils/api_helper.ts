@@ -653,10 +653,7 @@ export const subscribeToWaitlist = async (
 }
 
 export const getMeeting = async (slot_id: string): Promise<DBSlot> => {
-  const response = await queryClient.fetchQuery(
-    QueryKeys.meeting(slot_id),
-    () => internalFetch(`/meetings/meeting/${slot_id}`) as Promise<DBSlot>
-  )
+  const response = await internalFetch<DBSlot>(`/meetings/meeting/${slot_id}`)
   return {
     ...response,
     start: new Date(response.start),
@@ -705,14 +702,8 @@ export const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
   }))
 }
 
-export const getMeetingGuest = async (
-  slot_id: string
-): Promise<ConferenceMeeting> => {
-  const response = await queryClient.fetchQuery(
-    QueryKeys.meeting(slot_id),
-    () =>
-      internalFetch(`/meetings/guest/${slot_id}`) as Promise<ConferenceMeeting>
-  )
+export const getMeetingGuest = async (slot_id: string): Promise<DBSlot> => {
+  const response = await internalFetch<DBSlot>(`/meetings/guest/${slot_id}`)
   return {
     ...response,
     start: new Date(response.start),
