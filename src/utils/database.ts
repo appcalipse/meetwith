@@ -4818,12 +4818,9 @@ const getWalletTransactionsFromDB = async (
       `
       *,
       meeting_sessions (
-        guest_name,
         guest_email,
+        guest_address,
         meeting_type_id
-      ),
-      meeting_types!meeting_sessions(meeting_type_id) (
-        title
       )
     `
     )
@@ -4849,32 +4846,45 @@ const getWalletTransactionsFromDB = async (
 
   // Process the data to flatten the structure
   const processedTransactions =
-    transactions?.map((tx: any) => {
-      const meetingSession = tx.meeting_sessions?.[0]
-      const meetingType = tx.meeting_types?.[0]
+    transactions?.map(
+      (
+        tx: Transaction & {
+          meeting_sessions?: Array<
+            MeetingSession & {
+              guest_email?: string
+              guest_address?: string
+              meeting_type_id?: string
+            }
+          >
+        }
+      ) => {
+        const meetingSession = tx.meeting_sessions?.[0]
 
-      return {
-        id: tx.id,
-        transaction_hash: tx.transaction_hash,
-        amount: tx.amount,
-        direction: tx.direction,
-        chain_id: tx.chain_id,
-        token_address: tx.token_address,
-        fiat_equivalent: tx.fiat_equivalent,
-        status: tx.status,
-        confirmed_at: tx.confirmed_at,
-        currency: tx.currency,
-        total_fee: tx.total_fee,
-        fee_breakdown: tx.fee_breakdown,
-        // Meeting-related fields (if available)
-        guest_name: meetingSession?.guest_name,
-        guest_email: meetingSession?.guest_email,
-        plan_title: meetingType?.title,
-        // For pure crypto transfers, we'll show wallet addresses
-        sender_address: tx.direction === 'credit' ? tx.token_address : null,
-        recipient_address: tx.direction === 'debit' ? tx.token_address : null,
+        return {
+          id: tx.id,
+          transaction_hash: tx.transaction_hash,
+          amount: tx.amount,
+          direction: tx.direction,
+          chain_id: tx.chain_id,
+          token_address: tx.token_address,
+          fiat_equivalent: tx.fiat_equivalent,
+          status: tx.status,
+          confirmed_at: tx.confirmed_at,
+          currency: tx.currency,
+          total_fee: tx.total_fee,
+          fee_breakdown: tx.fee_breakdown,
+          // Meeting-related fields (if available)
+          guest_name: meetingSession?.guest_email?.split('@')[0] || 'Guest', // Use email prefix as name
+          guest_email: meetingSession?.guest_email,
+          plan_title: meetingSession?.meeting_type_id
+            ? `Meeting Session`
+            : undefined,
+          // For pure crypto transfers, we'll show wallet addresses
+          sender_address: tx.direction === 'credit' ? tx.token_address : null,
+          recipient_address: tx.direction === 'debit' ? tx.token_address : null,
+        }
       }
-    }) || []
+    ) || []
 
   return processedTransactions
 }
@@ -4908,16 +4918,77 @@ const getWalletBalanceFromDB = async (wallet_address: string) => {
   }
 
   const totalCredits =
-    creditResult.data?.reduce((acc: number, tx: any) => {
-      return acc + (tx.fiat_equivalent || tx.amount)
-    }, 0) || 0
+    creditResult.data?.reduce(
+      (acc: number, tx: { fiat_equivalent?: number; amount: number }) => {
+        return acc + (tx.fiat_equivalent || tx.amount)
+      },
+      0
+    ) || 0
 
   const totalDebits =
-    debitResult.data?.reduce((acc: number, tx: any) => {
-      return acc + (tx.fiat_equivalent || tx.amount)
-    }, 0) || 0
+    debitResult.data?.reduce(
+      (acc: number, tx: { fiat_equivalent?: number; amount: number }) => {
+        return acc + (tx.fiat_equivalent || tx.amount)
+      },
+      0
+    ) || 0
 
   return totalCredits - totalDebits
+}
+
+export const getCryptoBalanceFromDB = async (
+  wallet_address: string,
+  token_address: string,
+  chain_id: number
+): Promise<{ balance: number }> => {
+  const db = initDB()
+
+  const [creditResult, debitResult] = await Promise.all([
+    db.supabase
+      .from('transactions')
+      .select('fiat_equivalent, amount')
+      .eq('initiator_address', wallet_address.toLowerCase())
+      .eq('token_address', token_address.toLowerCase())
+      .eq('chain_id', chain_id)
+      .eq('direction', 'credit'),
+    db.supabase
+      .from('transactions')
+      .select('fiat_equivalent, amount')
+      .eq('initiator_address', wallet_address.toLowerCase())
+      .eq('token_address', token_address.toLowerCase())
+      .eq('chain_id', chain_id)
+      .eq('direction', 'debit'),
+  ])
+
+  if (creditResult.error) {
+    throw new Error(
+      `Failed to fetch credit transactions: ${creditResult.error.message}`
+    )
+  }
+
+  if (debitResult.error) {
+    throw new Error(
+      `Failed to fetch debit transactions: ${debitResult.error.message}`
+    )
+  }
+
+  const totalCredits =
+    creditResult.data?.reduce(
+      (acc: number, tx: { fiat_equivalent?: number; amount: number }) => {
+        return acc + (tx.fiat_equivalent || tx.amount)
+      },
+      0
+    ) || 0
+
+  const totalDebits =
+    debitResult.data?.reduce(
+      (acc: number, tx: { fiat_equivalent?: number; amount: number }) => {
+        return acc + (tx.fiat_equivalent || tx.amount)
+      },
+      0
+    ) || 0
+
+  return { balance: totalCredits - totalDebits }
 }
 
 export {

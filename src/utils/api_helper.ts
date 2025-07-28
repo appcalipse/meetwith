@@ -1600,3 +1600,15 @@ export const getWalletBalance = async (wallet_address: string) => {
     wallet_address,
   })
 }
+
+export async function getCryptoBalance(
+  walletAddress: string,
+  tokenAddress: string,
+  chainId: number
+): Promise<{ balance: number }> {
+  return internalFetch('/secure/transactions/token-balance', 'POST', {
+    wallet_address: walletAddress,
+    token_address: tokenAddress,
+    chain_id: chainId,
+  })
+}
