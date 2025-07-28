@@ -72,7 +72,7 @@ export const notifyForGroupInviteJoinOrReject = async (
       account_address: address,
       name: account.preferences?.name,
       notifications: await getAccountNotificationSubscriptions(address),
-      timezone: account.preferences.timezone,
+      timezone: account.preferences.timezone || 'UTC',
     })
   }
   await runPromises(
@@ -111,7 +111,7 @@ export const notifyForMeetingCancellation = async (
       account_address: address,
       name: account.preferences?.name,
       notifications: await getAccountNotificationSubscriptions(address),
-      timezone: account.preferences.timezone,
+      timezone: account.preferences.timezone || 'UTC',
       type: ParticipantType.Invitee,
       meeting_id,
       status: ParticipationStatus.Rejected,

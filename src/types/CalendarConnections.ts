@@ -28,6 +28,7 @@ export interface CalendarSyncInfo {
   color?: string
 }
 export interface ConnectedCalendarCore {
+  id: number
   provider: TimeSlotSource
   email: string
   calendars: CalendarSyncInfo[]
@@ -52,6 +53,7 @@ export type NewCalendarEventType = {
   url: string
   additionalInfo: Record<string, any>
 }
+
 export enum Office365RecurrenceType {
   DAILY = 'daily',
   WEEKLY = 'weekly',

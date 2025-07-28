@@ -122,17 +122,17 @@ const ScheduleDetails = () => {
   const type = useMemo(
     () =>
       currentAccount?.preferences.availableTypes.find(
-        type => type.duration === duration
+        type => type.duration_minutes === duration
       ),
     [duration]
   )
   useEffect(() => {
     const type = currentAccount?.preferences.availableTypes.find(
-      type => type.duration === duration
+      type => type.duration_minutes === duration
     )
-    if (type?.customLink) {
+    if (type?.custom_link) {
       setMeetingProvider(MeetingProvider.CUSTOM)
-      setMeetingUrl(type.customLink)
+      setMeetingUrl(type.custom_link)
     }
   }, [currentAccount, duration])
   return (
@@ -227,7 +227,7 @@ const ScheduleDetails = () => {
               )}
             </HStack>
           </VStack>
-          {(type?.fixedLink || !type?.customLink) && (
+          {(type?.fixed_link || !type?.custom_link) && (
             <VStack alignItems="start" w={'100%'} gap={4}>
               <Text fontSize="18px" fontWeight={500}>
                 Location

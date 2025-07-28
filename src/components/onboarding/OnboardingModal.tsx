@@ -35,12 +35,15 @@ import { DiscordUserInfo } from '@/types/DiscordUserInfo'
 import { TimeSlotSource } from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 import {
+  createAvailabilityBlock,
   getGoogleAuthConnectUrl,
   getOffice365ConnectUrl,
   internalFetch,
   listConnectedCalendars,
   saveAccountChanges,
   setNotificationSubscriptions,
+  updateAvailabilityBlock,
+  updateAvailabilityBlockMeetingTypes,
   updateConnectedCalendar,
 } from '@/utils/api_helper'
 import { generateDefaultAvailabilities } from '@/utils/calendar_manager'
@@ -49,9 +52,9 @@ import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { isValidEmail } from '@/utils/validations'
 
-import { WeekdayConfig } from '../availabilities/weekday-config'
 import WebDavDetailsPanel from '../ConnectedCalendars/WebDavCalendarDetail'
 import TimezoneSelector from '../TimezoneSelector'
+import { OnboardingAvailabilityStep } from './OnboardingAvailabilityStep'
 
 const OnboardingModal = () => {
   const router = useRouter()
@@ -109,9 +112,17 @@ const OnboardingModal = () => {
 
   const { currentAccount, login } = useContext(AccountContext)
 
-  const [availabilities, setInitialAvailabilities] = useState(
-    generateDefaultAvailabilities()
-  )
+  // Availability form state for onboarding
+  const [availabilityFormState, setAvailabilityFormState] = useState({
+    title: 'Default',
+    timezone: timezone,
+    availabilities: generateDefaultAvailabilities(),
+    isDefault: true,
+  })
+
+  const [selectedMeetingTypeIds, setSelectedMeetingTypeIds] = useState<
+    string[]
+  >([])
 
   // Modal opening flow
   useEffect(() => {
@@ -142,9 +153,17 @@ const OnboardingModal = () => {
 
         // 3rd Case
         // Don't have any origin, just created Account
-      } else if (!origin && signedUp) {
-        openOnboarding()
-        onboardingStarted()
+      } else if (!origin) {
+        const isNewUser =
+          !currentAccount.preferences?.name ||
+          (currentAccount.created_at &&
+            new Date(currentAccount.created_at).toDateString() ===
+              new Date().toDateString())
+
+        if (isNewUser || signedUp) {
+          openOnboarding()
+          onboardingStarted()
+        }
       }
 
       // If not, we check if any origin is passed in and if the user its not logged in
@@ -361,10 +380,37 @@ const OnboardingModal = () => {
     setTimezone(currentAccount.preferences.timezone)
   }, [currentAccount?.address])
 
-  const onChange = (day: number, ranges: TimeRange[] | null) => {
-    const newAvailabilities = [...availabilities]
-    newAvailabilities[day] = { weekday: day, ranges: ranges ?? [] }
-    setInitialAvailabilities(newAvailabilities)
+  // Availability form handlers
+  const handleAvailabilityTitleChange = (title: string) => {
+    setAvailabilityFormState(prev => ({ ...prev, title }))
+  }
+
+  const handleAvailabilityTimezoneChange = (
+    timezone: string | null | undefined
+  ) => {
+    setAvailabilityFormState(prev => ({ ...prev, timezone }))
+  }
+
+  const handleAvailabilityChange = (
+    day: number,
+    ranges: TimeRange[] | null
+  ) => {
+    setAvailabilityFormState(prev => {
+      const newAvailabilities = prev.availabilities.map(availability => {
+        if (availability.weekday === day) {
+          return { weekday: day, ranges: ranges ?? [] }
+        }
+        return availability
+      })
+      return {
+        ...prev,
+        availabilities: newAvailabilities,
+      }
+    })
+  }
+
+  const handleMeetingTypesChange = (meetingTypeIds: string[]) => {
+    setSelectedMeetingTypeIds(meetingTypeIds)
   }
 
   const [loadingSave, setLoadingSave] = useState(false)
@@ -375,13 +421,44 @@ const OnboardingModal = () => {
     setLoadingSave(true)
 
     try {
+      // Get the default availability block ID
+      let defaultBlockId = currentAccount.preferences?.availaibility_id
+
+      // If no default block exists, we need to create one
+      if (!defaultBlockId) {
+        // Create a new default availability block
+        const newBlock = await createAvailabilityBlock({
+          title: availabilityFormState.title,
+          timezone: availabilityFormState.timezone || 'UTC',
+          weekly_availability: availabilityFormState.availabilities,
+          is_default: true,
+        })
+        defaultBlockId = newBlock.id
+      } else {
+        // Update the existing default availability block
+        await updateAvailabilityBlock({
+          id: defaultBlockId,
+          title: availabilityFormState.title,
+          timezone: availabilityFormState.timezone || 'UTC',
+          weekly_availability: availabilityFormState.availabilities,
+          is_default: true,
+        })
+      }
+
+      // Update meeting type associations if any are selected
+      if (selectedMeetingTypeIds.length > 0 && defaultBlockId) {
+        await updateAvailabilityBlockMeetingTypes({
+          availability_block_id: defaultBlockId,
+          meeting_type_ids: selectedMeetingTypeIds,
+        })
+      }
+
       const updatedAccount = await saveAccountChanges({
         ...currentAccount,
         preferences: {
           ...currentAccount.preferences,
           name: name,
           timezone,
-          availabilities,
         },
       })
       if (!!email)
@@ -421,324 +498,121 @@ const OnboardingModal = () => {
         closeOnOverlayClick={false}
         closeOnEsc={false}
         size="xl"
+        isCentered
       >
-        <ModalOverlay />
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
         <ModalContent padding={{ base: 4, sm: 10, md: 20 }} maxW="45rem">
-          <Flex direction="column">
-            <Flex justifyContent="flex-end">
-              <Button
-                variant="ghost"
-                onClick={handleClose}
-                isDisabled={loadingSave}
-              >
-                Skip all
-              </Button>
+          <Flex justifyContent="flex-end" mb={4}>
+            <Button
+              variant="ghost"
+              onClick={handleClose}
+              isDisabled={loadingSave}
+            >
+              Skip all
+            </Button>
+          </Flex>
+
+          <Flex direction="column" gap={4} mb={4}>
+            <Box>Step {activeStep + 1} of 3</Box>
+            <Flex gap="5px">
+              {[1, 2, 3].map((step, index) => (
+                <Flex
+                  key={step}
+                  flexGrow="1"
+                  background={activeStep >= index ? activeStepColor : stepColor}
+                  height="3px"
+                  borderRadius="40px"
+                />
+              ))}
             </Flex>
-            <Flex direction="column" gap={4}>
-              <Box>Step {activeStep + 1} of 3</Box>
-              <Flex gap="5px">
-                {[1, 2, 3].map((step, index) => (
-                  <Flex
-                    key={step}
-                    flexGrow="1"
-                    background={
-                      activeStep >= index ? activeStepColor : stepColor
-                    }
-                    height="3px"
-                    borderRadius="40px"
-                  />
-                ))}
-              </Flex>
+          </Flex>
 
-              {activeStep === 0 && (
-                <Flex marginTop={6} direction="column">
-                  <Heading>Let&apos;s finish setting up!</Heading>
-                  <Text marginTop={4}>
-                    You can provide some basic info to get your profile setup
-                    and have a better scheduling experience (for you and
-                    others). You&apos;ll be able to edit this later.
-                  </Text>
+          <Box>
+            {activeStep === 0 && (
+              <Flex marginTop={6} direction="column">
+                <Heading>Let&apos;s finish setting up!</Heading>
+                <Text marginTop={4}>
+                  You can provide some basic info to get your profile setup and
+                  have a better scheduling experience (for you and others).
+                  You&apos;ll be able to edit this later.
+                </Text>
 
-                  <Flex direction="column" gap={4}>
-                    <FormControl marginTop={6}>
-                      <FormLabel>Your name</FormLabel>
-                      <Input
-                        value={name}
-                        placeholder="Your name or an identifier"
-                        onChange={e => setName(e.target.value)}
-                        autoFocus={true}
-                      />
-                    </FormControl>
+                <Flex direction="column" gap={4}>
+                  <FormControl marginTop={6}>
+                    <FormLabel>Your name</FormLabel>
+                    <Input
+                      value={name}
+                      placeholder="Your name or an identifier"
+                      onChange={e => setName(e.target.value)}
+                      autoFocus={true}
+                    />
+                  </FormControl>
 
-                    <FormControl isInvalid={!!email && !isValidEmail(email)}>
-                      <FormLabel>Email (optional)</FormLabel>
-                      <Input
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        type="email"
-                        placeholder="your@email.com"
-                      />
-                    </FormControl>
+                  <FormControl isInvalid={!!email && !isValidEmail(email)}>
+                    <FormLabel>Email (optional)</FormLabel>
+                    <Input
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      type="email"
+                      placeholder="your@email.com"
+                    />
+                  </FormControl>
 
-                    <FormControl isRequired isInvalid={!timezone}>
-                      <FormLabel>Timezone</FormLabel>
-                      <TimezoneSelector
-                        value={timezone}
-                        onChange={tz => setTimezone(tz)}
-                      />
-                    </FormControl>
+                  <FormControl isRequired isInvalid={!timezone}>
+                    <FormLabel>Timezone</FormLabel>
+                    <TimezoneSelector
+                      value={timezone}
+                      onChange={tz => setTimezone(tz)}
+                    />
+                  </FormControl>
 
-                    <Button
-                      colorScheme="primary"
-                      marginTop={6}
-                      onClick={validateFirstStep}
-                    >
-                      Next
-                    </Button>
-                  </Flex>
+                  <Button
+                    colorScheme="primary"
+                    marginTop={6}
+                    onClick={validateFirstStep}
+                  >
+                    Next
+                  </Button>
                 </Flex>
-              )}
+              </Flex>
+            )}
 
-              {activeStep === 1 && (
-                <Flex marginTop={6} direction="column" gap={10}>
-                  <Flex direction="column" gap={4}>
-                    <Heading>Connect your calendar</Heading>
-                    <Text>
-                      You can leverage your existing calendars to block your
-                      availabilities and also add your new events to it (if you
-                      want of course).
-                    </Text>
-                  </Flex>
+            {activeStep === 1 && (
+              <Flex marginTop={6} direction="column" gap={10}>
+                <Flex direction="column" gap={4}>
+                  <Heading>Connect your calendar</Heading>
+                  <Text>
+                    You can leverage your existing calendars to block your
+                    availabilities and also add your new events to it (if you
+                    want of course).
+                  </Text>
+                </Flex>
 
-                  <Flex direction="column" gap={4}>
-                    {!!getGoogleCalendar() ? (
-                      <Flex
-                        direction="column"
-                        bgColor={bgColor}
-                        borderRadius={12}
-                        padding={10}
-                        gap={6}
-                      >
-                        <Flex gap={4} alignItems="center">
-                          <Circle size={14} bg={avatarBg}>
-                            <FaGoogle size={28} color="white" />
-                          </Circle>
-                          <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="500">
-                              Google
-                            </Text>
-                            <Text textColor={textColor} fontSize={18}>
-                              {getGoogleCalendar()?.email}
-                            </Text>
-                          </Flex>
+                <Flex direction="column" gap={4}>
+                  {!!getGoogleCalendar() ? (
+                    <Flex
+                      direction="column"
+                      bgColor={bgColor}
+                      borderRadius={12}
+                      padding={10}
+                      gap={6}
+                    >
+                      <Flex gap={4} alignItems="center">
+                        <Circle size={14} bg={avatarBg}>
+                          <FaGoogle size={28} color="white" />
+                        </Circle>
+                        <Flex direction="column" gap={2} lineHeight={1}>
+                          <Text fontSize={24} fontWeight="500">
+                            Google
+                          </Text>
+                          <Text textColor={textColor} fontSize={18}>
+                            {getGoogleCalendar()?.email}
+                          </Text>
                         </Flex>
-                        <Divider />
-                        {getGoogleCalendar()?.calendars?.map(
-                          (calendar, index) => {
-                            return (
-                              <Flex
-                                key={calendar.calendarId}
-                                gap={3}
-                                alignItems="center"
-                              >
-                                <Switch
-                                  colorScheme="primary"
-                                  isChecked={calendar.enabled}
-                                  onChange={() =>
-                                    toggleCalendar(getGoogleCalendar(), index)
-                                  }
-                                />
-                                <Text>{calendar.name}</Text>
-                              </Flex>
-                            )
-                          }
-                        )}
                       </Flex>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        display="flex"
-                        gap={2}
-                        alignItems="center"
-                        onClick={onConnectGoogleCalendar}
-                        isDisabled={hasCalendar()}
-                        isLoading={isFetchingCalendarConnections}
-                      >
-                        <FaGoogle />
-                        Google
-                      </Button>
-                    )}
-
-                    {!!getOfficeCalendar() ? (
-                      <Flex
-                        direction="column"
-                        bgColor={bgColor}
-                        borderRadius={12}
-                        padding={10}
-                        gap={6}
-                      >
-                        <Flex gap={4} alignItems="center">
-                          <Circle size={14} bg={avatarBg}>
-                            <FaMicrosoft size={28} color="white" />
-                          </Circle>
-                          <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="500">
-                              Office 365
-                            </Text>
-                            <Text textColor={textColor} fontSize={18}>
-                              {getOfficeCalendar()?.email}
-                            </Text>
-                          </Flex>
-                        </Flex>
-                        <Divider />
-                        {getOfficeCalendar()?.calendars?.map(
-                          (calendar, index) => {
-                            return (
-                              <Flex
-                                key={calendar.calendarId}
-                                gap={3}
-                                alignItems="center"
-                              >
-                                <Switch
-                                  colorScheme="primary"
-                                  isChecked={calendar.enabled}
-                                  onChange={() =>
-                                    toggleCalendar(getOfficeCalendar(), index)
-                                  }
-                                />
-                                <Text>{calendar.name}</Text>
-                              </Flex>
-                            )
-                          }
-                        )}
-                      </Flex>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        display="flex"
-                        gap={2}
-                        alignItems="center"
-                        onClick={onConnectOfficeCalendar}
-                        isDisabled={hasCalendar()}
-                        isLoading={isFetchingCalendarConnections}
-                      >
-                        <FaMicrosoft />
-                        Office 365
-                      </Button>
-                    )}
-
-                    {!!getAppleCalendar() ? (
-                      <Flex
-                        direction="column"
-                        bgColor={bgColor}
-                        borderRadius={12}
-                        padding={10}
-                        gap={6}
-                      >
-                        <Flex gap={4} alignItems="center">
-                          <Circle size={14} bg={avatarBg}>
-                            <FaApple size={28} color="white" />
-                          </Circle>
-                          <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="500">
-                              iCloud
-                            </Text>
-                            <Text textColor={textColor} fontSize={18}>
-                              {getAppleCalendar()?.email}
-                            </Text>
-                          </Flex>
-                        </Flex>
-                        <Divider />
-                        {getAppleCalendar()?.calendars?.map(
-                          (calendar, index) => {
-                            return (
-                              <Flex
-                                key={calendar.calendarId}
-                                gap={3}
-                                alignItems="center"
-                              >
-                                <Switch
-                                  colorScheme="primary"
-                                  isChecked={calendar.enabled}
-                                  onChange={() =>
-                                    toggleCalendar(getOfficeCalendar(), index)
-                                  }
-                                />
-                                <Text>{calendar.name}</Text>
-                              </Flex>
-                            )
-                          }
-                        )}
-                      </Flex>
-                    ) : !isAppleCalDavOpen ? (
-                      <Button
-                        variant="outline"
-                        display="flex"
-                        gap={2}
-                        alignItems="center"
-                        onClick={() => setIsAppleCalDavOpen(!isAppleCalDavOpen)}
-                        isDisabled={hasCalendar()}
-                        isLoading={isFetchingCalendarConnections}
-                      >
-                        <FaApple />
-                        iCloud
-                      </Button>
-                    ) : (
-                      <Flex
-                        borderWidth="1px"
-                        borderRadius={6}
-                        paddingX={4}
-                        paddingY={2}
-                        flexDirection="column"
-                      >
-                        <Flex
-                          justifyContent="space-between"
-                          alignItems="center"
-                          width="100%"
-                          gap={2}
-                        >
-                          <Flex width={10} />
-
-                          <Flex alignItems="baseline" gap={2}>
-                            <FaApple />
-                            iCloud
-                          </Flex>
-                          <Button
-                            variant="ghost"
-                            onClick={() =>
-                              setIsAppleCalDavOpen(!isAppleCalDavOpen)
-                            }
-                          >
-                            X
-                          </Button>
-                        </Flex>
-                        <WebDavDetailsPanel isApple={true} />
-                      </Flex>
-                    )}
-
-                    {!!getDavCalendar() ? (
-                      <Flex
-                        direction="column"
-                        bgColor={bgColor}
-                        borderRadius={12}
-                        padding={10}
-                        gap={6}
-                      >
-                        <Flex gap={4} alignItems="center">
-                          <Circle size={14} bg={avatarBg}>
-                            <FaMicrosoft size={28} color="white" />
-                          </Circle>
-                          <Flex direction="column" gap={2} lineHeight={1}>
-                            <Text fontSize={24} fontWeight="500">
-                              Webdav
-                            </Text>
-                            <Text textColor={textColor} fontSize={18}>
-                              {getDavCalendar()?.email}
-                            </Text>
-                          </Flex>
-                        </Flex>
-                        <Divider />
-                        {getDavCalendar()?.calendars?.map((calendar, index) => {
+                      <Divider />
+                      {getGoogleCalendar()?.calendars?.map(
+                        (calendar, index) => {
                           return (
                             <Flex
                               key={calendar.calendarId}
@@ -749,128 +623,325 @@ const OnboardingModal = () => {
                                 colorScheme="primary"
                                 isChecked={calendar.enabled}
                                 onChange={() =>
-                                  toggleCalendar(getDavCalendar(), index)
+                                  toggleCalendar(getGoogleCalendar(), index)
                                 }
                               />
                               <Text>{calendar.name}</Text>
                             </Flex>
                           )
-                        })}
-                      </Flex>
-                    ) : !isCalDavOpen ? (
-                      <Button
-                        variant="outline"
-                        display="flex"
-                        gap={2}
-                        alignItems="center"
-                        onClick={() => setIsCalDavOpen(!isCalDavOpen)}
-                        isDisabled={hasCalendar()}
-                        isLoading={isFetchingCalendarConnections}
-                      >
-                        <FaMicrosoft />
-                        Webdav
-                      </Button>
-                    ) : (
-                      <Flex
-                        borderWidth="1px"
-                        borderRadius={6}
-                        paddingX={4}
-                        paddingY={2}
-                        flexDirection="column"
-                      >
-                        <Flex
-                          justifyContent="space-between"
-                          alignItems="center"
-                          width="100%"
-                          gap={2}
-                        >
-                          <Flex width={10} />
+                        }
+                      )}
+                    </Flex>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      display="flex"
+                      gap={2}
+                      alignItems="center"
+                      onClick={onConnectGoogleCalendar}
+                      isDisabled={hasCalendar()}
+                      isLoading={isFetchingCalendarConnections}
+                    >
+                      <FaGoogle />
+                      Google
+                    </Button>
+                  )}
 
-                          <Flex alignItems="baseline" gap={2}>
-                            <FaMicrosoft />
-                            Webdav
-                          </Flex>
-                          <Button
-                            variant="ghost"
-                            onClick={() => setIsCalDavOpen(!isCalDavOpen)}
-                          >
-                            X
-                          </Button>
+                  {!!getOfficeCalendar() ? (
+                    <Flex
+                      direction="column"
+                      bgColor={bgColor}
+                      borderRadius={12}
+                      padding={10}
+                      gap={6}
+                    >
+                      <Flex gap={4} alignItems="center">
+                        <Circle size={14} bg={avatarBg}>
+                          <FaMicrosoft size={28} color="white" />
+                        </Circle>
+                        <Flex direction="column" gap={2} lineHeight={1}>
+                          <Text fontSize={24} fontWeight="500">
+                            Office 365
+                          </Text>
+                          <Text textColor={textColor} fontSize={18}>
+                            {getOfficeCalendar()?.email}
+                          </Text>
                         </Flex>
-                        <WebDavDetailsPanel isApple={false} />
                       </Flex>
-                    )}
-
-                    {hasCalendar() ? (
-                      <Text textAlign="center">
-                        You can connect more calendars later on.
-                      </Text>
-                    ) : null}
-                  </Flex>
-
-                  <Flex gap={5}>
+                      <Divider />
+                      {getOfficeCalendar()?.calendars?.map(
+                        (calendar, index) => {
+                          return (
+                            <Flex
+                              key={calendar.calendarId}
+                              gap={3}
+                              alignItems="center"
+                            >
+                              <Switch
+                                colorScheme="primary"
+                                isChecked={calendar.enabled}
+                                onChange={() =>
+                                  toggleCalendar(getOfficeCalendar(), index)
+                                }
+                              />
+                              <Text>{calendar.name}</Text>
+                            </Flex>
+                          )
+                        }
+                      )}
+                    </Flex>
+                  ) : (
                     <Button
                       variant="outline"
-                      colorScheme="primary"
-                      onClick={goToPreviousStep}
-                      flex={1}
+                      display="flex"
+                      gap={2}
+                      alignItems="center"
+                      onClick={onConnectOfficeCalendar}
+                      isDisabled={hasCalendar()}
+                      isLoading={isFetchingCalendarConnections}
                     >
-                      Back
+                      <FaMicrosoft />
+                      Office 365
                     </Button>
-                    <Button
-                      flex={1}
-                      colorScheme="primary"
-                      onClick={goToNextStep}
-                    >
-                      Next
-                    </Button>
-                  </Flex>
-                </Flex>
-              )}
+                  )}
 
-              {activeStep === 2 && (
-                <Flex marginTop={6} direction="column" gap={10}>
-                  <Flex direction="column" gap={4}>
-                    <Heading>Set your availabilities</Heading>
-                    <Text>
-                      Define ranges of time when you are available. You can also
-                      customize all of this later.
+                  {!!getAppleCalendar() ? (
+                    <Flex
+                      direction="column"
+                      bgColor={bgColor}
+                      borderRadius={12}
+                      padding={10}
+                      gap={6}
+                    >
+                      <Flex gap={4} alignItems="center">
+                        <Circle size={14} bg={avatarBg}>
+                          <FaApple size={28} color="white" />
+                        </Circle>
+                        <Flex direction="column" gap={2} lineHeight={1}>
+                          <Text fontSize={24} fontWeight="500">
+                            iCloud
+                          </Text>
+                          <Text textColor={textColor} fontSize={18}>
+                            {getAppleCalendar()?.email}
+                          </Text>
+                        </Flex>
+                      </Flex>
+                      <Divider />
+                      {getAppleCalendar()?.calendars?.map((calendar, index) => {
+                        return (
+                          <Flex
+                            key={calendar.calendarId}
+                            gap={3}
+                            alignItems="center"
+                          >
+                            <Switch
+                              colorScheme="primary"
+                              isChecked={calendar.enabled}
+                              onChange={() =>
+                                toggleCalendar(getOfficeCalendar(), index)
+                              }
+                            />
+                            <Text>{calendar.name}</Text>
+                          </Flex>
+                        )
+                      })}
+                    </Flex>
+                  ) : !isAppleCalDavOpen ? (
+                    <Button
+                      variant="outline"
+                      display="flex"
+                      gap={2}
+                      alignItems="center"
+                      onClick={() => setIsAppleCalDavOpen(!isAppleCalDavOpen)}
+                      isDisabled={hasCalendar()}
+                      isLoading={isFetchingCalendarConnections}
+                    >
+                      <FaApple />
+                      iCloud
+                    </Button>
+                  ) : (
+                    <Flex
+                      borderWidth="1px"
+                      borderRadius={6}
+                      paddingX={4}
+                      paddingY={2}
+                      flexDirection="column"
+                    >
+                      <Flex
+                        justifyContent="space-between"
+                        alignItems="center"
+                        width="100%"
+                        gap={2}
+                      >
+                        <Flex width={10} />
+
+                        <Flex alignItems="baseline" gap={2}>
+                          <FaApple />
+                          iCloud
+                        </Flex>
+                        <Button
+                          variant="ghost"
+                          onClick={() =>
+                            setIsAppleCalDavOpen(!isAppleCalDavOpen)
+                          }
+                        >
+                          X
+                        </Button>
+                      </Flex>
+                      <WebDavDetailsPanel isApple={true} />
+                    </Flex>
+                  )}
+
+                  {!!getDavCalendar() ? (
+                    <Flex
+                      direction="column"
+                      bgColor={bgColor}
+                      borderRadius={12}
+                      padding={10}
+                      gap={6}
+                    >
+                      <Flex gap={4} alignItems="center">
+                        <Circle size={14} bg={avatarBg}>
+                          <FaMicrosoft size={28} color="white" />
+                        </Circle>
+                        <Flex direction="column" gap={2} lineHeight={1}>
+                          <Text fontSize={24} fontWeight="500">
+                            Webdav
+                          </Text>
+                          <Text textColor={textColor} fontSize={18}>
+                            {getDavCalendar()?.email}
+                          </Text>
+                        </Flex>
+                      </Flex>
+                      <Divider />
+                      {getDavCalendar()?.calendars?.map((calendar, index) => {
+                        return (
+                          <Flex
+                            key={calendar.calendarId}
+                            gap={3}
+                            alignItems="center"
+                          >
+                            <Switch
+                              colorScheme="primary"
+                              isChecked={calendar.enabled}
+                              onChange={() =>
+                                toggleCalendar(getDavCalendar(), index)
+                              }
+                            />
+                            <Text>{calendar.name}</Text>
+                          </Flex>
+                        )
+                      })}
+                    </Flex>
+                  ) : !isCalDavOpen ? (
+                    <Button
+                      variant="outline"
+                      display="flex"
+                      gap={2}
+                      alignItems="center"
+                      onClick={() => setIsCalDavOpen(!isCalDavOpen)}
+                      isDisabled={hasCalendar()}
+                      isLoading={isFetchingCalendarConnections}
+                    >
+                      <FaMicrosoft />
+                      Webdav
+                    </Button>
+                  ) : (
+                    <Flex
+                      borderWidth="1px"
+                      borderRadius={6}
+                      paddingX={4}
+                      paddingY={2}
+                      flexDirection="column"
+                    >
+                      <Flex
+                        justifyContent="space-between"
+                        alignItems="center"
+                        width="100%"
+                        gap={2}
+                      >
+                        <Flex width={10} />
+
+                        <Flex alignItems="baseline" gap={2}>
+                          <FaMicrosoft />
+                          Webdav
+                        </Flex>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setIsCalDavOpen(!isCalDavOpen)}
+                        >
+                          X
+                        </Button>
+                      </Flex>
+                      <WebDavDetailsPanel isApple={false} />
+                    </Flex>
+                  )}
+
+                  {hasCalendar() ? (
+                    <Text textAlign="center">
+                      You can connect more calendars later on.
                     </Text>
-                  </Flex>
-
-                  <Flex direction="column" justifyContent="center">
-                    {availabilities.map((availability, index) => (
-                      <WeekdayConfig
-                        key={`${currentAccount?.address}:${index}`}
-                        dayAvailability={availability}
-                        onChange={onChange}
-                      />
-                    ))}
-                  </Flex>
-
-                  <Flex gap={5}>
-                    <Button
-                      variant="outline"
-                      colorScheme="primary"
-                      onClick={goToPreviousStep}
-                      flex={1}
-                      isDisabled={loadingSave}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      flex={1}
-                      colorScheme="primary"
-                      onClick={onSave}
-                      isLoading={loadingSave}
-                    >
-                      Get Started
-                    </Button>
-                  </Flex>
+                  ) : null}
                 </Flex>
-              )}
-            </Flex>
-          </Flex>
+
+                <Flex gap={5}>
+                  <Button
+                    variant="outline"
+                    colorScheme="primary"
+                    onClick={goToPreviousStep}
+                    flex={1}
+                  >
+                    Back
+                  </Button>
+                  <Button flex={1} colorScheme="primary" onClick={goToNextStep}>
+                    Next
+                  </Button>
+                </Flex>
+              </Flex>
+            )}
+
+            {activeStep === 2 && (
+              <Flex marginTop={6} direction="column" gap={10}>
+                <Flex direction="column" gap={4}>
+                  <Heading>Set your availabilities</Heading>
+                  <Text>
+                    Define ranges of time when you are available. You can also
+                    customize all of this later.
+                  </Text>
+                </Flex>
+
+                <OnboardingAvailabilityStep
+                  formState={availabilityFormState}
+                  onTitleChange={handleAvailabilityTitleChange}
+                  onTimezoneChange={handleAvailabilityTimezoneChange}
+                  onAvailabilityChange={handleAvailabilityChange}
+                  onMeetingTypesChange={handleMeetingTypesChange}
+                  isLoading={loadingSave}
+                  currentAccount={currentAccount}
+                />
+
+                <Flex gap={5}>
+                  <Button
+                    variant="outline"
+                    colorScheme="primary"
+                    onClick={goToPreviousStep}
+                    flex={1}
+                    isDisabled={loadingSave}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    flex={1}
+                    colorScheme="primary"
+                    onClick={onSave}
+                    isLoading={loadingSave}
+                  >
+                    Get Started
+                  </Button>
+                </Flex>
+              </Flex>
+            )}
+          </Box>
         </ModalContent>
       </Modal>
     </>

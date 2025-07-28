@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { format, getWeekOfMonth } from 'date-fns'
+import { GaxiosError } from 'gaxios'
 import { Auth, calendar_v3, google } from 'googleapis'
 
 import {
@@ -16,11 +17,12 @@ import {
 } from '@/types/ParticipantInfo'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
-import { noNoReplyEmailForAccount } from '../calendar_manager'
 import { apiUrl, appUrl, NO_REPLY_EMAIL } from '../constants'
 import { updateCalendarPayload } from '../database'
 import { CalendarServiceHelper } from './calendar.helper'
 import { CalendarService } from './calendar.service.types'
+import { withRetry } from './retry.service'
+
 export type EventBusyDate = Record<'start' | 'end', Date | string>
 
 export class MWWGoogleAuth extends google.auth.OAuth2 {
@@ -37,9 +39,36 @@ export class MWWGoogleAuth extends google.auth.OAuth2 {
   }
 }
 
-export default class GoogleCalendarService implements CalendarService {
+const retryCondition = (error: unknown) => {
+  if (error instanceof GaxiosError) {
+    const isRateLimit =
+      error?.message?.includes('Rate Limit') ||
+      error?.response?.status === 403 ||
+      error?.code === 'RATE_LIMIT_EXCEEDED'
+
+    const isQuotaExceeded =
+      error?.message?.includes('quotaExceeded') ||
+      error?.message?.includes('rateLimitExceeded')
+
+    const isNetworkError =
+      error?.code === 'ECONNRESET' ||
+      error?.code === 'ETIMEDOUT' ||
+      !!(
+        error?.response?.status &&
+        error?.response?.status >= 500 &&
+        error?.response?.status < 600
+      )
+
+    return isRateLimit || isQuotaExceeded || isNetworkError
+  }
+  return false
+}
+export default class GoogleCalendarService
+  implements CalendarService<TimeSlotSource.GOOGLE>
+{
   private auth: { getToken: () => Promise<MWWGoogleAuth> }
   private email: string
+
   constructor(
     address: string,
     email: string,
@@ -51,58 +80,6 @@ export default class GoogleCalendarService implements CalendarService {
       typeof credential === 'string' ? JSON.parse(credential) : credential
     )
     this.email = email
-  }
-
-  private googleAuth = (
-    address: string,
-    email: string,
-    googleCredentials: Auth.Credentials
-  ) => {
-    const [client_secret, client_id] = [
-      process.env.GOOGLE_CLIENT_SECRET!,
-      process.env.GOOGLE_CLIENT_ID!,
-    ]
-    const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
-
-    const myGoogleAuth = new MWWGoogleAuth(
-      client_id,
-      client_secret,
-      redirect_uri
-    )
-    myGoogleAuth.setCredentials(googleCredentials)
-
-    const isExpired = () => {
-      const expired = myGoogleAuth.isTokenExpiring()
-      return expired
-    }
-
-    const refreshAccessToken = () =>
-      myGoogleAuth
-        .refreshToken(googleCredentials.refresh_token)
-        .then(async res => {
-          const token = res.res?.data
-          googleCredentials.access_token = token.access_token
-          googleCredentials.expiry_date = token.expiry_date
-
-          await updateCalendarPayload(
-            address,
-            email,
-            TimeSlotSource.GOOGLE,
-            googleCredentials
-          )
-          myGoogleAuth.setCredentials(googleCredentials)
-          return myGoogleAuth
-        })
-        .catch(err => {
-          Sentry.captureException(err)
-          return myGoogleAuth
-        })
-
-    return {
-      email,
-      getToken: () =>
-        !isExpired() ? Promise.resolve(myGoogleAuth) : refreshAccessToken(),
-    }
   }
 
   async refreshConnection(): Promise<CalendarSyncInfo[]> {
@@ -146,10 +123,11 @@ export default class GoogleCalendarService implements CalendarService {
   getConnectedEmail(): string {
     return this.email
   }
+
   async getEventById(
     meeting_id: string,
     _calendarId?: string
-  ): Promise<NewCalendarEventType | undefined> {
+  ): Promise<calendar_v3.Schema$Event | undefined> {
     return new Promise(async (resolve, reject) => {
       const auth = this.auth
       const myGoogleAuth = await auth.getToken()
@@ -174,38 +152,51 @@ export default class GoogleCalendarService implements CalendarService {
             )
             return resolve(undefined)
           }
-          return resolve({
-            uid: meeting_id,
-            ...event?.data,
-            id: meeting_id,
-            additionalInfo: {
-              hangoutLink: event?.data.hangoutLink || '',
-            },
-            type: 'google_calendar',
-            password: '',
-            url: '',
-          })
+          return resolve(event?.data)
         }
       )
     })
   }
-  private createReminder(indicator: MeetingReminders) {
-    switch (indicator) {
-      case MeetingReminders['15_MINUTES_BEFORE']:
-        return { minutes: 15, method: 'popup' }
-      case MeetingReminders['30_MINUTES_BEFORE']:
-        return { minutes: 30, method: 'popup' }
-      case MeetingReminders['1_HOUR_BEFORE']:
-        return { minutes: 60, method: 'popup' }
-      case MeetingReminders['1_DAY_BEFORE']:
-        return { minutes: 1440, method: 'popup' }
-      case MeetingReminders['1_WEEK_BEFORE']:
-        return { minutes: 10080, method: 'popup' }
-      case MeetingReminders['10_MINUTES_BEFORE']:
-      default:
-        return { minutes: 10, method: 'popup' }
-    }
+
+  async listEvents(
+    calendarId: string,
+    dateFrom: Date,
+    dateTo: Date
+  ): Promise<calendar_v3.Schema$Event[]> {
+    return new Promise((resolve, reject) =>
+      this.auth.getToken().then(myGoogleAuth => {
+        const calendar = google.calendar({
+          version: 'v3',
+          auth: myGoogleAuth,
+        })
+
+        calendar.events.list(
+          {
+            calendarId,
+            timeMin: dateFrom.toISOString(),
+            timeMax: dateTo.toISOString(),
+            singleEvents: true,
+            orderBy: 'updated',
+            q: 'meetingId',
+            showDeleted: true,
+            updatedMin: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+          },
+          (err, res) => {
+            if (err) {
+              console.error(
+                'There was an error contacting google calendar service: ',
+                err
+              )
+              return reject(err)
+            }
+            const events = res?.data.items || []
+            return resolve(events)
+          }
+        )
+      })
+    )
   }
+
   async createEvent(
     calendarOwnerAccountAddress: string,
     meetingDetails: MeetingCreationSyncRequest,
@@ -221,7 +212,17 @@ export default class GoogleCalendarService implements CalendarService {
             _calendarId
           )
           if (event) {
-            return resolve(event)
+            return resolve({
+              uid: meetingDetails.meeting_id,
+              ...event,
+              id: meetingDetails.meeting_id,
+              additionalInfo: {
+                hangoutLink: event.hangoutLink || '',
+              },
+              type: 'google_calendar',
+              password: '',
+              url: '',
+            })
           }
           const calendarId = parseCalendarId(_calendarId)
           const participantsInfo: ParticipantInfo[] =
@@ -234,9 +235,9 @@ export default class GoogleCalendarService implements CalendarService {
               meeting_id: meetingDetails.meeting_id,
             }))
 
-          const slot_id = meetingDetails.participants.filter(
+          const slot_id = meetingDetails.participants.find(
             p => p.account_address === calendarOwnerAccountAddress
-          )[0].slot_id
+          )?.slot_id
 
           // Determine the correct URL format
           const hasGuests = meetingDetails.participants.some(p => p.guest_email)
@@ -292,6 +293,12 @@ export default class GoogleCalendarService implements CalendarService {
             guestsCanModify: false,
             location: meetingDetails.meeting_url,
             status: 'confirmed',
+            extendedProperties: {
+              private: {
+                updatedBy: 'meetwith',
+                lastUpdatedAt: new Date().toISOString(),
+              },
+            },
           }
           if (meetingDetails.meetingReminders && payload.reminders?.overrides) {
             payload.reminders.overrides = meetingDetails.meetingReminders.map(
@@ -324,24 +331,14 @@ export default class GoogleCalendarService implements CalendarService {
             auth: myGoogleAuth,
           })
 
-          for (const participant of meetingDetails.participants) {
-            payload.attendees!.push({
-              email:
-                calendarOwnerAccountAddress === participant.account_address
-                  ? this.getConnectedEmail()
-                  : participant.guest_email ||
-                    noNoReplyEmailForAccount(
-                      (participant.name || participant.account_address)!
-                    ),
-              displayName: participant.name || participant.account_address,
-              responseStatus:
-                participant.status === ParticipationStatus.Accepted
-                  ? 'accepted'
-                  : participant.status === ParticipationStatus.Rejected
-                  ? 'declined'
-                  : 'needsAction',
-            })
-          }
+          // Build deduplicated attendees list using helper
+          const attendees = CalendarServiceHelper.buildAttendeesList(
+            meetingDetails.participants,
+            calendarOwnerAccountAddress,
+            () => this.getConnectedEmail()
+          )
+
+          payload.attendees = attendees
 
           calendar.events.insert(
             {
@@ -381,7 +378,7 @@ export default class GoogleCalendarService implements CalendarService {
     )
   }
 
-  async updateEvent(
+  async _updateEvent(
     calendarOwnerAccountAddress: string,
     meeting_id: string,
     meetingDetails: MeetingCreationSyncRequest,
@@ -401,10 +398,13 @@ export default class GoogleCalendarService implements CalendarService {
           slot_id: '',
           meeting_id,
         }))
-
-      const slot_id = meetingDetails.participants.filter(
+      const event = await this.getEventById(meeting_id, _calendarId)
+      const actorStatus = event?.attendees?.find(
+        attendee => attendee.self
+      )?.responseStatus
+      const slot_id = meetingDetails.participants.find(
         p => p.account_address === calendarOwnerAccountAddress
-      )[0].slot_id
+      )?.slot_id
 
       // Determine the correct URL format based on whether participants are guests
       const hasGuests = meetingDetails.participants.some(p => p.guest_email)
@@ -454,6 +454,12 @@ export default class GoogleCalendarService implements CalendarService {
         creator: {
           displayName: 'Meetwith',
         },
+        extendedProperties: {
+          private: {
+            updatedBy: 'meetwith',
+            lastUpdatedAt: new Date().toISOString(),
+          },
+        },
       }
 
       if (meetingDetails.meeting_url) {
@@ -476,32 +482,16 @@ export default class GoogleCalendarService implements CalendarService {
         participant => participant.guest_email
       )
 
-      if (guest) {
-        payload.attendees!.push({
-          email: guest.guest_email,
-          displayName: guest.name,
-          responseStatus: 'accepted',
-        })
-      }
+      // Build deduplicated attendees list using helper
+      const attendees = CalendarServiceHelper.buildAttendeesListForUpdate(
+        meetingDetails.participants,
+        calendarOwnerAccountAddress,
+        () => this.getConnectedEmail(),
+        actorStatus || undefined,
+        guest
+      )
 
-      for (const participant of meetingDetails.participants) {
-        payload.attendees!.push({
-          email:
-            calendarOwnerAccountAddress === participant.account_address
-              ? this.getConnectedEmail()
-              : participant.guest_email ||
-                noNoReplyEmailForAccount(
-                  (participant.name || participant.account_address)!
-                ),
-          displayName: participant.name || participant.account_address,
-          responseStatus:
-            participant.status === ParticipationStatus.Accepted
-              ? 'accepted'
-              : participant.status === ParticipationStatus.Rejected
-              ? 'declined'
-              : 'needsAction',
-        })
-      }
+      payload.attendees = attendees
 
       const calendar = google.calendar({
         version: 'v3',
@@ -539,6 +529,29 @@ export default class GoogleCalendarService implements CalendarService {
         }
       )
     })
+  }
+
+  async updateEvent(
+    calendarOwnerAccountAddress: string,
+    meeting_id: string,
+    meetingDetails: MeetingCreationSyncRequest,
+    _calendarId: string
+  ): Promise<NewCalendarEventType> {
+    return withRetry<NewCalendarEventType>(
+      async () =>
+        this._updateEvent(
+          calendarOwnerAccountAddress,
+          meeting_id,
+          meetingDetails,
+          _calendarId
+        ),
+      {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 30000,
+        retryCondition,
+      }
+    )
   }
 
   async deleteEvent(meeting_id: string, _calendarId: string): Promise<void> {
@@ -626,6 +639,350 @@ export default class GoogleCalendarService implements CalendarService {
         )
       })
     )
+  }
+
+  async setWebhookUrl(webhookUrl: string, calendarId = 'primary') {
+    try {
+      const auth = await this.auth.getToken()
+      const calendar = google.calendar({ version: 'v3', auth })
+
+      // Generate a unique channel ID for this webhook
+      const channelId = `mww-${calendarId.replace(
+        /[^a-zA-Z0-9_]/g,
+        '-'
+      )}-${Date.now()}`
+
+      // Set up the watch request
+      const watchRequest = {
+        calendarId,
+        requestBody: {
+          id: channelId,
+          type: 'web_hook',
+          address: webhookUrl,
+          // Optional: Set expiration (max 1 week for calendar API)
+          expiration: (Date.now() + 7 * 24 * 60 * 60 * 1000).toString(), // 1 week from now
+          token: process.env.SERVER_SECRET,
+        },
+      }
+
+      const response = await calendar.events.watch(watchRequest)
+
+      console.trace('Google Calendar webhook registered:', {
+        channelId,
+        calendarId,
+        webhookUrl,
+        expiration: response.data.expiration,
+        resourceId: response.data.resourceId,
+      })
+
+      return {
+        channelId: response.data.id,
+        resourceId: response.data.resourceId,
+        expiration: response.data.expiration,
+        calendarId,
+        webhookUrl,
+      }
+    } catch (error) {
+      console.error('Failed to register Google Calendar webhook:', error)
+      Sentry.captureException(error, {
+        tags: { service: 'google_calendar', action: 'webhook_setup' },
+        extra: { webhookUrl, calendarId, email: this.email },
+      })
+      throw error
+    }
+  }
+
+  async stopWebhook(channelId: string, resourceId: string): Promise<void> {
+    try {
+      const auth = await this.auth.getToken()
+      const calendar = google.calendar({ version: 'v3', auth })
+
+      await calendar.channels.stop({
+        requestBody: {
+          id: channelId,
+          resourceId,
+        },
+      })
+    } catch (error) {
+      console.error('Failed to stop Google Calendar webhook:', error)
+      Sentry.captureException(error, {
+        tags: { service: 'google_calendar', action: 'webhook_stop' },
+        extra: { channelId, resourceId, email: this.email },
+      })
+      throw error
+    }
+  }
+
+  async refreshWebhook(
+    oldChannelId: string,
+    oldResourceId: string,
+    webhookUrl: string,
+    calendarId = 'primary'
+  ) {
+    try {
+      // Stop the old webhook first
+      await this.stopWebhook(oldChannelId, oldResourceId)
+      // Create a new webhook
+      return await this.setWebhookUrl(webhookUrl, calendarId)
+    } catch (error) {
+      console.error('Failed to refresh Google Calendar webhook:', error)
+      Sentry.captureException(error, {
+        tags: { service: 'google_calendar', action: 'webhook_refresh' },
+        extra: { oldChannelId, webhookUrl, calendarId, email: this.email },
+      })
+      throw error
+    }
+  }
+
+  async _updateEventRSVP(
+    meeting_id: string,
+    attendeeEmail: string,
+    responseStatus: string,
+    _calendarId?: string
+  ): Promise<NewCalendarEventType> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const auth = this.auth
+        const myGoogleAuth = await auth.getToken()
+        const calendar = google.calendar({
+          version: 'v3',
+          auth: myGoogleAuth,
+        })
+
+        const calendarId = parseCalendarId(_calendarId)
+
+        // First, get the current event
+        const event = await this.getEventById(meeting_id, _calendarId)
+        await new Promise(resolve => setTimeout(resolve, 5000)) // Wait for 5 seconds to ensure the event is fetched and rate limit not blocked
+        // If the event is not found, reject the promise
+        if (!event) {
+          return reject(new Error(`Event ${meeting_id} not found`))
+        }
+
+        // Update only the specific attendee's response status
+        const updatedAttendees = (event.attendees || []).map(attendee => {
+          if (attendee.email?.toLowerCase() === attendeeEmail.toLowerCase()) {
+            return {
+              ...attendee,
+              responseStatus,
+            }
+          }
+          return attendee
+        })
+
+        // Create minimal payload with only attendees and extended properties
+        const payload: calendar_v3.Schema$Event = {
+          attendees: updatedAttendees,
+          extendedProperties: {
+            private: {
+              ...event.extendedProperties?.private,
+              updatedBy: 'meetwith',
+              lastUpdatedAt: new Date().toISOString(),
+            },
+          },
+        }
+
+        // Update the event with only the RSVP change
+        calendar.events.patch(
+          {
+            auth: myGoogleAuth,
+            calendarId,
+            eventId: meeting_id.replaceAll('-', ''),
+            sendNotifications: true,
+            sendUpdates: 'all',
+            requestBody: payload,
+          },
+          function (updateErr, updatedEvent) {
+            if (updateErr) {
+              console.error(
+                'There was an error updating RSVP status: ',
+                updateErr
+              )
+              return reject(updateErr)
+            }
+
+            return resolve({
+              uid: meeting_id,
+              ...updatedEvent?.data,
+              id: meeting_id,
+              additionalInfo: {
+                hangoutLink: updatedEvent?.data?.hangoutLink || '',
+              },
+              type: 'google_calendar',
+              password: '',
+              url: '',
+            })
+          }
+        )
+      } catch (error) {
+        console.error('Error in updateEventRSVP:', error)
+        reject(error)
+      }
+    })
+  }
+
+  async updateEventRSVP(
+    meeting_id: string,
+    attendeeEmail: string,
+    responseStatus: string,
+    _calendarId?: string
+  ): Promise<NewCalendarEventType> {
+    return withRetry<NewCalendarEventType>(
+      async () =>
+        this._updateEventRSVP(
+          meeting_id,
+          attendeeEmail,
+          responseStatus,
+          _calendarId
+        ),
+      {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 30000,
+        retryCondition,
+      }
+    )
+  }
+
+  async updateEventExtendedProperties(
+    meeting_id: string,
+    _calendarId?: string
+  ): Promise<NewCalendarEventType> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const auth = this.auth
+        const myGoogleAuth = await auth.getToken()
+        const calendar = google.calendar({
+          version: 'v3',
+          auth: myGoogleAuth,
+        })
+
+        const calendarId = parseCalendarId(_calendarId)
+
+        // First, get the current event
+        const event = await this.getEventById(meeting_id, _calendarId)
+        if (!event) {
+          return reject(new Error(`Event ${meeting_id} not found`))
+        }
+
+        // Create minimal payload with only attendees and extended properties
+        const payload: calendar_v3.Schema$Event = {
+          extendedProperties: {
+            private: {
+              ...event.extendedProperties?.private,
+              updatedBy: 'meetwith',
+              lastUpdatedAt: new Date().toISOString(),
+            },
+          },
+        }
+
+        // Update the event with only the RSVP change
+        calendar.events.patch(
+          {
+            auth: myGoogleAuth,
+            calendarId,
+            eventId: meeting_id.replaceAll('-', ''),
+            sendNotifications: true,
+            sendUpdates: 'all',
+            requestBody: payload,
+          },
+          function (updateErr, updatedEvent) {
+            if (updateErr) {
+              console.error(
+                'There was an error updating RSVP status: ',
+                updateErr
+              )
+              return reject(updateErr)
+            }
+
+            return resolve({
+              uid: meeting_id,
+              ...updatedEvent?.data,
+              id: meeting_id,
+              additionalInfo: {
+                hangoutLink: updatedEvent?.data?.hangoutLink || '',
+              },
+              type: 'google_calendar',
+              password: '',
+              url: '',
+            })
+          }
+        )
+      } catch (error) {
+        console.error('Error in updateEventRSVP:', error)
+        reject(error)
+      }
+    })
+  }
+
+  private googleAuth = (
+    address: string,
+    email: string,
+    googleCredentials: Auth.Credentials
+  ) => {
+    const [client_secret, client_id] = [
+      process.env.GOOGLE_CLIENT_SECRET!,
+      process.env.GOOGLE_CLIENT_ID!,
+    ]
+    const redirect_uri = `${apiUrl}/secure/calendar_integrations/google/callback`
+
+    const myGoogleAuth = new MWWGoogleAuth(
+      client_id,
+      client_secret,
+      redirect_uri
+    )
+    myGoogleAuth.setCredentials(googleCredentials)
+
+    const isExpired = () => {
+      const expired = myGoogleAuth.isTokenExpiring()
+      return expired
+    }
+
+    const refreshAccessToken = () =>
+      myGoogleAuth
+        .refreshToken(googleCredentials.refresh_token)
+        .then(async res => {
+          const token = res.res?.data
+          googleCredentials.access_token = token.access_token
+          googleCredentials.expiry_date = token.expiry_date
+
+          await updateCalendarPayload(
+            address,
+            email,
+            TimeSlotSource.GOOGLE,
+            googleCredentials
+          )
+          myGoogleAuth.setCredentials(googleCredentials)
+          return myGoogleAuth
+        })
+        .catch(err => {
+          Sentry.captureException(err)
+          return myGoogleAuth
+        })
+
+    return {
+      email,
+      getToken: () =>
+        !isExpired() ? Promise.resolve(myGoogleAuth) : refreshAccessToken(),
+    }
+  }
+
+  private createReminder(indicator: MeetingReminders) {
+    switch (indicator) {
+      case MeetingReminders['15_MINUTES_BEFORE']:
+        return { minutes: 15, method: 'popup' }
+      case MeetingReminders['30_MINUTES_BEFORE']:
+        return { minutes: 30, method: 'popup' }
+      case MeetingReminders['1_HOUR_BEFORE']:
+        return { minutes: 60, method: 'popup' }
+      case MeetingReminders['1_DAY_BEFORE']:
+        return { minutes: 1440, method: 'popup' }
+      case MeetingReminders['1_WEEK_BEFORE']:
+        return { minutes: 10080, method: 'popup' }
+      case MeetingReminders['10_MINUTES_BEFORE']:
+      default:
+        return { minutes: 10, method: 'popup' }
+    }
   }
 }
 

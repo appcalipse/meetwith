@@ -20,6 +20,8 @@ const discordRedirectUrl = `${baseURL}/dashboard/details`
 
 const NO_REPLY_EMAIL = 'no-reply@meetwithwallet.xyz'
 
+const WEBHOOK_URL = `${apiUrl}/server/webhook/calendar/sync`
+
 export enum OnboardingSubject {
   Discord = 'discord',
   DiscordConnectedInPage = 'discord_connected_page',
@@ -36,5 +38,6 @@ export {
   isProduction,
   MWW_DISCORD_SERVER,
   NO_REPLY_EMAIL,
+  WEBHOOK_URL,
   YEAR_DURATION_IN_SECONDS,
 }
