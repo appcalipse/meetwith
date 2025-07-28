@@ -42,3 +42,22 @@ jobs:
       run: copilot deploy -e pre-prod --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}
+
+    - name: Send Discord Notification
+      if: always()
+      uses: Ilshidur/action-discord@master
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      with:
+        args: |
+          🚀 **Deployment Completed**
+          
+          **Repository:** ${{ github.repository }}
+          **Branch:** ${{ github.ref_name }}
+          **Environment:** ${{ github.ref == 'refs/heads/main' && 'Production' || github.ref == 'refs/heads/develop' && 'Preview' || github.ref == 'refs/heads/pre-prod' && 'Pre-prod' || 'Unknown' }}
+          **Status:** ${{ job.status }}
+          **Commit:** ${{ github.sha }}
+          **Author:** ${{ github.actor }}
+          **Workflow:** ${{ github.workflow }}
+          
+          View details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
