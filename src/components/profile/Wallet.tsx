@@ -1,6 +1,5 @@
 import {
   Box,
-  Button,
   Flex,
   HStack,
   Icon,
@@ -13,11 +12,10 @@ import {
   Radio,
   RadioGroup,
   Spinner,
-  Stack,
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
 import { GrDocumentTime } from 'react-icons/gr'
@@ -30,8 +28,11 @@ import {
 import { TbWallet } from 'react-icons/tb'
 import { TbSettings2 } from 'react-icons/tb'
 
+import { useCryptoBalance } from '@/hooks/useCryptoBalance'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
+import { useWalletTransactions } from '@/hooks/useWalletTransactions'
 import { Account } from '@/types/Account'
+import { FormattedTransaction } from '@/types/Transactions'
 
 import ReceiveFundsModal from './ReceiveFundsModal'
 import SendFundsModal from './SendFundsModal'
@@ -67,26 +68,6 @@ interface Network {
   chainId: number
 }
 
-interface Transaction {
-  id: string
-  user: string
-  userImage?: string
-  action: string // "sent you" or "You sent" etc
-  amount: string
-  status: 'Successful' | 'Failed'
-  date: string
-  time: string
-  // Additional fields for transaction details
-  fullName?: string
-  email?: string
-  plan?: string
-  sessions?: string
-  price?: string
-  paymentMethod?: string
-  sessionLocation?: string
-  transactionHash?: string
-}
-
 const Wallet: React.FC<WalletProps> = () => {
   const [selectedCurrency, setSelectedCurrency] = useState('USD')
   const [selectedNetwork, setSelectedNetwork] = useState('Celo')
@@ -97,15 +78,31 @@ const Wallet: React.FC<WalletProps> = () => {
   const [showTransactionDetails, setShowTransactionDetails] = useState(false)
   const [showCryptoDetails, setShowCryptoDetails] = useState(false)
   const [selectedTransaction, setSelectedTransaction] =
-    useState<Transaction | null>(null)
+    useState<FormattedTransaction | null>(null)
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoAsset | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false)
 
-  // Use real wallet balance hook
   const { totalBalance, isLoading: balanceLoading } =
     useWalletBalance(selectedCurrency)
+
+  const { transactions, isLoading: transactionsLoading } =
+    useWalletTransactions()
+
+  // Token-specific data for crypto details view
+  const selectedCryptoBalance = useCryptoBalance(
+    selectedCrypto?.tokenAddress || '',
+    selectedCrypto?.chainId || 0
+  )
+
+  const {
+    transactions: selectedCryptoTransactions,
+    isLoading: selectedCryptoTransactionsLoading,
+  } = useWalletTransactions(
+    selectedCrypto?.tokenAddress,
+    selectedCrypto?.chainId
+  )
 
   const currencies: Currency[] = [
     { name: 'US Dollar', code: 'USD', flag: '/assets/currencies/usd.png' },
@@ -123,104 +120,314 @@ const Wallet: React.FC<WalletProps> = () => {
     { name: 'Arbitrum', icon: '/assets/chains/Arbitrum.svg', chainId: 42161 },
   ]
 
-  const cryptoAssets: CryptoAsset[] = [
+  // Define crypto assets configuration
+  const cryptoConfig = [
     {
       name: 'Celo Dollar',
       symbol: 'cUSD',
       icon: '/assets/tokens/CUSD.png',
       price: '1 USD',
-      change: '+3.6%',
-      balance: '1,230 cUSD',
-      usdValue: '1,230 USD',
-      fullBalance: '30,454.34',
-      currencyIcon: '/assets/tokens/CUSD.png',
-      tokenAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a',
-      chainId: 42220,
+      change: '+0.1%',
+      tokenAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a', // Celo only
+      celoChainId: 42220,
     },
     {
       name: 'US Dollar Coin',
       symbol: 'USDC',
       icon: '/assets/tokens/USDC.svg',
       price: '1 USD',
-      change: '+3.6%',
-      balance: '1,230 USDC',
-      usdValue: '1,230 USD',
-      fullBalance: '25,000.00',
-      currencyIcon: '/assets/tokens/USDC.svg',
-      tokenAddress: '0xA0b86a33E6441b8c4C8C8C8C8C8C8C8C8C8C8C8',
-      chainId: 42161,
+      change: '+0.1%',
+      tokenAddress: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', // Celo
+      celoChainId: 42220,
+      arbitrumTokenAddress: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // Arbitrum
+      arbitrumChainId: 42161,
     },
     {
-      name: 'US Dollar Coin',
-      symbol: 'USDC',
-      icon: '/assets/tokens/USDC.svg',
+      name: 'Tether',
+      symbol: 'USDT',
+      icon: '/assets/tokens/USDT.svg',
       price: '1 USD',
-      change: '+3.6%',
-      balance: '1,230 USDC',
-      usdValue: '1,230 USD',
-      fullBalance: '15,000.00',
-      currencyIcon: '/assets/tokens/USDC.svg',
-      tokenAddress: '0xB0b86a33E6441b8c4C8C8C8C8C8C8C8C8C8C8C8',
-      chainId: 42161,
+      change: '+0.1%',
+      tokenAddress: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e', // Celo
+      celoChainId: 42220,
+      arbitrumTokenAddress: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', // Arbitrum
+      arbitrumChainId: 42161,
     },
   ]
 
-  const transactions: Transaction[] = [
-    {
-      id: '1',
-      user: 'Joseph Yu',
-      userImage: '/assets/wallet-add.png',
-      action: 'sent you',
-      amount: '$200',
-      status: 'Successful',
-      date: '4 Feb',
-      time: '02:00 GMT+1',
-      fullName: 'Osinachi Patrick',
-      email: 'sinachpat@gmail.com',
-      plan: 'Personalized Figma and design system training, for individuals, teams, and companies.',
-      sessions: '5 sessions',
-      price: '$3,000',
-      paymentMethod: 'Pay with Card',
-      sessionLocation: "Go to client's page",
-      transactionHash: 'vf45dfdfsldhguelds',
-    },
-    {
-      id: '2',
-      user: 'Joseph Yu',
-      userImage: '/assets/wallet-add.png',
-      action: 'sent you',
-      amount: '$200',
-      status: 'Failed',
-      date: '4 Feb',
-      time: '02:00 GMT+1',
-      fullName: 'Osinachi Patrick',
-      email: 'sinachpat@gmail.com',
-      plan: 'Personalized Figma and design system training, for individuals, teams, and companies.',
-      sessions: '5 sessions',
-      price: '$3,000',
-      paymentMethod: 'Pay with Card',
-      sessionLocation: "Go to client's page",
-      transactionHash: 'vf45dfdfsldhguelds',
-    },
-    {
-      id: '3',
-      user: 'Aanura Ven',
-      userImage: '/assets/wallet-add.png',
-      action: 'You sent',
-      amount: '$200',
-      status: 'Successful',
-      date: '4 Feb',
-      time: '02:00 GMT+1',
-      fullName: 'Osinachi Patrick',
-      email: 'sinachpat@gmail.com',
-      plan: 'Personalized Figma and design system training, for individuals, teams, and companies.',
-      sessions: '5 sessions',
-      price: '$3,000',
-      paymentMethod: 'Pay with Card',
-      sessionLocation: "Go to client's page",
-      transactionHash: 'vf45dfdfsldhguelds',
-    },
-  ]
+  // Generate crypto assets based on selected network
+  const cryptoAssets = useMemo(() => {
+    const selectedNetworkData = networks.find(n => n.name === selectedNetwork)
+
+    if (selectedNetwork === 'All networks') {
+      // Show all 6 assets (3 cryptos × 2 networks)
+      return [
+        ...cryptoConfig.map(crypto => ({
+          ...crypto,
+          balance: '0 cUSD',
+          usdValue: '$0',
+          fullBalance: '0',
+          currencyIcon: crypto.icon,
+          chainId: crypto.celoChainId,
+          networkName: 'Celo',
+        })),
+        ...cryptoConfig.map(crypto => ({
+          ...crypto,
+          balance: '0 USDC',
+          usdValue: '$0',
+          fullBalance: '0',
+          currencyIcon: crypto.icon,
+          chainId: crypto.arbitrumChainId,
+          networkName: 'Arbitrum',
+        })),
+      ]
+    } else {
+      // Show 3 assets for the selected network
+      const chainId = selectedNetworkData?.chainId || 42220
+      return cryptoConfig.map(crypto => ({
+        ...crypto,
+        balance: '0 ' + crypto.symbol,
+        usdValue: '$0',
+        fullBalance: '0',
+        currencyIcon: crypto.icon,
+        chainId,
+        networkName: selectedNetwork,
+      }))
+    }
+  }, [selectedNetwork])
+
+  // Fetch balances for each crypto asset - call hooks at top level
+  const cusdCeloBalance = useCryptoBalance(
+    '0x765DE816845861e75A25fCA122bb6898B8B1282a',
+    42220
+  )
+  const usdcCeloBalance = useCryptoBalance(
+    '0xcebA9300f2b948710d2653dD7B07f33A8B32118C',
+    42220
+  )
+  const usdtCeloBalance = useCryptoBalance(
+    '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',
+    42220
+  )
+
+  const usdcArbitrumBalance = useCryptoBalance(
+    '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    42161
+  )
+  const usdtArbitrumBalance = useCryptoBalance(
+    '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+    42161
+  )
+
+  // Combine crypto assets with real balances
+  const cryptoAssetsWithBalances = useMemo(() => {
+    const selectedNetworkData = networks.find(n => n.name === selectedNetwork)
+
+    if (selectedNetwork === 'All networks') {
+      // Show Celo tokens
+      const celoAssets = [
+        {
+          ...cryptoConfig[0], // cUSD
+          tokenAddress: cryptoConfig[0].tokenAddress || '',
+          chainId: cryptoConfig[0].celoChainId || 0,
+          balance: cusdCeloBalance.balance
+            ? `${cusdCeloBalance.balance.toLocaleString()} cUSD`
+            : '0 cUSD',
+          usdValue: cusdCeloBalance.balance
+            ? `$${cusdCeloBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: cusdCeloBalance.balance
+            ? cusdCeloBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[0].icon,
+          networkName: 'Celo',
+          isLoading: cusdCeloBalance.isLoading,
+        },
+        {
+          ...cryptoConfig[1], // USDC Celo
+          tokenAddress: cryptoConfig[1].tokenAddress || '',
+          chainId: cryptoConfig[1].celoChainId || 0,
+          balance: usdcCeloBalance.balance
+            ? `${usdcCeloBalance.balance.toLocaleString()} USDC`
+            : '0 USDC',
+          usdValue: usdcCeloBalance.balance
+            ? `$${usdcCeloBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: usdcCeloBalance.balance
+            ? usdcCeloBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[1].icon,
+          networkName: 'Celo',
+          isLoading: usdcCeloBalance.isLoading,
+        },
+        {
+          ...cryptoConfig[2], // USDT Celo
+          tokenAddress: cryptoConfig[2].tokenAddress || '',
+          chainId: cryptoConfig[2].celoChainId || 0,
+          balance: usdtCeloBalance.balance
+            ? `${usdtCeloBalance.balance.toLocaleString()} USDT`
+            : '0 USDT',
+          usdValue: usdtCeloBalance.balance
+            ? `$${usdtCeloBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: usdtCeloBalance.balance
+            ? usdtCeloBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[2].icon,
+          networkName: 'Celo',
+          isLoading: usdtCeloBalance.isLoading,
+        },
+      ]
+      // Show Arbitrum tokens (no cUSD)
+      const arbitrumAssets = [
+        {
+          ...cryptoConfig[1], // USDC Arbitrum
+          tokenAddress: cryptoConfig[1].arbitrumTokenAddress || '',
+          chainId: cryptoConfig[1].arbitrumChainId || 0,
+          balance: usdcArbitrumBalance.balance
+            ? `${usdcArbitrumBalance.balance.toLocaleString()} USDC`
+            : '0 USDC',
+          usdValue: usdcArbitrumBalance.balance
+            ? `$${usdcArbitrumBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: usdcArbitrumBalance.balance
+            ? usdcArbitrumBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[1].icon,
+          networkName: 'Arbitrum',
+          isLoading: usdcArbitrumBalance.isLoading,
+        },
+        {
+          ...cryptoConfig[2], // USDT Arbitrum
+          tokenAddress: cryptoConfig[2].arbitrumTokenAddress || '',
+          chainId: cryptoConfig[2].arbitrumChainId || 0,
+          balance: usdtArbitrumBalance.balance
+            ? `${usdtArbitrumBalance.balance.toLocaleString()} USDT`
+            : '0 USDT',
+          usdValue: usdtArbitrumBalance.balance
+            ? `$${usdtArbitrumBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: usdtArbitrumBalance.balance
+            ? usdtArbitrumBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[2].icon,
+          networkName: 'Arbitrum',
+          isLoading: usdtArbitrumBalance.isLoading,
+        },
+      ]
+      return [...celoAssets, ...arbitrumAssets]
+    } else if (selectedNetwork === 'Celo') {
+      return [
+        {
+          ...cryptoConfig[0], // cUSD
+          tokenAddress: cryptoConfig[0].tokenAddress || '',
+          chainId: cryptoConfig[0].celoChainId || 0,
+          balance: cusdCeloBalance.balance
+            ? `${cusdCeloBalance.balance.toLocaleString()} cUSD`
+            : '0 cUSD',
+          usdValue: cusdCeloBalance.balance
+            ? `$${cusdCeloBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: cusdCeloBalance.balance
+            ? cusdCeloBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[0].icon,
+          networkName: 'Celo',
+          isLoading: cusdCeloBalance.isLoading,
+        },
+        {
+          ...cryptoConfig[1], // USDC Celo
+          tokenAddress: cryptoConfig[1].tokenAddress || '',
+          chainId: cryptoConfig[1].celoChainId || 0,
+          balance: usdcCeloBalance.balance
+            ? `${usdcCeloBalance.balance.toLocaleString()} USDC`
+            : '0 USDC',
+          usdValue: usdcCeloBalance.balance
+            ? `$${usdcCeloBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: usdcCeloBalance.balance
+            ? usdcCeloBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[1].icon,
+          networkName: 'Celo',
+          isLoading: usdcCeloBalance.isLoading,
+        },
+        {
+          ...cryptoConfig[2], // USDT Celo
+          tokenAddress: cryptoConfig[2].tokenAddress || '',
+          chainId: cryptoConfig[2].celoChainId || 0,
+          balance: usdtCeloBalance.balance
+            ? `${usdtCeloBalance.balance.toLocaleString()} USDT`
+            : '0 USDT',
+          usdValue: usdtCeloBalance.balance
+            ? `$${usdtCeloBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: usdtCeloBalance.balance
+            ? usdtCeloBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[2].icon,
+          networkName: 'Celo',
+          isLoading: usdtCeloBalance.isLoading,
+        },
+      ]
+    } else if (selectedNetwork === 'Arbitrum') {
+      return [
+        {
+          ...cryptoConfig[1], // USDC Arbitrum
+          tokenAddress: cryptoConfig[1].arbitrumTokenAddress || '',
+          chainId: cryptoConfig[1].arbitrumChainId || 0,
+          balance: usdcArbitrumBalance.balance
+            ? `${usdcArbitrumBalance.balance.toLocaleString()} USDC`
+            : '0 USDC',
+          usdValue: usdcArbitrumBalance.balance
+            ? `$${usdcArbitrumBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: usdcArbitrumBalance.balance
+            ? usdcArbitrumBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[1].icon,
+          networkName: 'Arbitrum',
+          isLoading: usdcArbitrumBalance.isLoading,
+        },
+        {
+          ...cryptoConfig[2], // USDT Arbitrum
+          tokenAddress: cryptoConfig[2].arbitrumTokenAddress || '',
+          chainId: cryptoConfig[2].arbitrumChainId || 0,
+          balance: usdtArbitrumBalance.balance
+            ? `${usdtArbitrumBalance.balance.toLocaleString()} USDT`
+            : '0 USDT',
+          usdValue: usdtArbitrumBalance.balance
+            ? `$${usdtArbitrumBalance.balance.toLocaleString()}`
+            : '$0',
+          fullBalance: usdtArbitrumBalance.balance
+            ? usdtArbitrumBalance.balance.toString()
+            : '0',
+          currencyIcon: cryptoConfig[2].icon,
+          networkName: 'Arbitrum',
+          isLoading: usdtArbitrumBalance.isLoading,
+        },
+      ]
+    }
+    return []
+  }, [
+    selectedNetwork,
+    cusdCeloBalance,
+    usdcCeloBalance,
+    usdtCeloBalance,
+    usdcArbitrumBalance,
+    usdtArbitrumBalance,
+  ])
+
+  const filteredTransactions = transactions.filter(tx => {
+    if (!searchQuery) return true
+    const searchLower = searchQuery.toLowerCase()
+    return (
+      tx.user.toLowerCase().includes(searchLower) ||
+      tx.fullName?.toLowerCase().includes(searchLower) ||
+      tx.email?.toLowerCase().includes(searchLower) ||
+      tx.plan?.toLowerCase().includes(searchLower)
+    )
+  })
 
   const ActionButton = ({ icon, label, isActive = false, onClick }: any) => (
     <VStack spacing={3}>
@@ -559,17 +766,33 @@ const Wallet: React.FC<WalletProps> = () => {
 
             {/* Balance */}
             <VStack spacing={1} mb={6}>
-              <Text
-                fontSize="48px"
-                fontWeight="500"
-                color="white"
-                lineHeight="1"
-              >
-                {selectedCrypto.fullBalance}
-              </Text>
-              <Text fontSize="16px" color="neutral.300" fontWeight="500">
-                ${selectedCrypto.fullBalance}
-              </Text>
+              {selectedCryptoBalance.isLoading ? (
+                <HStack spacing={3} align="center">
+                  <Spinner color="neutral.400" size="md" />
+                  <Text fontSize="16px" color="neutral.400" fontWeight="500">
+                    Loading balance...
+                  </Text>
+                </HStack>
+              ) : (
+                <>
+                  <Text
+                    fontSize="48px"
+                    fontWeight="500"
+                    color="white"
+                    lineHeight="1"
+                  >
+                    {selectedCryptoBalance.balance
+                      ? selectedCryptoBalance.balance.toLocaleString()
+                      : '0'}
+                  </Text>
+                  <Text fontSize="16px" color="neutral.300" fontWeight="500">
+                    $
+                    {selectedCryptoBalance.balance
+                      ? selectedCryptoBalance.balance.toLocaleString()
+                      : '0'}
+                  </Text>
+                </>
+              )}
             </VStack>
 
             {/* Action Buttons */}
@@ -623,77 +846,117 @@ const Wallet: React.FC<WalletProps> = () => {
             />
           </Box>
 
+          {/* Filter token-specific transactions */}
+          {(() => {
+            const filteredCryptoTransactions =
+              selectedCryptoTransactions.filter(tx => {
+                if (!searchQuery) return true
+                const searchLower = searchQuery.toLowerCase()
+                return (
+                  tx.user.toLowerCase().includes(searchLower) ||
+                  tx.fullName?.toLowerCase().includes(searchLower) ||
+                  tx.email?.toLowerCase().includes(searchLower) ||
+                  tx.plan?.toLowerCase().includes(searchLower)
+                )
+              })
+            return (
+              <VStack spacing={3}>
+                {selectedCryptoTransactionsLoading ? (
+                  <Box textAlign="center" py={8}>
+                    <Spinner color="neutral.400" size="md" />
+                    <Text color="neutral.400" fontSize="16px" mt={2}>
+                      Loading transactions...
+                    </Text>
+                  </Box>
+                ) : filteredCryptoTransactions.length === 0 ? (
+                  <Box textAlign="center" py={8}>
+                    <Text color="neutral.400" fontSize="16px">
+                      {searchQuery
+                        ? 'No transactions found'
+                        : 'No transactions yet'}
+                    </Text>
+                  </Box>
+                ) : (
+                  filteredCryptoTransactions.map(transaction => (
+                    <Box
+                      key={transaction.id}
+                      bg="neutral.825"
+                      borderRadius="16px"
+                      p={4}
+                      width="100%"
+                      cursor="pointer"
+                      _hover={{ bg: 'neutral.800' }}
+                      transition="all 0.2s"
+                      onClick={() => {
+                        setSelectedTransaction(transaction)
+                        setShowTransactionDetails(true)
+                      }}
+                    >
+                      <Flex justify="flex-start" gap={5} align="center">
+                        <HStack spacing={3}>
+                          {/* User Avatar */}
+                          <Box
+                            w="40px"
+                            h="40px"
+                            borderRadius="full"
+                            overflow="hidden"
+                          >
+                            <Image
+                              src={transaction.userImage}
+                              alt={transaction.user}
+                              w="40px"
+                              h="40px"
+                              objectFit="cover"
+                            />
+                          </Box>
+
+                          {/* Transaction Details */}
+                          <Box>
+                            <Text
+                              color="white"
+                              fontSize="16px"
+                              fontWeight="500"
+                            >
+                              {transaction.user} {transaction.action}{' '}
+                              {transaction.amount}
+                            </Text>
+                          </Box>
+                        </HStack>
+
+                        {/* Status and Date */}
+                        <Box
+                          px={3}
+                          py={1}
+                          borderRadius="100px"
+                          bg={
+                            transaction.status === 'Successful'
+                              ? 'green.600'
+                              : 'red.700'
+                          }
+                        >
+                          <Text fontSize="14px" fontWeight="500" color="white">
+                            {transaction.status}
+                          </Text>
+                        </Box>
+                        <Text
+                          fontSize="16px"
+                          color="neutral.0"
+                          fontWeight="500"
+                        >
+                          {transaction.date} {transaction.time}
+                        </Text>
+                      </Flex>
+                    </Box>
+                  ))
+                )}
+              </VStack>
+            )
+          })()}
+
           {/* Transaction History Title */}
           <Text fontSize="24px" fontWeight="700" color="neutral.0" mb={4}>
             Transaction History
           </Text>
-
-          {/* Transactions List */}
-          <VStack spacing={3}>
-            {transactions.map(transaction => (
-              <Box
-                key={transaction.id}
-                bg="neutral.825"
-                borderRadius="16px"
-                p={4}
-                width="100%"
-                cursor="pointer"
-                _hover={{ bg: 'neutral.800' }}
-                transition="all 0.2s"
-                onClick={() => {
-                  setSelectedTransaction(transaction)
-                  setShowTransactionDetails(true)
-                }}
-              >
-                <Flex justify="flex-start" gap={5} align="center">
-                  <HStack spacing={3}>
-                    {/* User Avatar */}
-                    <Box
-                      w="40px"
-                      h="40px"
-                      borderRadius="full"
-                      overflow="hidden"
-                    >
-                      <Image
-                        src={transaction.userImage}
-                        alt={transaction.user}
-                        w="40px"
-                        h="40px"
-                        objectFit="cover"
-                      />
-                    </Box>
-
-                    {/* Transaction Details */}
-                    <Box>
-                      <Text color="white" fontSize="16px" fontWeight="500">
-                        {transaction.user} {transaction.action}{' '}
-                        {transaction.amount}
-                      </Text>
-                    </Box>
-                  </HStack>
-
-                  {/* Status and Date */}
-                  <Box
-                    px={3}
-                    py={1}
-                    borderRadius="100px"
-                    bg={
-                      transaction.status === 'Successful'
-                        ? 'green.600'
-                        : 'red.700'
-                    }
-                  >
-                    <Text fontSize="14px" fontWeight="500" color="white">
-                      {transaction.status}
-                    </Text>
-                  </Box>
-                  <Text fontSize="16px" color="neutral.0" fontWeight="500">
-                    {transaction.date} {transaction.time}
-                  </Text>
-                </Flex>
-              </Box>
-            ))}
-          </VStack>
         </Box>
       ) : (
         /* Main Wallet Container */
@@ -825,8 +1088,8 @@ const Wallet: React.FC<WalletProps> = () => {
             </HStack>
           </Box>
 
-          {/* Transaction Notification - only show when not in transaction view */}
-          {!showTransactions && (
+          {/* Transaction Notification - only show when not in transaction view and there are recent transactions */}
+          {!showTransactions && transactions.length > 0 && (
             <Box
               bg="neutral.825"
               borderRadius="25px"
@@ -839,17 +1102,24 @@ const Wallet: React.FC<WalletProps> = () => {
               textAlign="center"
             >
               <Text color="neutral.75" fontSize="16px" fontWeight="500">
-                You just received $3,000 USDC from Una.{' '}
-                <Text
-                  as="span"
-                  color="primary.200"
-                  cursor="pointer"
-                  textDecoration="underline"
-                  _hover={{ color: 'primary.300' }}
-                  onClick={() => setShowTransactions(true)}
-                >
-                  Show all transactions
-                </Text>
+                {transactionsLoading ? (
+                  'Loading recent transactions...'
+                ) : (
+                  <>
+                    You have {transactions.length} transaction
+                    {transactions.length !== 1 ? 's' : ''}.{' '}
+                    <Text
+                      as="span"
+                      color="primary.200"
+                      cursor="pointer"
+                      textDecoration="underline"
+                      _hover={{ color: 'primary.300' }}
+                      onClick={() => setShowTransactions(true)}
+                    >
+                      Show all transactions
+                    </Text>
+                  </>
+                )}
               </Text>
             </Box>
           )}
@@ -917,69 +1187,94 @@ const Wallet: React.FC<WalletProps> = () => {
 
               {/* Transactions List */}
               <VStack spacing={3}>
-                {transactions.map(transaction => (
-                  <Box
-                    key={transaction.id}
-                    bg="neutral.825"
-                    borderRadius="16px"
-                    p={4}
-                    width="100%"
-                    cursor="pointer"
-                    _hover={{ bg: 'neutral.800' }}
-                    transition="all 0.2s"
-                    onClick={() => {
-                      setSelectedTransaction(transaction)
-                      setShowTransactionDetails(true)
-                    }}
-                  >
-                    <Flex justify="flex-start" gap={5} align="center">
-                      <HStack spacing={3}>
-                        {/* User Avatar */}
-                        <Box
-                          w="40px"
-                          h="40px"
-                          borderRadius="full"
-                          overflow="hidden"
-                        >
-                          <Image
-                            src={transaction.userImage}
-                            alt={transaction.user}
+                {transactionsLoading ? (
+                  <Box textAlign="center" py={8}>
+                    <Spinner color="neutral.400" size="md" />
+                    <Text color="neutral.400" fontSize="16px" mt={2}>
+                      Loading transactions...
+                    </Text>
+                  </Box>
+                ) : filteredTransactions.length === 0 ? (
+                  <Box textAlign="center" py={8}>
+                    <Text color="neutral.400" fontSize="16px">
+                      {searchQuery
+                        ? 'No transactions found'
+                        : 'No transactions yet'}
+                    </Text>
+                  </Box>
+                ) : (
+                  filteredTransactions.map(transaction => (
+                    <Box
+                      key={transaction.id}
+                      bg="neutral.825"
+                      borderRadius="16px"
+                      p={4}
+                      width="100%"
+                      cursor="pointer"
+                      _hover={{ bg: 'neutral.800' }}
+                      transition="all 0.2s"
+                      onClick={() => {
+                        setSelectedTransaction(transaction)
+                        setShowTransactionDetails(true)
+                      }}
+                    >
+                      <Flex justify="flex-start" gap={5} align="center">
+                        <HStack spacing={3}>
+                          {/* User Avatar */}
+                          <Box
                             w="40px"
                             h="40px"
-                            objectFit="cover"
-                          />
-                        </Box>
+                            borderRadius="full"
+                            overflow="hidden"
+                          >
+                            <Image
+                              src={transaction.userImage}
+                              alt={transaction.user}
+                              w="40px"
+                              h="40px"
+                              objectFit="cover"
+                            />
+                          </Box>
 
-                        {/* Transaction Details */}
-                        <Box>
-                          <Text color="white" fontSize="16px" fontWeight="500">
-                            {transaction.user} {transaction.action}{' '}
-                            {transaction.amount}
+                          {/* Transaction Details */}
+                          <Box>
+                            <Text
+                              color="white"
+                              fontSize="16px"
+                              fontWeight="500"
+                            >
+                              {transaction.user} {transaction.action}{' '}
+                              {transaction.amount}
+                            </Text>
+                          </Box>
+                        </HStack>
+
+                        {/* Status and Date */}
+                        <Box
+                          px={3}
+                          py={1}
+                          borderRadius="100px"
+                          bg={
+                            transaction.status === 'Successful'
+                              ? 'green.600'
+                              : 'red.700'
+                          }
+                        >
+                          <Text fontSize="14px" fontWeight="500" color="white">
+                            {transaction.status}
                           </Text>
                         </Box>
-                      </HStack>
-
-                      {/* Status and Date */}
-                      <Box
-                        px={3}
-                        py={1}
-                        borderRadius="100px"
-                        bg={
-                          transaction.status === 'Successful'
-                            ? 'green.600'
-                            : 'red.700'
-                        }
-                      >
-                        <Text fontSize="14px" fontWeight="500" color="white">
-                          {transaction.status}
+                        <Text
+                          fontSize="16px"
+                          color="neutral.0"
+                          fontWeight="500"
+                        >
+                          {transaction.date} {transaction.time}
                         </Text>
-                      </Box>
-                      <Text fontSize="16px" color="neutral.0" fontWeight="500">
-                        {transaction.date} {transaction.time}
-                      </Text>
-                    </Flex>
-                  </Box>
-                ))}
+                      </Flex>
+                    </Box>
+                  ))
+                )}
               </VStack>
             </Box>
           ) : (
@@ -1055,7 +1350,7 @@ const Wallet: React.FC<WalletProps> = () => {
 
               {/* Crypto Assets */}
               <VStack spacing={4} mt={5}>
-                {cryptoAssets.map((asset, index) => (
+                {cryptoAssetsWithBalances.map((asset, index) => (
                   <Box
                     key={index}
                     bg="neutral.825"
@@ -1072,22 +1367,45 @@ const Wallet: React.FC<WalletProps> = () => {
                   >
                     <Flex justify="space-between" align="center">
                       <HStack spacing={3}>
-                        <Box
-                          w="48px"
-                          h="48px"
-                          borderRadius="full"
-                          bg="neutral.800"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                          overflow="hidden"
-                        >
+                        <Box position="relative">
                           <Image
                             src={asset.icon}
                             alt={asset.symbol}
-                            w="32px"
-                            h="32px"
+                            w="48px"
+                            h="48px"
+                            borderRadius="full"
                           />
+                          {/* Network overlay icon */}
+                          <Box
+                            position="absolute"
+                            bottom="-4px"
+                            right="-5px"
+                            w="24px"
+                            h="24px"
+                            borderRadius="full"
+                            bg="neutral.900"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            border="1px solid"
+                            borderColor="neutral.800"
+                            zIndex={10}
+                            backgroundSize="cover"
+                            overflow="hidden"
+                          >
+                            <Image
+                              src={
+                                asset.networkName === 'Celo'
+                                  ? '/assets/chains/Celo.svg'
+                                  : '/assets/chains/Arbitrum.svg'
+                              }
+                              alt={asset.networkName}
+                              w="100%"
+                              h="100%"
+                              backgroundSize="cover"
+                              borderRadius="full"
+                            />
+                          </Box>
                         </Box>
                         <VStack align="start" spacing={0}>
                           <Text color="white" fontSize="20px" fontWeight="700">

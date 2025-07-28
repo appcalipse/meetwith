@@ -62,3 +62,46 @@ export interface ReceiptMetadata extends InvoiceMetadata {
   transaction_status: string
   transaction_hash: string
 }
+
+// Wallet-specific transaction types
+export interface WalletTransaction {
+  id: string
+  transaction_hash: string
+  amount: number
+  direction: 'credit' | 'debit'
+  chain_id: number
+  token_address: string
+  fiat_equivalent: number
+  status: string
+  confirmed_at: string
+  currency: string
+  total_fee: number
+  fee_breakdown: {
+    gas_used: string
+    fee_in_usd: number
+  }
+  guest_name?: string
+  guest_email?: string
+  plan_title?: string
+  sender_address?: string
+  recipient_address?: string
+}
+
+export interface FormattedTransaction {
+  id: string
+  user: string
+  userImage?: string
+  action: string
+  amount: string
+  status: 'Successful' | 'Failed' | 'Pending' | 'Cancelled'
+  date: string
+  time: string
+  fullName?: string
+  email?: string
+  plan?: string
+  sessions?: string
+  price?: string
+  paymentMethod?: string
+  sessionLocation?: string
+  transactionHash?: string
+}
