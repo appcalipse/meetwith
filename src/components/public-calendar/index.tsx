@@ -10,6 +10,7 @@ import {
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
+import { SessionType } from '@utils/constants/meeting-types'
 import {
   addMinutes,
   addMonths,
@@ -161,6 +162,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [rescheduleSlot, setRescheduleSlot] = useState<DBSlot | undefined>(
     undefined
   )
+  const [blockedDates, setBlockedDates] = useState<Date[]>([])
   const [isContact, setIsContact] = useState(false)
 
   const handleContactCheck = async () => {
@@ -276,9 +278,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = account?.preferences?.availableTypes
-        ?.filter(type => !type.deleted)
-        ?.find(t => t.url === typeOnRoute)
-      setPrivateType(!!type?.private)
+        ?.filter(type => !type.deleted_at)
+        ?.find(t => t.slug === typeOnRoute)
+      setPrivateType(type?.type === SessionType.FREE)
     }
   }, [])
 
@@ -292,8 +294,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = account?.preferences?.availableTypes
-        .filter(type => !type.deleted)
-        .find(t => t.url === typeOnRoute)
+        .filter(type => !type.deleted_at)
+        .find(t => t.slug === typeOnRoute)
       setSelectedType(
         (type || account?.preferences?.availableTypes?.[0] || {}) as MeetingType
       )
@@ -384,7 +386,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     const end = addMinutes(
       new Date(start),
       CalendarType.REGULAR === calendarType
-        ? selectedType.duration
+        ? selectedType.duration_minutes
         : teamMeetingRequest!.duration_in_minutes
     )
 
@@ -646,7 +648,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const changeType = (typeId: string) => {
     const type = account?.preferences?.availableTypes
-      ?.filter(type => !type.deleted)
+      ?.filter(type => !type.deleted_at)
       ?.find(t => t.id === typeId)
     if (!type) return
     if (!type.scheduleGate) {
@@ -654,7 +656,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     }
     setSelectedType(type)
     void router.push(
-      `/${getAccountDomainUrl(account!)}/${type.url}`,
+      `/${getAccountDomainUrl(account!)}/${type.slug}`,
       undefined,
       {
         shallow: true,
@@ -779,7 +781,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       isSchedulingExternal={isScheduling}
                       slotDurationInMinutes={
                         CalendarType.REGULAR === calendarType
-                          ? selectedType.duration
+                          ? selectedType.duration_minutes
                           : teamMeetingRequest!.duration_in_minutes
                       }
                       selectedType={selectedType}

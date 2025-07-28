@@ -8,7 +8,6 @@ import { AccountNotFoundError } from '@/utils/errors'
 const checkAccount = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
     const { address, signature } = req.body
-
     try {
       const nonce = await getAccountNonce(address)
       const recovered = checkSignature(signature, nonce)

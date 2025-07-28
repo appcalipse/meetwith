@@ -19,7 +19,6 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     request.start = new Date(request.start)
     request.end = new Date(request.end)
     request.created_at = new Date(request.created_at)
-
     try {
       await notifyForOrUpdateNewMeeting(
         MeetingChangeType.CREATE,
