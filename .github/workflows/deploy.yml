@@ -56,7 +56,7 @@ jobs:
         DISCORD_AVATAR: "https://res.cloudinary.com/dun8bju7q/image/upload/v1753807987/mw-socials_3_evlwta.png"
       with:
         args: |
-          🚀 **Deployment Completed** @patrick.osinachi>
+          🚀 **Deployment Completed**
           
           **Repository:** ${{ github.repository }}
           **Branch:** ${{ github.ref_name }}
