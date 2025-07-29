@@ -53,9 +53,10 @@ jobs:
       uses: Ilshidur/action-discord@master
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        DISCORD_AVATAR: "https://res.cloudinary.com/dun8bju7q/image/upload/v1753807987/mw-socials_3_evlwta.png"
       with:
         args: |
-          🚀 **Deployment Completed** <@patrick.osinachi>
+          🚀 **Deployment Completed** @patrick.osinachi>
           
           **Repository:** ${{ github.repository }}
           **Branch:** ${{ github.ref_name }}
