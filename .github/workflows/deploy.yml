@@ -43,6 +43,11 @@ jobs:
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}
 
+    - name: Get last two commit messages
+      id: last_commits
+      run: |
+        echo "COMMIT_MSGS=$(git log -2 --pretty=format:'%s' | paste -sd ' | ' -)" >> $GITHUB_ENV
+
     - name: Send Discord Notification
       if: always()
       uses: Ilshidur/action-discord@master
@@ -59,5 +64,6 @@ jobs:
           **Commit:** ${{ github.sha }}
           **Author:** ${{ github.actor }}
           **Workflow:** ${{ github.workflow }}
+          **Last 2 Commits:** ${{ env.COMMIT_MSGS }}
           
           View details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
