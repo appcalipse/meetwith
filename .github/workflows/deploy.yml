@@ -50,7 +50,7 @@ jobs:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
       with:
         args: |
-          🚀 **Deployment Completed**
+          🚀 **Deployment Completed** <@patrick.osinachi>
           
           **Repository:** ${{ github.repository }}
           **Branch:** ${{ github.ref_name }}
