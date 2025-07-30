@@ -39,6 +39,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import {
+  ExistingMeetingData,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
@@ -48,9 +49,9 @@ import { isEmptyString, isValidEmail } from '../../../utils/validations'
 interface ScheduleFormProps {
   pickedTime: Date
   isSchedulingExternal: boolean
-  willStartScheduling: (isScheduling: boolean) => void
-  isGateValid: boolean
-  selectedType?: MeetingType
+  willStartScheduling?: (isScheduling: boolean) => void
+  isGateValid?: boolean
+  selectedType?: MeetingType | null
   preferences?: AccountPreferences
   onConfirm: (
     scheduleType: SchedulingType,
@@ -68,6 +69,8 @@ interface ScheduleFormProps {
   ) => Promise<boolean>
   notificationsSubs?: number
   meetingProviders?: Array<MeetingProvider>
+  existingMeetingData?: ExistingMeetingData | null
+  isReschedule?: boolean
 }
 
 export const ScheduleForm: React.FC<ScheduleFormProps> = ({
@@ -79,12 +82,16 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   notificationsSubs,
   preferences,
   selectedType,
+  existingMeetingData,
+  isReschedule,
 }) => {
   const { currentAccount, logged } = useContext(AccountContext)
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const toast = useToast()
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    selectDefaultProvider(preferences?.meetingProviders)
+    selectDefaultProvider(
+      selectedType?.meeting_platforms || preferences?.meetingProviders
+    )
   )
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{
@@ -102,9 +109,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
   })
-  const [content, setContent] = useState('')
+  const [content, setContent] = useState(existingMeetingData?.content || '')
   const [name, setName] = useState(currentAccount?.preferences?.name || '')
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState(existingMeetingData?.title || '')
   const [doSendEmailReminders, setSendEmailReminders] = useState(false)
   const [scheduleType, setScheduleType] = useState(
     SchedulingType.REGULAR as SchedulingType
@@ -112,7 +119,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [addGuest, setAddGuest] = useState(false)
   const [guestEmail, setGuestEmail] = useState('')
   const [userEmail, setUserEmail] = useState('')
-  const [meetingUrl, setMeetingUrl] = useState('')
+  const [meetingUrl, setMeetingUrl] = useState(
+    existingMeetingData?.meetingUrl || ''
+  )
   const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
   const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
   const [showEmailConfirm, setShowEmailConfirm] = useState(false)
@@ -120,9 +129,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     MeetingProvider.CUSTOM
   )
   useEffect(() => {
-    if (selectedType?.customLink) {
+    if (selectedType?.custom_link) {
       setMeetingProvider(MeetingProvider.CUSTOM)
-      setMeetingUrl(selectedType.customLink)
+      setMeetingUrl(selectedType.custom_link)
     }
   }, [selectedType])
   const handleScheduleWithWallet = async () => {
@@ -138,7 +147,19 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     } else {
       setScheduleType(SchedulingType.GUEST)
     }
-  }, [logged])
+  }, [logged, selectedType])
+
+  // Populate form with existing meeting data when available
+  useEffect(() => {
+    if (existingMeetingData && isReschedule) {
+      if (existingMeetingData.title) {
+        setTitle(existingMeetingData.title)
+      }
+      if (existingMeetingData.meetingUrl) {
+        setMeetingUrl(existingMeetingData.meetingUrl)
+      }
+    }
+  }, [existingMeetingData, isReschedule])
   const handleConfirm = async () => {
     if (meetingProvider === MeetingProvider.CUSTOM && !meetingUrl) {
       toast({
@@ -213,9 +234,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         meetingRepeat.value
       )
 
-      willStartScheduling(!success)
+      willStartScheduling && willStartScheduling?.(!success)
     } catch (e) {
-      willStartScheduling(true)
+      willStartScheduling && willStartScheduling?.(true)
     }
   }
 
@@ -236,366 +257,361 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const iconColor = useColorModeValue('gray.600', 'white')
 
   return (
-    <form
+    <Flex
+      direction="column"
+      gap={4}
+      as={'form'}
       onSubmit={e => {
         e.preventDefault()
         handleConfirm()
       }}
+      paddingTop={3}
+      w="100%"
+      maxW={{
+        base: '100%',
+        md: '550px',
+      }}
     >
-      <Flex
-        direction="column"
-        gap={4}
-        paddingTop={3}
-        w="100%"
-        maxW={{
-          base: '100%',
-          md: '550px',
-        }}
-      >
-        <FormControl>
-          <Flex
+      <FormControl>
+        <Flex
+          alignItems="center"
+          marginBottom="8px"
+          marginRight="12px"
+          gap="6px"
+        >
+          <FormLabel
+            htmlFor="title"
             alignItems="center"
-            marginBottom="8px"
-            marginRight="12px"
-            gap="6px"
+            height="fit-content"
+            margin={0}
           >
-            <FormLabel
-              htmlFor="title"
-              alignItems="center"
-              height="fit-content"
-              margin={0}
-            >
-              Meeting title
-              <Text color="red.500" display="inline">
-                *
-              </Text>
-            </FormLabel>
-            <Tooltip.Provider delayDuration={400}>
-              <Tooltip.Root>
-                <Tooltip.Trigger>
-                  <Flex
-                    w="16px"
-                    h="16px"
-                    borderRadius="50%"
-                    bgColor={iconColor}
-                    justifyContent="center"
-                    alignItems="center"
-                    ml={1}
-                  >
-                    <Icon w={1} color={bgColor} as={FaInfo} />
-                  </Flex>
-                </Tooltip.Trigger>
-                <Tooltip.Content>
-                  <Text
-                    fontSize="sm"
-                    p={2}
-                    maxW="150px"
-                    bgColor={bgColor}
-                    shadow="lg"
-                  >
-                    Give a title for your meeting
-                  </Text>
-                  <Tooltip.Arrow />
-                </Tooltip.Content>
-              </Tooltip.Root>
-            </Tooltip.Provider>
-          </Flex>
+            Meeting title
+            <Text color="red.500" display="inline">
+              *
+            </Text>
+          </FormLabel>
+          <Tooltip.Provider delayDuration={400}>
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                <Flex
+                  w="16px"
+                  h="16px"
+                  borderRadius="50%"
+                  bgColor={iconColor}
+                  justifyContent="center"
+                  alignItems="center"
+                  ml={1}
+                >
+                  <Icon w={1} color={bgColor} as={FaInfo} />
+                </Flex>
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                <Text
+                  fontSize="sm"
+                  p={2}
+                  maxW="150px"
+                  bgColor={bgColor}
+                  shadow="lg"
+                >
+                  Give a title for your meeting
+                </Text>
+                <Tooltip.Arrow />
+              </Tooltip.Content>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+        </Flex>
+        <Input
+          id="title"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          isDisabled={isSchedulingExternal}
+          type="text"
+          placeholder="Give a title for your meeting"
+        />
+      </FormControl>
+      <FormControl>
+        <FormLabel>Your Name</FormLabel>
+        <Input
+          autoFocus
+          type="text"
+          isDisabled={isSchedulingExternal}
+          placeholder="Your name or an identifier"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={event => event.key === 'Enter' && handleConfirm()}
+        />
+      </FormControl>
+
+      {(scheduleType === SchedulingType.GUEST || doSendEmailReminders) && (
+        <FormControl
+          isInvalid={
+            doSendEmailReminders
+              ? !isFirstUserEmailValid && !isUserEmailValid()
+              : !isFirstGuestEmailValid && !isGuestEmailValid()
+          }
+        >
+          <FormLabel>Email</FormLabel>
           <Input
-            id="title"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
+            type="email"
+            placeholder="Insert your email"
             isDisabled={isSchedulingExternal}
-            type="text"
-            placeholder="Give a title for your meeting"
-          />
-        </FormControl>
-        <FormControl>
-          <FormLabel>Your Name</FormLabel>
-          <Input
-            autoFocus
-            type="text"
-            isDisabled={isSchedulingExternal}
-            placeholder="Your name or an identifier"
-            value={name}
-            onChange={e => setName(e.target.value)}
+            value={doSendEmailReminders ? userEmail : guestEmail}
             onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-          />
-        </FormControl>
-
-        {(scheduleType === SchedulingType.GUEST || doSendEmailReminders) && (
-          <FormControl
-            isInvalid={
-              doSendEmailReminders
-                ? !isFirstUserEmailValid && !isUserEmailValid()
-                : !isFirstGuestEmailValid && !isGuestEmailValid()
-            }
-          >
-            <FormLabel>Email</FormLabel>
-            <Input
-              type="email"
-              placeholder="Insert your email"
-              isDisabled={isSchedulingExternal}
-              value={doSendEmailReminders ? userEmail : guestEmail}
-              onKeyDown={event => event.key === 'Enter' && handleConfirm()}
-              borderColor={showEmailConfirm ? 'green.500' : undefined}
-              onBlur={() => {
-                setShowEmailConfirm(isGuestEmailValid())
-              }}
-              onChange={e => {
-                if (doSendEmailReminders) {
-                  setUserEmail(e.target.value)
-                  setIsFirstUserEmailValid(false)
-                } else {
-                  setGuestEmail(e.target.value)
-                  setIsFirstGuestEmailValid(false)
-                }
-              }}
-            />
-            {showEmailConfirm && (
-              <Text
-                color="green.500"
-                fontSize="medium"
-                mt={2}
-                w="100%"
-                textAlign={'left'}
-              >
-                Confirm you entered the correct email before you proceed
-              </Text>
-            )}
-          </FormControl>
-        )}
-        <FormControl w="100%" maxW="100%">
-          <FormLabel>Meeting reminders</FormLabel>
-          <Select
-            value={meetingNotification}
-            colorScheme="gray"
-            onChange={val => {
-              const meetingNotification = val as Array<{
-                value: MeetingReminders
-                label?: string
-              }>
-              // can't select more than 5 notifications
-              if (meetingNotification.length > 5) {
-                toast({
-                  title: 'Limit reached',
-                  description: 'You can select up to 5 notifications only.',
-                  status: 'warning',
-                  duration: 3000,
-                  isClosable: true,
-                })
-                return
+            borderColor={showEmailConfirm ? 'green.500' : undefined}
+            onBlur={() => {
+              setShowEmailConfirm(isGuestEmailValid())
+            }}
+            onChange={e => {
+              if (doSendEmailReminders) {
+                setUserEmail(e.target.value)
+                setIsFirstUserEmailValid(false)
+              } else {
+                setGuestEmail(e.target.value)
+                setIsFirstGuestEmailValid(false)
               }
-
-              setMeetingNotification(meetingNotification)
-            }}
-            className="hideBorder"
-            placeholder="Select Notification Alerts"
-            isMulti
-            tagVariant={'solid'}
-            options={MeetingNotificationOptions}
-            components={noClearCustomSelectComponent}
-            chakraStyles={{
-              container: provided => ({
-                ...provided,
-                border: '1px solid',
-                borderTopColor: 'currentColor',
-                borderLeftColor: 'currentColor',
-                borderRightColor: 'currentColor',
-                borderBottomColor: 'currentColor',
-                borderColor: 'inherit',
-                borderRadius: 'md',
-                maxW: '100%',
-                display: 'block',
-              }),
-
-              placeholder: provided => ({
-                ...provided,
-                textAlign: 'left',
-              }),
             }}
           />
+          {showEmailConfirm && (
+            <Text
+              color="green.500"
+              fontSize="medium"
+              mt={2}
+              w="100%"
+              textAlign={'left'}
+            >
+              Confirm you entered the correct email before you proceed
+            </Text>
+          )}
         </FormControl>
-        <FormControl w="100%" maxW="100%">
-          <FormLabel>Meeting Repeat</FormLabel>
-          <Select
-            value={meetingRepeat}
-            colorScheme="primary"
-            onChange={newValue =>
-              setMeetingRepeat(
-                newValue as {
-                  value: MeetingRepeat
-                  label: string
-                }
-              )
+      )}
+      <FormControl w="100%" maxW="100%">
+        <FormLabel>Meeting reminders (optional)</FormLabel>
+        <Select
+          value={meetingNotification}
+          colorScheme="gray"
+          onChange={val => {
+            const meetingNotification = val as Array<{
+              value: MeetingReminders
+              label?: string
+            }>
+            // can't select more than 5 notifications
+            if (meetingNotification.length > 5) {
+              toast({
+                title: 'Limit reached',
+                description: 'You can select up to 5 notifications only.',
+                status: 'warning',
+                duration: 3000,
+                isClosable: true,
+              })
+              return
             }
-            className="noLeftBorder timezone-select"
-            options={MeetingRepeatOptions}
-            components={customSelectComponents}
-            chakraStyles={{
-              placeholder: provided => ({
-                ...provided,
-                textAlign: 'left',
-              }),
-              input: provided => ({
-                ...provided,
-                textAlign: 'left',
-              }),
-              control: provided => ({
-                ...provided,
-                textAlign: 'left',
-              }),
-            }}
-          />
-        </FormControl>
-        <FormControl textAlign="left" w="100%" maxW="100%">
-          <FormLabel>What is this meeting about? </FormLabel>
-          <RichTextEditor
-            isDisabled={isSchedulingExternal}
-            placeholder="Any information you want to share prior to the meeting?"
-            value={content}
-            onValueChange={setContent}
-          />
-        </FormControl>
-        {scheduleType !== undefined &&
-          (selectedType?.fixedLink || !selectedType?.customLink) && (
-            <VStack alignItems="start">
-              <Text fontSize="18px" fontWeight={500}>
-                Location
-              </Text>
-              <RadioGroup
-                onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-                value={meetingProvider}
-                w={'100%'}
-              >
-                <VStack w={'100%'} gap={4}>
-                  {meetingProviders.map(provider => (
-                    <Radio
-                      flexDirection="row-reverse"
-                      justifyContent="space-between"
-                      w="100%"
-                      colorScheme="primary"
-                      value={provider}
-                      key={provider}
+            setMeetingNotification(meetingNotification)
+          }}
+          className="hideBorder"
+          placeholder="Select Notification Alerts"
+          isMulti
+          tagVariant={'solid'}
+          options={MeetingNotificationOptions}
+          components={noClearCustomSelectComponent}
+          chakraStyles={{
+            container: provided => ({
+              ...provided,
+              border: '1px solid',
+              borderTopColor: 'currentColor',
+              borderLeftColor: 'currentColor',
+              borderRightColor: 'currentColor',
+              borderBottomColor: 'currentColor',
+              borderColor: 'inherit',
+              borderRadius: 'md',
+              maxW: '100%',
+              display: 'block',
+            }),
+
+            placeholder: provided => ({
+              ...provided,
+              textAlign: 'left',
+            }),
+          }}
+        />
+      </FormControl>
+      <FormControl w="100%" maxW="100%">
+        <FormLabel>Meeting Repeat</FormLabel>
+        <Select
+          value={meetingRepeat}
+          colorScheme="primary"
+          onChange={newValue =>
+            setMeetingRepeat(
+              newValue as {
+                value: MeetingRepeat
+                label: string
+              }
+            )
+          }
+          className="noLeftBorder timezone-select"
+          options={MeetingRepeatOptions}
+          components={customSelectComponents}
+          chakraStyles={{
+            placeholder: provided => ({
+              ...provided,
+              textAlign: 'left',
+            }),
+            input: provided => ({
+              ...provided,
+              textAlign: 'left',
+            }),
+            control: provided => ({
+              ...provided,
+              textAlign: 'left',
+            }),
+          }}
+        />
+      </FormControl>
+      <FormControl textAlign="left" w="100%" maxW="100%">
+        <FormLabel>What is this meeting about? </FormLabel>
+        <RichTextEditor
+          isDisabled={isSchedulingExternal}
+          placeholder="Any information you want to share prior to the meeting?"
+          value={content}
+          onValueChange={setContent}
+        />
+      </FormControl>
+      {scheduleType !== undefined &&
+        (selectedType?.fixed_link || !selectedType?.custom_link) && (
+          <VStack alignItems="start">
+            <Text fontSize="18px" fontWeight={500}>
+              Location
+            </Text>
+            <RadioGroup
+              onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+              value={meetingProvider}
+              w={'100%'}
+            >
+              <VStack w={'100%'} gap={4}>
+                {meetingProviders.map(provider => (
+                  <Radio
+                    flexDirection="row-reverse"
+                    justifyContent="space-between"
+                    w="100%"
+                    colorScheme="primary"
+                    value={provider}
+                    key={provider}
+                  >
+                    <Text
+                      fontWeight="600"
+                      color={'primary.200'}
+                      cursor="pointer"
                     >
-                      <Text
-                        fontWeight="600"
-                        color={'primary.200'}
-                        cursor="pointer"
-                      >
-                        {renderProviderName(provider)}
-                      </Text>
-                    </Radio>
-                  ))}
-                </VStack>
-              </RadioGroup>
-              {meetingProvider === MeetingProvider.CUSTOM && (
-                <Input
-                  type="text"
-                  placeholder="insert a custom meeting url"
-                  isDisabled={isSchedulingExternal}
-                  my={4}
-                  value={meetingUrl}
-                  onChange={e => setMeetingUrl(e.target.value)}
-                />
-              )}
-              {scheduleType === SchedulingType.REGULAR &&
-                (!notificationsSubs || notificationsSubs === 0) && (
-                  <>
-                    <HStack alignItems="center">
-                      <Switch
-                        display="flex"
-                        colorScheme="primary"
-                        size="md"
-                        mr={4}
+                      {renderProviderName(provider)}
+                    </Text>
+                  </Radio>
+                ))}
+              </VStack>
+            </RadioGroup>
+            {meetingProvider === MeetingProvider.CUSTOM && (
+              <Input
+                type="text"
+                placeholder="insert a custom meeting url"
+                isDisabled={isSchedulingExternal || selectedType?.fixed_link}
+                my={4}
+                value={meetingUrl}
+                onChange={e => setMeetingUrl(e.target.value)}
+              />
+            )}
+            {scheduleType === SchedulingType.REGULAR &&
+              (!notificationsSubs || notificationsSubs === 0) && (
+                <>
+                  <HStack alignItems="center">
+                    <Switch
+                      display="flex"
+                      colorScheme="primary"
+                      size="md"
+                      mr={4}
+                      isDisabled={isSchedulingExternal}
+                      defaultChecked={doSendEmailReminders}
+                      onChange={e => {
+                        setSendEmailReminders(e.target.checked)
+                        isUserEmailValid()
+                          ? setIsFirstUserEmailValid(true)
+                          : null
+                      }}
+                    />
+                    <FormLabel mb="0">
+                      <Text>Send me email reminders</Text>
+                    </FormLabel>
+                  </HStack>
+                  {doSendEmailReminders === true && (
+                    <FormControl
+                      isInvalid={!isFirstUserEmailValid && !isUserEmailValid()}
+                    >
+                      <Input
+                        type="email"
+                        placeholder="Insert your email"
                         isDisabled={isSchedulingExternal}
-                        defaultChecked={doSendEmailReminders}
+                        value={userEmail}
+                        onKeyDown={event =>
+                          event.key === 'Enter' && handleConfirm()
+                        }
                         onChange={e => {
-                          setSendEmailReminders(e.target.checked)
-                          isUserEmailValid()
-                            ? setIsFirstUserEmailValid(true)
-                            : null
+                          setUserEmail(e.target.value)
+                          setIsFirstUserEmailValid(false)
                         }}
                       />
-                      <FormLabel mb="0">
-                        <Text>Send me email reminders</Text>
-                      </FormLabel>
-                    </HStack>
-                    {doSendEmailReminders === true && (
-                      <FormControl
-                        isInvalid={
-                          !isFirstUserEmailValid && !isUserEmailValid()
-                        }
-                      >
-                        <Input
-                          type="email"
-                          placeholder="Insert your email"
-                          isDisabled={isSchedulingExternal}
-                          value={userEmail}
-                          onKeyDown={event =>
-                            event.key === 'Enter' && handleConfirm()
-                          }
-                          onChange={e => {
-                            setUserEmail(e.target.value)
-                            setIsFirstUserEmailValid(false)
-                          }}
-                        />
-                      </FormControl>
-                    )}
-                  </>
-                )}
-            </VStack>
-          )}
-        {!addGuest ? (
-          <Button
-            colorScheme="orangeButton"
-            variant="outline"
-            onClick={() => setAddGuest(true)}
-          >
-            Add other participants
-          </Button>
-        ) : (
-          <ChipInput
-            currentItems={participants}
-            placeholder="Enter participants"
-            onChange={setParticipants}
-            renderItem={p => {
-              if (p.account_address) {
-                return p.name || ellipsizeAddress(p.account_address!)
-              } else if (p.name && p.guest_email) {
-                return `${p.name} - ${p.guest_email}`
-              } else if (p.name) {
-                return `${p.name}`
-              } else {
-                return p.guest_email!
-              }
-            }}
-          />
+                    </FormControl>
+                  )}
+                </>
+              )}
+          </VStack>
         )}
+      {!addGuest ? (
         <Button
-          width="full"
-          isDisabled={
-            (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) ||
-            (logged &&
-              ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
-            isSchedulingExternal ||
-            isGateValid === false
-          }
-          isLoading={isSchedulingExternal}
-          onClick={
-            scheduleType === SchedulingType.REGULAR
-              ? handleScheduleWithWallet
-              : handleConfirm
-          }
-          colorScheme="primary"
-          // mt={6}
+          colorScheme="orangeButton"
+          variant="outline"
+          onClick={() => setAddGuest(true)}
         >
-          {isSchedulingExternal
-            ? 'Scheduling...'
-            : logged || scheduleType === SchedulingType.GUEST
-            ? 'Schedule'
-            : 'Connect wallet to schedule'}
+          Add other participants
         </Button>
-      </Flex>
-    </form>
+      ) : (
+        <ChipInput
+          currentItems={participants}
+          placeholder="Enter participants"
+          onChange={setParticipants}
+          renderItem={p => {
+            if (p.account_address) {
+              return p.name || ellipsizeAddress(p.account_address!)
+            } else if (p.name && p.guest_email) {
+              return `${p.name} - ${p.guest_email}`
+            } else if (p.name) {
+              return `${p.name}`
+            } else {
+              return p.guest_email!
+            }
+          }}
+        />
+      )}
+      <Button
+        width="full"
+        isDisabled={
+          (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) ||
+          (logged &&
+            ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
+          isSchedulingExternal ||
+          isGateValid === false
+        }
+        isLoading={isSchedulingExternal}
+        onClick={
+          scheduleType === SchedulingType.REGULAR
+            ? handleScheduleWithWallet
+            : handleConfirm
+        }
+        colorScheme="primary"
+        // mt={6}
+      >
+        {isSchedulingExternal
+          ? 'Scheduling...'
+          : logged || scheduleType === SchedulingType.GUEST
+          ? 'Schedule'
+          : 'Connect wallet to schedule'}
+      </Button>
+    </Flex>
   )
 }
