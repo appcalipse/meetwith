@@ -4717,6 +4717,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@onramp.money/onramp-web-sdk@npm:^1.6.8":
+  version: 1.6.8
+  resolution: "@onramp.money/onramp-web-sdk@npm:1.6.8"
+  checksum: 10c0/93285bb0eecf9f0f18e1cce79d6b3cc586818d3f62cc9bb8f744665baf038b912edeb3b4546d0e75fb24df95b4c3995ddd9e650975b36afaae62ec8f447dc13d
+  languageName: node
+  linkType: hard
+
 "@passwordless-id/webauthn@npm:^2.1.2":
   version: 2.1.2
   resolution: "@passwordless-id/webauthn@npm:2.1.2"
@@ -22822,6 +22829,7 @@ __metadata:
     "@mikro-orm/core": "npm:^4.5.9"
     "@mikro-orm/postgresql": "npm:^4.5.9"
     "@next/mdx": "npm:^12.1.0"
+    "@onramp.money/onramp-web-sdk": "npm:^1.6.8"
     "@peculiar/webcrypto": "npm:^1.4.6"
     "@sendgrid/mail": "npm:^7.6.2"
     "@sentry/nextjs": "npm:^7.83.0"
