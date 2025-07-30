@@ -42,3 +42,29 @@ jobs:
       run: copilot deploy -e pre-prod --force
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}
+
+    - name: Get last two commit messages
+      id: last_commits
+      run: |
+        echo "COMMIT_MSGS=$(git log -2 --pretty=format:'%s' | paste -sd ' | ' -)" >> $GITHUB_ENV
+
+    - name: Send Discord Notification
+      if: always()
+      uses: Ilshidur/action-discord@master
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        DISCORD_AVATAR: "https://res.cloudinary.com/dun8bju7q/image/upload/v1753807987/mw-socials_3_evlwta.png"
+      with:
+        args: |
+          🚀 **Deployment Completed**
+          
+          **Repository:** ${{ github.repository }}
+          **Branch:** ${{ github.ref_name }}
+          **Environment:** ${{ github.ref == 'refs/heads/main' && 'Production' || github.ref == 'refs/heads/develop' && 'Preview' || github.ref == 'refs/heads/pre-prod' && 'Pre-prod' || 'Unknown' }}
+          **Status:** ${{ job.status }}
+          **Commit:** ${{ github.sha }}
+          **Author:** ${{ github.actor }}
+          **Workflow:** ${{ github.workflow }}
+          **Last 2 Commits:** ${{ env.COMMIT_MSGS }}
+          
+          View details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
