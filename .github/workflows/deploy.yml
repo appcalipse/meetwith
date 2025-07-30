@@ -46,7 +46,10 @@ jobs:
     - name: Get last two commit messages
       id: last_commits
       run: |
-        echo "COMMIT_MSGS=$(git log -2 --pretty=format:'%s' | paste -sd ' | ' -)" >> $GITHUB_ENV
+        echo "COMMIT_MSGS<<EOF" >> $GITHUB_ENV
+        git log -2 --pretty=format:'• %s' >> $GITHUB_ENV
+        echo "" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
 
     - name: Send Discord Notification
       if: always()
@@ -54,9 +57,10 @@ jobs:
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         DISCORD_AVATAR: "https://res.cloudinary.com/dun8bju7q/image/upload/v1753807987/mw-socials_3_evlwta.png"
-        DISCORD_MENTIONS: '{ "content": "@everyone <@&role-id> <@user-id>","allowed_mentions": { "users": ["user-id", "user2-id"]  }}'
+        DISCORD_MENTIONS: '{ "users": ["976068042318569482", "615959113586835476"] }'
       with:
         args: |
+          <@976068042318569482> <@615959113586835476>
           🚀 **Deployment Completed**
           
           **Repository:** ${{ github.repository }}
