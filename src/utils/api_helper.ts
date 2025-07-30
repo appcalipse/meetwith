@@ -1,4 +1,4 @@
-import { Address, MeetingSession, Transaction } from '@meta/Transactions'
+import { Address, MeetingSession } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -54,7 +54,6 @@ import {
   DuplicateAvailabilityBlockRequest,
   MeetingCancelRequest,
   MeetingCreationRequest,
-  MeetingCreationSyncRequest,
   MeetingUpdateRequest,
   RequestInvoiceRequest,
   UpdateAvailabilityBlockMeetingTypesRequest,
@@ -835,12 +834,11 @@ export const guestMeetingCancel = async (
   payload: GuestMeetingCancel
 ) => {
   try {
-    const response = await internalFetch<{ success: true }>(
+    return await internalFetch<{ success: true }>(
       `/meetings/guest/${slot_id}`,
       'DELETE',
       payload
     )
-    return response
   } catch (e) {
     if (e instanceof ApiFetchError) {
       if (e.status === 404) {
