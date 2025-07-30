@@ -54,6 +54,7 @@ jobs:
       env:
         DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         DISCORD_AVATAR: "https://res.cloudinary.com/dun8bju7q/image/upload/v1753807987/mw-socials_3_evlwta.png"
+        DISCORD_MENTIONS: '{ "content": "@everyone <@&role-id> <@user-id>","allowed_mentions": { "users": ["user-id", "user2-id"]  }}'
       with:
         args: |
           🚀 **Deployment Completed**
