@@ -89,9 +89,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const toast = useToast()
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    selectDefaultProvider(
-      selectedType?.meeting_platforms || preferences?.meetingProviders
-    )
+    selectDefaultProvider(preferences?.meetingProviders)
   )
   const [meetingNotification, setMeetingNotification] = useState<
     Array<{
@@ -129,9 +127,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     MeetingProvider.CUSTOM
   )
   useEffect(() => {
-    if (selectedType?.custom_link) {
+    if (selectedType?.customLink) {
       setMeetingProvider(MeetingProvider.CUSTOM)
-      setMeetingUrl(selectedType.custom_link)
+      setMeetingUrl(selectedType.customLink)
     }
   }, [selectedType])
   const handleScheduleWithWallet = async () => {
@@ -476,7 +474,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         />
       </FormControl>
       {scheduleType !== undefined &&
-        (selectedType?.fixed_link || !selectedType?.custom_link) && (
+        (selectedType?.fixedLink || !selectedType?.customLink) && (
           <VStack alignItems="start">
             <Text fontSize="18px" fontWeight={500}>
               Location
@@ -511,7 +509,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               <Input
                 type="text"
                 placeholder="insert a custom meeting url"
-                isDisabled={isSchedulingExternal || selectedType?.fixed_link}
+                isDisabled={isSchedulingExternal || selectedType?.fixedLink}
                 my={4}
                 value={meetingUrl}
                 onChange={e => setMeetingUrl(e.target.value)}
