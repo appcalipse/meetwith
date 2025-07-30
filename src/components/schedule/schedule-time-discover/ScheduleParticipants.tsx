@@ -15,17 +15,12 @@ import { GoDotFill } from 'react-icons/go'
 import { ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
 
-import { MeetingMembers } from '../ScheduleTimeDiscover'
-
 interface ScheduleParticipantsProps {
-  meetingMembers: MeetingMembers[]
   isMobile?: boolean
 }
-export function ScheduleParticipants({
-  meetingMembers,
-  isMobile,
-}: ScheduleParticipantsProps) {
-  const { groupAvailability, setGroupAvailability } =
+
+export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
+  const { groupAvailability, setGroupAvailability, meetingMembers } =
     useContext(ScheduleContext)
   const { currentAccount } = useContext(AccountContext)
   const allAvailabilities = useMemo(() => {
@@ -59,7 +54,6 @@ export function ScheduleParticipants({
       py={isMobile ? 10 : 7}
       px={5}
       borderWidth={1}
-      borderColor={'neutral.400'}
       rounded={12}
       gap={5}
       minH="80vh"
@@ -78,7 +72,7 @@ export function ScheduleParticipants({
       </HStack>
       <Divider bg={'neutral.400'} />
       <VStack gap={4} w="100%">
-        {meetingMembers.map((participant, index) => {
+        {meetingMembers?.map((participant, index) => {
           return (
             <HStack
               key={index}
@@ -91,11 +85,11 @@ export function ScheduleParticipants({
               <Checkbox
                 onChange={handleAvailabilityChange}
                 colorScheme={'primary'}
-                value={participant.account_address?.toLowerCase()}
+                value={participant.address?.toLowerCase()}
                 size="lg"
                 alignItems={'center'}
                 isChecked={allAvailabilities.includes(
-                  participant.account_address?.toLowerCase() || ''
+                  participant.address?.toLowerCase() || ''
                 )}
               >
                 <VStack
@@ -115,9 +109,9 @@ export function ScheduleParticipants({
                     textOverflow="ellipsis"
                     w={'fit-content'}
                   >
-                    {participant.name}
+                    {participant.preferences.name || 'You'}
                   </Heading>
-                  {currentAccount?.address === participant.account_address && (
+                  {currentAccount?.address === participant.address && (
                     <Text fontSize={'sm'} color={'neutral.200'}>
                       Organizer
                     </Text>
