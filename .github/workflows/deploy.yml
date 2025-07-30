@@ -47,7 +47,7 @@ jobs:
       id: last_commits
       run: |
         echo "COMMIT_MSGS<<EOF" >> $GITHUB_ENV
-        git log -2 --pretty=format:'• %s' >> $GITHUB_ENV
+        git log -3 --pretty=format:'• %s' >> $GITHUB_ENV
         echo "" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
 
@@ -70,6 +70,6 @@ jobs:
           **Commit:** ${{ github.sha }}
           **Author:** ${{ github.actor }}
           **Workflow:** ${{ github.workflow }}
-          **Last 2 Commits:** ${{ env.COMMIT_MSGS }}
+          **Last 3 Commits:** ${{ env.COMMIT_MSGS }}
           
           View details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
