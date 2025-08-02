@@ -14,6 +14,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { Jazzicon } from '@ukstv/jazzicon-react'
+import { logEvent } from '@utils/analytics'
 import React, { useContext } from 'react'
 
 import { ContactStateContext } from '@/providers/ContactInvitesProvider'
@@ -45,6 +46,18 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
     try {
       await rejectContactInvite(selectedContact.id)
       props.sync(selectedContact.id)
+      toast({
+        title: 'Success',
+        description: 'Contact request declined successfully',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
+      logEvent('reject_contact_invite', {
+        address: selectedContact.address,
+        name: selectedContact.name,
+      })
     } catch (e) {
       if (e instanceof ContactAlreadyExists) {
         toast({

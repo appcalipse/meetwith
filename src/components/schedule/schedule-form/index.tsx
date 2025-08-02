@@ -41,6 +41,7 @@ import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import {
+  ExistingMeetingData,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
@@ -70,6 +71,8 @@ interface ScheduleFormProps {
   ) => Promise<boolean>
   notificationsSubs?: number
   meetingProviders?: Array<MeetingProvider>
+  existingMeetingData?: ExistingMeetingData | null
+  isReschedule?: boolean
 }
 
 export const ScheduleForm: React.FC<ScheduleFormProps> = ({
@@ -80,6 +83,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   onConfirm,
   notificationsSubs,
   preferences,
+  selectedType,
+  existingMeetingData,
+  isReschedule,
 }) => {
   const { currentAccount, logged } = useContext(AccountContext)
   const { tx, selectedType } = useContext(PublicScheduleContext)
@@ -95,15 +101,20 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       value: MeetingReminders
       label?: string
     }>
-  >([])
+  >([
+    {
+      value: MeetingReminders['1_HOUR_BEFORE'],
+      label: '1 hour before',
+    },
+  ])
 
   const [meetingRepeat, setMeetingRepeat] = useState({
     value: MeetingRepeat['NO_REPEAT'],
     label: 'Does not repeat',
   })
-  const [content, setContent] = useState('')
+  const [content, setContent] = useState(existingMeetingData?.content || '')
   const [name, setName] = useState(currentAccount?.preferences?.name || '')
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState(existingMeetingData?.title || '')
   const [doSendEmailReminders, setSendEmailReminders] = useState(false)
   const [scheduleType, setScheduleType] = useState(
     SchedulingType.REGULAR as SchedulingType
@@ -111,7 +122,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [addGuest, setAddGuest] = useState(false)
   const [guestEmail, setGuestEmail] = useState('')
   const [userEmail, setUserEmail] = useState('')
-  const [meetingUrl, setMeetingUrl] = useState('')
+  const [meetingUrl, setMeetingUrl] = useState(
+    existingMeetingData?.meetingUrl || ''
+  )
   const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
   const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
   const [showEmailConfirm, setShowEmailConfirm] = useState(false)
@@ -138,6 +151,18 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       setScheduleType(SchedulingType.GUEST)
     }
   }, [logged, selectedType])
+
+  // Populate form with existing meeting data when available
+  useEffect(() => {
+    if (existingMeetingData && isReschedule) {
+      if (existingMeetingData.title) {
+        setTitle(existingMeetingData.title)
+      }
+      if (existingMeetingData.meetingUrl) {
+        setMeetingUrl(existingMeetingData.meetingUrl)
+      }
+    }
+  }, [existingMeetingData, isReschedule])
   const handleConfirm = async () => {
     if (meetingProvider === MeetingProvider.CUSTOM && !meetingUrl) {
       toast({

@@ -24,6 +24,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       if (!results?.result?.length && isValidEmail(req.query.q as string)) {
         const inviteExists = await contactInviteByEmailExists(
+          account_address,
           req.query.q as string
         )
         return res.status(200).json({

@@ -311,8 +311,8 @@ export class AvailabilityBlockNotFoundError extends Error {
 }
 
 export class DefaultAvailabilityBlockError extends Error {
-  constructor() {
-    super('Cannot delete the default availability block')
+  constructor(message?: string) {
+    super(message || 'Cannot delete the default availability block')
     this.name = 'DefaultAvailabilityBlockError'
   }
 }
@@ -393,5 +393,12 @@ export class UploadError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'UploadError'
+  }
+}
+
+export class GuestRescheduleForbiddenError extends Error {
+  constructor() {
+    super('Only the scheduler can reschedule this meeting.')
+    this.name = 'GuestRescheduleForbiddenError'
   }
 }
