@@ -1,5 +1,4 @@
 /* eslint-disable tailwindcss/no-custom-classname */
-import { Radio, RadioGroup } from '@chakra-ui/react'
 import {
   Button,
   Flex,
@@ -8,15 +7,22 @@ import {
   HStack,
   Icon,
   Input,
+  Radio,
+  RadioGroup,
   Switch,
   Text,
   useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import {
+  PublicScheduleContext,
+  ScheduleStateContext,
+} from '@components/public-meeting'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import { Select } from 'chakra-react-select'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
@@ -24,8 +30,6 @@ import RichTextEditor from '@/components/profile/components/RichTextEditor'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
-import { ParticipantInfo } from '@/types/ParticipantInfo'
-import { selectDefaultProvider } from '@/utils/calendar_manager'
 import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
@@ -34,12 +38,11 @@ import {
   customSelectComponents,
   noClearCustomSelectComponent,
 } from '@/utils/constants/select'
-import { renderProviderName } from '@/utils/generic_utils'
+import { formatCurrency, renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import {
-  ExistingMeetingData,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
@@ -53,24 +56,8 @@ interface ScheduleFormProps {
   isGateValid?: boolean
   selectedType?: MeetingType | null
   preferences?: AccountPreferences
-  onConfirm: (
-    scheduleType: SchedulingType,
-    startTime: Date,
-    guestEmail?: string,
-    name?: string,
-    content?: string,
-    meetingUrl?: string,
-    emailToSendReminders?: string,
-    title?: string,
-    participants?: Array<ParticipantInfo>,
-    meetingProvider?: MeetingProvider,
-    meetingReminders?: Array<MeetingReminders>,
-    meetingRepeat?: MeetingRepeat
-  ) => Promise<boolean>
   notificationsSubs?: number
   meetingProviders?: Array<MeetingProvider>
-  existingMeetingData?: ExistingMeetingData | null
-  isReschedule?: boolean
 }
 
 export const ScheduleForm: React.FC<ScheduleFormProps> = ({
@@ -78,53 +65,50 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   isSchedulingExternal,
   willStartScheduling,
   isGateValid,
-  onConfirm,
   notificationsSubs,
   preferences,
-  selectedType,
-  existingMeetingData,
-  isReschedule,
 }) => {
   const { currentAccount, logged } = useContext(AccountContext)
-  const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
+  const {
+    confirmSchedule,
+    timezone,
+    setTimezone,
+    participants,
+    setParticipants,
+    meetingProvider,
+    setMeetingProvider,
+    meetingNotification,
+    setMeetingNotification,
+    meetingRepeat,
+    setMeetingRepeat,
+    content,
+    setContent,
+    name,
+    setName,
+    title,
+    setTitle,
+    doSendEmailReminders,
+    setSendEmailReminders,
+    scheduleType,
+    setScheduleType,
+    addGuest,
+    setAddGuest,
+    guestEmail,
+    setGuestEmail,
+    userEmail,
+    setUserEmail,
+    meetingUrl,
+    setMeetingUrl,
+    isFirstGuestEmailValid,
+    setIsFirstGuestEmailValid,
+    isFirstUserEmailValid,
+    setIsFirstUserEmailValid,
+    showEmailConfirm,
+    setShowEmailConfirm,
+  } = useContext(ScheduleStateContext)
+  const { setCurrentStep } = useContext(PublicScheduleContext)
+  const { tx, selectedType } = useContext(PublicScheduleContext)
   const toast = useToast()
-  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
-    selectDefaultProvider(
-      selectedType?.meeting_platforms || preferences?.meetingProviders
-    )
-  )
-  const [meetingNotification, setMeetingNotification] = useState<
-    Array<{
-      value: MeetingReminders
-      label?: string
-    }>
-  >([
-    {
-      value: MeetingReminders['1_HOUR_BEFORE'],
-      label: '1 hour before',
-    },
-  ])
-
-  const [meetingRepeat, setMeetingRepeat] = useState({
-    value: MeetingRepeat['NO_REPEAT'],
-    label: 'Does not repeat',
-  })
-  const [content, setContent] = useState(existingMeetingData?.content || '')
-  const [name, setName] = useState(currentAccount?.preferences?.name || '')
-  const [title, setTitle] = useState(existingMeetingData?.title || '')
-  const [doSendEmailReminders, setSendEmailReminders] = useState(false)
-  const [scheduleType, setScheduleType] = useState(
-    SchedulingType.REGULAR as SchedulingType
-  )
-  const [addGuest, setAddGuest] = useState(false)
-  const [guestEmail, setGuestEmail] = useState('')
-  const [userEmail, setUserEmail] = useState('')
-  const [meetingUrl, setMeetingUrl] = useState(
-    existingMeetingData?.meetingUrl || ''
-  )
-  const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
-  const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
-  const [showEmailConfirm, setShowEmailConfirm] = useState(false)
   const meetingProviders = (preferences?.meetingProviders || []).concat(
     MeetingProvider.CUSTOM
   )
@@ -148,18 +132,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       setScheduleType(SchedulingType.GUEST)
     }
   }, [logged, selectedType])
-
-  // Populate form with existing meeting data when available
-  useEffect(() => {
-    if (existingMeetingData && isReschedule) {
-      if (existingMeetingData.title) {
-        setTitle(existingMeetingData.title)
-      }
-      if (existingMeetingData.meetingUrl) {
-        setMeetingUrl(existingMeetingData.meetingUrl)
-      }
-    }
-  }, [existingMeetingData, isReschedule])
   const handleConfirm = async () => {
     if (meetingProvider === MeetingProvider.CUSTOM && !meetingUrl) {
       toast({
@@ -219,22 +191,26 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       return
     }
     try {
-      const success = await onConfirm(
-        scheduleType!,
-        pickedTime,
-        guestEmail,
-        name,
-        content,
-        meetingUrl,
-        doSendEmailReminders ? userEmail : undefined,
-        title,
-        participants,
-        meetingProvider,
-        meetingNotification.map(n => n.value as MeetingReminders),
-        meetingRepeat.value
-      )
+      if (selectedType?.plan && !tx) {
+        setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
+      } else {
+        const success = await confirmSchedule(
+          scheduleType!,
+          pickedTime,
+          guestEmail,
+          name,
+          content,
+          meetingUrl,
+          doSendEmailReminders ? userEmail : undefined,
+          title,
+          participants,
+          meetingProvider,
+          meetingNotification.map(n => n.value as MeetingReminders),
+          meetingRepeat.value
+        )
 
-      willStartScheduling && willStartScheduling?.(!success)
+        willStartScheduling && willStartScheduling?.(!success)
+      }
     } catch (e) {
       willStartScheduling && willStartScheduling?.(true)
     }
@@ -255,6 +231,19 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
+
+  const getScheduleButtonLabel = () => {
+    if (isSchedulingExternal) return 'Scheduling...'
+    if (logged || scheduleType === SchedulingType.GUEST) {
+      if (selectedType?.plan && !tx) {
+        return `Continue to make payment (${formatCurrency(
+          selectedType.plan.no_of_slot * selectedType.plan.price_per_slot
+        )})`
+      }
+      return 'Schedule'
+    }
+    return 'Connect Wallet to Schedule'
+  }
 
   return (
     <Flex
@@ -606,11 +595,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         colorScheme="primary"
         // mt={6}
       >
-        {isSchedulingExternal
-          ? 'Scheduling...'
-          : logged || scheduleType === SchedulingType.GUEST
-          ? 'Schedule'
-          : 'Connect wallet to schedule'}
+        {getScheduleButtonLabel()}
       </Button>
     </Flex>
   )

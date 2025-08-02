@@ -56,8 +56,8 @@ jobs:
         echo "## 📋 What Changed in This Deployment:" >> $GITHUB_ENV
         echo "" >> $GITHUB_ENV
         
-        # Get last 5 commits with enhanced descriptions
-        git log -5 --pretty=format:'%s' | while IFS= read -r commit; do
+        # Get last 10 commits with enhanced descriptions
+        git log -10 --pretty=format:'%s' | while IFS= read -r commit; do
           # Convert technical terms to user-friendly language
           enhanced_commit=$(echo "$commit" | \
             sed -E 's/^fix(\([^)]+\))?:/🐛 **Bug Fix:** /i' | \

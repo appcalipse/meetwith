@@ -382,7 +382,6 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
           </PopupHeader>
 
           <ScheduleForm
-            onConfirm={onSchedule}
             willStartScheduling={willStartScheduling}
             pickedTime={pickedTime!}
             isSchedulingExternal={isSchedulingExternal}
@@ -391,8 +390,6 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             preferences={preferences}
             meetingProviders={preferences?.meetingProviders}
             selectedType={selectedType}
-            existingMeetingData={existingMeetingData}
-            isReschedule={isReschedule}
           />
         </Popup>
       )}
