@@ -232,7 +232,6 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
 
-  // Helper to determine the button label
   const getScheduleButtonLabel = () => {
     if (isSchedulingExternal) return 'Scheduling...'
     if (logged || scheduleType === SchedulingType.GUEST) {
