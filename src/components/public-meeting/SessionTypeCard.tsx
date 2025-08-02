@@ -11,12 +11,7 @@ const SessionTypeCard: FC<IProps> = props => {
   const [loading, setLoading] = useState(false)
   const handleSelect = async () => {
     setLoading(true)
-    await handleSetSelectedType(
-      props,
-      props?.plan
-        ? PublicSchedulingSteps.PAY_FOR_SESSION
-        : PublicSchedulingSteps.BOOK_SESSION
-    )
+    await handleSetSelectedType(props, PublicSchedulingSteps.BOOK_SESSION)
     setLoading(false)
   }
   return (
