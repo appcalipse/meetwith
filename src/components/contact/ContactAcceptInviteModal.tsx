@@ -49,6 +49,14 @@ const ContactAcceptInviteModal: React.FC<IContactAcceptInviteModal> = props => {
         address: selectedContact.address,
         name: selectedContact.name,
       })
+      toast({
+        title: 'Success',
+        description: 'Contact request accepted successfully',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        position: 'top',
+      })
     } catch (e) {
       if (e instanceof ContactAlreadyExists) {
         toast({

@@ -12,9 +12,11 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 import CustomLoading from '@/components/CustomLoading'
-import { useAvailabilityBlockHandlers } from '@/hooks/useAvailabilityBlockHandlers'
-import { useAvailabilityBlocks } from '@/hooks/useAvailabilityBlocks'
-import { useAvailabilityForm } from '@/hooks/useAvailabilityForm'
+import {
+  useAvailabilityBlockHandlers,
+  useAvailabilityBlocks,
+  useAvailabilityForm,
+} from '@/hooks/availability'
 import { Account } from '@/types/Account'
 import { updateAvailabilityBlockMeetingTypes } from '@/utils/api_helper'
 
@@ -69,15 +71,18 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     editingBlockId,
     duplicatingBlockId,
     showDeleteConfirmation,
+    showSelectDefaultModal,
+    selectDefaultModalConfig,
     isSaving,
     handleCreateBlock,
     handleEditBlock,
     handleDuplicateBlock,
-    // handleClose,
+    handleClose,
     handleSaveNewBlock,
     handleDeleteBlock,
     handleShowDeleteConfirmation,
     handleCancelDelete,
+    handleCloseSelectDefaultModal,
   } = useAvailabilityBlockHandlers({
     createBlock,
     updateBlock,
@@ -92,6 +97,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     onOpen,
     onClose,
     onMeetingTypesSave: handleMeetingTypesSave,
+    existingBlocks: availabilityBlocks,
   })
 
   if (isLoading) {
@@ -99,26 +105,48 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
   }
 
   return (
-    <VStack alignItems="start" flex={1} mb={8} spacing={6}>
-      <Heading fontSize="2xl" color="neutral.0">
+    <VStack
+      alignItems="start"
+      flex={1}
+      mb={8}
+      spacing={6}
+      width="100%"
+      maxWidth="100%"
+      px={{ base: 2, sm: 4, md: 6, lg: 4, xl: 6, '2xl': 10 }}
+    >
+      <Heading fontSize="2xl" color="neutral.0" width="100%">
         My Availability
       </Heading>
 
       <Box
-        width={{ base: '100%', md: '100%', lg: 880 }}
-        padding={{ base: 4, md: 6, lg: 8 }}
+        width="100%"
+        maxWidth={{
+          base: '100%',
+          sm: '100%',
+          md: '100%',
+          lg: '100%',
+          xl: '1200px',
+          '2xl': '1400px',
+        }}
+        padding={{ base: 4, sm: 6, md: 8, lg: 10, xl: 12, '2xl': 16 }}
         borderRadius={12}
         background="neutral.900"
         position="relative"
+        mx="auto"
       >
         <Flex
           align="flex-start"
           justify="space-between"
           mb={4}
           flexDirection={{ base: 'column', md: 'row' }}
-          gap={{ base: 4, md: 0 }}
+          gap={{ base: 4, md: 6, lg: 8 }}
+          width="100%"
         >
-          <Box width={{ base: '100%', md: 533 }}>
+          <Box
+            width={{ base: '100%', md: 'auto' }}
+            flex={{ md: 1 }}
+            minWidth={0}
+          >
             <Heading fontSize={{ base: 18, md: 22 }} color="neutral.0" mb={2}>
               Availability blocks
             </Heading>
@@ -157,12 +185,14 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
             onClick={handleCreateBlock}
             fontSize="sm"
             px={6}
+            flexShrink={0}
+            width={{ base: '100%', md: 'auto' }}
           >
             New Availability block
           </Button>
         </Flex>
 
-        <Flex flexDirection="column" gap={6} flexWrap="wrap" mt={7}>
+        <Flex flexDirection="column" gap={6} mt={7} width="100%">
           {availabilityBlocks?.length === 0 ? (
             <AvailabilityEmptyState onCreateBlock={handleCreateBlock} />
           ) : (
@@ -180,11 +210,16 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
 
       <AvailabilityModal
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={handleClose}
         isEditing={isEditing}
         editingBlockId={editingBlockId}
         duplicatingBlockId={duplicatingBlockId}
         showDeleteConfirmation={showDeleteConfirmation}
+        showSelectDefaultModal={showSelectDefaultModal}
+        selectDefaultModalConfig={selectDefaultModalConfig || undefined}
+        availableBlocks={availabilityBlocks}
+        currentDefaultBlockId={editingBlockId || undefined}
+        onCloseSelectDefaultModal={handleCloseSelectDefaultModal}
         formState={formState}
         onTitleChange={setTitle}
         onTimezoneChange={setTimezone}

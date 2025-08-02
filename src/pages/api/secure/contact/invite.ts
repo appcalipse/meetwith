@@ -56,13 +56,15 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         }
       }
       const invitationLink = `${appUrl}/contact/invite-accept?identifier=${invite.id}`
+      const declineLink = `${appUrl}/contact/invite-decline?identifier=${invite.id}`
       const inviterName = getAccountDisplayName(req.session.account)
       try {
         if (userEmail) {
           await sendContactInvitationEmail(
             userEmail || '',
             inviterName,
-            invitationLink
+            invitationLink,
+            declineLink
           )
           await updateContactInviteCooldown(invite.id)
         }

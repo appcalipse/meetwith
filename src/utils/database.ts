@@ -151,6 +151,7 @@ import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
+  generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
   noNoReplyEmailForAccount,
@@ -160,7 +161,7 @@ import {
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_sync_helpers'
-import { apiUrl, WEBHOOK_URL } from './constants'
+import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
@@ -170,6 +171,7 @@ import { getConnectedCalendarIntegration } from './services/connected_calendars.
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
+import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
 
 // TODO: better typing
@@ -258,6 +260,25 @@ const initAccountDBForWallet = async (
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
+
+    // Create default availability block for new users
+    const defaultWeeklyAvailability = generateDefaultAvailabilities()
+
+    const defaultBlock = await createAvailabilityBlock(
+      user_account.address,
+      'Default',
+      timezone,
+      defaultWeeklyAvailability,
+      true // Set as default
+    )
+
+    // Update account preferences to reference the default availability block
+    await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: defaultBlock.id,
+      })
+      .eq('owner_account_address', user_account.address)
 
     user_account.preferences = preferences
     user_account.is_invited = is_invited || false
@@ -2817,6 +2838,8 @@ const updateMeeting = async (
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
   )
+
+  // now that everything happened without error, it is safe to update the root meeting data
   const existingSlots =
     meeting.slots?.filter(
       val => !meetingUpdateRequest.slotsToRemove.includes(val)
@@ -3607,12 +3630,16 @@ const rejectContactInvite = async (
     throw new Error(deleteError.message)
   }
 }
-const contactInviteByEmailExists = async (email: string) => {
+const contactInviteByEmailExists = async (
+  owner_address: string,
+  email: string
+) => {
   const { data, error } = await db.supabase
     .from('contact_invite')
     .select()
     .eq('destination', email)
     .eq('channel', ChannelType.EMAIL)
+    .eq('account_owner_address', owner_address)
   if (error) {
     throw new Error(error.message)
   }
@@ -3653,6 +3680,36 @@ const getDefaultAvailabilityBlockId = async (
   return accountPrefs?.availaibility_id || null
 }
 
+const checkTitleExists = async (
+  account_address: string,
+  title: string,
+  excludeBlockId?: string
+): Promise<void> => {
+  const trimmedTitle = title.trim()
+
+  let query = db.supabase
+    .from('availabilities')
+    .select('id')
+    .eq('account_owner_address', account_address)
+    .eq('title', trimmedTitle)
+
+  if (excludeBlockId) {
+    query = query.neq('id', excludeBlockId)
+  }
+
+  const { data: existingBlock, error: checkError } = await query.single()
+
+  if (checkError && checkError.code !== 'PGRST116') {
+    throw checkError
+  }
+
+  if (existingBlock) {
+    throw new InvalidAvailabilityBlockError(
+      'An availability block with this title already exists'
+    )
+  }
+}
+
 const isAvailabilityBlockDefault = async (
   id: string,
   account_address: string
@@ -3668,12 +3725,15 @@ export const createAvailabilityBlock = async (
   weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
   is_default = false
 ) => {
+  const trimmedTitle = title.trim()
+  await checkTitleExists(account_address, title)
+
   // Create the availability block
   const { data: block, error: blockError } = await db.supabase
     .from('availabilities')
     .insert([
       {
-        title,
+        title: trimmedTitle,
         timezone,
         weekly_availability,
         account_owner_address: account_address,
@@ -3736,6 +3796,9 @@ export const updateAvailabilityBlock = async (
   weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
   is_default = false
 ) => {
+  const trimmedTitle = title.trim()
+  await checkTitleExists(account_address, title, id)
+
   // Get current account preferences to check if this block is currently default
   const isCurrentlyDefault = await isAvailabilityBlockDefault(
     id,
@@ -3753,21 +3816,15 @@ export const updateAvailabilityBlock = async (
 
     if (prefError) throw prefError
   } else if (isCurrentlyDefault) {
-    // If this block is currently default but is being unset, set availaibility_id to null
-    const { error: prefError } = await db.supabase
-      .from('account_preferences')
-      .update({
-        availaibility_id: null,
-      })
-      .eq('owner_account_address', account_address)
-
-    if (prefError) throw prefError
+    throw new DefaultAvailabilityBlockError(
+      'Cannot unset the default availability block without selecting a new default'
+    )
   }
 
   const { data, error } = await db.supabase
     .from('availabilities')
     .update({
-      title,
+      title: trimmedTitle,
       timezone,
       weekly_availability,
     })
@@ -3821,12 +3878,17 @@ export const duplicateAvailabilityBlock = async (
     throw new AvailabilityBlockNotFoundError()
   }
 
+  const newTitle = modifiedData?.title || `${block.title} (Copy)`
+  const trimmedTitle = newTitle.trim()
+
+  await checkTitleExists(account_address, newTitle)
+
   // Create a new block with the same data but a new ID, applying any modifications
   const { data: newBlock, error: blockError } = await db.supabase
     .from('availabilities')
     .insert([
       {
-        title: modifiedData?.title || `${block.title} (Copy)`,
+        title: trimmedTitle,
         timezone: modifiedData?.timezone || block.timezone,
         weekly_availability:
           modifiedData?.weekly_availability || block.weekly_availability,
@@ -3866,25 +3928,60 @@ export const isDefaultAvailabilityBlock = async (
 }
 
 export const getAvailabilityBlocks = async (account_address: string) => {
-  // Get all availability blocks
+  // Get all availability blocks with their associated meeting types in a single query
   const { data: blocks, error } = await db.supabase
     .from('availabilities')
-    .select('*')
+    .select(
+      `
+      *,
+      meeting_types: meeting_type_availabilities(
+        meeting_type(
+          id,
+          title,
+          deleted_at
+        )
+      )
+    `
+    )
     .eq('account_owner_address', account_address)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: true })
 
   if (error) throw error
 
   // Get account preferences to determine default block
   const defaultBlockId = await getDefaultAvailabilityBlockId(account_address)
 
-  // Add isDefault flag to each block based on availaibility_id
-  const blocksWithDefault = blocks.map(block => ({
-    ...block,
-    isDefault: defaultBlockId === block.id,
-  }))
+  const blocksWithDefault = blocks.map(block => {
+    const meetingTypes =
+      block.meeting_types
+        ?.map(
+          (item: {
+            meeting_type: MeetingType & { deleted_at?: string | null }
+          }) => {
+            const meetingType = item.meeting_type
+            if (!meetingType || meetingType.deleted_at) return null
 
-  return blocksWithDefault
+            return meetingType
+          }
+        )
+        .filter(Boolean) || []
+
+    return {
+      ...block,
+      isDefault: defaultBlockId === block.id,
+      meetingTypes,
+    }
+  })
+
+  // Sort blocks
+  const sortedBlocks = blocksWithDefault.sort((a, b) => {
+    if (a.isDefault) return -1
+    if (b.isDefault) return 1
+
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
+
+  return sortedBlocks
 }
 
 const getMeetingTypes = async (
@@ -4104,6 +4201,14 @@ const deleteMeetingType = async (
 
   if (error) {
     throw new Error(error.message)
+  }
+
+  const { error: assocError } = await db.supabase
+    .from('meeting_type_availabilities')
+    .delete()
+    .eq('meeting_type_id', meeting_type_id)
+  if (assocError) {
+    throw new Error(assocError.message)
   }
 }
 
@@ -4584,7 +4689,12 @@ const handleWebhookEvent = async (
       const eventLastUpdatedAt = new Date(
         event.extendedProperties?.private?.lastUpdatedAt
       )
-      if (eventLastUpdatedAt > sub(now, { minutes: 2 })) {
+      if (
+        eventLastUpdatedAt >
+        sub(now, {
+          seconds: 30,
+        })
+      ) {
         return false
       }
     }
@@ -4725,6 +4835,39 @@ const handleCalendarRsvps = async (
   integration.updateEventExtendedProperties &&
     integration.updateEventExtendedProperties(meetingId, calendarId)
 }
+const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
+  if (isProAccount(account)) {
+    const domain = account.subscriptions?.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )?.domain
+    if (domain) {
+      return domain
+    }
+  }
+  return `address/${
+    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+  }`
+}
+
+const getAccountCalendarUrl = (
+  account: Account,
+  ellipsize?: boolean
+): string => {
+  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+}
+
+const getOwnerPublicUrlServer = async (
+  ownerAccountAddress: string
+): Promise<string> => {
+  try {
+    const ownerAccount = await getAccountFromDB(ownerAccountAddress)
+    return getAccountCalendarUrl(ownerAccount)
+  } catch (error) {
+    // Fallback if account not found
+    return `${appUrl}/address/${ownerAccountAddress}`
+  }
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -4782,6 +4925,7 @@ export {
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
+  getOwnerPublicUrlServer,
   getPaidSessionsByMeetingType,
   getSlotsByIds,
   getSlotsForAccount,

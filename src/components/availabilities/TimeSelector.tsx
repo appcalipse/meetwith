@@ -1,7 +1,10 @@
 import { HStack, Input, Select, Text } from '@chakra-ui/react'
 import { ChangeEvent, useEffect, useState } from 'react'
 
-import { validateTimeFormat } from '@/utils/availability.helper'
+import {
+  validateTimeFormat,
+  validateTimeRange,
+} from '@/utils/availability.helper'
 
 import { allSlots } from '../../utils/calendar_manager'
 
@@ -10,6 +13,9 @@ type SelectorProps = {
   time: string
   slots: string[]
   isInput?: boolean
+  isStart?: boolean
+  otherTime?: string
+  onValidationChange?: (isValid: boolean) => void
 }
 
 const Selector: React.FC<SelectorProps> = ({
@@ -17,9 +23,13 @@ const Selector: React.FC<SelectorProps> = ({
   time,
   slots,
   isInput = false,
+  isStart = false,
+  otherTime = '',
+  onValidationChange,
 }) => {
   const [inputValue, setInputValue] = useState(time)
   const [isValid, setIsValid] = useState(true)
+  const [isRangeValid, setIsRangeValid] = useState(true)
 
   useEffect(() => {
     setInputValue(time)
@@ -36,6 +46,19 @@ const Selector: React.FC<SelectorProps> = ({
     const valid = validateTimeFormat(value)
     setIsValid(valid)
 
+    // Check range validation for direct input mode
+    let rangeValid = true
+    if (isInput && valid && otherTime && validateTimeFormat(otherTime)) {
+      rangeValid = isStart
+        ? validateTimeRange(value, otherTime)
+        : validateTimeRange(otherTime, value)
+    }
+    setIsRangeValid(rangeValid)
+
+    if (onValidationChange) {
+      onValidationChange(valid && rangeValid)
+    }
+
     if (valid) {
       onChange(value)
     }
@@ -48,6 +71,8 @@ const Selector: React.FC<SelectorProps> = ({
     }
   }
 
+  const isInputInvalid = !isValid || (!isRangeValid && isInput)
+
   if (isInput) {
     return (
       <Input
@@ -55,17 +80,17 @@ const Selector: React.FC<SelectorProps> = ({
         onChange={handleInputChange}
         onBlur={handleInputBlur}
         width={{ base: '80px', sm: '96px' }}
-        borderColor={isValid ? undefined : 'red.500'}
+        borderColor={isInputInvalid ? 'red.500' : undefined}
         borderRadius="8px"
         _focus={{
-          borderColor: isValid ? 'orange.400' : 'red.500',
+          borderColor: isInputInvalid ? 'red.500' : 'orange.400',
           boxShadow: `0 0 0 1px var(--chakra-colors-${
-            isValid ? 'orange-400' : 'red-500'
+            isInputInvalid ? 'red-500' : 'orange-400'
           })`,
         }}
         _focusVisible={{
           boxShadow: `0 0 0 1px var(--chakra-colors-${
-            isValid ? 'orange-400' : 'red-500'
+            isInputInvalid ? 'red-500' : 'orange-400'
           })`,
         }}
         placeholder="HH:MM"
@@ -106,6 +131,7 @@ type TimeSelectorProps = {
   nextStart?: string
   previousEnd?: string
   useDirectInput?: boolean
+  onValidationChange?: (index: number, isValid: boolean) => void
 }
 
 export const TimeSelector: React.FC<TimeSelectorProps> = ({
@@ -116,7 +142,10 @@ export const TimeSelector: React.FC<TimeSelectorProps> = ({
   nextStart = '24:00',
   previousEnd = '00:00',
   useDirectInput = false,
+  onValidationChange,
 }) => {
+  const [_isRangeValid, setIsRangeValid] = useState(true)
+
   const slots = {
     start: allSlots.slice(
       allSlots.findIndex(slot => slot === previousEnd),
@@ -127,6 +156,26 @@ export const TimeSelector: React.FC<TimeSelectorProps> = ({
       allSlots.findIndex(slot => slot === nextStart) + 1
     ),
   }
+
+  const validateCurrentRange = () => {
+    if (
+      useDirectInput &&
+      validateTimeFormat(start) &&
+      validateTimeFormat(end)
+    ) {
+      const valid = validateTimeRange(start, end)
+      setIsRangeValid(valid)
+      if (onValidationChange) {
+        onValidationChange(index, valid)
+      }
+      return valid
+    }
+    return true
+  }
+
+  useEffect(() => {
+    validateCurrentRange()
+  }, [start, end, useDirectInput])
 
   const onChangeStart = (time: string) => {
     onChange(index, time, end)
@@ -143,6 +192,9 @@ export const TimeSelector: React.FC<TimeSelectorProps> = ({
         time={start}
         slots={slots.start}
         isInput={useDirectInput}
+        isStart={true}
+        otherTime={end}
+        onValidationChange={() => validateCurrentRange()}
       />
       <Text fontSize="sm" color="neutral.300">
         -
@@ -152,6 +204,9 @@ export const TimeSelector: React.FC<TimeSelectorProps> = ({
         time={end}
         slots={slots.end}
         isInput={useDirectInput}
+        isStart={false}
+        otherTime={start}
+        onValidationChange={() => validateCurrentRange()}
       />
     </HStack>
   )

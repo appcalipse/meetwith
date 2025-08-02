@@ -5,26 +5,26 @@ const CustomLoading: React.FC<{ text?: string }> = ({
   text = 'Loading...',
 }) => (
   <Box
-    width={{ base: '100%', md: '100%', lg: 880 }}
+    width="100%"
+    height="100%"
     minH="400px"
-    position="fixed"
-    top="15%"
-    left="35%"
-    zIndex={2000}
     display="flex"
     alignItems="center"
     justifyContent="center"
+    position="relative"
   >
-    <VStack alignItems="center" mb={8}>
+    <VStack alignItems="center" spacing={4}>
       <Image
         src="/assets/schedule.svg"
         height={200}
         width={200}
         alt="Loading..."
       />
-      <HStack pt={8}>
-        <Spinner />
-        <Text fontSize="lg">{text}</Text>
+      <HStack spacing={3}>
+        <Spinner size="md" />
+        <Text fontSize="lg" color="neutral.300">
+          {text}
+        </Text>
       </HStack>
     </VStack>
   </Box>
