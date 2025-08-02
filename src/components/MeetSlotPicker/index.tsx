@@ -390,8 +390,6 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             preferences={preferences}
             meetingProviders={preferences?.meetingProviders}
             selectedType={selectedType}
-            existingMeetingData={existingMeetingData}
-            isReschedule={isReschedule}
           />
         </Popup>
       )}
