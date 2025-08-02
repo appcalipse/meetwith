@@ -103,7 +103,7 @@ const PublicPage: FC<IProps> = props => {
   const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
   const [notificationsSubs, setNotificationSubs] = useState(0)
   const [isContact, setIsContact] = useState(false)
-
+  const [bookingInfo, setBookingInfo] = useState()
   const selectedType = useMemo(() => {
     if (!isReady) return null
     const meeting_type = Array.isArray(query.address)
