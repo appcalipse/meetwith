@@ -1,5 +1,4 @@
 /* eslint-disable tailwindcss/no-custom-classname */
-import { Radio, RadioGroup } from '@chakra-ui/react'
 import {
   Button,
   Flex,
@@ -8,12 +7,15 @@ import {
   HStack,
   Icon,
   Input,
+  Radio,
+  RadioGroup,
   Switch,
   Text,
   useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { PublicScheduleContext } from '@components/public-meeting'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Select } from 'chakra-react-select'
 import { useContext, useEffect, useState } from 'react'
@@ -34,7 +36,7 @@ import {
   customSelectComponents,
   noClearCustomSelectComponent,
 } from '@/utils/constants/select'
-import { renderProviderName } from '@/utils/generic_utils'
+import { formatCurrency, renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
@@ -78,9 +80,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   onConfirm,
   notificationsSubs,
   preferences,
-  selectedType,
 }) => {
   const { currentAccount, logged } = useContext(AccountContext)
+  const { tx, selectedType } = useContext(PublicScheduleContext)
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const toast = useToast()
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
@@ -231,6 +233,21 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
 
   const bgColor = useColorModeValue('white', 'gray.600')
   const iconColor = useColorModeValue('gray.600', 'white')
+
+  // Helper to determine the button label
+  const getScheduleButtonLabel = () => {
+    if (isSchedulingExternal) return 'Scheduling...'
+    if (logged || scheduleType === SchedulingType.GUEST) {
+      if (tx) return 'Schedule'
+      if (selectedType?.plan) {
+        return `Continue to make payment (${formatCurrency(
+          selectedType.plan.no_of_slot * selectedType.plan.price_per_slot
+        )})`
+      }
+      return 'Schedule'
+    }
+    return 'Connect Wallet to Schedule'
+  }
 
   return (
     <Flex
@@ -582,11 +599,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         colorScheme="primary"
         // mt={6}
       >
-        {isSchedulingExternal
-          ? 'Scheduling...'
-          : logged || scheduleType === SchedulingType.GUEST
-          ? 'Schedule'
-          : 'Connect wallet to schedule'}
+        {getScheduleButtonLabel()}
       </Button>
     </Flex>
   )
