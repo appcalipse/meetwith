@@ -45,11 +45,56 @@ jobs:
       env:
         DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}
 
-    - name: Get last ten commit messages
-      id: last_commits
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Fetch complete history
+
+    - name: Generate user-friendly changes summary
+      id: changes_summary
       run: |
-        echo "COMMIT_MSGS<<EOF" >> $GITHUB_ENV
-        git log -10 --pretty=format:'• %s' >> $GITHUB_ENV
+        echo "CHANGES_SUMMARY<<EOF" >> $GITHUB_ENV
+        echo "## 📋 What Changed in This Deployment:" >> $GITHUB_ENV
+        echo "" >> $GITHUB_ENV
+        
+        # Get last 5 commits with enhanced descriptions
+        git log -5 --pretty=format:'%s' | while IFS= read -r commit; do
+          # Convert technical terms to user-friendly language
+          enhanced_commit=$(echo "$commit" | \
+            sed -E 's/^fix(\([^)]+\))?:/🐛 **Bug Fix:** /i' | \
+            sed -E 's/^feat(\([^)]+\))?:/✨ **New Feature:** /i' | \
+            sed -E 's/^chore(\([^)]+\))?:/🧹 **Maintenance:** /i' | \
+            sed -E 's/^docs(\([^)]+\))?:/📚 **Documentation:** /i' | \
+            sed -E 's/^style(\([^)]+\))?:/💄 **UI\/Styling:** /i' | \
+            sed -E 's/^refactor(\([^)]+\))?:/♻️ **Code Improvement:** /i' | \
+            sed -E 's/^test(\([^)]+\))?:/🧪 **Testing:** /i' | \
+            sed -E 's/^perf(\([^)]+\))?:/⚡ **Performance:** /i' | \
+            sed -E 's/API/User Interface/gi' | \
+            sed -E 's/component/interface element/gi' | \
+            sed -E 's/endpoint/connection point/gi' | \
+            sed -E 's/database/data storage/gi' | \
+            sed -E 's/optimize/improve speed of/gi' | \
+            sed -E 's/refactor/reorganize and improve/gi')
+          
+          # If no conventional commit format detected, add default emoji
+          if [[ ! "$enhanced_commit" =~ ^[🐛✨🧹📚💄♻️🧪⚡] ]]; then
+            enhanced_commit="🔧 **Update:** $enhanced_commit"
+          fi
+          
+          echo "• $enhanced_commit" >> $GITHUB_ENV
+        done
+        echo "" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
+    - name: Generate technical details
+      id: technical_details
+      run: |
+        echo "TECH_DETAILS<<EOF" >> $GITHUB_ENV
+        echo "" >> $GITHUB_ENV
+        echo "## 🔧 Technical Details:" >> $GITHUB_ENV
+        echo "**Files Changed:** $(git diff --name-only HEAD~5 HEAD | wc -l) files" >> $GITHUB_ENV
+        echo "**Lines Added:** +$(git diff --numstat HEAD~5 HEAD | awk '{add+=$1} END {print add+0}')" >> $GITHUB_ENV
+        echo "**Lines Removed:** -$(git diff --numstat HEAD~5 HEAD | awk '{del+=$2} END {print del+0}')" >> $GITHUB_ENV
+        echo "**Deployment Time:** $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
         echo "" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
 
@@ -63,16 +108,16 @@ jobs:
       with:
         args: |
           <@976068042318569482> <@615959113586835476>
-          🚀 **Deployment Completed**
+          🚀 **Meet With Wallet - Deployment Completed**
           
-          **Repository:** ${{ github.repository }}
-          **Branch:** ${{ github.ref_name }}
-          **Environment:** ${{ github.ref == 'refs/heads/main' && 'Production' || github.ref == 'refs/heads/develop' && 'Preview' || github.ref == 'refs/heads/pre-prod' && 'Pre-prod' || 'Unknown' }}
-          **Status:** ${{ job.status }}
-          **Commit:** ${{ github.sha }}
-          **Author:** ${{ github.actor }}
-          **Workflow:** ${{ github.workflow }}
-          **Last 10 Commits:** 
-          ${{ env.COMMIT_MSGS }}
+          **Environment:** ${{ github.ref == 'refs/heads/main' && '🌟 Production' || github.ref == 'refs/heads/develop' && '🧪 Preview' || github.ref == 'refs/heads/pre-prod' && '🎯 Pre-Production' || '❓ Unknown' }}
+          **Status:** ${{ job.status == 'success' && '✅ Successful' || '❌ Failed' }}
+          **Deployed by:** ${{ github.actor }}
           
-          View details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ${{ env.CHANGES_SUMMARY }}
+          
+          ${{ env.TECH_DETAILS }}
+          
+          **🔗 Links:**
+          • [View Deployment Details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          • [Browse Code Changes](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
