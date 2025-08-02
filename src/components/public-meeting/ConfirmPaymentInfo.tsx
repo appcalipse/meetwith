@@ -12,7 +12,11 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { PublicScheduleContext } from '@components/public-meeting/index'
+import {
+  PublicScheduleContext,
+  ScheduleStateContext,
+} from '@components/public-meeting/index'
+import { MeetingReminders } from '@meta/common'
 import { ConfirmCryptoTransactionRequest } from '@meta/Requests'
 import { createCryptoTransaction, requestInvoice } from '@utils/api_helper'
 import {
@@ -62,6 +66,23 @@ const ConfirmPaymentInfo = () => {
     chain: selectedChain,
     token,
   } = useContext(PublicScheduleContext)
+  const {
+    confirmSchedule,
+    participants,
+    meetingProvider,
+    meetingNotification,
+    meetingRepeat,
+    content,
+    name,
+    setName,
+    title,
+    doSendEmailReminders,
+    scheduleType,
+    userEmail,
+    meetingUrl,
+    pickedTime,
+    guestEmail,
+  } = useContext(ScheduleStateContext)
   const toast = useToast({ position: 'top', isClosable: true })
   const currentAccount = useAccountContext()
   const wallet = useActiveWallet()
@@ -72,10 +93,7 @@ const ConfirmPaymentInfo = () => {
       ErrorAction<keyof PaymentInfo>
     >
   >(errorReducerSingle, {})
-  const [name, setName] = React.useState(
-    currentAccount?.preferences?.name || ''
-  )
-  const [email, setEmail] = React.useState('')
+  const [email, setEmail] = React.useState(guestEmail)
   const { openConnection } = useContext(OnboardingModalContext)
   const [isInvoiceLoading, setIsInvoiceLoading] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
@@ -250,6 +268,21 @@ const ConfirmPaymentInfo = () => {
           await createCryptoTransaction(payload)
           setProgress(100)
           handleNavigateToBook(transactionHash)
+          await confirmSchedule(
+            scheduleType!,
+            pickedTime!,
+            guestEmail,
+            name,
+            content,
+            meetingUrl,
+            doSendEmailReminders ? userEmail : undefined,
+            title,
+            participants,
+            meetingProvider,
+            meetingNotification.map(n => n.value as MeetingReminders),
+            meetingRepeat.value,
+            transactionHash
+          )
         } else if (!signingAccount) {
           openConnection(undefined, false)
           toast({
