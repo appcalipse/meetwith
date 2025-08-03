@@ -336,7 +336,7 @@ const SchedulerPicker = () => {
           flexBasis={{ base: '100%', '2xl': '50%' }}
           mt={{
             base: 4,
-            lg: 0,
+            '2xl': 0,
           }}
         >
           <HStack mb={0} cursor="pointer" onClick={() => setShowConfirm(false)}>
