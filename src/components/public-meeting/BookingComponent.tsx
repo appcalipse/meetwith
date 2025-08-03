@@ -10,7 +10,7 @@ import SessionTypeCardPaymentInfo from '@/components/public-meeting/SessionTypeC
 import { getTransactionByTxHash } from '@/utils/api_helper'
 
 const BookingComponent = () => {
-  const { tx } = useContext(PublicScheduleContext)
+  const { tx, showHeader } = useContext(PublicScheduleContext)
   const { data: meetingSessions, isLoading } = useQuery({
     queryKey: ['transaction', tx],
     queryFn: () => tx && getTransactionByTxHash(tx),
@@ -31,7 +31,7 @@ const BookingComponent = () => {
       px={'4'}
       gap={9}
     >
-      <ProgressHeader />
+      {showHeader && <ProgressHeader />}
       <SessionTypeCardPaymentInfo />
       {!tx ? null : isLoading ? (
         <Box mx="auto" mt={8}>
