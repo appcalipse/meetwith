@@ -433,7 +433,7 @@ const PublicPage: FC<IProps> = props => {
           t => t.slug === meeting_type
         )
         if (type) {
-          if (!type?.type === SessionType.FREE) {
+          if (type?.type === SessionType.FREE) {
             setShowHeader(false)
           }
           setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
