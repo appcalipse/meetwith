@@ -29,6 +29,9 @@ const customJestConfig = {
   },
   moduleNameMapper: {
     '@/(.*)': 'src/$1',
+    '@utils/(.*)': 'src/utils/$1',
+    '@meta/(.*)': 'src/meta/$1',
+    '@components/(.*)': 'src/components/$1',
     'swiper/react': 'swiper/react/swiper-react.js',
     'swiper/css': '<rootDir>/__mocks__/jestMock.js',
     '(.*)PlansMobileSlider': '<rootDir>/__mocks__/jestMock.js',

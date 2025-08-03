@@ -468,6 +468,7 @@ const updatePreferenceAvatar = async (
 ) => {
   const contentType = mimeType
   const file = `uploads/${Date.now()}-${filename}`
+  console.log({ supabase: db.supabase })
   const { error } = await db.supabase.storage
     .from('avatars')
     .upload(file, buffer, {
@@ -4882,18 +4883,22 @@ export {
   deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
+  deleteGroupInvites,
+  deleteGroupMembers,
   deleteMeetingFromDB,
   deleteMeetingType,
   deleteTgConnection,
   editGroup,
   findAccountByIdentifier,
   findAccountsByText,
+  findGroupsWithSingleMember,
   getAccountFromDB,
   getAccountFromDBPublic,
   getAccountNonce,
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
   getAccountsNotificationSubscriptionEmails,
+  getAccountsNotificationSubscriptions,
   getAccountsWithTgConnected,
   getAppToken,
   getConferenceDataBySlotId,
@@ -4910,8 +4915,10 @@ export {
   getGateCondition,
   getGateConditionsForAccount,
   getGroup,
+  getGroupAdminsFromDb,
   getGroupInternal,
   getGroupInvites,
+  getGroupMembersInternal,
   getGroupName,
   getGroupsAndMembers,
   getGroupsEmpty,
@@ -4919,6 +4926,7 @@ export {
   getGroupUsersInternal,
   getMeetingFromDB,
   getMeetingSessionsByTxHash,
+  getMeetingsFromDB,
   getMeetingTypeFromDB,
   getMeetingTypes,
   getMeetingTypesForAvailabilityBlock,
@@ -4941,6 +4949,8 @@ export {
   initDB,
   insertOfficeEventMapping,
   isGroupAdmin,
+  isGroupExists,
+  isSlotAvailable,
   isSlotAvailable as isSlotFree,
   isUserContact,
   leaveGroup,
