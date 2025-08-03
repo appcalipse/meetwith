@@ -36,6 +36,7 @@ import {
   PaymentStep,
   PaymentType,
   PublicSchedulingSteps,
+  SessionType,
 } from '@utils/constants/meeting-types'
 import { Option } from '@utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@utils/date_helper'
@@ -121,6 +122,8 @@ interface IContext {
   notificationsSubs: number
   isContact: boolean
   setIsContact: React.Dispatch<React.SetStateAction<boolean>>
+  showHeader: boolean
+  setShowHeader: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 interface IScheduleContext {
@@ -221,6 +224,8 @@ const baseState: IContext = {
   notificationsSubs: 0,
   isContact: false,
   setIsContact: () => {},
+  showHeader: true,
+  setShowHeader: () => {},
 }
 const scheduleBaseState: IScheduleContext = {
   currentMonth: new Date(),
@@ -343,6 +348,7 @@ const PublicPage: FC<IProps> = props => {
   const [busySlots, setBusySlots] = useState<Interval[]>([])
   const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
+  const [showHeader, setShowHeader] = useState(true)
   const toast = useToast()
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
     selectDefaultProvider(
@@ -427,6 +433,9 @@ const PublicPage: FC<IProps> = props => {
           t => t.slug === meeting_type
         )
         if (type) {
+          if (!type?.type === SessionType.FREE) {
+            setShowHeader(false)
+          }
           setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
         }
       }
@@ -505,6 +514,8 @@ const PublicPage: FC<IProps> = props => {
     notificationsSubs,
     isContact,
     setIsContact,
+    showHeader,
+    setShowHeader,
   }
   const getSelfAvailableSlots = async () => {
     if (currentAccount) {
