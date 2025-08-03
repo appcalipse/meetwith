@@ -504,7 +504,7 @@ const ConfirmPaymentInfo = () => {
             onClick={handlePay}
             isLoading={loading}
           >
-            Pay Now
+            Pay & Complete Schedule
           </Button>
           {loading && (
             <HStack ml={12}>
