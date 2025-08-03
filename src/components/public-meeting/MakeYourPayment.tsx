@@ -1,6 +1,7 @@
 import { Heading, HStack, Text, VStack } from '@chakra-ui/react'
 import ChainLogo from '@components/icons/ChainLogo'
 import FiatLogo from '@components/icons/FiatLogo'
+import InvoiceIcon from '@components/icons/InvoiceIcon'
 import PaymentMethod from '@components/public-meeting/PaymentMethod'
 import { PaymentStep, PaymentType } from '@utils/constants/meeting-types'
 import React from 'react'
@@ -21,6 +22,13 @@ const paymentMethods = [
     icon: FiatLogo,
     type: PaymentType.FIAT,
     disabled: true,
+  },
+  {
+    id: 'pay-with-invoice',
+    name: 'Pay via Invoice',
+    step: PaymentStep.HANDLE_SEND_INVOICE,
+    icon: InvoiceIcon,
+    type: PaymentType.FIAT,
   },
 ]
 
