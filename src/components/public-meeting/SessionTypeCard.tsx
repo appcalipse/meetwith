@@ -1,4 +1,12 @@
-import { Button, Heading, Tag, Text, Tooltip, VStack } from '@chakra-ui/react'
+import {
+  Button,
+  Heading,
+  Tag,
+  Text,
+  Tooltip,
+  useColorModeValue,
+  VStack,
+} from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { MeetingType } from '@meta/Account'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
@@ -9,6 +17,8 @@ type IProps = MeetingType
 const SessionTypeCard: FC<IProps> = props => {
   const { handleSetSelectedType } = useContext(PublicScheduleContext)
   const [loading, setLoading] = useState(false)
+  const bgColor = useColorModeValue('white', 'neutral.825')
+  const borderColor = useColorModeValue('neutral.200', 'neutral.825')
   const handleSelect = async () => {
     setLoading(true)
     await handleSetSelectedType(props, PublicSchedulingSteps.BOOK_SESSION)
@@ -16,7 +26,9 @@ const SessionTypeCard: FC<IProps> = props => {
   }
   return (
     <VStack
-      bg={'neutral.825'}
+      border={'1px solid'}
+      borderColor={borderColor}
+      bg={bgColor}
       flexBasis={{ base: '100%', md: '49%' }}
       alignItems={'flex-start'}
       p={6}

@@ -36,6 +36,7 @@ import {
   PaymentStep,
   PaymentType,
   PublicSchedulingSteps,
+  SessionType,
 } from '@utils/constants/meeting-types'
 import { Option } from '@utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@utils/date_helper'
@@ -75,6 +76,11 @@ import {
   scheduleMeeting,
   selectDefaultProvider,
 } from '@/utils/calendar_manager'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
+import { isJson } from '@/utils/generic_utils'
 
 const tzs = timezones.map(tz => {
   return {
@@ -121,6 +127,8 @@ interface IContext {
   notificationsSubs: number
   isContact: boolean
   setIsContact: React.Dispatch<React.SetStateAction<boolean>>
+  showHeader: boolean
+  setShowHeader: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 interface IScheduleContext {
@@ -195,6 +203,8 @@ interface IScheduleContext {
   setIsFirstUserEmailValid: React.Dispatch<React.SetStateAction<boolean>>
   showEmailConfirm: boolean
   setShowEmailConfirm: React.Dispatch<React.SetStateAction<boolean>>
+  showTimeNotAvailable: boolean
+  setShowTimeNotAvailable: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 const baseState: IContext = {
@@ -221,6 +231,8 @@ const baseState: IContext = {
   notificationsSubs: 0,
   isContact: false,
   setIsContact: () => {},
+  showHeader: true,
+  setShowHeader: () => {},
 }
 const scheduleBaseState: IScheduleContext = {
   currentMonth: new Date(),
@@ -243,20 +255,7 @@ const scheduleBaseState: IScheduleContext = {
   timezone: { label: '', value: '' },
   setTimezone: () => {},
   getAvailableSlots: async () => {},
-  confirmSchedule: async (
-    scheduleType: SchedulingType,
-    startTime: Date,
-    guestEmail?: string,
-    name?: string,
-    content?: string,
-    meetingUrl?: string,
-    emailToSendReminders?: string,
-    title?: string,
-    otherParticipants?: Array<ParticipantInfo>,
-    meetingProvider?: MeetingProvider,
-    meetingReminders?: Array<MeetingReminders>,
-    meetingRepeat?: MeetingRepeat
-  ) => {
+  confirmSchedule: async () => {
     return false
   },
   participants: [],
@@ -294,6 +293,8 @@ const scheduleBaseState: IScheduleContext = {
   setIsFirstUserEmailValid: () => {},
   showEmailConfirm: false,
   setShowEmailConfirm: () => {},
+  showTimeNotAvailable: false,
+  setShowTimeNotAvailable: () => {},
 }
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
 export const ScheduleStateContext =
@@ -340,9 +341,11 @@ const PublicPage: FC<IProps> = props => {
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
+  const [showTimeNotAvailable, setShowTimeNotAvailable] = useState(false)
   const [busySlots, setBusySlots] = useState<Interval[]>([])
   const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
+  const [showHeader, setShowHeader] = useState(true)
   const toast = useToast()
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
     selectDefaultProvider(
@@ -427,14 +430,24 @@ const PublicPage: FC<IProps> = props => {
           t => t.slug === meeting_type
         )
         if (type) {
-          setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
+          if (type?.type === SessionType.FREE) {
+            setShowHeader(false)
+          }
+          !query.payment_type &&
+            setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
         }
       }
     }
+
     if (query.payment_type) {
       const paymentType = query.payment_type as PaymentType
       setPaymentType(paymentType)
-      setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
+      setPaymentStep(
+        query.type === 'direct-invoice'
+          ? PaymentStep.SELECT_PAYMENT_METHOD
+          : PaymentStep.CONFIRM_PAYMENT
+      )
+      setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
       if (paymentType === PaymentType.CRYPTO) {
         const { chain, token } = query as {
           chain?: SupportedChain
@@ -445,6 +458,113 @@ const PublicPage: FC<IProps> = props => {
           setToken(token)
         }
       }
+    }
+
+    const urlParams = query as Record<string, string | string[]>
+
+    if (urlParams.title && typeof urlParams.title === 'string') {
+      setTitle(urlParams.title)
+    }
+    if (urlParams.name && typeof urlParams.name === 'string') {
+      setName(urlParams.name)
+    }
+    if (urlParams.email && typeof urlParams.email === 'string') {
+      setGuestEmail(urlParams.email)
+    }
+    if (urlParams.user_email && typeof urlParams.user_email === 'string') {
+      setUserEmail(urlParams.user_email)
+    }
+    if (
+      urlParams.schedule_type &&
+      typeof urlParams.schedule_type === 'string'
+    ) {
+      const scheduleTypeValue =
+        urlParams.schedule_type as unknown as SchedulingType
+      if (Object.values(SchedulingType).includes(scheduleTypeValue)) {
+        setScheduleType(scheduleTypeValue)
+      }
+    }
+    if (
+      urlParams.meeting_provider &&
+      typeof urlParams.meeting_provider === 'string'
+    ) {
+      const providerValue = urlParams.meeting_provider as MeetingProvider
+      if (Object.values(MeetingProvider).includes(providerValue)) {
+        setMeetingProvider(providerValue)
+      }
+    }
+    if (urlParams.content && typeof urlParams.content === 'string') {
+      setContent(urlParams.content)
+    }
+    if (
+      urlParams.participants &&
+      typeof urlParams.participants === 'string' &&
+      isJson(urlParams.participants)
+    ) {
+      try {
+        const parsedParticipants = JSON.parse(
+          urlParams.participants
+        ) as ParticipantInfo[]
+        setParticipants(parsedParticipants)
+      } catch (error) {
+        console.warn('Failed to parse participants from URL:', error)
+      }
+    }
+    if (
+      urlParams.meeting_notification &&
+      typeof urlParams.meeting_notification === 'string'
+    ) {
+      const notifications = urlParams.meeting_notification
+        .split(',')
+        .map(value => value as unknown as MeetingReminders)
+      setMeetingNotification(
+        MeetingNotificationOptions.filter(option =>
+          notifications.some(notification => notification == option.value)
+        )
+      )
+    }
+    if (
+      urlParams.meeting_repeat &&
+      typeof urlParams.meeting_repeat === 'string'
+    ) {
+      const repeatValue = urlParams.meeting_repeat as unknown as MeetingRepeat
+      if (Object.values(MeetingRepeat).includes(repeatValue)) {
+        setMeetingRepeat(
+          MeetingRepeatOptions.find(option => option.value == repeatValue) || {
+            value: repeatValue,
+            label:
+              repeatValue == MeetingRepeat.NO_REPEAT
+                ? 'Does not repeat'
+                : repeatValue,
+          }
+        )
+      }
+    }
+    if (
+      urlParams.do_send_email_reminders &&
+      typeof urlParams.do_send_email_reminders === 'string'
+    ) {
+      setSendEmailReminders(urlParams.do_send_email_reminders === 'true')
+    }
+    if (urlParams.picked_time && typeof urlParams.picked_time === 'string') {
+      try {
+        const pickedTimeDate = new Date(urlParams.picked_time)
+        if (!isNaN(pickedTimeDate.getTime())) {
+          setPickedTime(pickedTimeDate)
+          setCurrentMonth(pickedTimeDate)
+          setSelectedMonth(pickedTimeDate)
+          setPickedDay(pickedTimeDate)
+          setShowConfirm(true)
+        }
+      } catch (error) {
+        console.warn('Failed to parse picked_time from URL:', error)
+      }
+    }
+    if (urlParams.guest_email && typeof urlParams.guest_email === 'string') {
+      setGuestEmail(urlParams.guest_email)
+    }
+    if (urlParams.meeting_url && typeof urlParams.meeting_url === 'string') {
+      setMeetingUrl(urlParams.meeting_url)
     }
   }, [query])
   useEffect(() => {}, [])
@@ -505,6 +625,8 @@ const PublicPage: FC<IProps> = props => {
     notificationsSubs,
     isContact,
     setIsContact,
+    showHeader,
+    setShowHeader,
   }
   const getSelfAvailableSlots = async () => {
     if (currentAccount) {
@@ -689,6 +811,7 @@ const PublicPage: FC<IProps> = props => {
           isClosable: true,
         })
       } else if (e instanceof TimeNotAvailableError) {
+        setShowTimeNotAvailable(true)
         toast({
           title: 'Failed to schedule meeting',
           description: 'The selected time is not available anymore',
@@ -853,6 +976,8 @@ const PublicPage: FC<IProps> = props => {
     setIsFirstUserEmailValid,
     showEmailConfirm,
     setShowEmailConfirm,
+    showTimeNotAvailable,
+    setShowTimeNotAvailable,
   }
   const renderStep = () => {
     switch (currentStep) {

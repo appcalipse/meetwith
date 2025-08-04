@@ -57,7 +57,7 @@ jobs:
         echo "" >> $GITHUB_ENV
         
         # Get last 10 commits with enhanced descriptions
-        git log -10 --pretty=format:'%s' | while IFS= read -r commit; do
+        git --no-pager log --pretty=format:"%s%n%b" -10 | while IFS= read -r commit; do
           # Convert technical terms to user-friendly language
           enhanced_commit=$(echo "$commit" | \
             sed -E 's/^fix(\([^)]+\))?:/🐛 **Bug Fix:** /i' | \
