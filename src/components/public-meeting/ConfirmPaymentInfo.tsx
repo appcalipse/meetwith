@@ -16,6 +16,7 @@ import {
   PublicScheduleContext,
   ScheduleStateContext,
 } from '@components/public-meeting/index'
+import PaymentDetails from '@components/public-meeting/PaymentDetails'
 import { MeetingReminders } from '@meta/common'
 import { ConfirmCryptoTransactionRequest } from '@meta/Requests'
 import { createCryptoTransaction, requestInvoice } from '@utils/api_helper'
@@ -29,6 +30,7 @@ import {
   InValidGuests,
   TransactionCouldBeNotFoundError,
 } from '@utils/errors'
+import { useRouter } from 'next/router'
 import React, { Reducer, useContext, useMemo } from 'react'
 import { prepareContractCall, sendTransaction, waitForReceipt } from 'thirdweb'
 import { useActiveWallet } from 'thirdweb/react'
@@ -93,14 +95,14 @@ const ConfirmPaymentInfo = () => {
       ErrorAction<keyof PaymentInfo>
     >
   >(errorReducerSingle, {})
-  const [email, setEmail] = React.useState(guestEmail)
+  const [email, setEmail] = React.useState(guestEmail || userEmail)
   const { openConnection } = useContext(OnboardingModalContext)
   const [isInvoiceLoading, setIsInvoiceLoading] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
   const chain = supportedChains.find(
     val => val.chain === selectedChain
   ) as ChainInfo
-
+  const { query } = useRouter()
   const NATIVE_TOKEN_ADDRESS = chain?.acceptableTokens?.find(
     acceptedToken => acceptedToken.token === token
   )?.contractAddress as Address
@@ -327,6 +329,15 @@ const ConfirmPaymentInfo = () => {
           status: 'error',
           duration: 5000,
         })
+      } else {
+        // Fallback for unexpected errors
+        toast({
+          title: 'Payment Failed',
+          description:
+            (error as Error)?.message || 'Transaction was rejected or failed',
+          status: 'error',
+          duration: 5000,
+        })
       }
     }
     setLoading(false)
@@ -334,12 +345,36 @@ const ConfirmPaymentInfo = () => {
   const handleRequestInvoice = async () => {
     setIsInvoiceLoading(true)
     try {
-      let url = `${appUrl}/${getAccountDomainUrl(account)}/${
+      const baseUrl = `${appUrl}/${getAccountDomainUrl(account)}/${
         selectedType?.slug || ''
-      }?payment_type=${paymentType}`
-      if (paymentType === PaymentType.CRYPTO) {
-        url += `&token=${token}&chain=${selectedChain}`
+      }`
+
+      const params = new URLSearchParams({
+        payment_type: paymentType || '',
+        title,
+        name,
+        email,
+        schedule_type: String(scheduleType),
+        meeting_provider: meetingProvider,
+        content,
+        participants: JSON.stringify(participants),
+        meeting_notification: meetingNotification
+          .map(val => val.value)
+          .join(','),
+        meeting_repeat: meetingRepeat.value,
+        do_send_email_reminders: String(doSendEmailReminders),
+        picked_time: pickedTime?.toISOString() || '',
+        guest_email: email,
+        meeting_url: meetingUrl,
+        user_email: userEmail,
+      })
+
+      if (paymentType === PaymentType.CRYPTO && token && selectedChain) {
+        params.append('token', token)
+        params.append('chain', selectedChain)
       }
+
+      const url = `${baseUrl}?${params.toString()}`
       const response = await requestInvoice({
         guest_email: email,
         guest_name: name,
@@ -391,34 +426,6 @@ const ConfirmPaymentInfo = () => {
       dispatchErrors({ type: 'CLEAR_ERROR', field })
     }
   }
-  const DETAILS = useMemo(
-    () => [
-      {
-        label: 'Plan',
-        value: selectedType?.title,
-      },
-      {
-        label: 'Number of Sessions',
-        value: `${selectedType?.plan?.no_of_slot} sessions`,
-      },
-      {
-        label: 'Price',
-        value: selectedType?.plan
-          ? formatCurrency(
-              selectedType?.plan?.price_per_slot *
-                selectedType?.plan?.no_of_slot,
-              'USD',
-              2
-            )
-          : '$0',
-      },
-      {
-        label: 'Payment Method',
-        value: paymentType === PaymentType.FIAT ? 'Card' : 'Crypto',
-      },
-    ],
-    [paymentType, selectedType?.plan]
-  )
   return (
     <VStack alignItems="flex-start" w="100%" gap={6}>
       <HStack
@@ -475,27 +482,7 @@ const ConfirmPaymentInfo = () => {
           )}
         </FormControl>
       </VStack>
-      <VStack w="100%" gap={0}>
-        {DETAILS.map((detail, index, arr) => (
-          <HStack
-            key={index}
-            justifyContent="space-between"
-            w="100%"
-            alignItems="flex-start"
-            py={7}
-            borderTopWidth={index === 0 ? 1 : 0.5}
-            borderBottomWidth={index === arr.length - 1 ? 1 : 0.5}
-            borderColor="neutral.600"
-          >
-            <Text fontSize="medium" fontWeight={700} flexBasis="40%">
-              {detail.label}
-            </Text>
-            <Text fontSize="medium" fontWeight={500} flexBasis="40%">
-              {detail.value}
-            </Text>
-          </HStack>
-        ))}
-      </VStack>
+      <PaymentDetails />
       <HStack w="100%" justifyContent="space-between">
         <HStack>
           <Button
@@ -504,7 +491,7 @@ const ConfirmPaymentInfo = () => {
             onClick={handlePay}
             isLoading={loading}
           >
-            Pay Now
+            Pay & Complete Schedule
           </Button>
           {loading && (
             <HStack ml={12}>
@@ -532,15 +519,17 @@ const ConfirmPaymentInfo = () => {
             </HStack>
           )}
         </HStack>
-        <Button
-          variant="outline"
-          colorScheme="primary"
-          onClick={() => handleRequestInvoice()}
-          isLoading={isInvoiceLoading}
-          isDisabled={!name || !email || !!errors.name || !!errors.email}
-        >
-          Request Invoice
-        </Button>
+        {query.type !== 'direct-invoice' && (
+          <Button
+            variant="outline"
+            colorScheme="primary"
+            onClick={() => handleRequestInvoice()}
+            isLoading={isInvoiceLoading}
+            isDisabled={!name || !email || !!errors.name || !!errors.email}
+          >
+            Request Invoice
+          </Button>
+        )}
       </HStack>
     </VStack>
   )

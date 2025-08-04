@@ -206,7 +206,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           participants,
           meetingProvider,
           meetingNotification.map(n => n.value as MeetingReminders),
-          meetingRepeat.value
+          meetingRepeat.value,
+          tx
         )
 
         willStartScheduling && willStartScheduling?.(!success)
