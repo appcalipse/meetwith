@@ -1,5 +1,13 @@
 import { Box, HStack } from '@chakra-ui/layout'
-import { Button, Heading, Tag, Text, VStack } from '@chakra-ui/react'
+import {
+  Button,
+  Heading,
+  Tag,
+  Text,
+  useColorMode,
+  useColorModeValue,
+  VStack,
+} from '@chakra-ui/react'
 import { Avatar } from '@components/profile/components/Avatar'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { MeetingType } from '@meta/Account'
@@ -9,9 +17,13 @@ import React, { FC, useContext } from 'react'
 import { formatCurrency } from '@/utils/generic_utils'
 const SessionTypeCardPaymentInfo = () => {
   const { selectedType, account } = useContext(PublicScheduleContext)
+  const bgColor = useColorModeValue('white', 'neutral.825')
+  const borderColor = useColorModeValue('neutral.200', 'neutral.825')
   return (
     <VStack
-      bg={'neutral.825'}
+      bg={bgColor}
+      border={'1px solid'}
+      borderColor={borderColor}
       flexBasis={'100%'}
       width={'100%'}
       alignItems={'flex-start'}
