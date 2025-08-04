@@ -30,6 +30,7 @@ import {
   InValidGuests,
   TransactionCouldBeNotFoundError,
 } from '@utils/errors'
+import { useRouter } from 'next/router'
 import React, { Reducer, useContext, useMemo } from 'react'
 import { prepareContractCall, sendTransaction, waitForReceipt } from 'thirdweb'
 import { useActiveWallet } from 'thirdweb/react'
@@ -101,7 +102,7 @@ const ConfirmPaymentInfo = () => {
   const chain = supportedChains.find(
     val => val.chain === selectedChain
   ) as ChainInfo
-
+  const { query } = useRouter()
   const NATIVE_TOKEN_ADDRESS = chain?.acceptableTokens?.find(
     acceptedToken => acceptedToken.token === token
   )?.contractAddress as Address
@@ -344,12 +345,36 @@ const ConfirmPaymentInfo = () => {
   const handleRequestInvoice = async () => {
     setIsInvoiceLoading(true)
     try {
-      let url = `${appUrl}/${getAccountDomainUrl(account)}/${
+      const baseUrl = `${appUrl}/${getAccountDomainUrl(account)}/${
         selectedType?.slug || ''
-      }?payment_type=${paymentType}`
-      if (paymentType === PaymentType.CRYPTO) {
-        url += `&token=${token}&chain=${selectedChain}`
+      }`
+
+      const params = new URLSearchParams({
+        payment_type: paymentType || '',
+        title,
+        name,
+        email,
+        schedule_type: String(scheduleType),
+        meeting_provider: meetingProvider,
+        content,
+        participants: JSON.stringify(participants),
+        meeting_notification: meetingNotification
+          .map(val => val.value)
+          .join(','),
+        meeting_repeat: meetingRepeat.value,
+        do_send_email_reminders: String(doSendEmailReminders),
+        picked_time: pickedTime?.toISOString() || '',
+        guest_email: email,
+        meeting_url: meetingUrl,
+        user_email: userEmail,
+      })
+
+      if (paymentType === PaymentType.CRYPTO && token && selectedChain) {
+        params.append('token', token)
+        params.append('chain', selectedChain)
       }
+
+      const url = `${baseUrl}?${params.toString()}`
       const response = await requestInvoice({
         guest_email: email,
         guest_name: name,
@@ -401,34 +426,6 @@ const ConfirmPaymentInfo = () => {
       dispatchErrors({ type: 'CLEAR_ERROR', field })
     }
   }
-  const DETAILS = useMemo(
-    () => [
-      {
-        label: 'Plan',
-        value: selectedType?.title,
-      },
-      {
-        label: 'Number of Sessions',
-        value: `${selectedType?.plan?.no_of_slot} sessions`,
-      },
-      {
-        label: 'Price',
-        value: selectedType?.plan
-          ? formatCurrency(
-              selectedType?.plan?.price_per_slot *
-                selectedType?.plan?.no_of_slot,
-              'USD',
-              2
-            )
-          : '$0',
-      },
-      {
-        label: 'Payment Method',
-        value: paymentType === PaymentType.FIAT ? 'Card' : 'Crypto',
-      },
-    ],
-    [paymentType, selectedType?.plan]
-  )
   return (
     <VStack alignItems="flex-start" w="100%" gap={6}>
       <HStack
@@ -522,15 +519,17 @@ const ConfirmPaymentInfo = () => {
             </HStack>
           )}
         </HStack>
-        <Button
-          variant="outline"
-          colorScheme="primary"
-          onClick={() => handleRequestInvoice()}
-          isLoading={isInvoiceLoading}
-          isDisabled={!name || !email || !!errors.name || !!errors.email}
-        >
-          Request Invoice
-        </Button>
+        {query.type !== 'direct-invoice' && (
+          <Button
+            variant="outline"
+            colorScheme="primary"
+            onClick={() => handleRequestInvoice()}
+            isLoading={isInvoiceLoading}
+            isDisabled={!name || !email || !!errors.name || !!errors.email}
+          >
+            Request Invoice
+          </Button>
+        )}
       </HStack>
     </VStack>
   )
