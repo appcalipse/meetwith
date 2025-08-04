@@ -203,6 +203,8 @@ interface IScheduleContext {
   setIsFirstUserEmailValid: React.Dispatch<React.SetStateAction<boolean>>
   showEmailConfirm: boolean
   setShowEmailConfirm: React.Dispatch<React.SetStateAction<boolean>>
+  showTimeNotAvailable: boolean
+  setShowTimeNotAvailable: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 const baseState: IContext = {
@@ -253,20 +255,7 @@ const scheduleBaseState: IScheduleContext = {
   timezone: { label: '', value: '' },
   setTimezone: () => {},
   getAvailableSlots: async () => {},
-  confirmSchedule: async (
-    scheduleType: SchedulingType,
-    startTime: Date,
-    guestEmail?: string,
-    name?: string,
-    content?: string,
-    meetingUrl?: string,
-    emailToSendReminders?: string,
-    title?: string,
-    otherParticipants?: Array<ParticipantInfo>,
-    meetingProvider?: MeetingProvider,
-    meetingReminders?: Array<MeetingReminders>,
-    meetingRepeat?: MeetingRepeat
-  ) => {
+  confirmSchedule: async () => {
     return false
   },
   participants: [],
@@ -304,6 +293,8 @@ const scheduleBaseState: IScheduleContext = {
   setIsFirstUserEmailValid: () => {},
   showEmailConfirm: false,
   setShowEmailConfirm: () => {},
+  showTimeNotAvailable: false,
+  setShowTimeNotAvailable: () => {},
 }
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
 export const ScheduleStateContext =
@@ -350,6 +341,7 @@ const PublicPage: FC<IProps> = props => {
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
+  const [showTimeNotAvailable, setShowTimeNotAvailable] = useState(false)
   const [busySlots, setBusySlots] = useState<Interval[]>([])
   const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
@@ -447,11 +439,14 @@ const PublicPage: FC<IProps> = props => {
       }
     }
 
-    // Apply URL parameters to form state
     if (query.payment_type) {
       const paymentType = query.payment_type as PaymentType
       setPaymentType(paymentType)
-      setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
+      setPaymentStep(
+        query.type === 'direct-invoice'
+          ? PaymentStep.SELECT_PAYMENT_METHOD
+          : PaymentStep.CONFIRM_PAYMENT
+      )
       setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
       if (paymentType === PaymentType.CRYPTO) {
         const { chain, token } = query as {
@@ -816,6 +811,7 @@ const PublicPage: FC<IProps> = props => {
           isClosable: true,
         })
       } else if (e instanceof TimeNotAvailableError) {
+        setShowTimeNotAvailable(true)
         toast({
           title: 'Failed to schedule meeting',
           description: 'The selected time is not available anymore',
@@ -980,6 +976,8 @@ const PublicPage: FC<IProps> = props => {
     setIsFirstUserEmailValid,
     showEmailConfirm,
     setShowEmailConfirm,
+    showTimeNotAvailable,
+    setShowTimeNotAvailable,
   }
   const renderStep = () => {
     switch (currentStep) {
