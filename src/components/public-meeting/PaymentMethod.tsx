@@ -3,6 +3,7 @@ import {
   ComponentWithAs,
   IconProps,
   Tag,
+  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
@@ -22,6 +23,7 @@ interface IProps {
 const PaymentMethod: FC<IProps> = props => {
   const { handleSelectPaymentMethod } = useContext(PublicScheduleContext)
   const [loading, setLoading] = useState(false)
+  const tagBg = useColorModeValue('neutral.100', '#2D3748')
   const handleSelect = async () => {
     setLoading(true)
     await handleSelectPaymentMethod(props.type, props.step)
@@ -52,7 +54,7 @@ const PaymentMethod: FC<IProps> = props => {
       />
       <VStack gap={4} w={'100%'} alignItems={'flex-start'}>
         {props.tag && (
-          <Tag fontSize="sm" bg="#2D3748">
+          <Tag fontSize="sm" bg={tagBg}>
             {props.tag}
           </Tag>
         )}
