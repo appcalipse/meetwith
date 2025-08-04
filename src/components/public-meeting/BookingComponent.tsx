@@ -12,7 +12,7 @@ import SchedulerPicker from '@/components/public-meeting/SchedulerPicker'
 import SessionTypeCardPaymentInfo from '@/components/public-meeting/SessionTypeCardPaymentInfo'
 import { getTransactionByTxHash } from '@/utils/api_helper'
 
-import TimeNotAvailableWarning from './TimenotAvailableWarning'
+import TimeNotAvailableWarning from './TimeNotAvailableWarning'
 
 const BookingComponent = () => {
   const { tx, showHeader } = useContext(PublicScheduleContext)
