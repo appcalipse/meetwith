@@ -16,6 +16,7 @@ import {
   PublicScheduleContext,
   ScheduleStateContext,
 } from '@components/public-meeting/index'
+import PaymentDetails from '@components/public-meeting/PaymentDetails'
 import { MeetingReminders } from '@meta/common'
 import { ConfirmCryptoTransactionRequest } from '@meta/Requests'
 import { createCryptoTransaction, requestInvoice } from '@utils/api_helper'
@@ -93,7 +94,7 @@ const ConfirmPaymentInfo = () => {
       ErrorAction<keyof PaymentInfo>
     >
   >(errorReducerSingle, {})
-  const [email, setEmail] = React.useState(guestEmail)
+  const [email, setEmail] = React.useState(guestEmail || userEmail)
   const { openConnection } = useContext(OnboardingModalContext)
   const [isInvoiceLoading, setIsInvoiceLoading] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
@@ -327,6 +328,15 @@ const ConfirmPaymentInfo = () => {
           status: 'error',
           duration: 5000,
         })
+      } else {
+        // Fallback for unexpected errors
+        toast({
+          title: 'Payment Failed',
+          description:
+            (error as Error)?.message || 'Transaction was rejected or failed',
+          status: 'error',
+          duration: 5000,
+        })
       }
     }
     setLoading(false)
@@ -475,27 +485,7 @@ const ConfirmPaymentInfo = () => {
           )}
         </FormControl>
       </VStack>
-      <VStack w="100%" gap={0}>
-        {DETAILS.map((detail, index, arr) => (
-          <HStack
-            key={index}
-            justifyContent="space-between"
-            w="100%"
-            alignItems="flex-start"
-            py={7}
-            borderTopWidth={index === 0 ? 1 : 0.5}
-            borderBottomWidth={index === arr.length - 1 ? 1 : 0.5}
-            borderColor="neutral.600"
-          >
-            <Text fontSize="medium" fontWeight={700} flexBasis="40%">
-              {detail.label}
-            </Text>
-            <Text fontSize="medium" fontWeight={500} flexBasis="40%">
-              {detail.value}
-            </Text>
-          </HStack>
-        ))}
-      </VStack>
+      <PaymentDetails />
       <HStack w="100%" justifyContent="space-between">
         <HStack>
           <Button
