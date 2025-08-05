@@ -8,6 +8,7 @@ import React, { FC, useContext } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
+import { isProduction } from '@/utils/constants'
 
 import PaidMeetings from './PaidMeetings'
 
@@ -16,7 +17,6 @@ const BasePage: FC = () => {
   const currentAccount = useAccountContext()
   const [paidSessionsExists, setPaidSessionsExists] = React.useState(false)
   const { openConnection } = useContext(OnboardingModalContext)
-
   return (
     <VStack
       gap={{ md: 8, base: 6 }}
@@ -75,7 +75,7 @@ const BasePage: FC = () => {
         )}
       </Flex>
       <VStack gap={4} w={'100%'} alignItems="flex-start">
-        {currentAccount?.address && (
+        {currentAccount?.address && !isProduction && (
           <PaidMeetings setPaidSessionsExists={setPaidSessionsExists} />
         )}
         <VStack gap={4} w={'100%'} alignItems="flex-start">
