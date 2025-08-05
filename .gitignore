@@ -30,7 +30,7 @@ yarn-error.log*
 # local env files
 .env.*
 .env
-!.env.*.local
+!.env.example
 
 # vercel
 .vercel
@@ -52,5 +52,4 @@ package-lock.json
 # Zoom
 zoom-token.json
 .qodo
-
-.env.local
+test.http

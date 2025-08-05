@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { differenceInMinutes } from 'date-fns'
 import Email from 'email-templates'
 import path from 'path'
+import puppeteer from 'puppeteer'
 
 import { MeetingReminders } from '@/types/common'
 import { EditMode, Intents } from '@/types/Dashboard'
@@ -22,14 +23,16 @@ import {
   generateIcs,
 } from './calendar_manager'
 import { appUrl } from './constants'
+import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
+import { getOwnerPublicUrlServer } from './database'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = 'Meetwith <notifications@meetwith.xyz>'
 
 import { CreateEmailOptions, Resend } from 'resend'
 
-import { MeetingPermissions } from './constants/schedule'
+import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
@@ -37,6 +40,34 @@ const defaultResendOptions = {
   headers: {
     'List-Unsubscribe': `<${appUrl}/dashboard/${EditMode.NOTIFICATIONS}>`,
   },
+}
+
+// Helper function to generate change URL for meeting emails
+const generateChangeUrl = async (
+  destinationAccountAddress: string | undefined,
+  ownerAccountAddress: string | undefined,
+  slot_id: string,
+  participantType: ParticipantType,
+  participants?: ParticipantInfo[]
+): Promise<string | undefined> => {
+  // For guests, only scheduler gets reschedule link
+  if (!destinationAccountAddress) {
+    return ownerAccountAddress
+      ? participantType === ParticipantType.Scheduler
+        ? `${await getOwnerPublicUrlServer(
+            ownerAccountAddress
+          )}?slot=${slot_id}`
+        : undefined
+      : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+  }
+
+  const isGuestScheduling = participants?.some(p => !p.account_address)
+
+  if (isGuestScheduling && participantType === ParticipantType.Owner) {
+    return undefined
+  }
+
+  return `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
 }
 export const newGroupInviteEmail = async (
   toEmail: string,
@@ -145,6 +176,20 @@ export const newMeetingEmail = async (
     !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
     isSchedulerOrOwner
 
+  // Find the owner's account address for generating the public calendar URL
+  const ownerParticipant = participants.find(
+    p => p.type === ParticipantType.Owner
+  )
+  const ownerAccountAddress = ownerParticipant?.account_address
+
+  const changeUrl = await generateChangeUrl(
+    destinationAccountAddress,
+    ownerAccountAddress,
+    slot_id,
+    participantType,
+    participants
+  )
+
   const locals = {
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
@@ -158,9 +203,8 @@ export const newMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    // Only include reschedule link for guests
+    changeUrl,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted
@@ -215,9 +259,7 @@ export const newMeetingEmail = async (
     },
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
-    destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    changeUrl,
     false,
     destinationAccountAddress
       ? {
@@ -386,6 +428,21 @@ export const updateMeetingEmail = async (
     meetingPermissions === undefined ||
     !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
     isSchedulerOrOwner
+
+  // Find the owner's account address for generating the public calendar URL
+  const ownerParticipant = participants.find(
+    p => p.type === ParticipantType.Owner
+  )
+  const ownerAccountAddress = ownerParticipant?.account_address
+
+  const changeUrl = await generateChangeUrl(
+    destinationAccountAddress,
+    ownerAccountAddress,
+    slot_id,
+    participantType,
+    participants
+  )
+
   const email = new Email()
   const newDuration = differenceInMinutes(end, start)
   const oldDuration = changes?.dateChange
@@ -409,9 +466,8 @@ export const updateMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    // Only include reschedule link for guests
+    changeUrl,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted
@@ -473,9 +529,7 @@ export const updateMeetingEmail = async (
     },
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
-    destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    changeUrl,
     false,
     destinationAccountAddress
       ? {
@@ -568,6 +622,243 @@ export const sendInvitationEmail = async (
         {
           name: 'group',
           value: 'invite',
+        },
+      ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+
+export const sendContactInvitationEmail = async (
+  toEmail: string,
+  inviterName: string,
+  invitationLink: string,
+  declineLink: string
+): Promise<void> => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'contact_invite'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const locals = {
+    inviterName,
+    invitationLink,
+    declineLink,
+  }
+
+  try {
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
+
+    const msg: CreateEmailOptions = {
+      to: toEmail,
+      from: FROM,
+      subject: subject,
+      html: rendered,
+      text: `${inviterName} invited you to join their contact list on MeetWith.
+            Click here to accept the invitation: ${invitationLink}
+          If you weren’t expecting this, you can safely ignore this email.`,
+      tags: [
+        {
+          name: 'contact',
+          value: 'invite',
+        },
+      ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+const createPdfBuffer = async (html: string): Promise<Buffer> => {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-gpu',
+    ],
+  })
+  const page = await browser.newPage()
+  await page.setContent(html, { waitUntil: 'networkidle0' })
+  const buffer = await page.pdf({
+    format: 'a4',
+    printBackground: true,
+    preferCSSPageSize: true,
+    pageRanges: '1',
+    margin: {
+      top: '0mm',
+      right: '0mm',
+      bottom: '0mm',
+      left: '0mm',
+    },
+  })
+  await browser.close()
+  return buffer
+}
+export const sendReceiptEmail = async (
+  toEmail: string,
+  userName: string,
+  receiptMetadata: ReceiptMetadata
+) => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'receipt_email'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const pdf_email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'receipt'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const locals = {
+    ...receiptMetadata,
+  }
+
+  try {
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
+    const pdfBuffer: Buffer = await createPdfBuffer(
+      await pdf_email.render('html', locals)
+    )
+
+    const msg: CreateEmailOptions = {
+      to: toEmail,
+      subject: subject,
+      html: rendered,
+      text: `Receipt for your payment: ${receiptMetadata.plan}`,
+      ...defaultResendOptions,
+      attachments: [
+        {
+          content: pdfBuffer,
+          filename: `receipt-${
+            receiptMetadata.transaction_hash || Date.now()
+          }.pdf`,
+          contentType: 'application/pdf',
+        },
+      ],
+      tags: [
+        {
+          name: 'receipt',
+          value: 'email',
+        },
+      ],
+    }
+
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+}
+
+export const sendInvoiceEmail = async (
+  toEmail: string,
+  userName: string,
+  receiptMetadata: InvoiceMetadata
+) => {
+  const email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'invoice_email'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+  const pdf_email = new Email({
+    views: {
+      root: path.resolve('src', 'emails', 'invoice'),
+      options: {
+        extension: 'pug',
+      },
+    },
+    message: {
+      from: FROM,
+    },
+    send: true,
+    transport: {
+      jsonTransport: true,
+    },
+  })
+
+  const locals = {
+    ...receiptMetadata,
+  }
+
+  try {
+    const rendered = await email.render('html', locals)
+    const subject = await email.render('subject', locals)
+    const pdfBuffer: Buffer = await createPdfBuffer(
+      await pdf_email.render('html', locals)
+    )
+
+    const msg: CreateEmailOptions = {
+      to: toEmail,
+      subject: subject,
+      html: rendered,
+      text: `Invoice for your payment: ${receiptMetadata.plan}`,
+      ...defaultResendOptions,
+      attachments: [
+        {
+          content: pdfBuffer,
+          filename: `invoice-${receiptMetadata.plan}-${Date.now()}.pdf`,
+          contentType: 'application/pdf',
+        },
+      ],
+      tags: [
+        {
+          name: 'invoice',
+          value: 'email',
         },
       ],
     }

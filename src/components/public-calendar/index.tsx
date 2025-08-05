@@ -9,6 +9,8 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
+import * as Sentry from '@sentry/nextjs'
+import { SessionType } from '@utils/constants/meeting-types'
 import {
   addMinutes,
   addMonths,
@@ -29,7 +31,9 @@ import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import {
+  ConferenceMeeting,
   DBSlot,
+  ExistingMeetingData,
   GroupMeetingRequest,
   GroupMeetingType,
   MeetingDecrypted,
@@ -45,9 +49,11 @@ import {
 } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
 import {
+  doesContactExist,
   getAccount,
   getBusySlots,
   getMeeting,
+  getMeetingGuest,
   getNotificationSubscriptions,
   listConnectedCalendars,
 } from '@/utils/api_helper'
@@ -55,12 +61,14 @@ import {
   dateToHumanReadable,
   getAccountDomainUrl,
   scheduleMeeting,
+  updateMeetingAsGuest,
 } from '@/utils/calendar_manager'
 import { Option } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import {
   GateConditionNotValidError,
   GoogleServiceUnavailable,
+  GuestRescheduleForbiddenError,
   Huddle01ServiceUnavailable,
   InvalidURL,
   MeetingCreationError,
@@ -154,6 +162,26 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
   const [rescheduleSlot, setRescheduleSlot] = useState<DBSlot | undefined>(
     undefined
   )
+  const [blockedDates, setBlockedDates] = useState<Date[]>([])
+  const [isContact, setIsContact] = useState(false)
+
+  const handleContactCheck = async () => {
+    try {
+      if (!account?.address) return
+      const contactExists = await doesContactExist(account?.address)
+      setIsContact(contactExists)
+    } catch (e) {
+      Sentry.captureException(e)
+      console.error('Error checking contact existence:', e)
+    }
+  }
+  useEffect(() => {
+    if (!currentAccount?.address || !account?.address) return
+    handleContactCheck()
+  }, [currentAccount, account])
+
+  const [existingMeetingData, setExistingMeetingData] =
+    useState<ExistingMeetingData | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [availableSlots, setAvailableSlots] = useState<Interval[]>([])
   const [selfAvailableSlots, setSelfAvailableSlots] = useState<Interval[]>([])
@@ -250,9 +278,9 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = account?.preferences?.availableTypes
-        ?.filter(type => !type.deleted)
-        ?.find(t => t.url === typeOnRoute)
-      setPrivateType(!!type?.private)
+        ?.filter(type => !type.deleted_at)
+        ?.find(t => t.slug === typeOnRoute)
+      setPrivateType(type?.type === SessionType.FREE)
     }
   }, [])
 
@@ -266,8 +294,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     if (calendarType === CalendarType.REGULAR) {
       const typeOnRoute = router.query.address ? router.query.address[1] : null
       const type = account?.preferences?.availableTypes
-        .filter(type => !type.deleted)
-        .find(t => t.url === typeOnRoute)
+        .filter(type => !type.deleted_at)
+        .find(t => t.slug === typeOnRoute)
       setSelectedType(
         (type || account?.preferences?.availableTypes?.[0] || {}) as MeetingType
       )
@@ -282,13 +310,36 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
 
   const getSlotInfo = async () => {
     if (rescheduleSlotId) {
-      const slot = await getMeeting(rescheduleSlotId!)
-      if (slot) {
-        if (slot.account_address !== account!.address) {
+      try {
+        const meeting = await getMeetingGuest(rescheduleSlotId!)
+        if (!meeting) {
           await router.push('/404')
-        } else {
-          setRescheduleSlot(slot)
+          return
         }
+
+        const slotData = await getMeeting(rescheduleSlotId!)
+
+        const mockSlot: DBSlot = {
+          id: rescheduleSlotId,
+          account_address: account!.address,
+          start: new Date(meeting.start),
+          end: new Date(meeting.end),
+          version: slotData.version,
+          meeting_info_encrypted: {} as any,
+          recurrence: meeting.recurrence || MeetingRepeat.NO_REPEAT,
+        }
+
+        setRescheduleSlot(mockSlot)
+
+        // Extract meeting data for form population
+        setExistingMeetingData({
+          title: meeting.title,
+          start: new Date(meeting.start),
+          end: new Date(meeting.end),
+        })
+      } catch (error) {
+        setRescheduleSlot(undefined)
+        setExistingMeetingData(null)
       }
     }
   }
@@ -335,7 +386,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     const end = addMinutes(
       new Date(start),
       CalendarType.REGULAR === calendarType
-        ? selectedType.duration
+        ? selectedType.duration_minutes
         : teamMeetingRequest!.duration_in_minutes
     )
 
@@ -414,22 +465,43 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     })
 
     try {
-      const meeting = await scheduleMeeting(
-        false,
-        scheduleType,
-        'no_type',
-        start,
-        end,
-        participants,
-        meetingProvider || MeetingProvider.HUDDLE,
-        currentAccount,
-        content,
-        meetingUrl,
-        emailToSendReminders,
-        title,
-        meetingReminders,
-        meetingRepeat
-      )
+      let meeting: MeetingDecrypted
+
+      // Check if this is a reschedule operation
+      if (rescheduleSlotId) {
+        // This is a reschedule operation - use updateMeetingAsGuest
+        meeting = await updateMeetingAsGuest(
+          rescheduleSlotId,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          content,
+          meetingUrl,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      } else {
+        // This is a new meeting - use scheduleMeeting
+        meeting = await scheduleMeeting(
+          false,
+          scheduleType,
+          'no_type',
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          emailToSendReminders,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      }
+
       await getAvailableSlots(true)
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
@@ -438,6 +510,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
       logEvent('Scheduled a meeting', {
         fromPublicCalendar: true,
         participantsSize: meeting.participants.length,
+        isReschedule: !!rescheduleSlotId,
       })
       setIsScheduling(false)
       return true
@@ -537,21 +610,45 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof GuestRescheduleForbiddenError) {
+        toast({
+          title: 'Reschedule not allowed',
+          description: (e as GuestRescheduleForbiddenError).message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       }
     }
     setIsScheduling(false)
     return false
   }
 
-  const _onClose = () => {
+  const _onClose = async () => {
     setReset(true)
     setLastScheduledMeeting(undefined)
+
+    if (rescheduleSlotId) {
+      setRescheduleSlotId(undefined)
+      setRescheduleSlot(undefined)
+      setExistingMeetingData(null)
+
+      // Remove the slot parameter from the URL
+      const currentPath = router.asPath
+      const url = new URL(currentPath, window.location.origin)
+      url.searchParams.delete('slot')
+      await router.replace(url.pathname + url.search, undefined, {
+        shallow: true,
+      })
+    }
+
     setTimeout(() => setReset(false), 200)
   }
 
   const changeType = (typeId: string) => {
     const type = account?.preferences?.availableTypes
-      ?.filter(type => !type.deleted)
+      ?.filter(type => !type.deleted_at)
       ?.find(t => t.id === typeId)
     if (!type) return
     if (!type.scheduleGate) {
@@ -559,7 +656,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
     }
     setSelectedType(type)
     void router.push(
-      `/${getAccountDomainUrl(account!)}/${type.url}`,
+      `/${getAccountDomainUrl(account!)}/${type.slug}`,
       undefined,
       {
         shallow: true,
@@ -659,7 +756,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                   )}
 
                   {calendarType === CalendarType.REGULAR &&
-                    rescheduleSlotId && (
+                    rescheduleSlotId &&
+                    !readyToSchedule && (
                       <RescheduleInfoBox
                         loading={!rescheduleSlot}
                         slot={rescheduleSlot}
@@ -683,7 +781,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       isSchedulingExternal={isScheduling}
                       slotDurationInMinutes={
                         CalendarType.REGULAR === calendarType
-                          ? selectedType.duration
+                          ? selectedType.duration_minutes
                           : teamMeetingRequest!.duration_in_minutes
                       }
                       selectedType={selectedType}
@@ -697,6 +795,8 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
                       selfBusySlots={selfBusySlots}
                       timezone={timezone}
                       setTimezone={setTimezone}
+                      existingMeetingData={existingMeetingData}
+                      isReschedule={!!rescheduleSlotId}
                     />
                   </Box>
                 )}
@@ -706,12 +806,15 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
             <Flex justify="center">
               <MeetingScheduledDialog
                 participants={lastScheduledMeeting!.participants}
-                schedulerAccount={currentAccount!}
+                hostAccount={account!}
                 scheduleType={schedulingType}
                 meeting={lastScheduledMeeting}
                 accountNotificationSubs={notificationsSubs}
                 hasConnectedCalendar={hasConnectedCalendar}
+                isContact={isContact}
+                setIsContact={setIsContact}
                 reset={_onClose}
+                isReschedule={!!rescheduleSlotId}
                 timezone={
                   timezone.value ||
                   Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -754,27 +857,35 @@ const RescheduleInfoBox: React.FC<{
   loading: boolean
   slot?: DBSlot
 }> = ({ loading, slot }) => {
+  const router = useRouter()
+
+  const handleCancel = () => {
+    if (slot?.id) {
+      router.push(`/meeting/cancel/${slot.id}`)
+    }
+  }
+
   return (
-    <Flex p={4} mt={4}>
+    <Flex pt={4} mt={4}>
       {loading ? (
         <Spinner margin="auto" />
       ) : (
         <Box>
-          <Text>
+          <Text fontSize={20}>
             <b>Former time</b>
           </Text>
-          <Text>
+          <Text p={2}>
             {dateToHumanReadable(
               new Date(slot!.start),
               Intl.DateTimeFormat().resolvedOptions().timeZone,
               false
             )}
           </Text>
-          <Text>{Intl.DateTimeFormat().resolvedOptions().timeZone}</Text>
+          <Text pl={2}>{Intl.DateTimeFormat().resolvedOptions().timeZone}</Text>
 
-          <Text mt={2}>
+          <Text mt={2} pl={2}>
             Select another time for the meeting, or{' '}
-            <Button variant="link" colorScheme="primary">
+            <Button variant="link" colorScheme="primary" onClick={handleCancel}>
               cancel
             </Button>{' '}
             it

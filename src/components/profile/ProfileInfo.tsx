@@ -89,7 +89,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
   const startTime = props.selectedTime || new Date()
   const startDateTime = DateTime.fromJSDate(startTime).setZone(props.timezone)
   const endDateTime = startDateTime.plus({
-    minutes: props.selectedType.duration,
+    minutes: props.selectedType.duration_minutes,
   })
 
   const formattedStartTime = startDateTime.toFormat('h:mm a')
@@ -132,7 +132,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
           </HStack>
           <HStack>
             <FaClock size={24} />
-            <Text>{props.selectedType.duration} minutes</Text>
+            <Text>{props.selectedType.duration_minutes} minutes</Text>
           </HStack>
           <HStack>
             <FaGlobe size={24} />
@@ -242,12 +242,13 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
                   {props
                     .account!.preferences.availableTypes.filter(
                       type =>
-                        !type.deleted && (!type.private || props.isPrivateType)
+                        !type.deleted_at &&
+                        (!type.duration_minutes || props.isPrivateType)
                     )
                     .map(type => (
                       <option key={type.id} value={type.id}>
                         {type.title ? `${type.title} - ` : ''}
-                        {durationToHumanReadable(type.duration)}
+                        {durationToHumanReadable(type.duration_minutes)}
                       </option>
                     ))}
                 </Select>
