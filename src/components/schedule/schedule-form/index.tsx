@@ -477,6 +477,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       </FormControl>
       {scheduleType !== undefined &&
         (selectedType?.fixed_link || !selectedType?.custom_link) && (
+
           <VStack alignItems="start">
             <Text fontSize="18px" fontWeight={500}>
               Location
