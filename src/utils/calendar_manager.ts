@@ -781,7 +781,7 @@ const cancelMeeting = async (
   decryptedMeeting: MeetingDecrypted
 ): Promise<{ removed: string[] }> => {
   // Sanity check
-  if (!decryptedMeeting.id) {
+  if (!decryptedMeeting?.id) {
     throw new MeetingChangeConflictError()
   }
 
