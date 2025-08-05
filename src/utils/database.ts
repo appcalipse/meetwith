@@ -1,32 +1,48 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import CryptoJS from 'crypto-js'
-import { addMinutes, addMonths, isAfter } from 'date-fns'
+import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
   Encrypted,
   encryptWithPublicKey,
 } from 'eth-crypto'
+import { GaxiosError } from 'gaxios'
+import { calendar_v3 } from 'googleapis'
 import { validate } from 'uuid'
 
 import {
   Account,
   AccountPreferences,
+  BaseMeetingType,
   DiscordConnectedAccounts,
   MeetingType,
+  PaidMeetingTypes,
+  PublicAccount,
   SimpleAccountInfo,
   TgConnectedAccounts,
+  TimeRange,
 } from '@/types/Account'
 import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
+import { AvailabilityBlock } from '@/types/availability'
 import {
   CalendarSyncInfo,
   ConnectedCalendar,
+  ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
-import { SupportedChain } from '@/types/chains'
+import { getChainInfo, SupportedChain } from '@/types/chains'
+import {
+  ContactSearch,
+  DBContact,
+  DBContactInvite,
+  DBContactLean,
+  SingleDBContact,
+  SingleDBContactInvite,
+} from '@/types/Contacts'
 import { DiscordAccount } from '@/types/Discord'
 import {
   CreateGroupsResponse,
@@ -62,6 +78,8 @@ import {
   ParticipantType,
 } from '@/types/ParticipantInfo'
 import {
+  ConfirmCryptoTransactionRequest,
+  CreateMeetingTypeRequest,
   GroupInviteNotifyRequest,
   MeetingCancelSyncRequest,
   MeetingCreationRequest,
@@ -77,39 +95,83 @@ import {
   GateUsageType,
 } from '@/types/TokenGating'
 import {
+  Address,
+  BaseMeetingSession,
+  BaseTransaction,
+  MeetingSession,
+  Transaction,
+} from '@/types/Transactions'
+import {
+  Currency,
+  PaymentDirection,
+  PaymentStatus,
+  PaymentType,
+  TokenType,
+} from '@/utils/constants/meeting-types'
+import {
   AccountNotFoundError,
   AdminBelowOneError,
+  AllMeetingSlotsUsedError,
   AlreadyGroupMemberError,
+  AvailabilityBlockNotFoundError,
+  ChainNotFound,
+  ContactAlreadyExists,
+  ContactInviteNotForAccount,
+  ContactInviteNotFound,
+  ContactNotFound,
   CouponAlreadyUsed,
   CouponExpired,
   CouponNotValid,
+  DefaultAvailabilityBlockError,
   GateConditionNotValidError,
   GateInUseError,
   GroupCreationError,
   GroupNotExistsError,
+  InvalidAvailabilityBlockError,
   IsGroupAdminError,
+  LastMeetingTypeError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  MeetingDetailsModificationDenied,
   MeetingNotFoundError,
+  MeetingSlugAlreadyExists,
+  MeetingTypeNotFound,
   NoActiveSubscription,
   NotGroupAdminError,
   NotGroupMemberError,
+  OwnInviteError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
+  TransactionIsRequired,
+  TransactionNotFoundError,
   UnauthorizedError,
+  UploadError,
 } from '@/utils/errors'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
+import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 
 import {
+  generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
+  noNoReplyEmailForAccount,
 } from './calendar_manager'
-import { apiUrl } from './constants'
+import {
+  extractMeetingDescription,
+  getBaseEventId,
+  updateMeetingServer,
+} from './calendar_sync_helpers'
+import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
+import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
+import { sendReceiptEmail } from './email_helper'
+import { CalendarService } from './services/calendar.service.types'
+import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
+import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
 
 // TODO: better typing
@@ -198,6 +260,25 @@ const initAccountDBForWallet = async (
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
+
+    // Create default availability block for new users
+    const defaultWeeklyAvailability = generateDefaultAvailabilities()
+
+    const defaultBlock = await createAvailabilityBlock(
+      user_account.address,
+      'Default',
+      timezone,
+      defaultWeeklyAvailability,
+      true // Set as default
+    )
+
+    // Update account preferences to reference the default availability block
+    await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: defaultBlock.id,
+      })
+      .eq('owner_account_address', user_account.address)
 
     user_account.preferences = preferences
     user_account.is_invited = is_invited || false
@@ -323,6 +404,26 @@ const workMeetingTypeGates = async (meetingTypes: MeetingType[]) => {
   }
 }
 
+const findAccountByIdentifier = async (
+  identifier: string
+): Promise<Array<Account>> => {
+  const { data, error } = await db.supabase.rpc<Account>('find_account', {
+    identifier: identifier,
+  })
+  if (error) {
+    Sentry.captureException(error)
+    return []
+  }
+  return await Promise.all(
+    data.map(async account => {
+      account.preferences = await getAccountPreferences(
+        account.address.toLowerCase()
+      )
+      return account
+    })
+  )
+}
+
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
   const preferences = { ...account.preferences! }
   preferences.name = preferences.name?.trim()
@@ -359,6 +460,52 @@ const updateAccountPreferences = async (account: Account): Promise<Account> => {
   return account
 }
 
+const updatePreferenceAvatar = async (
+  address: string,
+  filename: string,
+  buffer: Buffer,
+  mimeType: string
+) => {
+  const contentType = mimeType
+  const file = `uploads/${Date.now()}-${filename}`
+  const { error } = await db.supabase.storage
+    .from('avatars')
+    .upload(file, buffer, {
+      contentType,
+      upsert: true,
+    })
+
+  if (error) {
+    Sentry.captureException(error)
+    throw new UploadError(
+      'Unable to upload avatar. Please try again or contact support if the problem persists.'
+    )
+  }
+
+  const { data } = db.supabase.storage.from('avatars').getPublicUrl(file)
+
+  const publicUrl = data?.publicURL
+  if (!publicUrl) {
+    Sentry.captureException(new Error('Public URL is undefined after upload'))
+    throw new UploadError(
+      "Avatar upload completed but couldn't generate preview URL. Please refresh and try again."
+    )
+  }
+
+  const { error: updateError } = await db.supabase
+    .from('account_preferences')
+    .update({ avatar_url: publicUrl })
+    .eq('owner_account_address', address.toLowerCase())
+  if (updateError) {
+    Sentry.captureException(updateError)
+    throw new UploadError(
+      "Avatar uploaded successfully but couldn't update your profile. Please refresh and try again."
+    )
+  }
+
+  return publicUrl
+}
+
 const getAccountNonce = async (identifier: string): Promise<number> => {
   const query = validate(identifier)
     ? `id.eq.${identifier}`
@@ -380,45 +527,53 @@ export const getAccountPreferences = async (
 ): Promise<AccountPreferences> => {
   const { data: account_preferences, error: account_preferences_error } =
     await db.supabase
-      .from<AccountPreferences>('account_preferences')
-      .select()
-      .match({ owner_account_address: owner_account_address.toLowerCase() })
+      .from('account_preferences')
+      .select(
+        `
+        *,
+        default_availability:availabilities!account_preferences_availaibility_id_fkey(
+          id,
+          title,
+          timezone,
+          weekly_availability,
+          created_at,
+          updated_at
+        )
+      `
+      )
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .single()
 
-  if (
-    account_preferences_error ||
-    !account_preferences ||
-    account_preferences.length === 0
-  ) {
+  if (account_preferences_error || !account_preferences) {
     console.error(account_preferences_error)
     throw new Error("Couldn't get account's preferences")
   }
 
-  // fix badly migrated accounts - should be removed at some point in the future
-  if (account_preferences[0].availabilities.length === 0) {
-    const defaultAvailabilities = generateEmptyAvailabilities()
-    const { data: newPreferences, error: newPreferencesError } =
-      await db.supabase
-        .from<AccountPreferences>('account_preferences')
-        .update({
-          availabilities: defaultAvailabilities,
-        })
-        .match({ owner_account_address: owner_account_address.toLowerCase() })
+  // Transform the joined data to match the expected format
+  const { default_availability, ...preferences } = account_preferences
 
-    if (newPreferencesError) {
-      console.error(newPreferences)
-      throw new Error('Error while completing empty preferences')
-    }
-
-    return Array.isArray(newPreferences) ? newPreferences[0] : newPreferences
+  if (default_availability) {
+    preferences.availabilities = default_availability.weekly_availability
+    preferences.timezone = default_availability.timezone
+  } else {
+    preferences.availabilities = generateEmptyAvailabilities()
   }
 
-  return account_preferences[0]
+  return preferences as AccountPreferences
 }
 
-const getExistingAccountsFromDB = async (
+async function getExistingAccountsFromDB(
+  addresses: string[],
+  fullInformation: true
+): Promise<Account[]>
+async function getExistingAccountsFromDB(
+  addresses: string[],
+  fullInformation?: false
+): Promise<SimpleAccountInfo[]>
+async function getExistingAccountsFromDB(
   addresses: string[],
   fullInformation?: boolean
-): Promise<SimpleAccountInfo[] | Account[]> => {
+): Promise<SimpleAccountInfo[] | Account[]> {
   let queryString = ` 
       address,
       internal_pub_key
@@ -471,15 +626,25 @@ const getAccountFromDB = async (
       account.address
     )
     if (includePrivateInformation) {
-      const discord_account = await getDiscordAccount(account.address)
-
-      account.discord_account = discord_account
+      account.discord_account = await getDiscordAccount(account.address)
     }
     return account
   } else if (error) {
     throw new Error(error.message)
   }
   throw new AccountNotFoundError(identifier)
+}
+
+const getAccountFromDBPublic = async (
+  identifier: string
+): Promise<PublicAccount> => {
+  const account: PublicAccount = await getAccountFromDB(identifier)
+  const meetingTypes = await getMeetingTypes(account.address, 100, 0)
+  account.meetingTypes = meetingTypes.map(val => ({
+    ...val,
+    calendars: undefined,
+  }))
+  return account
 }
 
 const getSlotsForAccount = async (
@@ -635,30 +800,36 @@ const getSlotsByIds = async (slotIds: string[]): Promise<DBSlot[]> => {
   return data || []
 }
 
-const isSlotFree = async (
+const isSlotAvailable = async (
   account_address: string,
   start: Date,
   end: Date,
-  meetingTypeId: string
+  meetingTypeId: string,
+  txHash?: Address | null
 ): Promise<boolean> => {
-  const account = await getAccountFromDB(account_address)
-
-  const minTime = account.preferences?.availableTypes.filter(
-    (mt: MeetingType) => mt.id === meetingTypeId
-  )
-
-  if (
-    minTime &&
-    minTime.length > 0 &&
-    minTime[0].minAdvanceTime &&
-    isAfter(addMinutes(new Date(), minTime[0].minAdvanceTime), start)
-  ) {
-    return false
+  const meetingType = await getMeetingTypeFromDB(meetingTypeId)
+  const minTime = meetingType.min_notice_minutes
+  if (meetingType?.plan) {
+    if (!txHash) {
+      throw new TransactionIsRequired()
+    }
+    const transaction = await getTransactionBytxHashAndMeetingType(
+      txHash,
+      meetingTypeId
+    )
+    const meetingSessions = transaction.meeting_sessions || []
+    const isAnyMeetingSlotFree = meetingSessions.some(
+      session => session.used_at === null
+    )
+    if (!isAnyMeetingSlotFree) {
+      throw new AllMeetingSlotsUsedError()
+    }
   }
 
-  return (
-    (await (await getSlotsForAccount(account_address, start, end)).length) == 0
-  )
+  if (isAfter(addMinutes(new Date(), minTime), start)) {
+    return false
+  }
+  return (await getSlotsForAccount(account_address, start, end)).length == 0
 }
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
@@ -901,23 +1072,33 @@ const saveMeeting = async (
     meeting.participants_mapping.map(p => p.account_address!)
   )
 
-  const ownerParticipant =
-    meeting.participants_mapping.find(p => p.type === ParticipantType.Owner) ||
-    null
+  const ownerParticipants =
+    meeting.participants_mapping.filter(
+      p => p.type === ParticipantType.Owner
+    ) || []
 
-  const ownerAccount = ownerParticipant
-    ? await getAccountFromDB(ownerParticipant.account_address!)
-    : null
+  const ownerAccounts =
+    ownerParticipants.length > 0
+      ? await Promise.all(
+          ownerParticipants.map(
+            async owner => await getAccountFromDB(owner.account_address!)
+          )
+        )
+      : []
 
   const schedulerAccount =
     meeting.participants_mapping.find(
       p => p.type === ParticipantType.Scheduler
     ) || null
 
-  const ownerIsNotScheduler =
-    !!ownerParticipant &&
-    !!schedulerAccount &&
-    ownerParticipant.account_address !== schedulerAccount.account_address
+  const ownerIsNotScheduler = Boolean(
+    schedulerAccount &&
+      !ownerParticipants.some(
+        val =>
+          val?.account_address?.toLowerCase() ===
+          schedulerAccount.account_address
+      )
+  )
 
   if (ownerIsNotScheduler && schedulerAccount) {
     const gatesResponse = await db.supabase
@@ -939,28 +1120,14 @@ const saveMeeting = async (
     }
   }
 
-  // we create here the root meeting data, with enough data
-  const createdRootMeeting = await saveConferenceMeetingToDB({
-    id: meeting.meeting_id,
-    start: meeting.start,
-    end: meeting.end,
-    meeting_url: meeting.meeting_url,
-    access_type: MeetingAccessType.OPEN_MEETING,
-    provider: meeting.meetingProvider,
-    reminders: meeting.meetingReminders || [],
-    recurrence: meeting.meetingRepeat,
-    version: MeetingVersion.V2,
-    slots: meeting.allSlotIds || [],
-    title: meeting.title,
-  })
-  if (!createdRootMeeting) {
-    throw new Error(
-      'Could not create your meeting right now, get in touch with us if the problem persists'
-    )
-  }
   const timezone = meeting.participants_mapping[0].timeZone
   for (const participant of meeting.participants_mapping) {
     if (participant.account_address) {
+      const ownerAccount = ownerAccounts.find(
+        val =>
+          val?.address?.toLowerCase() ===
+          participant?.account_address?.toLowerCase()
+      )
       if (
         existingAccounts
           .map(account => account.address)
@@ -968,31 +1135,41 @@ const saveMeeting = async (
         participant.type === ParticipantType.Owner
       ) {
         // only validate slot if meeting is being scheduled on someone's calendar and not by the person itself (from dashboard for example)
-        const participantIsOwner = Boolean(
-          ownerParticipant &&
-            ownerParticipant.account_address?.toLowerCase() ===
-              participant.account_address.toLowerCase()
+        const participantIsOwner = ownerParticipants.some(
+          val =>
+            val?.account_address?.toLowerCase() ===
+            participant?.account_address?.toLowerCase()
         )
-
+        // check if trhe meeting type allows for the slot to be used
         const slotIsTaken = async () =>
-          !(await isSlotFree(
+          !(await isSlotAvailable(
             participant.account_address!,
             new Date(meeting.start),
             new Date(meeting.end),
-            meeting.meetingTypeId
+            meeting.meetingTypeId,
+            meeting.txHash
           ))
         const isTimeAvailable = () =>
+          ownerAccount &&
           isTimeInsideAvailabilities(
-            utcToZonedTime(meeting.start, ownerAccount!.preferences.timezone),
-            utcToZonedTime(meeting.end, ownerAccount!.preferences.timezone),
-            ownerAccount!.preferences.availabilities
+            utcToZonedTime(
+              meeting.start,
+              ownerAccount?.preferences.timezone || 'UTC'
+            ),
+            utcToZonedTime(
+              meeting.end,
+              ownerAccount?.preferences.timezone || 'UTC'
+            ),
+            ownerAccount?.preferences.availabilities || []
           )
-        if (
-          participantIsOwner &&
-          ownerIsNotScheduler &&
-          (!isTimeAvailable() || (await slotIsTaken()))
-        )
-          throw new TimeNotAvailableError()
+        // TODO: check slots by meeting type and not users default Availaibility
+        //   if (
+        //     participantIsOwner &&
+        //     ownerIsNotScheduler &&
+        //     ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
+        //       (await slotIsTaken()))
+        //   )
+        //     throw new TimeNotAvailableError()
       }
 
       let account: Account
@@ -1003,7 +1180,7 @@ const saveMeeting = async (
           .includes(participant.account_address!)
       ) {
         account = await getAccountFromDB(participant.account_address!)
-        participant.timeZone = account.preferences.timezone
+        participant.timeZone = account.preferences.timezone || 'UTC'
       } else {
         account = await initAccountDBForWallet(
           participant.account_address!,
@@ -1023,6 +1200,7 @@ const saveMeeting = async (
         version: 0,
         meeting_info_encrypted: participant.privateInfo,
         recurrence: meeting.meetingRepeat,
+        role: participant.type,
       }
 
       slots.push(dbSlot)
@@ -1043,6 +1221,26 @@ const saveMeeting = async (
     }
   }
 
+  // we create here the root meeting data, with enough data
+  const createdRootMeeting = await saveConferenceMeetingToDB({
+    id: meeting.meeting_id,
+    start: meeting.start,
+    end: meeting.end,
+    meeting_url: meeting.meeting_url,
+    access_type: MeetingAccessType.OPEN_MEETING,
+    provider: meeting.meetingProvider,
+    reminders: meeting.meetingReminders || [],
+    recurrence: meeting.meetingRepeat,
+    version: MeetingVersion.V2,
+    slots: meeting.allSlotIds || [],
+    title: meeting.title,
+    permissions: meeting.meetingPermissions,
+  })
+  if (!createdRootMeeting) {
+    throw new Error(
+      'Could not create your meeting right now, get in touch with us if the problem persists'
+    )
+  }
   const { data, error } = await db.supabase.from('slots').insert(slots)
 
   //TODO: handle error
@@ -1067,6 +1265,7 @@ const saveMeeting = async (
     meetingProvider: meeting.meetingProvider,
     meetingReminders: meeting.meetingReminders,
     meetingRepeat: meeting.meetingRepeat,
+    meetingPermissions: meeting.meetingPermissions,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -1078,6 +1277,9 @@ const saveMeeting = async (
     },
   })
 
+  if (meeting.txHash) {
+    await registerMeetingSession(meeting.txHash, meeting.meeting_id)
+  }
   return meetingResponse as DBSlot
 }
 
@@ -1230,8 +1432,7 @@ const getGroupsAndMembers = async (
       .select(
         `
          group_members: group_members(*),
-         preferences: account_preferences(name),
-         calendars: connected_calendars(calendars)
+         preferences: account_preferences(name)
     `
       )
       .in('address', addresses)
@@ -1253,13 +1454,13 @@ const getGroupsAndMembers = async (
           address: member.group_members?.[0]?.member_id as string,
           role: member.group_members?.[0].role,
           invitePending: false,
-          calendarConnected: !!member.calendars[0]?.calendars?.length,
         })),
       })
     }
   }
   return groups
 }
+
 async function findGroupsWithSingleMember(
   groupIDs: Array<string>
 ): Promise<Array<EmptyGroupsResponse>> {
@@ -1417,16 +1618,7 @@ const publicGroupJoin = async (group_id: string, address: string) => {
   if (groupUsers.map(val => val.member_id).includes(address.toLowerCase())) {
     throw new AlreadyGroupMemberError()
   }
-  const { error: memberError } = await db.supabase
-    .from('group_members')
-    .insert({
-      group_id,
-      member_id: address.toLowerCase(),
-      role: MemberType.MEMBER,
-    })
-  if (memberError) {
-    throw new Error(memberError.message)
-  }
+  await addUserToGroup(group_id, address.toLowerCase(), MemberType.MEMBER)
 }
 
 const manageGroupInvite = async (
@@ -1457,15 +1649,20 @@ const manageGroupInvite = async (
   if (reject) {
     return
   }
-  const { error: memberError } = await db.supabase
-    .from('group_members')
-    .insert({
-      group_id,
-      member_id: address.toLowerCase(),
-      role: data[0].role,
-    })
-  if (memberError) {
-    throw new Error(memberError.message)
+  await addUserToGroup(group_id, address.toLowerCase(), data[0].role)
+}
+const addUserToGroup = async (
+  group_id: string,
+  member_id: string,
+  role = MemberType.MEMBER
+) => {
+  const { error } = await db.supabase.from('group_members').insert({
+    group_id,
+    member_id,
+    role,
+  })
+  if (error) {
+    throw new Error(error.message)
   }
 }
 
@@ -1604,7 +1801,6 @@ const getGroupUsers = async (
       group_members: group_members(*),
       group_invites: group_invites(*),
       preferences: account_preferences(name),
-      calendars: connected_calendars(calendars),
       subscriptions: subscriptions(*) 
     `
       )
@@ -1968,7 +2164,7 @@ const getConnectedCalendars = async (
   address: string,
   {
     syncOnly,
-    activeOnly,
+    activeOnly: _activeOnly,
   }: {
     syncOnly?: boolean
     activeOnly?: boolean
@@ -1980,10 +2176,7 @@ const getConnectedCalendars = async (
     .eq('account_address', address.toLowerCase())
     .order('id', { ascending: true })
 
-  const [{ data, error }, account] = await Promise.all([
-    query,
-    getAccountFromDB(address),
-  ])
+  const { data, error } = await query
 
   if (error) {
     throw new Error(error.message)
@@ -1991,9 +2184,10 @@ const getConnectedCalendars = async (
 
   if (!data) return []
 
-  const connectedCalendars: ConnectedCalendar[] =
-    !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
-
+  // const connectedCalendars: ConnectedCalendar[] =
+  //   !isProAccount(account) && activeOnly ? data.slice(0, 1) : data
+  // ignore pro for now
+  const connectedCalendars: ConnectedCalendar[] = data
   if (syncOnly) {
     const calendars: ConnectedCalendar[] = JSON.parse(
       JSON.stringify(connectedCalendars)
@@ -2085,16 +2279,82 @@ const addOrUpdateConnectedCalendar = async (
       provider,
     })
   }
-
   const { data, error } = await queryPromise
 
   if (error) {
     throw new Error(error.message)
   }
+  const calendar = data[0] as ConnectedCalendar
+  try {
+    const integration = getConnectedCalendarIntegration(
+      address.toLowerCase(),
+      email,
+      provider,
+      payload
+    )
+    for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+      await handleWebHook(cal.calendarId, calendar.id, integration)
+    }
+  } catch (e) {}
 
-  return data[0] as ConnectedCalendar
+  return calendar
 }
+const handleWebHook = async (
+  calId: string,
+  connectedCalendarId: number,
+  integration: CalendarService<TimeSlotSource>
+) => {
+  try {
+    if (!integration.setWebhookUrl || !integration.refreshWebhook) return
+    const { data } = await db.supabase
+      .from('calendar_webhooks')
+      .select('*')
+      .eq('calendar_id', calId)
+      .eq('connected_calendar_id', connectedCalendarId)
+    const calendarwbhk = data?.[0]
+    if (calendarwbhk) {
+      if (new Date(calendarwbhk.expires_at) < add(new Date(), { days: 1 })) {
+        const result = await integration.refreshWebhook(
+          calendarwbhk.channel_id,
+          calendarwbhk.resource_id,
+          WEBHOOK_URL,
+          calId
+        )
+        const { calendarId, channelId, expiration, resourceId } = result
+        const { error: updateError } = await db.supabase
+          .from('calendar_webhooks')
+          .update({
+            channel_id: channelId,
+            resource_id: resourceId,
+            calendar_id: calendarId,
+            expires_at: new Date(Number(expiration)).toISOString(),
+          })
+          .eq('id', calendarwbhk.id)
 
+        if (updateError) {
+          console.error(updateError)
+        }
+        return
+      }
+    }
+    const result = await integration.setWebhookUrl(WEBHOOK_URL, calId)
+    const { calendarId, channelId, expiration, resourceId } = result
+    const { error: updateError } = await db.supabase
+      .from('calendar_webhooks')
+      .insert({
+        channel_id: channelId,
+        resource_id: resourceId,
+        calendar_id: calendarId,
+        connected_calendar_id: connectedCalendarId,
+        expires_at: new Date(Number(expiration)).toISOString(),
+      })
+    if (updateError) {
+      console.error(updateError)
+    }
+  } catch (e) {
+    console.error('Error refreshing webhook:', e)
+  }
+}
 const removeConnectedCalendar = async (
   address: string,
   email: string,
@@ -2376,13 +2636,14 @@ const updateMeeting = async (
 ): Promise<DBSlot> => {
   if (
     new Set(
-      meetingUpdateRequest.participants_mapping.map(p => p.account_address)
+      meetingUpdateRequest.participants_mapping.map(
+        p => p.account_address || p.guest_email
+      )
     ).size !== meetingUpdateRequest.participants_mapping.length
   ) {
-    //means there are duplicate participants
+    // means there are duplicate participants
     throw new MeetingCreationError()
   }
-
   const slots = []
   let meetingResponse = {} as DBSlot
   let index = 0
@@ -2391,14 +2652,19 @@ const updateMeeting = async (
   const existingAccounts = await getExistingAccountsFromDB(
     meetingUpdateRequest.participants_mapping.map(p => p.account_address!)
   )
-  const ownerParticipant =
-    meetingUpdateRequest.participants_mapping.find(
+  const ownerParticipants =
+    meetingUpdateRequest.participants_mapping.filter(
       p => p.type === ParticipantType.Owner
-    ) || null
+    ) || []
 
-  const ownerAccount = ownerParticipant
-    ? await getAccountFromDB(ownerParticipant.account_address!)
-    : null
+  const ownerAccounts =
+    ownerParticipants.length > 0
+      ? await Promise.all(
+          ownerParticipants.map(
+            async owner => await getAccountFromDB(owner.account_address!)
+          )
+        )
+      : []
 
   const schedulerAccount =
     meetingUpdateRequest.participants_mapping.find(
@@ -2412,22 +2678,30 @@ const updateMeeting = async (
     const isEditing = participant.mappingType === ParticipantMappingType.KEEP
 
     if (participant.account_address) {
+      const ownerAccount = ownerAccounts.find(
+        val =>
+          val?.address?.toLowerCase() ===
+          participant?.account_address?.toLowerCase()
+      )
       if (
         existingAccounts
           .map(account => account.address)
           .includes(participant.account_address!)
       ) {
         // only validate slot if meeting is being scheduled on someones calendar and not by the person itself (from dashboard for example)
-        const participantIsOwner = Boolean(
-          ownerParticipant &&
-            ownerParticipant.account_address?.toLowerCase() ===
-              participant.account_address.toLowerCase()
+        const participantIsOwner = ownerParticipants.some(
+          val =>
+            val?.account_address?.toLowerCase() ===
+            participant?.account_address?.toLowerCase()
         )
+
         const ownerIsNotScheduler = Boolean(
-          ownerParticipant &&
-            schedulerAccount &&
-            ownerParticipant.account_address !==
-              schedulerAccount.account_address
+          schedulerAccount &&
+            !ownerParticipants.some(
+              val =>
+                val?.account_address?.toLowerCase() ===
+                schedulerAccount.account_address
+            )
         )
 
         let isEditingToSameTime = false
@@ -2450,7 +2724,7 @@ const updateMeeting = async (
         }
 
         const slotIsTaken = async () =>
-          !(await isSlotFree(
+          !(await isSlotAvailable(
             participant.account_address!,
             new Date(meetingUpdateRequest.start),
             new Date(meetingUpdateRequest.end),
@@ -2458,16 +2732,17 @@ const updateMeeting = async (
           ))
 
         const isTimeAvailable = () =>
+          ownerAccount &&
           isTimeInsideAvailabilities(
             utcToZonedTime(
               meetingUpdateRequest.start,
-              ownerAccount!.preferences.timezone
+              ownerAccount?.preferences.timezone || 'UTC'
             ),
             utcToZonedTime(
               meetingUpdateRequest.end,
-              ownerAccount!.preferences.timezone
+              ownerAccount?.preferences.timezone || 'UTC'
             ),
-            ownerAccount!.preferences.availabilities
+            ownerAccount?.preferences.availabilities
           )
 
         if (
@@ -2475,7 +2750,9 @@ const updateMeeting = async (
           ownerIsNotScheduler &&
           !isEditingToSameTime &&
           participantActing.account_address !== participant.account_address &&
-          (!isTimeAvailable() || (await slotIsTaken()))
+          ((!meetingUpdateRequest.ignoreOwnerAvailability &&
+            !isTimeAvailable()) ||
+            (await slotIsTaken()))
         )
           throw new TimeNotAvailableError()
       }
@@ -2507,6 +2784,7 @@ const updateMeeting = async (
         version: meetingUpdateRequest.version,
         meeting_info_encrypted: participant.privateInfo,
         recurrence: meetingUpdateRequest.meetingRepeat,
+        role: participant.type,
       }
 
       slots.push(dbSlot)
@@ -2560,6 +2838,8 @@ const updateMeeting = async (
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
   )
+
+  // now that everything happened without error, it is safe to update the root meeting data
   const existingSlots =
     meeting.slots?.filter(
       val => !meetingUpdateRequest.slotsToRemove.includes(val)
@@ -2584,6 +2864,7 @@ const updateMeeting = async (
     version: MeetingVersion.V2,
     title: meetingUpdateRequest.title,
     slots: updatedSlots,
+    permissions: meetingUpdateRequest.meetingPermissions,
   })
 
   if (!createdRootMeeting)
@@ -2606,6 +2887,7 @@ const updateMeeting = async (
     changes: changingTime ? { dateChange: changingTime } : undefined,
     meetingReminders: meetingUpdateRequest.meetingReminders,
     meetingRepeat: meetingUpdateRequest.meetingRepeat,
+    meetingPermissions: meetingUpdateRequest.meetingPermissions,
   }
 
   // Doing notifications and syncs asynchronously
@@ -2627,7 +2909,9 @@ const updateMeeting = async (
       meetingUpdateRequest.slotsToRemove,
       meetingUpdateRequest.guestsToRemove,
       meetingUpdateRequest.meeting_id,
-      timezone
+      timezone,
+      undefined,
+      meetingUpdateRequest.title
     )
 
   return meetingResponse
@@ -2967,18 +3251,1645 @@ const getDiscordAccounts = async (): Promise<
   }
   return data
 }
+
+const findAccountsByText = async (
+  current_address: string,
+  search: string,
+  limit = 10,
+  offset = 0
+) => {
+  const { data, error } = await db.supabase.rpc<ContactSearch>(
+    'search_accounts',
+    {
+      search,
+      max_results: limit,
+      skip: offset,
+      current_address,
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data?.[0]
+}
+
+const getOrCreateContactInvite = async (
+  owner_address: string,
+  address?: string,
+  email?: string
+) => {
+  const { data, error: searchError } = await db.supabase
+    .from('contact_invite')
+    .select()
+    .eq('account_owner_address', owner_address)
+    .eq('destination', address || email)
+  if (searchError) {
+    throw new Error(searchError.message)
+  }
+  if ((data?.length || 0) > 0) {
+    return data?.[0]
+  }
+  let channel = ChannelType.ACCOUNT
+  if (email) {
+    channel = ChannelType.EMAIL
+  }
+  if (address) {
+    channel = ChannelType.ACCOUNT
+  }
+
+  const { data: insertData, error: insertError } = await db.supabase
+    .from('contact_invite')
+    .insert([
+      {
+        account_owner_address: owner_address,
+        destination: address || email,
+        channel,
+      },
+    ])
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
+  return insertData[0]
+}
+const updateContactInviteCooldown = async (id: string) => {
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000
+  const { error } = await db.supabase
+    .from('contact_invite')
+    .update({ last_invited: new Date(Date.now() + SEVEN_DAYS) })
+    .eq('id', id)
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+const isUserContact = async (owner_address: string, address: string) => {
+  const { data, error } = await db.supabase
+    .from('contact')
+    .select('*', { count: 'exact', head: true })
+    .eq('account_owner_address', owner_address)
+    .eq('contact_address', address)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data?.[0]
+}
+
+const getContacts = async (
+  address: string,
+  query = '',
+  limit = 10,
+  offset = 0
+): Promise<DBContact> => {
+  const { data, error } = await db.supabase.rpc('search_contacts', {
+    search: query,
+    max_results: limit,
+    skip: offset,
+    current_account: address,
+  })
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data as unknown as DBContact
+}
+
+const getContactLean = async (
+  address: string,
+  query = '',
+  limit = 10,
+  offset = 0
+): Promise<DBContactLean> => {
+  const { data, error } = await db.supabase.rpc<DBContactLean>(
+    'search_contacts_lean',
+    {
+      search: query,
+      max_results: limit,
+      skip: offset,
+      current_account: address,
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data as unknown as DBContactLean
+}
+
+const checkContactExists = async (
+  current_address: string,
+  user_address: string
+): Promise<DBContactLean> => {
+  const { data, error } = await db.supabase.rpc<DBContactLean>(
+    'check_contact_existence',
+    {
+      current_account: current_address,
+      user_address: user_address,
+    }
+  )
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data as unknown as DBContactLean
+}
+
+const getContactById = async (
+  id: string,
+  address: string
+): Promise<SingleDBContact> => {
+  const { data, error } = await db.supabase
+    .from('contact')
+    .select(
+      `
+      id,
+       contact_address,
+        account_owner_address,
+        status,
+        account: accounts(
+          preferences: account_preferences(name, avatar_url, description),
+          calendars_exist: connected_calendars(id),
+          account_notifications(notification_types)
+        )
+    `
+    )
+    .eq('id', id)
+    .eq('account_owner_address', address)
+    .eq('status', ContactStatus.ACTIVE)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  const contact = data?.[0]
+  if (!contact) {
+    throw new ContactNotFound()
+  }
+  return contact
+}
+
+const getContactInvites = async (
+  address: string,
+  query = '',
+  limit = 10,
+  offset = 0
+): Promise<DBContactInvite> => {
+  const { data, error } = await db.supabase.rpc('search_contact_invites', {
+    search: query,
+    max_results: limit,
+    skip: offset,
+    current_account: address,
+  })
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data as unknown as DBContactInvite
+}
+const _getContactByAddress = async (
+  owner_address: string,
+  address: string
+): Promise<DBContact> => {
+  const { data, error } = await db.supabase
+    .from('contact')
+    .select(
+      `
+      id,
+       contact_address,
+        account_owner_address,
+        status,
+        account: accounts(
+          preferences: account_preferences(name, avatar_url, description),
+          calendars_exist: connected_calendars(id),
+          account_notifications(notification_types)
+        )
+    `
+    )
+    .eq('account_owner_address', owner_address)
+    .eq('contact_address', address)
+    .eq('status', ContactStatus.ACTIVE)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  return data
+}
+const getContactInvitesCount = async (address: string) => {
+  const { error, count } = await db.supabase
+    .from('contact_invite')
+    .select('id', { count: 'exact' })
+    .eq('destination', address)
+  if (error) {
+    throw new Error(error.message)
+  }
+  return count
+}
+const getContactInviteById = async (
+  id: string
+): Promise<SingleDBContactInvite> => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select(
+      `
+      id,
+       destination,
+        account_owner_address,
+        channel,
+        account: accounts(
+          preferences: account_preferences(name, avatar_url, description),
+          calendars_exist: connected_calendars(id),
+          account_notifications(notification_types)
+        )
+    `
+    )
+    .eq('id', id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  const invite = data?.[0]
+  if (!invite) {
+    throw new ContactInviteNotFound()
+  }
+  return invite
+}
+const acceptContactInvite = async (
+  invite_identifier: string,
+  account_address: string
+) => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select()
+    .eq('id', invite_identifier)
+  if (error) {
+    throw new Error(error.message)
+  }
+  const invite = data?.[0]
+  if (!invite) {
+    throw new ContactInviteNotFound()
+  }
+
+  // make sure the actual account owner accepts the invite
+  if (
+    invite?.channel === ChannelType.ACCOUNT &&
+    invite?.destination !== account_address
+  ) {
+    throw new ContactInviteNotForAccount()
+  }
+  if (invite?.account_owner_address === account_address) {
+    throw new OwnInviteError()
+  }
+
+  const { data: contactExists } = await db.supabase
+    .from('contact')
+    .select()
+    .in('account_owner_address', [
+      account_address,
+      invite?.account_owner_address,
+    ])
+    .in('contact_address', [account_address, invite?.account_owner_address])
+    .eq('status', ContactStatus.ACTIVE)
+
+  if (contactExists?.length) {
+    await db.supabase
+      .from('contact_invite')
+      .delete()
+      .eq('id', invite_identifier)
+
+    throw new ContactAlreadyExists()
+  }
+
+  const { error: insertError } = await db.supabase.from('contact').insert([
+    {
+      account_owner_address: invite?.account_owner_address,
+      contact_address: account_address,
+      status: ContactStatus.ACTIVE,
+    },
+    {
+      account_owner_address: account_address,
+      contact_address: invite?.account_owner_address,
+      status: ContactStatus.ACTIVE,
+    },
+  ])
+
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
+  // clean up old status contacts
+  const { error: contactClearError } = await db.supabase
+    .from('contact')
+    .delete()
+    .in('account_owner_address', [
+      account_address,
+      invite?.account_owner_address,
+    ])
+    .in('contact_address', [account_address, invite?.account_owner_address])
+    .eq('status', ContactStatus.INACTIVE)
+
+  if (contactClearError) {
+    throw new Error(contactClearError.message)
+  }
+
+  const { error: deleteError } = await db.supabase
+    .from('contact_invite')
+    .delete()
+    .in('account_owner_address', [
+      account_address,
+      invite?.account_owner_address,
+    ])
+    .in('destination', [account_address, invite?.account_owner_address])
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+}
+const rejectContactInvite = async (
+  invite_identifier: string,
+  account_address: string
+) => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select()
+    .eq('id', invite_identifier)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data?.length) {
+    throw new ContactInviteNotForAccount()
+  }
+  const invite = data[0]
+
+  // make sure the actual account owner rejects the invite
+  if (
+    invite?.channel === ChannelType.ACCOUNT &&
+    invite?.destination !== account_address
+  ) {
+    throw new ContactInviteNotForAccount()
+  }
+  if (invite?.account_owner_address === account_address) {
+    throw new OwnInviteError()
+  }
+
+  const { error: deleteError } = await db.supabase
+    .from('contact_invite')
+    .delete()
+    .eq('id', invite_identifier)
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+}
+const contactInviteByEmailExists = async (
+  owner_address: string,
+  email: string
+) => {
+  const { data, error } = await db.supabase
+    .from('contact_invite')
+    .select()
+    .eq('destination', email)
+    .eq('channel', ChannelType.EMAIL)
+    .eq('account_owner_address', owner_address)
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data?.length > 0
+}
+
+const removeContact = async (address: string, contact_address: string) => {
+  const { error: updateError } = await db.supabase
+    .from('contact')
+    .update({ status: ContactStatus.INACTIVE })
+    .eq('account_owner_address', contact_address)
+    .eq('contact_address', address)
+
+  if (updateError) {
+    throw new Error(updateError.message)
+  }
+  const { error: removeError } = await db.supabase
+    .from('contact')
+    .delete()
+    .eq('account_owner_address', address)
+    .eq('contact_address', contact_address)
+
+  if (removeError) {
+    throw new Error(removeError.message)
+  }
+}
+
+const getDefaultAvailabilityBlockId = async (
+  account_address: string
+): Promise<string | null> => {
+  const { data: accountPrefs } = await db.supabase
+    .from('account_preferences')
+    .select('availaibility_id')
+    .eq('owner_account_address', account_address)
+    .single()
+
+  return accountPrefs?.availaibility_id || null
+}
+
+const checkTitleExists = async (
+  account_address: string,
+  title: string,
+  excludeBlockId?: string
+): Promise<void> => {
+  const trimmedTitle = title.trim()
+
+  let query = db.supabase
+    .from('availabilities')
+    .select('id')
+    .eq('account_owner_address', account_address)
+    .eq('title', trimmedTitle)
+
+  if (excludeBlockId) {
+    query = query.neq('id', excludeBlockId)
+  }
+
+  const { data: existingBlock, error: checkError } = await query.single()
+
+  if (checkError && checkError.code !== 'PGRST116') {
+    throw checkError
+  }
+
+  if (existingBlock) {
+    throw new InvalidAvailabilityBlockError(
+      'An availability block with this title already exists'
+    )
+  }
+}
+
+const isAvailabilityBlockDefault = async (
+  id: string,
+  account_address: string
+): Promise<boolean> => {
+  const defaultBlockId = await getDefaultAvailabilityBlockId(account_address)
+  return defaultBlockId === id
+}
+
+export const createAvailabilityBlock = async (
+  account_address: string,
+  title: string,
+  timezone: string,
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
+  is_default = false
+) => {
+  const trimmedTitle = title.trim()
+  await checkTitleExists(account_address, title)
+
+  // Create the availability block
+  const { data: block, error: blockError } = await db.supabase
+    .from('availabilities')
+    .insert([
+      {
+        title: trimmedTitle,
+        timezone,
+        weekly_availability,
+        account_owner_address: account_address,
+      },
+    ])
+    .select()
+    .single()
+
+  if (blockError) throw blockError
+
+  // If this is being set as default, update account preferences
+  if (is_default) {
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availabilities: weekly_availability,
+        timezone: timezone,
+        availaibility_id: block.id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) throw prefError
+  }
+
+  return block
+}
+
+export const getAvailabilityBlock = async (
+  id: string,
+  account_address: string
+) => {
+  const { data, error } = await db.supabase
+    .from('availabilities')
+    .select('*')
+    .eq('id', id)
+    .eq('account_owner_address', account_address)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new AvailabilityBlockNotFoundError()
+    }
+    throw error
+  }
+
+  // Check if this is the default block
+  const isDefault = await isAvailabilityBlockDefault(id, account_address)
+
+  return {
+    ...data,
+    isDefault,
+  }
+}
+
+export const updateAvailabilityBlock = async (
+  id: string,
+  account_address: string,
+  title: string,
+  timezone: string,
+  weekly_availability: Array<{ weekday: number; ranges: TimeRange[] }>,
+  is_default = false
+) => {
+  const trimmedTitle = title.trim()
+  await checkTitleExists(account_address, title, id)
+
+  // Get current account preferences to check if this block is currently default
+  const isCurrentlyDefault = await isAvailabilityBlockDefault(
+    id,
+    account_address
+  )
+
+  // If this block is being set as default, update account preferences
+  if (is_default) {
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) throw prefError
+  } else if (isCurrentlyDefault) {
+    throw new DefaultAvailabilityBlockError(
+      'Cannot unset the default availability block without selecting a new default'
+    )
+  }
+
+  const { data, error } = await db.supabase
+    .from('availabilities')
+    .update({
+      title: trimmedTitle,
+      timezone,
+      weekly_availability,
+    })
+    .eq('id', id)
+    .eq('account_owner_address', account_address)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export const deleteAvailabilityBlock = async (
+  id: string,
+  account_address: string
+) => {
+  // Check if this is the default block by checking account preferences
+  const isDefault = await isAvailabilityBlockDefault(id, account_address)
+
+  if (isDefault) {
+    throw new DefaultAvailabilityBlockError()
+  }
+
+  const { error } = await db.supabase
+    .from('availabilities')
+    .delete()
+    .eq('id', id)
+    .eq('account_owner_address', account_address)
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new AvailabilityBlockNotFoundError()
+    }
+    throw error
+  }
+}
+
+export const duplicateAvailabilityBlock = async (
+  id: string,
+  account_address: string,
+  modifiedData?: {
+    title?: string
+    timezone?: string
+    weekly_availability?: Array<{ weekday: number; ranges: TimeRange[] }>
+    is_default?: boolean
+  }
+) => {
+  // First get the block to duplicate
+  const block = await getAvailabilityBlock(id, account_address)
+  if (!block) {
+    throw new AvailabilityBlockNotFoundError()
+  }
+
+  const newTitle = modifiedData?.title || `${block.title} (Copy)`
+  const trimmedTitle = newTitle.trim()
+
+  await checkTitleExists(account_address, newTitle)
+
+  // Create a new block with the same data but a new ID, applying any modifications
+  const { data: newBlock, error: blockError } = await db.supabase
+    .from('availabilities')
+    .insert([
+      {
+        title: trimmedTitle,
+        timezone: modifiedData?.timezone || block.timezone,
+        weekly_availability:
+          modifiedData?.weekly_availability || block.weekly_availability,
+        account_owner_address: account_address,
+      },
+    ])
+    .select()
+    .single()
+
+  if (blockError) {
+    throw new InvalidAvailabilityBlockError('Failed to create duplicate block')
+  }
+
+  // If this is being set as default, update account preferences with the new block ID
+  if (modifiedData?.is_default) {
+    const { error: prefError } = await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: newBlock.id,
+      })
+      .eq('owner_account_address', account_address)
+
+    if (prefError) {
+      console.error('Error updating account preferences:', prefError)
+      throw new InvalidAvailabilityBlockError('Failed to set as default block')
+    }
+  }
+
+  return newBlock
+}
+
+export const isDefaultAvailabilityBlock = async (
+  id: string,
+  account_address: string
+): Promise<boolean> => {
+  return await isAvailabilityBlockDefault(id, account_address)
+}
+
+export const getAvailabilityBlocks = async (account_address: string) => {
+  // Get all availability blocks with their associated meeting types in a single query
+  const { data: blocks, error } = await db.supabase
+    .from('availabilities')
+    .select(
+      `
+      *,
+      meeting_types: meeting_type_availabilities(
+        meeting_type(
+          id,
+          title,
+          deleted_at
+        )
+      )
+    `
+    )
+    .eq('account_owner_address', account_address)
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+
+  // Get account preferences to determine default block
+  const defaultBlockId = await getDefaultAvailabilityBlockId(account_address)
+
+  const blocksWithDefault = blocks.map(block => {
+    const meetingTypes =
+      block.meeting_types
+        ?.map(
+          (item: {
+            meeting_type: MeetingType & { deleted_at?: string | null }
+          }) => {
+            const meetingType = item.meeting_type
+            if (!meetingType || meetingType.deleted_at) return null
+
+            return meetingType
+          }
+        )
+        .filter(Boolean) || []
+
+    return {
+      ...block,
+      isDefault: defaultBlockId === block.id,
+      meetingTypes,
+    }
+  })
+
+  // Sort blocks
+  const sortedBlocks = blocksWithDefault.sort((a, b) => {
+    if (a.isDefault) return -1
+    if (b.isDefault) return 1
+
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
+
+  return sortedBlocks
+}
+
+const getMeetingTypes = async (
+  account_address: string,
+  limit = 10,
+  offset = 0
+): Promise<Array<MeetingType>> => {
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .select(
+      `
+    *,
+    availabilities: meeting_type_availabilities(availabilities(*)),
+    plan: meeting_type_plan(*),
+    connected_calendars: meeting_type_calendars(
+       connected_calendars(id, email, provider)
+    )
+    `
+    )
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1)
+  if (error) {
+    throw new Error(error.message)
+  }
+  const transformedData = data?.map(meetingType => ({
+    ...meetingType,
+    calendars: meetingType?.connected_calendars?.map(
+      (calendar: { connected_calendars: ConnectedCalendarCore }) =>
+        calendar.connected_calendars
+    ),
+    availabilities: meetingType?.availabilities?.map(
+      (availability: { availabilities: MeetingType['availabilities'][0] }) =>
+        availability.availabilities
+    ),
+    plan: meetingType?.plan?.[0],
+  }))
+
+  return transformedData as MeetingType[]
+}
+
+const getMeetingTypesForAvailabilityBlock = async (
+  account_address: string,
+  availability_block_id: string
+): Promise<MeetingType[]> => {
+  // First verify the availability block exists and belongs to the account
+  const { data: block, error: blockError } = await db.supabase
+    .from('availabilities')
+    .select('id')
+    .eq('id', availability_block_id)
+    .eq('account_owner_address', account_address)
+    .single()
+
+  if (blockError || !block) {
+    throw new AvailabilityBlockNotFoundError()
+  }
+
+  const { data, error } = await db.supabase
+    .from('meeting_type_availabilities')
+    .select(
+      `
+      meeting_type: meeting_type(
+        *,
+        availabilities: meeting_type_availabilities(availabilities(*)),
+        plan: meeting_type_plan(*),
+        connected_calendars: meeting_type_calendars(
+           connected_calendars(id, email, provider)
+        )
+      )
+    `
+    )
+    .eq('availability_id', availability_block_id)
+    .eq('meeting_type.account_owner_address', account_address)
+    .is('meeting_type.deleted_at', null)
+
+  if (error) {
+    throw new Error('Failed to fetch meeting types')
+  }
+
+  const transformedData = data?.map(item => {
+    const meetingType = item.meeting_type
+    return {
+      ...meetingType,
+      calendars: meetingType?.connected_calendars?.map(
+        (calendar: { connected_calendars: ConnectedCalendar }) =>
+          calendar.connected_calendars
+      ),
+      availabilities: meetingType?.availabilities?.map(
+        (availability: { availabilities: AvailabilityBlock }) =>
+          availability.availabilities
+      ),
+      plan: meetingType?.plan?.[0],
+    }
+  })
+
+  return transformedData as MeetingType[]
+}
+
+const checkSlugExists = async (
+  account_address: string,
+  slug: string,
+  meeting_type_id?: string
+) => {
+  const query = db.supabase
+    .from('meeting_type')
+    .select('id,slug,account_owner_address')
+    .eq('slug', slug)
+    .is('deleted_at', null)
+    .eq('account_owner_address', account_address)
+    .range(0, 2)
+  if (meeting_type_id) {
+    query.neq('id', meeting_type_id)
+  }
+  const { data: meetingTypeExists, error: meetingTypeExistsError } = await query
+  if (meetingTypeExistsError) {
+    throw new Error(meetingTypeExistsError.message)
+  }
+  if (meetingTypeExists && meetingTypeExists.length > 0) {
+    throw new MeetingSlugAlreadyExists(slug || '')
+  }
+}
+const createMeetingType = async (
+  account_address: string,
+  meetingType: CreateMeetingTypeRequest
+) => {
+  await checkSlugExists(account_address, meetingType.slug)
+  const payload: BaseMeetingType = {
+    account_owner_address: account_address,
+    type: meetingType.type,
+    min_notice_minutes: meetingType.min_notice_minutes,
+    duration_minutes: meetingType.duration_minutes,
+    title: meetingType.title,
+    slug: meetingType.slug,
+    description: meetingType.description,
+    custom_link: meetingType.custom_link,
+    fixed_link: meetingType.fixed_link,
+    meeting_platforms: meetingType.meeting_platforms,
+  }
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .insert([payload])
+  const meeting_type_id = data?.[0].id
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (
+    meetingType?.availability_ids &&
+    meetingType?.availability_ids.length > 0
+  ) {
+    const { error: meetingTypeAvailaibilityError } = await db.supabase
+      .from('meeting_type_availabilities')
+      .insert(
+        meetingType?.availability_ids?.map(availability_id => ({
+          meeting_type_id,
+          availability_id: availability_id,
+        }))
+      )
+    if (meetingTypeAvailaibilityError) {
+      throw new Error(meetingTypeAvailaibilityError.message)
+    }
+  }
+  if (meetingType?.calendars && meetingType?.calendars?.length > 0) {
+    const { error: calendarError } = await db.supabase
+      .from('meeting_type_calendars')
+      .insert(
+        meetingType?.calendars?.map(calendar => ({
+          meeting_type_id,
+          calendar_id: calendar,
+        }))
+      )
+    if (calendarError) {
+      throw new Error(calendarError.message)
+    }
+  }
+  if (meetingType?.plan) {
+    const { error: planError } = await db.supabase
+      .from('meeting_type_plan')
+      .insert([
+        {
+          meeting_type_id,
+          type: meetingType?.plan.type,
+          price_per_slot: meetingType?.plan.price_per_slot,
+          no_of_slot: meetingType?.plan.no_of_slot,
+          payment_channel: meetingType?.plan.payment_channel,
+          payment_address: meetingType?.plan.payment_address,
+          default_chain_id: meetingType?.plan.crypto_network,
+        },
+      ])
+    if (planError) {
+      throw new Error(planError.message)
+    }
+  }
+  return data?.[0] as MeetingType
+}
+const deleteMeetingType = async (
+  account_address: string,
+  meeting_type_id: string
+): Promise<void> => {
+  const { data: meetingTypes, error: MeetingTypeError } = await db.supabase
+    .from('meeting_type')
+    .select(`id`)
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+    .range(0, 2)
+  if (MeetingTypeError) {
+    throw new Error(MeetingTypeError.message)
+  }
+  if (meetingTypes?.length === 1) {
+    throw new LastMeetingTypeError()
+  }
+  const { error } = await db.supabase
+    .from('meeting_type')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('account_owner_address', account_address)
+    .eq('id', meeting_type_id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const { error: assocError } = await db.supabase
+    .from('meeting_type_availabilities')
+    .delete()
+    .eq('meeting_type_id', meeting_type_id)
+  if (assocError) {
+    throw new Error(assocError.message)
+  }
+}
+
+// shared helper function to update associations between meeting types and availability blocks
+const updateAssociations = async <T extends string | number>(
+  table: string,
+  primaryId: string,
+  primaryField: string,
+  secondaryField: string,
+  newSecondaryIds: T[],
+  errorMessage: string
+) => {
+  // Get current associations
+  const { data: current } = await db.supabase
+    .from(table)
+    .select(secondaryField)
+    .eq(primaryField, primaryId)
+
+  const currentIds =
+    current?.map((c: Record<string, T>) => c[secondaryField]) || []
+  const newIds = newSecondaryIds
+
+  const toDelete = currentIds.filter(id => !newIds.includes(id))
+  const toInsert = newIds.filter(id => !currentIds.includes(id))
+
+  // Delete removed associations
+  if (toDelete.length > 0) {
+    const { error: deleteError } = await db.supabase
+      .from(table)
+      .delete()
+      .eq(primaryField, primaryId)
+      .in(secondaryField, toDelete)
+
+    if (deleteError) {
+      throw new Error(`Failed to remove ${errorMessage}`)
+    }
+  }
+
+  // Insert new associations
+  if (toInsert.length > 0) {
+    const { error: insertError } = await db.supabase.from(table).insert(
+      toInsert.map(secondaryId => ({
+        [primaryField]: primaryId,
+        [secondaryField]: secondaryId,
+      }))
+    )
+
+    if (insertError) {
+      throw new Error(`Failed to add ${errorMessage}`)
+    }
+  }
+}
+
+const updateMeetingType = async (
+  account_address: string,
+  meeting_type_id: string,
+  meetingType: CreateMeetingTypeRequest
+): Promise<MeetingType> => {
+  await checkSlugExists(account_address, meetingType.slug, meeting_type_id)
+  const payload: Partial<BaseMeetingType> = {
+    account_owner_address: account_address,
+    min_notice_minutes: meetingType.min_notice_minutes,
+    duration_minutes: meetingType.duration_minutes,
+    title: meetingType.title,
+    slug: meetingType.slug,
+    description: meetingType.description,
+    updated_at: new Date().toISOString(),
+    custom_link: meetingType.custom_link,
+    fixed_link: meetingType.fixed_link,
+    meeting_platforms: meetingType.meeting_platforms,
+  }
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .update(payload)
+    .eq('account_owner_address', account_address)
+    .eq('id', meeting_type_id)
+  if (error) {
+    throw new Error(error.message)
+  }
+  // Handle availability associations
+  if (meetingType?.availability_ids !== undefined) {
+    await updateAssociations(
+      'meeting_type_availabilities',
+      meeting_type_id,
+      'meeting_type_id',
+      'availability_id',
+      meetingType.availability_ids,
+      'availability associations'
+    )
+  }
+  // Handle calendar associations
+  if (meetingType?.calendars !== undefined) {
+    await updateAssociations(
+      'meeting_type_calendars',
+      meeting_type_id,
+      'meeting_type_id',
+      'calendar_id',
+      meetingType.calendars,
+      'calendar associations'
+    )
+  }
+  if (meetingType?.plan) {
+    const { error: insertPlanError } = await db.supabase
+      .from('meeting_type_plan')
+      .update({
+        type: meetingType?.plan.type,
+        price_per_slot: meetingType?.plan.price_per_slot,
+        no_of_slot: meetingType?.plan.no_of_slot,
+        payment_channel: meetingType?.plan.payment_channel,
+        payment_address: meetingType?.plan.payment_address,
+        default_chain_id: meetingType?.plan.crypto_network,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('meeting_type_id', meeting_type_id)
+
+    if (insertPlanError) {
+      throw new Error(insertPlanError.message)
+    }
+  }
+  return data?.[0] as MeetingType
+}
+
+const updateAvailabilityBlockMeetingTypes = async (
+  account_address: string,
+  availability_block_id: string,
+  meeting_type_ids: string[]
+) => {
+  // First verify the availability block exists and belongs to the account
+  const { data: block, error: blockError } = await db.supabase
+    .from('availabilities')
+    .select('id')
+    .eq('id', availability_block_id)
+    .eq('account_owner_address', account_address)
+    .single()
+
+  if (blockError || !block) {
+    throw new AvailabilityBlockNotFoundError()
+  }
+
+  await updateAssociations(
+    'meeting_type_availabilities',
+    availability_block_id,
+    'availability_id',
+    'meeting_type_id',
+    meeting_type_ids,
+    'meeting type associations'
+  )
+}
+
+const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .select(
+      `
+    *,
+    plan: meeting_type_plan(*)
+    `
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new MeetingTypeNotFound()
+  }
+  data.plan = data.plan?.[0] || null
+  return data
+}
+const createCryptoTransaction = async (
+  transactionRequest: ConfirmCryptoTransactionRequest,
+  account_address: string
+) => {
+  const chainInfo = getChainInfo(transactionRequest.chain)
+  if (!chainInfo?.id) {
+    throw new ChainNotFound(transactionRequest.chain)
+  }
+  const { feeInUSD, gasUsed, from } = await getTransactionFeeThirdweb(
+    transactionRequest.transaction_hash,
+    transactionRequest.chain
+  )
+  const payload: BaseTransaction = {
+    method: PaymentType.CRYPTO,
+    transaction_hash:
+      transactionRequest.transaction_hash.toLowerCase() as Address,
+    amount: transactionRequest.amount,
+    direction: PaymentDirection.CREDIT,
+    chain_id: chainInfo?.id,
+    token_address: from,
+    fiat_equivalent: transactionRequest.fiat_equivalent,
+    meeting_type_id: transactionRequest?.meeting_type_id,
+    initiator_address: account_address,
+    status: PaymentStatus.COMPLETED,
+    token_type: TokenType.ERC20,
+    confirmed_at: new Date().toISOString(),
+    currency: Currency.USD,
+    total_fee: feeInUSD,
+    metadata: {},
+    fee_breakdown: {
+      gas_used: gasUsed,
+      fee_in_usd: feeInUSD,
+    },
+  }
+  const { data, error } = await db.supabase.from('transactions').insert(payload)
+  if (error) {
+    throw new Error(error.message)
+  }
+  const meetingType = await getMeetingTypeFromDB(
+    transactionRequest.meeting_type_id
+  )
+  const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
+  const meetingSessions: Array<BaseMeetingSession> = Array.from(
+    { length: totalNoOfSlots },
+    (_, i) => ({
+      meeting_type_id: transactionRequest.meeting_type_id,
+      transaction_id: data[0]?.id,
+      session_number: i + 1,
+      guest_address: transactionRequest?.guest_address,
+      guest_email: transactionRequest?.guest_email,
+      owner_address: meetingType?.account_owner_address,
+    })
+  )
+  const { error: slotError } = await db.supabase
+    .from('meeting_sessions')
+    .insert(meetingSessions)
+  if (slotError) {
+    throw new Error(slotError.message)
+  }
+  try {
+    // don't wait for receipt to be sent before serving a response
+    sendReceiptEmail(
+      transactionRequest.guest_email,
+      transactionRequest.guest_name,
+      {
+        full_name: transactionRequest.guest_name,
+        email_address: transactionRequest.guest_email,
+        plan: meetingType.title,
+        number_of_sessions: totalNoOfSlots.toString(),
+        price: transactionRequest.amount.toString(),
+        payment_method: PaymentType.CRYPTO,
+        transaction_fee: '0',
+        transaction_status: PaymentStatus.COMPLETED,
+        transaction_hash: transactionRequest.transaction_hash,
+      }
+    )
+  } catch (e) {
+    console.error(e)
+  }
+}
+const getMeetingSessionsByTxHash = async (
+  tx: Address
+): Promise<Array<MeetingSession>> => {
+  const { data: transaction, error: error } = await db.supabase
+    .from('transactions')
+    .select(
+      `
+      meeting_sessions(*)
+      `
+    )
+    .eq('transaction_hash', tx.toLowerCase())
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!transaction) {
+    throw new TransactionNotFoundError(tx)
+  }
+
+  return transaction.meeting_sessions || []
+}
+
+const getTransactionBytxHashAndMeetingType = async (
+  tx: Address,
+  meeting_type_id: string
+): Promise<Transaction> => {
+  const { data: transaction, error: error } = await db.supabase
+    .from('transactions')
+    .select(
+      `
+    *,
+    meeting_sessions(*)
+    `
+    )
+    .eq('transaction_hash', tx.toLowerCase())
+    .eq('meeting_type_id', meeting_type_id)
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!transaction) {
+    throw new TransactionNotFoundError(tx)
+  }
+  return transaction
+}
+
+const registerMeetingSession = async (tx: Address, meeting_id: string) => {
+  const meetingSessionsRaw = await getMeetingSessionsByTxHash(tx)
+  const meetingSessions = meetingSessionsRaw.sort(
+    (a, b) => a.session_number - b.session_number
+  )
+  const sessionToUpdate = meetingSessions.find(val => val.used_at === null)
+  if (!sessionToUpdate) {
+    throw new AllMeetingSlotsUsedError()
+  }
+  const { error: slotError } = await db.supabase
+    .from('meeting_sessions')
+    .update({
+      meeting_id,
+      used_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionToUpdate.id)
+  if (slotError) {
+    throw new Error(slotError.message)
+  }
+}
+
+const getPaidSessionsByMeetingType = async (
+  current_account: string,
+  account_address: string
+): Promise<Array<PaidMeetingTypes>> => {
+  const { data: sessions, error } = await db.supabase.rpc('get_paid_sessions', {
+    current_account,
+    account_address,
+  })
+  if (error) {
+    throw new Error(error.message)
+  }
+  return sessions?.map(val => ({ ...val, plan: val.plan?.[0] })) || []
+}
+
+const syncWebhooks = async (provider: TimeSlotSource) => {
+  const { data, error } = await db.supabase
+    .from<ConnectedCalendar>('connected_calendars')
+    .select('*')
+    .eq('provider', provider)
+    .filter('calendars', 'cs', '[{"sync": true}]')
+  if (error) {
+    throw new Error(error.message)
+  }
+  for (const calendar of data || []) {
+    const integration = getConnectedCalendarIntegration(
+      calendar.account_address,
+      calendar.email,
+      calendar.provider,
+      calendar.payload
+    )
+    for (const cal of calendar.calendars.filter(c => c.enabled && c.sync)) {
+      try {
+        if (!integration.setWebhookUrl || !integration.refreshWebhook) continue
+        const { data } = await db.supabase
+          .from('calendar_webhooks')
+          .select('*')
+          .eq('calendar_id', cal.calendarId)
+          .eq('connected_calendar_id', calendar.id)
+        const calendarwbhk = data?.[0]
+        if (calendarwbhk) {
+          if (
+            new Date(calendarwbhk.expires_at) < add(new Date(), { days: 1 })
+          ) {
+            const result = await integration.refreshWebhook(
+              calendarwbhk.channel_id,
+              calendarwbhk.resource_id,
+              WEBHOOK_URL,
+              cal.calendarId
+            )
+            const { calendarId, channelId, expiration, resourceId } = result
+            const { error: updateError } = await db.supabase
+              .from('calendar_webhooks')
+              .update({
+                channel_id: channelId,
+                resource_id: resourceId,
+                calendar_id: calendarId,
+                expires_at: new Date(Number(expiration)).toISOString(),
+              })
+              .eq('id', calendarwbhk.id)
+
+            if (updateError) {
+              console.error(updateError)
+            }
+            continue
+          }
+          continue
+        }
+
+        const result = await integration.setWebhookUrl(
+          WEBHOOK_URL,
+          cal.calendarId
+        )
+        const { calendarId, channelId, expiration, resourceId } = result
+        const { error: updateError } = await db.supabase
+          .from('calendar_webhooks')
+          .insert({
+            channel_id: channelId,
+            resource_id: resourceId,
+            calendar_id: calendarId,
+            connected_calendar_id: calendar.id,
+            expires_at: new Date(Number(expiration)).toISOString(),
+          })
+        if (updateError) {
+          console.error(updateError)
+        }
+      } catch (e) {
+        console.error('Error refreshing webhook:', e)
+      }
+    }
+  }
+}
+
+const handleWebhookEvent = async (
+  channelId: string,
+  resourceId: string
+): Promise<boolean> => {
+  console.trace(
+    `Received webhook event for channel: ${channelId}, resource: ${resourceId}`
+  )
+  const { data } = await db.supabase
+    .from('calendar_webhooks')
+    .select(
+      `
+      *,
+      connected_calendar: connected_calendars!inner(*)
+      `
+    )
+    .eq('channel_id', channelId)
+    .eq('resource_id', resourceId)
+    .single()
+  if (!data) {
+    throw new Error(
+      `No webhook found for channel: ${channelId}, resource: ${resourceId}`
+    )
+  }
+  const calendar: ConnectedCalendar = data?.connected_calendar
+  if (!calendar) return false
+  let lower_limit = new Date(calendar?.updated || calendar?.created)
+  const upper_limit = add(new Date(), {
+    years: 1,
+  })
+
+  if (lower_limit < add(upper_limit, { years: -1.5 })) {
+    lower_limit = add(upper_limit, { years: -1 })
+  }
+
+  const integration = getConnectedCalendarIntegration(
+    calendar.account_address,
+    calendar.email,
+    calendar.provider,
+    calendar.payload
+  )
+
+  let calendar_availabilities =
+    (await integration.listEvents?.(
+      data.calendar_id,
+      lower_limit,
+      upper_limit
+    )) || []
+  const uniqueRecurringEventId = new Set<string>()
+  calendar_availabilities = calendar_availabilities
+    .sort((a, b) => {
+      // Group by recurringEventId first
+      const aKey = a.id || ''
+      const bKey = b.id || ''
+
+      if (aKey !== bKey) return aKey.localeCompare(bKey)
+
+      // Within same group, sort by sequence (highest first)
+      return (b.sequence || 0) - (a.sequence || 0)
+    })
+    .filter(event => {
+      if (!event.recurringEventId) return true
+    })
+  const recentlyUpdated = calendar_availabilities.filter(event => {
+    const now = new Date()
+    // We can't update recently updated meeting to prevent infinite syncing when we update or create meetings
+    if (event.extendedProperties?.private?.lastUpdatedAt) {
+      const eventLastUpdatedAt = new Date(
+        event.extendedProperties?.private?.lastUpdatedAt
+      )
+      if (
+        eventLastUpdatedAt >
+        sub(now, {
+          seconds: 30,
+        })
+      ) {
+        return false
+      }
+    }
+    const recordChangeDate = event.updated || event.created
+    if (!recordChangeDate) return
+    const eventDate = new Date(recordChangeDate)
+
+    return eventDate > add(now, { minutes: -2 })
+  })
+  if (recentlyUpdated.length === 0) {
+    console.error('No recently updated events found')
+    return false
+  }
+  const actions = await Promise.all(
+    recentlyUpdated.map(event =>
+      handleSyncEvent(event, calendar, data.calendar_id)
+    )
+  )
+  return actions.length > 0
+}
+const handleSyncEvent = async (
+  event: calendar_v3.Schema$Event,
+  calendar: ConnectedCalendar,
+  calendarId: string
+) => {
+  try {
+    // eslint-disable-next-line no-restricted-syntax
+    console.log(event)
+    if (!event.id) return
+    const meetingId = getBaseEventId(event.id)
+    if (!meetingId) {
+      console.warn(`Skipping event ${event.id} due to missing  meetingId`)
+      return
+    }
+    if (!event.start?.dateTime || !event.end?.dateTime) return
+    const meeting = await updateMeetingServer(
+      meetingId,
+      calendar.account_address,
+      calendar.email,
+      new Date(event.start?.dateTime),
+      new Date(event.end?.dateTime),
+      event.attendees || [],
+      extractMeetingDescription(event.description || '') || '',
+      event.location || '',
+      event.summary || ''
+    )
+
+    return meeting
+  } catch (e) {
+    console.error(e)
+    if (e instanceof MeetingDetailsModificationDenied) {
+      // update only the rsvp on other calendars
+      return await handleCalendarRsvps(event, calendar, calendarId)
+    } else {
+      throw e
+    }
+  }
+}
+const handleCalendarRsvps = async (
+  event: calendar_v3.Schema$Event,
+  calendar: ConnectedCalendar,
+  calendarId: string
+) => {
+  if (!event.id) return
+  const meetingId = getBaseEventId(event.id)
+  const existingMeeting = await getConferenceMeetingFromDB(meetingId)
+  const slotIds = existingMeeting.slots
+  const existingSlot = await getSlotsByIds(slotIds)
+  const otherMeetingAddress = existingSlot
+    .map(slot => slot.account_address.toLowerCase())
+    .filter(address => address !== calendar.account_address)
+  const actorAccount = await getAccountFromDB(calendar.account_address)
+  if (!actorAccount) return
+  const actor = event.attendees?.find(attendee => attendee.self)
+  const actingParticipant = existingSlot?.find(
+    user => user.account_address === calendar.account_address
+  )
+  if (!actingParticipant || !actor || !actor?.responseStatus) {
+    return
+  }
+  // Update RSVP status on other participants' calendars
+  for (const address of otherMeetingAddress) {
+    try {
+      const calendars = await getConnectedCalendars(address, {
+        syncOnly: true,
+      })
+
+      for (const calendar of calendars) {
+        const integration = getConnectedCalendarIntegration(
+          calendar.account_address,
+          calendar.email,
+          calendar.provider,
+          calendar.payload
+        )
+
+        if (integration.updateEventRSVP && actor?.responseStatus) {
+          const actorEmail = noNoReplyEmailForAccount(
+            (actorAccount.preferences.name || actorAccount.address)!
+          )
+
+          for (const cal of calendar.calendars) {
+            try {
+              await integration.updateEventRSVP(
+                meetingId,
+                actorEmail,
+                actor.responseStatus,
+                cal.calendarId
+              )
+              // Add delay to respect rate limits
+              await new Promise(resolve => setTimeout(resolve, 2000))
+            } catch (error: unknown) {
+              console.error('Error updating RSVP status:', error)
+              // If rate limited, wait longer before continuing
+              if (error instanceof GaxiosError) {
+                const isRateLimitError =
+                  error?.message?.includes('Rate Limit') ||
+                  error?.response?.status === 403
+
+                if (isRateLimitError) {
+                  await new Promise(resolve => setTimeout(resolve, 10000))
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+  // Update the acting participant's RSVP status in the database
+  const integration = getConnectedCalendarIntegration(
+    calendar.account_address,
+    calendar.email,
+    calendar.provider,
+    calendar.payload
+  )
+  integration.updateEventExtendedProperties &&
+    integration.updateEventExtendedProperties(meetingId, calendarId)
+}
+const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
+  if (isProAccount(account)) {
+    const domain = account.subscriptions?.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )?.domain
+    if (domain) {
+      return domain
+    }
+  }
+  return `address/${
+    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+  }`
+}
+
+const getAccountCalendarUrl = (
+  account: Account,
+  ellipsize?: boolean
+): string => {
+  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+}
+
+const getOwnerPublicUrlServer = async (
+  ownerAccountAddress: string
+): Promise<string> => {
+  try {
+    const ownerAccount = await getAccountFromDB(ownerAccountAddress)
+    return getAccountCalendarUrl(ownerAccount)
+  } catch (error) {
+    // Fallback if account not found
+    return `${appUrl}/address/${ownerAccountAddress}`
+  }
+}
+
 export {
+  acceptContactInvite,
   addOrUpdateConnectedCalendar,
+  addUserToGroup,
   changeGroupRole,
+  checkContactExists,
   connectedCalendarExists,
+  contactInviteByEmailExists,
+  createCryptoTransaction,
+  createMeetingType,
   createTgConnection,
   deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
+  deleteMeetingType,
   deleteTgConnection,
   editGroup,
+  findAccountByIdentifier,
+  findAccountsByText,
   getAccountFromDB,
+  getAccountFromDBPublic,
   getAccountNonce,
   getAccountNotificationSubscriptionEmail,
   getAccountNotificationSubscriptions,
@@ -2988,6 +4899,12 @@ export {
   getConferenceDataBySlotId,
   getConferenceMeetingFromDB,
   getConnectedCalendars,
+  getContactById,
+  getContactInviteById,
+  getContactInvites,
+  getContactInvitesCount,
+  getContactLean,
+  getContacts,
   getDiscordAccounts,
   getExistingAccountsFromDB,
   getGateCondition,
@@ -3001,8 +4918,16 @@ export {
   getGroupUsers,
   getGroupUsersInternal,
   getMeetingFromDB,
+  getMeetingSessionsByTxHash,
+  getMeetingTypeFromDB,
+  getMeetingTypes,
+  getMeetingTypesForAvailabilityBlock,
   getNewestCoupon,
   getOfficeEventMappingId,
+  getOrCreateContactInvite,
+  getOwnerPublicUrlServer,
+  getPaidSessionsByMeetingType,
+  getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
   getSlotsForDashboard,
@@ -3011,16 +4936,21 @@ export {
   getUserGroups,
   handleGuestCancel,
   handleMeetingCancelSync,
+  handleWebhookEvent,
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
   isGroupAdmin,
-  isSlotFree,
+  isSlotAvailable as isSlotFree,
+  isUserContact,
   leaveGroup,
   manageGroupInvite,
   publicGroupJoin,
+  registerMeetingSession,
+  rejectContactInvite,
   rejectGroupInvite,
   removeConnectedCalendar,
+  removeContact,
   removeMember,
   saveConferenceMeetingToDB,
   saveEmailToDB,
@@ -3028,11 +4958,16 @@ export {
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   subscribeWithCoupon,
+  syncWebhooks,
   updateAccountFromInvite,
   updateAccountPreferences,
   updateAllRecurringSlots,
+  updateAvailabilityBlockMeetingTypes,
+  updateContactInviteCooldown,
   updateCustomSubscriptionDomain,
   updateMeeting,
+  updateMeetingType,
+  updatePreferenceAvatar,
   updateRecurringSlots,
   upsertGateCondition,
   workMeetingTypeGates,

@@ -27,10 +27,12 @@ export const colors = {
     200: '#CBD2D9',
     300: '#9AA5B1',
     400: '#7B8794',
+    450: '#2F3847',
     500: '#616E7C',
     600: '#52606D',
     700: '#3E4C59',
     800: '#323F4B',
+    825: '#1F2933',
     850: '#181F24',
     900: '#131A20',
   },
@@ -51,6 +53,17 @@ export const colors = {
   },
   yellow: {
     300: '#FFC700',
+  },
+  red: {
+    500: '#FF0000',
+    600: '#EB001B',
+  },
+  orange: {
+    400: '#FF8A65',
+  },
+  dark: {
+    900: '#141A1F',
+    800: '#191D27',
   },
 }
 
@@ -98,6 +111,5 @@ const newTheme = {
 
 // declare a variable for our theme and pass our overrides in the extendTheme method from chakra
 const customTheme = extendTheme(newTheme)
-
 // export our theme
 export default customTheme

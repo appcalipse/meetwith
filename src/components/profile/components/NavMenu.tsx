@@ -8,6 +8,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { isProduction } from '@utils/constants'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo } from 'react'
 import { IconType } from 'react-icons'
@@ -18,7 +19,6 @@ import {
   FaCalendarPlus,
   FaCalendarWeek,
   FaCog,
-  FaDoorClosed,
   FaSignOutAlt,
 } from 'react-icons/fa'
 import { FaUserGroup } from 'react-icons/fa6'
@@ -26,6 +26,7 @@ import { FaUserGroup } from 'react-icons/fa6'
 import DashboardOnboardingGauge from '@/components/onboarding/DashboardOnboardingGauge'
 import ActionToast from '@/components/toasts/ActionToast'
 import { AccountContext } from '@/providers/AccountProvider'
+import { ContactStateContext } from '@/providers/ContactInvitesProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { EditMode } from '@/types/Dashboard'
 import { logEvent } from '@/utils/analytics'
@@ -56,6 +57,7 @@ export const NavMenu: React.FC<{
   const router = useRouter()
   const toast = useToast()
   const [noOfInvitedGroups, setNoOfInvitedGroups] = React.useState<number>(0)
+  const { requestCount } = useContext(ContactStateContext)
 
   const { calendarResult } = router.query
   const menuBg = useColorModeValue('white', 'neutral.900')
@@ -68,8 +70,19 @@ export const NavMenu: React.FC<{
         mode: EditMode.GROUPS,
         badge: noOfInvitedGroups,
       },
+      // Hide "My Contacts" in production
+      ...(!isProduction
+        ? [
+            {
+              name: 'My Contacts',
+              icon: FaUserGroup,
+              mode: EditMode.CONTACTS,
+              badge: requestCount,
+            },
+          ]
+        : []),
       {
-        name: 'Meeting Settings',
+        name: 'Session Settings',
         icon: FaCalendarWeek,
         mode: EditMode.MEETING_SETTINGS,
       },
@@ -95,7 +108,7 @@ export const NavMenu: React.FC<{
         mode: EditMode.SIGNOUT,
       },
     ],
-    [noOfInvitedGroups]
+    [noOfInvitedGroups, requestCount]
   )
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
@@ -201,7 +214,7 @@ export const NavMenu: React.FC<{
 
   if (!currentAccount) return null
 
-  const accountUrl = getAccountCalendarUrl(currentAccount!, false)
+  const accountUrl = getAccountCalendarUrl(currentAccount, false)
 
   const menuClicked = async (mode: EditMode) => {
     logEvent('Selected menu item on dashboard', { mode })

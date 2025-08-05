@@ -2,26 +2,30 @@ import { createContext, FC, ReactNode, useCallback, useState } from 'react'
 import { MaybePromise } from 'viem/dist/types/types/utils'
 
 import { Account } from '@/types/Account'
-import { listConnectedCalendars } from '@/utils/api_helper'
+import { AvailabilityBlock } from '@/types/availability'
+import {
+  getAvailabilityBlocks,
+  listConnectedCalendars,
+} from '@/utils/api_helper'
 import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 
 interface IOnboardingContext {
   accountDetailsComplete: () => MaybePromise<boolean>
   connectedCalendarsComplete: () => MaybePromise<boolean>
-  availabilitiesComplete: () => MaybePromise<boolean>
-  completeSteps: () => MaybePromise<number>
-  onboardingComplete: () => MaybePromise<boolean>
+  availabilitiesComplete: () => Promise<boolean>
+  completeSteps: () => Promise<number>
+  onboardingComplete: () => Promise<boolean>
   isLoaded: boolean
   reload: () => void
 }
 
 const DEFAULT_STATE: IOnboardingContext = {
   accountDetailsComplete: () => false,
-  availabilitiesComplete: () => false,
+  availabilitiesComplete: () => Promise.resolve(false),
   connectedCalendarsComplete: () => false,
-  completeSteps: () => 0,
-  onboardingComplete: () => false,
+  completeSteps: () => Promise.resolve(0),
+  onboardingComplete: () => Promise.resolve(false),
   isLoaded: false,
   reload: () => void 0,
 }
@@ -52,25 +56,36 @@ export const OnboardingProvider: FC<OnboardingProviderProps> = ({
     return !!currentAccount?.preferences?.name
   }, [currentAccount, reloadTrigger])
 
-  const availabilitiesComplete = useCallback(() => {
-    const anyTimes =
-      currentAccount?.preferences?.availabilities?.some(
-        dayAvailability => dayAvailability?.ranges?.length
-      ) || false
-    return anyTimes && !!currentAccount?.preferences?.timezone
+  const availabilitiesComplete = useCallback(async () => {
+    if (!currentAccount?.address) return false
+
+    try {
+      const blocks = await getAvailabilityBlocks()
+      const hasAvailabilityBlocks = blocks.some((block: AvailabilityBlock) =>
+        block.weekly_availability?.some(day => day.ranges?.length > 0)
+      )
+
+      return hasAvailabilityBlocks && !!currentAccount?.preferences?.timezone
+    } catch (error) {
+      console.error('Error checking availability blocks:', error)
+      return false
+    }
   }, [currentAccount, reloadTrigger])
 
   const connectedCalendarsComplete = useCallback(async () => {
     const request = await listConnectedCalendars(false)
 
-    return !!request?.length
+    return (
+      !!request?.length &&
+      request.some(val => val.grantedPermissions === val.expectedPermissions)
+    )
   }, [currentAccount, reloadTrigger])
 
   const completeSteps = useCallback(async () => {
     let i = 0
 
     if (accountDetailsComplete()) i++
-    if (availabilitiesComplete()) i++
+    if (await availabilitiesComplete()) i++
     if (await connectedCalendarsComplete()) i++
 
     return i
