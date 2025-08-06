@@ -119,11 +119,11 @@ export const NavMenu: React.FC<{
             icon: FaWallet,
             mode: EditMode.WALLET,
           },
-          {
-            text: 'Clientboard',
-            icon: FaClipboard,
-            mode: EditMode.CLIENTBOARD,
-          },
+          // {
+          //   text: 'Clientboard',
+          //   icon: FaClipboard,
+          //   mode: EditMode.CLIENTBOARD,
+          // },
         ],
       },
     ],

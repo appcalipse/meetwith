@@ -1,19 +1,26 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 
-import { FormattedTransaction, WalletTransaction } from '@/types/Transactions'
+import { Transaction } from '@/types/Transactions'
 import { getWalletTransactions } from '@/utils/api_helper'
 
 import useAccountContext from './useAccountContext'
 
+interface WalletTransactionsResponse {
+  transactions: Transaction[]
+  totalCount: number
+}
+
 export const useWalletTransactions = (
   tokenAddress?: string,
-  chainId?: number
+  chainId?: number,
+  limit = 5,
+  offset = 0
 ) => {
   const currentAccount = useAccountContext()
 
   const {
-    data: transactions,
+    data: response,
     isLoading,
     error,
   } = useQuery({
@@ -22,45 +29,60 @@ export const useWalletTransactions = (
       currentAccount?.address,
       tokenAddress,
       chainId,
+      limit,
+      offset,
     ],
-    queryFn: async () => {
-      if (!currentAccount?.address) return []
+    queryFn: async (): Promise<WalletTransactionsResponse> => {
+      if (!currentAccount?.address) return { transactions: [], totalCount: 0 }
 
       return getWalletTransactions(
         currentAccount.address,
         tokenAddress,
-        chainId
-      )
+        chainId,
+        limit,
+        offset
+      ) as Promise<WalletTransactionsResponse>
     },
     enabled: !!currentAccount?.address,
-    staleTime: 30000, // 30 seconds
-    cacheTime: 300000, // 5 minutes
+    staleTime: 30000,
+    cacheTime: 300000,
   })
 
-  const formatTransaction = (tx: WalletTransaction): FormattedTransaction => {
+  const transactions = response?.transactions || []
+  const totalCount = response?.totalCount || 0
+
+  // Convert Transaction to display format
+  const formatTransactionForDisplay = (tx: Transaction) => {
     const isCredit = tx.direction === 'credit'
     const amount = tx.fiat_equivalent || tx.amount
     const formattedAmount = `$${amount.toLocaleString()}`
 
-    // Determine user and action based on transaction type
-    let user = 'Unknown'
-    let action = isCredit ? 'sent you' : 'You sent'
+    // Get meeting session info
+    const meetingSession = tx.meeting_sessions?.[0]
+    const guestEmail = meetingSession?.guest_email
+    const guestName = guestEmail?.split('@')[0] || 'Guest'
 
-    if (tx.guest_name) {
-      // Meeting-related transaction
-      user = tx.guest_name
-      action = isCredit ? 'paid for' : 'You paid for'
+    // Determine user and action based on transaction type
+    let user = ''
+    let action = ''
+
+    if (isCredit) {
+      if (meetingSession) {
+        user = guestName
+        action = `paid ${formattedAmount}`
+      } else {
+        user = 'You'
+        action = `received ${formattedAmount}`
+      }
     } else {
-      // Pure crypto transfer
-      user = isCredit ? 'Wallet' : 'Wallet'
-      action = isCredit ? 'received' : 'You sent'
+      user = 'You'
+      action = `sent ${formattedAmount}`
     }
 
-    const confirmedDate = new Date(tx.confirmed_at)
+    const confirmedDate = new Date(tx.confirmed_at || new Date())
     const date = format(confirmedDate, 'd MMM')
     const time = format(confirmedDate, 'HH:mm z')
 
-    // Map status
     let status: 'Successful' | 'Failed' | 'Pending' | 'Cancelled'
     switch (tx.status) {
       case 'completed':
@@ -82,32 +104,26 @@ export const useWalletTransactions = (
     return {
       id: tx.id,
       user,
-      userImage: '/assets/wallet-add.png', // Default image
+      userImage: '/assets/wallet-add.png',
       action,
       amount: formattedAmount,
       status,
       date,
       time,
-      fullName: tx.guest_name,
-      email: tx.guest_email,
-      plan: tx.plan_title,
-      sessions: '1 session', // Default, could be enhanced
-      price: formattedAmount,
-      paymentMethod: 'Crypto Payment',
-      sessionLocation: 'Virtual Meeting',
-      transactionHash: tx.transaction_hash,
+      originalTransaction: tx,
     }
   }
 
   const formattedTransactions =
     transactions && Array.isArray(transactions)
-      ? transactions.map(formatTransaction)
+      ? transactions.map(formatTransactionForDisplay)
       : []
 
   return {
     transactions: formattedTransactions,
-    rawTransactions: transactions || [],
+    rawTransactions: transactions,
     isLoading,
     error: error instanceof Error ? error.message : null,
+    totalCount,
   }
 }
