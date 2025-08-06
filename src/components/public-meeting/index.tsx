@@ -70,7 +70,7 @@ interface IContext {
   setNotificationSubs: React.Dispatch<React.SetStateAction<number>>
   isContact: boolean
   setIsContact: React.Dispatch<React.SetStateAction<boolean>>
-  timezone?: Option<string>
+  timezone: Option<string>
   setTimezone: React.Dispatch<React.SetStateAction<Option<string>>>
 }
 const baseState: IContext = {

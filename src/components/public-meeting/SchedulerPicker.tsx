@@ -287,8 +287,8 @@ const SchedulerPicker = () => {
     )
 
     return (
-      (isFutureInTimezone(date, timezone.value) ||
-        isTodayInTimezone(date, timezone.value)) &&
+      (isFutureInTimezone(date, timezone?.value) ||
+        isTodayInTimezone(date, timezone?.value)) &&
       (intervals?.length === 0 ||
         slots.some(
           slot =>
