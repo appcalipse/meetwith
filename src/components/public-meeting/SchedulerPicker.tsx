@@ -360,10 +360,7 @@ const SchedulerPicker = () => {
     if (!selectedType) return false
     setIsScheduling(true)
 
-    const start = zonedTimeToUtc(
-      startTime,
-      timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone
-    )
+    const start = new Date(startTime)
     const end = addMinutes(new Date(start), selectedType.duration_minutes)
 
     if (scheduleType !== SchedulingType.GUEST && !name) {
