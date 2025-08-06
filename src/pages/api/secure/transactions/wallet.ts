@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { getWalletTransactionsFromDB } from '@/utils/database'
+import { getWalletTransactions } from '@/utils/database'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -9,16 +9,24 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    const { wallet_address, token_address, chain_id } = req.body
+    const {
+      wallet_address,
+      token_address,
+      chain_id,
+      limit = 50,
+      offset = 0,
+    } = req.body
 
     if (!wallet_address) {
       return res.status(400).json({ error: 'Wallet address is required' })
     }
 
-    const transactions = await getWalletTransactionsFromDB(
+    const transactions = await getWalletTransactions(
       wallet_address,
       token_address,
-      chain_id
+      chain_id,
+      limit,
+      offset
     )
 
     return res.status(200).json(transactions)

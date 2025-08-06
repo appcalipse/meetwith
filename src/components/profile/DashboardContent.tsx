@@ -6,6 +6,7 @@ import React, { useContext } from 'react'
 import RedirectHandler from '@/components/redirect'
 import { AccountContext } from '@/providers/AccountProvider'
 import ContactStateProvider from '@/providers/ContactInvitesProvider'
+import { WalletProvider } from '@/providers/WalletProvider'
 
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
@@ -45,7 +46,11 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig currentAccount={currentAccount!} />
       case EditMode.WALLET:
-        return <Wallet currentAccount={currentAccount!} />
+        return (
+          <WalletProvider>
+            <Wallet currentAccount={currentAccount!} />
+          </WalletProvider>
+        )
       case EditMode.CLIENTBOARD:
         return <Clientboard currentAccount={currentAccount!} />
     }

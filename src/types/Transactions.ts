@@ -11,7 +11,7 @@ export interface BaseTransaction {
   direction: PaymentDirection
   amount: number
   initiator_address?: string
-  meeting_type_id: string // [ref: > meeting_type.id, null] //  ensures persistence even if meeting type is only soft deleted
+  meeting_type_id: string | null // [ref: > meeting_type.id, null] //  ensures persistence even if meeting type is only soft deleted
   status?: PaymentStatus
   metadata?: Record<string, string> // e.g., { "iconUri": "...", "sender": "...", ... }
   token_address?: string
@@ -29,12 +29,13 @@ export interface Transaction extends BaseTransaction {
   id: string
   created_at?: Date
   meeting_sessions?: MeetingSession[]
+  meeting_types?: { title: string }[]
 }
 
 export interface BaseMeetingSession {
   transaction_id: string
-  meeting_type_id: string
-  owner_address: string
+  meeting_type_id: string | null
+  owner_address: string | undefined
   guest_email?: string
   guest_address?: string
   session_number: number

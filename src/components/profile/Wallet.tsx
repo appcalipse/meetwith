@@ -15,7 +15,7 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React, { useMemo, useState } from 'react'
+import React from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
 import { GrDocumentTime } from 'react-icons/gr'
@@ -29,66 +29,78 @@ import { TbWallet } from 'react-icons/tb'
 import { TbSettings2 } from 'react-icons/tb'
 
 import { useCryptoBalance } from '@/hooks/useCryptoBalance'
+import { useCryptoBalances } from '@/hooks/useCryptoBalances'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { useWalletTransactions } from '@/hooks/useWalletTransactions'
+import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
-import { FormattedTransaction } from '@/types/Transactions'
+import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
 
+import Pagination from './Pagination'
 import ReceiveFundsModal from './ReceiveFundsModal'
 import SendFundsModal from './SendFundsModal'
+import TransactionDetailsView from './TransactionDetailsView'
 
 interface WalletProps {
   currentAccount: Account
 }
 
-interface CryptoAsset {
-  name: string
-  symbol: string
-  icon: string
-  price: string
-  change: string
-  balance: string
-  usdValue: string
-  // Additional fields for crypto details
-  fullBalance?: string
-  currencyIcon?: string
-  tokenAddress: string
-  chainId: number
-}
-
-interface Currency {
-  name: string
-  code: string
-  flag: string
-}
-
-interface Network {
-  name: string
-  icon: string
-  chainId: number
-}
-
 const Wallet: React.FC<WalletProps> = () => {
-  const [selectedCurrency, setSelectedCurrency] = useState('USD')
-  const [selectedNetwork, setSelectedNetwork] = useState('Celo')
-  const [showBalance, setShowBalance] = useState(true)
-  const [isCurrencyModalOpen, setIsCurrencyModalOpen] = useState(false)
-  const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false)
-  const [showTransactions, setShowTransactions] = useState(false)
-  const [showTransactionDetails, setShowTransactionDetails] = useState(false)
-  const [showCryptoDetails, setShowCryptoDetails] = useState(false)
-  const [selectedTransaction, setSelectedTransaction] =
-    useState<FormattedTransaction | null>(null)
-  const [selectedCrypto, setSelectedCrypto] = useState<CryptoAsset | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isSendModalOpen, setIsSendModalOpen] = useState(false)
-  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false)
+  const {
+    // View states
+    showBalance,
+    setShowBalance,
+    showTransactions,
+    setShowTransactions,
+    showTransactionDetails,
+    setShowTransactionDetails,
+    showCryptoDetails,
+    setShowCryptoDetails,
+
+    // Selection states
+    selectedCurrency,
+    setSelectedCurrency,
+    selectedNetwork,
+    setSelectedNetwork,
+    selectedTransaction,
+    setSelectedTransaction,
+    selectedCrypto,
+    setSelectedCrypto,
+
+    // Modal states
+    isCurrencyModalOpen,
+    setIsCurrencyModalOpen,
+    isNetworkModalOpen,
+    setIsNetworkModalOpen,
+    isSendModalOpen,
+    setIsSendModalOpen,
+    isReceiveModalOpen,
+    setIsReceiveModalOpen,
+
+    // Search and pagination
+    searchQuery,
+    setSearchQuery,
+    currentPage,
+    setCurrentPage,
+    selectedCryptoCurrentPage,
+    setSelectedCryptoCurrentPage,
+  } = useWallet()
+
+  const transactionsPerPage = 5
 
   const { totalBalance, isLoading: balanceLoading } =
     useWalletBalance(selectedCurrency)
 
-  const { transactions, isLoading: transactionsLoading } =
-    useWalletTransactions()
+  const {
+    transactions,
+    isLoading: transactionsLoading,
+    totalCount,
+  } = useWalletTransactions(
+    undefined,
+    undefined,
+    transactionsPerPage,
+    (currentPage - 1) * transactionsPerPage
+  )
 
   // Token-specific data for crypto details view
   const selectedCryptoBalance = useCryptoBalance(
@@ -99,333 +111,33 @@ const Wallet: React.FC<WalletProps> = () => {
   const {
     transactions: selectedCryptoTransactions,
     isLoading: selectedCryptoTransactionsLoading,
+    totalCount: selectedCryptoTotalCount,
   } = useWalletTransactions(
     selectedCrypto?.tokenAddress,
-    selectedCrypto?.chainId
+    selectedCrypto?.chainId,
+    transactionsPerPage,
+    (selectedCryptoCurrentPage - 1) * transactionsPerPage
   )
 
-  const currencies: Currency[] = [
-    { name: 'US Dollar', code: 'USD', flag: '/assets/currencies/usd.png' },
-    { name: 'Euro', code: 'EUR', flag: '/assets/currencies/euro.png' },
-    {
-      name: 'Pounds sterling',
-      code: 'GBP',
-      flag: '/assets/currencies/pounds.png',
-    },
-  ]
+  // Use centralized configurations
+  const currencies = CURRENCIES
+  const networks = NETWORKS
 
-  const networks: Network[] = [
-    { name: 'All networks', icon: '/assets/chains/Default.svg', chainId: 0 },
-    { name: 'Celo', icon: '/assets/chains/Celo.svg', chainId: 42220 },
-    { name: 'Arbitrum', icon: '/assets/chains/Arbitrum.svg', chainId: 42161 },
-  ]
-
-  // Define crypto assets configuration
-  const cryptoConfig = [
-    {
-      name: 'Celo Dollar',
-      symbol: 'cUSD',
-      icon: '/assets/tokens/CUSD.png',
-      price: '1 USD',
-      change: '+0.1%',
-      tokenAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a', // Celo only
-      celoChainId: 42220,
-    },
-    {
-      name: 'US Dollar Coin',
-      symbol: 'USDC',
-      icon: '/assets/tokens/USDC.svg',
-      price: '1 USD',
-      change: '+0.1%',
-      tokenAddress: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', // Celo
-      celoChainId: 42220,
-      arbitrumTokenAddress: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // Arbitrum
-      arbitrumChainId: 42161,
-    },
-    {
-      name: 'Tether',
-      symbol: 'USDT',
-      icon: '/assets/tokens/USDT.svg',
-      price: '1 USD',
-      change: '+0.1%',
-      tokenAddress: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e', // Celo
-      celoChainId: 42220,
-      arbitrumTokenAddress: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', // Arbitrum
-      arbitrumChainId: 42161,
-    },
-  ]
-
-  // Generate crypto assets based on selected network
-  const cryptoAssets = useMemo(() => {
-    const selectedNetworkData = networks.find(n => n.name === selectedNetwork)
-
-    if (selectedNetwork === 'All networks') {
-      // Show all 6 assets (3 cryptos × 2 networks)
-      return [
-        ...cryptoConfig.map(crypto => ({
-          ...crypto,
-          balance: '0 cUSD',
-          usdValue: '$0',
-          fullBalance: '0',
-          currencyIcon: crypto.icon,
-          chainId: crypto.celoChainId,
-          networkName: 'Celo',
-        })),
-        ...cryptoConfig.map(crypto => ({
-          ...crypto,
-          balance: '0 USDC',
-          usdValue: '$0',
-          fullBalance: '0',
-          currencyIcon: crypto.icon,
-          chainId: crypto.arbitrumChainId,
-          networkName: 'Arbitrum',
-        })),
-      ]
-    } else {
-      // Show 3 assets for the selected network
-      const chainId = selectedNetworkData?.chainId || 42220
-      return cryptoConfig.map(crypto => ({
-        ...crypto,
-        balance: '0 ' + crypto.symbol,
-        usdValue: '$0',
-        fullBalance: '0',
-        currencyIcon: crypto.icon,
-        chainId,
-        networkName: selectedNetwork,
-      }))
-    }
-  }, [selectedNetwork])
-
-  // Fetch balances for each crypto asset - call hooks at top level
-  const cusdCeloBalance = useCryptoBalance(
-    '0x765DE816845861e75A25fCA122bb6898B8B1282a',
-    42220
-  )
-  const usdcCeloBalance = useCryptoBalance(
-    '0xcebA9300f2b948710d2653dD7B07f33A8B32118C',
-    42220
-  )
-  const usdtCeloBalance = useCryptoBalance(
-    '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',
-    42220
-  )
-
-  const usdcArbitrumBalance = useCryptoBalance(
-    '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
-    42161
-  )
-  const usdtArbitrumBalance = useCryptoBalance(
-    '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
-    42161
-  )
-
-  // Combine crypto assets with real balances
-  const cryptoAssetsWithBalances = useMemo(() => {
-    const selectedNetworkData = networks.find(n => n.name === selectedNetwork)
-
-    if (selectedNetwork === 'All networks') {
-      // Show Celo tokens
-      const celoAssets = [
-        {
-          ...cryptoConfig[0], // cUSD
-          tokenAddress: cryptoConfig[0].tokenAddress || '',
-          chainId: cryptoConfig[0].celoChainId || 0,
-          balance: cusdCeloBalance.balance
-            ? `${cusdCeloBalance.balance.toLocaleString()} cUSD`
-            : '0 cUSD',
-          usdValue: cusdCeloBalance.balance
-            ? `$${cusdCeloBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: cusdCeloBalance.balance
-            ? cusdCeloBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[0].icon,
-          networkName: 'Celo',
-          isLoading: cusdCeloBalance.isLoading,
-        },
-        {
-          ...cryptoConfig[1], // USDC Celo
-          tokenAddress: cryptoConfig[1].tokenAddress || '',
-          chainId: cryptoConfig[1].celoChainId || 0,
-          balance: usdcCeloBalance.balance
-            ? `${usdcCeloBalance.balance.toLocaleString()} USDC`
-            : '0 USDC',
-          usdValue: usdcCeloBalance.balance
-            ? `$${usdcCeloBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: usdcCeloBalance.balance
-            ? usdcCeloBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[1].icon,
-          networkName: 'Celo',
-          isLoading: usdcCeloBalance.isLoading,
-        },
-        {
-          ...cryptoConfig[2], // USDT Celo
-          tokenAddress: cryptoConfig[2].tokenAddress || '',
-          chainId: cryptoConfig[2].celoChainId || 0,
-          balance: usdtCeloBalance.balance
-            ? `${usdtCeloBalance.balance.toLocaleString()} USDT`
-            : '0 USDT',
-          usdValue: usdtCeloBalance.balance
-            ? `$${usdtCeloBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: usdtCeloBalance.balance
-            ? usdtCeloBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[2].icon,
-          networkName: 'Celo',
-          isLoading: usdtCeloBalance.isLoading,
-        },
-      ]
-      // Show Arbitrum tokens (no cUSD)
-      const arbitrumAssets = [
-        {
-          ...cryptoConfig[1], // USDC Arbitrum
-          tokenAddress: cryptoConfig[1].arbitrumTokenAddress || '',
-          chainId: cryptoConfig[1].arbitrumChainId || 0,
-          balance: usdcArbitrumBalance.balance
-            ? `${usdcArbitrumBalance.balance.toLocaleString()} USDC`
-            : '0 USDC',
-          usdValue: usdcArbitrumBalance.balance
-            ? `$${usdcArbitrumBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: usdcArbitrumBalance.balance
-            ? usdcArbitrumBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[1].icon,
-          networkName: 'Arbitrum',
-          isLoading: usdcArbitrumBalance.isLoading,
-        },
-        {
-          ...cryptoConfig[2], // USDT Arbitrum
-          tokenAddress: cryptoConfig[2].arbitrumTokenAddress || '',
-          chainId: cryptoConfig[2].arbitrumChainId || 0,
-          balance: usdtArbitrumBalance.balance
-            ? `${usdtArbitrumBalance.balance.toLocaleString()} USDT`
-            : '0 USDT',
-          usdValue: usdtArbitrumBalance.balance
-            ? `$${usdtArbitrumBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: usdtArbitrumBalance.balance
-            ? usdtArbitrumBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[2].icon,
-          networkName: 'Arbitrum',
-          isLoading: usdtArbitrumBalance.isLoading,
-        },
-      ]
-      return [...celoAssets, ...arbitrumAssets]
-    } else if (selectedNetwork === 'Celo') {
-      return [
-        {
-          ...cryptoConfig[0], // cUSD
-          tokenAddress: cryptoConfig[0].tokenAddress || '',
-          chainId: cryptoConfig[0].celoChainId || 0,
-          balance: cusdCeloBalance.balance
-            ? `${cusdCeloBalance.balance.toLocaleString()} cUSD`
-            : '0 cUSD',
-          usdValue: cusdCeloBalance.balance
-            ? `$${cusdCeloBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: cusdCeloBalance.balance
-            ? cusdCeloBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[0].icon,
-          networkName: 'Celo',
-          isLoading: cusdCeloBalance.isLoading,
-        },
-        {
-          ...cryptoConfig[1], // USDC Celo
-          tokenAddress: cryptoConfig[1].tokenAddress || '',
-          chainId: cryptoConfig[1].celoChainId || 0,
-          balance: usdcCeloBalance.balance
-            ? `${usdcCeloBalance.balance.toLocaleString()} USDC`
-            : '0 USDC',
-          usdValue: usdcCeloBalance.balance
-            ? `$${usdcCeloBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: usdcCeloBalance.balance
-            ? usdcCeloBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[1].icon,
-          networkName: 'Celo',
-          isLoading: usdcCeloBalance.isLoading,
-        },
-        {
-          ...cryptoConfig[2], // USDT Celo
-          tokenAddress: cryptoConfig[2].tokenAddress || '',
-          chainId: cryptoConfig[2].celoChainId || 0,
-          balance: usdtCeloBalance.balance
-            ? `${usdtCeloBalance.balance.toLocaleString()} USDT`
-            : '0 USDT',
-          usdValue: usdtCeloBalance.balance
-            ? `$${usdtCeloBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: usdtCeloBalance.balance
-            ? usdtCeloBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[2].icon,
-          networkName: 'Celo',
-          isLoading: usdtCeloBalance.isLoading,
-        },
-      ]
-    } else if (selectedNetwork === 'Arbitrum') {
-      return [
-        {
-          ...cryptoConfig[1], // USDC Arbitrum
-          tokenAddress: cryptoConfig[1].arbitrumTokenAddress || '',
-          chainId: cryptoConfig[1].arbitrumChainId || 0,
-          balance: usdcArbitrumBalance.balance
-            ? `${usdcArbitrumBalance.balance.toLocaleString()} USDC`
-            : '0 USDC',
-          usdValue: usdcArbitrumBalance.balance
-            ? `$${usdcArbitrumBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: usdcArbitrumBalance.balance
-            ? usdcArbitrumBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[1].icon,
-          networkName: 'Arbitrum',
-          isLoading: usdcArbitrumBalance.isLoading,
-        },
-        {
-          ...cryptoConfig[2], // USDT Arbitrum
-          tokenAddress: cryptoConfig[2].arbitrumTokenAddress || '',
-          chainId: cryptoConfig[2].arbitrumChainId || 0,
-          balance: usdtArbitrumBalance.balance
-            ? `${usdtArbitrumBalance.balance.toLocaleString()} USDT`
-            : '0 USDT',
-          usdValue: usdtArbitrumBalance.balance
-            ? `$${usdtArbitrumBalance.balance.toLocaleString()}`
-            : '$0',
-          fullBalance: usdtArbitrumBalance.balance
-            ? usdtArbitrumBalance.balance.toString()
-            : '0',
-          currencyIcon: cryptoConfig[2].icon,
-          networkName: 'Arbitrum',
-          isLoading: usdtArbitrumBalance.isLoading,
-        },
-      ]
-    }
-    return []
-  }, [
-    selectedNetwork,
-    cusdCeloBalance,
-    usdcCeloBalance,
-    usdtCeloBalance,
-    usdcArbitrumBalance,
-    usdtArbitrumBalance,
-  ])
+  // Use the centralized crypto balances hook
+  const { cryptoAssetsWithBalances } = useCryptoBalances({ selectedNetwork })
 
   const filteredTransactions = transactions.filter(tx => {
     if (!searchQuery) return true
     const searchLower = searchQuery.toLowerCase()
+    const meetingSession = tx.originalTransaction.meeting_sessions?.[0]
+    const guestEmail = meetingSession?.guest_email
+    const guestName = guestEmail?.split('@')[0] || 'Guest'
+
     return (
       tx.user.toLowerCase().includes(searchLower) ||
-      tx.fullName?.toLowerCase().includes(searchLower) ||
-      tx.email?.toLowerCase().includes(searchLower) ||
-      tx.plan?.toLowerCase().includes(searchLower)
+      guestName.toLowerCase().includes(searchLower) ||
+      guestEmail?.toLowerCase().includes(searchLower) ||
+      'Meeting Session'.toLowerCase().includes(searchLower)
     )
   })
 
@@ -460,6 +172,11 @@ const Wallet: React.FC<WalletProps> = () => {
     </VStack>
   )
 
+  // Reset pagination when selected crypto changes
+  React.useEffect(() => {
+    setSelectedCryptoCurrentPage(1)
+  }, [selectedCrypto, setSelectedCryptoCurrentPage])
+
   return (
     <Box maxW="685px" ml="70px" overflowY="auto" height="100%" pb={8}>
       {/* Header */}
@@ -480,230 +197,10 @@ const Wallet: React.FC<WalletProps> = () => {
 
       {/* Transaction Details Screen - Full Container */}
       {showTransactionDetails && selectedTransaction ? (
-        <Box
-          bg="neutral.900"
-          borderRadius="12px"
-          p={12}
-          border="1px solid"
-          borderColor="neutral.825"
-        >
-          {/* Header with Back Link and Title */}
-          <HStack gap={6} align="center" mb={8}>
-            <HStack
-              spacing={2}
-              cursor="pointer"
-              onClick={() => setShowTransactionDetails(false)}
-              color="primary.400"
-              _hover={{ color: 'primary.300' }}
-            >
-              <Icon as={FiArrowLeft} fontSize="20px" />
-              <Text fontSize="16px" fontWeight="600">
-                Back
-              </Text>
-            </HStack>
-
-            <Text fontSize="24px" fontWeight="700" color="neutral.0">
-              Transaction Details
-            </Text>
-          </HStack>
-
-          {/* Transaction Information - No inner box */}
-          <VStack
-            spacing={0}
-            divider={<Box h="1px" bg="neutral.600" width="100%" />}
-          >
-            {/* Full Name */}
-            <Flex justify="space-between" align="start" py={6} width="100%">
-              <Text
-                color="neutral.300"
-                fontSize="16px"
-                fontWeight="700"
-                width="50%"
-              >
-                Full Name
-              </Text>
-              <Text
-                color="white"
-                fontSize="16px"
-                fontWeight="500"
-                textAlign="left"
-                width="50%"
-              >
-                {selectedTransaction.fullName}
-              </Text>
-            </Flex>
-
-            {/* Email Address */}
-            <Flex justify="space-between" align="start" py={6} width="100%">
-              <Text
-                color="neutral.300"
-                fontSize="16px"
-                fontWeight="700"
-                width="50%"
-              >
-                Email address
-              </Text>
-              <Text
-                color="white"
-                fontSize="16px"
-                fontWeight="500"
-                textAlign="left"
-                width="50%"
-              >
-                {selectedTransaction.email}
-              </Text>
-            </Flex>
-
-            {/* Plan */}
-            <Flex justify="space-between" align="start" py={6} width="100%">
-              <Text
-                color="neutral.300"
-                fontSize="16px"
-                fontWeight="700"
-                width="50%"
-              >
-                Plan
-              </Text>
-              <Text
-                color="white"
-                fontSize="16px"
-                fontWeight="500"
-                textAlign="left"
-                width="50%"
-              >
-                {selectedTransaction.plan}
-              </Text>
-            </Flex>
-
-            {/* Number of Sessions */}
-            <Flex justify="space-between" align="start" py={6} width="100%">
-              <Text
-                color="neutral.300"
-                fontSize="16px"
-                fontWeight="700"
-                width="50%"
-              >
-                Number of Sessions
-              </Text>
-              <Text
-                color="white"
-                fontSize="16px"
-                fontWeight="500"
-                textAlign="left"
-                width="50%"
-              >
-                {selectedTransaction.sessions}
-              </Text>
-            </Flex>
-
-            {/* Price */}
-            <Flex justify="space-between" align="start" py={6} width="100%">
-              <Text
-                color="neutral.300"
-                fontSize="16px"
-                fontWeight="700"
-                width="50%"
-              >
-                Price
-              </Text>
-              <Text
-                color="white"
-                fontSize="16px"
-                fontWeight="500"
-                textAlign="left"
-                width="50%"
-              >
-                {selectedTransaction.price}
-              </Text>
-            </Flex>
-
-            {/* Payment Method */}
-            <Flex justify="space-between" align="start" py={6} width="100%">
-              <Text
-                color="neutral.300"
-                fontSize="16px"
-                fontWeight="700"
-                width="50%"
-              >
-                Payment Method
-              </Text>
-              <Text
-                color="white"
-                fontSize="16px"
-                fontWeight="500"
-                textAlign="left"
-                width="50%"
-              >
-                {selectedTransaction.paymentMethod}
-              </Text>
-            </Flex>
-
-            {/* First Session Location */}
-            <Flex justify="space-between" align="start" py={6} width="100%">
-              <Text
-                color="neutral.300"
-                fontSize="16px"
-                fontWeight="700"
-                width="50%"
-              >
-                First Session Location
-              </Text>
-              <Text
-                color="primary.200"
-                fontSize="16px"
-                fontWeight="500"
-                textAlign="left"
-                width="50%"
-                textDecoration="underline"
-                cursor="pointer"
-              >
-                {selectedTransaction.sessionLocation}
-              </Text>
-            </Flex>
-
-            {/* Transaction Status */}
-            <Flex justify="space-between" align="start" py={6} width="100%">
-              <Text
-                color="neutral.300"
-                fontSize="16px"
-                fontWeight="700"
-                width="50%"
-              >
-                Transaction status
-              </Text>
-              <Text
-                color="yellow.400"
-                fontSize="16px"
-                fontWeight="500"
-                textAlign="left"
-                width="50%"
-              >
-                Pending
-              </Text>
-            </Flex>
-
-            {/* Transaction Hash */}
-            <Flex justify="space-between" align="start" py={6} width="100%">
-              <Text
-                color="neutral.300"
-                fontSize="16px"
-                fontWeight="700"
-                width="50%"
-              >
-                Transaction Hash
-              </Text>
-              <Text
-                color="white"
-                fontSize="16px"
-                fontWeight="500"
-                textAlign="left"
-                width="50%"
-              >
-                {selectedTransaction.transactionHash}
-              </Text>
-            </Flex>
-          </VStack>
-        </Box>
+        <TransactionDetailsView
+          transaction={selectedTransaction}
+          onBack={() => setShowTransactionDetails(false)}
+        />
       ) : showCryptoDetails && selectedCrypto ? (
         <Box
           bg="neutral.900"
@@ -852,111 +349,144 @@ const Wallet: React.FC<WalletProps> = () => {
               selectedCryptoTransactions.filter(tx => {
                 if (!searchQuery) return true
                 const searchLower = searchQuery.toLowerCase()
+                const meetingSession =
+                  tx.originalTransaction.meeting_sessions?.[0]
+                const guestEmail = meetingSession?.guest_email
+                const guestName = guestEmail?.split('@')[0] || 'Guest'
+
                 return (
                   tx.user.toLowerCase().includes(searchLower) ||
-                  tx.fullName?.toLowerCase().includes(searchLower) ||
-                  tx.email?.toLowerCase().includes(searchLower) ||
-                  tx.plan?.toLowerCase().includes(searchLower)
+                  guestName.toLowerCase().includes(searchLower) ||
+                  guestEmail?.toLowerCase().includes(searchLower) ||
+                  'Meeting Session'.toLowerCase().includes(searchLower)
                 )
               })
             return (
-              <VStack spacing={3}>
-                {selectedCryptoTransactionsLoading ? (
-                  <Box textAlign="center" py={8}>
-                    <Spinner color="neutral.400" size="md" />
-                    <Text color="neutral.400" fontSize="16px" mt={2}>
-                      Loading transactions...
-                    </Text>
-                  </Box>
-                ) : filteredCryptoTransactions.length === 0 ? (
-                  <Box textAlign="center" py={8}>
-                    <Text color="neutral.400" fontSize="16px">
-                      {searchQuery
-                        ? 'No transactions found'
-                        : 'No transactions yet'}
-                    </Text>
-                  </Box>
-                ) : (
-                  filteredCryptoTransactions.map(transaction => (
-                    <Box
-                      key={transaction.id}
-                      bg="neutral.825"
-                      borderRadius="16px"
-                      p={4}
-                      width="100%"
-                      cursor="pointer"
-                      _hover={{ bg: 'neutral.800' }}
-                      transition="all 0.2s"
-                      onClick={() => {
-                        setSelectedTransaction(transaction)
-                        setShowTransactionDetails(true)
-                      }}
-                    >
-                      <Flex justify="flex-start" gap={5} align="center">
-                        <HStack spacing={3}>
-                          {/* User Avatar */}
-                          <Box
-                            w="40px"
-                            h="40px"
-                            borderRadius="full"
-                            overflow="hidden"
-                          >
-                            <Image
-                              src={transaction.userImage}
-                              alt={transaction.user}
-                              w="40px"
-                              h="40px"
-                              objectFit="cover"
-                            />
-                          </Box>
+              <>
+                <Text
+                  fontSize="24px"
+                  fontWeight="700"
+                  color="neutral.0"
+                  mb={4}
+                  textAlign="left"
+                >
+                  Transaction History
+                </Text>
+                <VStack spacing={3}>
+                  {/* Transaction History Title */}
 
-                          {/* Transaction Details */}
-                          <Box>
+                  {selectedCryptoTransactionsLoading ? (
+                    <Box textAlign="center" py={8}>
+                      <Spinner color="neutral.400" size="md" />
+                      <Text color="neutral.400" fontSize="16px" mt={2}>
+                        Loading transactions...
+                      </Text>
+                    </Box>
+                  ) : filteredCryptoTransactions.length === 0 ? (
+                    <Box textAlign="center" py={8}>
+                      <Text color="neutral.400" fontSize="16px">
+                        {searchQuery
+                          ? 'No transactions found'
+                          : 'No transactions yet'}
+                      </Text>
+                    </Box>
+                  ) : (
+                    <>
+                      {filteredCryptoTransactions.map(transaction => (
+                        <Box
+                          key={transaction.id}
+                          bg="neutral.825"
+                          borderRadius="16px"
+                          p={4}
+                          width="100%"
+                          cursor="pointer"
+                          _hover={{ bg: 'neutral.800' }}
+                          transition="all 0.2s"
+                          onClick={() => {
+                            // Use the original transaction directly
+                            setSelectedTransaction(
+                              transaction.originalTransaction
+                            )
+                            setShowTransactionDetails(true)
+                          }}
+                        >
+                          <Flex justify="flex-start" gap={5} align="center">
+                            <HStack spacing={3}>
+                              {/* User Avatar */}
+                              <Box
+                                w="40px"
+                                h="40px"
+                                borderRadius="full"
+                                overflow="hidden"
+                              >
+                                <Image
+                                  src={transaction.userImage}
+                                  alt={transaction.user}
+                                  w="40px"
+                                  h="40px"
+                                  objectFit="cover"
+                                />
+                              </Box>
+
+                              {/* Transaction Details */}
+                              <Box>
+                                <Text
+                                  color="white"
+                                  fontSize="16px"
+                                  fontWeight="500"
+                                >
+                                  {transaction.user} {transaction.action}
+                                </Text>
+                              </Box>
+                            </HStack>
+
+                            {/* Status and Date */}
+                            <Box
+                              px={3}
+                              py={1}
+                              borderRadius="100px"
+                              bg={
+                                transaction.status === 'Successful'
+                                  ? 'green.600'
+                                  : 'red.700'
+                              }
+                            >
+                              <Text
+                                fontSize="14px"
+                                fontWeight="500"
+                                color="white"
+                              >
+                                {transaction.status}
+                              </Text>
+                            </Box>
                             <Text
-                              color="white"
                               fontSize="16px"
+                              color="neutral.0"
                               fontWeight="500"
                             >
-                              {transaction.user} {transaction.action}{' '}
-                              {transaction.amount}
+                              {transaction.date} {transaction.time}
                             </Text>
-                          </Box>
-                        </HStack>
-
-                        {/* Status and Date */}
-                        <Box
-                          px={3}
-                          py={1}
-                          borderRadius="100px"
-                          bg={
-                            transaction.status === 'Successful'
-                              ? 'green.600'
-                              : 'red.700'
-                          }
-                        >
-                          <Text fontSize="14px" fontWeight="500" color="white">
-                            {transaction.status}
-                          </Text>
+                          </Flex>
                         </Box>
-                        <Text
-                          fontSize="16px"
-                          color="neutral.0"
-                          fontWeight="500"
-                        >
-                          {transaction.date} {transaction.time}
-                        </Text>
-                      </Flex>
-                    </Box>
-                  ))
-                )}
-              </VStack>
+                      ))}
+
+                      {/* Pagination for Crypto Transactions */}
+                      <Pagination
+                        currentPage={selectedCryptoCurrentPage}
+                        totalPages={Math.ceil(
+                          selectedCryptoTotalCount / transactionsPerPage
+                        )}
+                        onPageChange={(page: number) => {
+                          setSelectedCryptoCurrentPage(page)
+                        }}
+                        isLoading={selectedCryptoTransactionsLoading}
+                      />
+                    </>
+                  )}
+                </VStack>
+              </>
             )
           })()}
-
-          {/* Transaction History Title */}
-          <Text fontSize="24px" fontWeight="700" color="neutral.0" mb={4}>
-            Transaction History
-          </Text>
         </Box>
       ) : (
         /* Main Wallet Container */
@@ -1048,12 +578,46 @@ const Wallet: React.FC<WalletProps> = () => {
                 />
               </HStack>
               {balanceLoading ? (
-                <HStack spacing={3} align="center">
-                  <Spinner color="neutral.400" size="md" />
-                  <Text fontSize="16px" color="neutral.400" fontWeight="500">
-                    Loading balance...
-                  </Text>
-                </HStack>
+                <VStack spacing={2} align="center">
+                  <Box
+                    w="200px"
+                    h="48px"
+                    borderRadius="8px"
+                    bg="neutral.800"
+                    position="relative"
+                    overflow="hidden"
+                    _before={{
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: '-100%',
+                      width: '100%',
+                      height: '100%',
+                      background:
+                        'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                      animation: 'shimmer 1.5s infinite',
+                    }}
+                  />
+                  <Box
+                    w="120px"
+                    h="16px"
+                    borderRadius="4px"
+                    bg="neutral.800"
+                    position="relative"
+                    overflow="hidden"
+                    _before={{
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: '-100%',
+                      width: '100%',
+                      height: '100%',
+                      background:
+                        'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                      animation: 'shimmer 1.5s infinite',
+                    }}
+                  />
+                </VStack>
               ) : (
                 <Text
                   fontSize="48px"
@@ -1106,8 +670,8 @@ const Wallet: React.FC<WalletProps> = () => {
                   'Loading recent transactions...'
                 ) : (
                   <>
-                    You have {transactions.length} transaction
-                    {transactions.length !== 1 ? 's' : ''}.{' '}
+                    You have {totalCount} transaction
+                    {totalCount !== 1 ? 's' : ''}.{' '}
                     <Text
                       as="span"
                       color="primary.200"
@@ -1203,77 +767,95 @@ const Wallet: React.FC<WalletProps> = () => {
                     </Text>
                   </Box>
                 ) : (
-                  filteredTransactions.map(transaction => (
-                    <Box
-                      key={transaction.id}
-                      bg="neutral.825"
-                      borderRadius="16px"
-                      p={4}
-                      width="100%"
-                      cursor="pointer"
-                      _hover={{ bg: 'neutral.800' }}
-                      transition="all 0.2s"
-                      onClick={() => {
-                        setSelectedTransaction(transaction)
-                        setShowTransactionDetails(true)
-                      }}
-                    >
-                      <Flex justify="flex-start" gap={5} align="center">
-                        <HStack spacing={3}>
-                          {/* User Avatar */}
-                          <Box
-                            w="40px"
-                            h="40px"
-                            borderRadius="full"
-                            overflow="hidden"
-                          >
-                            <Image
-                              src={transaction.userImage}
-                              alt={transaction.user}
+                  <>
+                    {filteredTransactions.map(transaction => (
+                      <Box
+                        key={transaction.id}
+                        bg="neutral.825"
+                        borderRadius="16px"
+                        p={4}
+                        width="100%"
+                        cursor="pointer"
+                        _hover={{ bg: 'neutral.800' }}
+                        transition="all 0.2s"
+                        onClick={() => {
+                          // Use the original transaction directly
+                          setSelectedTransaction(
+                            transaction.originalTransaction
+                          )
+                          setShowTransactionDetails(true)
+                        }}
+                      >
+                        <Flex justify="flex-start" gap={5} align="center">
+                          <HStack spacing={3}>
+                            {/* User Avatar */}
+                            <Box
                               w="40px"
                               h="40px"
-                              objectFit="cover"
-                            />
-                          </Box>
-
-                          {/* Transaction Details */}
-                          <Box>
-                            <Text
-                              color="white"
-                              fontSize="16px"
-                              fontWeight="500"
+                              borderRadius="full"
+                              overflow="hidden"
                             >
-                              {transaction.user} {transaction.action}{' '}
-                              {transaction.amount}
+                              <Image
+                                src={transaction.userImage}
+                                alt={transaction.user}
+                                w="40px"
+                                h="40px"
+                                objectFit="cover"
+                              />
+                            </Box>
+
+                            {/* Transaction Details */}
+                            <Box>
+                              <Text
+                                color="white"
+                                fontSize="16px"
+                                fontWeight="500"
+                              >
+                                {transaction.user} {transaction.action}
+                              </Text>
+                            </Box>
+                          </HStack>
+
+                          {/* Status and Date */}
+                          <Box
+                            px={3}
+                            py={1}
+                            borderRadius="100px"
+                            bg={
+                              transaction.status === 'Successful'
+                                ? 'green.600'
+                                : 'red.700'
+                            }
+                          >
+                            <Text
+                              fontSize="14px"
+                              fontWeight="500"
+                              color="white"
+                            >
+                              {transaction.status}
                             </Text>
                           </Box>
-                        </HStack>
-
-                        {/* Status and Date */}
-                        <Box
-                          px={3}
-                          py={1}
-                          borderRadius="100px"
-                          bg={
-                            transaction.status === 'Successful'
-                              ? 'green.600'
-                              : 'red.700'
-                          }
-                        >
-                          <Text fontSize="14px" fontWeight="500" color="white">
-                            {transaction.status}
+                          <Text
+                            fontSize="16px"
+                            color="neutral.0"
+                            fontWeight="500"
+                          >
+                            {transaction.date} {transaction.time}
                           </Text>
-                        </Box>
-                        <Text
-                          fontSize="16px"
-                          color="neutral.0"
-                          fontWeight="500"
-                        >
-                          {transaction.date} {transaction.time}
-                        </Text>
-                      </Flex>
-                    </Box>
-                  ))
+                        </Flex>
+                      </Box>
+                    ))}
+
+                    {/* Pagination */}
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={Math.ceil(totalCount / transactionsPerPage)}
+                      onPageChange={(page: number) => {
+                        setCurrentPage(page)
+                      }}
+                      isLoading={transactionsLoading}
+                    />
+                  </>
                 )}
               </VStack>
             </Box>
@@ -1350,96 +932,324 @@ const Wallet: React.FC<WalletProps> = () => {
 
               {/* Crypto Assets */}
               <VStack spacing={4} mt={5}>
-                {cryptoAssetsWithBalances.map((asset, index) => (
-                  <Box
-                    key={index}
-                    bg="neutral.825"
-                    borderRadius="12px"
-                    p={4}
-                    width="100%"
-                    cursor="pointer"
-                    _hover={{ bg: 'neutral.800' }}
-                    transition="all 0.2s"
-                    onClick={() => {
-                      setSelectedCrypto(asset)
-                      setShowCryptoDetails(true)
-                    }}
-                  >
-                    <Flex justify="space-between" align="center">
-                      <HStack spacing={3}>
-                        <Box position="relative">
-                          <Image
-                            src={asset.icon}
-                            alt={asset.symbol}
-                            w="48px"
-                            h="48px"
-                            borderRadius="full"
-                          />
-                          {/* Network overlay icon */}
-                          <Box
-                            position="absolute"
-                            bottom="-4px"
-                            right="-5px"
-                            w="24px"
-                            h="24px"
-                            borderRadius="full"
-                            bg="neutral.900"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                            border="1px solid"
-                            borderColor="neutral.800"
-                            zIndex={10}
-                            backgroundSize="cover"
-                            overflow="hidden"
-                          >
-                            <Image
-                              src={
-                                asset.networkName === 'Celo'
-                                  ? '/assets/chains/Celo.svg'
-                                  : '/assets/chains/Arbitrum.svg'
-                              }
-                              alt={asset.networkName}
-                              w="100%"
-                              h="100%"
-                              backgroundSize="cover"
-                              borderRadius="full"
-                            />
-                          </Box>
-                        </Box>
-                        <VStack align="start" spacing={0}>
-                          <Text color="white" fontSize="20px" fontWeight="700">
-                            {asset.name}
-                          </Text>
+                {cryptoAssetsWithBalances.length === 0
+                  ? // Show skeleton cards while loading
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <Box
+                        key={`skeleton-${index}`}
+                        bg="neutral.825"
+                        borderRadius="12px"
+                        p={4}
+                        width="100%"
+                        position="relative"
+                        overflow="hidden"
+                        _before={{
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: '-100%',
+                          width: '100%',
+                          height: '100%',
+                          background:
+                            'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
+                          animation: 'shimmer 2s ease-in-out infinite',
+                          zIndex: 1,
+                        }}
+                        sx={{
+                          '@keyframes shimmer': {
+                            '0%': {
+                              left: '-100%',
+                              opacity: 0.3,
+                            },
+                            '50%': {
+                              left: '100%',
+                              opacity: 0.8,
+                            },
+                            '100%': {
+                              left: '100%',
+                              opacity: 0.3,
+                            },
+                          },
+                        }}
+                      >
+                        <Flex
+                          justify="space-between"
+                          align="center"
+                          position="relative"
+                          zIndex={2}
+                        >
                           <HStack spacing={3}>
-                            <Text
-                              fontSize="16px"
-                              fontWeight="500"
-                              color="white"
-                            >
-                              {asset.price}
-                            </Text>
-                            <Text
-                              fontSize="16px"
-                              fontWeight="500"
-                              color="green.400"
-                            >
-                              {asset.change}
-                            </Text>
+                            <Box
+                              w="48px"
+                              h="48px"
+                              borderRadius="full"
+                              bg="neutral.800"
+                              position="relative"
+                              overflow="hidden"
+                              _before={{
+                                content: '""',
+                                position: 'absolute',
+                                top: 0,
+                                left: '-100%',
+                                width: '100%',
+                                height: '100%',
+                                background:
+                                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                animation: 'shimmer 1.5s infinite',
+                              }}
+                            />
+                            <VStack align="start" spacing={0}>
+                              <Box
+                                w="120px"
+                                h="20px"
+                                borderRadius="4px"
+                                bg="neutral.800"
+                                position="relative"
+                                overflow="hidden"
+                                _before={{
+                                  content: '""',
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: '-100%',
+                                  width: '100%',
+                                  height: '100%',
+                                  background:
+                                    'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                  animation: 'shimmer 1.5s infinite',
+                                }}
+                              />
+                              <HStack spacing={3}>
+                                <Box
+                                  w="60px"
+                                  h="16px"
+                                  borderRadius="4px"
+                                  bg="neutral.800"
+                                  position="relative"
+                                  overflow="hidden"
+                                  _before={{
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: '-100%',
+                                    width: '100%',
+                                    height: '100%',
+                                    background:
+                                      'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                    animation: 'shimmer 1.5s infinite',
+                                  }}
+                                />
+                                <Box
+                                  w="40px"
+                                  h="16px"
+                                  borderRadius="4px"
+                                  bg="neutral.800"
+                                  position="relative"
+                                  overflow="hidden"
+                                  _before={{
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: '-100%',
+                                    width: '100%',
+                                    height: '100%',
+                                    background:
+                                      'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                    animation: 'shimmer 1.5s infinite',
+                                  }}
+                                />
+                              </HStack>
+                            </VStack>
                           </HStack>
-                        </VStack>
-                      </HStack>
-                      <VStack align="end" spacing={0}>
-                        <Text color="white" fontSize="20px" fontWeight="700">
-                          {asset.balance}
-                        </Text>
-                        <Text fontSize="16px" fontWeight="500" color="white">
-                          {asset.usdValue}
-                        </Text>
-                      </VStack>
-                    </Flex>
-                  </Box>
-                ))}
+                          <VStack align="end" spacing={0}>
+                            <Box
+                              w="80px"
+                              h="20px"
+                              borderRadius="4px"
+                              bg="neutral.800"
+                              position="relative"
+                              overflow="hidden"
+                              _before={{
+                                content: '""',
+                                position: 'absolute',
+                                top: 0,
+                                left: '-100%',
+                                width: '100%',
+                                height: '100%',
+                                background:
+                                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                animation: 'shimmer 1.5s infinite',
+                              }}
+                            />
+                            <Box
+                              w="60px"
+                              h="16px"
+                              borderRadius="4px"
+                              bg="neutral.800"
+                              position="relative"
+                              overflow="hidden"
+                              _before={{
+                                content: '""',
+                                position: 'absolute',
+                                top: 0,
+                                left: '-100%',
+                                width: '100%',
+                                height: '100%',
+                                background:
+                                  'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                animation: 'shimmer 1.5s infinite',
+                              }}
+                            />
+                          </VStack>
+                        </Flex>
+                      </Box>
+                    ))
+                  : cryptoAssetsWithBalances.map((asset, index) => (
+                      <Box
+                        key={index}
+                        bg="neutral.825"
+                        borderRadius="12px"
+                        p={4}
+                        width="100%"
+                        cursor="pointer"
+                        _hover={{ bg: 'neutral.800' }}
+                        transition="all 0.2s"
+                        onClick={() => {
+                          setSelectedCrypto(asset)
+                          setShowCryptoDetails(true)
+                        }}
+                      >
+                        <Flex justify="space-between" align="center">
+                          <HStack spacing={3}>
+                            <Box position="relative">
+                              <Image
+                                src={asset.icon}
+                                alt={asset.symbol}
+                                w="48px"
+                                h="48px"
+                                borderRadius="full"
+                              />
+                              {/* Network overlay icon */}
+                              <Box
+                                position="absolute"
+                                bottom="-4px"
+                                right="-5px"
+                                w="24px"
+                                h="24px"
+                                borderRadius="full"
+                                bg="neutral.900"
+                                display="flex"
+                                alignItems="center"
+                                justifyContent="center"
+                                border="1px solid"
+                                borderColor="neutral.800"
+                                zIndex={10}
+                                backgroundSize="cover"
+                                overflow="hidden"
+                              >
+                                <Image
+                                  src={
+                                    asset.networkName === 'Celo'
+                                      ? '/assets/chains/Celo.svg'
+                                      : '/assets/chains/Arbitrum.svg'
+                                  }
+                                  alt={asset.networkName}
+                                  w="100%"
+                                  h="100%"
+                                  backgroundSize="cover"
+                                  borderRadius="full"
+                                />
+                              </Box>
+                            </Box>
+                            <VStack align="start" spacing={0}>
+                              <Text
+                                color="white"
+                                fontSize="20px"
+                                fontWeight="700"
+                              >
+                                {asset.name}
+                              </Text>
+                              <HStack spacing={3}>
+                                <Text
+                                  fontSize="16px"
+                                  fontWeight="500"
+                                  color="white"
+                                >
+                                  {asset.price}
+                                </Text>
+                                {/* <Text
+                                  fontSize="16px"
+                                  fontWeight="500"
+                                  color="green.400"
+                                >
+                                  {asset.change}
+                                </Text> */}
+                              </HStack>
+                            </VStack>
+                          </HStack>
+                          <VStack align="end" spacing={0}>
+                            {asset.isLoading ? (
+                              <>
+                                <Box
+                                  w="80px"
+                                  h="20px"
+                                  borderRadius="4px"
+                                  bg="neutral.800"
+                                  position="relative"
+                                  overflow="hidden"
+                                  _before={{
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: '-100%',
+                                    width: '100%',
+                                    height: '100%',
+                                    background:
+                                      'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                    animation: 'shimmer 1.5s infinite',
+                                  }}
+                                />
+                                <Box
+                                  w="60px"
+                                  h="16px"
+                                  borderRadius="4px"
+                                  bg="neutral.800"
+                                  position="relative"
+                                  overflow="hidden"
+                                  _before={{
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: '-100%',
+                                    width: '100%',
+                                    height: '100%',
+                                    background:
+                                      'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                                    animation: 'shimmer 1.5s infinite',
+                                  }}
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <Text
+                                  color="white"
+                                  fontSize="20px"
+                                  fontWeight="700"
+                                >
+                                  {asset.balance}
+                                </Text>
+                                <Text
+                                  fontSize="16px"
+                                  fontWeight="500"
+                                  color="white"
+                                >
+                                  {asset.usdValue}
+                                </Text>
+                              </>
+                            )}
+                          </VStack>
+                        </Flex>
+                      </Box>
+                    ))}
               </VStack>
             </>
           )}
@@ -1558,6 +1368,13 @@ const Wallet: React.FC<WalletProps> = () => {
       <SendFundsModal
         isOpen={isSendModalOpen}
         onClose={() => setIsSendModalOpen(false)}
+        selectedNetwork={selectedNetwork}
+        isFromTokenView={showCryptoDetails && selectedCrypto !== null}
+        selectedCryptoNetwork={
+          showCryptoDetails && selectedCrypto !== null
+            ? selectedCrypto.networkName
+            : undefined
+        }
       />
 
       {/* Receive Funds Modal */}
