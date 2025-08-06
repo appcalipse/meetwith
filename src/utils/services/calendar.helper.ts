@@ -54,15 +54,17 @@ export const CalendarServiceHelper = {
     meeting_url?: string,
     meetingChangeLink?: string
   ) {
-    let message = `Your meeting will happen at ${
+    let message = ''
+    if (meetingDescription) {
+      message += `\n\n${this.convertHtmlToPlainText(meetingDescription)}\n\n`
+    }
+    message += `Your meeting will happen at ${
       meeting_url ? meeting_url : 'Meetwith'
     } `
     if (meetingChangeLink) {
       message += `\n\nTo reschedule or cancel the meeting, please go to ${meetingChangeLink}`
     }
-    if (meetingDescription) {
-      message += `\n\n${this.convertHtmlToPlainText(meetingDescription)}`
-    }
+
     return message
   },
 
