@@ -233,7 +233,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               )} at ${dateToHumanReadable(
                 meeting!.start,
                 timezone || '',
-                false
+                true
               )} was ${isReschedule ? 'updated' : 'scheduled'} successfully.`}
             </Text>
           )}
