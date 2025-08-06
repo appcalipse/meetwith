@@ -99,18 +99,13 @@ const SchedulerPicker = () => {
     notificationsSubs,
     setNotificationSubs,
     setIsContact,
+    timezone,
+    setTimezone,
   } = useContext(PublicScheduleContext)
 
   const currentAccount = useAccountContext()
   const slotDurationInMinutes = selectedType?.duration_minutes || 0
-  const [timezone, setTimezone] = useState<Option<string>>(
-    tzs.find(
-      val =>
-        val.value ===
-        (currentAccount?.preferences?.timezone ||
-          Intl.DateTimeFormat().resolvedOptions().timeZone)
-    ) || tzs[0]
-  )
+
   const toast = useToast()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [availableSlots, setAvailableSlots] = useState<Interval[]>([])
