@@ -648,7 +648,7 @@ const SchedulerPicker = () => {
           mb={{ md: 0, base: 4 }}
         >
           <Heading size={'lg'}>{selectedType?.title}</Heading>
-          <HStack>
+          <HStack align={'flex-start'}>
             <FaCalendar size={24} />
             <Text>{`${formattedDate}, ${timeDuration}`}</Text>
           </HStack>
