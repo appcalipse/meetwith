@@ -6,20 +6,23 @@ export enum SessionType {
   PAID = 'paid',
   FREE = 'free',
 }
+
 export const isSessionType = (value: string): value is SessionType => {
   return Object.values(SessionType).some(type => type === value)
 }
 
 export const SessionTypeOptions = [
   {
-    value: SessionType.PAID,
-    label: 'Paid',
-  },
-  {
     value: SessionType.FREE,
     label: 'Free',
   },
 ]
+if (!isProduction) {
+  SessionTypeOptions.push({
+    value: SessionType.PAID,
+    label: 'Paid',
+  })
+}
 export const MinNoticeTimeOptions = [
   {
     value: 'minutes',
@@ -52,10 +55,12 @@ export const DurationOptions = [
     label: '60 Mins',
   },
 ]
+
 export enum PlanType {
   ONE_OFF = 'one_off',
   SESSIONS = 'sessions',
 }
+
 export const PlanTypeOptions = [
   {
     value: PlanType.ONE_OFF,
@@ -69,10 +74,12 @@ export const PlanTypeOptions = [
 export const isPlanType = (value: string): value is PlanType => {
   return Object.values(PlanType).some(type => type === value)
 }
+
 export enum PaymentChannel {
   ACCOUNT_ADDRESS = 'account_address',
   CUSTOM_ADDRESS = 'custom_address',
 }
+
 export const PaymentChannelOptions = (address: string) => [
   {
     value: PaymentChannel.ACCOUNT_ADDRESS,
@@ -102,14 +109,17 @@ export const CryptoNetworkForCardSettlementOptions = supportedChains
 export const isPaymentChannel = (value: string): value is PaymentChannel => {
   return Object.values(PaymentChannel).some(channel => channel === value)
 }
+
 export enum PaymentType {
   FIAT = 'fiat',
   CRYPTO = 'crypto',
 }
+
 export enum PaymentDirection {
   DEBIT = 'debit',
   CREDIT = 'credit',
 }
+
 export enum TokenType {
   ERC20 = 'erc20',
   ERC721 = 'erc721',
@@ -117,6 +127,7 @@ export enum TokenType {
   NATIVE = 'native',
   NFT = 'nft',
 }
+
 export enum PaymentStatus {
   PENDING = 'pending',
   COMPLETED = 'completed',
@@ -135,7 +146,9 @@ export enum PaymentStep {
   CONFIRM_PAYMENT = 'confirm-payment',
   FIAT_PAYMENT_VERIFYING = 'fiat-payment-verifying',
   SELECT_CRYPTO_NETWORK = 'select-crypto-network',
+  HANDLE_SEND_INVOICE = 'handle-send-invoice',
 }
+
 export const getDefaultValues = (): Partial<MeetingType> => ({
   type: SessionType.FREE,
   slug: '',

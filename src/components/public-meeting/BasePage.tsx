@@ -1,5 +1,11 @@
 import { Box, HStack, Text } from '@chakra-ui/layout'
-import { Button, Flex, Heading, VStack } from '@chakra-ui/react'
+import {
+  Button,
+  Flex,
+  Heading,
+  useColorModeValue,
+  VStack,
+} from '@chakra-ui/react'
 import { Avatar } from '@components/profile/components/Avatar'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import SessionTypeCard from '@components/public-meeting/SessionTypeCard'
@@ -16,7 +22,7 @@ const BasePage: FC = () => {
   const currentAccount = useAccountContext()
   const [paidSessionsExists, setPaidSessionsExists] = React.useState(false)
   const { openConnection } = useContext(OnboardingModalContext)
-
+  const borderColor = useColorModeValue('neutral.200', 'neutral.800')
   return (
     <VStack
       gap={{ md: 8, base: 6 }}
@@ -37,7 +43,7 @@ const BasePage: FC = () => {
       >
         <Box
           borderWidth="1px"
-          borderColor="neutral.800"
+          borderColor={borderColor}
           borderRadius="md"
           p={4}
           w="max-content"

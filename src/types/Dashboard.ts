@@ -20,6 +20,7 @@ export enum Intents {
   UPDATE_MEETING = 'update-meeting',
   CANCEL_MEETING = 'cancel-meeting',
   ACCEPT_CONTACT = 'accept-contact',
+  DECLINE_CONTACT = 'decline-contact',
 }
 
 export enum InviteType {

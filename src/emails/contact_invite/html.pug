@@ -3,7 +3,7 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
     head
         meta(charset="UTF-8")
         meta(name="viewport" content="width=device-width, initial-scale=1.0")
-        title Invitation Email
+        title Scheduling Invitation
         link(rel="stylesheet", href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700&display=swap")
         style(type='text/css').
             body, table, td, a {
@@ -18,6 +18,9 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
 
             img {
                 -ms-interpolation-mode: bicubic;
+                border: 0;
+                outline: none;
+                text-decoration: none;
             }
 
             a[x-apple-data-detectors] {
@@ -33,13 +36,13 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                 padding: 0;
                 height: 100%;
                 width: 100%;
-                background-color: transparent;
+                background-color: #f4f4f4;
             }
 
             body {
                 background: linear-gradient(rgba(45, 55, 72, 0.85), rgba(45, 55, 72, 0.85)), url('https://mww-public.s3.eu-west-1.amazonaws.com/email/twist_orange.png') no-repeat center center;
                 background-size: cover;
-                font-family: 'DM Sans', sans-serif;
+                font-family: 'DM Sans', Arial, sans-serif;
                 display: flex;
                 justify-content: center;
                 align-items: flex-start;
@@ -73,15 +76,12 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                 margin-bottom: 30px;
             }
 
-            .header, .message {
+            .header {
                 width: 100%;
                 margin: 0 auto 24px auto;
                 text-align: center;
                 box-sizing: border-box;
-            }
-
-            .header {
-                font-family: 'DM Sans', sans-serif;
+                font-family: 'DM Sans', Arial, sans-serif;
                 font-size: 24px;
                 font-weight: 700;
                 line-height: 28.8px;
@@ -89,7 +89,11 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
             }
 
             .message {
-                font-family: 'DM Sans', sans-serif;
+                width: 100%;
+                margin: 0 auto 24px auto;
+                text-align: center;
+                box-sizing: border-box;
+                font-family: 'DM Sans', Arial, sans-serif;
                 font-size: 16px;
                 font-weight: 500;
                 line-height: 24px;
@@ -103,7 +107,7 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                 height: 48px;
                 line-height: 48px;
                 padding: 0 16px;
-                font-family: 'DM Sans', sans-serif;
+                font-family: 'DM Sans', Arial, sans-serif;
                 font-size: 16px;
                 font-weight: 700;
                 text-align: center;
@@ -113,6 +117,36 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                 border-radius: 6px;
                 text-decoration: none;
                 box-sizing: border-box;
+                margin-bottom: 24px;
+            }
+
+            .button:hover {
+                background-color: #F59E82;
+            }
+
+            .footer {
+                font-family: 'DM Sans', Arial, sans-serif;
+                font-size: 14px;
+                line-height: 18px;
+                color: #9AA5B1;
+                margin-top: 24px;
+                text-align: center;
+            }
+
+            .footer a {
+                color: #F7A892;
+                text-decoration: underline;
+            }
+
+            .decline-link {
+                font-size: 12px;
+                color: #9AA5B1;
+                margin-top: 16px;
+            }
+
+            .decline-link a {
+                color: #F7A892;
+                text-decoration: underline;
             }
 
             @media only screen and (max-width: 660px) and (min-width: 480px) and (-ms-high-contrast: none), (-ms-high-contrast: active) {
@@ -123,7 +157,7 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
 
             @media (max-width: 660px) {
                 html {
-                    background-color: transparent;
+                    background-color: #f4f4f4;
                 }
 
                 body {
@@ -131,7 +165,6 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                     background-repeat: no-repeat;
                     background-size: cover;
                     padding-top: 0;
-                    background-color: transparent;
                 }
 
                 .outer-container {
@@ -159,7 +192,14 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
             }
     body
         .outer-container
-            img.logo(src="https://meetwithwalletstatic.s3.us-west-2.amazonaws.com/email/logo_mail.png", alt="Logo", style="display: block;margin: 20px auto;")
+            img.logo(src="https://meetwithwalletstatic.s3.us-west-2.amazonaws.com/email/logo_mail.png", alt="MeetWith Logo", style="display: block;margin: 20px auto;")
             .container(style='margin: 0 auto;')
-                .header #{inviterName} invited you to join his contact list
+                .header #{inviterName} invited you to their contact list
+                .message #{inviterName} wants to add you to their MeetWith contact list. This allows them to schedule meetings with you directly and add you to groups without needing separate invitations each time.
                 a.button(href=invitationLink) Accept Invitation
+
+                .footer
+                    | You received this email because #{inviterName} invited you via MeetWith.
+                .decline-link
+                    | Not interested? You can ignore this message or 
+                    a(href=declineLink) decline this invitation.

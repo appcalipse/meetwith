@@ -152,6 +152,7 @@ import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
 import { thirdWebClient } from '@/utils/user_manager'
 
 import {
+  generateDefaultAvailabilities,
   generateDefaultMeetingType,
   generateEmptyAvailabilities,
   noNoReplyEmailForAccount,
@@ -161,7 +162,7 @@ import {
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_sync_helpers'
-import { apiUrl, WEBHOOK_URL } from './constants'
+import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
@@ -171,6 +172,7 @@ import { getConnectedCalendarIntegration } from './services/connected_calendars.
 import { isTimeInsideAvailabilities } from './slots.helper'
 import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
+import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
 
 // TODO: better typing
@@ -259,6 +261,25 @@ const initAccountDBForWallet = async (
       Sentry.captureException(responsePrefs.error)
       throw new Error("Account preferences couldn't be created")
     }
+
+    // Create default availability block for new users
+    const defaultWeeklyAvailability = generateDefaultAvailabilities()
+
+    const defaultBlock = await createAvailabilityBlock(
+      user_account.address,
+      'Default',
+      timezone,
+      defaultWeeklyAvailability,
+      true // Set as default
+    )
+
+    // Update account preferences to reference the default availability block
+    await db.supabase
+      .from('account_preferences')
+      .update({
+        availaibility_id: defaultBlock.id,
+      })
+      .eq('owner_account_address', user_account.address)
 
     user_account.preferences = preferences
     user_account.is_invited = is_invited || false
@@ -2818,6 +2839,8 @@ const updateMeeting = async (
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
   )
+
+  // now that everything happened without error, it is safe to update the root meeting data
   const existingSlots =
     meeting.slots?.filter(
       val => !meetingUpdateRequest.slotsToRemove.includes(val)
@@ -3608,12 +3631,16 @@ const rejectContactInvite = async (
     throw new Error(deleteError.message)
   }
 }
-const contactInviteByEmailExists = async (email: string) => {
+const contactInviteByEmailExists = async (
+  owner_address: string,
+  email: string
+) => {
   const { data, error } = await db.supabase
     .from('contact_invite')
     .select()
     .eq('destination', email)
     .eq('channel', ChannelType.EMAIL)
+    .eq('account_owner_address', owner_address)
   if (error) {
     throw new Error(error.message)
   }
@@ -4862,7 +4889,12 @@ const handleWebhookEvent = async (
       const eventLastUpdatedAt = new Date(
         event.extendedProperties?.private?.lastUpdatedAt
       )
-      if (eventLastUpdatedAt > sub(now, { minutes: 2 })) {
+      if (
+        eventLastUpdatedAt >
+        sub(now, {
+          seconds: 30,
+        })
+      ) {
         return false
       }
     }
@@ -5003,6 +5035,38 @@ const handleCalendarRsvps = async (
   integration.updateEventExtendedProperties &&
     integration.updateEventExtendedProperties(meetingId, calendarId)
 }
+const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
+  if (isProAccount(account)) {
+    const domain = account.subscriptions?.find(
+      sub => new Date(sub.expiry_time) > new Date()
+    )?.domain
+    if (domain) {
+      return domain
+    }
+  }
+  return `address/${
+    ellipsize ? ellipsizeAddress(account!.address) : account!.address
+  }`
+}
+
+const getAccountCalendarUrl = (
+  account: Account,
+  ellipsize?: boolean
+): string => {
+  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+}
+
+const getOwnerPublicUrlServer = async (
+  ownerAccountAddress: string
+): Promise<string> => {
+  try {
+    const ownerAccount = await getAccountFromDB(ownerAccountAddress)
+    return getAccountCalendarUrl(ownerAccount)
+  } catch (error) {
+    // Fallback if account not found
+    return `${appUrl}/address/${ownerAccountAddress}`
+  }
+}
 
 export {
   acceptContactInvite,
@@ -5061,6 +5125,7 @@ export {
   getNewestCoupon,
   getOfficeEventMappingId,
   getOrCreateContactInvite,
+  getOwnerPublicUrlServer,
   getPaidSessionsByMeetingType,
   getSlotsByIds,
   getSlotsForAccount,
