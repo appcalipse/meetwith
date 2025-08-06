@@ -235,7 +235,7 @@ export const WeekdayConfig: React.FC<WeekdayConfigProps> = props => {
       {isSelected ? (
         <VStack align="start" spacing={2} width="100%">
           {times.map((time, index) => (
-            <VStack key={index} align="start" spacing={1} width="100%">
+            <VStack key={index} align="start" spacing={1} width="100%" mt={1}>
               <Flex width="100%" align="center" gap={2} flexDirection="row">
                 <TimeSelector
                   onChange={handleChangeTime}

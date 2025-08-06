@@ -395,3 +395,10 @@ export class UploadError extends Error {
     this.name = 'UploadError'
   }
 }
+
+export class GuestRescheduleForbiddenError extends Error {
+  constructor() {
+    super('Only the scheduler can reschedule this meeting.')
+    this.name = 'GuestRescheduleForbiddenError'
+  }
+}
