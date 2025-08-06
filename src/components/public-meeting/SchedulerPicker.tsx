@@ -99,18 +99,13 @@ const SchedulerPicker = () => {
     notificationsSubs,
     setNotificationSubs,
     setIsContact,
+    timezone,
+    setTimezone,
   } = useContext(PublicScheduleContext)
 
   const currentAccount = useAccountContext()
   const slotDurationInMinutes = selectedType?.duration_minutes || 0
-  const [timezone, setTimezone] = useState<Option<string>>(
-    tzs.find(
-      val =>
-        val.value ===
-        (currentAccount?.preferences?.timezone ||
-          Intl.DateTimeFormat().resolvedOptions().timeZone)
-    ) || tzs[0]
-  )
+
   const toast = useToast()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [availableSlots, setAvailableSlots] = useState<Interval[]>([])
@@ -292,8 +287,8 @@ const SchedulerPicker = () => {
     )
 
     return (
-      (isFutureInTimezone(date, timezone.value) ||
-        isTodayInTimezone(date, timezone.value)) &&
+      (isFutureInTimezone(date, timezone?.value) ||
+        isTodayInTimezone(date, timezone?.value)) &&
       (intervals?.length === 0 ||
         slots.some(
           slot =>
@@ -360,10 +355,7 @@ const SchedulerPicker = () => {
     if (!selectedType) return false
     setIsScheduling(true)
 
-    const start = zonedTimeToUtc(
-      startTime,
-      timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone
-    )
+    const start = new Date(startTime)
     const end = addMinutes(new Date(start), selectedType.duration_minutes)
 
     if (scheduleType !== SchedulingType.GUEST && !name) {

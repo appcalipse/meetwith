@@ -14,15 +14,23 @@ import {
 import { useRouter } from 'next/router'
 import React, { FC, useEffect, useMemo, useState } from 'react'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { AcceptedToken, SupportedChain } from '@/types/chains'
 import { Address } from '@/types/Transactions'
 import { getAccountDomainUrl } from '@/utils/calendar_manager'
+import { Option } from '@/utils/constants/select'
+import { timezones } from '@/utils/date_helper'
 
 interface IProps {
   account: PublicAccount
   url: string
 }
-
+const tzs = timezones.map(tz => {
+  return {
+    value: String(tz.tzCode),
+    label: tz.name,
+  }
+})
 interface IContext {
   account: PublicAccount
   selectedType: MeetingType | null
@@ -62,6 +70,8 @@ interface IContext {
   setNotificationSubs: React.Dispatch<React.SetStateAction<number>>
   isContact: boolean
   setIsContact: React.Dispatch<React.SetStateAction<boolean>>
+  timezone: Option<string>
+  setTimezone: React.Dispatch<React.SetStateAction<Option<string>>>
 }
 const baseState: IContext = {
   account: {} as PublicAccount,
@@ -91,7 +101,10 @@ const baseState: IContext = {
   setNotificationSubs: () => {},
   isContact: false,
   setIsContact: () => {},
+  setTimezone: () => {},
+  timezone: tzs[0],
 }
+
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
 const PublicPage: FC<IProps> = props => {
   const bgColor = useColorModeValue('white', 'neutral.900')
@@ -117,6 +130,16 @@ const PublicPage: FC<IProps> = props => {
   const [chain, setChain] = useState<SupportedChain | undefined>(undefined)
   const [paymentType, setPaymentType] = useState<PaymentType | undefined>(
     undefined
+  )
+  const currentAccount = useAccountContext()
+
+  const [timezone, setTimezone] = useState<Option<string>>(
+    tzs.find(
+      val =>
+        val.value ===
+        (currentAccount?.preferences?.timezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone)
+    ) || tzs[0]
   )
   const [paymentStep, setPaymentStep] = useState<PaymentStep | undefined>(
     undefined
@@ -252,6 +275,8 @@ const PublicPage: FC<IProps> = props => {
     setNotificationSubs,
     isContact,
     setIsContact,
+    timezone,
+    setTimezone,
   }
   const renderStep = () => {
     switch (currentStep) {
@@ -295,6 +320,10 @@ const PublicPage: FC<IProps> = props => {
                 isContact={isContact}
                 setIsContact={setIsContact}
                 reset={_onClose}
+                timezone={
+                  timezone?.value ||
+                  Intl.DateTimeFormat().resolvedOptions().timeZone
+                }
               />
             </Flex>
           ) : (
