@@ -19,9 +19,7 @@ const items = [
 const ProgressHeader = () => {
   const { currentStep } = useContext(PublicScheduleContext)
 
-  return (
-    <HStack w={'100%'} gap={0} alignItems="center"></HStack>
-  )
+  return <HStack w={'100%'} gap={0} alignItems="center"></HStack>
 }
 
 export default ProgressHeader
