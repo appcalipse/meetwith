@@ -671,7 +671,14 @@ const SchedulerPicker = () => {
             </Text>
           </HStack>
         </VStack>
-        <VStack align="flex-start" flexBasis={{ base: '100%', '2xl': '50%' }}>
+        <VStack
+          align="flex-start"
+          flexBasis={{ base: '100%', '2xl': '50%' }}
+          mt={{
+            base: 4,
+            '2xl': 0,
+          }}
+        >
           <HStack mb={0} cursor="pointer" onClick={() => setShowConfirm(false)}>
             <Icon as={FaArrowLeft} size="1.5em" color={color} />
             <Heading size="md" color={color}>
