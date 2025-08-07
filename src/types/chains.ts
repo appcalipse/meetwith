@@ -81,19 +81,6 @@ export const getTokenIcon = (token: AcceptedToken) => {
   }
 }
 
-export const getTokenDecimals = (token: AcceptedToken): number => {
-  switch (token) {
-    case AcceptedToken.USDC:
-      return 6
-    case AcceptedToken.USDT:
-      return 6
-    case AcceptedToken.CEUR:
-      return 6
-    default:
-      return 18
-  }
-}
-
 export const getTokenName = (token: AcceptedToken): string => {
   switch (token) {
     case AcceptedToken.ETHER:
@@ -117,7 +104,7 @@ export const getTokenName = (token: AcceptedToken): string => {
     case AcceptedToken.CEUR:
       return 'Celo Euro'
     default:
-      return 'Unknown'
+      return 'Unknown Token'
   }
 }
 

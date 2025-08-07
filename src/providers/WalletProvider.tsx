@@ -6,7 +6,9 @@ import React, {
   useState,
 } from 'react'
 
+import { getNetworkDisplayName } from '@/types/chains'
 import { Transaction } from '@/types/Transactions'
+import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 
 interface CryptoAsset {
   name: string
@@ -82,7 +84,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Selection states
   const [selectedCurrency, setSelectedCurrency] = useState('USD')
-  const [selectedNetwork, setSelectedNetwork] = useState('Celo')
+  const [selectedNetwork, setSelectedNetwork] = useState(() => {
+    const firstSupportedChain = supportedPaymentChains[0]
+    return firstSupportedChain
+      ? getNetworkDisplayName(firstSupportedChain)
+      : 'Arbitrum'
+  })
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null)
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoAsset | null>(null)

@@ -4393,7 +4393,7 @@ export const getWalletTransactions = async (
     .from('transactions')
     .select('*', { count: 'exact', head: true })
     .or(
-      `initiator_address.eq.${walletAddress},metadata->>sender_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
+      `initiator_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
     )
 
   // Apply optional token and chain filters to count query
@@ -4416,7 +4416,7 @@ export const getWalletTransactions = async (
     .from('transactions')
     .select('*')
     .or(
-      `initiator_address.eq.${walletAddress},metadata->>sender_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
+      `initiator_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
     )
 
   // Apply optional token and chain filters
@@ -4472,21 +4472,10 @@ export const getWalletTransactions = async (
   const processedTransactions = transactionsWithMeetingData.map(tx => {
     const metadata = tx.metadata
 
-    const hasMetadata = metadata?.sender_address && metadata?.receiver_address
-
-    let isSender = false
-    let isReceiver = false
-
-    if (hasMetadata) {
-      isSender =
-        metadata.sender_address.toLowerCase() === walletAddress.toLowerCase()
-      isReceiver =
-        metadata.receiver_address.toLowerCase() === walletAddress.toLowerCase()
-    } else {
-      isSender =
-        tx.initiator_address.toLowerCase() === walletAddress.toLowerCase()
-      isReceiver = false
-    }
+    const isSender =
+      tx.initiator_address.toLowerCase() === walletAddress.toLowerCase()
+    const isReceiver =
+      metadata?.receiver_address?.toLowerCase() === walletAddress.toLowerCase()
 
     // Determine direction based on whether current wallet is sender or receiver
     let direction: 'debit' | 'credit' | 'unknown' = 'unknown'
@@ -4497,7 +4486,7 @@ export const getWalletTransactions = async (
       counterparty_address = metadata?.receiver_address
     } else if (isReceiver) {
       direction = 'credit'
-      counterparty_address = metadata?.sender_address
+      counterparty_address = tx.initiator_address
     } else {
       direction = 'unknown'
       counterparty_address = undefined
@@ -4507,9 +4496,7 @@ export const getWalletTransactions = async (
       ...tx,
       direction,
       counterparty_address,
-      has_full_metadata: !!(
-        metadata?.sender_address && metadata?.receiver_address
-      ),
+      has_full_metadata: !!(tx.initiator_address && metadata?.receiver_address),
     }
   })
 
@@ -4543,10 +4530,26 @@ const createCryptoTransaction = async (
   if (!chainInfo?.id) {
     throw new ChainNotFound(transactionRequest.chain)
   }
-  const { feeInUSD, gasUsed } = await getTransactionFeeThirdweb(
-    transactionRequest.transaction_hash,
-    transactionRequest.chain
-  )
+  // Fallback if RPC is unavailable
+  let feeInUSD = 0
+  let gasUsed = '0'
+  let receiverAddress: string | null = null
+
+  try {
+    const feeDetails = await getTransactionFeeThirdweb(
+      transactionRequest.transaction_hash,
+      transactionRequest.chain
+    )
+    feeInUSD = feeDetails.feeInUSD
+    gasUsed = feeDetails.gasUsed
+    receiverAddress = feeDetails.receiverAddress
+  } catch (error) {
+    console.warn('Failed to fetch transaction details from RPC:', error)
+    // Use fallback values - transaction will still be created
+    feeInUSD = 0
+    gasUsed = '0'
+    receiverAddress = transactionRequest.receiver_address || null
+  }
 
   // Determine payment direction based on transaction type
   const isWalletTransfer = !transactionRequest.meeting_type_id
@@ -4571,9 +4574,8 @@ const createCryptoTransaction = async (
     currency: Currency.USD,
     total_fee: feeInUSD,
     metadata: {
-      sender_address: account_address.toLowerCase(),
-      ...(transactionRequest.receiver_address && {
-        receiver_address: transactionRequest.receiver_address.toLowerCase(),
+      ...(receiverAddress && {
+        receiver_address: receiverAddress.toLowerCase(),
       }),
     },
     fee_breakdown: {

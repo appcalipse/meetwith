@@ -47,6 +47,12 @@ interface LinkItemProps {
   mode: EditMode
   locked?: boolean
   badge?: number
+  isDropdownItem?: boolean
+  subItems?: Array<{
+    text: string
+    icon: IconType
+    mode: EditMode
+  }>
 }
 
 export const NavMenu: React.FC<{
@@ -89,6 +95,24 @@ export const NavMenu: React.FC<{
         mode: EditMode.AVAILABILITY,
       },
       {
+        name: 'Payments',
+        icon: FaCreditCard,
+        mode: EditMode.WALLET,
+        isDropdownItem: true,
+        subItems: [
+          {
+            text: 'Wallet',
+            icon: FaWallet,
+            mode: EditMode.WALLET,
+          },
+          // {
+          //   text: 'Clientboard',
+          //   icon: FaClipboard,
+          //   mode: EditMode.CLIENTBOARD,
+          // },
+        ],
+      },
+      {
         name: 'Notifications',
         icon: FaBell,
         mode: EditMode.NOTIFICATIONS,
@@ -106,28 +130,6 @@ export const NavMenu: React.FC<{
       },
     ],
     [noOfInvitedGroups]
-  )
-
-  const DropdownItems = useMemo(
-    () => [
-      {
-        name: 'Payments',
-        icon: FaCreditCard,
-        subItems: [
-          {
-            text: 'Wallet',
-            icon: FaWallet,
-            mode: EditMode.WALLET,
-          },
-          // {
-          //   text: 'Clientboard',
-          //   icon: FaClipboard,
-          //   mode: EditMode.CLIENTBOARD,
-          // },
-        ],
-      },
-    ],
-    []
   )
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()
@@ -283,42 +285,29 @@ export const NavMenu: React.FC<{
           </VStack>
 
           <VStack width="100%">
-            {LinkItems.slice(0, 3).map(link => (
-              <NavItem
-                selected={currentSection === link.mode}
-                key={link.name}
-                text={link.name}
-                icon={link.icon}
-                mode={link.mode}
-                badge={link.badge}
-                locked={link.locked || false}
-                changeMode={menuClicked}
-              ></NavItem>
-            ))}
-
-            {DropdownItems.map(dropdown => (
-              <NavDropdownItem
-                key={dropdown.name}
-                text={dropdown.name}
-                icon={dropdown.icon}
-                subItems={dropdown.subItems}
-                changeMode={menuClicked}
-                currentSection={currentSection}
-              />
-            ))}
-
-            {LinkItems.slice(3).map(link => (
-              <NavItem
-                selected={currentSection === link.mode}
-                key={link.name}
-                text={link.name}
-                icon={link.icon}
-                mode={link.mode}
-                badge={link.badge}
-                locked={link.locked || false}
-                changeMode={menuClicked}
-              ></NavItem>
-            ))}
+            {LinkItems.map(link =>
+              link.isDropdownItem ? (
+                <NavDropdownItem
+                  key={link.name}
+                  text={link.name}
+                  icon={link.icon}
+                  subItems={link.subItems || []}
+                  changeMode={menuClicked}
+                  currentSection={currentSection}
+                />
+              ) : (
+                <NavItem
+                  selected={currentSection === link.mode}
+                  key={link.name}
+                  text={link.name}
+                  icon={link.icon}
+                  mode={link.mode}
+                  badge={link.badge}
+                  locked={link.locked || false}
+                  changeMode={menuClicked}
+                />
+              )
+            )}
           </VStack>
         </VStack>
       ) : (
@@ -356,42 +345,29 @@ export const NavMenu: React.FC<{
             </Box>
 
             <VStack py={2} width="100%">
-              {LinkItems.slice(0, 3).map(link => (
-                <NavItem
-                  selected={currentSection === link.mode}
-                  key={link.name}
-                  text={link.name}
-                  icon={link.icon}
-                  mode={link.mode}
-                  locked={link.locked || false}
-                  changeMode={menuClicked}
-                  badge={link.badge}
-                ></NavItem>
-              ))}
-
-              {DropdownItems.map(dropdown => (
-                <NavDropdownItem
-                  key={dropdown.name}
-                  text={dropdown.name}
-                  icon={dropdown.icon}
-                  subItems={dropdown.subItems}
-                  changeMode={menuClicked}
-                  currentSection={currentSection}
-                />
-              ))}
-
-              {LinkItems.slice(3).map(link => (
-                <NavItem
-                  selected={currentSection === link.mode}
-                  key={link.name}
-                  text={link.name}
-                  icon={link.icon}
-                  mode={link.mode}
-                  locked={link.locked || false}
-                  changeMode={menuClicked}
-                  badge={link.badge}
-                ></NavItem>
-              ))}
+              {LinkItems.map(link =>
+                link.isDropdownItem ? (
+                  <NavDropdownItem
+                    key={link.name}
+                    text={link.name}
+                    icon={link.icon}
+                    subItems={link.subItems || []}
+                    changeMode={menuClicked}
+                    currentSection={currentSection}
+                  />
+                ) : (
+                  <NavItem
+                    selected={currentSection === link.mode}
+                    key={link.name}
+                    text={link.name}
+                    icon={link.icon}
+                    mode={link.mode}
+                    locked={link.locked || false}
+                    changeMode={menuClicked}
+                    badge={link.badge}
+                  />
+                )
+              )}
             </VStack>
             {isMenuOpen && (
               <CloseButton
