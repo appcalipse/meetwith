@@ -5,6 +5,8 @@ import useAccountContext from '@/hooks/useAccountContext'
 import {
   AcceptedToken,
   getChainInfo,
+  getTokenIcon,
+  getTokenName,
   getTokenSymbol,
   SupportedChain,
 } from '@/types/chains'
@@ -124,7 +126,10 @@ export const useCryptoBalances = ({
       const chainId = tokenInfo.chainId
 
       return {
-        ...configItem,
+        name: configItem?.name || getTokenName(tokenInfo.token),
+        symbol: configItem?.symbol || getTokenSymbol(tokenInfo.token),
+        icon: configItem?.icon || getTokenIcon(tokenInfo.token) || '',
+        price: configItem?.price || '0',
         tokenAddress,
         chainId,
         balance: balance

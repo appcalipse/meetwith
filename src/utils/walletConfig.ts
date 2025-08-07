@@ -28,12 +28,13 @@ export interface CryptoAsset {
   price: string
   balance: string
   usdValue: string
-  fullBalance?: string
-  currencyIcon?: string
   tokenAddress: string
   chainId: number
+  fullBalance?: string
+  currencyIcon?: string
   networkName?: string
   isLoading?: boolean
+  error?: unknown
 }
 
 export interface CryptoConfig {
@@ -176,7 +177,7 @@ export const getChainIdForNetwork = (
   }
 
   const chain = networkMap[networkName]
-  if (!chain) return getChainId(SupportedChain.ARBITRUM) // Default to Arbitrum
+  if (!chain) return getChainId(SupportedChain.ARBITRUM)
 
   return getChainId(chain)
 }
