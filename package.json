@@ -68,7 +68,7 @@
     "date-fns": "^2.29.0",
     "date-fns-tz": "^1.2.2",
     "dayzed": "^3.2.2",
-    "discord.js": "^12.5.3",
+    "discord.js": "14.21.0",
     "dom-parser": "^1.1.5",
     "email-templates": "^8.0.8",
     "eth-crypto": "^2.1.0",
