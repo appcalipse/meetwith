@@ -14,9 +14,16 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     const account_address = req.session.account!.address
     try {
       const payload: ConfirmCryptoTransactionRequest = req.body
-      if (!payload.guest_address && !payload.guest_email) {
+
+      // Only require guest information for meeting-related transactions
+      if (
+        payload.meeting_type_id &&
+        !payload.guest_address &&
+        !payload.guest_email
+      ) {
         throw new InValidGuests()
       }
+
       await createCryptoTransaction(payload, account_address)
 
       return res.status(200).json({ success: true })

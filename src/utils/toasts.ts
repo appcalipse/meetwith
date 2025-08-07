@@ -25,8 +25,20 @@ export const useToastHelpers = () => {
     })
   }
 
+  const showInfoToast = (title: string, description: string) => {
+    toast({
+      title,
+      description,
+      status: 'info',
+      duration: 3000,
+      position: 'top',
+      isClosable: true,
+    })
+  }
+
   return {
     showSuccessToast,
     showErrorToast,
+    showInfoToast,
   }
 }

@@ -231,14 +231,15 @@ export interface DeleteMeetingTypeRequest {
 export interface ConfirmCryptoTransactionRequest {
   transaction_hash: Address
   amount: number
-  meeting_type_id: string
+  meeting_type_id: string | null
   token_address: string
   token_type: TokenType
   chain: SupportedChain
   fiat_equivalent: number
+  receiver_address?: string
   guest_address?: string
-  guest_email: string
-  guest_name: string
+  guest_email?: string
+  guest_name?: string
 }
 
 export interface RequestInvoiceRequest {
