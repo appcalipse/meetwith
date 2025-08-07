@@ -1,8 +1,5 @@
 import { Address, MeetingSession } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
-import { erc20Abi } from 'abitype/abis'
-import { getContract, readContract } from 'thirdweb'
-import { viemAdapter } from 'thirdweb/adapters/viem'
 import { DAVCalendar } from 'tsdav'
 
 import {
@@ -20,13 +17,6 @@ import {
   ConnectedCalendarCore,
   ConnectResponse,
 } from '@/types/CalendarConnections'
-import {
-  AcceptedToken,
-  getChainId,
-  getChainInfo,
-  getTokenAddress,
-  SupportedChain,
-} from '@/types/chains'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
 import {
   Contact,
@@ -118,7 +108,6 @@ import { queryClient } from './react_query'
 import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
-import { thirdWebClient } from './user_manager'
 
 export const internalFetch = async <T>(
   path: string,
@@ -1686,179 +1675,4 @@ export const getWalletTransactions = async (
     limit,
     offset,
   })
-}
-
-// New Thirdweb-based balance functions
-export const getNativeBalance = async (
-  walletAddress: string,
-  chain: SupportedChain
-): Promise<{ balance: number }> => {
-  try {
-    const chainInfo = getChainInfo(chain)
-    if (!chainInfo) {
-      throw new Error(`Unsupported chain: ${chain}`)
-    }
-
-    const publicClient = viemAdapter.publicClient.toViem({
-      chain: chainInfo.thirdwebChain,
-      client: thirdWebClient,
-    })
-
-    const balance = await publicClient.getBalance({
-      address: walletAddress as `0x${string}`,
-    })
-
-    return { balance: Number(balance) / 1e18 } // Convert from wei to ether
-  } catch (error) {
-    console.error('Error getting native balance:', error)
-    return { balance: 0 }
-  }
-}
-
-export const getTokenBalance = async (
-  walletAddress: string,
-  tokenAddress: string,
-  chain: SupportedChain
-): Promise<{ balance: number }> => {
-  try {
-    const chainInfo = getChainInfo(chain)
-    if (!chainInfo) {
-      throw new Error(`Unsupported chain: ${chain}`)
-    }
-
-    const contract = getContract({
-      client: thirdWebClient,
-      chain: chainInfo.thirdwebChain,
-      address: tokenAddress as `0x${string}`,
-      abi: erc20Abi,
-    })
-
-    const balance = await readContract({
-      contract,
-      method: 'balanceOf',
-      params: [walletAddress as `0x${string}`],
-    })
-
-    // Get decimals for proper formatting
-    const decimals = await readContract({
-      contract,
-      method: 'decimals',
-    })
-
-    return { balance: Number(balance) / Math.pow(10, decimals) }
-  } catch (error) {
-    console.error('Error getting token balance:', error)
-    return { balance: 0 }
-  }
-}
-
-export const getTotalWalletBalance = async (
-  walletAddress: string
-): Promise<{ balance: number }> => {
-  try {
-    const supportedChains = [
-      SupportedChain.CELO,
-      SupportedChain.ARBITRUM,
-      SupportedChain.ARBITRUM_SEPOLIA,
-    ]
-
-    // Get all token configurations from chains.ts
-    const tokenConfigs = [
-      // Celo tokens
-      {
-        address: getTokenAddress(SupportedChain.CELO, AcceptedToken.CUSD),
-        chain: SupportedChain.CELO,
-        symbol: 'cUSD',
-      },
-      {
-        address: getTokenAddress(SupportedChain.CELO, AcceptedToken.USDC),
-        chain: SupportedChain.CELO,
-        symbol: 'USDC',
-      },
-      {
-        address: getTokenAddress(SupportedChain.CELO, AcceptedToken.USDT),
-        chain: SupportedChain.CELO,
-        symbol: 'USDT',
-      },
-      // Arbitrum tokens
-      {
-        address: getTokenAddress(SupportedChain.ARBITRUM, AcceptedToken.USDC),
-        chain: SupportedChain.ARBITRUM,
-        symbol: 'USDC',
-      },
-      {
-        address: getTokenAddress(SupportedChain.ARBITRUM, AcceptedToken.USDT),
-        chain: SupportedChain.ARBITRUM,
-        symbol: 'USDT',
-      },
-      // Arbitrum Sepolia tokens
-      {
-        address: getTokenAddress(
-          SupportedChain.ARBITRUM_SEPOLIA,
-          AcceptedToken.USDC
-        ),
-        chain: SupportedChain.ARBITRUM_SEPOLIA,
-        symbol: 'USDC',
-      },
-    ]
-
-    let totalBalance = 0
-
-    const balancePromises = [
-      ...supportedChains.map(async chain => {
-        try {
-          const nativeBalance = await getNativeBalance(walletAddress, chain)
-          return nativeBalance.balance
-        } catch (error) {
-          console.error(
-            `Error getting native balance for chain ${chain}:`,
-            error
-          )
-          return 0
-        }
-      }),
-
-      ...tokenConfigs.map(async token => {
-        try {
-          const tokenBalance = await getTokenBalance(
-            walletAddress,
-            token.address,
-            token.chain
-          )
-          return tokenBalance.balance
-        } catch (error) {
-          console.error(
-            `Error getting token balance for ${token.symbol}:`,
-            error
-          )
-          return 0
-        }
-      }),
-    ]
-
-    // Wait for all balance requests to complete
-    const balances = await Promise.all(balancePromises)
-    totalBalance = balances.reduce((sum, balance) => sum + balance, 0)
-
-    return { balance: totalBalance }
-  } catch (error) {
-    console.error('Error getting total wallet balance:', error)
-    return { balance: 0 }
-  }
-}
-
-export async function getCryptoBalance(
-  walletAddress: string,
-  tokenAddress: string,
-  chainId: number
-): Promise<{ balance: number }> {
-  const chain = Object.values(SupportedChain).find(
-    supportedChain => getChainId(supportedChain) === chainId
-  )
-
-  if (!chain) {
-    throw new Error(`Unsupported chain ID: ${chainId}`)
-  }
-
-  return getTokenBalance(walletAddress, tokenAddress, chain)
 }

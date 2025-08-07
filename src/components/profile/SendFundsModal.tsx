@@ -37,7 +37,6 @@ import {
   ChainInfo,
   getChainInfo,
   getNetworkDisplayName,
-  getTokenDecimals,
   getTokenIcon,
   getTokenName,
   getTokenSymbol,
@@ -45,11 +44,12 @@ import {
   supportedChains,
 } from '@/types/chains'
 import { createCryptoTransaction } from '@/utils/api_helper'
+import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 import { TokenType } from '@/utils/constants/meeting-types'
-import { parseUnits } from '@/utils/generic_utils'
+import { parseUnits, zeroAddress } from '@/utils/generic_utils'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { useToastHelpers } from '@/utils/toasts'
-import { getTokenInfo } from '@/utils/token.service'
+import { getTokenDecimals, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
 interface SendFundsModalProps {
@@ -85,14 +85,15 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     onClose()
   }
   const [selectedToken, setSelectedToken] = useState<Token | null>(null)
-  const NETWORK_CONFIG = {
-    Celo: SupportedChain.CELO,
-    Arbitrum: SupportedChain.ARBITRUM,
-    'Arbitrum Sepolia': SupportedChain.ARBITRUM_SEPOLIA,
-  } as const
+
+  const NETWORK_CONFIG = supportedPaymentChains.reduce((acc, chain) => {
+    acc[getNetworkDisplayName(chain)] = chain
+    return acc
+  }, {} as Record<string, SupportedChain>)
 
   const [sendNetwork, setSendNetwork] = useState<SupportedChain>(
     NETWORK_CONFIG[selectedNetwork as keyof typeof NETWORK_CONFIG] ||
+      supportedPaymentChains[0] ||
       SupportedChain.CELO
   )
   const [recipientAddress, setRecipientAddress] = useState('')
@@ -110,6 +111,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   useEffect(() => {
     const newNetwork =
       NETWORK_CONFIG[selectedNetwork as keyof typeof NETWORK_CONFIG] ||
+      supportedPaymentChains[0] ||
       SupportedChain.CELO
     setSendNetwork(newNetwork)
   }, [selectedNetwork])
@@ -119,32 +121,20 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     val => val.chain === sendNetwork
   ) as ChainInfo
 
-  // Filter tokens to match the original getTokensForNetwork function
-  const getAvailableTokens = (chain: ChainInfo): AcceptedTokenInfo[] => {
-    switch (chain.chain) {
-      case SupportedChain.CELO:
-        return chain.acceptableTokens.filter(
-          token =>
-            token.token === AcceptedToken.CUSD ||
-            token.token === AcceptedToken.USDC ||
-            token.token === AcceptedToken.USDT
-        )
-      case SupportedChain.ARBITRUM:
-        return chain.acceptableTokens.filter(
-          token =>
-            token.token === AcceptedToken.USDC ||
-            token.token === AcceptedToken.USDT
-        )
-      case SupportedChain.ARBITRUM_SEPOLIA:
-        return chain.acceptableTokens.filter(
-          token => token.token === AcceptedToken.USDC
-        )
-      default:
-        return []
-    }
-  }
-
-  const availableTokens = chain ? getAvailableTokens(chain) : []
+  // Get available tokens dynamically from chain configuration (excluding native tokens)
+  const availableTokens = chain
+    ? chain.acceptableTokens
+        .filter(token => token.contractAddress !== zeroAddress)
+        .filter(token => {
+          if (sendNetwork === SupportedChain.CELO) {
+            return (
+              token.token !== AcceptedToken.CELO &&
+              token.token !== AcceptedToken.CEUR
+            )
+          }
+          return true
+        })
+    : []
 
   // Validate recipient address
   const isValidAddress = (address: string): boolean => {
@@ -155,6 +145,33 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   const isValidAmount = (amount: string): boolean => {
     const num = parseFloat(amount)
     return !isNaN(num) && num > 0
+  }
+
+  const handleTokenSelection = async (token: AcceptedTokenInfo) => {
+    if (!chain) return
+
+    try {
+      const decimals = await getTokenDecimals(
+        token.contractAddress,
+        sendNetwork
+      )
+
+      setSelectedToken({
+        name: getTokenName(token.token),
+        symbol: getTokenSymbol(token.token),
+        icon: getTokenIcon(token.token) || '/assets/chains/ethereum.svg',
+        address: token.contractAddress,
+        chain: sendNetwork,
+        decimals: decimals,
+        chainId: chain.id,
+      })
+    } catch (error) {
+      console.error('Error fetching token decimals:', error)
+      showErrorToast(
+        'Token Error',
+        'Failed to get token information. Please try again.'
+      )
+    }
   }
 
   const handleSend = async () => {
@@ -581,23 +598,13 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
           <ModalBody pb={6}>
             <RadioGroup
               value={selectedToken?.symbol || ''}
-              onChange={value => {
+              onChange={async value => {
                 const token = availableTokens.find(
                   (t: AcceptedTokenInfo) => getTokenSymbol(t.token) === value
                 )
 
-                if (token && chain) {
-                  setSelectedToken({
-                    name: getTokenName(token.token),
-                    symbol: getTokenSymbol(token.token),
-                    icon:
-                      getTokenIcon(token.token) ||
-                      '/assets/chains/ethereum.svg',
-                    address: token.contractAddress,
-                    chain: sendNetwork,
-                    decimals: getTokenDecimals(token.token),
-                    chainId: chain.id,
-                  })
+                if (token) {
+                  await handleTokenSelection(token)
                 }
                 setIsTokenModalOpen(false)
               }}

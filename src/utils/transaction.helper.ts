@@ -6,6 +6,15 @@ import { TransactionCouldBeNotFoundError } from '@/utils/errors'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
+// Helper function to extract receiver address from ERC20 transfer input data
+function extractReceiverFromERC20Input(input: string): string | null {
+  if (input.startsWith('0xa9059cbb') && input.length >= 138) {
+    const receiverHex = input.slice(34, 74)
+    return `0x${receiverHex}`
+  }
+  return null
+}
+
 export async function getTransactionFeeThirdweb(
   txHash: `0x${string}`,
   chain: SupportedChain
@@ -41,6 +50,15 @@ export async function getTransactionFeeThirdweb(
       : AcceptedToken.ETHER
   )
   const feeInUSD = feeInEth * priceInUsd
+
+  let receiverAddress: string | null = null
+
+  if (!tx.input || tx.input === '0x') {
+    receiverAddress = tx.to
+  } else {
+    receiverAddress = extractReceiverFromERC20Input(tx.input)
+  }
+
   return {
     gasUsed: gasUsed.toString(),
     gasPrice: gasPrice.toString(),
@@ -48,5 +66,6 @@ export async function getTransactionFeeThirdweb(
     feeInEth: Number(fee) / 1e18,
     feeInUSD,
     from: tx.from,
+    receiverAddress,
   }
 }

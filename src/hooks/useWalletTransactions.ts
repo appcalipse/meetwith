@@ -45,7 +45,8 @@ export const useWalletTransactions = (
     },
     enabled: !!currentAccount?.address,
     staleTime: 30000,
-    cacheTime: 300000,
+    cacheTime: 60000,
+    refetchInterval: 10000,
   })
 
   const transactions = response?.transactions || []
