@@ -1275,24 +1275,88 @@
     enabled "2.0.x"
     kuler "^2.0.0"
 
-"@discordjs/collection@^0.1.6":
-  version "0.1.6"
-  resolved "https://registry.npmjs.org/@discordjs/collection/-/collection-0.1.6.tgz"
-  integrity sha512-utRNxnd9kSS2qhyivo9lMlt5qgAUasH2gb7BEOn6p0efFh24gjGomHzWKMAPn2hEReOPQZCJaRKoURwRotKucQ==
-
-"@discordjs/form-data@^3.0.1":
-  version "3.0.1"
-  resolved "https://registry.npmjs.org/@discordjs/form-data/-/form-data-3.0.1.tgz"
-  integrity sha512-ZfFsbgEXW71Rw/6EtBdrP5VxBJy4dthyC0tpQKGKmYFImlmmrykO14Za+BiIVduwjte0jXEBlhSKf0MWbFp9Eg==
+"@discordjs/builders@npm:^1.11.2":
+  version: 1.11.2
+  resolution: "@discordjs/builders@npm:1.11.2"
   dependencies:
-    asynckit "^0.4.0"
-    combined-stream "^1.0.8"
-    mime-types "^2.1.12"
+    "@discordjs/formatters": "npm:^0.6.1"
+    "@discordjs/util": "npm:^1.1.1"
+    "@sapphire/shapeshift": "npm:^4.0.0"
+    discord-api-types: "npm:^0.38.1"
+    fast-deep-equal: "npm:^3.1.3"
+    ts-mixer: "npm:^6.0.4"
+    tslib: "npm:^2.6.3"
+  checksum: 10c0/7315f7e946cabff111e7e319890b0456d1cbbe850104a9caf00b5ec5d5dd1e233cee14aeb431e0d8853d3e488eac54949fb91f0af0ac1771475c5efa61baaf55
+  languageName: node
+  linkType: hard
 
-"@emotion/babel-plugin@^11.13.5":
-  version "11.13.5"
-  resolved "https://registry.npmjs.org/@emotion/babel-plugin/-/babel-plugin-11.13.5.tgz"
-  integrity sha512-pxHCpT2ex+0q+HH91/zsdHkw/lXd468DIN2zvfvLtPKLLMo6gQj7oLObq8PhkrxOZb/gGCq03S3Z7PDhS8pduQ==
+"@discordjs/collection@npm:1.5.3":
+  version: 1.5.3
+  resolution: "@discordjs/collection@npm:1.5.3"
+  checksum: 10c0/54338e005e9a1c6a5c91464cbcc378a5bf74410ad5b8bba1961b80d0ec8f1eb1b768ea737ad03bcb62430ea84aa5561523318b739538b334115ed775630ca42c
+  languageName: node
+  linkType: hard
+
+"@discordjs/collection@npm:^2.1.0, @discordjs/collection@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "@discordjs/collection@npm:2.1.1"
+  checksum: 10c0/7bbb007271a046c981957b4a0543f6ca7e4c294a2d40987437ff06db5e92dbf35b8dc61719db2a7bc99557a58275742aa34be9f50487870a6e80acfc4fe45fa1
+  languageName: node
+  linkType: hard
+
+"@discordjs/formatters@npm:^0.6.1":
+  version: 0.6.1
+  resolution: "@discordjs/formatters@npm:0.6.1"
+  dependencies:
+    discord-api-types: "npm:^0.38.1"
+  checksum: 10c0/463759a10be7af9c82862f17f611aa1c737aa8dbd31816c89e9ce14c79eef0f86f57a18c3a64e180c03f9a482aa790427a4c7584dc09e76482b328da012561c2
+  languageName: node
+  linkType: hard
+
+"@discordjs/rest@npm:^2.5.1":
+  version: 2.5.1
+  resolution: "@discordjs/rest@npm:2.5.1"
+  dependencies:
+    "@discordjs/collection": "npm:^2.1.1"
+    "@discordjs/util": "npm:^1.1.1"
+    "@sapphire/async-queue": "npm:^1.5.3"
+    "@sapphire/snowflake": "npm:^3.5.3"
+    "@vladfrangu/async_event_emitter": "npm:^2.4.6"
+    discord-api-types: "npm:^0.38.1"
+    magic-bytes.js: "npm:^1.10.0"
+    tslib: "npm:^2.6.3"
+    undici: "npm:6.21.3"
+  checksum: 10c0/5eb7c97e8c731ae36c73de502e27d6fe660656bc3c457a6bc2a444c13d650c2ac613744b436dbf43c67104f9e9426e3c306d917b29109e19672c3e394cf70be2
+  languageName: node
+  linkType: hard
+
+"@discordjs/util@npm:^1.1.0, @discordjs/util@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@discordjs/util@npm:1.1.1"
+  checksum: 10c0/a374648aae0dd98345996f41891add0523388297a6f6b99c7a37c83de4d832d91a464195502126967fac0f071e5ecb80f776ee42a887fffa9c5c0f4612381b98
+  languageName: node
+  linkType: hard
+
+"@discordjs/ws@npm:^1.2.3":
+  version: 1.2.3
+  resolution: "@discordjs/ws@npm:1.2.3"
+  dependencies:
+    "@discordjs/collection": "npm:^2.1.0"
+    "@discordjs/rest": "npm:^2.5.1"
+    "@discordjs/util": "npm:^1.1.0"
+    "@sapphire/async-queue": "npm:^1.5.2"
+    "@types/ws": "npm:^8.5.10"
+    "@vladfrangu/async_event_emitter": "npm:^2.2.4"
+    discord-api-types: "npm:^0.38.1"
+    tslib: "npm:^2.6.2"
+    ws: "npm:^8.17.0"
+  checksum: 10c0/3add9b8e24174617149b515ad3a470b64d7286023d96b85c8387b40b3aaf3975f15b121fc1b49841e85b55c519f2b6e9050d1711f34fd65f33652fdde42a4752
+  languageName: node
+  linkType: hard
+
+"@emnapi/runtime@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "@emnapi/runtime@npm:1.4.0"
   dependencies:
     "@babel/helper-module-imports" "^7.16.7"
     "@babel/runtime" "^7.18.3"
@@ -6148,15 +6212,25 @@
   dependencies:
     "@types/webidl-conversions" "*"
 
-"@types/yargs-parser@*":
-  version "21.0.3"
-  resolved "https://registry.npmjs.org/@types/yargs-parser/-/yargs-parser-21.0.3.tgz"
-  integrity sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==
+"@types/ws@npm:^8.5.10":
+  version: 8.18.1
+  resolution: "@types/ws@npm:8.18.1"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/61aff1129143fcc4312f083bc9e9e168aa3026b7dd6e70796276dcfb2c8211c4292603f9c4864fae702f2ed86e4abd4d38aa421831c2fd7f856c931a481afbab
+  languageName: node
+  linkType: hard
 
-"@types/yargs@^17.0.8":
-  version "17.0.32"
-  resolved "https://registry.npmjs.org/@types/yargs/-/yargs-17.0.32.tgz"
-  integrity sha512-xQ67Yc/laOG5uMfX/093MRlGGCIBzZMarVa+gfNKJxWAIgykYpVGkBdbqEzGDDfCrVUj6Hiff4mTZ5BA6TmAog==
+"@types/yargs-parser@npm:*":
+  version: 21.0.3
+  resolution: "@types/yargs-parser@npm:21.0.3"
+  checksum: 10c0/e71c3bd9d0b73ca82e10bee2064c384ab70f61034bbfb78e74f5206283fc16a6d85267b606b5c22cb2a3338373586786fed595b2009825d6a9115afba36560a0
+  languageName: node
+  linkType: hard
+
+"@types/yargs@npm:^17.0.8":
+  version: 17.0.32
+  resolution: "@types/yargs@npm:17.0.32"
   dependencies:
     "@types/yargs-parser" "*"
 
@@ -6288,26 +6362,35 @@
     js-sha256 "^0.9.0"
     js-sha3 "^0.8.0"
 
-"@vascosantos/moving-average@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.npmjs.org/@vascosantos/moving-average/-/moving-average-1.1.0.tgz"
-  integrity sha512-MVEJ4vWAPNbrGLjz7ITnHYg+YXZ6ijAqtH5/cHwSoCpbvuJ98aLXwFfPKAUfZpJMQR5uXB58UJajbY130IRF/w==
+"@vascosantos/moving-average@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "@vascosantos/moving-average@npm:1.1.0"
+  checksum: 10c0/17ffbf99e7b19462246214826c9de776de4d82bc83f8b5bb21dda3ce800fae5c7c31033f349692bb738650767547e2f0717b3df5a1c57d8297c0c236f07b647e
+  languageName: node
+  linkType: hard
 
-"@vitest/expect@3.2.4":
-  version "3.2.4"
-  resolved "https://registry.npmjs.org/@vitest/expect/-/expect-3.2.4.tgz"
-  integrity sha512-Io0yyORnB6sikFlt8QW5K7slY4OjqNX9jmJQ02QDda8lyM6B5oNgVWoSoKPac8/kgnCUzuHQKrSLtu/uOqqrig==
-  dependencies:
-    "@types/chai" "^5.2.2"
-    "@vitest/spy" "3.2.4"
-    "@vitest/utils" "3.2.4"
-    chai "^5.2.0"
-    tinyrainbow "^2.0.0"
+"@vladfrangu/async_event_emitter@npm:^2.2.4, @vladfrangu/async_event_emitter@npm:^2.4.6":
+  version: 2.4.6
+  resolution: "@vladfrangu/async_event_emitter@npm:2.4.6"
+  checksum: 10c0/1fe634878902da584493ecb8e81c855436c002b215dd7c25c21780930fc5621ebe8eb79d5b899a56af0d1ea9ea9171e35175221e4438e2f56c67ce64d4b8a373
+  languageName: node
+  linkType: hard
 
-"@vitest/pretty-format@3.2.4":
-  version "3.2.4"
-  resolved "https://registry.npmjs.org/@vitest/pretty-format/-/pretty-format-3.2.4.tgz"
-  integrity sha512-IVNZik8IVRJRTr9fxlitMKeJeXFFFN0JaB9PHPGQ8NKQbGpfjlTx9zO4RefN8gp7eqjNy8nyK3NZmBzOPeIxtA==
+"@wagmi/chains@npm:1.1.0":
+  version: 1.1.0
+  resolution: "@wagmi/chains@npm:1.1.0"
+  peerDependencies:
+    typescript: ">=5.0.4"
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  checksum: 10c0/774a1a89c565102f856ca3790476017a1353b10486188e57e7a36a9855a6d344346c65c1a831658df4d02b39b5f31fee011cd900d2311abb49fb1cdb3003798c
+  languageName: node
+  linkType: hard
+
+"@walletconnect/browser-utils@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "@walletconnect/browser-utils@npm:1.8.0"
   dependencies:
     tinyrainbow "^2.0.0"
 
@@ -9927,31 +10010,49 @@ dir-glob@^3.0.1:
   resolved "https://registry.npmjs.org/dir-glob/-/dir-glob-3.0.1.tgz"
   integrity sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==
   dependencies:
-    path-type "^4.0.0"
+    path-type: "npm:^4.0.0"
+  checksum: 10c0/dcac00920a4d503e38bb64001acb19df4efc14536ada475725e12f52c16777afdee4db827f55f13a908ee7efc0cb282e2e3dbaeeb98c0993dd93d1802d3bf00c
+  languageName: node
+  linkType: hard
 
-discontinuous-range@1.0.0:
-  version "1.0.0"
-  resolved "https://registry.npmjs.org/discontinuous-range/-/discontinuous-range-1.0.0.tgz"
-  integrity sha512-c68LpLbO+7kP/b1Hr1qs8/BJ09F5khZGTxqxZuhzxpmwJKOgRFHJWIb9/KmqnqHhLdO55aOxFH/EGBvUQbL/RQ==
+"discontinuous-range@npm:1.0.0":
+  version: 1.0.0
+  resolution: "discontinuous-range@npm:1.0.0"
+  checksum: 10c0/487b105f83c1cc528e25e65d3c4b73958ec79769b7bd0e264414702a23a7e2b282c72982b4bef4af29fcab53f47816c3f0a5c40d85a99a490f4bc35b83dc00f8
+  languageName: node
+  linkType: hard
 
-discord.js@^12.5.3:
-  version "12.5.3"
-  resolved "https://registry.npmjs.org/discord.js/-/discord.js-12.5.3.tgz"
-  integrity sha512-D3nkOa/pCkNyn6jLZnAiJApw2N9XrIsXUAdThf01i7yrEuqUmDGc7/CexVWwEcgbQR97XQ+mcnqJpmJ/92B4Aw==
+"discord-api-types@npm:^0.38.1":
+  version: 0.38.18
+  resolution: "discord-api-types@npm:0.38.18"
+  checksum: 10c0/a5742c3b20f63d2c46d8c1544636dda33c815725e56c7d5aa1e8c32abac86b76786e3de39b29d1fc8c364c1894d69f6803d0aaab409c6d597fd0b157862859de
+  languageName: node
+  linkType: hard
+
+"discord.js@npm:14.21.0":
+  version: 14.21.0
+  resolution: "discord.js@npm:14.21.0"
   dependencies:
-    "@discordjs/collection" "^0.1.6"
-    "@discordjs/form-data" "^3.0.1"
-    abort-controller "^3.0.0"
-    node-fetch "^2.6.1"
-    prism-media "^1.2.9"
-    setimmediate "^1.0.5"
-    tweetnacl "^1.0.3"
-    ws "^7.4.4"
+    "@discordjs/builders": "npm:^1.11.2"
+    "@discordjs/collection": "npm:1.5.3"
+    "@discordjs/formatters": "npm:^0.6.1"
+    "@discordjs/rest": "npm:^2.5.1"
+    "@discordjs/util": "npm:^1.1.1"
+    "@discordjs/ws": "npm:^1.2.3"
+    "@sapphire/snowflake": "npm:3.5.3"
+    discord-api-types: "npm:^0.38.1"
+    fast-deep-equal: "npm:3.1.3"
+    lodash.snakecase: "npm:4.1.1"
+    magic-bytes.js: "npm:^1.10.0"
+    tslib: "npm:^2.6.3"
+    undici: "npm:6.21.3"
+  checksum: 10c0/35d89b66ec427ecc972f9141540774af6c6a5bf177bdbb5c948efbf838ec074204fb4610227f0f8405336d66706ba17f7280aedf00cccd858ef5c1048d861b34
+  languageName: node
+  linkType: hard
 
-display-notification@2.0.0:
-  version "2.0.0"
-  resolved "https://registry.npmjs.org/display-notification/-/display-notification-2.0.0.tgz"
-  integrity sha512-TdmtlAcdqy1NU+j7zlkDdMnCL878zriLaBmoD9quOoq1ySSSGv03l0hXK5CvIFZlIfFI/hizqdQuW+Num7xuhw==
+"display-notification@npm:2.0.0":
+  version: 2.0.0
+  resolution: "display-notification@npm:2.0.0"
   dependencies:
     escape-string-applescript "^1.0.0"
     run-applescript "^3.0.0"
@@ -11529,32 +11630,42 @@ fake-merkle-patricia-tree@^1.0.1:
   resolved "https://registry.npmjs.org/fake-merkle-patricia-tree/-/fake-merkle-patricia-tree-1.0.1.tgz"
   integrity sha512-Tgq37lkc9pUIgIKw5uitNUKcgcYL3R6JvXtKQbOf/ZSavXbidsksgp/pAY6p//uhw0I4yoMsvTSovvVIsk/qxA==
   dependencies:
-    checkpoint-store "^1.1.0"
+    checkpoint-store: "npm:^1.1.0"
+  checksum: 10c0/7a476b3437e20d95d6483198c4f4bc697e6bd80b4b30127f2f0367dfc4d3fb04cbf21cee7803287df8393f1837ceaf61e5f9606ccb6d0fdf7fc2a42a6e6ee6d0
+  languageName: node
+  linkType: hard
 
-fast-deep-equal@^2.0.1:
-  version "2.0.1"
-  resolved "https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-2.0.1.tgz"
-  integrity sha512-bCK/2Z4zLidyB4ReuIsvALH6w31YfAQDmXMqMx6FyfHqvBxtjC0eRumeSu4Bs3XtXwpyIywtSTrVT99BxY1f9w==
+"fast-deep-equal@npm:3.1.3, fast-deep-equal@npm:^3.1.1, fast-deep-equal@npm:^3.1.3":
+  version: 3.1.3
+  resolution: "fast-deep-equal@npm:3.1.3"
+  checksum: 10c0/40dedc862eb8992c54579c66d914635afbec43350afbbe991235fdcb4e3a8d5af1b23ae7e79bef7d4882d0ecee06c3197488026998fb19f72dc95acff1d1b1d0
+  languageName: node
+  linkType: hard
 
-fast-deep-equal@^3.1.1, fast-deep-equal@^3.1.3:
-  version "3.1.3"
-  resolved "https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz"
-  integrity sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==
+"fast-deep-equal@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "fast-deep-equal@npm:2.0.1"
+  checksum: 10c0/1602e0d6ed63493c865cc6b03f9070d6d3926e8cd086a123060b58f80a295f3f08b1ecfb479ae7c45b7fd45535202aea7cf5b49bc31bffb81c20b1502300be84
+  languageName: node
+  linkType: hard
 
-fast-diff@^1.1.2:
-  version "1.3.0"
-  resolved "https://registry.npmjs.org/fast-diff/-/fast-diff-1.3.0.tgz"
-  integrity sha512-VxPP4NqbUjj6MaAOafWeUn2cXWLcCtljklUtZf0Ind4XQ+QPtmA0b18zZy0jIQx+ExRVCR/ZQpBmik5lXshNsw==
+"fast-diff@npm:^1.1.2":
+  version: 1.3.0
+  resolution: "fast-diff@npm:1.3.0"
+  checksum: 10c0/5c19af237edb5d5effda008c891a18a585f74bf12953be57923f17a3a4d0979565fc64dbc73b9e20926b9d895f5b690c618cbb969af0cf022e3222471220ad29
+  languageName: node
+  linkType: hard
 
-fast-fifo@^1.0.0:
-  version "1.3.2"
-  resolved "https://registry.npmjs.org/fast-fifo/-/fast-fifo-1.3.2.tgz"
-  integrity sha512-/d9sfos4yxzpwkDkuN7k2SqFKtYNmCTzgfEpz82x34IM9/zc8KGxQoXg1liNC/izpRM/MBdt44Nmx41ZWqk+FQ==
+"fast-fifo@npm:^1.0.0":
+  version: 1.3.2
+  resolution: "fast-fifo@npm:1.3.2"
+  checksum: 10c0/d53f6f786875e8b0529f784b59b4b05d4b5c31c651710496440006a398389a579c8dbcd2081311478b5bf77f4b0b21de69109c5a4eabea9d8e8783d1eb864e4c
+  languageName: node
+  linkType: hard
 
-fast-glob@^3.1.1, fast-glob@^3.2.5, fast-glob@^3.2.7, fast-glob@^3.2.9, fast-glob@^3.3.1:
-  version "3.3.2"
-  resolved "https://registry.npmjs.org/fast-glob/-/fast-glob-3.3.2.tgz"
-  integrity sha512-oX2ruAFQwf/Orj8m737Y5adxDQO0LAB7/S5MnxCdTNDd4p6BsyIVsv9JQsATbTSq8KHRpLwIHbVlUNatxd+1Ow==
+"fast-glob@npm:^3.1.1, fast-glob@npm:^3.2.5, fast-glob@npm:^3.2.7, fast-glob@npm:^3.2.9, fast-glob@npm:^3.3.1":
+  version: 3.3.2
+  resolution: "fast-glob@npm:3.3.2"
   dependencies:
     "@nodelib/fs.stat" "^2.0.2"
     "@nodelib/fs.walk" "^1.2.3"
@@ -16480,72 +16591,112 @@ locate-path@^5.0.0:
   resolved "https://registry.npmjs.org/locate-path/-/locate-path-5.0.0.tgz"
   integrity sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==
   dependencies:
-    p-locate "^4.1.0"
+    p-locate: "npm:^4.1.0"
+  checksum: 10c0/33a1c5247e87e022f9713e6213a744557a3e9ec32c5d0b5efb10aa3a38177615bf90221a5592674857039c1a0fd2063b82f285702d37b792d973e9e72ace6c59
+  languageName: node
+  linkType: hard
 
-lodash.camelcase@^4.3.0:
-  version "4.3.0"
-  resolved "https://registry.npmjs.org/lodash.camelcase/-/lodash.camelcase-4.3.0.tgz"
-  integrity sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==
+"lodash.camelcase@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "lodash.camelcase@npm:4.3.0"
+  checksum: 10c0/fcba15d21a458076dd309fce6b1b4bf611d84a0ec252cb92447c948c533ac250b95d2e00955801ebc367e5af5ed288b996d75d37d2035260a937008e14eaf432
+  languageName: node
+  linkType: hard
 
-lodash.clonedeep@4.5.0:
-  version "4.5.0"
-  resolved "https://registry.npmjs.org/lodash.clonedeep/-/lodash.clonedeep-4.5.0.tgz"
-  integrity sha512-H5ZhCF25riFd9uB5UCkVKo61m3S/xZk1x4wA6yp/L3RFP6Z/eHH1ymQcGLo7J3GMPfm0V/7m1tryHuGVxpqEBQ==
+"lodash.clonedeep@npm:4.5.0":
+  version: 4.5.0
+  resolution: "lodash.clonedeep@npm:4.5.0"
+  checksum: 10c0/2caf0e4808f319d761d2939ee0642fa6867a4bbf2cfce43276698828380756b99d4c4fa226d881655e6ac298dd453fe12a5ec8ba49861777759494c534936985
+  languageName: node
+  linkType: hard
 
-lodash.debounce@^4.0.8:
-  version "4.0.8"
-  resolved "https://registry.npmjs.org/lodash.debounce/-/lodash.debounce-4.0.8.tgz"
-  integrity sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==
+"lodash.debounce@npm:^4.0.8":
+  version: 4.0.8
+  resolution: "lodash.debounce@npm:4.0.8"
+  checksum: 10c0/762998a63e095412b6099b8290903e0a8ddcb353ac6e2e0f2d7e7d03abd4275fe3c689d88960eb90b0dde4f177554d51a690f22a343932ecbc50a5d111849987
+  languageName: node
+  linkType: hard
 
-lodash.indexof@4.0.5:
-  version "4.0.5"
-  resolved "https://registry.npmjs.org/lodash.indexof/-/lodash.indexof-4.0.5.tgz"
-  integrity sha512-t9wLWMQsawdVmf6/IcAgVGqAJkNzYVcn4BHYZKTPW//l7N5Oq7Bq138BaVk19agcsPZePcidSgTTw4NqS1nUAw==
+"lodash.indexof@npm:4.0.5":
+  version: 4.0.5
+  resolution: "lodash.indexof@npm:4.0.5"
+  checksum: 10c0/aa117a8483c884003373b75fe952d602af111ac03afface7510d8cc48c4625c6f744bec6b3792cff1f031926b8e3be0979461ecd5d6972e366c6a2a36e22328b
+  languageName: node
+  linkType: hard
 
-lodash.memoize@4.x:
-  version "4.1.2"
-  resolved "https://registry.npmjs.org/lodash.memoize/-/lodash.memoize-4.1.2.tgz"
-  integrity sha512-t7j+NzmgnQzTAYXcsHYLgimltOV1MXHtlOWf6GjL9Kj8GK5FInw5JotxvbOs+IvV1/Dzo04/fCGfLVs7aXb4Ag==
+"lodash.isequal@npm:4.5.0":
+  version: 4.5.0
+  resolution: "lodash.isequal@npm:4.5.0"
+  checksum: 10c0/dfdb2356db19631a4b445d5f37868a095e2402292d59539a987f134a8778c62a2810c2452d11ae9e6dcac71fc9de40a6fedcb20e2952a15b431ad8b29e50e28f
+  languageName: node
+  linkType: hard
 
-lodash.merge@^4.6.2:
-  version "4.6.2"
-  resolved "https://registry.npmjs.org/lodash.merge/-/lodash.merge-4.6.2.tgz"
-  integrity sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==
+"lodash.memoize@npm:4.x":
+  version: 4.1.2
+  resolution: "lodash.memoize@npm:4.1.2"
+  checksum: 10c0/c8713e51eccc650422716a14cece1809cfe34bc5ab5e242b7f8b4e2241c2483697b971a604252807689b9dd69bfe3a98852e19a5b89d506b000b4187a1285df8
+  languageName: node
+  linkType: hard
 
-lodash.mergewith@4.6.2:
-  version "4.6.2"
-  resolved "https://registry.npmjs.org/lodash.mergewith/-/lodash.mergewith-4.6.2.tgz"
-  integrity sha512-GK3g5RPZWTRSeLSpgP8Xhra+pnjBC56q9FZYe1d5RN3TJ35dbkGy3YqBSMbyCrlbi+CM9Z3Jk5yTL7RCsqboyQ==
+"lodash.merge@npm:^4.6.2":
+  version: 4.6.2
+  resolution: "lodash.merge@npm:4.6.2"
+  checksum: 10c0/402fa16a1edd7538de5b5903a90228aa48eb5533986ba7fa26606a49db2572bf414ff73a2c9f5d5fd36b31c46a5d5c7e1527749c07cbcf965ccff5fbdf32c506
+  languageName: node
+  linkType: hard
 
-lodash.sortby@4.7.0:
-  version "4.7.0"
-  resolved "https://registry.npmjs.org/lodash.sortby/-/lodash.sortby-4.7.0.tgz"
-  integrity sha512-HDWXG8isMntAyRF5vZ7xKuEvOhT4AhlRt/3czTSjvGUxjYCBVRQY48ViDHyfYz9VIoBkW4TMGQNapx+l3RUwdA==
+"lodash.mergewith@npm:4.6.2":
+  version: 4.6.2
+  resolution: "lodash.mergewith@npm:4.6.2"
+  checksum: 10c0/4adbed65ff96fd65b0b3861f6899f98304f90fd71e7f1eb36c1270e05d500ee7f5ec44c02ef979b5ddbf75c0a0b9b99c35f0ad58f4011934c4d4e99e5200b3b5
+  languageName: node
+  linkType: hard
 
-lodash.throttle@^4.1.1:
-  version "4.1.1"
-  resolved "https://registry.npmjs.org/lodash.throttle/-/lodash.throttle-4.1.1.tgz"
-  integrity sha512-wIkUCfVKpVsWo3JSZlc+8MB5it+2AN5W8J7YVMST30UrvcQNZ1Okbj+rbVniijTWE6FGYy4XJq/rHkas8qJMLQ==
+"lodash.snakecase@npm:4.1.1":
+  version: 4.1.1
+  resolution: "lodash.snakecase@npm:4.1.1"
+  checksum: 10c0/f0b3f2497eb20eea1a1cfc22d645ecaeb78ac14593eb0a40057977606d2f35f7aaff0913a06553c783b535aafc55b718f523f9eb78f8d5293f492af41002eaf9
+  languageName: node
+  linkType: hard
 
-lodash.topath@^4.5.2:
-  version "4.5.2"
-  resolved "https://registry.npmjs.org/lodash.topath/-/lodash.topath-4.5.2.tgz"
-  integrity sha512-1/W4dM+35DwvE/iEd1M9ekewOSTlpFekhw9mhAtrwjVqUr83/ilQiyAvmg4tVX7Unkcfl1KC+i9WdaT4B6aQcg==
+"lodash.sortby@npm:4.7.0":
+  version: 4.7.0
+  resolution: "lodash.sortby@npm:4.7.0"
+  checksum: 10c0/fc48fb54ff7669f33bb32997cab9460757ee99fafaf72400b261c3e10fde21538e47d8cfcbe6a25a31bcb5b7b727c27d52626386fc2de24eb059a6d64a89cdf5
+  languageName: node
+  linkType: hard
 
-lodash.truncate@^4.4.2:
-  version "4.4.2"
-  resolved "https://registry.npmjs.org/lodash.truncate/-/lodash.truncate-4.4.2.tgz"
-  integrity sha512-jttmRe7bRse52OsWIMDLaXxWqRAmtIUccAQ3garviCqJjafXOfNMO0yMfNpdD6zbGaTU0P5Nz7e7gAT6cKmJRw==
+"lodash.throttle@npm:^4.1.1":
+  version: 4.1.1
+  resolution: "lodash.throttle@npm:4.1.1"
+  checksum: 10c0/14628013e9e7f65ac904fc82fd8ecb0e55a9c4c2416434b1dd9cf64ae70a8937f0b15376a39a68248530adc64887ed0fe2b75204b2c9ec3eea1cb2d66ddd125d
+  languageName: node
+  linkType: hard
 
-lodash@^4.17.14, lodash@^4.17.15, lodash@^4.17.20, lodash@^4.17.21:
-  version "4.17.21"
-  resolved "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz"
-  integrity sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==
+"lodash.topath@npm:^4.5.2":
+  version: 4.5.2
+  resolution: "lodash.topath@npm:4.5.2"
+  checksum: 10c0/f555a1459c11c807517be6c3a3e8030a9e92a291b2d6b598511e0bddbe99297e870b20e097019b613a3035d061bac63cb42621386c0b9dc22fd3d85e58459653
+  languageName: node
+  linkType: hard
 
-log-symbols@^6.0.0:
-  version "6.0.0"
-  resolved "https://registry.npmjs.org/log-symbols/-/log-symbols-6.0.0.tgz"
-  integrity sha512-i24m8rpwhmPIS4zscNzK6MSEhk0DUWa/8iYQWxhffV8jkI4Phvs3F+quL5xvS0gdQR0FyTCMMH33Y78dDTzzIw==
+"lodash.truncate@npm:^4.4.2":
+  version: 4.4.2
+  resolution: "lodash.truncate@npm:4.4.2"
+  checksum: 10c0/4e870d54e8a6c86c8687e057cec4069d2e941446ccab7f40b4d9555fa5872d917d0b6aa73bece7765500a3123f1723bcdba9ae881b679ef120bba9e1a0b0ed70
+  languageName: node
+  linkType: hard
+
+"lodash@npm:4.17.21, lodash@npm:^4.17.14, lodash@npm:^4.17.15, lodash@npm:^4.17.20, lodash@npm:^4.17.21":
+  version: 4.17.21
+  resolution: "lodash@npm:4.17.21"
+  checksum: 10c0/d8cbea072bb08655bb4c989da418994b073a608dffa608b09ac04b43a791b12aeae7cd7ad919aa4c925f33b48490b5cfe6c1f71d827956071dae2e7bb3a6b74c
+  languageName: node
+  linkType: hard
+
+"log-symbols@npm:^6.0.0":
+  version: 6.0.0
+  resolution: "log-symbols@npm:6.0.0"
   dependencies:
     chalk "^5.3.0"
     is-unicode-supported "^1.3.0"
@@ -16660,12 +16811,21 @@ mafmt@^10.0.0:
   resolved "https://registry.npmjs.org/mafmt/-/mafmt-10.0.0.tgz"
   integrity sha512-K1bziJOXcnepfztu+2Xy9FLKVLaFMDuspmiyJIYRxnO0WOxFSV7XKSdMxMrVZxcvg1+YjlTIvSGTImUHU2k4Aw==
   dependencies:
-    multiaddr "^10.0.0"
+    multiaddr: "npm:^10.0.0"
+  checksum: 10c0/6f5e0aa964326518f44e19d57db73fb7b7d88ca9d29ea42371c76029b0cfe381d522fcd558a3fd8364868b54fb7f6fa012f730fb7270bce00baa9a866d428664
+  languageName: node
+  linkType: hard
 
-magic-string@^0.27.0:
-  version "0.27.0"
-  resolved "https://registry.npmjs.org/magic-string/-/magic-string-0.27.0.tgz"
-  integrity sha512-8UnnX2PeRAPZuN12svgR9j7M1uWMovg/CEnIwIG0LFkXSJJe4PdfUGiTGl8V9bsBHFUtfVINcSyYxd7q+kx9fA==
+"magic-bytes.js@npm:^1.10.0":
+  version: 1.12.1
+  resolution: "magic-bytes.js@npm:1.12.1"
+  checksum: 10c0/c99fc520d796d7b3f554728050252ee515707ffcd66b7db7dc4b0632863416e6a60b947ac4f97846267171d2856da7ab6dbfb2b910567e5b6cf9910fc1099de4
+  languageName: node
+  linkType: hard
+
+"magic-string@npm:^0.27.0":
+  version: 0.27.0
+  resolution: "magic-string@npm:0.27.0"
   dependencies:
     "@jridgewell/sourcemap-codec" "^1.4.13"
 
@@ -16910,37 +17070,200 @@ memdown@^1.0.0:
   resolved "https://registry.npmjs.org/memdown/-/memdown-1.4.1.tgz"
   integrity sha512-iVrGHZB8i4OQfM155xx8akvG9FIj+ht14DX5CQkCTG4EHzZ3d3sgckIf/Lm9ivZalEsFuEVnWv2B2WZvbrro2w==
   dependencies:
-    abstract-leveldown "~2.7.1"
-    functional-red-black-tree "^1.0.1"
-    immediate "^3.2.3"
-    inherits "~2.0.1"
-    ltgt "~2.2.0"
-    safe-buffer "~5.1.1"
+    "@chakra-ui/icons": "npm:^2.1.1"
+    "@chakra-ui/next-js": "npm:^2.2.0"
+    "@chakra-ui/react": "npm:^2.8.2"
+    "@emotion/react": "npm:^11.10.0"
+    "@emotion/styled": "npm:^11"
+    "@epnsproject/backend-sdk": "npm:^1.3.5"
+    "@epnsproject/backend-sdk-staging": "npm:^1.3.6"
+    "@faker-js/faker": "npm:^6.2.0"
+    "@fortawesome/fontawesome-svg-core": "npm:^1.2.18"
+    "@fortawesome/free-solid-svg-icons": "npm:^5.8.2"
+    "@fortawesome/react-fontawesome": "npm:^0.1.4"
+    "@google-apps/meet": "npm:^0.3.0"
+    "@hapi/iron": "npm:^6.0.0"
+    "@lens-protocol/client": "npm:^2.0.0-alpha.38"
+    "@mdx-js/loader": "npm:^2.0.0"
+    "@mdx-js/react": "npm:^2.0.0"
+    "@metamask/eth-sig-util": "npm:^4.0.0"
+    "@mikro-orm/cli": "npm:^4.5.9"
+    "@mikro-orm/core": "npm:^4.5.9"
+    "@mikro-orm/postgresql": "npm:^4.5.9"
+    "@next/mdx": "npm:^12.1.0"
+    "@peculiar/webcrypto": "npm:^1.4.6"
+    "@sendgrid/mail": "npm:^7.6.2"
+    "@sentry/nextjs": "npm:^7.83.0"
+    "@sentry/types": "npm:^7.83.0"
+    "@supabase/supabase-js": "npm:^1.28.1"
+    "@tanstack/react-query": "npm:^4.36.1"
+    "@tanstack/react-query-devtools": "npm:^4.36.1"
+    "@testing-library/jest-dom": "npm:^5.16.5"
+    "@testing-library/react": "npm:^14.0.0"
+    "@testing-library/user-event": "npm:^14.5.2"
+    "@tiptap/extension-bubble-menu": "npm:^2.2.1"
+    "@tiptap/extension-link": "npm:^2.2.1"
+    "@tiptap/extension-placeholder": "npm:^2.2.3"
+    "@tiptap/extension-text-align": "npm:^2.2.3"
+    "@tiptap/extension-underline": "npm:^2.2.2"
+    "@tiptap/pm": "npm:^2.2.1"
+    "@tiptap/react": "npm:^2.2.1"
+    "@tiptap/starter-kit": "npm:^2.2.1"
+    "@types/busboy": "npm:^1.5.4"
+    "@types/crypto-js": "npm:^4.0.2"
+    "@types/email-templates": "npm:^8.0.4"
+    "@types/ical": "npm:^0.8.0"
+    "@types/jest": "npm:^28"
+    "@types/jest-when": "npm:^3.5.0"
+    "@types/lodash.debounce": "npm:^4.0.9"
+    "@types/luxon": "npm:^3.4.2"
+    "@types/node": "npm:16.11.7"
+    "@types/nodemailer": "npm:^6.4.4"
+    "@types/react": "npm:^18.0.0"
+    "@types/react-dom": "npm:^18.0.0"
+    "@types/react-virtualized": "npm:^9.21.15"
+    "@types/sanitize-html": "npm:^2.11.0"
+    "@types/uuid": "npm:^8.3.1"
+    "@typescript-eslint/eslint-plugin": "npm:^5.4.0"
+    "@ukstv/jazzicon-react": "npm:^1.0.0"
+    "@unstoppabledomains/resolution": "npm:^7.1.2"
+    "@walletconnect/web3-provider": "npm:^1.7.0"
+    "@web3-react/core": "npm:^6.1.9"
+    abitype: "npm:^1.0.2"
+    arrow-keys-react: "npm:^1.0.6"
+    busboy: "npm:^1.6.0"
+    chakra-react-select: "npm:^4.7.6"
+    cookie: "npm:0.7.0"
+    countries-and-timezones: "npm:^3.6.0"
+    crypto-js: "npm:^4.1.1"
+    date-fns: "npm:^2.29.0"
+    date-fns-tz: "npm:^1.2.2"
+    dayzed: "npm:^3.2.2"
+    discord.js: "npm:14.21.0"
+    dom-parser: "npm:^1.1.5"
+    email-templates: "npm:^8.0.8"
+    eslint: "npm:7"
+    eslint-config-next: "npm:^13.4.3"
+    eslint-config-prettier: "npm:^8.3.0"
+    eslint-plugin-import: "npm:^2.25.4"
+    eslint-plugin-json: "npm:^3.1.0"
+    eslint-plugin-jsx-a11y: "npm:^6.5.1"
+    eslint-plugin-prettier: "npm:^4.0.0"
+    eslint-plugin-react: "npm:^7.28.0"
+    eslint-plugin-react-hooks: "npm:^4.3.0"
+    eslint-plugin-simple-import-sort: "npm:^7.0.0"
+    eslint-plugin-tailwindcss: "npm:^1.17.2"
+    eth-crypto: "npm:^2.1.0"
+    ethereumjs-util: "npm:^7.1.3"
+    ethers: "npm:5"
+    framer-motion: "npm:^10.12.12"
+    google-auth-library: "npm:^9.15.0"
+    googleapis: "npm:92.0.0"
+    graphql: "npm:^16.5.0"
+    html-tags: "npm:^5.0.0"
+    husky: "npm:^7.0.4"
+    ical.js: "npm:^1.5.0"
+    ics: "npm:3.7.6"
+    ipfs: "npm:^0.59.1"
+    ipfs-core-types: "npm:^0.8.3"
+    ipfs-http-client: "npm:^54.0.2"
+    iron-session: "npm:^6.3.1"
+    isomorphic-fetch: "npm:^3.0.0"
+    jest: "npm:^29.5.0"
+    jest-environment-jsdom: "npm:^29.5.0"
+    jest-esm-transformer: "npm:^1.0.0"
+    jest-when: "npm:^3.5.1"
+    lint-staged: "npm:^12.3.1"
+    lodash.debounce: "npm:^4.0.8"
+    luxon: "npm:^3.5.0"
+    next: "npm:^13.5.11"
+    next-sitemap: "npm:^3.1.11"
+    nodemailer: "npm:^6.7.2"
+    patch-package: "npm:^6.4.7"
+    path: "npm:^0.12.7"
+    posthog-js: "npm:^1.258.5"
+    posthog-node: "npm:^5.3.1"
+    postinstall-postinstall: "npm:^2.1.0"
+    prettier: "npm:^2.5.0"
+    prism-react-renderer: "npm:^0.1.6"
+    puppeteer: "npm:13.5.0"
+    radix-ui: "npm:^0.0.1"
+    react: "npm:^18.2.0"
+    react-cookie: "npm:^4.1.1"
+    react-countdown: "npm:^2.3.6"
+    react-dom: "npm:^18.2.0"
+    react-easy-crop: "npm:^5.5.0"
+    react-icons: "npm:^4.3.1"
+    react-intersection-observer: "npm:^9.4.1"
+    react-timezone-select: "npm:^3.2.8"
+    react-virtualized: "npm:^9.22.3"
+    reflect-metadata: "npm:^0.1.13"
+    resend: "npm:^4.5.1"
+    sanitize-html: "npm:2.12.1"
+    sharp: "npm:^0.34.1"
+    slugify: "npm:^1.6.5"
+    spacetime: "npm:^7.7.0"
+    styled-components: "npm:^4.2.0"
+    swiper: "npm:^8.4.5"
+    thirdweb: "npm:^5.103.0"
+    timezone-soft: "npm:^1.5.2"
+    timezones-list: "npm:^3.0.1"
+    ts-jest: "npm:^29.1.0"
+    tsdav: "npm:^2.0.2"
+    typescript: "npm:^5.3.2"
+    usehooks-ts: "npm:^2.6.0"
+    uuid: "npm:^8.3.2"
+    viem: "npm:1.0.7"
+    web3-domain-resolver: "npm:^1.0.4"
+    zod: "npm:^3.23.4"
+  languageName: unknown
+  linkType: soft
 
-memoize-one@^5.0.0:
-  version "5.2.1"
-  resolved "https://registry.npmjs.org/memoize-one/-/memoize-one-5.2.1.tgz"
-  integrity sha512-zYiwtZUcYyXKo/np96AGZAckk+FWWsUdJ3cHGGmld7+AhvcWmQyGCYUh1hc4Q/pkOhb65dQR/pqCyK0cOaHz4Q==
+"memdown@npm:^1.0.0":
+  version: 1.4.1
+  resolution: "memdown@npm:1.4.1"
+  dependencies:
+    abstract-leveldown: "npm:~2.7.1"
+    functional-red-black-tree: "npm:^1.0.1"
+    immediate: "npm:^3.2.3"
+    inherits: "npm:~2.0.1"
+    ltgt: "npm:~2.2.0"
+    safe-buffer: "npm:~5.1.1"
+  checksum: 10c0/046e69fc5da9242ae281e901df75e22ba01b2c9de4f6bbc6c89ab3da1b5d8408fbe81e54f92b273b217678eed0363e7165746df4772258cb0e588884459ebac6
+  languageName: node
+  linkType: hard
 
-memoize-one@^6.0.0:
-  version "6.0.0"
-  resolved "https://registry.npmjs.org/memoize-one/-/memoize-one-6.0.0.tgz"
-  integrity sha512-rkpe71W0N0c0Xz6QD0eJETuWAJGnJ9afsl1srmwPrI+yBCkge5EycXXbYRyvL29zZVUWQCY7InPRCv3GDXuZNw==
+"memoize-one@npm:^5.0.0":
+  version: 5.2.1
+  resolution: "memoize-one@npm:5.2.1"
+  checksum: 10c0/fd22dbe9a978a2b4f30d6a491fc02fb90792432ad0dab840dc96c1734d2bd7c9cdeb6a26130ec60507eb43230559523615873168bcbe8fafab221c30b11d54c1
+  languageName: node
+  linkType: hard
 
-memory-pager@^1.0.2:
-  version "1.5.0"
-  resolved "https://registry.npmjs.org/memory-pager/-/memory-pager-1.5.0.tgz"
-  integrity sha512-ZS4Bp4r/Zoeq6+NLJpP+0Zzm0pR8whtGPf1XExKLJBAczGMnSi3It14OiNCStjQjM6NU1okjQGSxgEZN8eBYKg==
+"memoize-one@npm:^6.0.0":
+  version: 6.0.0
+  resolution: "memoize-one@npm:6.0.0"
+  checksum: 10c0/45c88e064fd715166619af72e8cf8a7a17224d6edf61f7a8633d740ed8c8c0558a4373876c9b8ffc5518c2b65a960266adf403cc215cb1e90f7e262b58991f54
+  languageName: node
+  linkType: hard
 
-mensch@^0.3.4:
-  version "0.3.4"
-  resolved "https://registry.npmjs.org/mensch/-/mensch-0.3.4.tgz"
-  integrity sha512-IAeFvcOnV9V0Yk+bFhYR07O3yNina9ANIN5MoXBKYJ/RLYPurd2d0yw14MDhpr9/momp0WofT1bPUh3hkzdi/g==
+"memory-pager@npm:^1.0.2":
+  version: 1.5.0
+  resolution: "memory-pager@npm:1.5.0"
+  checksum: 10c0/2596e80c99fee24f05bd8a20cde2ee899012c996f4ec361ac76ed6f009f34149d733ac6f76880106ccd6a66d062ad439357578d383d429df66ba1278f68806e9
+  languageName: node
+  linkType: hard
 
-merge-anything@^2.2.4:
-  version "2.4.4"
-  resolved "https://registry.npmjs.org/merge-anything/-/merge-anything-2.4.4.tgz"
-  integrity sha512-l5XlriUDJKQT12bH+rVhAHjwIuXWdAIecGwsYjv2LJo+dA1AeRTmeQS+3QBpO6lEthBMDi2IUMpLC1yyRvGlwQ==
+"mensch@npm:^0.3.4":
+  version: 0.3.4
+  resolution: "mensch@npm:0.3.4"
+  checksum: 10c0/177f9c1cb1acd93da98a971288a5da99f819ac06de19ca450040b18ddf8728c7ae0ce22309fadbbfd4ceb773bc5c03bf1cb93ceb91441da9e76e010d314da2ea
+  languageName: node
+  linkType: hard
+
+"merge-anything@npm:^2.2.4":
+  version: 2.4.4
+  resolution: "merge-anything@npm:2.4.4"
   dependencies:
     is-what "^3.3.1"
 
@@ -19289,32 +19612,33 @@ preview-email@^3.0.5:
   resolved "https://registry.npmjs.org/preview-email/-/preview-email-3.0.19.tgz"
   integrity sha512-DBS3Nir18YtKc8loYCCOGitmiaQ0vTdahPoiXxwNweJDpmVZo+w3tppufOhoK0m8skpRxT56llYLs3VrORnmNQ==
   dependencies:
-    ci-info "^3.8.0"
-    display-notification "2.0.0"
-    fixpack "^4.0.0"
-    get-port "5.1.1"
-    mailparser "^3.6.4"
-    nodemailer "^6.9.2"
-    open "7"
-    p-event "4.2.0"
-    p-wait-for "3.2.0"
-    pug "^3.0.2"
-    uuid "^9.0.0"
+    ci-info: "npm:^3.8.0"
+    display-notification: "npm:2.0.0"
+    fixpack: "npm:^4.0.0"
+    get-port: "npm:5.1.1"
+    mailparser: "npm:^3.6.4"
+    nodemailer: "npm:^6.9.2"
+    open: "npm:7"
+    p-event: "npm:4.2.0"
+    p-wait-for: "npm:3.2.0"
+    pug: "npm:^3.0.2"
+    uuid: "npm:^9.0.0"
+  checksum: 10c0/59bb9253f72802836a09653c5d809bb203b0466dc2c9ec287025b14d735b82d83f47f1fb225cd0fbb90c6a4ee725c478dda24e6b636372ac760bda2534030ed7
+  languageName: node
+  linkType: hard
 
-prism-media@^1.2.9:
-  version "1.3.5"
-  resolved "https://registry.npmjs.org/prism-media/-/prism-media-1.3.5.tgz"
-  integrity sha512-IQdl0Q01m4LrkN1EGIE9lphov5Hy7WWlH6ulf5QdGePLlPas9p2mhgddTEHrlaXYjjFToM1/rWuwF37VF4taaA==
+"prism-react-renderer@npm:^0.1.6":
+  version: 0.1.7
+  resolution: "prism-react-renderer@npm:0.1.7"
+  peerDependencies:
+    react: ">=0.14.9"
+  checksum: 10c0/2c7e98f15202c3a470d42335d0a0ddc43d4b56af5b20fa3a4f8334b2e57b1755e1dafb93f2030bdb4961e5e8ed53429f30720ddedfa6c8fe7197479130790b54
+  languageName: node
+  linkType: hard
 
-prism-react-renderer@^0.1.6:
-  version "0.1.7"
-  resolved "https://registry.npmjs.org/prism-react-renderer/-/prism-react-renderer-0.1.7.tgz"
-  integrity sha512-EhnM0sYfLK103ASK0ViSv0rta//ZGB0dBA9TiFyOvA+zOj5peLmGEG01sLEDwl9sMe+gSqncInafBe1VFTCMvA==
-
-private-ip@^2.1.0, private-ip@^2.1.1:
-  version "2.3.4"
-  resolved "https://registry.npmjs.org/private-ip/-/private-ip-2.3.4.tgz"
-  integrity sha512-ts/YFVwfBeLq61f9+KsOhXW6RH0wvY0gU50R6QZYzgFhggyyLK6WDFeYdjfi/HMnBm2hecLvsR3PB3JcRxDk+A==
+"private-ip@npm:^2.1.0, private-ip@npm:^2.1.1":
+  version: 2.3.4
+  resolution: "private-ip@npm:2.3.4"
   dependencies:
     ip-regex "^4.3.0"
     ipaddr.js "^2.0.1"
@@ -22412,19 +22736,45 @@ ts-jest@^29.1.0:
   resolved "https://registry.npmjs.org/ts-jest/-/ts-jest-29.1.1.tgz"
   integrity sha512-D6xjnnbP17cC85nliwGiL+tpoKN0StpgE0TeOjXQTU6MVCfsB4v7aW05CgQ/1OywGb0x/oy9hHFnN+sczTiRaA==
   dependencies:
-    bs-logger "0.x"
-    fast-json-stable-stringify "2.x"
-    jest-util "^29.0.0"
-    json5 "^2.2.3"
-    lodash.memoize "4.x"
-    make-error "1.x"
-    semver "^7.5.3"
-    yargs-parser "^21.0.1"
+    bs-logger: "npm:0.x"
+    fast-json-stable-stringify: "npm:2.x"
+    jest-util: "npm:^29.0.0"
+    json5: "npm:^2.2.3"
+    lodash.memoize: "npm:4.x"
+    make-error: "npm:1.x"
+    semver: "npm:^7.5.3"
+    yargs-parser: "npm:^21.0.1"
+  peerDependencies:
+    "@babel/core": ">=7.0.0-beta.0 <8"
+    "@jest/types": ^29.0.0
+    babel-jest: ^29.0.0
+    jest: ^29.0.0
+    typescript: ">=4.3 <6"
+  peerDependenciesMeta:
+    "@babel/core":
+      optional: true
+    "@jest/types":
+      optional: true
+    babel-jest:
+      optional: true
+    esbuild:
+      optional: true
+  bin:
+    ts-jest: cli.js
+  checksum: 10c0/6c45e0aeeff9cc54a64f931c43e1b99f4a1f0ddf44786cc128e7e55603ab7473c8c8f62fd83bd7e51bfe83e3c0c683132152efaeb844516bf7c923f4e92d157d
+  languageName: node
+  linkType: hard
 
-tsconfig-paths@^3.14.2:
-  version "3.14.2"
-  resolved "https://registry.npmjs.org/tsconfig-paths/-/tsconfig-paths-3.14.2.tgz"
-  integrity sha512-o/9iXgCYc5L/JxCHPe3Hvh8Q/2xm5Z+p18PESBU6Ff33695QnCHBEjcytY2q19ua7Mbl/DavtBOLq+oG0RCL+g==
+"ts-mixer@npm:^6.0.4":
+  version: 6.0.4
+  resolution: "ts-mixer@npm:6.0.4"
+  checksum: 10c0/4c442fc99cdffd4a3f0ce55c624fb703f4ded5cab6912f97705489565c4a74d3e4213f10c33499ec5150900a628d38537a9a6a9e35b5045b65129a84b4db21ae
+  languageName: node
+  linkType: hard
+
+"tsconfig-paths@npm:3.9.0":
+  version: 3.9.0
+  resolution: "tsconfig-paths@npm:3.9.0"
   dependencies:
     "@types/json5" "^0.0.29"
     json5 "^1.0.2"
@@ -22446,40 +22796,52 @@ tsdav@^2.0.2:
   resolved "https://registry.npmjs.org/tsdav/-/tsdav-2.0.6.tgz"
   integrity sha512-8R64OAYCGi90aS5Oju6payhtIKNLrUL4MG5u8B7y3Kgs0BbdfSeeUcmcescebfM1dcxmEEwYnRjJF96ZZwgaPg==
   dependencies:
-    base-64 "1.0.0"
-    cross-fetch "4.0.0"
-    debug "4.3.4"
-    xml-js "1.6.11"
+    base-64: "npm:1.0.0"
+    cross-fetch: "npm:4.0.0"
+    debug: "npm:4.3.4"
+    xml-js: "npm:1.6.11"
+  checksum: 10c0/9d5f214e0490c768275e0a76ae17f04ce2ab83a837b5b25ac6356f4032ad740116f7e2f69893cc0c589fc97d456a2bcff209ec03bff446a112c3b2bfd4b22eda
+  languageName: node
+  linkType: hard
 
-tslib@^1.10.0:
-  version "1.14.1"
-  resolved "https://registry.npmjs.org/tslib/-/tslib-1.14.1.tgz"
-  integrity sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==
+"tslib@npm:1.14.1, tslib@npm:^1.10.0, tslib@npm:^1.8.1":
+  version: 1.14.1
+  resolution: "tslib@npm:1.14.1"
+  checksum: 10c0/69ae09c49eea644bc5ebe1bca4fa4cc2c82b7b3e02f43b84bd891504edf66dbc6b2ec0eef31a957042de2269139e4acff911e6d186a258fb14069cd7f6febce2
+  languageName: node
+  linkType: hard
 
-tslib@^1.8.1:
-  version "1.14.1"
-  resolved "https://registry.npmjs.org/tslib/-/tslib-1.14.1.tgz"
-  integrity sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==
+"tslib@npm:2.4.0":
+  version: 2.4.0
+  resolution: "tslib@npm:2.4.0"
+  checksum: 10c0/eb19bda3ae545b03caea6a244b34593468e23d53b26bf8649fbc20fce43e9b21a71127fd6d2b9662c0fe48ee6ff668ead48fd00d3b88b2b716b1c12edae25b5d
+  languageName: node
+  linkType: hard
 
-tslib@^2.0.0, tslib@^2.0.1, tslib@^2.0.3, tslib@^2.1.0, tslib@^2.3.0, tslib@^2.4.0, tslib@^2.6.1, tslib@^2.6.2:
-  version "2.6.2"
-  resolved "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz"
-  integrity sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==
+"tslib@npm:^2.0.0":
+  version: 2.7.0
+  resolution: "tslib@npm:2.7.0"
+  checksum: 10c0/469e1d5bf1af585742128827000711efa61010b699cb040ab1800bcd3ccdd37f63ec30642c9e07c4439c1db6e46345582614275daca3e0f4abae29b0083f04a6
+  languageName: node
+  linkType: hard
 
-tslib@1.14.1:
-  version "1.14.1"
-  resolved "https://registry.npmjs.org/tslib/-/tslib-1.14.1.tgz"
-  integrity sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==
+"tslib@npm:^2.0.1, tslib@npm:^2.6.3":
+  version: 2.8.1
+  resolution: "tslib@npm:2.8.1"
+  checksum: 10c0/9c4759110a19c53f992d9aae23aac5ced636e99887b51b9e61def52611732872ff7668757d4e4c61f19691e36f4da981cd9485e869b4a7408d689f6bf1f14e62
+  languageName: node
+  linkType: hard
 
-tslib@2.4.0:
-  version "2.4.0"
-  resolved "https://registry.npmjs.org/tslib/-/tslib-2.4.0.tgz"
-  integrity sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ==
+"tslib@npm:^2.0.3, tslib@npm:^2.1.0, tslib@npm:^2.3.0, tslib@npm:^2.3.1, tslib@npm:^2.4.0, tslib@npm:^2.6.1, tslib@npm:^2.6.2":
+  version: 2.6.2
+  resolution: "tslib@npm:2.6.2"
+  checksum: 10c0/e03a8a4271152c8b26604ed45535954c0a45296e32445b4b87f8a5abdb2421f40b59b4ca437c4346af0f28179780d604094eb64546bee2019d903d01c6c19bdb
+  languageName: node
+  linkType: hard
 
-tsutils@^3.21.0:
-  version "3.21.0"
-  resolved "https://registry.npmjs.org/tsutils/-/tsutils-3.21.0.tgz"
-  integrity sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==
+"tsutils@npm:^3.21.0":
+  version: 3.21.0
+  resolution: "tsutils@npm:3.21.0"
   dependencies:
     tslib "^1.8.1"
 
@@ -22683,33 +23045,59 @@ unbzip2-stream@1.4.3:
   resolved "https://registry.npmjs.org/unbzip2-stream/-/unbzip2-stream-1.4.3.tgz"
   integrity sha512-mlExGW4w71ebDJviH16lQLtZS32VKqsSfk80GCfUlwT/4/hNRFsoscrF/c++9xinkMzECL1uL9DDwXqFWkruPg==
   dependencies:
-    buffer "^5.2.1"
-    through "^2.3.8"
+    buffer: "npm:^5.2.1"
+    through: "npm:^2.3.8"
+  checksum: 10c0/2ea2048f3c9db3499316ccc1d95ff757017ccb6f46c812d7c42466247e3b863fb178864267482f7f178254214247779daf68e85f50bd7736c3c97ba2d58b910a
+  languageName: node
+  linkType: hard
 
-unc-path-regex@^0.1.2:
-  version "0.1.2"
-  resolved "https://registry.npmjs.org/unc-path-regex/-/unc-path-regex-0.1.2.tgz"
-  integrity sha512-eXL4nmJT7oCpkZsHZUOJo8hcX3GbsiDOa0Qu9F646fi8dT3XuSVopVqAcEiVzSKKH7UoDti23wNX3qGFxcW5Qg==
+"unc-path-regex@npm:^0.1.2":
+  version: 0.1.2
+  resolution: "unc-path-regex@npm:0.1.2"
+  checksum: 10c0/bf9c781c4e2f38e6613ea17a51072e4b416840fbe6eeb244597ce9b028fac2fb6cfd3dde1f14111b02c245e665dc461aab8168ecc30b14364d02caa37f812996
+  languageName: node
+  linkType: hard
 
-uncrypto@^0.1.3:
-  version "0.1.3"
-  resolved "https://registry.npmjs.org/uncrypto/-/uncrypto-0.1.3.tgz"
-  integrity sha512-Ql87qFHB3s/De2ClA9e0gsnS6zXG27SkTiSJwjCc9MebbfapQfuPzumMIUMi38ezPZVNFcHI9sUIepeQfw8J8Q==
+"uncrypto@npm:^0.1.3":
+  version: 0.1.3
+  resolution: "uncrypto@npm:0.1.3"
+  checksum: 10c0/74a29afefd76d5b77bedc983559ceb33f5bbc8dada84ff33755d1e3355da55a4e03a10e7ce717918c436b4dfafde1782e799ebaf2aadd775612b49f7b5b2998e
+  languageName: node
+  linkType: hard
 
-underscore.deep@~0.5.1:
-  version "0.5.3"
-  resolved "https://registry.npmjs.org/underscore.deep/-/underscore.deep-0.5.3.tgz"
-  integrity sha512-4OuSOlFNkiVFVc3khkeG112Pdu1gbitMj7t9B9ENb61uFmN70Jq7Iluhi3oflcSgexkKfDdJ5XAJET2gEq6ikA==
+"underscore.deep@npm:~0.5.1":
+  version: 0.5.3
+  resolution: "underscore.deep@npm:0.5.3"
+  peerDependencies:
+    underscore: 1.x
+  checksum: 10c0/e11e05a456118d9d78fcaa1f892f29fdd74051c249f351052ed75a3124df3ecd0fd3bbb4f56b01c63f251514873ea862d54db131034a3abdcd815cb50861416a
+  languageName: node
+  linkType: hard
 
-underscore@~1.13.1, underscore@1.x:
-  version "1.13.6"
-  resolved "https://registry.npmjs.org/underscore/-/underscore-1.13.6.tgz"
-  integrity sha512-+A5Sja4HP1M08MaXya7p5LvjuM7K6q/2EaC0+iovj/wOcMsTzMvDFbasi/oSapiwOlt252IqsKqPjCl7huKS0A==
+"underscore@npm:~1.13.1":
+  version: 1.13.6
+  resolution: "underscore@npm:1.13.6"
+  checksum: 10c0/5f57047f47273044c045fddeb8b141dafa703aa487afd84b319c2495de2e685cecd0b74abec098292320d518b267c0c4598e45aa47d4c3628d0d4020966ba521
+  languageName: node
+  linkType: hard
 
-unified@^10.0.0:
-  version "10.1.2"
-  resolved "https://registry.npmjs.org/unified/-/unified-10.1.2.tgz"
-  integrity sha512-pUSWAi/RAnVy1Pif2kAoeWNBa3JVrx0MId2LASj8G+7AiHWoKZNTomq6LG326T68U7/e263X6fTdcXIy7XnF7Q==
+"undici-types@npm:~5.26.4":
+  version: 5.26.5
+  resolution: "undici-types@npm:5.26.5"
+  checksum: 10c0/bb673d7876c2d411b6eb6c560e0c571eef4a01c1c19925175d16e3a30c4c428181fb8d7ae802a261f283e4166a0ac435e2f505743aa9e45d893f9a3df017b501
+  languageName: node
+  linkType: hard
+
+"undici@npm:6.21.3":
+  version: 6.21.3
+  resolution: "undici@npm:6.21.3"
+  checksum: 10c0/294da109853fad7a6ef5a172ad0ca3fb3f1f60cf34703d062a5ec967daf69ad8c03b52e6d536c5cba3bb65615769bf08e5b30798915cbccdddaca01045173dda
+  languageName: node
+  linkType: hard
+
+"unenv@npm:^1.10.0":
+  version: 1.10.0
+  resolution: "unenv@npm:1.10.0"
   dependencies:
     "@types/unist" "^2.0.0"
     bail "^2.0.0"
@@ -23625,67 +24013,199 @@ ws@^5.1.1:
   resolved "https://registry.npmjs.org/ws/-/ws-5.2.3.tgz"
   integrity sha512-jZArVERrMsKUatIdnLzqvcfydI85dvd/Fp1u/VOpfdDWQ4c9qWXe+VIeAbQ5FrDwciAkr+lzofXLz3Kuf26AOA==
   dependencies:
-    async-limiter "~1.0.0"
+    domexception: "npm:^1.0.1"
+    node-pre-gyp: "npm:^0.13.0"
+  dependenciesMeta:
+    domexception:
+      optional: true
+  checksum: 10c0/edb3da7fb587aaedc1dacc7f8ca4bd5c886e7817fabe67a04fc72d56c3fd34c992556f3849d422396b1a3b3263171770467fced5fa7ac8d90a1fe535ba93fe5e
+  languageName: node
+  linkType: hard
 
-ws@^7.5.1:
-  version "7.5.10"
-  resolved "https://registry.npmjs.org/ws/-/ws-7.5.10.tgz"
-  integrity sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ==
+"ws@npm:7.4.6":
+  version: 7.4.6
+  resolution: "ws@npm:7.4.6"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ^5.0.2
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/4b44b59bbc0549c852fb2f0cdb48e40e122a1b6078aeed3d65557cbeb7d37dda7a4f0027afba2e6a7a695de17701226d02b23bd15c97b0837808c16345c62f8e
+  languageName: node
+  linkType: hard
 
-ws@^8.11.0:
-  version "8.15.1"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.15.1.tgz"
-  integrity sha512-W5OZiCjXEmk0yZ66ZN82beM5Sz7l7coYxpRkzS+p9PP+ToQry8szKh+61eNktr7EA9DOwvFGhfC605jDHbP6QQ==
+"ws@npm:7.5.3":
+  version: 7.5.3
+  resolution: "ws@npm:7.5.3"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ^5.0.2
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/581519868d0c07ed33a2212c301ee196bf19cc5d0a20425ddf7da463230d4c6013f6c95232d4690bb39530376ced859ff97fecf7aa253a424d2ff01759e935fe
+  languageName: node
+  linkType: hard
 
-ws@^8.18.0:
-  version "8.18.3"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.18.3.tgz"
-  integrity sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==
+"ws@npm:8.12.0":
+  version: 8.12.0
+  resolution: "ws@npm:8.12.0"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/2a84d769be015f3644a99a33c1b4c1c268b97315a8387067c242f26ab7ac1f655640220c23ddcbd2f7911649cd00478aaafbb4dff073f0b75f3531ebabd7cced
+  languageName: node
+  linkType: hard
 
-ws@~8.11.0:
-  version "8.11.0"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.11.0.tgz"
-  integrity sha512-HPG3wQd9sNQoT9xHyNCXoDUa+Xw/VevmY9FoHyQ+g+rrMn4j6FB4np7Z0OhdTgjx6MgQLK7jwSy1YecU1+4Asg==
+"ws@npm:8.18.0":
+  version: 8.18.0
+  resolution: "ws@npm:8.18.0"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/25eb33aff17edcb90721ed6b0eb250976328533ad3cd1a28a274bd263682e7296a6591ff1436d6cbc50fa67463158b062f9d1122013b361cec99a05f84680e06
+  languageName: node
+  linkType: hard
 
-ws@7.5.3:
-  version "7.5.3"
-  resolved "https://registry.npmjs.org/ws/-/ws-7.5.3.tgz"
-  integrity sha512-kQ/dHIzuLrS6Je9+uv81ueZomEwH0qVYstcAQ4/Z93K8zeko9gtAbttJWzoC5ukqXY1PpoouV3+VSOqEAFt5wg==
+"ws@npm:8.18.1":
+  version: 8.18.1
+  resolution: "ws@npm:8.18.1"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/e498965d6938c63058c4310ffb6967f07d4fa06789d3364829028af380d299fe05762961742971c764973dce3d1f6a2633fe8b2d9410c9b52e534b4b882a99fa
+  languageName: node
+  linkType: hard
 
-ws@8.12.0:
-  version "8.12.0"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.12.0.tgz"
-  integrity sha512-kU62emKIdKVeEIOIKVegvqpXMSTAMLJozpHZaJNDYqBjzlSYXQGviYwN1osDLJ9av68qHd4a2oSjd7yD4pacig==
+"ws@npm:8.18.2":
+  version: 8.18.2
+  resolution: "ws@npm:8.18.2"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/4b50f67931b8c6943c893f59c524f0e4905bbd183016cfb0f2b8653aa7f28dad4e456b9d99d285bbb67cca4fedd9ce90dfdfaa82b898a11414ebd66ee99141e4
+  languageName: node
+  linkType: hard
 
-ws@8.18.0:
-  version "8.18.0"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.18.0.tgz"
-  integrity sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==
+"ws@npm:8.5.0":
+  version: 8.5.0
+  resolution: "ws@npm:8.5.0"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ^5.0.2
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/0baeee03e97865accda8fad51e8e5fa17d19b8e264529efdf662bbba2acc1c7f1de8316287e6df5cb639231a96009e6d5234b57e6ff36ee2d04e49a0995fec2f
+  languageName: node
+  linkType: hard
 
-ws@8.18.1:
-  version "8.18.1"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.18.1.tgz"
-  integrity sha512-RKW2aJZMXeMxVpnZ6bck+RswznaxmzdULiBr6KY7XkTnW8uvt0iT9H5DkHUChXrc+uurzwa0rVI16n/Xzjdz1w==
+"ws@npm:^5.1.1":
+  version: 5.2.3
+  resolution: "ws@npm:5.2.3"
+  dependencies:
+    async-limiter: "npm:~1.0.0"
+  checksum: 10c0/3f329b29a893c660b01be81654c9bca422a0de3396e644aae165e4e998e74b2b713adcbba876f183cd74a4f488376cbb7442d1c87455084d69fce1e2f25ef088
+  languageName: node
+  linkType: hard
 
-ws@8.18.2:
-  version "8.18.2"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.18.2.tgz"
-  integrity sha512-DMricUmwGZUVr++AEAe2uiVM7UoO9MAVZMDu05UQOaUII0lp+zOzLLU4Xqh/JvTqklB1T4uELaaPBKyjE1r4fQ==
+"ws@npm:^7.3.1, ws@npm:^7.5.1":
+  version: 7.5.9
+  resolution: "ws@npm:7.5.9"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ^5.0.2
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/aec4ef4eb65821a7dde7b44790f8699cfafb7978c9b080f6d7a98a7f8fc0ce674c027073a78574c94786ba7112cc90fa2cc94fc224ceba4d4b1030cff9662494
+  languageName: node
+  linkType: hard
 
-ws@8.5.0:
-  version "8.5.0"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.5.0.tgz"
-  integrity sha512-BWX0SWVgLPzYwF8lTzEy1egjhS4S4OEAHfsO8o65WOVsrnSRGaSiUaa9e0ggGlkMTtBlmOpEXiie9RUcBO86qg==
+"ws@npm:^8.11.0":
+  version: 8.15.1
+  resolution: "ws@npm:8.15.1"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/9964360dd5ab35c7376bd7c4295a3c8bd44ea0838c9413742548a6fb3ec371fc6c18552d5b8e76bdc21536db1909765612815bae072674b5ec69971605395a96
+  languageName: node
+  linkType: hard
 
-xdg-basedir@^4.0.0:
-  version "4.0.0"
-  resolved "https://registry.npmjs.org/xdg-basedir/-/xdg-basedir-4.0.0.tgz"
-  integrity sha512-PSNhEJDejZYV7h50BohL09Er9VaIefr2LMAf3OEmpCkjOi34eYyQYAXUTjEQtZJTKcF0E2UKTh+osDLsgNim9Q==
+"ws@npm:^8.17.0":
+  version: 8.18.3
+  resolution: "ws@npm:8.18.3"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/eac918213de265ef7cb3d4ca348b891a51a520d839aa51cdb8ca93d4fa7ff9f6ccb339ccee89e4075324097f0a55157c89fa3f7147bde9d8d7e90335dc087b53
+  languageName: node
+  linkType: hard
 
-xhr@^2.2.0:
-  version "2.6.0"
-  resolved "https://registry.npmjs.org/xhr/-/xhr-2.6.0.tgz"
-  integrity sha512-/eCGLb5rxjx5e3mF1A7s+pLlR6CGyqWN91fv1JgER5mVWg1MZmlhBvy9kjcsOdRk8RrIujotWyJamfyrp+WIcA==
+"ws@npm:~8.11.0":
+  version: 8.11.0
+  resolution: "ws@npm:8.11.0"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ^5.0.2
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10c0/b672b312f357afba8568b9dbb9e08b9e8a20845659b35fa6b340dc848efe371379f5e22bb1dc89c4b2940d5e2dc52dd1de85dde41776875fce115a448f94754f
+  languageName: node
+  linkType: hard
+
+"xdg-basedir@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "xdg-basedir@npm:4.0.0"
+  checksum: 10c0/1b5d70d58355af90363a4e0a51c992e77fc5a1d8de5822699c7d6e96a6afea9a1e048cb93312be6870f338ca45ebe97f000425028fa149c1e87d1b5b8b212a06
+  languageName: node
+  linkType: hard
+
+"xhr2-cookies@npm:1.1.0":
+  version: 1.1.0
+  resolution: "xhr2-cookies@npm:1.1.0"
   dependencies:
     global "~4.4.0"
     is-function "^1.0.1"
