@@ -283,14 +283,10 @@ const workNotifications = async (
                 )
                 break
               case NotificationChannel.DISCORD:
-                const accountForDiscord = await getAccountFromDB(
-                  participant.account_address
-                )
                 // Dont DM if you are the person is the one scheduling the meeting
                 if (
-                  isProAccount(accountForDiscord) &&
                   participantActing.account_address?.toLowerCase() !==
-                    participant.account_address.toLowerCase()
+                  participant.account_address.toLowerCase()
                 ) {
                   promises.push(
                     getDiscordNotification(
