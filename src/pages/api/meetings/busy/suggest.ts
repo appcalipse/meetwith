@@ -1,15 +1,13 @@
-import { areIntervalsOverlapping, isPast } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
+import { Interval as DateFnsInterval } from 'date-fns'
+import { DateTime, Interval } from 'luxon'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { Account } from '@/types/Account'
 import { ConditionRelation } from '@/types/common'
 import { getAccountFromDB } from '@/utils/database'
+import { parseMonthAvailabilitiesToDate } from '@/utils/date_helper'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
-import {
-  generateTimeSlots,
-  isTimeInsideAvailabilities,
-} from '@/utils/slots.helper'
+import { generateTimeSlots } from '@/utils/slots.helper'
 import { isValidEVMAddress } from '@/utils/validations'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -40,14 +38,19 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     await Promise.all(promises)
 
-    const allSlots = generateTimeSlots(
+    const allSlots: Interval<true>[] = generateTimeSlots(
       startDate,
       duration,
       true,
       undefined,
       endDate
     )
-    const suggestedTimes: Interval[] = []
+      .map(slot =>
+        Interval.fromDateTimes(new Date(slot.start), new Date(slot.end))
+      )
+      .filter(slot => slot.isValid)
+
+    const suggestedTimes: DateFnsInterval[] = []
 
     const busySlots: Interval[] =
       await CalendarBackendHelper.getMergedBusySlotsForMultipleAccounts(
@@ -55,23 +58,30 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         ConditionRelation.AND,
         startDate,
         endDate
+      ).then(busySlots =>
+        busySlots.map(busySlot => {
+          return Interval.fromDateTimes(
+            new Date(busySlot.start),
+            new Date(busySlot.end)
+          )
+        })
       )
     for (const slot of allSlots) {
       let validSlot = true
-      if (isPast(slot.start as Date) && !includePast) {
+      if (slot.start < DateTime.now() && !includePast) {
         validSlot = false
         break
       }
       for (const account of accounts) {
-        const availabilities = account.preferences.availabilities
         const tz = account.preferences.timezone
-        if (
-          !isTimeInsideAvailabilities(
-            utcToZonedTime(slot.start as Date, tz || 'UTC'),
-            utcToZonedTime(slot.end as Date, tz || 'UTC'),
-            availabilities
-          )
-        ) {
+        const availabilities = parseMonthAvailabilitiesToDate(
+          account.preferences.availabilities || [],
+          slot.start?.startOf('day').setZone(tz).toJSDate(),
+          slot.end?.endOf('day').setZone(tz).toJSDate(),
+          account.preferences.timezone || 'UTC'
+        ).map(({ start, end }) => Interval.fromDateTimes(start, end))
+
+        if (!availabilities.some(availability => availability.overlaps(slot))) {
           validSlot = false
           break
         }
@@ -80,13 +90,16 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       if (validSlot) {
         let overLappingSlot = false
         for (const busySlot of busySlots) {
-          if (areIntervalsOverlapping(busySlot, slot)) {
+          if (busySlot.overlaps(slot)) {
             overLappingSlot = true
             break
           }
         }
         if (!overLappingSlot) {
-          suggestedTimes.push(slot)
+          suggestedTimes.push({
+            start: slot.start.toJSDate(),
+            end: slot.end.toJSDate(),
+          })
         }
       }
     }
