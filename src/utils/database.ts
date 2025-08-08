@@ -1167,13 +1167,13 @@ const saveMeeting = async (
             ownerAccount?.preferences.availabilities || []
           )
         // TODO: check slots by meeting type and not users default Availaibility
-        //   if (
-        //     participantIsOwner &&
-        //     ownerIsNotScheduler &&
-        //     ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
-        //       (await slotIsTaken()))
-        //   )
-        //     throw new TimeNotAvailableError()
+        if (
+          participantIsOwner &&
+          ownerIsNotScheduler &&
+          ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
+            (await slotIsTaken()))
+        )
+          throw new TimeNotAvailableError()
       }
 
       let account: Account
