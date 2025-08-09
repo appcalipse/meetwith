@@ -177,10 +177,10 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                               tbody
                                 tr(style='line-height:0px')
                                   td(style='padding-right: 20px;padding-left: 20px;', align='center')
-                          div(style='font-size:1px;line-height:20px')  
+                          div(style='font-size:1px;line-height:20px')
                           a(href='https://meetwith.xyz', target='_blank')
                             img.center.fixedwidth(align='center', alt='Meetwith', border='0', src='https://mww-public.s3.eu-west-1.amazonaws.com/email/logo_mail.png', style='text-decoration: none; -ms-interpolation-mode: bicubic; border: 0; height: auto; width: 100%; max-width: 120px; display: block;', title='Image', width='120')
-                          div(style='font-size:1px;line-height:20px')  
+                          div(style='font-size:1px;line-height:20px')
                           //if mso
                         table.divider(border='0', cellpadding='0', cellspacing='0', role='presentation', style='table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; min-width: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;', valign='top', width='100%')
                           tbody
@@ -252,11 +252,11 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                                 td(style='padding-right: 40px; padding-left: 40px; padding-top: 15px; padding-bottom: 10px; font-family: Tahoma, sans-serif')
                         div(style='color:#555555;font-family:Trebuchet MS, Lucida Grande, Lucida Sans Unicode, Lucida Sans, Tahoma, sans-serif;line-height:1.5;padding-top:15px;padding-right:40px;padding-bottom:10px;padding-left:40px;')
                           div(style='line-height: 1.5; font-size: 12px; font-family: Trebuchet MS, Lucida Grande, Lucida Sans Unicode, Lucida Sans, Tahoma, sans-serif; color: #555555; mso-line-height-alt: 18px;')
-                           
+
                             p(style='line-height: 1.5; font-family: inherit; word-break: break-word; font-size: 16px; mso-line-height-alt: 24px; margin: 0;')
-                              span(style='font-size: 16px;')  
+                              span(style='font-size: 16px;')
                             p(style='line-height: 1.5; font-family: inherit; word-break: break-word; font-size: 16px; mso-line-height-alt: 24px; margin: 0;')
-                              span(style='font-size: 16px;')  
+                              span(style='font-size: 16px;')
                             p(style='line-height: 1.5; word-break: break-word; font-family: inherit; font-size: 16px; mso-line-height-alt: 24px; margin: 0;')
                               span(style='font-size: 16px;')
                                 strong Participants
@@ -267,7 +267,7 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                                 | : #{meeting.start}
                                 #{changes.oldStart}
                                 if changes.oldStart
-                                   |  - 
+                                   |  -
                                    strike
                                     | #{changes.oldStart}
                             p(style='line-height: 1.5; word-break: break-word; font-family: inherit; font-size: 16px; mso-line-height-alt: 24px; margin: 0;')
@@ -275,7 +275,7 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                                 strong Duration
                                 | : #{meeting.duration}
                                 if changes.oldDuration
-                                   |  - 
+                                   |  -
                                    strike
                                     | #{changes.oldDuration}
                             if meeting.url
@@ -285,25 +285,9 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                                   | : <a href="#{meeting.url}">#{meeting.url}</a>
                             if meeting.description
                               p(style='line-height: 1.5; font-family: inherit; word-break: break-word; font-size: 16px; mso-line-height-alt: 24px; margin-top: 16px;')
-                                span(style='font-size: 16px;')  
+                                span(style='font-size: 16px;')
                                 != meeting.description
 
-                            if changeUrl && cancelUrl
-                              p(style='line-height: 1.5; font-family: inherit; word-break: break-word; font-size: 16px; mso-line-height-alt: 24px; margin-top: 16px;')
-                                  div(style='font-size: 16px;')
-                                    strong Reschedule Meeting
-                                      | : <a href="#{changeUrl}">#{changeUrl}</a>
-                                  div(style='font-size: 16px;')
-                                    strong Cancel Meeting
-                                      | : <a href="#{cancelUrl}">#{cancelUrl}</a>
-                            else if cancelUrl 
-                              p(style='line-height: 1.5; font-family: inherit; word-break: break-word; font-size: 16px; mso-line-height-alt: 24px; margin-top: 16px;')
-                                span(style='font-size: 16px;')  
-                                  | If you need to cancel this meeting, you can do so here: 
-                                div(style='font-size: 16px;')
-                                  strong Cancel Meeting
-                                    | : <a href="#{cancelUrl}">#{cancelUrl}</a>
-      
                         //if mso
                         table.divider(border='0', cellpadding='0', cellspacing='0', role='presentation', style='table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; min-width: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;', valign='top', width='100%')
                           tbody
@@ -312,8 +296,13 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                                 table.divider_content(align='center', border='0', cellpadding='0', cellspacing='0', role='presentation', style='table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-top: 1px solid #BBBBBB; width: 100%;', valign='top', width='100%')
                                   tbody
                                     tr(style='vertical-align: top;', valign='top')
-                                      td(style='word-break: break-word; vertical-align: top; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;', valign='top')
-                                        span
+                                            td(style='word-break: break-word; vertical-align: top; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%;', valign='top')
+                                                p(style='text-align: center; line-height: 1.5; word-break: break-word; font-family: inherit; font-size: 16px; mso-line-height-alt: 24px; margin: 10px 0;')
+                                                    span(style='font-size: 16px;') Need to make a change?
+                                                    if changeUrl && cancelUrl
+                                                        <a href="#{changeUrl}" style="color: #F46739;">Reschedule</a> or <a href="#{cancelUrl}" style="color: #F46739;">Cancel</a>
+                                                    else if cancelUrl
+                                                        <a href="#{cancelUrl}" style="color: #F46739;">Cancel</a>
                         //if mso
                           table(width='100%', cellpadding='0', cellspacing='0', border='0')
                             tbody
@@ -331,7 +320,7 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                             p(style='line-height: 1.5; word-break: break-word; font-family: inherit; font-size: 16px; mso-line-height-alt: 24px; margin: 0;')
                               span(style='font-size: 16px; color: #d93f0c;')
                                 a(href='https://meetwith.xyz/dashboard/notifications', style='text-decoration: underline; color: #d93f0c;', title='Manage your email preferences') Manage your email preferences
-                            p(style='line-height: 1.5; word-break: break-word; font-family: inherit; mso-line-height-alt: NaNpx; margin: 0;')  
+                            p(style='line-height: 1.5; word-break: break-word; font-family: inherit; mso-line-height-alt: NaNpx; margin: 0;')
                         //if mso
                         // [if (!mso)&(!IE)] <!
                         // <![endif]
@@ -373,10 +362,10 @@ html(xmlns='http://www.w3.org/1999/xhtml', xmlns:o='urn:schemas-microsoft-com:of
                               tbody
                                 tr(style='line-height:0px')
                                   td(style='padding-right: 20px;padding-left: 20px;', align='center')
-                          div(style='font-size:1px;line-height:20px')  
+                          div(style='font-size:1px;line-height:20px')
                           a(href='https://meetwith.xyz', target='_blank')
                             img.center.fixedwidth(align='center', alt='Meetwith', border='0', src='https://mww-public.s3.eu-west-1.amazonaws.com/email/logo_mail.png', style='text-decoration: none; -ms-interpolation-mode: bicubic; border: 0; height: auto; width: 100%; max-width: 100px; display: block;', title='Image', width='100')
-                          div(style='font-size:1px;line-height:15px;margin-top:20px')  
+                          div(style='font-size:1px;line-height:15px;margin-top:20px')
                           //if mso
                         table.social_icons(cellpadding='0', cellspacing='0', role='presentation', style='table-layout: fixed; vertical-align: top; border-spacing: 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;', valign='top', width='100%')
                           tbody

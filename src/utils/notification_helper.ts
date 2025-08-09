@@ -148,7 +148,8 @@ export const notifyForOrUpdateNewMeeting = async (
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat?: MeetingRepeat,
-  meetingPermissions?: Array<MeetingPermissions>
+  meetingPermissions?: Array<MeetingPermissions>,
+  meetingTypeId?: string
 ): Promise<void> => {
   const participantsInfo = await setupParticipants(participants)
 
@@ -167,7 +168,8 @@ export const notifyForOrUpdateNewMeeting = async (
       meetingProvider,
       meetingReminders,
       meetingRepeat,
-      meetingPermissions
+      meetingPermissions,
+      meetingTypeId
     )
   )
 }
@@ -210,7 +212,8 @@ const workNotifications = async (
   meetingProvider?: MeetingProvider,
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat?: MeetingRepeat,
-  meetingPermissions?: Array<MeetingPermissions>
+  meetingPermissions?: Array<MeetingPermissions>,
+  meetingTypeId?: string
 ): Promise<Promise<boolean>[]> => {
   const promises: Promise<boolean>[] = []
 
@@ -242,7 +245,8 @@ const workNotifications = async (
             meetingReminders,
             meetingRepeat,
             guestInfoEncrypted,
-            meetingPermissions
+            meetingPermissions,
+            meetingTypeId
           )
         )
       } else if (
@@ -405,7 +409,8 @@ const getEmailNotification = async (
   meetingReminders?: Array<MeetingReminders>,
   meetingRepeat?: MeetingRepeat,
   guestInfoEncrypted?: string,
-  meetingPermissions?: Array<MeetingPermissions>
+  meetingPermissions?: Array<MeetingPermissions>,
+  meetingTypeId?: string
 ): Promise<boolean> => {
   const toEmail =
     participant.guest_email ||
@@ -428,6 +433,7 @@ const getEmailNotification = async (
         new Date(end),
         participant.meeting_id,
         participant.slot_id!,
+        meetingTypeId,
         participant.account_address,
         meeting_url,
         title,
@@ -471,6 +477,7 @@ const getEmailNotification = async (
         new Date(end),
         participant.meeting_id,
         participant.slot_id!,
+        meetingTypeId,
         participant.account_address,
         meeting_url,
         title,

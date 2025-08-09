@@ -169,7 +169,7 @@ function Root({
                   <WeekDays>
                     {WEEK_DAYS.map(weekDay => {
                       return (
-                        <Text fontWeight="500" color="white" key={weekDay}>
+                        <Text fontWeight="500" key={weekDay}>
                           {weekDay}
                         </Text>
                       )
