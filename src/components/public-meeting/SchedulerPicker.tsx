@@ -10,18 +10,8 @@ import {
 } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
 import { chakraComponents, Props, Select } from 'chakra-react-select' // TODO: Move all date logic to luxon
-import {
-  addMinutes,
-  areIntervalsOverlapping,
-  eachMinuteOfInterval,
-  endOfMonth,
-  Interval,
-  isSameDay,
-  isSameMonth,
-} from 'date-fns'
-import { DateTime } from 'luxon'
-import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useState } from 'react'
+import { DateTime, Interval } from 'luxon'
+import React, { useCallback, useContext, useEffect } from 'react'
 import {
   FaArrowLeft,
   FaCalendar,
@@ -39,52 +29,12 @@ import {
 } from '@/components/public-meeting'
 import { ScheduleForm } from '@/components/schedule/schedule-form'
 import useAccountContext from '@/hooks/useAccountContext'
-
-import { AccountNotifications } from '@/types/AccountNotifications'
-import { ConnectedCalendarCore } from '@/types/CalendarConnections'
-import { MeetingReminders } from '@/types/common'
-import {
-  MeetingDecrypted,
-  MeetingProvider,
-  MeetingRepeat,
-  SchedulingType,
-  TimeSlotSource,
-} from '@/types/Meeting'
-import {
-  ParticipantInfo,
-  ParticipantType,
-  ParticipationStatus,
-} from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
-import {
-  doesContactExist,
-  getBusySlots,
-  getNotificationSubscriptions,
-  listConnectedCalendars,
-} from '@/utils/api_helper'
-import { scheduleMeeting, updateMeetingAsGuest } from '@/utils/calendar_manager'
+import { doesContactExist } from '@/utils/api_helper'
 import { Option } from '@/utils/constants/select'
-import {
-  getFormattedDateAndDuration,
-  parseMonthAvailabilitiesToDate,
-  timezones,
-} from '@/utils/date_helper'
-import {
-  AllMeetingSlotsUsedError,
-  GateConditionNotValidError,
-  GoogleServiceUnavailable,
-  Huddle01ServiceUnavailable,
-  InvalidURL,
-  MeetingCreationError,
-  MeetingWithYourselfError,
-  MultipleSchedulersError,
-  TimeNotAvailableError,
-  TransactionIsRequired,
-  UrlCreationError,
-  ZoomServiceUnavailable,
-} from '@/utils/errors'
-import { saveMeetingsScheduled } from '@/utils/storage'
-import { getAccountDisplayName } from '@/utils/user_manager'
+import { getFormattedDateAndDuration, timezones } from '@/utils/date_helper'
+import { generateTimeSlots } from '@/utils/slots.helper'
+
 const tzs = timezones.map(tz => {
   return {
     value: String(tz.tzCode),
@@ -113,24 +63,14 @@ const SchedulerPicker = () => {
     timezone,
     setTimezone,
     getAvailableSlots,
-    confirmSchedule,
-  } = useContext(ScheduleStateContext)
-  const color = useColorModeValue('primary.500', 'white')
-  const {
-    account,
-    selectedType,
-    tx,
-    setSchedulingType,
-    setLastScheduledMeeting,
-    setHasConnectedCalendar,
-    notificationsSubs,
-    setNotificationSubs,
-    setIsContact,
     rescheduleSlot,
     rescheduleSlotLoading,
     meetingSlotId,
-  } = useContext(PublicScheduleContext)
-  const query = useRouter().query
+  } = useContext(ScheduleStateContext)
+  const color = useColorModeValue('primary.500', 'white')
+  const { account, selectedType, notificationsSubs, setIsContact } = useContext(
+    PublicScheduleContext
+  )
   const currentAccount = useAccountContext()
   const slotDurationInMinutes = selectedType?.duration_minutes || 0
 
@@ -149,7 +89,7 @@ const SchedulerPicker = () => {
     if (account?.preferences?.availabilities) {
       getAvailableSlots()
     }
-  }, [account?.preferences?.availabilities, currentMonth])
+  }, [account?.preferences?.availabilities, currentMonth, selectedType])
   const handleContactCheck = async () => {
     try {
       if (!account?.address) return
@@ -205,47 +145,59 @@ const SchedulerPicker = () => {
       dateInTimezone.day === nowInTimezone.day
     )
   }
-  const validator = (date: Date) => {
-    if (!slotDurationInMinutes) return
-    const dayInTimezone = DateTime.fromObject(
-      {
-        year: date.getFullYear(),
-        month: date.getMonth() + 1, // JS months are 0-indexed
-        day: date.getDate(),
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      },
-      {
-        zone:
-          timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      }
-    )
-    const startLocalDate = dayInTimezone.startOf('day').toJSDate()
-    const endLocalDate = dayInTimezone.endOf('day').toJSDate()
-    const slots = eachMinuteOfInterval(
-      { start: startLocalDate, end: endLocalDate },
-      { step: slotDurationInMinutes }
-    ).map(s => ({
-      start: s,
-      end: addMinutes(s, slotDurationInMinutes),
-    }))
+  const validator = useCallback(
+    (pickedDay: Date) => {
+      const pickedDayInTimezone = DateTime.fromJSDate(pickedDay).setZone(
+        timezone.value
+      )
+      const endOfDayInTimezone = pickedDayInTimezone.endOf('day').toJSDate()
+      const minTime = selectedType?.min_notice_minutes || 0
 
-    const intervals = availableSlots.filter(
-      slot => isSameMonth(slot.start, date) && isSameDay(slot.start, date)
-    )
+      const timeSlots = generateTimeSlots(
+        pickedDay,
+        selectedType?.duration_minutes || 30,
+        false,
+        timezone.value,
+        endOfDayInTimezone
+      )
+      const daySlots = availableSlots.filter(
+        slot =>
+          slot.overlaps(
+            Interval.fromDateTimes(
+              pickedDayInTimezone.startOf('day'),
+              pickedDayInTimezone.endOf('day')
+            )
+          ) ||
+          slot.start?.hasSame(
+            DateTime.fromJSDate(pickedDay || new Date()),
+            'day'
+          )
+      )
+      const filtered = timeSlots.filter(slot => {
+        const minScheduleTime = DateTime.now()
+          .setZone(timezone.value)
+          .plus({ minutes: minTime })
 
-    return (
-      (isFutureInTimezone(date, timezone.value) ||
-        isTodayInTimezone(date, timezone.value)) &&
-      (intervals?.length === 0 ||
-        slots.some(
-          slot =>
-            !intervals.some(interval => areIntervalsOverlapping(slot, interval))
-        ))
-    )
-  }
+        if (minScheduleTime > slot.start) {
+          return false
+        }
+
+        return (
+          daySlots.some(available => available.overlaps(slot)) &&
+          !busySlots.some(busy => busy.overlaps(slot))
+        )
+      })
+
+      return filtered.length > 0
+    },
+    [
+      availableSlots,
+      busySlots,
+      selectedType?.duration_minutes,
+      selectedType?.min_notice_minutes,
+      timezone.value,
+    ]
+  )
   const _onChange = (newValue: unknown) => {
     const timezone = newValue as Option<string>
     if (timezone) setTimezone(timezone)
@@ -274,234 +226,6 @@ const SchedulerPicker = () => {
     setShowConfirm(true)
   }
 
-    const validCals = connectedCalendars
-      .filter(cal => cal.provider !== TimeSlotSource.MWW)
-      .some(cal => cal.calendars.some(_cal => _cal.enabled))
-
-    setNotificationSubs(subs.notification_types?.length)
-    setHasConnectedCalendar(validCals)
-  }
-
-  const confirmSchedule = async (
-    scheduleType: SchedulingType,
-    startTime: Date,
-    guestEmail?: string,
-    name?: string,
-    content?: string,
-    meetingUrl?: string,
-    emailToSendReminders?: string,
-    title?: string,
-    otherParticipants?: Array<ParticipantInfo>,
-    meetingProvider?: MeetingProvider,
-    meetingReminders?: Array<MeetingReminders>,
-    meetingRepeat?: MeetingRepeat
-  ): Promise<boolean> => {
-    if (!selectedType) return false
-    setIsScheduling(true)
-
-    const start = zonedTimeToUtc(
-      startTime,
-      timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone
-    )
-    const end = addMinutes(new Date(start), selectedType.duration_minutes)
-
-    if (scheduleType !== SchedulingType.GUEST && !name) {
-      name = getAccountDisplayName(currentAccount!)
-    }
-
-    const participants: ParticipantInfo[] = [...(otherParticipants || [])]
-
-    participants.push({
-      account_address: account!.address,
-      name: account.preferences?.name,
-      type: ParticipantType.Owner,
-      status: ParticipationStatus.Accepted,
-      slot_id: '',
-      meeting_id: '',
-    })
-
-    setSchedulingType(scheduleType)
-
-    participants.push({
-      account_address: currentAccount?.address,
-      ...(scheduleType === SchedulingType.GUEST && {
-        guest_email: guestEmail!,
-      }),
-      name,
-      type: ParticipantType.Scheduler,
-      status: ParticipationStatus.Accepted,
-      slot_id: '',
-      meeting_id: '',
-    })
-
-    try {
-      let meeting: MeetingDecrypted
-
-      if (meetingSlotId) {
-        meeting = await updateMeetingAsGuest(
-          meetingSlotId,
-          start,
-          end,
-          participants,
-          meetingProvider || MeetingProvider.HUDDLE,
-          content,
-          meetingUrl,
-          title,
-          meetingReminders,
-          meetingRepeat
-        )
-      } else {
-        meeting = await scheduleMeeting(
-          false,
-          scheduleType,
-          selectedType?.id,
-          start,
-          end,
-          participants,
-          meetingProvider || MeetingProvider.HUDDLE,
-          currentAccount,
-          content,
-          meetingUrl,
-          emailToSendReminders,
-          title,
-          meetingReminders,
-          meetingRepeat,
-          undefined,
-          tx
-        )
-      }
-      await getAvailableSlots(true)
-      currentAccount && saveMeetingsScheduled(currentAccount!.address)
-      currentAccount && (await fetchNotificationSubscriptions())
-
-      setLastScheduledMeeting(meeting)
-      logEvent('Scheduled a meeting', {
-        fromPublicCalendar: true,
-        participantsSize: meeting.participants.length,
-      })
-      setIsScheduling(false)
-      return true
-    } catch (e) {
-      if (e instanceof MeetingWithYourselfError) {
-        toast({
-          title: "Ops! Can't do that",
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof TimeNotAvailableError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description: 'The selected time is not available anymore',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof GateConditionNotValidError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description: e.message,
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof MeetingCreationError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description:
-            'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof MultipleSchedulersError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description: 'A meeting must have only one scheduler',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof InvalidURL) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description: 'Please provide a valid url/link for your meeting.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof Huddle01ServiceUnavailable) {
-        toast({
-          title: 'Failed to create video meeting',
-          description:
-            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof ZoomServiceUnavailable) {
-        toast({
-          title: 'Failed to create video meeting',
-          description:
-            'Zoom seems to be offline. Please select a different meeting location, or try again.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof GoogleServiceUnavailable) {
-        toast({
-          title: 'Failed to create video meeting',
-          description:
-            'Google seems to be offline. Please select a different meeting location, or try again.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof UrlCreationError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description:
-            'There was an issue generating a meeting url for your meeting. try using a different location',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof AllMeetingSlotsUsedError) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description:
-            'You’ve used all your available meeting slots. Please purchase a new slot to schedule a meeting.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      } else if (e instanceof TransactionIsRequired) {
-        toast({
-          title: 'Failed to schedule meeting',
-          description:
-            'This meeting type requires payment before scheduling. Please purchase a slot to continue.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
-      }
-    }
-    setIsScheduling(false)
-    return false
-  }
   const startTime = pickedTime || new Date()
 
   const { formattedDate, timeDuration } = getFormattedDateAndDuration(
@@ -510,14 +234,6 @@ const SchedulerPicker = () => {
     selectedType?.duration_minutes || 0
   )
 
-  const {
-    formattedDate: formerDateFormatted,
-    timeDuration: formerTimeduration,
-  } = getFormattedDateAndDuration(
-    timezone.value,
-    startTime,
-    selectedType?.duration_minutes || 0
-  )
   return (
     <Box
       width="100%"
@@ -660,8 +376,6 @@ const SchedulerPicker = () => {
             isSchedulingExternal={isScheduling}
             notificationsSubs={notificationsSubs}
             preferences={account?.preferences}
-            meetingProviders={account?.preferences?.meetingProviders}
-            selectedType={selectedType}
           />
         </VStack>
       </HStack>
