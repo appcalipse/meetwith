@@ -1,11 +1,22 @@
-import { Container, Flex, useColorModeValue, VStack } from '@chakra-ui/react'
+import {
+  Container,
+  Flex,
+  HStack,
+  useColorModeValue,
+  useToast,
+  VStack,
+} from '@chakra-ui/react'
 import MeetingScheduledDialog from '@components/meeting/MeetingScheduledDialog'
 import BasePage from '@components/public-meeting/BasePage'
 import BookingComponent from '@components/public-meeting/BookingComponent'
 import HeadMeta from '@components/public-meeting/HeadMeta'
 import PaymentComponent from '@components/public-meeting/PaymentComponent'
 import { MeetingType, PublicAccount } from '@meta/Account'
-import { MeetingDecrypted, SchedulingType } from '@meta/Meeting'
+import {
+  ConferenceMeeting,
+  MeetingDecrypted,
+  SchedulingType,
+} from '@meta/Meeting'
 import {
   PaymentStep,
   PaymentType,
@@ -13,16 +24,33 @@ import {
 } from '@utils/constants/meeting-types'
 import { useRouter } from 'next/router'
 import React, { FC, useEffect, useMemo, useState } from 'react'
+import { v4 } from 'uuid'
 
+import useAccountContext from '@/hooks/useAccountContext'
 import { AcceptedToken, SupportedChain } from '@/types/chains'
 import { Address } from '@/types/Transactions'
+import { getMeetingGuest } from '@/utils/api_helper'
 import { getAccountDomainUrl } from '@/utils/calendar_manager'
+import { Option } from '@/utils/constants/select'
+import { decryptContent } from '@/utils/cryptography'
+import { timezones } from '@/utils/date_helper'
+import { isJson } from '@/utils/generic_utils'
+import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
+import Loading from '../Loading'
+const tzs = timezones.map(tz => {
+  return {
+    value: String(tz.tzCode),
+    label: tz.name,
+  }
+})
 interface IProps {
   account: PublicAccount
   url: string
 }
-
+export type RescheduleConferenceData = ConferenceMeeting & {
+  participants?: Array<ParticipantInfoForNotification>
+}
 interface IContext {
   account: PublicAccount
   selectedType: MeetingType | null
@@ -62,6 +90,12 @@ interface IContext {
   setNotificationSubs: React.Dispatch<React.SetStateAction<number>>
   isContact: boolean
   setIsContact: React.Dispatch<React.SetStateAction<boolean>>
+  rescheduleSlot?: RescheduleConferenceData
+  rescheduleSlotLoading: boolean
+  meetingSlotId?: string
+  timezone: Option<string>
+  setTimezone: React.Dispatch<React.SetStateAction<Option<string>>>
+  setIsCancelled: React.Dispatch<React.SetStateAction<boolean>>
 }
 const baseState: IContext = {
   account: {} as PublicAccount,
@@ -91,19 +125,30 @@ const baseState: IContext = {
   setNotificationSubs: () => {},
   isContact: false,
   setIsContact: () => {},
+  rescheduleSlot: undefined,
+  rescheduleSlotLoading: false,
+  meetingSlotId: undefined,
+  timezone: tzs[0],
+  setTimezone: () => {},
+  setIsCancelled: () => {},
 }
+
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
 const PublicPage: FC<IProps> = props => {
   const bgColor = useColorModeValue('white', 'neutral.900')
   const { query, push, isReady, beforePopState, replace, asPath } = useRouter()
+  const [pageGettingReady, setPageGettingReady] = useState(true)
   const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState<
     MeetingDecrypted | undefined
   >(undefined)
+  const { slotId, metadata, slot } = query
   const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
+  const [meetingSlotId, setMeetingSlotId] = useState<string | undefined>(
+    undefined
+  )
   const [notificationsSubs, setNotificationSubs] = useState(0)
   const [isContact, setIsContact] = useState(false)
-
   const selectedType = useMemo(() => {
     if (!isReady) return null
     const meeting_type = Array.isArray(query.address)
@@ -118,13 +163,31 @@ const PublicPage: FC<IProps> = props => {
   const [paymentType, setPaymentType] = useState<PaymentType | undefined>(
     undefined
   )
+  const currentAccount = useAccountContext()
+
+  const [timezone, setTimezone] = useState<Option<string>>(
+    tzs.find(
+      val =>
+        val.value ===
+        (currentAccount?.preferences?.timezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone)
+    ) || tzs[0]
+  )
   const [paymentStep, setPaymentStep] = useState<PaymentStep | undefined>(
     undefined
   )
   const [tx, setTx] = useState<Address | undefined>(undefined)
+  const [key, setKey] = useState<string | undefined>(v4())
+  const [isCancelled, setIsCancelled] = useState<boolean>(false)
   const [currentStep, setCurrentStep] = useState<PublicSchedulingSteps>(
     PublicSchedulingSteps.SELECT_TYPE
   )
+  const toast = useToast()
+  const [rescheduleSlot, setRescheduleSlot] = useState<
+    ConferenceMeeting | undefined
+  >(undefined)
+  const [rescheduleSlotLoading, setRescheduleSlotLoading] =
+    useState<boolean>(false)
   const handleNavigateToBook = (tx?: Address) => {
     setTx(tx)
     setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
@@ -151,11 +214,78 @@ const PublicPage: FC<IProps> = props => {
   ) => {
     await push({
       pathname: `/${getAccountDomainUrl(props.account!)}/${type.slug}`,
+      query: {
+        ...query,
+        address: undefined, // Clear address to avoid confusion
+      },
     })
     setCurrentStep(current_step)
   }
+
+  const getSlotInfo = async () => {
+    const baseId = slot || slotId
+    const rescheduleSlotId = Array.isArray(baseId) ? baseId[0] : baseId
+    if (rescheduleSlotId) {
+      setRescheduleSlotLoading(true)
+      try {
+        const meeting: RescheduleConferenceData = await getMeetingGuest(
+          rescheduleSlotId
+        )
+        if (!meeting) {
+          toast({
+            title: 'Meeting not found',
+            status: 'error',
+            description:
+              'The meeting you are trying to reschedule was not found.',
+          })
+          await push('/404')
+          return
+        }
+        if (metadata) {
+          const guestParticipants = decryptContent(
+            process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
+            Array.isArray(metadata) ? metadata[0] : metadata
+          )
+          if (guestParticipants) {
+            meeting.participants = isJson(guestParticipants)
+              ? (JSON.parse(
+                  guestParticipants
+                ) as Array<ParticipantInfoForNotification>)
+              : undefined
+          }
+          const actor = meeting.participants?.find(
+            p => p.slot_id === meetingSlotId
+          )
+          if (actor) {
+            setTimezone(
+              tzs.find(
+                val =>
+                  val.value ===
+                  (actor.timezone ||
+                    currentAccount?.preferences?.timezone ||
+                    Intl.DateTimeFormat().resolvedOptions().timeZone)
+              ) || tzs[0]
+            )
+          }
+        }
+        setMeetingSlotId(rescheduleSlotId)
+        setRescheduleSlot(meeting)
+      } catch (error) {
+        toast({
+          title: 'Unable to load meeting details',
+          status: 'error',
+          description:
+            'The meeting information could not be retrieved. Please try again.',
+        })
+
+        setRescheduleSlot(undefined)
+      }
+      setRescheduleSlotLoading(false)
+    }
+  }
   useEffect(() => {
     if (!isReady) return
+    setPageGettingReady(true)
     if (query.address) {
       const meeting_type = Array.isArray(query.address)
         ? query.address.at(-1)
@@ -189,6 +319,9 @@ const PublicPage: FC<IProps> = props => {
         }
       }
     }
+
+    void getSlotInfo()
+    setPageGettingReady(false)
   }, [query])
   useEffect(() => {}, [])
 
@@ -221,8 +354,12 @@ const PublicPage: FC<IProps> = props => {
     }
   }, [currentStep, selectedType, beforePopState])
 
-  const _onClose = () => {
+  const _onClose = async () => {
+    await push({
+      pathname: `/${getAccountDomainUrl(props.account!)}/${selectedType?.slug}`,
+    })
     setLastScheduledMeeting(undefined)
+    setKey(v4())
   }
   const context: IContext = {
     account: props.account,
@@ -252,6 +389,12 @@ const PublicPage: FC<IProps> = props => {
     setNotificationSubs,
     isContact,
     setIsContact,
+    rescheduleSlot,
+    rescheduleSlotLoading,
+    meetingSlotId,
+    timezone,
+    setTimezone,
+    setIsCancelled,
   }
   const renderStep = () => {
     switch (currentStep) {
@@ -264,10 +407,11 @@ const PublicPage: FC<IProps> = props => {
         return <BasePage />
     }
   }
+
   return (
     <PublicScheduleContext.Provider value={context}>
       <HeadMeta account={props.account} url={props.url} />
-      <VStack mb={36} gap={1}>
+      <VStack mb={36} gap={1} key={key}>
         <Container
           bg={bgColor}
           maxW={{ base: '100%', md: '95%' }}
@@ -286,7 +430,7 @@ const PublicPage: FC<IProps> = props => {
           {lastScheduledMeeting ? (
             <Flex justify="center">
               <MeetingScheduledDialog
-                participants={lastScheduledMeeting!.participants}
+                participants={lastScheduledMeeting?.participants}
                 hostAccount={props.account}
                 scheduleType={schedulingType}
                 meeting={lastScheduledMeeting}
@@ -295,8 +439,18 @@ const PublicPage: FC<IProps> = props => {
                 isContact={isContact}
                 setIsContact={setIsContact}
                 reset={_onClose}
+                isReschedule={!!meetingSlotId}
+                isCancelled={isCancelled}
+                timezone={
+                  timezone?.value ||
+                  Intl.DateTimeFormat().resolvedOptions().timeZone
+                }
               />
             </Flex>
+          ) : pageGettingReady ? (
+            <HStack w="100%" mt={8} mx="auto" justifyContent="center">
+              <Loading label="Loading..." />
+            </HStack>
           ) : (
             renderStep()
           )}
