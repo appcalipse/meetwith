@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { AccountNotFoundError } from '@/utils/errors'
+import { extractQuery } from '@/utils/generic_utils'
 import { CalendarBackendHelper } from '@/utils/services/calendar.backend.helper'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -31,7 +32,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           startDate,
           endDate,
           limit,
-          offset
+          offset,
+          extractQuery<string>(req.query, 'meetingTypeId')
         )
 
       return res.status(200).json(busySlots)

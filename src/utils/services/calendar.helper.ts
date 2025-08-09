@@ -52,7 +52,8 @@ export const CalendarServiceHelper = {
   getMeetingSummary: function (
     meetingDescription?: string,
     meeting_url?: string,
-    meetingChangeLink?: string
+    meetingChangeLink?: string,
+    hasGuests?: boolean
   ) {
     let message = ''
     if (meetingDescription) {
@@ -67,6 +68,10 @@ export const CalendarServiceHelper = {
 
     if (meetingChangeLink) {
       message += `\n\nTo reschedule or cancel the meeting, please go to ${meetingChangeLink}`
+    }
+
+    if (hasGuests) {
+      message += `\n\nGuests have to use the reschedule or cancel link in their meeting confirmation email to manage their booking`
     }
 
     return message
