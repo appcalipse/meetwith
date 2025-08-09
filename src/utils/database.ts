@@ -10,6 +10,7 @@ import EthCrypto, {
 } from 'eth-crypto'
 import { GaxiosError } from 'gaxios'
 import { calendar_v3 } from 'googleapis'
+import { DateTime, Interval } from 'luxon'
 import { validate } from 'uuid'
 
 import {
@@ -167,6 +168,7 @@ import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
 import { sendReceiptEmail } from './email_helper'
+import { CalendarBackendHelper } from './services/calendar.backend.helper'
 import { CalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { isTimeInsideAvailabilities } from './slots.helper'
@@ -832,9 +834,31 @@ const isSlotAvailable = async (
       return false
     }
   }
-  const accountSlots = await getSlotsForAccount(account_address, start, end)
+  const interval = Interval.fromDateTimes(
+    DateTime.fromJSDate(start),
+    DateTime.fromJSDate(end)
+  )
+  if (!interval.isValid) {
+    return false
+  }
+  const busySlots = (
+    await CalendarBackendHelper.getBusySlotsForAccount(
+      account_address,
+      interval.start?.startOf('day').toJSDate(),
+      interval.end?.endOf('day').toJSDate(),
+      undefined,
+      undefined,
+      meetingTypeId
+    )
+  ).map(slot =>
+    Interval.fromDateTimes(
+      DateTime.fromJSDate(new Date(slot.start)),
+      DateTime.fromJSDate(new Date(slot.end))
+    )
+  )
 
-  return accountSlots.length == 0
+  const isAvailable = busySlots.every(slot => !slot.overlaps(interval))
+  return isAvailable
 }
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
@@ -2279,6 +2303,7 @@ const addOrUpdateConnectedCalendar = async (
       calendars[0].enabled = true
       // ensure at least one is enabled when adding it
     }
+
     queryPromise = db.supabase.from('connected_calendars').insert({
       email,
       payload,
@@ -2295,6 +2320,24 @@ const addOrUpdateConnectedCalendar = async (
   }
   const calendar = data[0] as ConnectedCalendar
   try {
+    if (!existingConnection) {
+      await addNewCalendarToAllExistingMeetingTypes(
+        address.toLowerCase(),
+        calendar
+      )
+    }
+  } catch (e) {
+    Sentry.captureException(e, {
+      extra: {
+        calendarId: calendar.id,
+        accountAddress: address,
+        email,
+        provider,
+      },
+    })
+    console.error('Error adding new calendar to existing meeting types:', e)
+  }
+  try {
     const integration = getConnectedCalendarIntegration(
       address.toLowerCase(),
       email,
@@ -2302,11 +2345,71 @@ const addOrUpdateConnectedCalendar = async (
       payload
     )
     for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+      // don't parellelize this as it can make us hit google's rate limit
       await handleWebHook(cal.calendarId, calendar.id, integration)
     }
-  } catch (e) {}
+  } catch (e) {
+    Sentry.captureException(e, {
+      extra: {
+        calendarId: calendar.id,
+        accountAddress: address,
+        email,
+        provider,
+      },
+    })
+    console.error('Error adding new calendar to existing meeting types:', e)
+  }
 
   return calendar
+}
+
+const addNewCalendarToAllExistingMeetingTypes = async (
+  account_address: string,
+  calendar: ConnectedCalendar
+) => {
+  const meetingTypes = await getMeetingTypesLean(account_address.toLowerCase())
+  if (!meetingTypes || meetingTypes.length === 0) return
+
+  await Promise.all(
+    meetingTypes.map(async meetingType => {
+      if (
+        await checkCalendarAlreadyExistsForMeetingType(
+          calendar.id,
+          meetingType.id
+        )
+      ) {
+        return
+      }
+      const { error } = await db.supabase
+        .from('meeting_type_calendars')
+        .insert({
+          meeting_type_id: meetingType.id,
+          calendar_id: calendar.id,
+        })
+      if (error) {
+        console.error('Error adding calendar to meeting type:', error)
+        Sentry.captureException(error, {
+          extra: {
+            calendarId: calendar.id,
+            meetingTypeId: meetingType.id,
+            accountAddress: account_address,
+          },
+        })
+      }
+    })
+  )
+  return true
+}
+const checkCalendarAlreadyExistsForMeetingType = async (
+  calendarId: number,
+  meetingTypeId: string
+) => {
+  const { data: current } = await db.supabase
+    .from('meeting_type_calendars')
+    .select()
+    .eq('meeting_type_id', meetingTypeId)
+    .eq('calendar_id', calendarId)
+  return current && current.length > 0
 }
 const handleWebHook = async (
   calId: string,
@@ -3992,7 +4095,21 @@ export const getAvailabilityBlocks = async (account_address: string) => {
 
   return sortedBlocks
 }
-
+const getMeetingTypesLean = async (
+  account_address: string
+): Promise<Array<MeetingType> | null> => {
+  // we do not need all the details, just the basic info
+  const { data, error } = await db.supabase
+    .from<MeetingType>('meeting_type')
+    .select(`*`)
+    .eq('account_owner_address', account_address)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+  if (error) {
+    Sentry.captureException(error)
+  }
+  return data
+}
 const getMeetingTypes = async (
   account_address: string,
   limit = 10,
@@ -4373,7 +4490,10 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
     .select(
       `
     *,
-    plan: meeting_type_plan(*)
+    plan: meeting_type_plan(*),
+    connected_calendars: meeting_type_calendars(
+       connected_calendars(id, email, provider)
+    )
     `
     )
     .eq('id', id)
@@ -4386,6 +4506,10 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
     throw new MeetingTypeNotFound()
   }
   data.plan = data.plan?.[0] || null
+  data.calendars = data?.connected_calendars?.map(
+    (calendar: { connected_calendars: ConnectedCalendarCore }) =>
+      calendar.connected_calendars
+  )
   return data
 }
 const createCryptoTransaction = async (
