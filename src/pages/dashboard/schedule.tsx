@@ -49,6 +49,7 @@ import {
   selectDefaultProvider,
   updateMeeting,
 } from '@/utils/calendar_manager'
+import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
   MeetingPermissions,
@@ -360,7 +361,7 @@ const Schedule: NextPage<IInitialProps> = ({
       await deleteMeeting(
         true,
         currentAccount?.address || '',
-        'no_type',
+        NO_MEETING_TYPE,
         decryptedMeeting?.start,
         decryptedMeeting?.end,
         decryptedMeeting,
@@ -598,7 +599,7 @@ const Schedule: NextPage<IInitialProps> = ({
         await updateMeeting(
           true,
           currentAccount!.address,
-          'no_type',
+          NO_MEETING_TYPE,
           start,
           end,
           decryptedMeeting!,
@@ -620,7 +621,7 @@ const Schedule: NextPage<IInitialProps> = ({
         await scheduleMeeting(
           true,
           SchedulingType.REGULAR,
-          'no_type',
+          NO_MEETING_TYPE,
           start,
           end,
           _participants.valid,
