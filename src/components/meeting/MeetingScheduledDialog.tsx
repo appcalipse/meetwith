@@ -73,7 +73,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   isCancelled,
 }) => {
   const { currentAccount } = useContext(AccountContext)
-
+  const [isResetting, setIsResetting] = useState<boolean>(false)
   const toast = useToast()
 
   const { openConnection } = useContext(OnboardingModalContext)
@@ -211,7 +211,11 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
 
     router.push('/dashboard/notifications')
   }
-
+  const handleResent = async () => {
+    setIsResetting(true)
+    await reset()
+    setIsResetting(false)
+  }
   return (
     <>
       <Flex
@@ -374,7 +378,8 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               colorScheme="primary"
               variant="outline"
               width="100%"
-              onClick={() => reset()}
+              onClick={handleResent}
+              isLoading={isResetting}
             >
               Schedule Another
             </Button>
