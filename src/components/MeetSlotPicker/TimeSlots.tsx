@@ -6,13 +6,7 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
-import {
-  addMinutes,
-  areIntervalsOverlapping,
-  isAfter,
-  isSameDay,
-} from 'date-fns'
-import { DateTime } from 'luxon'
+import { DateTime, Interval } from 'luxon'
 import React, { FC, useContext, useMemo } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
@@ -25,10 +19,10 @@ interface IProps {
   slotSizeMinutes: number
   pickTime: (date: Date) => void
   showSelfAvailability: boolean
-  availableSlots: Interval[]
-  busySlots: Interval[]
-  selfAvailableSlots: Interval[]
-  selfBusySlots: Interval[]
+  availableSlots: Interval<true>[]
+  busySlots: Interval<true>[]
+  selfAvailableSlots: Interval<true>[]
+  selfBusySlots: Interval<true>[]
   timezone?: string
   selectedType?: MeetingType | null
 }
@@ -60,40 +54,45 @@ const TimeSlots: FC<IProps> = ({
   const daySlots = useMemo(() => {
     return availableSlots.filter(
       slot =>
-        areIntervalsOverlapping(slot, {
-          start: pickedDayInTimezone.startOf('day').toJSDate(),
-          end: pickedDayInTimezone.endOf('day').toJSDate(),
-        }) || isSameDay(slot.start, pickedDay || new Date())
+        slot.overlaps(
+          Interval.fromDateTimes(
+            pickedDayInTimezone.startOf('day'),
+            pickedDayInTimezone.endOf('day')
+          )
+        ) ||
+        slot.start.hasSame(DateTime.fromJSDate(pickedDay || new Date()), 'day')
     )
   }, [availableSlots, pickedDay, timezone])
   const selDaySlots = useMemo(() => {
     return selfAvailableSlots.filter(
       slot =>
-        areIntervalsOverlapping(slot, {
-          start: pickedDayInTimezone.startOf('day').toJSDate(),
-          end: pickedDayInTimezone.endOf('day').toJSDate(),
-        }) || isSameDay(slot.start, pickedDay || new Date())
+        slot.overlaps(
+          Interval.fromDateTimes(
+            pickedDayInTimezone.startOf('day'),
+            pickedDayInTimezone.endOf('day')
+          )
+        ) ||
+        slot.start?.hasSame(DateTime.fromJSDate(pickedDay || new Date()), 'day')
     )
   }, [selfAvailableSlots, pickedDay, timezone])
   const filtered = timeSlots.filter(slot => {
     const minScheduleTime = DateTime.now()
       .setZone(timezone)
       .plus({ minutes: minTime })
-      .toJSDate()
 
-    if (isAfter(minScheduleTime, slot.start)) {
+    if (minScheduleTime > slot.start) {
       return false
     }
 
     return (
-      daySlots.some(available => areIntervalsOverlapping(slot, available)) &&
-      !busySlots.some(busy => areIntervalsOverlapping(slot, busy))
+      daySlots.some(available => available.overlaps(slot)) &&
+      !busySlots.some(busy => busy.overlaps(slot))
     )
   })
   const selfAvailabilityCheck = (slot: Interval): boolean => {
     return (
-      selDaySlots.some(selfSlot => areIntervalsOverlapping(slot, selfSlot)) &&
-      !selfBusySlots.some(busySlot => areIntervalsOverlapping(slot, busySlot))
+      selDaySlots.some(selfSlot => selfSlot.overlaps(slot)) &&
+      !selfBusySlots.some(busySlot => busySlot.overlaps(slot))
     )
   }
   const borderColor = useColorModeValue('neutral.200', 'neutral.500')
@@ -145,8 +144,8 @@ const TimeSlots: FC<IProps> = ({
           {filtered.map(slot => {
             return (
               <Flex
-                key={new Date(slot.start).toISOString()}
-                onClick={() => pickTime(new Date(slot.start))}
+                key={slot.start.toISOTime()}
+                onClick={() => pickTime(slot.start.toJSDate())}
                 width={{ base: '100%', md: '80%', lg: '70%' }}
                 borderWidth={2}
                 borderColor={borderColor}
@@ -169,9 +168,7 @@ const TimeSlots: FC<IProps> = ({
               >
                 {
                   <Text flex={1} fontWeight="bold">
-                    {DateTime.fromJSDate(new Date(slot.start))
-                      .setZone(timezone)
-                      .toFormat('h:mm a')}
+                    {slot.start.setZone(timezone).toFormat('h:mm a')}
                   </Text>
                 }
                 {showSelfAvailability && selfAvailabilityCheck(slot) ? (
