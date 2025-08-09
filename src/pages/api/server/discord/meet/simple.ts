@@ -9,6 +9,7 @@ import {
   scheduleMeeting,
   selectDefaultProvider,
 } from '@/utils/calendar_manager'
+import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import { getAccountFromDiscordId } from '@/utils/database'
 import { findStartDateForNotBefore } from '@/utils/time.helper'
 
@@ -101,7 +102,7 @@ export default async function simpleDiscordMeet(
       const meeting = await scheduleMeeting(
         false,
         SchedulingType.DISCORD,
-        'no_type',
+        NO_MEETING_TYPE,
         new Date(slot.start),
         new Date(slot.end),
         participants,
