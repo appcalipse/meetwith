@@ -807,29 +807,33 @@ const isSlotAvailable = async (
   meetingTypeId: string,
   txHash?: Address | null
 ): Promise<boolean> => {
-  const meetingType = await getMeetingTypeFromDB(meetingTypeId)
-  const minTime = meetingType.min_notice_minutes
-  if (meetingType?.plan) {
-    if (!txHash) {
-      throw new TransactionIsRequired()
+  if (meetingTypeId !== 'no_type') {
+    const meetingType = await getMeetingTypeFromDB(meetingTypeId)
+    const minTime = meetingType.min_notice_minutes
+    if (meetingType?.plan) {
+      if (!txHash) {
+        throw new TransactionIsRequired()
+      }
+      const transaction = await getTransactionBytxHashAndMeetingType(
+        txHash,
+        meetingTypeId
+      )
+      const meetingSessions = transaction.meeting_sessions || []
+      const isAnyMeetingSlotFree = meetingSessions.some(
+        session => session.used_at === null
+      )
+      if (!isAnyMeetingSlotFree) {
+        throw new AllMeetingSlotsUsedError()
+      }
     }
-    const transaction = await getTransactionBytxHashAndMeetingType(
-      txHash,
-      meetingTypeId
-    )
-    const meetingSessions = transaction.meeting_sessions || []
-    const isAnyMeetingSlotFree = meetingSessions.some(
-      session => session.used_at === null
-    )
-    if (!isAnyMeetingSlotFree) {
-      throw new AllMeetingSlotsUsedError()
-    }
-  }
 
-  if (isAfter(addMinutes(new Date(), minTime), start)) {
-    return false
+    if (isAfter(addMinutes(new Date(), minTime), start)) {
+      return false
+    }
   }
-  return (await getSlotsForAccount(account_address, start, end)).length == 0
+  const accountSlots = await getSlotsForAccount(account_address, start, end)
+
+  return accountSlots.length == 0
 }
 
 const getMeetingFromDB = async (slot_id: string): Promise<DBSlot> => {
@@ -1163,13 +1167,13 @@ const saveMeeting = async (
             ownerAccount?.preferences.availabilities || []
           )
         // TODO: check slots by meeting type and not users default Availaibility
-        //   if (
-        //     participantIsOwner &&
-        //     ownerIsNotScheduler &&
-        //     ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
-        //       (await slotIsTaken()))
-        //   )
-        //     throw new TimeNotAvailableError()
+        if (
+          participantIsOwner &&
+          ownerIsNotScheduler &&
+          ((!meeting.ignoreOwnerAvailability && !isTimeAvailable()) ||
+            (await slotIsTaken()))
+        )
+          throw new TimeNotAvailableError()
       }
 
       let account: Account
