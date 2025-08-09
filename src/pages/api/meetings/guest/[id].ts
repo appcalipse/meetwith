@@ -4,6 +4,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { GuestMeetingCancel } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingUpdateRequest } from '@/types/Requests'
+import { decryptContent } from '@/utils/cryptography'
 import {
   getConferenceDataBySlotId,
   handleGuestCancel,
@@ -28,9 +29,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       }
       if (meeting.slots) {
         meeting.slots = [] // we don't want other users slots to be exposed
-      }
-      if (meeting.meeting_url) {
-        meeting.meeting_url = '' // we don't want private data to be exposed
       }
       return res.status(200).json(meeting)
     } catch (err) {
