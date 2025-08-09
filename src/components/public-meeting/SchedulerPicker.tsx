@@ -19,13 +19,13 @@ import {
   eachMinuteOfInterval,
   endOfMonth,
   Interval,
-  isAfter,
   isSameDay,
   isSameMonth,
   startOfMonth,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime } from 'luxon'
+import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
 import {
   FaArrowLeft,
@@ -46,6 +46,7 @@ import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import {
+  MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
@@ -63,9 +64,13 @@ import {
   getNotificationSubscriptions,
   listConnectedCalendars,
 } from '@/utils/api_helper'
-import { scheduleMeeting } from '@/utils/calendar_manager'
+import { scheduleMeeting, updateMeetingAsGuest } from '@/utils/calendar_manager'
 import { Option } from '@/utils/constants/select'
-import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
+import {
+  getFormattedDateAndDuration,
+  parseMonthAvailabilitiesToDate,
+  timezones,
+} from '@/utils/date_helper'
 import {
   AllMeetingSlotsUsedError,
   GateConditionNotValidError,
@@ -99,8 +104,11 @@ const SchedulerPicker = () => {
     notificationsSubs,
     setNotificationSubs,
     setIsContact,
+    rescheduleSlot,
+    rescheduleSlotLoading,
+    meetingSlotId,
   } = useContext(PublicScheduleContext)
-
+  const query = useRouter().query
   const currentAccount = useAccountContext()
   const slotDurationInMinutes = selectedType?.duration_minutes || 0
   const [timezone, setTimezone] = useState<Option<string>>(
@@ -130,6 +138,16 @@ const SchedulerPicker = () => {
     startDate: Date
     endDate: Date
   } | null>(null)
+  useEffect(() => {
+    if (rescheduleSlotLoading) return
+    if (meetingSlotId && rescheduleSlot) {
+      setPickedDay(new Date(rescheduleSlot.start))
+      setPickedTime(new Date(rescheduleSlot.start))
+      setCurrentMonth(new Date(rescheduleSlot.start))
+      setSelectedMonth(new Date(rescheduleSlot.start))
+      setShowConfirm(true)
+    }
+  }, [rescheduleSlotLoading, rescheduleSlot])
   const getSelfAvailableSlots = async () => {
     if (currentAccount) {
       const startDate = startOfMonth(currentMonth)
@@ -374,7 +392,7 @@ const SchedulerPicker = () => {
 
     participants.push({
       account_address: account!.address,
-      name: '',
+      name: account.preferences?.name,
       type: ParticipantType.Owner,
       status: ParticipationStatus.Accepted,
       slot_id: '',
@@ -396,24 +414,41 @@ const SchedulerPicker = () => {
     })
 
     try {
-      const meeting = await scheduleMeeting(
-        false,
-        scheduleType,
-        selectedType?.id,
-        start,
-        end,
-        participants,
-        meetingProvider || MeetingProvider.HUDDLE,
-        currentAccount,
-        content,
-        meetingUrl,
-        emailToSendReminders,
-        title,
-        meetingReminders,
-        meetingRepeat,
-        undefined,
-        tx
-      )
+      let meeting: MeetingDecrypted
+
+      if (meetingSlotId) {
+        meeting = await updateMeetingAsGuest(
+          meetingSlotId,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          content,
+          meetingUrl,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      } else {
+        meeting = await scheduleMeeting(
+          false,
+          scheduleType,
+          selectedType?.id,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          emailToSendReminders,
+          title,
+          meetingReminders,
+          meetingRepeat,
+          undefined,
+          tx
+        )
+      }
       await getAvailableSlots(true)
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
@@ -548,20 +583,20 @@ const SchedulerPicker = () => {
   }
   const startTime = pickedTime || new Date()
 
-  // Use Luxon for duration calculation and timezone handling
-  const startTimeInTimezone = DateTime.fromJSDate(startTime, {
-    zone: timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
-  })
-  const endTimeInTimezone = startTimeInTimezone.plus({
-    minutes: selectedType?.duration_minutes || 0,
-  })
+  const { formattedDate, timeDuration } = getFormattedDateAndDuration(
+    timezone.value,
+    startTime,
+    selectedType?.duration_minutes || 0
+  )
 
-  const formattedStartTime = startTimeInTimezone.toFormat('h:mm a')
-  const formattedEndTime = endTimeInTimezone.toFormat('h:mm a')
-  const formattedDate = DateTime.fromJSDate(startTime)
-    .setZone(timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone)
-    .toFormat('cccc, LLLL d, yyyy')
-  const timeDuration = `${formattedStartTime} - ${formattedEndTime}`
+  const {
+    formattedDate: formerDateFormatted,
+    timeDuration: formerTimeduration,
+  } = getFormattedDateAndDuration(
+    timezone.value,
+    startTime,
+    selectedType?.duration_minutes || 0
+  )
   return (
     <Box
       width="100%"
@@ -656,9 +691,23 @@ const SchedulerPicker = () => {
           mb={{ md: 0, base: 4 }}
         >
           <Heading size={'lg'}>{selectedType?.title}</Heading>
+          {meetingSlotId &&
+            rescheduleSlot &&
+            pickedTime?.getTime() !== rescheduleSlot.start.getTime() && (
+              <FormerDate
+                startTime={new Date(rescheduleSlot.start)}
+                timezone={timezone.value}
+                endTime={new Date(rescheduleSlot.end)}
+                duration_minutes={selectedType?.duration_minutes || 0}
+              />
+            )}
           <HStack>
             <FaCalendar size={24} />
-            <Text>{`${formattedDate}, ${timeDuration}`}</Text>
+            <Text textAlign="left">
+              {`${formattedDate}, ${timeDuration}`}
+              {pickedTime?.getTime() === rescheduleSlot?.start?.getTime() &&
+                ' (Current booking)'}
+            </Text>
           </HStack>
           <HStack>
             <FaClock size={24} />
@@ -671,7 +720,14 @@ const SchedulerPicker = () => {
             </Text>
           </HStack>
         </VStack>
-        <VStack align="flex-start" flexBasis={{ base: '100%', '2xl': '50%' }}>
+        <VStack
+          align="flex-start"
+          flexBasis={{ base: '100%', '2xl': '50%' }}
+          mt={{
+            base: 4,
+            '2xl': 0,
+          }}
+        >
           <HStack mb={0} cursor="pointer" onClick={() => setShowConfirm(false)}>
             <Icon as={FaArrowLeft} size="1.5em" color={color} />
             <Heading size="md" color={color}>
@@ -690,6 +746,33 @@ const SchedulerPicker = () => {
         </VStack>
       </HStack>
     </Box>
+  )
+}
+const FormerDate = ({
+  startTime,
+  timezone,
+  endTime,
+  duration_minutes = 0,
+}: {
+  startTime: Date
+  timezone: string
+  endTime: Date
+  duration_minutes?: number
+}) => {
+  const { formattedDate, timeDuration } = getFormattedDateAndDuration(
+    timezone,
+    startTime,
+    duration_minutes,
+    endTime
+  )
+  return (
+    <HStack>
+      <FaCalendar size={24} />
+      <Text textAlign="left">
+        Former Time:{' '}
+        <Text textDecor="line-through">{`${formattedDate}, ${timeDuration}`}</Text>
+      </Text>
+    </HStack>
   )
 }
 export default SchedulerPicker
