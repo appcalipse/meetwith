@@ -24,8 +24,7 @@ export const CalendarBackendHelper = {
     startDate: Date,
     endDate: Date,
     limit?: number,
-    offset?: number,
-    meetingTypeId?: string
+    offset?: number
   ): Promise<TimeSlot[]> => {
     const busySlots: TimeSlot[] = []
 
@@ -49,17 +48,9 @@ export const CalendarBackendHelper = {
     }
 
     const getIntegratedCalendarEvents = async () => {
-      let calendars = await getConnectedCalendars(account_address, {
+      const calendars = await getConnectedCalendars(account_address, {
         activeOnly: true,
       })
-      if (meetingTypeId) {
-        const meetingType = await getMeetingTypeFromDB(meetingTypeId)
-        if (meetingType.calendars) {
-          calendars = calendars.filter(calendar =>
-            meetingType.calendars?.some(c => c.id === calendar.id)
-          )
-        }
-      }
       await Promise.all(
         calendars.map(async calendar => {
           const integration = getConnectedCalendarIntegration(
