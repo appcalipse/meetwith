@@ -25,7 +25,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
-import { Intents } from '@/types/Dashboard'
+import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingDecrypted, SchedulingType } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
@@ -55,6 +55,7 @@ interface IProps {
   setIsContact: (isContact: boolean) => void
   isReschedule?: boolean
   timezone?: string
+  isCancelled?: boolean
 }
 
 const MeetingScheduledDialog: React.FC<IProps> = ({
@@ -69,6 +70,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   reset,
   isReschedule,
   timezone,
+  isCancelled,
 }) => {
   const { currentAccount } = useContext(AccountContext)
 
@@ -140,7 +142,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   }
   const handleLogin = async () => {
     if (!currentAccount) {
-      logEvent('Clicked to start on WHY section')
+      logEvent('Clicked to login from schedule completed')
       openConnection()
     } else {
       await router.push('/dashboard')
@@ -233,8 +235,14 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               )} at ${dateToHumanReadable(
                 meeting!.start,
                 timezone || '',
-                false
-              )} was ${isReschedule ? 'updated' : 'scheduled'} successfully.`}
+                true
+              )} was ${
+                isCancelled
+                  ? 'cancelled'
+                  : isReschedule
+                  ? 'updated'
+                  : 'scheduled'
+              } successfully.`}
             </Text>
           )}
           <Image
@@ -332,11 +340,13 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               width="100%"
               onClick={() =>
                 router.push(
-                  `/dashboard/schedule?meetingId=${meeting?.id}&intent=${Intents.UPDATE_MEETING}`
+                  isCancelled
+                    ? `/dashboard/${EditMode.MEETINGS}`
+                    : `/dashboard/schedule?meetingId=${meeting?.id}&intent=${Intents.UPDATE_MEETING}`
                 )
               }
             >
-              View/Edit Meeting
+              {isCancelled ? 'View Meetings' : 'View/Edit Meeting'}
             </Button>
           </VStack>
         ) : (
