@@ -168,6 +168,7 @@ export enum GroupNotificationType {
   REJECT,
   LEAVE,
 }
+
 export enum NotBefore {
   OneHour = 1,
   TwoHours = 2,

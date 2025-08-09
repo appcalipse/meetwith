@@ -16,34 +16,33 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0  # Fetch complete history
+      - name: Install AWS Copilot
+        run: sudo curl -Lo /usr/local/bin/copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux && sudo chmod +x /usr/local/bin/copilot && copilot --help
 
-    - name: Install AWS Copilot
-      run: sudo curl -Lo /usr/local/bin/copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux && sudo chmod +x /usr/local/bin/copilot && copilot --help
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: eu-west-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-region: eu-west-1
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Deploy in the Preview env
+        if: ${{ github.ref == 'refs/heads/develop' }}
+        run: copilot deploy -e preview --force
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
 
-    - name: Deploy in the Preview env
-      if: ${{ github.ref == 'refs/heads/develop' }}
-      run: copilot deploy -e preview --force
-      env:
-        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREVIEW }}
+      - name: Deploy in the Production env
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: copilot deploy -e production --force
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
 
-    - name: Deploy in the Production env
-      if: ${{ github.ref == 'refs/heads/main' }}
-      run: copilot deploy -e production --force
-      env:
-        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PRODUCTION }}
-
-    - name: Deploy in the Pre-prod env
-      if: ${{ github.ref == 'refs/heads/pre-prod' }}
-      run: copilot deploy -e pre-prod --force
-      env:
-        DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}
+      - name: Deploy in the Pre-prod env
+        if: ${{ github.ref == 'refs/heads/pre-prod' }}
+        run: copilot deploy -e pre-prod --force
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}
 
     - uses: actions/checkout@v2
       with:

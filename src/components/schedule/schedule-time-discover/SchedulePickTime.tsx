@@ -335,7 +335,17 @@ export function SchedulePickTime() {
     const currentDate = DateTime.now().setZone(timezone)
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
-
+  const availabilityAddresses = useMemo(() => {
+    const keys = Object.keys(groupAvailability)
+    const participantsSet = new Set<string>()
+    for (const key of keys) {
+      const allGroupParticipants = groupAvailability[key] || []
+      for (const participant of allGroupParticipants) {
+        participantsSet.add(participant)
+      }
+    }
+    return Array.from(participantsSet)
+  }, [groupAvailability])
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
@@ -506,6 +516,7 @@ export function SchedulePickTime() {
                               pickedTime={pickedTime}
                               duration={duration}
                               meetingMembers={meetingMembers}
+                              participantAvailabilities={availabilityAddresses}
                               handleTimePick={time => {
                                 handleTimePick(time)
                                 handlePageSwitch(Page.SCHEDULE_DETAILS)

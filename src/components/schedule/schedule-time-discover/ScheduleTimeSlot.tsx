@@ -25,6 +25,7 @@ export interface ScheduleTimeSlotProps {
   meetingMembers: Account[]
   timezone: string
   duration: number
+  participantAvailabilities: Array<string>
 }
 
 type UserState = {
@@ -41,6 +42,7 @@ const ScheduleTimeSlot = (props: ScheduleTimeSlotProps) => {
     timezone,
     pickedTime,
     duration,
+    participantAvailabilities,
   } = props
   const itemsBgColor = useColorModeValue('white', 'gray.600')
   const [state, setState] = React.useState<State>(State.NONE_AVAILABLE)
@@ -56,7 +58,9 @@ const ScheduleTimeSlot = (props: ScheduleTimeSlotProps) => {
     const isSlotAvailable = []
     const userStates: Array<UserState> = []
     const accounts = Array.from(availableSlots.keys())
-    for (const account of accounts) {
+    for (const account of accounts.filter(val =>
+      participantAvailabilities.includes(val)
+    )) {
       const slots = availableSlots.get(account) || []
       const busySlotsForAccount = busySlots.get(account) || []
       const userAccount = meetingMembers.find(
