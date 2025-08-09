@@ -10,7 +10,7 @@ import {
 } from '@chakra-ui/react'
 import { useToast } from '@chakra-ui/toast'
 import * as Sentry from '@sentry/nextjs'
-import { SessionType } from '@utils/constants/meeting-types'
+import { NO_MEETING_TYPE, SessionType } from '@utils/constants/meeting-types'
 import {
   addMinutes,
   addMonths,
@@ -31,7 +31,6 @@ import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
 import {
-  ConferenceMeeting,
   DBSlot,
   ExistingMeetingData,
   GroupMeetingRequest,
@@ -487,7 +486,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({
         meeting = await scheduleMeeting(
           false,
           scheduleType,
-          'no_type',
+          NO_MEETING_TYPE,
           start,
           end,
           participants,
@@ -861,7 +860,7 @@ const RescheduleInfoBox: React.FC<{
 
   const handleCancel = () => {
     if (slot?.id) {
-      router.push(`/meeting/cancel/${slot.id}`)
+      router.push(`/meeting/cancel/${router.query.slot}`)
     }
   }
 

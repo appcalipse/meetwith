@@ -22,14 +22,23 @@ import {
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import { Select } from 'chakra-react-select'
-import { useContext, useEffect } from 'react'
+import { useRouter } from 'next/router'
+import { useContext, useEffect, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
+import { PublicScheduleContext } from '@/components/public-meeting'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
+import { guestMeetingCancel } from '@/utils/api_helper'
+import { selectDefaultProvider } from '@/utils/calendar_manager'
 import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
@@ -39,10 +48,14 @@ import {
   noClearCustomSelectComponent,
 } from '@/utils/constants/select'
 import { formatCurrency, renderProviderName } from '@/utils/generic_utils'
+import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
+import { renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import {
+  ConferenceMeeting,
+  MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
@@ -67,6 +80,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   isGateValid,
   notificationsSubs,
   preferences,
+  selectedType,
 }) => {
   const { currentAccount, logged } = useContext(AccountContext)
   const {
@@ -109,9 +123,22 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const { setCurrentStep } = useContext(PublicScheduleContext)
   const { tx, selectedType } = useContext(PublicScheduleContext)
   const toast = useToast()
+  const router = useRouter()
+  const query = router.query
+  const {
+    account,
+    meetingSlotId,
+    timezone,
+    rescheduleSlot,
+    setLastScheduledMeeting,
+    setIsCancelled,
+  } = useContext(PublicScheduleContext)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const { metadata } = query
   const meetingProviders = (preferences?.meetingProviders || []).concat(
     MeetingProvider.CUSTOM
   )
+
   useEffect(() => {
     if (selectedType?.custom_link) {
       setMeetingProvider(MeetingProvider.CUSTOM)
@@ -132,6 +159,56 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       setScheduleType(SchedulingType.GUEST)
     }
   }, [logged, selectedType])
+
+  useEffect(() => {
+    if (rescheduleSlot && meetingSlotId) {
+      if (rescheduleSlot.title) {
+        setTitle(rescheduleSlot.title)
+      }
+      if (rescheduleSlot.reminders) {
+        setMeetingNotification(
+          rescheduleSlot.reminders.map(reminder => ({
+            value: reminder,
+            label:
+              MeetingNotificationOptions.find(
+                option => option.value === reminder
+              )?.label || '',
+          }))
+        )
+      }
+      if (rescheduleSlot.provider) {
+        setMeetingProvider(rescheduleSlot.provider || MeetingProvider.CUSTOM)
+      }
+
+      if (rescheduleSlot.recurrence) {
+        setMeetingRepeat({
+          value: rescheduleSlot.recurrence,
+          label:
+            MeetingRepeatOptions.find(
+              option => option.value === rescheduleSlot.recurrence
+            )?.label || '',
+        })
+      }
+      if (rescheduleSlot.meeting_url) {
+        setMeetingUrl(rescheduleSlot.meeting_url)
+      }
+      if (rescheduleSlot.participants) {
+        const actor = rescheduleSlot.participants?.find(
+          p => p.slot_id === meetingSlotId
+        )
+        if (actor) {
+          setGuestEmail(actor.guest_email || '')
+          setName(actor.name || '')
+          setParticipants(
+            rescheduleSlot.participants.filter(
+              p => p.slot_id !== meetingSlotId && p.guest_email
+            )
+          )
+        }
+      }
+    }
+  }, [rescheduleSlot])
+
   const handleConfirm = async () => {
     if (meetingProvider === MeetingProvider.CUSTOM && !meetingUrl) {
       toast({
@@ -216,7 +293,64 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       willStartScheduling && willStartScheduling?.(true)
     }
   }
-
+  const handleCancelMeeting = async () => {
+    if (!meetingSlotId || !rescheduleSlot) return
+    setIsCancelling(true)
+    try {
+      const response = await guestMeetingCancel(meetingSlotId, {
+        metadata: metadata as string,
+        currentTimezone: timezone.value,
+      })
+      if (response?.success) {
+        setIsCancelled(true)
+        const participants: Array<ParticipantInfo> =
+          rescheduleSlot?.participants || []
+        participants.push({
+          account_address: account?.address,
+          name: account.preferences?.name,
+          type: ParticipantType.Owner,
+          status: ParticipationStatus.Accepted,
+          slot_id: '',
+          meeting_id: '',
+        })
+        setLastScheduledMeeting({
+          id: meetingSlotId,
+          title: rescheduleSlot?.title || '',
+          start: rescheduleSlot?.start || new Date(),
+          end: rescheduleSlot?.end || new Date(),
+          meeting_url: rescheduleSlot?.meeting_url || '',
+          participants,
+        } as unknown as MeetingDecrypted)
+      }
+    } catch (error) {
+      if (error instanceof MeetingNotFoundError) {
+        toast({
+          title: 'Meeting not found',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          description: 'The meeting you are trying to cancel was not found',
+        })
+      } else if (error instanceof UnauthorizedError) {
+        toast({
+          title: 'Invalid Cancel Url',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          description: 'The cancel url is invalid',
+        })
+      } else if (error instanceof Error) {
+        toast({
+          title: 'Error cancelling meeting',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          description: error.message,
+        })
+      }
+    }
+    setIsCancelling(false)
+  }
   const { openConnection } = useContext(OnboardingModalContext)
 
   const handleScheduleType = async (type: SchedulingType) => {
@@ -578,26 +712,49 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           }}
         />
       )}
-      <Button
-        width="full"
-        isDisabled={
-          (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) ||
-          (logged &&
-            ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
-          isSchedulingExternal ||
-          isGateValid === false
-        }
-        isLoading={isSchedulingExternal}
-        onClick={
-          scheduleType === SchedulingType.REGULAR
-            ? handleScheduleWithWallet
-            : handleConfirm
-        }
-        colorScheme="primary"
-        // mt={6}
-      >
+      <HStack>
+        <Button
+          width="full"
+          flex={1}
+          isDisabled={
+            (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) ||
+            (logged &&
+              ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
+            isSchedulingExternal ||
+            isGateValid === false
+          }
+          isLoading={isSchedulingExternal}
+          onClick={
+            scheduleType === SchedulingType.REGULAR
+              ? handleScheduleWithWallet
+              : handleConfirm
+          }
+          colorScheme="primary"
+          // mt={6}
+        >
         {getScheduleButtonLabel()}
-      </Button>
+          {isSchedulingExternal
+            ? 'Scheduling...'
+            : logged || scheduleType === SchedulingType.GUEST
+            ? meetingSlotId
+              ? 'Update Meeting'
+              : 'Schedule'
+            : 'Connect wallet to schedule'}
+        </Button>
+        {meetingSlotId && (
+          <Button
+            width="full"
+            flex={1}
+            isDisabled={isCancelling}
+            isLoading={isCancelling}
+            onClick={handleCancelMeeting}
+            bg={'orangeButton.800'}
+            color={'white'}
+          >
+            Cancel meeting
+          </Button>
+        )}
+      </HStack>
     </Flex>
   )
 }

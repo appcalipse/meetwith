@@ -103,6 +103,7 @@ import {
 } from '@/types/Transactions'
 import {
   Currency,
+  NO_MEETING_TYPE,
   PaymentDirection,
   PaymentStatus,
   PaymentType,
@@ -574,7 +575,7 @@ async function getExistingAccountsFromDB(
   addresses: string[],
   fullInformation?: boolean
 ): Promise<SimpleAccountInfo[] | Account[]> {
-  let queryString = ` 
+  let queryString = `
       address,
       internal_pub_key
     `
@@ -949,7 +950,7 @@ const handleGuestCancel = async (
   }
   await saveConferenceMeetingToDB({
     ...conferenceMeeting,
-    slots: conferenceMeeting.slots.filter(s => slotsToRemove.includes(s)),
+    slots: conferenceMeeting.slots.filter(s => !slotsToRemove.includes(s)),
   })
 
   const body: MeetingCancelSyncRequest = {
@@ -1270,6 +1271,10 @@ const saveMeeting = async (
     meetingReminders: meeting.meetingReminders,
     meetingRepeat: meeting.meetingRepeat,
     meetingPermissions: meeting.meetingPermissions,
+    meeting_type_id:
+      meeting.meetingTypeId === NO_MEETING_TYPE
+        ? undefined
+        : meeting.meetingTypeId,
   }
   // Doing notifications and syncs asynchronously
   fetch(`${apiUrl}/server/meetings/syncAndNotify`, {
@@ -1805,7 +1810,7 @@ const getGroupUsers = async (
       group_members: group_members(*),
       group_invites: group_invites(*),
       preferences: account_preferences(name),
-      subscriptions: subscriptions(*) 
+      subscriptions: subscriptions(*)
     `
       )
       .in('address', addresses)
@@ -2834,11 +2839,6 @@ const updateMeeting = async (
   meetingResponse.id = data[index].id
   meetingResponse.created_at = data[index].created_at
 
-  // TODO: for now
-  let meetingProvider = MeetingProvider.CUSTOM
-  if (meetingUpdateRequest.meeting_url.includes('huddle')) {
-    meetingProvider = MeetingProvider.HUDDLE
-  }
   const meeting = await getConferenceMeetingFromDB(
     meetingUpdateRequest.meeting_id
   )
@@ -2863,8 +2863,9 @@ const updateMeeting = async (
     end: meetingUpdateRequest.end,
     meeting_url: meetingUpdateRequest.meeting_url,
     access_type: MeetingAccessType.OPEN_MEETING,
-    provider: meetingProvider,
+    provider: meetingUpdateRequest.meetingProvider,
     recurrence: meetingUpdateRequest.meetingRepeat,
+    reminders: meetingUpdateRequest.meetingReminders,
     version: MeetingVersion.V2,
     title: meetingUpdateRequest.title,
     slots: updatedSlots,
@@ -2892,6 +2893,10 @@ const updateMeeting = async (
     meetingReminders: meetingUpdateRequest.meetingReminders,
     meetingRepeat: meetingUpdateRequest.meetingRepeat,
     meetingPermissions: meetingUpdateRequest.meetingPermissions,
+    meeting_type_id:
+      meetingUpdateRequest.meetingTypeId === NO_MEETING_TYPE
+        ? undefined
+        : meetingUpdateRequest.meetingTypeId,
   }
 
   // Doing notifications and syncs asynchronously
@@ -4853,21 +4858,44 @@ const getAccountDomainUrl = (account: Account, ellipsize?: boolean): string => {
   }`
 }
 
-const getAccountCalendarUrl = (
+const getAccountCalendarUrl = async (
   account: Account,
-  ellipsize?: boolean
-): string => {
-  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}`
+  ellipsize?: boolean,
+  meetingTypeId?: string
+): Promise<string> => {
+  let slug = ''
+  if (meetingTypeId) {
+    try {
+      const meetingType = await getMeetingTypeFromDB(meetingTypeId)
+      if (meetingType) {
+        slug = `/${meetingType.slug}`
+      }
+    } catch (e) {
+      Sentry.captureException(e, {
+        extra: {
+          accountAddress: account.address,
+          meetingTypeId,
+        },
+      })
+    }
+  }
+  return `${appUrl}/${getAccountDomainUrl(account, ellipsize)}${slug}`
 }
 
 const getOwnerPublicUrlServer = async (
-  ownerAccountAddress: string
+  ownerAccountAddress: string,
+  meetingTypeId?: string
 ): Promise<string> => {
   try {
     const ownerAccount = await getAccountFromDB(ownerAccountAddress)
-    return getAccountCalendarUrl(ownerAccount)
+    return await getAccountCalendarUrl(ownerAccount, undefined, meetingTypeId)
   } catch (error) {
-    // Fallback if account not found
+    Sentry.captureException(error, {
+      extra: {
+        ownerAccountAddress,
+        meetingTypeId,
+      },
+    })
     return `${appUrl}/address/${ownerAccountAddress}`
   }
 }

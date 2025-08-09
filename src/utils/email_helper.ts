@@ -48,15 +48,20 @@ const generateChangeUrl = async (
   ownerAccountAddress: string | undefined,
   slot_id: string,
   participantType: ParticipantType,
-  participants?: ParticipantInfo[]
+  participants?: ParticipantInfo[],
+  meetingTypeId?: string,
+  guestInfoEncrypted?: string
 ): Promise<string | undefined> => {
   // For guests, only scheduler gets reschedule link
   if (!destinationAccountAddress) {
     return ownerAccountAddress
       ? participantType === ParticipantType.Scheduler
         ? `${await getOwnerPublicUrlServer(
-            ownerAccountAddress
-          )}?slot=${slot_id}`
+            ownerAccountAddress,
+            meetingTypeId
+          )}?slotId=${slot_id}&metadata=${encodeURIComponent(
+            guestInfoEncrypted || ''
+          )}`
         : undefined
       : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
   }
@@ -154,7 +159,8 @@ export const newMeetingEmail = async (
   end: Date,
   meeting_id: string,
   slot_id: string,
-  destinationAccountAddress: string | undefined,
+  meetingTypeId?: string,
+  destinationAccountAddress?: string,
   meetingUrl?: string,
   title?: string,
   description?: string,
@@ -187,7 +193,9 @@ export const newMeetingEmail = async (
     ownerAccountAddress,
     slot_id,
     participantType,
-    participants
+    participants,
+    meetingTypeId,
+    guestInfoEncrypted
   )
 
   const locals = {
@@ -404,7 +412,8 @@ export const updateMeetingEmail = async (
   end: Date,
   meeting_id: string,
   slot_id: string,
-  destinationAccountAddress: string | undefined,
+  meetingTypeId?: string,
+  destinationAccountAddress?: string,
   meetingUrl?: string,
   title?: string,
   description?: string,
@@ -440,7 +449,9 @@ export const updateMeetingEmail = async (
     ownerAccountAddress,
     slot_id,
     participantType,
-    participants
+    participants,
+    meetingTypeId,
+    guestInfoEncrypted
   )
 
   const email = new Email()

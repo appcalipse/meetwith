@@ -14,11 +14,14 @@ import {
   addMinutes,
   areIntervalsOverlapping,
   eachMinuteOfInterval,
+  endOfMonth,
+  Interval,
   isSameDay,
   isSameMonth,
 } from 'date-fns'
 import { DateTime } from 'luxon'
-import React, { useContext, useEffect } from 'react'
+import { useRouter } from 'next/router'
+import React, { useContext, useEffect, useState } from 'react'
 import {
   FaArrowLeft,
   FaCalendar,
@@ -36,11 +39,52 @@ import {
 } from '@/components/public-meeting'
 import { ScheduleForm } from '@/components/schedule/schedule-form'
 import useAccountContext from '@/hooks/useAccountContext'
-import { logEvent } from '@/utils/analytics'
-import { doesContactExist } from '@/utils/api_helper'
-import { Option } from '@/utils/constants/select'
-import { timezones } from '@/utils/date_helper'
 
+import { AccountNotifications } from '@/types/AccountNotifications'
+import { ConnectedCalendarCore } from '@/types/CalendarConnections'
+import { MeetingReminders } from '@/types/common'
+import {
+  MeetingDecrypted,
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+  TimeSlotSource,
+} from '@/types/Meeting'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
+import { logEvent } from '@/utils/analytics'
+import {
+  doesContactExist,
+  getBusySlots,
+  getNotificationSubscriptions,
+  listConnectedCalendars,
+} from '@/utils/api_helper'
+import { scheduleMeeting, updateMeetingAsGuest } from '@/utils/calendar_manager'
+import { Option } from '@/utils/constants/select'
+import {
+  getFormattedDateAndDuration,
+  parseMonthAvailabilitiesToDate,
+  timezones,
+} from '@/utils/date_helper'
+import {
+  AllMeetingSlotsUsedError,
+  GateConditionNotValidError,
+  GoogleServiceUnavailable,
+  Huddle01ServiceUnavailable,
+  InvalidURL,
+  MeetingCreationError,
+  MeetingWithYourselfError,
+  MultipleSchedulersError,
+  TimeNotAvailableError,
+  TransactionIsRequired,
+  UrlCreationError,
+  ZoomServiceUnavailable,
+} from '@/utils/errors'
+import { saveMeetingsScheduled } from '@/utils/storage'
+import { getAccountDisplayName } from '@/utils/user_manager'
 const tzs = timezones.map(tz => {
   return {
     value: String(tz.tzCode),
@@ -48,8 +92,6 @@ const tzs = timezones.map(tz => {
   }
 })
 const SchedulerPicker = () => {
-  const { tx, account, selectedType, notificationsSubs, setIsContact } =
-    useContext(PublicScheduleContext)
   const {
     currentMonth,
     setCurrentMonth,
@@ -74,8 +116,34 @@ const SchedulerPicker = () => {
     confirmSchedule,
   } = useContext(ScheduleStateContext)
   const color = useColorModeValue('primary.500', 'white')
+  const {
+    account,
+    selectedType,
+    tx,
+    setSchedulingType,
+    setLastScheduledMeeting,
+    setHasConnectedCalendar,
+    notificationsSubs,
+    setNotificationSubs,
+    setIsContact,
+    rescheduleSlot,
+    rescheduleSlotLoading,
+    meetingSlotId,
+  } = useContext(PublicScheduleContext)
+  const query = useRouter().query
   const currentAccount = useAccountContext()
   const slotDurationInMinutes = selectedType?.duration_minutes || 0
+
+  useEffect(() => {
+    if (rescheduleSlotLoading) return
+    if (meetingSlotId && rescheduleSlot) {
+      setPickedDay(new Date(rescheduleSlot.start))
+      setPickedTime(new Date(rescheduleSlot.start))
+      setCurrentMonth(new Date(rescheduleSlot.start))
+      setSelectedMonth(new Date(rescheduleSlot.start))
+      setShowConfirm(true)
+    }
+  }, [rescheduleSlotLoading, rescheduleSlot])
 
   useEffect(() => {
     if (account?.preferences?.availabilities) {
@@ -206,22 +274,250 @@ const SchedulerPicker = () => {
     setShowConfirm(true)
   }
 
+    const validCals = connectedCalendars
+      .filter(cal => cal.provider !== TimeSlotSource.MWW)
+      .some(cal => cal.calendars.some(_cal => _cal.enabled))
+
+    setNotificationSubs(subs.notification_types?.length)
+    setHasConnectedCalendar(validCals)
+  }
+
+  const confirmSchedule = async (
+    scheduleType: SchedulingType,
+    startTime: Date,
+    guestEmail?: string,
+    name?: string,
+    content?: string,
+    meetingUrl?: string,
+    emailToSendReminders?: string,
+    title?: string,
+    otherParticipants?: Array<ParticipantInfo>,
+    meetingProvider?: MeetingProvider,
+    meetingReminders?: Array<MeetingReminders>,
+    meetingRepeat?: MeetingRepeat
+  ): Promise<boolean> => {
+    if (!selectedType) return false
+    setIsScheduling(true)
+
+    const start = zonedTimeToUtc(
+      startTime,
+      timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone
+    )
+    const end = addMinutes(new Date(start), selectedType.duration_minutes)
+
+    if (scheduleType !== SchedulingType.GUEST && !name) {
+      name = getAccountDisplayName(currentAccount!)
+    }
+
+    const participants: ParticipantInfo[] = [...(otherParticipants || [])]
+
+    participants.push({
+      account_address: account!.address,
+      name: account.preferences?.name,
+      type: ParticipantType.Owner,
+      status: ParticipationStatus.Accepted,
+      slot_id: '',
+      meeting_id: '',
+    })
+
+    setSchedulingType(scheduleType)
+
+    participants.push({
+      account_address: currentAccount?.address,
+      ...(scheduleType === SchedulingType.GUEST && {
+        guest_email: guestEmail!,
+      }),
+      name,
+      type: ParticipantType.Scheduler,
+      status: ParticipationStatus.Accepted,
+      slot_id: '',
+      meeting_id: '',
+    })
+
+    try {
+      let meeting: MeetingDecrypted
+
+      if (meetingSlotId) {
+        meeting = await updateMeetingAsGuest(
+          meetingSlotId,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          content,
+          meetingUrl,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      } else {
+        meeting = await scheduleMeeting(
+          false,
+          scheduleType,
+          selectedType?.id,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          emailToSendReminders,
+          title,
+          meetingReminders,
+          meetingRepeat,
+          undefined,
+          tx
+        )
+      }
+      await getAvailableSlots(true)
+      currentAccount && saveMeetingsScheduled(currentAccount!.address)
+      currentAccount && (await fetchNotificationSubscriptions())
+
+      setLastScheduledMeeting(meeting)
+      logEvent('Scheduled a meeting', {
+        fromPublicCalendar: true,
+        participantsSize: meeting.participants.length,
+      })
+      setIsScheduling(false)
+      return true
+    } catch (e) {
+      if (e instanceof MeetingWithYourselfError) {
+        toast({
+          title: "Ops! Can't do that",
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof TimeNotAvailableError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GateConditionNotValidError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'A meeting must have only one scheduler',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof InvalidURL) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'Please provide a valid url/link for your meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof Huddle01ServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof ZoomServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GoogleServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Google seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof UrlCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue generating a meeting url for your meeting. try using a different location',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof AllMeetingSlotsUsedError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'You’ve used all your available meeting slots. Please purchase a new slot to schedule a meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof TransactionIsRequired) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'This meeting type requires payment before scheduling. Please purchase a slot to continue.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
+    }
+    setIsScheduling(false)
+    return false
+  }
   const startTime = pickedTime || new Date()
 
-  // Use Luxon for duration calculation and timezone handling
-  const startTimeInTimezone = DateTime.fromJSDate(startTime, {
-    zone: timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
-  })
-  const endTimeInTimezone = startTimeInTimezone.plus({
-    minutes: selectedType?.duration_minutes || 0,
-  })
+  const { formattedDate, timeDuration } = getFormattedDateAndDuration(
+    timezone.value,
+    startTime,
+    selectedType?.duration_minutes || 0
+  )
 
-  const formattedStartTime = startTimeInTimezone.toFormat('h:mm a')
-  const formattedEndTime = endTimeInTimezone.toFormat('h:mm a')
-  const formattedDate = DateTime.fromJSDate(startTime)
-    .setZone(timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone)
-    .toFormat('cccc, LLLL d, yyyy')
-  const timeDuration = `${formattedStartTime} - ${formattedEndTime}`
+  const {
+    formattedDate: formerDateFormatted,
+    timeDuration: formerTimeduration,
+  } = getFormattedDateAndDuration(
+    timezone.value,
+    startTime,
+    selectedType?.duration_minutes || 0
+  )
   return (
     <Box
       width="100%"
@@ -316,9 +612,23 @@ const SchedulerPicker = () => {
           mb={{ md: 0, base: 4 }}
         >
           <Heading size={'lg'}>{selectedType?.title}</Heading>
+          {meetingSlotId &&
+            rescheduleSlot &&
+            pickedTime?.getTime() !== rescheduleSlot.start.getTime() && (
+              <FormerDate
+                startTime={new Date(rescheduleSlot.start)}
+                timezone={timezone.value}
+                endTime={new Date(rescheduleSlot.end)}
+                duration_minutes={selectedType?.duration_minutes || 0}
+              />
+            )}
           <HStack>
             <FaCalendar size={24} />
-            <Text textAlign="left">{`${formattedDate}, ${timeDuration}`}</Text>
+            <Text textAlign="left">
+              {`${formattedDate}, ${timeDuration}`}
+              {pickedTime?.getTime() === rescheduleSlot?.start?.getTime() &&
+                ' (Current booking)'}
+            </Text>
           </HStack>
           <HStack>
             <FaClock size={24} />
@@ -356,6 +666,33 @@ const SchedulerPicker = () => {
         </VStack>
       </HStack>
     </Box>
+  )
+}
+const FormerDate = ({
+  startTime,
+  timezone,
+  endTime,
+  duration_minutes = 0,
+}: {
+  startTime: Date
+  timezone: string
+  endTime: Date
+  duration_minutes?: number
+}) => {
+  const { formattedDate, timeDuration } = getFormattedDateAndDuration(
+    timezone,
+    startTime,
+    duration_minutes,
+    endTime
+  )
+  return (
+    <HStack>
+      <FaCalendar size={24} />
+      <Text textAlign="left">
+        Former Time:{' '}
+        <Text textDecor="line-through">{`${formattedDate}, ${timeDuration}`}</Text>
+      </Text>
+    </HStack>
   )
 }
 export default SchedulerPicker

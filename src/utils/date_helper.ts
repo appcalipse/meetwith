@@ -260,3 +260,31 @@ export const formatWithOrdinal = (dateTime: LuxonInterval<true>) => {
     'EEE, d MMM h:mm a'
   )}`
 }
+export const getFormattedDateAndDuration = (
+  timezone: string,
+  startTime: Date,
+  duration_in_minutes: number,
+  endTime?: Date
+) => {
+  const startTimeInTimezone = DateTime.fromJSDate(startTime).setZone(
+    timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
+  const endTimeInTimezone = endTime
+    ? DateTime.fromJSDate(endTime).setZone(
+        timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+      )
+    : startTimeInTimezone.plus({
+        minutes: duration_in_minutes || 0,
+      })
+
+  const formattedStartTime = startTimeInTimezone.toFormat('h:mm a')
+  const formattedEndTime = endTimeInTimezone.toFormat('h:mm a')
+  const formattedDate = DateTime.fromJSDate(startTime)
+    .setZone(timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)
+    .toFormat('cccc, LLLL d, yyyy')
+  const timeDuration = `${formattedStartTime} - ${formattedEndTime}`
+  return {
+    formattedDate,
+    timeDuration,
+  }
+}

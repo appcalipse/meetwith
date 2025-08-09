@@ -62,6 +62,7 @@ import {
 
 import { diff, intersec } from './collections'
 import { appUrl, NO_REPLY_EMAIL } from './constants'
+import { NO_MEETING_TYPE } from './constants/meeting-types'
 import { MeetingPermissions } from './constants/schedule'
 import { getContentFromEncrypted, simpleHash } from './cryptography'
 import {
@@ -399,14 +400,9 @@ const updateMeetingAsGuest = async (
   meetingRepeat = MeetingRepeat.NO_REPEAT,
   selectedPermissions?: MeetingPermissions[]
 ): Promise<MeetingDecrypted> => {
-  const guestMeetingData = await getMeetingGuest(slotId)
-  if (!guestMeetingData) {
-    throw new Error('Guest meeting data not found')
-  }
-
-  const fullMeetingData = await getConferenceMeeting(guestMeetingData.id!)
+  const fullMeetingData = await getMeetingGuest(slotId)
   if (!fullMeetingData) {
-    throw new Error('Full meeting data not found')
+    throw new Error('meeting data not found')
   }
 
   // Get all slots for this meeting from the database
@@ -434,9 +430,9 @@ const updateMeetingAsGuest = async (
     if (slot.account_address) {
       existingParticipants.push({
         account_address: slot.account_address,
-        type: ParticipantType.Owner,
+        type: slot.role || ParticipantType.Owner,
         slot_id: slot.id!,
-        meeting_id: guestMeetingData.id || '',
+        meeting_id: fullMeetingData.id || '',
         status: ParticipationStatus.Accepted,
         name: '', // Will be filled by handleParticipants
       })
@@ -498,7 +494,7 @@ const updateMeetingAsGuest = async (
       meetingProvider !== fullMeetingData.provider)
   ) {
     const generated = await generateMeetingUrl({
-      meeting_id: guestMeetingData.id || '',
+      meeting_id: fullMeetingData.id || '',
       title: meetingTitle || fullMeetingData.title || 'No Title',
       end: endTime,
       start: startTime,
@@ -514,7 +510,7 @@ const updateMeetingAsGuest = async (
 
   const meetingData = await buildMeetingData(
     SchedulingType.GUEST,
-    'no_type',
+    NO_MEETING_TYPE,
     startTime,
     endTime,
     participantData.sanitizedParticipants,
@@ -524,7 +520,7 @@ const updateMeetingAsGuest = async (
     undefined,
     meetingContent,
     finalMeetingUrl,
-    guestMeetingData.id,
+    fullMeetingData.id,
     meetingTitle,
     meetingReminders,
     meetingRepeat,
@@ -1200,6 +1196,10 @@ const generateIcs = (
   if (!isValidUrl(url)) {
     url = 'https://meetwith.xyz'
   }
+  const hasGuest =
+    meeting.participants.some(
+      p => p.guest_email && p.guest_email.trim() !== ''
+    ) && !!destination?.accountAddress
   const event: EventAttributes = {
     uid: meeting.id.replaceAll('-', ''),
     start: [
@@ -1225,7 +1225,8 @@ const generateIcs = (
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
-      changeUrl
+      changeUrl,
+      hasGuest
     ),
     url,
     location: meeting.meeting_url,
@@ -1237,7 +1238,6 @@ const generateIcs = (
       getMinutes(meeting.created_at!),
     ],
     organizer: {
-      // required by some services
       name: 'Meetwith',
       email: NO_REPLY_EMAIL,
     },
@@ -1406,7 +1406,7 @@ const dateToHumanReadable = (
 ): string => {
   let result = `${format(utcToZonedTime(date, timezone), 'PPPPpp')}`
   if (includeTimezone) {
-    result += ` - ${timezone}`
+    result += ` (${timezone})`
   }
   return result
 }
