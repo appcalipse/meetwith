@@ -11,7 +11,11 @@ import {
 import { ConditionRelation } from '@/types/common'
 import { TimeSlot, TimeSlotSource } from '@/types/Meeting'
 
-import { getConnectedCalendars, getSlotsForAccount } from '../database'
+import {
+  getConnectedCalendars,
+  getMeetingTypeFromDB,
+  getSlotsForAccount,
+} from '../database'
 import { getConnectedCalendarIntegration } from './connected_calendars.factory'
 
 export const CalendarBackendHelper = {
@@ -20,7 +24,8 @@ export const CalendarBackendHelper = {
     startDate: Date,
     endDate: Date,
     limit?: number,
-    offset?: number
+    offset?: number,
+    meetingTypeId?: string
   ): Promise<TimeSlot[]> => {
     const busySlots: TimeSlot[] = []
 
@@ -44,10 +49,17 @@ export const CalendarBackendHelper = {
     }
 
     const getIntegratedCalendarEvents = async () => {
-      const calendars = await getConnectedCalendars(account_address, {
+      let calendars = await getConnectedCalendars(account_address, {
         activeOnly: true,
       })
-
+      if (meetingTypeId) {
+        const meetingType = await getMeetingTypeFromDB(meetingTypeId)
+        if (meetingType.calendars) {
+          calendars = calendars.filter(calendar =>
+            meetingType.calendars?.some(c => c.id === calendar.id)
+          )
+        }
+      }
       await Promise.all(
         calendars.map(async calendar => {
           const integration = getConnectedCalendarIntegration(
@@ -79,7 +91,6 @@ export const CalendarBackendHelper = {
     }
 
     await Promise.all([getMWWEvents(), getIntegratedCalendarEvents()])
-
     return busySlots
   },
 
