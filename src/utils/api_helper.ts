@@ -519,17 +519,13 @@ export const getBusySlots = async (
   start?: Date,
   end?: Date,
   limit?: number,
-  offset?: number,
-  meetingTypeId?: string
+  offset?: number
 ): Promise<Interval[]> => {
-  let url = `/meetings/busy/${accountIdentifier}?limit=${
+  const url = `/meetings/busy/${accountIdentifier}?limit=${
     limit || undefined
   }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
     end?.getTime() || undefined
   }`
-  if (meetingTypeId) {
-    url += `&meetingTypeId=${meetingTypeId}`
-  }
   const response = await queryClient.fetchQuery(
     QueryKeys.busySlots({
       id: accountIdentifier?.toLowerCase(),
