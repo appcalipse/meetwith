@@ -61,7 +61,6 @@ import {
 import { saveMeetingsScheduled } from '@utils/storage'
 import { getAccountDisplayName } from '@utils/user_manager'
 import { addMinutes, addMonths, endOfMonth, startOfMonth } from 'date-fns'
-import { zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { FC, useEffect, useMemo, useState } from 'react'
@@ -761,14 +760,7 @@ const PublicPage: FC<IProps> = props => {
       let busySlots: Interval[] = []
       try {
         busySlots = (
-          await getBusySlots(
-            currentAccount?.address,
-            startDate,
-            endDate,
-            undefined,
-            undefined,
-            selectedType?.id
-          )
+          await getBusySlots(currentAccount?.address, startDate, endDate)
         ).map(slot =>
           Interval.fromDateTimes(
             DateTime.fromJSDate(new Date(slot.start)),
@@ -820,14 +812,7 @@ const PublicPage: FC<IProps> = props => {
 
     try {
       busySlots = (
-        await getBusySlots(
-          props?.account?.address,
-          startDate,
-          endDate,
-          undefined,
-          undefined,
-          selectedType?.id
-        )
+        await getBusySlots(props?.account?.address, startDate, endDate)
       ).map(slot =>
         Interval.fromDateTimes(
           DateTime.fromJSDate(new Date(slot.start)),
