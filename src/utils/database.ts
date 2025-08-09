@@ -163,7 +163,7 @@ import {
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_sync_helpers'
-import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
+import { apiUrl, appUrl, isProduction, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
@@ -845,10 +845,7 @@ const isSlotAvailable = async (
     await CalendarBackendHelper.getBusySlotsForAccount(
       account_address,
       interval.start?.startOf('day').toJSDate(),
-      interval.end?.endOf('day').toJSDate(),
-      undefined,
-      undefined,
-      meetingTypeId
+      interval.end?.endOf('day').toJSDate()
     )
   ).map(slot =>
     Interval.fromDateTimes(
@@ -2319,47 +2316,31 @@ const addOrUpdateConnectedCalendar = async (
     throw new Error(error.message)
   }
   const calendar = data[0] as ConnectedCalendar
-  try {
-    if (!existingConnection) {
-      await addNewCalendarToAllExistingMeetingTypes(
-        address.toLowerCase(),
-        calendar
-      )
-    }
-  } catch (e) {
-    Sentry.captureException(e, {
-      extra: {
-        calendarId: calendar.id,
-        accountAddress: address,
-        email,
-        provider,
-      },
-    })
-    console.error('Error adding new calendar to existing meeting types:', e)
-  }
-  try {
-    const integration = getConnectedCalendarIntegration(
-      address.toLowerCase(),
-      email,
-      provider,
-      payload
-    )
-    for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
-      // don't parellelize this as it can make us hit google's rate limit
-      await handleWebHook(cal.calendarId, calendar.id, integration)
-    }
-  } catch (e) {
-    Sentry.captureException(e, {
-      extra: {
-        calendarId: calendar.id,
-        accountAddress: address,
-        email,
-        provider,
-      },
-    })
-    console.error('Error adding new calendar to existing meeting types:', e)
-  }
 
+  if (!isProduction) {
+    try {
+      const integration = getConnectedCalendarIntegration(
+        address.toLowerCase(),
+        email,
+        provider,
+        payload
+      )
+      for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+        // don't parellelize this as it can make us hit google's rate limit
+        await handleWebHook(cal.calendarId, calendar.id, integration)
+      }
+    } catch (e) {
+      Sentry.captureException(e, {
+        extra: {
+          calendarId: calendar.id,
+          accountAddress: address,
+          email,
+          provider,
+        },
+      })
+      console.error('Error adding new calendar to existing meeting types:', e)
+    }
+  }
   return calendar
 }
 
