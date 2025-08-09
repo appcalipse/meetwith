@@ -22987,7 +22987,7 @@ __metadata:
     nodemailer: "npm:^6.7.2"
     patch-package: "npm:^6.4.7"
     path: "npm:^0.12.7"
-    posthog-js: "npm:^1.257.0"
+    posthog-js: "npm:^1.258.5"
     posthog-node: "npm:^5.3.1"
     postinstall-postinstall: "npm:^2.1.0"
     prettier: "npm:^2.5.0"
@@ -26162,9 +26162,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"posthog-js@npm:^1.257.0":
-  version: 1.258.2
-  resolution: "posthog-js@npm:1.258.2"
+"posthog-js@npm:^1.258.5":
+  version: 1.258.5
+  resolution: "posthog-js@npm:1.258.5"
   dependencies:
     core-js: "npm:^3.38.1"
     fflate: "npm:^0.4.8"
@@ -26178,7 +26178,7 @@ __metadata:
       optional: true
     rrweb-snapshot:
       optional: true
-  checksum: 10c0/0784d3ac109376731cb82fd4a275fd0f33beb8acbdeb12c378c6421c7238112606a554132344ffb90f839383a0ea914e31830c0c4bba2bbb52d5ab5e5f623a82
+  checksum: 10c0/e7144612ec8cf74dcfffd22b9e335c07508dd8692f03df49e78dc0afe0562249e676b6bcfd66f0d40559c47d77c06ecde7953ebf172092533e4f2721855f54cb
   languageName: node
   linkType: hard
 

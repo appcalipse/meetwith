@@ -6,24 +6,19 @@ import {
   Icon,
   Text,
   useColorModeValue,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
-import { chakraComponents, Props, Select } from 'chakra-react-select'
-// TODO: Move all date logic to luxon
+import { chakraComponents, Props, Select } from 'chakra-react-select' // TODO: Move all date logic to luxon
 import {
   addMinutes,
-  addMonths,
   areIntervalsOverlapping,
   eachMinuteOfInterval,
   endOfMonth,
   Interval,
   isSameDay,
   isSameMonth,
-  startOfMonth,
 } from 'date-fns'
-import { zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
@@ -35,13 +30,16 @@ import {
   FaGlobe,
 } from 'react-icons/fa'
 
-import Loading from '@/components/Loading'
-// TODO: create helper function to merge availabilities from availability block
+import Loading from '@/components/Loading' // TODO: create helper function to merge availabilities from availability block
 import Calendar from '@/components/MeetSlotPicker/calendar/index'
 import TimeSlots from '@/components/MeetSlotPicker/TimeSlots'
-import { PublicScheduleContext } from '@/components/public-meeting'
+import {
+  PublicScheduleContext,
+  ScheduleStateContext,
+} from '@/components/public-meeting'
 import { ScheduleForm } from '@/components/schedule/schedule-form'
 import useAccountContext from '@/hooks/useAccountContext'
+
 import { AccountNotifications } from '@/types/AccountNotifications'
 import { ConnectedCalendarCore } from '@/types/CalendarConnections'
 import { MeetingReminders } from '@/types/common'
@@ -95,6 +93,30 @@ const tzs = timezones.map(tz => {
 })
 const SchedulerPicker = () => {
   const {
+    currentMonth,
+    setCurrentMonth,
+    availableSlots,
+    selfAvailableSlots,
+    checkingSlots,
+    checkedSelfSlots,
+    isScheduling,
+    pickedDay,
+    setPickedDay,
+    pickedTime,
+    setPickedTime,
+    showConfirm,
+    setShowConfirm,
+    selectedMonth,
+    setSelectedMonth,
+    busySlots,
+    selfBusySlots,
+    timezone,
+    setTimezone,
+    getAvailableSlots,
+    confirmSchedule,
+  } = useContext(ScheduleStateContext)
+  const color = useColorModeValue('primary.500', 'white')
+  const {
     account,
     selectedType,
     tx,
@@ -111,33 +133,7 @@ const SchedulerPicker = () => {
   const query = useRouter().query
   const currentAccount = useAccountContext()
   const slotDurationInMinutes = selectedType?.duration_minutes || 0
-  const [timezone, setTimezone] = useState<Option<string>>(
-    tzs.find(
-      val =>
-        val.value ===
-        (currentAccount?.preferences?.timezone ||
-          Intl.DateTimeFormat().resolvedOptions().timeZone)
-    ) || tzs[0]
-  )
-  const toast = useToast()
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [availableSlots, setAvailableSlots] = useState<Interval[]>([])
-  const [selfAvailableSlots, setSelfAvailableSlots] = useState<Interval[]>([])
-  const [checkingSlots, setCheckingSlots] = useState(false)
-  const [checkedSelfSlots, setCheckedSelfSlots] = useState(false)
-  const [isScheduling, setIsScheduling] = useState(false)
-  const [pickedDay, setPickedDay] = useState<Date | null>(null)
-  const [pickedTime, setPickedTime] = useState<Date | null>(null)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
-  const color = useColorModeValue('primary.500', 'white')
-  const [busySlots, setBusySlots] = useState<Interval[]>([])
-  const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
 
-  const [cachedRange, setCachedRange] = useState<{
-    startDate: Date
-    endDate: Date
-  } | null>(null)
   useEffect(() => {
     if (rescheduleSlotLoading) return
     if (meetingSlotId && rescheduleSlot) {
@@ -148,75 +144,7 @@ const SchedulerPicker = () => {
       setShowConfirm(true)
     }
   }, [rescheduleSlotLoading, rescheduleSlot])
-  const getSelfAvailableSlots = async () => {
-    if (currentAccount) {
-      const startDate = startOfMonth(currentMonth)
-      const endDate = addMonths(endOfMonth(currentMonth), 2)
-      let busySlots: Interval[] = []
-      try {
-        busySlots = await getBusySlots(
-          currentAccount?.address,
-          startDate,
-          endDate
-        )
-      } catch (error) {}
-      const availabilities = parseMonthAvailabilitiesToDate(
-        currentAccount?.preferences?.availabilities || [],
-        startDate,
-        endDate,
-        currentAccount?.preferences?.timezone || 'UTC'
-      )
-      setSelfAvailableSlots(availabilities)
-      setSelfBusySlots(busySlots)
-      setCheckedSelfSlots(true)
-    }
-  }
-  const getAvailableSlots = async (skipCache = false) => {
-    if (
-      !skipCache &&
-      cachedRange &&
-      currentMonth >= cachedRange.startDate &&
-      currentMonth <= cachedRange.endDate
-    ) {
-      return
-    }
-    getSelfAvailableSlots()
-    setCheckingSlots(true)
-    const startDate = startOfMonth(currentMonth)
-    const endDate = addMonths(endOfMonth(currentMonth), 2)
-    let busySlots: Interval[] = []
 
-    try {
-      busySlots = await getBusySlots(account?.address, startDate, endDate)
-    } catch (error) {}
-    const availabilities =
-      selectedType?.availabilities?.flatMap(availability =>
-        parseMonthAvailabilitiesToDate(
-          availability.weekly_availability || [],
-          startDate,
-          endDate,
-          availability.timezone || account?.preferences?.timezone || 'UTC'
-        )
-      ) || []
-
-    const deduplicatedAvailabilities = availabilities.reduce<Interval[]>(
-      (acc, current) => {
-        const hasOverlap = acc.some(existing =>
-          areIntervalsOverlapping(current, existing, { inclusive: true })
-        )
-        if (!hasOverlap) {
-          acc.push(current)
-        }
-        return acc
-      },
-      []
-    )
-
-    setBusySlots(busySlots)
-    setAvailableSlots(deduplicatedAvailabilities)
-    setCachedRange({ startDate, endDate })
-    setCheckingSlots(false)
-  }
   useEffect(() => {
     if (account?.preferences?.availabilities) {
       getAvailableSlots()
@@ -234,7 +162,7 @@ const SchedulerPicker = () => {
   }
   useEffect(() => {
     if (!currentAccount?.address || !account?.address) return
-    handleContactCheck()
+    void handleContactCheck()
   }, [currentAccount, account])
   const isFutureInTimezone = (date: Date, timezoneValue: string) => {
     const dateInTimezone = DateTime.fromObject(
@@ -277,7 +205,6 @@ const SchedulerPicker = () => {
       dateInTimezone.day === nowInTimezone.day
     )
   }
-  const minTime = selectedType?.min_notice_minutes || 0
   const validator = (date: Date) => {
     if (!slotDurationInMinutes) return
     const dayInTimezone = DateTime.fromObject(
@@ -346,12 +273,6 @@ const SchedulerPicker = () => {
     setPickedTime(time)
     setShowConfirm(true)
   }
-  // TODO: Move this check to the backend
-  const fetchNotificationSubscriptions = async () => {
-    let subs: AccountNotifications | null = null
-    let connectedCalendars: ConnectedCalendarCore[] = []
-    subs = (await getNotificationSubscriptions()) || {}
-    connectedCalendars = (await listConnectedCalendars()) || []
 
     const validCals = connectedCalendars
       .filter(cal => cal.provider !== TimeSlotSource.MWW)
@@ -735,7 +656,6 @@ const SchedulerPicker = () => {
             </Heading>
           </HStack>
           <ScheduleForm
-            onConfirm={confirmSchedule}
             pickedTime={pickedTime!}
             isSchedulingExternal={isScheduling}
             notificationsSubs={notificationsSubs}

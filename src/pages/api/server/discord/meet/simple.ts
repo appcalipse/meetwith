@@ -1,7 +1,7 @@
 import { addDays } from 'date-fns'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { MeetingProvider, SchedulingType } from '@/types/Meeting'
+import { SchedulingType } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { DiscordMeetingRequest } from '@/types/Requests'
 import { getSuggestedSlots } from '@/utils/api_helper'
@@ -116,8 +116,12 @@ export default async function simpleDiscordMeet(
       )
 
       return res.status(200).json(meeting)
-    } catch (e: any) {
-      return res.status(e.status).send(e.message)
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        return res.status((e as any)?.status || 500).send(e.message)
+      } else {
+        return res.status(500).send('An unexpected errror occured')
+      }
     }
   }
 
