@@ -1063,6 +1063,11 @@ const handleMeetingCancelSync = async (
   )
 
   if (orphanedSlotIds.length > 0) {
+    console.warn(
+      `Found orphaned slots that are no longer in the conference: ${orphanedSlotIds.join(
+        ', '
+      )}`
+    )
     const { error: deleteError } = await db.supabase
       .from('slots')
       .delete()
