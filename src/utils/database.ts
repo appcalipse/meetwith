@@ -67,6 +67,7 @@ import {
   GroupNotificationType,
   MeetingAccessType,
   MeetingDecrypted,
+  MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
   MeetingVersion,
@@ -996,7 +997,8 @@ const handleGuestCancel = async (
   })
 }
 const handleMeetingCancelSync = async (
-  decryptedMeetingData: MeetingDecrypted
+  decryptedMeetingData: MeetingInfo,
+  actorSlotId: string
 ) => {
   const conferenceMeeting = await getConferenceMeetingFromDB(
     decryptedMeetingData.meeting_id
@@ -1004,13 +1006,10 @@ const handleMeetingCancelSync = async (
   if (!conferenceMeeting) {
     throw new MeetingNotFoundError(decryptedMeetingData.meeting_id)
   }
-  decryptedMeetingData.related_slot_ids =
-    decryptedMeetingData.related_slot_ids.filter(id =>
-      conferenceMeeting?.slots.includes(id)
-    )
-  decryptedMeetingData.participants = decryptedMeetingData.participants.filter(
-    p => conferenceMeeting?.slots.includes(p.slot_id!)
-  )
+  // The conference meeting is the authoritative source of truth for which slots exist
+  // Update the meeting data to match the conference reality
+
+  // Fetch all slots that currently exist in the conference meeting
   const { error, data: oldSlots } = await db.supabase
     .from<DBSlot>('slots')
     .select()
@@ -1019,6 +1018,71 @@ const handleMeetingCancelSync = async (
     throw new Error(error.message)
   }
 
+  // Find orphaned slots: slots that exist in DB but have no corresponding participant data
+  const existingSlotIds = oldSlots.map(slot => slot.id!)
+  const missingParticipantSlots = existingSlotIds.filter(
+    slotId => !decryptedMeetingData.participants.some(p => p.slot_id === slotId)
+  )
+  if (missingParticipantSlots.length > 0) {
+    console.warn(
+      `Found orphaned slots without corresponding participants, deleting them: ${missingParticipantSlots.join(
+        ', '
+      )}`
+    )
+
+    const { error: deleteOrphanedError } = await db.supabase
+      .from('slots')
+      .delete()
+      .in('id', missingParticipantSlots)
+
+    if (deleteOrphanedError) {
+      console.warn(
+        'Failed to delete orphaned slots:',
+        deleteOrphanedError.message
+      )
+    }
+    conferenceMeeting.slots = conferenceMeeting.slots.filter(
+      slotId => !missingParticipantSlots.includes(slotId)
+    )
+    await saveConferenceMeetingToDB(conferenceMeeting)
+    const validSlots = oldSlots.filter(
+      slot => !missingParticipantSlots.includes(slot.id!)
+    )
+    oldSlots.length = 0
+    oldSlots.push(...validSlots)
+  }
+
+  // Find and clean up any orphaned slots that might exist for this meeting
+  // but are no longer in the conference (edge case handling)
+  const originalSlotIds = decryptedMeetingData.related_slot_ids.concat([
+    actorSlotId,
+  ])
+  //e7c8f220-f2d8-43e3-9189-4b71f60e148c
+  const orphanedSlotIds = originalSlotIds.filter(
+    id => !conferenceMeeting.slots.includes(id)
+  )
+
+  if (orphanedSlotIds.length > 0) {
+    const { error: deleteError } = await db.supabase
+      .from('slots')
+      .delete()
+      .in('id', orphanedSlotIds)
+
+    if (deleteError) {
+      console.warn(
+        'Failed to delete orphaned slots:',
+        deleteError.message,
+        orphanedSlotIds
+      )
+    }
+  }
+  decryptedMeetingData.related_slot_ids = conferenceMeeting.slots.filter(
+    id => id !== actorSlotId // Exclude the current slot from related_slot_ids
+  )
+  decryptedMeetingData.participants = decryptedMeetingData.participants.filter(
+    p => conferenceMeeting?.slots.includes(p.slot_id!)
+  )
+  // Update all existing conference slots with the synced meeting data
   for (const slot of oldSlots) {
     const account = await getAccountFromDB(slot.account_address)
     await db.supabase
@@ -1028,7 +1092,8 @@ const handleMeetingCancelSync = async (
           account.internal_pub_key,
           JSON.stringify(decryptedMeetingData)
         ),
-        version: slot.version + 1,
+        // Don't increment version for background sync operations
+        // The version was already incremented during the original cancellation
       })
       .eq('id', slot.id)
   }
