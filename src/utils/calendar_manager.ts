@@ -663,12 +663,6 @@ const updateMeeting = async (
     existingMeeting!
   )
 
-  const actingParticipant = existingMeeting?.participants.find(
-    user => user.account_address === currentAccountAddress
-  )
-  if (!actingParticipant) {
-    throw new MeetingChangeConflictError()
-  }
   // those are the users that we need to remove the slots
   const toRemove = diff(
     existingMeetingAccounts,
@@ -692,7 +686,7 @@ const updateMeeting = async (
     meetingPermissions &&
     !meetingPermissions?.includes(MeetingPermissions.INVITE_GUESTS) &&
     participants.length !== decryptedMeeting.participants.length &&
-    actingParticipant.type! === ParticipantType.Scheduler
+    !isSchedulerOrOwner
   ) {
     throw new MeetingChangeConflictError()
   }
