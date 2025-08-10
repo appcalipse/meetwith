@@ -191,5 +191,6 @@ export interface GuestMeetingCancel {
 }
 
 export interface MeetingCancelSyncRequest {
-  decryptedMeetingData: MeetingDecrypted
+  decryptedMeetingData: MeetingInfo
+  slotId: string
 }
