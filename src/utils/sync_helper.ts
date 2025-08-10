@@ -147,7 +147,7 @@ const syncDeletedEventWithCalendar = async (
 
 export const ExternalCalendarSync = {
   create: async (meetingDetails: MeetingCreationSyncRequest) => {
-    const tasks: Promise<any>[] = []
+    const tasks = []
     for (const participant of meetingDetails.participants) {
       if (participant.account_address) {
         tasks.push(
@@ -162,7 +162,7 @@ export const ExternalCalendarSync = {
     await Promise.all(tasks)
   },
   update: async (meetingDetails: MeetingCreationSyncRequest) => {
-    const tasks: Promise<any>[] = []
+    const tasks = []
     for (const participant of meetingDetails.participants) {
       if (participant.account_address) {
         tasks.push(

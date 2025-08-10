@@ -608,11 +608,13 @@ export const getMeetingsForDashboard = async (
   }))
 }
 export const syncMeeting = async (
-  decryptedMeetingData: MeetingInfo
+  decryptedMeetingData: MeetingInfo,
+  slotId: string
 ): Promise<void> => {
   try {
     await internalFetch(`/secure/meetings/sync`, 'PATCH', {
       decryptedMeetingData,
+      slotId,
     })
   } catch (e) {}
 }
