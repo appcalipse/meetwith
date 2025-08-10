@@ -1,3 +1,4 @@
+import Sentry from '@sentry/nextjs'
 import {
   format,
   getDate,
@@ -69,6 +70,7 @@ import {
   GuestListModificationDenied,
   GuestRescheduleForbiddenError,
   InvalidURL,
+  MeetingCancelConflictError,
   MeetingCancelForbiddenError,
   MeetingChangeConflictError,
   MeetingCreationError,
@@ -85,7 +87,6 @@ import { getSignature } from './storage'
 import { isProAccount } from './subscription_manager'
 import { ellipsizeAddress, getAccountDisplayName } from './user_manager'
 import { isValidEmail, isValidUrl } from './validations'
-
 export const sanitizeParticipants = (
   participants: ParticipantInfo[]
 ): ParticipantInfo[] => {
@@ -995,7 +996,6 @@ const cancelMeeting = async (
   if (decryptedMeeting.version !== existingDBSlot.version) {
     throw new MeetingChangeConflictError()
   }
-
   // Fetch the updated data one last time
   const response = await apiCancelMeeting(
     decryptedMeeting,
@@ -1322,7 +1322,6 @@ const decryptMeeting = async (
   if (!content) return null
 
   const meetingInfo = JSON.parse(content) as MeetingInfo
-
   if (
     meeting?.conferenceData &&
     meeting?.conferenceData.version === MeetingVersion.V2
@@ -1330,7 +1329,7 @@ const decryptMeeting = async (
     if (
       meeting.conferenceData.slots.length !== meetingInfo.participants.length
     ) {
-      void syncMeeting(meetingInfo)
+      void syncMeeting(meetingInfo, meeting.id!)
       // Hide the removed participants from the UI while they're being removed from the backend
       meetingInfo.related_slot_ids = meetingInfo.related_slot_ids.filter(id =>
         meeting.conferenceData?.slots.includes(id)
@@ -1340,6 +1339,7 @@ const decryptMeeting = async (
       )
     }
   }
+
   return {
     id: meeting.id!,
     ...meeting,
