@@ -1,3 +1,4 @@
+import { PaidMeetingTypes } from '@meta/Account'
 import { captureException } from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -20,7 +21,29 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         account_address,
         owner_account_address
       )
-      return res.status(200).json(meetingSessions)
+      const data = meetingSessions.reduce<PaidMeetingTypes[]>(
+        (acc, session, _a, allsessions) => {
+          const sessionExist = acc.find(s => s.id === session.id)
+          if (sessionExist) {
+            return acc.map((s, i) => {
+              if (s.id === session.id) {
+                return {
+                  ...s,
+                  session_total: s.session_total + session.session_total,
+                  session_used: s.session_used + session.session_used,
+                }
+              }
+              return s
+            })
+          } else {
+            acc.push(session)
+          }
+          return acc
+        },
+        []
+      )
+
+      return res.status(200).json(data)
     }
   } catch (e) {
     if (e instanceof Error) {
