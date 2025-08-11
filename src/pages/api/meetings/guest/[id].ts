@@ -4,7 +4,6 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { GuestMeetingCancel } from '@/types/Meeting'
 import { ParticipantType } from '@/types/ParticipantInfo'
 import { MeetingUpdateRequest } from '@/types/Requests'
-import { decryptContent } from '@/utils/cryptography'
 import {
   getConferenceDataBySlotId,
   handleGuestCancel,

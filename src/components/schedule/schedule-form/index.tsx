@@ -28,7 +28,6 @@ import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
-import { PublicScheduleContext } from '@/components/public-meeting'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AccountPreferences, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
@@ -38,7 +37,6 @@ import {
   ParticipationStatus,
 } from '@/types/ParticipantInfo'
 import { guestMeetingCancel } from '@/utils/api_helper'
-import { selectDefaultProvider } from '@/utils/calendar_manager'
 import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
@@ -47,14 +45,12 @@ import {
   customSelectComponents,
   noClearCustomSelectComponent,
 } from '@/utils/constants/select'
-import { formatCurrency, renderProviderName } from '@/utils/generic_utils'
 import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
-import { renderProviderName } from '@/utils/generic_utils'
+import { formatCurrency, renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import {
-  ConferenceMeeting,
   MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
@@ -67,10 +63,8 @@ interface ScheduleFormProps {
   isSchedulingExternal: boolean
   willStartScheduling?: (isScheduling: boolean) => void
   isGateValid?: boolean
-  selectedType?: MeetingType | null
   preferences?: AccountPreferences
   notificationsSubs?: number
-  meetingProviders?: Array<MeetingProvider>
 }
 
 export const ScheduleForm: React.FC<ScheduleFormProps> = ({
@@ -80,13 +74,11 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   isGateValid,
   notificationsSubs,
   preferences,
-  selectedType,
 }) => {
-  const { currentAccount, logged } = useContext(AccountContext)
+  const { logged } = useContext(AccountContext)
   const {
     confirmSchedule,
     timezone,
-    setTimezone,
     participants,
     setParticipants,
     meetingProvider,
@@ -119,20 +111,16 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     setIsFirstUserEmailValid,
     showEmailConfirm,
     setShowEmailConfirm,
-  } = useContext(ScheduleStateContext)
-  const { setCurrentStep } = useContext(PublicScheduleContext)
-  const { tx, selectedType } = useContext(PublicScheduleContext)
-  const toast = useToast()
-  const router = useRouter()
-  const query = router.query
-  const {
-    account,
     meetingSlotId,
-    timezone,
     rescheduleSlot,
     setLastScheduledMeeting,
     setIsCancelled,
-  } = useContext(PublicScheduleContext)
+  } = useContext(ScheduleStateContext)
+  const { tx, selectedType, setCurrentStep } = useContext(PublicScheduleContext)
+  const toast = useToast()
+  const router = useRouter()
+  const query = router.query
+  const { account } = useContext(PublicScheduleContext)
   const [isCancelling, setIsCancelling] = useState(false)
   const { metadata } = query
   const meetingProviders = (preferences?.meetingProviders || []).concat(
@@ -375,7 +363,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           selectedType.plan.no_of_slot * selectedType.plan.price_per_slot
         )})`
       }
-      return 'Schedule'
+      return meetingSlotId ? 'Update Meeting' : 'Schedule'
     }
     return 'Connect Wallet to Schedule'
   }
@@ -730,16 +718,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
               : handleConfirm
           }
           colorScheme="primary"
-          // mt={6}
         >
-        {getScheduleButtonLabel()}
-          {isSchedulingExternal
-            ? 'Scheduling...'
-            : logged || scheduleType === SchedulingType.GUEST
-            ? meetingSlotId
-              ? 'Update Meeting'
-              : 'Schedule'
-            : 'Connect wallet to schedule'}
+          {getScheduleButtonLabel()}
         </Button>
         {meetingSlotId && (
           <Button

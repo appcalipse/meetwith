@@ -44,11 +44,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       true,
       undefined,
       endDate
-    )
-      .map(slot =>
-        Interval.fromDateTimes(new Date(slot.start), new Date(slot.end))
-      )
-      .filter(slot => slot.isValid)
+    ).filter(slot => slot.isValid)
 
     const suggestedTimes: DateFnsInterval[] = []
 
@@ -79,7 +75,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
           slot.start?.startOf('day').setZone(tz).toJSDate(),
           slot.end?.endOf('day').setZone(tz).toJSDate(),
           account.preferences.timezone || 'UTC'
-        ).map(({ start, end }) => Interval.fromDateTimes(start, end))
+        )
 
         if (!availabilities.some(availability => availability.overlaps(slot))) {
           validSlot = false

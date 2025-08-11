@@ -125,3 +125,8 @@ export const MeetingSchedulePermissions = [
     info: 'Guests will be able to modify the meeting title, description, location, and other details, but not the invitees.',
   },
 ]
+
+export enum CalendarType {
+  REGULAR,
+  TEAM,
+}

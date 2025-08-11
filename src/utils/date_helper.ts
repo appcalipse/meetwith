@@ -14,7 +14,12 @@ import {
   startOfWeek,
 } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import { DateTime, Interval as LuxonInterval, WeekdayNumbers } from 'luxon'
+import {
+  DateTime,
+  Interval,
+  Interval as LuxonInterval,
+  WeekdayNumbers,
+} from 'luxon'
 import spacetime from 'spacetime'
 import soft from 'timezone-soft'
 
@@ -181,25 +186,16 @@ export const parseMonthAvailabilitiesToDate = (
             second: 0,
             millisecond: 0,
           })
-          .toUTC()
-          .toJSDate()
 
         // Create end time in owner timezone for this specific day
-        const endTime = currentWeek
-          .set({ weekday: luxonWeekday })
-          .set({
-            hour: endHours,
-            minute: endMinutes,
-            second: 0,
-            millisecond: 0,
-          })
-          .toUTC()
-          .toJSDate()
-
-        slots.push({
-          start: startTime,
-          end: endTime,
+        const endTime = currentWeek.set({ weekday: luxonWeekday }).set({
+          hour: endHours,
+          minute: endMinutes,
+          second: 0,
+          millisecond: 0,
         })
+
+        slots.push(Interval.fromDateTimes(startTime, endTime))
       }
     }
 
