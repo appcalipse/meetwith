@@ -1,4 +1,4 @@
-import Sentry from '@sentry/nextjs'
+import * as Sentry from '@sentry/nextjs'
 import { Interval as DateFnsInterval } from 'date-fns'
 import { DateTime, Interval } from 'luxon'
 import { NextApiRequest, NextApiResponse } from 'next'
@@ -42,12 +42,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       await Promise.all(promises)
       const allSlots: Interval<true>[] = generateTimeSlots(
         startDate,
-        duration,
+        duration || 30,
         true,
         undefined,
         endDate
       ).filter(slot => slot.isValid)
-
       const suggestedTimes: DateFnsInterval[] = []
 
       const busySlots: Interval[] =
@@ -59,8 +58,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         ).then(busySlots =>
           busySlots.map(busySlot => {
             return Interval.fromDateTimes(
-              DateTime.fromJSDate(new Date(busySlot.start)),
-              DateTime.fromJSDate(new Date(busySlot.end))
+              new Date(busySlot.start),
+              new Date(busySlot.end)
             )
           })
         )
@@ -106,7 +105,13 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
       return res.status(200).json(suggestedTimes)
     } catch (e) {
-      Sentry.captureException(e)
+      Sentry.captureException(e, {
+        extra: {
+          startDate: req.body.startDate,
+          endDate: req.body.endDate,
+          addresses: req.body.addresses,
+        },
+      })
       return res.status(500).send('An unexpected error occurred.')
     }
   }
