@@ -45,10 +45,6 @@ jobs:
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN_PREPROD }}
 
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0  # Fetch complete history
-
       - name: Generate user-friendly changes summary
         id: changes_summary
         run: |
@@ -74,12 +70,12 @@ jobs:
               sed -E 's/database/data storage/gi' | \
               sed -E 's/optimize/improve speed of/gi' | \
               sed -E 's/refactor/reorganize and improve/gi')
-          
+            
             # If no conventional commit format detected, add default emoji
             if [[ ! "$enhanced_commit" =~ ^[🐛✨🧹📚💄♻️🧪⚡] ]]; then
               enhanced_commit="🔧 **Update:** $enhanced_commit"
             fi
-          
+            
             echo "• $enhanced_commit" >> $GITHUB_ENV
           done
           echo "" >> $GITHUB_ENV

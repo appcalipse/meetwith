@@ -16,12 +16,11 @@ import {
   add,
   addDays,
   endOfMonth,
-  isBefore,
   isSameMonth,
   startOfMonth,
   sub,
 } from 'date-fns'
-import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
+import { formatInTimeZone } from 'date-fns-tz'
 import debounce from 'lodash.debounce'
 import { DateTime, Interval } from 'luxon'
 import { useContext, useEffect, useMemo, useState } from 'react'
@@ -243,7 +242,7 @@ export function SchedulePickTime() {
           monthStart,
           monthEnd,
           memberAccount?.preferences?.timezone || 'UTC'
-        ).map(({ start, end }) => Interval.fromDateTimes(start, end))
+        )
         map.set(memberAccount.address.toLowerCase(), availabilities)
       }
       setAvailableSlots(map)

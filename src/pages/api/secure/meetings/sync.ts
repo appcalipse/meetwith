@@ -5,9 +5,9 @@ import { MeetingCancelSyncRequest } from '@/types/Meeting'
 import { handleMeetingCancelSync } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
-  const { decryptedMeetingData } = req.body as MeetingCancelSyncRequest
+  const { decryptedMeetingData, slotId } = req.body as MeetingCancelSyncRequest
   if (req.method === 'PATCH') {
-    await handleMeetingCancelSync(decryptedMeetingData)
+    await handleMeetingCancelSync(decryptedMeetingData, slotId)
     return res.status(200).send(true)
   }
   return res.status(404).send('Not found')
