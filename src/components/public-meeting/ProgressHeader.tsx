@@ -5,15 +5,15 @@ import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import React, { Fragment, useContext } from 'react'
 const items = [
   {
-    label: 'Pay for Session',
+    label: 'Pick a slot ',
     activeSteps: [
-      PublicSchedulingSteps.PAY_FOR_SESSION,
       PublicSchedulingSteps.BOOK_SESSION,
+      PublicSchedulingSteps.PAY_FOR_SESSION,
     ],
   },
   {
-    label: 'Schedule with Host',
-    activeSteps: [PublicSchedulingSteps.BOOK_SESSION],
+    label: 'Pay and Complete Scheduling',
+    activeSteps: [PublicSchedulingSteps.PAY_FOR_SESSION],
   },
 ]
 const ProgressHeader = () => {

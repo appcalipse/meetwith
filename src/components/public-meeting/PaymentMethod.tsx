@@ -3,11 +3,13 @@ import {
   ComponentWithAs,
   IconProps,
   Tag,
+  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { PaymentStep, PaymentType } from '@utils/constants/meeting-types'
 import React, { FC, useContext, useState } from 'react'
+
 interface IProps {
   id: string
   name: string
@@ -17,9 +19,11 @@ interface IProps {
   type: PaymentType
   disabled?: boolean
 }
+
 const PaymentMethod: FC<IProps> = props => {
   const { handleSelectPaymentMethod } = useContext(PublicScheduleContext)
   const [loading, setLoading] = useState(false)
+  const tagBg = useColorModeValue('neutral.100', '#2D3748')
   const handleSelect = async () => {
     setLoading(true)
     await handleSelectPaymentMethod(props.type, props.step)
@@ -31,22 +35,26 @@ const PaymentMethod: FC<IProps> = props => {
       rounded={'lg'}
       alignItems={'flex-start'}
       flex={1}
-      flexBasis="0%"
       gap={6}
       height="auto"
       justifyContent="space-between"
       borderWidth={1}
       borderColor={'neutral.400'}
-      w={'50%'}
     >
       <props.icon
         width={'auto'}
-        h={props.type === PaymentType.CRYPTO ? 16 : 12}
+        h={
+          props.step === PaymentStep.SELECT_CRYPTO_NETWORK
+            ? 16
+            : props.step === PaymentStep.HANDLE_SEND_INVOICE
+            ? '70px'
+            : 12
+        }
         mx="auto"
       />
       <VStack gap={4} w={'100%'} alignItems={'flex-start'}>
         {props.tag && (
-          <Tag fontSize="sm" bg="#2D3748">
+          <Tag fontSize="sm" bg={tagBg}>
             {props.tag}
           </Tag>
         )}
