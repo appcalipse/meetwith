@@ -759,12 +759,16 @@ const PublicPage: FC<IProps> = props => {
       const endDate = addMonths(endOfMonth(currentMonth), 2)
       let busySlots: Interval[] = []
       try {
-        busySlots = (
-          await getBusySlots(currentAccount?.address, startDate, endDate)
-        ).map(slot =>
-          Interval.fromDateTimes(
-            DateTime.fromJSDate(new Date(slot.start)),
-            DateTime.fromJSDate(new Date(slot.end))
+        busySlots = await getBusySlots(
+          props?.account?.address,
+          startDate,
+          endDate
+        ).then(busySlots =>
+          busySlots.map(slot =>
+            Interval.fromDateTimes(
+              DateTime.fromJSDate(new Date(slot.start)),
+              DateTime.fromJSDate(new Date(slot.end))
+            )
           )
         )
       } catch (error) {
@@ -817,12 +821,16 @@ const PublicPage: FC<IProps> = props => {
     let busySlots: Interval[] = []
 
     try {
-      busySlots = (
-        await getBusySlots(props?.account?.address, startDate, endDate)
-      ).map(slot =>
-        Interval.fromDateTimes(
-          DateTime.fromJSDate(new Date(slot.start)),
-          DateTime.fromJSDate(new Date(slot.end))
+      busySlots = await getBusySlots(
+        props?.account?.address,
+        startDate,
+        endDate
+      ).then(busySlots =>
+        busySlots.map(slot =>
+          Interval.fromDateTimes(
+            DateTime.fromJSDate(new Date(slot.start)),
+            DateTime.fromJSDate(new Date(slot.end))
+          )
         )
       )
     } catch (error) {
