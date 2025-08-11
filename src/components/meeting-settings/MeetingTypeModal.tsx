@@ -1185,7 +1185,11 @@ const MeetingTypeModal: FC<IProps> = props => {
               <Button
                 colorScheme="primary"
                 onClick={handleSave}
-                isLoading={isLoading}
+                isLoading={
+                  isLoading ||
+                  props.isCalendarLoading ||
+                  props.isAvailabilityLoading
+                }
               >
                 {props?.initialValues?.id
                   ? 'Update Session Type'
