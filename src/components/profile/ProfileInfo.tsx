@@ -1,16 +1,7 @@
-import { Image } from '@chakra-ui/image'
-import { Box, Flex, HStack, Spacer, Text } from '@chakra-ui/layout'
-import {
-  Heading,
-  Icon,
-  IconButton,
-  Link,
-  useMediaQuery,
-  VStack,
-} from '@chakra-ui/react'
+import { Box, HStack, Text } from '@chakra-ui/layout'
+import { Heading, IconButton, Link, VStack } from '@chakra-ui/react'
 import { Tooltip, useColorModeValue } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
-import { addMinutes, format } from 'date-fns'
 import { DateTime } from 'luxon'
 import React, { useState } from 'react'
 import { BiChevronDown } from 'react-icons/bi'
@@ -23,8 +14,7 @@ import {
   FaTwitter,
 } from 'react-icons/fa'
 
-import { CalendarType } from '@/components/public-calendar'
-import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { CalendarType } from '@/utils/constants/schedule'
 
 import { Account, MeetingType, SocialLinkType } from '../../types/Account'
 import {

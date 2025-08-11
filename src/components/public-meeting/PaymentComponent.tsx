@@ -2,6 +2,7 @@ import { VStack } from '@chakra-ui/react'
 import ConfirmPaymentInfo from '@components/public-meeting/ConfirmPaymentInfo'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import MakeYourPayment from '@components/public-meeting/MakeYourPayment'
+import PayViaInvoice from '@components/public-meeting/PayViaInvoice'
 import ProgressHeader from '@components/public-meeting/ProgressHeader'
 import SelectCryptoNetwork from '@components/public-meeting/SelectCryptoNetwork'
 import SessionTypeCardPaymentInfo from '@components/public-meeting/SessionTypeCardPaymentInfo'
@@ -19,6 +20,8 @@ const PaymentComponent = () => {
         return <SelectCryptoNetwork />
       case PaymentStep.FIAT_PAYMENT_VERIFYING:
         return null
+      case PaymentStep.HANDLE_SEND_INVOICE:
+        return <PayViaInvoice />
 
       case PaymentStep.SELECT_PAYMENT_METHOD:
       default:
@@ -27,7 +30,7 @@ const PaymentComponent = () => {
   }
   return (
     <VStack
-      w={{ base: '100%', md: '80%', lg: '60%' }}
+      w={{ base: '100%', md: '85%', lg: '60%' }}
       alignItems={{ md: 'flex-start', base: 'center' }}
       marginX={'auto'}
       px={'4'}

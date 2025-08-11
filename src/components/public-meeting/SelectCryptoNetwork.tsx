@@ -1,4 +1,4 @@
-import { ChevronDownIcon } from '@chakra-ui/icons'
+import { ArrowBackIcon, ChevronDownIcon } from '@chakra-ui/icons'
 import {
   Button,
   FormControl,
@@ -67,8 +67,22 @@ const SelectCryptoNetwork = () => {
     setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
     setPaymentType(PaymentType.CRYPTO)
   }
+  const handleBack = () => {
+    setPaymentStep(PaymentStep.SELECT_PAYMENT_METHOD)
+  }
   return (
     <VStack alignItems="flex-start" w={'100%'} spacing={4}>
+      <HStack
+        color={'primary.400'}
+        onClick={handleBack}
+        left={6}
+        w={'fit-content'}
+        cursor="pointer"
+        role={'button'}
+      >
+        <ArrowBackIcon w={6} h={6} />
+        <Text fontSize={16}>Back</Text>
+      </HStack>
       <Heading size="lg">Make your Payment</Heading>
       <Text fontWeight={700}>Select payment method</Text>
 
