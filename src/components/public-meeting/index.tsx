@@ -806,8 +806,14 @@ const PublicPage: FC<IProps> = props => {
     }
     getSelfAvailableSlots()
     setCheckingSlots(true)
-    const startDate = startOfMonth(currentMonth)
-    const endDate = addMonths(endOfMonth(currentMonth), 2)
+    const startDate = DateTime.fromJSDate(currentMonth)
+      .setZone(timezone.value || 'UTC')
+      .startOf('month')
+      .toJSDate()
+    const endDate = DateTime.fromJSDate(currentMonth)
+      .endOf('month')
+      .setZone(timezone.value || 'UTC')
+      .toJSDate()
     let busySlots: Interval[] = []
 
     try {
