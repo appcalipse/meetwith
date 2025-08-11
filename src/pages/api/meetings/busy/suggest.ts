@@ -57,8 +57,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       ).then(busySlots =>
         busySlots.map(busySlot => {
           return Interval.fromDateTimes(
-            new Date(busySlot.start),
-            new Date(busySlot.end)
+            DateTime.fromJSDate(new Date(busySlot.start)),
+            DateTime.fromJSDate(new Date(busySlot.end))
           )
         })
       )
