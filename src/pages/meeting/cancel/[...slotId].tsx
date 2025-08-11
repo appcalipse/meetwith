@@ -46,7 +46,7 @@ const CancelMeetingPage: NextPage = () => {
   const [loading, setLoading] = useState(true)
   const [meeting, setMeeting] = useState<RescheduleConferenceData>()
   const [isCancelling, setIsCancelling] = useState(false)
-  const [cancelled, setCancelled] = useState(false)
+  const [cancelled, setCancelled] = useState(true)
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
@@ -228,74 +228,62 @@ const CancelMeetingPage: NextPage = () => {
           justifyContent="center"
           p={16}
         >
-          <VStack>
-            <Loading label="" />
-          </VStack>
-          <Modal
-            isOpen
-            onClose={() => router.push('/')}
-            isCentered
-            size="xl"
-            closeOnOverlayClick
+          <Flex
+            direction="column"
+            gap={4}
+            justify="center"
+            w="100%"
+            borderRadius={6}
+            p={12}
+            bg={notificationsAlertBackground}
           >
-            <ModalOverlay />
-            <ModalContent
-              p={12}
+            <Text fontSize="1.5rem" fontWeight={500} align="center">
+              Success!
+            </Text>
+            {meeting?.start && (
+              <Text textAlign="center">
+                {`Your meeting with title ${
+                  meeting?.title
+                } scheduled at ${dateToHumanReadable(
+                  meeting?.start || new Date(),
+                  timezone || '',
+                  true
+                )} has been cancelled successfully.`}
+              </Text>
+            )}
+            <Image
+              height="200px"
+              src="/assets/calendar_success.svg"
+              alt="Meeting scheduled"
+            />
+            <HStack
               borderRadius={6}
-              bg={notificationsAlertBackground}
+              bg={notificationsAlertIconBackground}
+              width="100%"
+              p={4}
             >
-              <ModalBody w="100%">
-                <Flex direction="column" gap={4} justify="center" w="100%">
-                  <Text fontSize="1.5rem" fontWeight={500} align="center">
-                    Success!
-                  </Text>
-                  {meeting?.start && (
-                    <Text textAlign="center">
-                      {`Your meeting with title ${
-                        meeting?.title
-                      } scheduled at ${dateToHumanReadable(
-                        meeting?.start || new Date(),
-                        timezone || '',
-                        true
-                      )} has been cancelled successfully.`}
-                    </Text>
-                  )}
-                  <Image
-                    height="200px"
-                    src="/assets/calendar_success.svg"
-                    alt="Meeting scheduled"
-                  />
-                  <HStack
-                    borderRadius={6}
-                    bg={notificationsAlertIconBackground}
-                    width="100%"
-                    p={4}
-                  >
-                    <Icon as={FaBell} color="primary.300" />
-                    <Text color="primary.300">
-                      Finish setting up your free account for a more streamlined
-                      web3 experience!
-                    </Text>
-                  </HStack>
-                  <Button
-                    colorScheme="primary"
-                    width="100%"
-                    onClick={() => handleLogin()}
-                  >
-                    Create Account
-                  </Button>
-                  <Button
-                    colorScheme="primary"
-                    variant="outline"
-                    width="100%"
-                    onClick={() => router.push('/')}
-                  >
-                    Go Home
-                  </Button>
-                </Flex>
-              </ModalBody>
-            </ModalContent>
-          </Modal>
+              <Icon as={FaBell} color="primary.300" />
+              <Text color="primary.300">
+                Finish setting up your free account for a more streamlined web3
+                experience!
+              </Text>
+            </HStack>
+            <Button
+              colorScheme="primary"
+              width="100%"
+              onClick={() => handleLogin()}
+            >
+              Create Account
+            </Button>
+            <Button
+              colorScheme="primary"
+              variant="outline"
+              width="100%"
+              onClick={() => router.push('/')}
+            >
+              Go Home
+            </Button>
+          </Flex>
         </Flex>
       </Container>
     )
@@ -321,7 +309,7 @@ const CancelMeetingPage: NextPage = () => {
         <Modal
           isOpen
           onClose={() => router.push('/')}
-          closeOnOverlayClick
+          closeOnOverlayClick={false}
           isCentered
           size="xl"
         >
