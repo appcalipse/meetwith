@@ -60,7 +60,7 @@ import {
 } from '@utils/errors'
 import { saveMeetingsScheduled } from '@utils/storage'
 import { getAccountDisplayName } from '@utils/user_manager'
-import { addMinutes, addMonths, endOfMonth, startOfMonth } from 'date-fns'
+import { addMinutes } from 'date-fns'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { FC, useEffect, useMemo, useState } from 'react'
