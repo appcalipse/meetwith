@@ -8,6 +8,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { isProduction } from '@utils/constants'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo } from 'react'
 import { IconType } from 'react-icons'
@@ -18,7 +19,6 @@ import {
   FaCalendarPlus,
   FaCalendarWeek,
   FaCog,
-  FaDoorClosed,
   FaSignOutAlt,
 } from 'react-icons/fa'
 import { FaUserGroup } from 'react-icons/fa6'
@@ -70,12 +70,17 @@ export const NavMenu: React.FC<{
         mode: EditMode.GROUPS,
         badge: noOfInvitedGroups,
       },
-      {
-        name: 'My Contacts',
-        icon: FaUserGroup,
-        mode: EditMode.CONTACTS,
-        badge: requestCount,
-      },
+      // Hide "My Contacts" in production
+      ...(!isProduction
+        ? [
+            {
+              name: 'My Contacts',
+              icon: FaUserGroup,
+              mode: EditMode.CONTACTS,
+              badge: requestCount,
+            },
+          ]
+        : []),
       {
         name: 'Session Settings',
         icon: FaCalendarWeek,
@@ -103,7 +108,7 @@ export const NavMenu: React.FC<{
         mode: EditMode.SIGNOUT,
       },
     ],
-    [noOfInvitedGroups]
+    [noOfInvitedGroups, requestCount]
   )
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()

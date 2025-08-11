@@ -63,7 +63,9 @@ const BasePage: FC = () => {
             </Text>
           </HStack>
           {account.preferences?.description && (
-            <Text fontWeight="700">{account.preferences.description}</Text>
+            <Text fontWeight="700" w={{ base: '80%', lg: '100%' }}>
+              {account.preferences.description}
+            </Text>
           )}
         </Box>
         {!currentAccount && (
