@@ -177,7 +177,7 @@ const SchedulerPicker = () => {
         const minScheduleTime = DateTime.now()
           .setZone(timezone.value)
           .plus({ minutes: minTime })
-
+        
         if (minScheduleTime > slot.start) {
           return false
         }

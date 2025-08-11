@@ -34,6 +34,7 @@ import {
   setNotificationSubscriptions,
 } from '@/utils/api_helper'
 import { dateToHumanReadable } from '@/utils/calendar_manager'
+import { isProduction } from '@/utils/constants'
 import {
   CantInviteYourself,
   ContactAlreadyExists,
@@ -298,7 +299,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
           </VStack>
         ) : !!currentAccount ? (
           <VStack gap={4}>
-            {!isContact ? (
+            {!isContact && !isProduction ? (
               <Button
                 colorScheme="primary"
                 width="100%"
