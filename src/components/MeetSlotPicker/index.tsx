@@ -26,6 +26,7 @@ import { MeetingReminders } from '@/types/common'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { Option } from '@/utils/constants/select'
 import { timezones } from '@/utils/date_helper'
+
 const tzs = timezones.map(tz => {
   return {
     value: String(tz.tzCode),
@@ -35,7 +36,12 @@ const tzs = timezones.map(tz => {
 
 import { captureException } from '@sentry/nextjs'
 
-import { MeetingProvider, MeetingRepeat, SchedulingType } from '@/types/Meeting'
+import {
+  ExistingMeetingData,
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+} from '@/types/Meeting'
 import { logEvent } from '@/utils/analytics'
 
 import Loading from '../Loading'
@@ -80,6 +86,8 @@ interface MeetSlotPickerProps {
   selfAvailableSlots: Interval[]
   busySlots: Interval[]
   selfBusySlots: Interval[]
+  existingMeetingData?: ExistingMeetingData | null
+  isReschedule?: boolean
 }
 
 const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
@@ -97,13 +105,14 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
   slotDurationInMinutes,
   selectedType,
   willStartScheduling,
-  isMobile,
   timezone,
   setTimezone,
   availableSlots,
   selfAvailableSlots,
   busySlots,
   selfBusySlots,
+  existingMeetingData,
+  isReschedule,
 }) => {
   const _onChange = (newValue: unknown) => {
     if (Array.isArray(newValue)) {
@@ -367,13 +376,12 @@ const MeetSlotPicker: React.FC<MeetSlotPickerProps> = ({
             <HStack mb={0} cursor="pointer" onClick={handleCloseConfirm}>
               <Icon as={FaArrowLeft} size="1.5em" color={color} />
               <Heading size="md" color={color}>
-                Meeting Information
+                {isReschedule ? 'Reschedule Meeting' : 'Meeting Information'}
               </Heading>
             </HStack>
           </PopupHeader>
 
           <ScheduleForm
-            onConfirm={onSchedule}
             willStartScheduling={willStartScheduling}
             pickedTime={pickedTime!}
             isSchedulingExternal={isSchedulingExternal}

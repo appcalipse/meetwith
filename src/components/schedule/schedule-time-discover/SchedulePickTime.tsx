@@ -255,7 +255,10 @@ export function SchedulePickTime() {
             new Date(slot.end)
           )
         })
-        busySlotsMap.set(account[0].account_address.toLowerCase(), busySlots)
+        busySlotsMap.set(
+          account?.[0]?.account_address?.toLowerCase(),
+          busySlots
+        )
       }
       setBusySlots(busySlotsMap)
       setDates(getDates(duration))
@@ -496,7 +499,7 @@ export function SchedulePickTime() {
                         {date.slots.map(slot => {
                           return (
                             <ScheduleTimeSlot
-                              key={`${date.date.toDateString()}-${index}-${duration}`}
+                              key={`${slot.start.toISO()}-${index}-${duration}`}
                               slot={slot}
                               busySlots={busySlots}
                               availableSlots={availableSlots}
