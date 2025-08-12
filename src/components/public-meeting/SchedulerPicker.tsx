@@ -10,15 +10,8 @@ import {
 } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
 import { chakraComponents, Props, Select } from 'chakra-react-select' // TODO: Move all date logic to luxon
-import {
-  addMinutes,
-  areIntervalsOverlapping,
-  eachMinuteOfInterval,
-  isSameDay,
-  isSameMonth,
-} from 'date-fns'
-import { DateTime } from 'luxon'
-import React, { useContext, useEffect } from 'react'
+import { DateTime, Interval } from 'luxon'
+import React, { useCallback, useContext, useEffect } from 'react'
 import {
   FaArrowLeft,
   FaCalendar,
@@ -39,7 +32,8 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { logEvent } from '@/utils/analytics'
 import { doesContactExist } from '@/utils/api_helper'
 import { Option } from '@/utils/constants/select'
-import { timezones } from '@/utils/date_helper'
+import { getFormattedDateAndDuration, timezones } from '@/utils/date_helper'
+import { generateTimeSlots } from '@/utils/slots.helper'
 
 const tzs = timezones.map(tz => {
   return {
@@ -48,8 +42,6 @@ const tzs = timezones.map(tz => {
   }
 })
 const SchedulerPicker = () => {
-  const { tx, account, selectedType, notificationsSubs, setIsContact } =
-    useContext(PublicScheduleContext)
   const {
     currentMonth,
     setCurrentMonth,
@@ -71,17 +63,33 @@ const SchedulerPicker = () => {
     timezone,
     setTimezone,
     getAvailableSlots,
-    confirmSchedule,
+    rescheduleSlot,
+    rescheduleSlotLoading,
+    meetingSlotId,
   } = useContext(ScheduleStateContext)
   const color = useColorModeValue('primary.500', 'white')
+  const { account, selectedType, notificationsSubs, setIsContact } = useContext(
+    PublicScheduleContext
+  )
   const currentAccount = useAccountContext()
   const slotDurationInMinutes = selectedType?.duration_minutes || 0
+
+  useEffect(() => {
+    if (rescheduleSlotLoading) return
+    if (meetingSlotId && rescheduleSlot) {
+      setPickedDay(new Date(rescheduleSlot.start))
+      setPickedTime(new Date(rescheduleSlot.start))
+      setCurrentMonth(new Date(rescheduleSlot.start))
+      setSelectedMonth(new Date(rescheduleSlot.start))
+      setShowConfirm(true)
+    }
+  }, [rescheduleSlotLoading, rescheduleSlot])
 
   useEffect(() => {
     if (account?.preferences?.availabilities) {
       getAvailableSlots()
     }
-  }, [account?.preferences?.availabilities, currentMonth])
+  }, [account?.preferences?.availabilities, currentMonth, selectedType])
   const handleContactCheck = async () => {
     try {
       if (!account?.address) return
@@ -137,47 +145,59 @@ const SchedulerPicker = () => {
       dateInTimezone.day === nowInTimezone.day
     )
   }
-  const validator = (date: Date) => {
-    if (!slotDurationInMinutes) return
-    const dayInTimezone = DateTime.fromObject(
-      {
-        year: date.getFullYear(),
-        month: date.getMonth() + 1, // JS months are 0-indexed
-        day: date.getDate(),
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      },
-      {
-        zone:
-          timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      }
-    )
-    const startLocalDate = dayInTimezone.startOf('day').toJSDate()
-    const endLocalDate = dayInTimezone.endOf('day').toJSDate()
-    const slots = eachMinuteOfInterval(
-      { start: startLocalDate, end: endLocalDate },
-      { step: slotDurationInMinutes }
-    ).map(s => ({
-      start: s,
-      end: addMinutes(s, slotDurationInMinutes),
-    }))
+  const validator = useCallback(
+    (pickedDay: Date) => {
+      const pickedDayInTimezone = DateTime.fromJSDate(pickedDay).setZone(
+        timezone.value
+      )
+      const endOfDayInTimezone = pickedDayInTimezone.endOf('day').toJSDate()
+      const minTime = selectedType?.min_notice_minutes || 0
 
-    const intervals = availableSlots.filter(
-      slot => isSameMonth(slot.start, date) && isSameDay(slot.start, date)
-    )
+      const timeSlots = generateTimeSlots(
+        pickedDay,
+        selectedType?.duration_minutes || 30,
+        false,
+        timezone.value,
+        endOfDayInTimezone
+      )
+      const daySlots = availableSlots.filter(
+        slot =>
+          slot.overlaps(
+            Interval.fromDateTimes(
+              pickedDayInTimezone.startOf('day'),
+              pickedDayInTimezone.endOf('day')
+            )
+          ) ||
+          slot.start?.hasSame(
+            DateTime.fromJSDate(pickedDay || new Date()),
+            'day'
+          )
+      )
+      const filtered = timeSlots.filter(slot => {
+        const minScheduleTime = DateTime.now()
+          .setZone(timezone.value)
+          .plus({ minutes: minTime })
 
-    return (
-      (isFutureInTimezone(date, timezone.value) ||
-        isTodayInTimezone(date, timezone.value)) &&
-      (intervals?.length === 0 ||
-        slots.some(
-          slot =>
-            !intervals.some(interval => areIntervalsOverlapping(slot, interval))
-        ))
-    )
-  }
+        if (minScheduleTime > slot.start) {
+          return false
+        }
+
+        return (
+          daySlots.some(available => available.overlaps(slot)) &&
+          !busySlots.some(busy => busy.overlaps(slot))
+        )
+      })
+
+      return filtered.length > 0
+    },
+    [
+      availableSlots,
+      busySlots,
+      selectedType?.duration_minutes,
+      selectedType?.min_notice_minutes,
+      timezone.value,
+    ]
+  )
   const _onChange = (newValue: unknown) => {
     const timezone = newValue as Option<string>
     if (timezone) setTimezone(timezone)
@@ -208,20 +228,12 @@ const SchedulerPicker = () => {
 
   const startTime = pickedTime || new Date()
 
-  // Use Luxon for duration calculation and timezone handling
-  const startTimeInTimezone = DateTime.fromJSDate(startTime, {
-    zone: timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone,
-  })
-  const endTimeInTimezone = startTimeInTimezone.plus({
-    minutes: selectedType?.duration_minutes || 0,
-  })
+  const { formattedDate, timeDuration } = getFormattedDateAndDuration(
+    timezone.value,
+    startTime,
+    selectedType?.duration_minutes || 0
+  )
 
-  const formattedStartTime = startTimeInTimezone.toFormat('h:mm a')
-  const formattedEndTime = endTimeInTimezone.toFormat('h:mm a')
-  const formattedDate = DateTime.fromJSDate(startTime)
-    .setZone(timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone)
-    .toFormat('cccc, LLLL d, yyyy')
-  const timeDuration = `${formattedStartTime} - ${formattedEndTime}`
   return (
     <Box
       width="100%"
@@ -316,9 +328,23 @@ const SchedulerPicker = () => {
           mb={{ md: 0, base: 4 }}
         >
           <Heading size={'lg'}>{selectedType?.title}</Heading>
+          {meetingSlotId &&
+            rescheduleSlot &&
+            pickedTime?.getTime() !== rescheduleSlot.start.getTime() && (
+              <FormerDate
+                startTime={new Date(rescheduleSlot.start)}
+                timezone={timezone.value}
+                endTime={new Date(rescheduleSlot.end)}
+                duration_minutes={selectedType?.duration_minutes || 0}
+              />
+            )}
           <HStack>
             <FaCalendar size={24} />
-            <Text textAlign="left">{`${formattedDate}, ${timeDuration}`}</Text>
+            <Text textAlign="left">
+              {`${formattedDate}, ${timeDuration}`}
+              {pickedTime?.getTime() === rescheduleSlot?.start?.getTime() &&
+                ' (Current booking)'}
+            </Text>
           </HStack>
           <HStack>
             <FaClock size={24} />
@@ -350,12 +376,37 @@ const SchedulerPicker = () => {
             isSchedulingExternal={isScheduling}
             notificationsSubs={notificationsSubs}
             preferences={account?.preferences}
-            meetingProviders={account?.preferences?.meetingProviders}
-            selectedType={selectedType}
           />
         </VStack>
       </HStack>
     </Box>
+  )
+}
+const FormerDate = ({
+  startTime,
+  timezone,
+  endTime,
+  duration_minutes = 0,
+}: {
+  startTime: Date
+  timezone: string
+  endTime: Date
+  duration_minutes?: number
+}) => {
+  const { formattedDate, timeDuration } = getFormattedDateAndDuration(
+    timezone,
+    startTime,
+    duration_minutes,
+    endTime
+  )
+  return (
+    <HStack>
+      <FaCalendar size={24} />
+      <Text textAlign="left">
+        Former Time:{' '}
+        <Text textDecor="line-through">{`${formattedDate}, ${timeDuration}`}</Text>
+      </Text>
+    </HStack>
   )
 }
 export default SchedulerPicker
