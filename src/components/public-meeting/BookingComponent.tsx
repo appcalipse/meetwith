@@ -3,14 +3,20 @@ import { useQuery } from '@tanstack/react-query'
 import React, { useContext, useMemo } from 'react'
 
 import Loading from '@/components/Loading'
-import { PublicScheduleContext } from '@/components/public-meeting'
+import {
+  PublicScheduleContext,
+  ScheduleStateContext,
+} from '@/components/public-meeting'
 import ProgressHeader from '@/components/public-meeting/ProgressHeader'
 import SchedulerPicker from '@/components/public-meeting/SchedulerPicker'
 import SessionTypeCardPaymentInfo from '@/components/public-meeting/SessionTypeCardPaymentInfo'
 import { getTransactionByTxHash } from '@/utils/api_helper'
 
+import TimeNotAvailableWarning from './TimeNotAvailableWarning'
+
 const BookingComponent = () => {
-  const { tx } = useContext(PublicScheduleContext)
+  const { tx, showHeader } = useContext(PublicScheduleContext)
+  const { showTimeNotAvailable } = useContext(ScheduleStateContext)
   const { data: meetingSessions, isLoading } = useQuery({
     queryKey: ['transaction', tx],
     queryFn: () => tx && getTransactionByTxHash(tx),
@@ -31,8 +37,9 @@ const BookingComponent = () => {
       px={'4'}
       gap={9}
     >
-      <ProgressHeader />
+      {showHeader && <ProgressHeader />}
       <SessionTypeCardPaymentInfo />
+      {showTimeNotAvailable && <TimeNotAvailableWarning />}
       {!tx ? null : isLoading ? (
         <Box mx="auto" mt={8}>
           <Loading />
