@@ -1,5 +1,13 @@
 import { Link } from '@chakra-ui/next-js'
-import { Button, HStack, Spinner, Switch, Text, VStack } from '@chakra-ui/react'
+import {
+  Box,
+  Button,
+  HStack,
+  Spinner,
+  Switch,
+  Text,
+  VStack,
+} from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
 
 import { Account } from '@/types/Account'
@@ -58,39 +66,43 @@ const DiscordNotificationConfig: React.FC<Props> = ({
     validateDiscord()
   }, [])
 
+  const isActive = !!discordNotification && !discordNotification.disabled
+
   return (
-    <VStack alignItems="start" flex={1}>
-      <HStack py={4}>
-        <Switch
-          colorScheme="primary"
-          size="md"
-          isChecked={!!discordNotification && !discordNotification.disabled}
-          onChange={e => {
-            if (e.target.checked) {
-              onDiscordNotificationChange({
-                channel: NotificationChannel.DISCORD,
-                destination: account.discord_account!.discord_id.toString(),
-                disabled: false,
-                inMWWServer: true,
-              })
-            } else {
-              onDiscordNotificationChange(undefined)
-            }
-          }}
-          isDisabled={!loading && !canEnable}
-        />
-        <Text>
-          Discord{' '}
-          {!discordConnected && (
-            <>
-              (Please first{' '}
-              <Link href="/dashboard/details#connected">
-                connect your Discord account
-              </Link>{' '}
-              to enable it)
-            </>
-          )}
-        </Text>
+    <VStack alignItems="start" flex={1} spacing={2}>
+      <HStack py={2} justifyContent="space-between" width="100%">
+        <HStack spacing={3}>
+          <Switch
+            colorScheme="primary"
+            size="lg"
+            isChecked={isActive}
+            onChange={e => {
+              if (e.target.checked) {
+                onDiscordNotificationChange({
+                  channel: NotificationChannel.DISCORD,
+                  destination: account.discord_account!.discord_id.toString(),
+                  disabled: false,
+                  inMWWServer: true,
+                })
+              } else {
+                onDiscordNotificationChange(undefined)
+              }
+            }}
+            isDisabled={!loading && !canEnable}
+          />
+          <Text>Discord notifications</Text>
+          <Box
+            as="span"
+            px={3}
+            py={1.5}
+            borderRadius="full"
+            bg={isActive ? 'green.200' : 'primary.75'}
+            color={isActive ? 'green.400' : 'primary.500'}
+            fontSize="xs"
+          >
+            {isActive ? 'Active' : 'Inactive'}
+          </Box>
+        </HStack>
       </HStack>
       {loading ? (
         <HStack>
@@ -99,6 +111,15 @@ const DiscordNotificationConfig: React.FC<Props> = ({
         </HStack>
       ) : (
         <>
+          {!loading && !discordConnected && (
+            <Text>
+              (Please first{' '}
+              <Link href="/dashboard/details#connected-accounts">
+                connect your Discord account
+              </Link>{' '}
+              to enable it)
+            </Text>
+          )}
           {!loading && discordConnected && !inMWWServer && (
             <>
               <Text>
@@ -112,6 +133,8 @@ const DiscordNotificationConfig: React.FC<Props> = ({
                 variant="outline"
                 colorScheme="primary"
                 href={MWW_DISCORD_SERVER}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 Join the server and refresh page
               </Button>

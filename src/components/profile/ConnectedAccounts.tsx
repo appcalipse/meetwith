@@ -153,6 +153,8 @@ const DiscordConnection: React.FC = () => {
           )}&response_type=code&scope=identify%20guilds&state=${Buffer.from(
             JSON.stringify({ origin: OnboardingSubject.DiscordConnectedInPage })
           ).toString('base64')}`}
+          target="_blank"
+          rel="noopener noreferrer"
         >
           Connect
         </Button>

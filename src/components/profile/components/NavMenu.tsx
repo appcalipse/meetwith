@@ -12,14 +12,10 @@ import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo } from 'react'
 import { IconType } from 'react-icons'
 import {
-  FaBell,
   FaCalendarAlt,
   FaCalendarDay,
-  FaCalendarPlus,
   FaCalendarWeek,
-  FaClipboard,
   FaCog,
-  FaCreditCard,
   FaSignOutAlt,
   FaWallet,
 } from 'react-icons/fa'
@@ -94,42 +90,37 @@ export const NavMenu: React.FC<{
         icon: FaCalendarAlt,
         mode: EditMode.AVAILABILITY,
       },
+      // {
+      //   name: 'Payments',
+      //   icon: FaCreditCard,
+      //   mode: EditMode.WALLET,
+      //   isDropdownItem: true,
+      //   subItems: [
+      //     {
+      //       text: 'Wallet',
+      //       icon: FaWallet,
+      //       mode: EditMode.WALLET,
+      //     },
+      //     // {
+      //     //   text: 'Clientboard',
+      //     //   icon: FaClipboard,
+      //     //   mode: EditMode.CLIENTBOARD,
+      //     // },
+      //   ],
+      // },
       {
-        name: 'Payments',
-        icon: FaCreditCard,
+        name: 'Wallet',
+        icon: FaWallet,
         mode: EditMode.WALLET,
-        isDropdownItem: true,
-        subItems: [
-          {
-            text: 'Wallet',
-            icon: FaWallet,
-            mode: EditMode.WALLET,
-          },
-          // {
-          //   text: 'Clientboard',
-          //   icon: FaClipboard,
-          //   mode: EditMode.CLIENTBOARD,
-          // },
-        ],
       },
-      {
-        name: 'Notifications',
-        icon: FaBell,
-        mode: EditMode.NOTIFICATIONS,
-      },
-      {
-        name: 'Connected Calendars',
-        icon: FaCalendarPlus,
-        mode: EditMode.CALENDARS,
-      },
-      { name: 'Account Settings', icon: FaCog, mode: EditMode.DETAILS },
+      { name: 'Settings', icon: FaCog, mode: EditMode.DETAILS },
       {
         name: 'Sign Out',
         icon: FaSignOutAlt,
         mode: EditMode.SIGNOUT,
       },
     ],
-    [noOfInvitedGroups]
+    [noOfInvitedGroups, requestCount]
   )
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()

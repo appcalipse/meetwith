@@ -1,12 +1,11 @@
 import {
+  Box,
   Button,
   FormControl,
-  FormHelperText,
   FormLabel,
   Heading,
   HStack,
   Input,
-  Spacer,
   Spinner,
   Switch,
   Text,
@@ -38,7 +37,7 @@ import DiscordNotificationConfig from './DiscordNotificationConfig'
 const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
-  const [loading, setLoading] = useState(false)
+  const [_loading, setLoading] = useState(false)
   const [loadingInitialInfo, setLoadingInitialInfo] = useState(true)
 
   const [email, setEmail] = useState('')
@@ -49,13 +48,14 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     undefined as DiscordNotificationType | undefined
   )
   const [connecting, setConnecting] = useState(false)
-  const [tgConnectionPending, setTgConnectionPending] = useState<
+  const [_tgConnectionPending, setTgConnectionPending] = useState<
     TelegramConnection | undefined
   >(undefined)
-
-  const bgColor = useColorModeValue('gray.800', 'white')
-  const color = useColorModeValue('white', 'gray.800')
+  const [isEditingEmail, setIsEditingEmail] = useState(false)
+  const [tempEmail, setTempEmail] = useState('')
   const { push } = useRouter()
+  const toast = useToast()
+
   useEffect(() => {
     setLoadingInitialInfo(true)
     setEmailNotifications(false)
@@ -64,12 +64,14 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     // fetchPendingTgConnections()
     setDiscordNotificationConfig(undefined)
   }, [currentAccount])
+
   const fetchPendingTgConnections = async () => {
     const pendingConnection = await getPendingTgConnection()
     if (pendingConnection) {
       setTgConnectionPending(pendingConnection)
     }
   }
+
   const fetchSubscriptions = async () => {
     const subs = await getNotificationSubscriptions()
 
@@ -77,12 +79,14 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
       switch (subs.notification_types[i].channel) {
         case NotificationChannel.EMAIL:
           setEmail(subs.notification_types[i].destination)
+          setTempEmail(subs.notification_types[i].destination)
           setEmailNotifications(true)
           break
         case NotificationChannel.DISCORD:
           setDiscordNotificationConfig(
             subs.notification_types[i] as DiscordNotificationType
           )
+
           break
         case NotificationChannel.TELEGRAM:
           setTelegramNotificationConfigured(true)
@@ -92,12 +96,13 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setLoadingInitialInfo(false)
   }
 
-  const toast = useToast()
-
-  const onDiscordNotificationChange = (
+  const onDiscordNotificationChange = async (
     discordNotification?: DiscordNotificationType
   ) => {
     setDiscordNotificationConfig(discordNotification)
+    if (discordNotification) {
+      await updateNotifications()
+    }
   }
 
   const updateNotifications = async () => {
@@ -114,7 +119,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
           isClosable: true,
         })
         setLoading(false)
-
         return
       }
       subs.notification_types = subs.notification_types.filter(
@@ -125,6 +129,10 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
         destination: email,
         disabled: false,
       })
+    } else {
+      subs.notification_types = subs.notification_types.filter(
+        sub => sub.channel !== NotificationChannel.EMAIL
+      )
     }
 
     if (discordNotificationConfig) {
@@ -132,6 +140,10 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
         sub => sub.channel !== NotificationChannel.DISCORD
       )
       subs.notification_types.push(discordNotificationConfig)
+    } else {
+      subs.notification_types = subs.notification_types.filter(
+        sub => sub.channel !== NotificationChannel.DISCORD
+      )
     }
 
     await setNotificationSubscriptions(subs)
@@ -141,7 +153,16 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     })
 
     setLoading(false)
+    setIsEditingEmail(false)
+    toast({
+      title: 'Success',
+      description: 'Notification preferences updated',
+      status: 'success',
+      duration: 3000,
+      position: 'top',
+    })
   }
+
   const handleTgConnect = async () => {
     setConnecting(true)
     logEvent('Connect Telegram')
@@ -158,6 +179,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
       }
     }, 5000)
   }
+
   const handleTgDisconnect = async () => {
     setConnecting(true)
     logEvent('Disconnect Telegram')
@@ -172,8 +194,45 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setTelegramNotificationConfigured(false)
     setConnecting(false)
   }
+
+  const handleEmailToggle = async (checked: boolean) => {
+    setEmailNotifications(checked)
+    if (!checked) {
+      await updateNotifications()
+    }
+  }
+
+  const handleEmailChange = () => {
+    setIsEditingEmail(true)
+    setTempEmail(email)
+  }
+
+  const handleEmailSave = async () => {
+    if (!isValidEmail(tempEmail)) {
+      toast({
+        title: 'Invalid email',
+        description: 'The provided email seems invalid. Please check.',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+    setEmail(tempEmail)
+    await updateNotifications()
+  }
+
   return (
-    <VStack alignItems="start" flex={1} mb={8}>
+    <VStack
+      alignItems="start"
+      flex={1}
+      mb={8}
+      spacing={6}
+      bg="neutral.900"
+      p={8}
+      borderRadius={16}
+    >
       <Heading fontSize="2xl">Notifications</Heading>
 
       {loadingInitialInfo ? (
@@ -182,73 +241,126 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
           <Text ml={4}>Loading your notification settings</Text>
         </HStack>
       ) : (
-        <>
-          <HStack py={4} alignItems="center">
-            <Switch
-              colorScheme="primary"
-              size="md"
-              isChecked={emailNotifications}
-              onChange={e => setEmailNotifications(e.target.checked)}
-            />
-            <Text>Email notifications</Text>
-          </HStack>
-          <FormControl>
-            <FormLabel htmlFor="email">Email address</FormLabel>
-            <Input
-              isDisabled={!emailNotifications}
-              id="email"
-              type="email"
-              value={emailNotifications ? email : ''}
-              onChange={e => setEmail(e.target.value)}
-            />
-            <FormHelperText>
-              We will only use your email to notify you about meetings.
-            </FormHelperText>
-          </FormControl>
+        <VStack width="100%" spacing={6} align="stretch">
+          {/* Email Notifications */}
+          <Box>
+            <HStack justify="space-between" mb={3}>
+              <HStack spacing={3}>
+                <Switch
+                  colorScheme="primary"
+                  size="lg"
+                  isChecked={emailNotifications}
+                  onChange={e => handleEmailToggle(e.target.checked)}
+                />
+                <Text fontSize="md">Email notifications</Text>
+                <Box
+                  as="span"
+                  px={3}
+                  py={1.5}
+                  borderRadius="full"
+                  bg={emailNotifications ? 'green.200' : 'primary.75'}
+                  color={emailNotifications ? 'green.400' : 'primary.500'}
+                  fontSize="xs"
+                >
+                  {emailNotifications ? 'Active' : 'Inactive'}
+                </Box>
+              </HStack>
+            </HStack>
 
-          <Spacer />
-
-          <DiscordNotificationConfig
-            account={currentAccount!}
-            onDiscordNotificationChange={onDiscordNotificationChange}
-            discordNotification={discordNotificationConfig}
-          />
-
-          <HStack>
-            <Switch
-              colorScheme="primary"
-              size="md"
-              isChecked={telegramNotificationConfigured}
-              onChange={e => {
-                if (e.target.checked) {
-                  handleTgConnect()
-                } else {
-                  handleTgDisconnect()
-                }
-              }}
-              isDisabled={connecting}
-            />
-            <Text fontSize="lg" fontWeight="bold">
-              Telegram
-            </Text>
-            {connecting && <Spinner size="sm" ml={2} />}
-            {tgConnectionPending && (
-              <Text fontSize="sm" color="gray.500">
-                (Pending connection)
-              </Text>
+            {emailNotifications && (
+              <VStack align="stretch" spacing={2}>
+                <FormControl maxW="345px" mt={4}>
+                  <FormLabel fontSize="md" color="neutral.0">
+                    Email address
+                  </FormLabel>
+                  <Input
+                    type="email"
+                    value={isEditingEmail ? tempEmail : email}
+                    onChange={e => setTempEmail(e.target.value)}
+                    isReadOnly={!isEditingEmail}
+                    bg="transparent"
+                    borderColor="neutral.400"
+                  />
+                </FormControl>
+                {isEditingEmail ? (
+                  <HStack>
+                    <Button size="sm" onClick={handleEmailSave}>
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setIsEditingEmail(false)
+                        setTempEmail(email)
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </HStack>
+                ) : (
+                  <Button
+                    variant="link"
+                    colorScheme="primary"
+                    px={0}
+                    onClick={handleEmailChange}
+                    textDecoration="underline"
+                    width="fit-content"
+                  >
+                    Change email
+                  </Button>
+                )}
+              </VStack>
             )}
-          </HStack>
+          </Box>
 
-          <Spacer />
-          <Button
-            isLoading={loading}
-            alignSelf="start"
-            colorScheme="primary"
-            onClick={updateNotifications}
-          >
-            Save preferences
-          </Button>
-        </>
+          {/* Discord Notifications */}
+          <Box>
+            <DiscordNotificationConfig
+              account={currentAccount!}
+              onDiscordNotificationChange={onDiscordNotificationChange}
+              discordNotification={discordNotificationConfig}
+            />
+          </Box>
+
+          {/* Telegram Notifications */}
+          <Box>
+            <HStack justify="space-between">
+              <HStack spacing={3}>
+                <Switch
+                  colorScheme="primary"
+                  size="lg"
+                  isChecked={telegramNotificationConfigured}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      handleTgConnect()
+                    } else {
+                      handleTgDisconnect()
+                    }
+                  }}
+                  isDisabled={connecting}
+                />
+                <Text fontSize="md">Telegram notifications</Text>
+                <Box
+                  as="span"
+                  px={3}
+                  py={1.5}
+                  borderRadius="full"
+                  bg={
+                    telegramNotificationConfigured ? 'green.200' : 'primary.75'
+                  }
+                  color={
+                    telegramNotificationConfigured ? 'green.400' : 'primary.500'
+                  }
+                  fontSize="xs"
+                >
+                  {telegramNotificationConfigured ? 'Active' : 'Inactive'}
+                </Box>
+                {connecting && <Spinner size="sm" ml={2} />}
+              </HStack>
+            </HStack>
+          </Box>
+        </VStack>
       )}
     </VStack>
   )

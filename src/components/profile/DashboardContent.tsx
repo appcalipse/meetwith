@@ -18,6 +18,7 @@ import ConnectCalendar from './ConnectCalendar'
 import Contact from './Contact'
 import Meetings from './Meetings'
 import MeetingSettings from './MeetingSettings'
+import Settings from './Settings'
 import Wallet from './Wallet'
 
 const GroupWithNoSSR = dynamic(() => import('./Group'), { ssr: false })
@@ -26,6 +27,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   currentSection,
 }) => {
   const { currentAccount } = useContext(AccountContext)
+  const isSettings = currentSection === EditMode.DETAILS
 
   const renderSelected = () => {
     switch (currentSection) {
@@ -38,7 +40,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       case EditMode.AVAILABILITY:
         return <AvailabilityConfig currentAccount={currentAccount!} />
       case EditMode.DETAILS:
-        return <AccountDetails currentAccount={currentAccount!} />
+        return <Settings currentAccount={currentAccount!} />
       case EditMode.MEETING_SETTINGS:
         return <MeetingSettings currentAccount={currentAccount!} />
       case EditMode.CALENDARS:
@@ -46,11 +48,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig currentAccount={currentAccount!} />
       case EditMode.WALLET:
-        return (
-          <WalletProvider>
-            <Wallet currentAccount={currentAccount!} />
-          </WalletProvider>
-        )
+        return <Wallet currentAccount={currentAccount!} />
       case EditMode.CLIENTBOARD:
         return <Clientboard currentAccount={currentAccount!} />
     }
@@ -65,20 +63,22 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         justifyContent="space-between"
       >
         <RedirectHandler />
-        <Box
-          flex={{ base: '0', lg: '4' }}
-          mr={{ base: 0, lg: 18 }}
-          position="sticky"
-          top={40}
-        >
-          <NavMenu currentSection={currentSection} />
-        </Box>
+        {!isSettings && (
+          <Box
+            flex={{ base: '0', lg: '4' }}
+            mr={{ base: 0, lg: 18 }}
+            position="sticky"
+            top={40}
+          >
+            <NavMenu currentSection={currentSection} />
+          </Box>
+        )}
         <Box
           maxWidth="100%"
           overflow="hidden"
-          flex={{ base: '1', md: '8' }}
-          marginLeft={{ base: '0 !important', md: 2 }}
-          marginInlineStart={{ base: '0 !important', md: 2 }}
+          flex={isSettings ? 1 : { base: '1', md: '8' }}
+          marginLeft={{ base: '0 !important', md: isSettings ? 0 : 2 }}
+          marginInlineStart={{ base: '0 !important', md: isSettings ? 0 : 2 }}
         >
           {renderSelected()}
         </Box>
