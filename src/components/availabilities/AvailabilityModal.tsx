@@ -740,15 +740,23 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
                       {currentEditingBlock &&
                         getFormattedSchedule(
                           currentEditingBlock.weekly_availability
-                        ).map((line, index) => (
-                          <Text
-                            key={index}
-                            color="neutral.300"
-                            fontSize={16}
-                            fontWeight={500}
-                          >
-                            {line}
-                          </Text>
+                        ).map((schedule, index) => (
+                          <Flex key={index} align="center" gap={1}>
+                            <Text
+                              color="neutral.300"
+                              fontSize={16}
+                              fontWeight={700}
+                            >
+                              {schedule.weekdays}
+                            </Text>
+                            <Text
+                              color="neutral.300"
+                              fontSize={16}
+                              fontWeight={500}
+                            >
+                              : {schedule.timeRange}
+                            </Text>
+                          </Flex>
                         ))}
 
                       <Box
