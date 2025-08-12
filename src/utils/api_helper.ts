@@ -532,6 +532,11 @@ export const getBusySlots = async (
   limit?: number,
   offset?: number
 ): Promise<Interval[]> => {
+  const url = `/meetings/busy/${accountIdentifier}?limit=${
+    limit || undefined
+  }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
+    end?.getTime() || undefined
+  }`
   const response = await queryClient.fetchQuery(
     QueryKeys.busySlots({
       id: accountIdentifier?.toLowerCase(),
@@ -540,14 +545,7 @@ export const getBusySlots = async (
       limit,
       offset,
     }),
-    () =>
-      internalFetch(
-        `/meetings/busy/${accountIdentifier}?limit=${
-          limit || undefined
-        }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
-          end?.getTime() || undefined
-        }`
-      ) as Promise<Interval[]>
+    () => internalFetch(url) as Promise<Interval[]>
   )
   return response.map(slot => ({
     ...slot,
@@ -621,11 +619,13 @@ export const getMeetingsForDashboard = async (
   }))
 }
 export const syncMeeting = async (
-  decryptedMeetingData: MeetingInfo
+  decryptedMeetingData: MeetingInfo,
+  slotId: string
 ): Promise<void> => {
   try {
     await internalFetch(`/secure/meetings/sync`, 'PATCH', {
       decryptedMeetingData,
+      slotId,
     })
   } catch (e) {}
 }

@@ -99,6 +99,7 @@ export interface MeetingSyncRequest {
   end: Date
   created_at: Date
   timezone: string
+  meeting_type_id?: string
 }
 
 export interface MeetingChange {

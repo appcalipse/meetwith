@@ -16,12 +16,11 @@ import {
   add,
   addDays,
   endOfMonth,
-  isBefore,
   isSameMonth,
   startOfMonth,
   sub,
 } from 'date-fns'
-import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz'
+import { formatInTimeZone } from 'date-fns-tz'
 import debounce from 'lodash.debounce'
 import { DateTime, Interval } from 'luxon'
 import { useContext, useEffect, useMemo, useState } from 'react'
@@ -243,7 +242,7 @@ export function SchedulePickTime() {
           monthStart,
           monthEnd,
           memberAccount?.preferences?.timezone || 'UTC'
-        ).map(({ start, end }) => Interval.fromDateTimes(start, end))
+        )
         map.set(memberAccount.address.toLowerCase(), availabilities)
       }
       setAvailableSlots(map)
@@ -335,7 +334,17 @@ export function SchedulePickTime() {
     const currentDate = DateTime.now().setZone(timezone)
     return selectedDate < currentDate || isLoading
   }, [currentSelectedDate, timezone, isLoading])
-
+  const availabilityAddresses = useMemo(() => {
+    const keys = Object.keys(groupAvailability)
+    const participantsSet = new Set<string>()
+    for (const key of keys) {
+      const allGroupParticipants = groupAvailability[key] || []
+      for (const participant of allGroupParticipants) {
+        participantsSet.add(participant)
+      }
+    }
+    return Array.from(participantsSet)
+  }, [groupAvailability])
   return (
     <Tooltip.Provider delayDuration={400}>
       <VStack gap={4} w="100%">
@@ -506,6 +515,7 @@ export function SchedulePickTime() {
                               pickedTime={pickedTime}
                               duration={duration}
                               meetingMembers={meetingMembers}
+                              participantAvailabilities={availabilityAddresses}
                               handleTimePick={time => {
                                 handleTimePick(time)
                                 handlePageSwitch(Page.SCHEDULE_DETAILS)
