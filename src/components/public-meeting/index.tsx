@@ -344,16 +344,6 @@ const PublicPage: FC<IProps> = props => {
   const [paymentType, setPaymentType] = useState<PaymentType | undefined>(
     undefined
   )
-  const currentAccount = useAccountContext()
-
-  const [timezone, setTimezone] = useState<Option<string>>(
-    tzs.find(
-      val =>
-        val.value ===
-        (currentAccount?.preferences?.timezone ||
-          Intl.DateTimeFormat().resolvedOptions().timeZone)
-    ) || tzs[0]
-  )
   const [paymentStep, setPaymentStep] = useState<PaymentStep | undefined>(
     undefined
   )
