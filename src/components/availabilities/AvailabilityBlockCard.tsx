@@ -102,15 +102,15 @@ export const AvailabilityBlockCard: React.FC<AvailabilityBlockCardProps> = ({
           width="100%"
         >
           {getFormattedSchedule(block.weekly_availability).map(
-            (line, index) => (
-              <Text
-                key={index}
-                color="neutral.300"
-                fontWeight={500}
-                fontSize={16}
-              >
-                {line}
-              </Text>
+            (schedule, index) => (
+              <Flex key={index} align="center" gap={1}>
+                <Text color="neutral.300" fontWeight={900} fontSize={16}>
+                  {schedule.weekdays}
+                </Text>
+                <Text color="neutral.300" fontWeight={500} fontSize={16}>
+                  : {schedule.timeRange}
+                </Text>
+              </Flex>
             )
           )}
         </Flex>
