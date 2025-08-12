@@ -779,7 +779,7 @@ export const AvailabilityModal: React.FC<AvailabilityModalProps> = ({
 
                     <Text color="red.500" fontSize={16} fontWeight={500} mb={6}>
                       Deleting this availability block will affect your
-                      availability in those groups and session types you have.
+                      availability in the groups and session types you have.
                     </Text>
                   </Box>
 
