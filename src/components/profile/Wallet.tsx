@@ -15,7 +15,8 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React from 'react'
+import { OnrampWebSDK } from '@onramp.money/onramp-web-sdk'
+import React, { useEffect } from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
 import { GrDocumentTime } from 'react-icons/gr'
@@ -87,7 +88,8 @@ const Wallet: React.FC<WalletProps> = () => {
   } = useWallet()
 
   const transactionsPerPage = 5
-
+  const [onrampInstance, setOnrampInstance] =
+    React.useState<OnrampWebSDK | null>(null)
   const { totalBalance, isLoading: balanceLoading } =
     useWalletBalance(selectedCurrency)
 
@@ -140,6 +142,26 @@ const Wallet: React.FC<WalletProps> = () => {
       'Meeting Session'.toLowerCase().includes(searchLower)
     )
   })
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const onrampInstance = new OnrampWebSDK({
+        appId: parseInt(process.env.NEXT_PUBLIC_ONRAMP_MONEY_APP_ID!), // replace this with the appID you got during onboarding process
+        flowType: 2, // 1 -> onramp || 2 -> offramp || 3 -> Merchant checkout,
+      })
+      setOnrampInstance(onrampInstance)
+    }
+  }, [])
+
+  const handleShowWithdrawWidget = () => {
+    if (onrampInstance) {
+      onrampInstance.show()
+      onrampInstance.on('TX_EVENTS', e => {
+        if (e.type === 'ONRAMP_WIDGET_TX_COMPLETED') {
+          // record transaction to db
+        }
+      })
+    }
+  }
 
   const ActionButton = ({ icon, label, isActive = false, onClick }: any) => (
     <VStack spacing={3}>
@@ -297,6 +319,7 @@ const Wallet: React.FC<WalletProps> = () => {
               <ActionButton
                 icon={PiArrowCircleUpRight}
                 label="Withdraw funds"
+                onClick={() => handleShowWithdrawWidget()}
               />
               <ActionButton
                 icon={PiPlusCircleLight}
@@ -637,6 +660,7 @@ const Wallet: React.FC<WalletProps> = () => {
               <ActionButton
                 icon={PiArrowCircleUpRight}
                 label="Withdraw funds"
+                onClick={() => handleShowWithdrawWidget()}
               />
               <ActionButton
                 icon={PiPlusCircleLight}
