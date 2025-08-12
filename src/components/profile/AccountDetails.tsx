@@ -1,7 +1,5 @@
 import { Box, Flex, Text, VStack } from '@chakra-ui/layout'
 import {
-  Alert,
-  AlertIcon,
   Button,
   Circle,
   Divider,
@@ -13,36 +11,28 @@ import {
   Input,
   InputGroup,
   InputLeftAddon,
-  Link,
-  ListItem,
-  UnorderedList,
-  useColorModeValue,
   useDisclosure,
   useToast,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
 import { Avatar } from '@components/profile/components/Avatar'
 import EditImageModal from '@components/profile/components/EditImageModal'
-import * as Sentry from '@sentry/nextjs'
 import { handleApiError } from '@utils/error_helper'
 import { readFile } from '@utils/image-utils'
 import { ellipsizeAddress } from '@utils/user_manager'
-import { differenceInMonths, format } from 'date-fns'
 import { useRouter } from 'next/router'
-import React, { useContext, useEffect, useRef, useState } from 'react'
-import { FaTag } from 'react-icons/fa'
+import React, { useContext, useEffect, useState } from 'react'
 import { useActiveWallet } from 'thirdweb/react'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account, SocialLink, SocialLinkType } from '@/types/Account'
 import { SupportedChain } from '@/types/chains'
-import { EditMode, Intents } from '@/types/Dashboard'
-import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
-import { logEvent } from '@/utils/analytics'
 import {
   getUnstoppableDomainsForAddress,
   saveAccountChanges,
+} from '@/utils/api_helper'
+import {
   syncSubscriptions,
   updateCustomSubscriptionDomain,
 } from '@/utils/api_helper'
@@ -50,17 +40,13 @@ import { appUrl } from '@/utils/constants'
 import { getLensHandlesForAddress } from '@/utils/lens.helper'
 import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
 import { changeDomainOnChain, isProAccount } from '@/utils/subscription_manager'
-import { isValidSlug } from '@/utils/validations'
 
 import Block from './components/Block'
-import CouponUsedModal from './components/CouponUsedModal'
 import HandlePicker, {
   DisplayName,
   ProfileInfoProvider,
 } from './components/HandlePicker'
 import Tooltip from './components/Tooltip'
-import ConnectedAccounts from './ConnectedAccounts'
-import SubscriptionDialog from './SubscriptionDialog'
 
 const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
@@ -68,32 +54,14 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const { login } = useContext(AccountContext)
   const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
 
-  const cancelDialogRef = useRef<any>()
-
   const [loading, setLoading] = useState(false)
-  const [purchased, setPurchased] = useState<Subscription | undefined>(
-    undefined
-  )
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [currentPlan, setCurrentPlan] = useState<Plan | undefined>(undefined)
-
   const socialLinks = currentAccount?.preferences?.socialLinks || []
 
   const [description, setDescription] = useState(
     currentAccount?.preferences?.description || ''
   )
   const { query, push } = useRouter()
-  const { intent, coupon } = query
   const [nameOptions, setNameOptions] = useState<DisplayName[]>([])
-  const [proDomain, setProDomain] = useState<string>(
-    currentAccount.subscriptions?.[0]?.domain || ''
-  )
-  const [newProDomain, setNewProDomain] = useState<string>(
-    currentAccount.subscriptions?.[0]?.domain ?? ''
-  )
-  const { isOpen, onOpen, onClose } = useDisclosure()
-  const [couponCode, setCouponCode] = useState('')
-  const [couponDuration, setCouponDuration] = useState(0)
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
     currentAccount?.preferences?.avatar_url
   )
@@ -103,21 +71,63 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     onOpen: openEditImageModal,
     onClose: closeEditImageModal,
   } = useDisclosure()
-  const [name, setName] = useState<DisplayName | undefined>(
-    currentAccount?.preferences?.name
-      ? {
-          label: currentAccount.preferences.name,
-          value: currentAccount.preferences.name,
-          type: ProfileInfoProvider.CUSTOM,
-        }
-      : undefined
+  const [name, setName] = useState<DisplayName | undefined>(undefined)
+
+  const toast = useToast()
+  const activeWallet = useActiveWallet()
+
+  const [proDomain, setProDomain] = useState<string>(
+    currentAccount.subscriptions?.[0]?.domain || ''
   )
-  const wallet = useActiveWallet()
+  const [newProDomain, setNewProDomain] = useState<string>(
+    currentAccount.subscriptions?.[0]?.domain ?? ''
+  )
+
+  const saveDetails = async () => {
+    setLoading(true)
+    try {
+      const updatedAccount = await saveAccountChanges({
+        ...currentAccount,
+        preferences: {
+          ...currentAccount.preferences,
+          description,
+          socialLinks: [
+            {
+              type: SocialLinkType.TWITTER,
+              url: twitter,
+            },
+            {
+              type: SocialLinkType.TELEGRAM,
+              url: telegram,
+            },
+          ],
+          ...(name?.type === ProfileInfoProvider.CUSTOM
+            ? { name: name?.value }
+            : { name: '' }),
+          avatar_url: avatarUrl,
+        },
+      })
+      await login(updatedAccount)
+      reloadOnboardingInfo()
+      toast({
+        title: 'Details updated',
+        description: 'Your profile details have been updated',
+        status: 'success',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    } catch (error) {
+      console.error(error)
+      handleApiError('Error updating profile', error)
+    }
+    setLoading(false)
+  }
+
   const [twitter, setTwitter] = useState(
     socialLinks.find((link: SocialLink) => link.type === SocialLinkType.TWITTER)
       ?.url || ''
   )
-
   const [telegram, setTelegram] = useState(
     socialLinks.find(
       (link: SocialLink) => link.type === SocialLinkType.TELEGRAM
@@ -148,16 +158,84 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           }
         : undefined
     )
-    setNewProDomain(currentAccount?.subscriptions?.[0]?.domain ?? '')
     setAvatarUrl(currentAccount?.preferences?.avatar_url || undefined)
+    setNewProDomain(currentAccount?.subscriptions?.[0]?.domain ?? '')
   }
 
   const updateAccountSubs = async () => {
-    setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
     const subscriptions = await syncSubscriptions()
     currentAccount!.subscriptions = subscriptions
-    login(currentAccount!)
-    setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
+    await login(currentAccount!)
+  }
+
+  const changeDomain = async () => {
+    setLoading(true)
+
+    if (newProDomain === proDomain) {
+      setLoading(false)
+      toast({
+        title: 'Nothing changed',
+        description: "You didn't change the current link",
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+
+    if (!(await checkValidDomain(newProDomain, currentAccount!.address))) {
+      setLoading(false)
+      toast({
+        title: 'You are not the owner of this domain',
+        description:
+          'To use ENS, Lens, Unstoppable domain, or other name services as your name you need to be the owner of it',
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+      return
+    }
+
+    try {
+      const subscription = currentAccount?.subscriptions?.find(
+        sub => new Date(sub.expiry_time) > new Date()
+      )
+      if (subscription?.chain === SupportedChain.CUSTOM) {
+        await updateCustomSubscriptionDomain(newProDomain)
+      } else {
+        await changeDomainOnChain(
+          currentAccount.address,
+          proDomain,
+          newProDomain,
+          activeWallet!
+        )
+      }
+      await updateAccountSubs()
+      setProDomain(newProDomain)
+      toast({
+        title: 'Calendar link updated',
+        description: 'Your calendar link has been changed',
+        status: 'success',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    } catch (e: any) {
+      console.error(e)
+      setLoading(false)
+      toast({
+        title: 'Error',
+        description: `${e.message}`,
+        status: 'error',
+        duration: 5000,
+        position: 'top',
+        isClosable: true,
+      })
+    }
+
+    setLoading(false)
   }
 
   const getHandles = async () => {
@@ -174,28 +252,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
             }
           })
         )
-      }
-    }
-
-    const getMWWDomains = async () => {
-      if (!currentAccount?.subscriptions) {
-        return
-      }
-      const domains = currentAccount?.subscriptions
-        .filter(sub => !!sub.plan_id)
-        .map(sub => sub?.domain)
-      if (domains) {
-        handles = handles.concat(
-          domains.map(domain => {
-            return {
-              label: domain,
-              value: domain,
-              type: ProfileInfoProvider.MWW,
-            }
-          })
-        )
-        setProDomain(domains[0])
-        setNewProDomain(domains[0] ?? '')
       }
     }
 
@@ -228,195 +284,20 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       }
     }
 
-    await Promise.all([
-      getMWWDomains(),
-      lensProfiles(),
-      getENSHandle(),
-      getUNHandles(),
-    ])
+    await Promise.all([lensProfiles(), getUNHandles(), getENSHandle()])
+
     setNameOptions(handles)
+    const currentHandle = handles.find(
+      h => h.value === currentAccount?.preferences?.name
+    )
+    setName(currentHandle)
   }
 
   useEffect(() => {
+    void getHandles()
     updateAccountInfo()
-    updateAccountSubs()
-    getHandles()
-  }, [currentAccount?.address])
+  }, [currentAccount])
 
-  const toast = useToast()
-
-  const saveDetails = async () => {
-    setLoading(true)
-
-    if (!(await checkValidDomain(name?.label || '', currentAccount!.address))) {
-      setLoading(false)
-      toast({
-        title: 'You are not the owner of this domain',
-        description:
-          'To use ENS, Lens, Unstoppable domain, or other name services as your name you need to be the owner of it',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-      return
-    }
-
-    try {
-      const updatedAccount = await saveAccountChanges({
-        ...currentAccount!,
-        preferences: {
-          ...currentAccount!.preferences!,
-          name: name?.label,
-          description,
-          socialLinks: [
-            { type: SocialLinkType.TWITTER, url: twitter },
-            { type: SocialLinkType.TELEGRAM, url: telegram },
-          ],
-        },
-      })
-      logEvent('Updated account details')
-      login(updatedAccount)
-    } catch (e) {
-      handleApiError('Error Updating Profile', e)
-      console.error(e)
-    } finally {
-      reloadOnboardingInfo()
-      setLoading(false)
-    }
-  }
-
-  const changeDomain = async () => {
-    setLoading(true)
-
-    if (newProDomain === proDomain) {
-      setLoading(false)
-      toast({
-        title: 'Nothing changed',
-        description: "You didn't change the current link",
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-      return
-    }
-
-    if (!isValidSlug(newProDomain)) {
-      setLoading(false)
-      toast({
-        title: 'Invalid link',
-        description: 'Please use only letters, numbers, underscores and dashes',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-      return
-    }
-    if (!(await checkValidDomain(newProDomain, currentAccount!.address))) {
-      setLoading(false)
-      toast({
-        title: 'You are not the owner of this domain',
-        description:
-          'To use ENS, Lens, Unstoppable domain, or other name services as your name you need to be the owner of it',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-      return
-    }
-
-    try {
-      const subscription = currentAccount?.subscriptions?.find(
-        sub => new Date(sub.expiry_time) > new Date()
-      )
-      if (subscription?.chain === SupportedChain.CUSTOM) {
-        await updateCustomSubscriptionDomain(newProDomain)
-      } else {
-        await changeDomainOnChain(
-          currentAccount.address,
-          proDomain,
-          newProDomain,
-          wallet!
-        )
-      }
-      await updateAccountSubs()
-      toast({
-        title: 'Calendar link updated',
-        description: 'Your calendar link has been changed',
-        status: 'success',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-    } catch (e: any) {
-      console.error(e)
-      const isMetaMask =
-        (window as any).ethereum !== undefined &&
-        (window as any).ethereum.isMetaMask
-      const isBrave =
-        (navigator as any).brave && (await (navigator as any).brave.isBrave())
-
-      Sentry.captureException(e)
-
-      setLoading(false)
-      toast({
-        title: 'Error',
-        description:
-          isMetaMask && isBrave
-            ? 'Please connect to the correct network (consider you must unlock your metamask and also reload the page after that).\nIf the error persists, please also try with chrome.'
-            : `${e.message}`,
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
-    }
-
-    logEvent(
-      `Account Domain Changed: old domain: ${proDomain}, new domain: ${newProDomain}`
-    )
-
-    setLoading(false)
-  }
-
-  const subsRef = useRef(null)
-
-  const subsPurchased = (sub: Subscription, couponCode?: string) => {
-    if (couponCode) {
-      setCouponCode(couponCode)
-      const couponExpiryDate = new Date(sub.expiry_time)
-      const couponDuration = differenceInMonths(
-        couponExpiryDate,
-        new Date().setHours(0, 0, 0, 0)
-      )
-      setCouponDuration(couponDuration)
-      onOpen()
-    }
-    setPurchased(sub)
-    setCurrentPlan(sub.plan_id)
-    setNewProDomain(sub?.domain)
-    updateAccountSubs()
-    setTimeout(
-      () => window.scrollTo(0, (subsRef.current as any).offsetTop - 60),
-      500
-    )
-    setTimeout(() => setPurchased(undefined), 10000)
-  }
-  useEffect(() => {
-    if (intent === Intents.USE_COUPON) {
-      if (!isProAccount(currentAccount!)) {
-        setIsDialogOpen(true)
-      } else {
-        push(`/dashboard/${EditMode.DETAILS}`)
-      }
-    }
-  }, [intent, currentAccount])
-  const subscription = currentAccount?.subscriptions?.find(
-    sub => new Date(sub.expiry_time) > new Date()
-  )
   const handleSelectFile = async () => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -426,28 +307,40 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       if (!file) return
       setLoading(true)
       try {
+        const blob = new Blob([file], {
+          type: file.type,
+        })
+        const imageDataUrl = await readFile(file)
+        setSelectedImageUrl(imageDataUrl)
+        openEditImageModal()
       } catch (error) {
         console.error('Error uploading image:', error)
       } finally {
         setLoading(false)
       }
-      const blob = new Blob([file], {
-        type: file.type,
-      })
-      const imageDataUrl = await readFile(file)
-      setSelectedImageUrl(imageDataUrl)
-      openEditImageModal()
-      // console.log({ imageDataUrl })
     }
     input.click()
   }
+
+  const handleImageUpdate = (url: string) => {
+    setAvatarUrl(url)
+    closeEditImageModal()
+  }
+
+  const handleRemoveImage = () => {
+    setAvatarUrl(undefined)
+    setSelectedImageUrl(undefined)
+    closeEditImageModal()
+  }
+
   return (
-    <VStack gap={4} mb={8} alignItems="start" flex={1}>
+    <VStack width="100%" maxW="100%" gap={6} alignItems={'flex-start'}>
       <Block>
         <>
           <Heading fontSize="2xl" mb={4}>
             Account Details
           </Heading>
+
           <EditImageModal
             imageSrc={selectedImageUrl}
             isDialogOpen={isEditImageModalOpen}
@@ -456,9 +349,10 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
             changeAvatar={avatar => {
               setAvatarUrl(avatar)
               currentAccount.preferences.avatar_url = avatar
-              login(currentAccount)
+              void login(currentAccount)
             }}
           />
+
           <FormControl pt={2}>
             <HStack width="100%" textAlign="center" mb={6}>
               <Box width="64px" height="64px">
@@ -474,9 +368,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                   colorScheme="primary"
                   variant={'link'}
                   px={0}
-                  style={{
-                    display: 'flex',
-                  }}
+                  style={{ display: 'flex' }}
                   onClick={handleSelectFile}
                   textDecoration="underline"
                 >
@@ -484,6 +376,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                 </Button>
               </VStack>
             </HStack>
+
             <FormLabel>
               Calendar link
               <Tooltip text="Other users can book meetings with you through this personal domain" />
@@ -495,7 +388,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                   borderRightColor="transparent !important"
                   bgColor="transparent"
                   pr={0}
-                  className={subscription ? '' : 'disabled'}
+                  className={currentAccount?.subscriptions ? '' : 'disabled'}
                 >
                   <Text opacity="0.5">{`${appUrl}/`}</Text>
                 </InputLeftAddon>
@@ -504,9 +397,15 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                   borderLeftColor="transparent"
                   value={newProDomain}
                   type="text"
-                  disabled={!subscription}
+                  disabled={
+                    !currentAccount?.subscriptions?.find(
+                      sub => new Date(sub.expiry_time) > new Date()
+                    )
+                  }
                   placeholder={
-                    subscription
+                    currentAccount?.subscriptions?.find(
+                      sub => new Date(sub.expiry_time) > new Date()
+                    )
                       ? 'your_custom_link'
                       : `address/${currentAccount?.address}`
                   }
@@ -518,19 +417,34 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                 isLoading={loading}
                 colorScheme="primary"
                 variant="outline"
-                isDisabled={!subscription}
+                isDisabled={
+                  !currentAccount?.subscriptions?.find(
+                    sub => new Date(sub.expiry_time) > new Date()
+                  )
+                }
                 onClick={changeDomain}
               >
                 Update
               </Button>
             </HStack>
             <FormHelperText>
-              {subscription ? (
+              {currentAccount?.subscriptions?.find(
+                sub => new Date(sub.expiry_time) > new Date()
+              ) ? (
                 'There is a gas fee associated with each link change.'
               ) : (
                 <>
                   Unlock custom calendar link with PRO{' '}
-                  <Link href="#subscriptions">here</Link>.
+                  <Button
+                    variant="link"
+                    colorScheme="primary"
+                    px={0}
+                    onClick={() => push('/dashboard/details#subscriptions')}
+                    textDecoration="underline"
+                  >
+                    here
+                  </Button>
+                  .
                 </>
               )}
             </FormHelperText>
@@ -595,145 +509,16 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         </>
       </Block>
 
-      <Block>
-        <ConnectedAccounts />
-      </Block>
-
-      <Block>
-        <Heading ref={subsRef} fontSize="2xl" id="subscriptions" mb={8}>
-          Subscription
-        </Heading>
-
-        {purchased && !isOpen && (
-          <Alert status="success">
-            <AlertIcon />
-            Subscription successful. Enjoy your{' '}
-            {getPlanInfo(purchased!.plan_id)?.name} Plan
-          </Alert>
-        )}
-
-        <Flex
-          width="100%"
-          flexDirection={{ base: 'column', md: 'row' }}
-          gridGap={2}
-        >
-          <SubscriptionCard
-            subscription={currentAccount?.subscriptions?.find(
-              sub => new Date(sub.expiry_time) > new Date()
-            )}
-            planInfo={getPlanInfo(Plan.PRO)}
-            onClick={() => setIsDialogOpen(true)}
-            active={currentPlan === Plan.PRO}
-            benefits={[
-              'Customizable booking link',
-              'External calendar connections (Google and iCloud)',
-              'Unlimited meeting configurations',
-              'Email and Discord Notifications (optional)',
-              'Schedule meetings with multiple participants',
-              'Request payment for meeting scheduling (coming soon)',
-            ]}
-          />
-          <SubscriptionCard
-            onClick={() => setIsDialogOpen(true)}
-            active={currentPlan === undefined}
-            benefits={[
-              'Public page for scheduling meetings',
-              'Configurable availability',
-              'Web3 powered meeting room',
-              'Single meeting configuration',
-              'Only 1:1 meetings',
-            ]}
-          />
-        </Flex>
-        <SubscriptionDialog
-          isDialogOpen={isDialogOpen}
-          onDialogClose={() => setIsDialogOpen(false)}
-          cancelDialogRef={cancelDialogRef}
-          onSuccessPurchase={subsPurchased}
-          currentSubscription={currentAccount?.subscriptions?.[0]}
-          defaultCoupon={Array.isArray(coupon) ? coupon[0] : coupon}
-        />
-        <CouponUsedModal
-          couponCode={couponCode}
-          couponDuration={couponDuration}
-          isDialogOpen={isOpen}
-          onDialogClose={onClose}
-        />
-      </Block>
-    </VStack>
-  )
-}
-
-interface SubscriptionCardProps {
-  active: boolean
-  benefits: string[]
-  subscription?: Subscription
-  planInfo?: PlanInfo
-  onClick: () => void
-}
-
-export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
-  active,
-  subscription,
-  planInfo,
-  benefits,
-  onClick,
-}) => {
-  return (
-    <VStack
-      shadow="sm"
-      flex={1}
-      bg={useColorModeValue('gray.50', 'gray.700')}
-      me={4}
-      borderRadius={8}
-      borderWidth={2}
-      p={4}
-      minWidth="240px"
-      maxWidth="320px"
-      alignItems={'flex-start'}
-      justifyContent={'flex-start'}
-      borderColor={active ? '#F35826' : 'transparent'}
-    >
-      <HStack>
-        <Circle
-          size="48px"
-          bg={useColorModeValue('gray.700', 'gray.500')}
-          mr="2"
-        >
-          <FaTag color="white" />
-        </Circle>
-        <Text width="100%" textAlign="left" fontWeight={500}>
-          {planInfo
-            ? `${planInfo.name} - $${planInfo.usdPrice} / year`
-            : 'Free - $0 / forever'}
-        </Text>
-      </HStack>
-      <Box ml="24px">
-        <UnorderedList fontSize="sm">
-          {benefits.map((benefit, i) => (
-            <ListItem key={i}>{benefit}</ListItem>
-          ))}
-        </UnorderedList>
-      </Box>
-
-      {subscription && (
-        <Text fontSize="sm" fontWeight={500}>
-          {`Valid until ${format(new Date(subscription.expiry_time), 'PPP')}`}
-        </Text>
-      )}
-
-      <Box width="100%">
-        {planInfo && (
-          <Button
-            mt={8}
-            width="full"
-            colorScheme="primary"
-            onClick={() => onClick()}
-          >
-            {active ? 'Extend' : `Subscribe to ${planInfo!.name}`}
-          </Button>
-        )}
-      </Box>
+      <EditImageModal
+        isDialogOpen={isEditImageModalOpen}
+        onDialogClose={closeEditImageModal}
+        imageSrc={selectedImageUrl || ''}
+        accountAddress={currentAccount?.address}
+        changeAvatar={(url: string) => {
+          setAvatarUrl(url)
+          closeEditImageModal()
+        }}
+      />
     </VStack>
   )
 }
