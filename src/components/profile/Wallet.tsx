@@ -46,7 +46,7 @@ interface WalletProps {
   currentAccount: Account
 }
 
-const Wallet: React.FC<WalletProps> = () => {
+const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const {
     // View states
     showBalance,
@@ -147,6 +147,7 @@ const Wallet: React.FC<WalletProps> = () => {
       const onrampInstance = new OnrampWebSDK({
         appId: parseInt(process.env.NEXT_PUBLIC_ONRAMP_MONEY_APP_ID!), // replace this with the appID you got during onboarding process
         flowType: 2, // 1 -> onramp || 2 -> offramp || 3 -> Merchant checkout,
+        merchantRecognitionId: currentAccount.address,
       })
       setOnrampInstance(onrampInstance)
     }
