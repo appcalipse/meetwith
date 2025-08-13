@@ -172,10 +172,6 @@ export const getDefaultValues = (): Partial<MeetingType> => ({
   },
 })
 
-export enum Currency {
-  USD = 'USD',
-}
-
 export const networkOptions = supportedChains
   .filter(val => (supportedPaymentChains || []).includes(val.chain))
   .map(val => ({

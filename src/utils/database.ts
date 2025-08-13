@@ -1,5 +1,11 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import {
+  currenciesMap,
+  Currency,
+  extractOnRampStatus,
+  getOnrampMoneyTokenAddress,
+} from '@utils/services/onramp.money'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
@@ -35,7 +41,7 @@ import {
   ConnectedCalendar,
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
-import { getChainInfo, SupportedChain } from '@/types/chains'
+import { getChainInfo, getTokenAddress, SupportedChain } from '@/types/chains'
 import {
   ContactSearch,
   DBContact,
@@ -101,10 +107,10 @@ import {
   BaseMeetingSession,
   BaseTransaction,
   MeetingSession,
+  OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
 import {
-  Currency,
   NO_MEETING_TYPE,
   PaymentDirection,
   PaymentStatus,
@@ -5300,6 +5306,73 @@ const getOwnerPublicUrlServer = async (
     return `${appUrl}/address/${ownerAccountAddress}`
   }
 }
+const recordOffRampTransaction = async (event: OnrampMoneyWebhook) => {
+  const { data: transactionExists } = await db.supabase
+    .from<BaseTransaction>('transactions')
+    .select('*')
+    .eq('provider_reference_id', event.referenceId)
+    .eq('initiator_address', event.merchantRecognitionId.toLowerCase())
+    .eq('transaction_hash', event.transactionHash.toLowerCase())
+  const status = extractOnRampStatus(event.status)
+  const exists = transactionExists?.[0]
+  const payload: BaseTransaction = {
+    method: PaymentType.CRYPTO,
+    transaction_hash: event.transactionHash.toLowerCase() as Address,
+    amount: event.actualFiatAmount,
+    direction:
+      event.eventType.toLowerCase() === 'offramp'
+        ? PaymentDirection.DEBIT
+        : PaymentDirection.CREDIT,
+    chain_id: event.chainId,
+    token_address: await getOnrampMoneyTokenAddress(
+      event.coinId,
+      event.chainId
+    ),
+    fiat_equivalent: event.actualFiatAmount,
+    initiator_address: event.merchantRecognitionId.toLowerCase() as Address,
+    status,
+    token_type: TokenType.ERC20,
+    confirmed_at: status === 'completed' ? new Date().toISOString() : undefined,
+    currency: currenciesMap[event.fiatType],
+    provider_reference_id: event.referenceId,
+    fee_breakdown: {
+      client_fee: event.clientFee,
+      gateway_fee: event.gatewayFee,
+      on_ramp_fee: event.onRampFee,
+    },
+    total_fee: event.clientFee + event.gatewayFee + event.onRampFee,
+    metadata: {
+      order_id: event.orderId,
+      actual_quantity: event.actualQuantity,
+      kyc_needed: event?.kycNeeded,
+      payment_type: event.paymentType,
+    },
+  }
+
+  if (exists) {
+    // If transaction already exists, update it
+    payload.updated_at = new Date()
+    const { data, error } = await db.supabase
+      .from('transactions')
+      .update(payload)
+      .eq('provider_reference_id', event.referenceId)
+      .eq('initiator_address', event.merchantRecognitionId.toLowerCase())
+    if (error) {
+      throw new Error(error.message)
+    }
+    return data?.[0] as Transaction
+  } else {
+    // If transaction does not exist, insert it
+    const { data, error } = await db.supabase
+      .from('transactions')
+      .insert([payload])
+    if (error) {
+      throw new Error(error.message)
+    }
+    return data?.[0] as Transaction
+  }
+  //TODO: send notification
+}
 
 export {
   acceptContactInvite,
@@ -5379,6 +5452,7 @@ export {
   leaveGroup,
   manageGroupInvite,
   publicGroupJoin,
+  recordOffRampTransaction,
   registerMeetingSession,
   rejectContactInvite,
   rejectGroupInvite,
