@@ -48,7 +48,11 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
       case EditMode.NOTIFICATIONS:
         return <NotificationsConfig currentAccount={currentAccount!} />
       case EditMode.WALLET:
-        return <Wallet currentAccount={currentAccount!} />
+        return (
+          <WalletProvider>
+            <Wallet currentAccount={currentAccount!} />
+          </WalletProvider>
+        )
       case EditMode.CLIENTBOARD:
         return <Clientboard currentAccount={currentAccount!} />
     }

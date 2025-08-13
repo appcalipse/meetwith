@@ -65,6 +65,8 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setDiscordNotificationConfig(undefined)
   }, [currentAccount])
 
+  // Refetch subscriptions when returning to notifications section
+
   const fetchPendingTgConnections = async () => {
     const pendingConnection = await getPendingTgConnection()
     if (pendingConnection) {
@@ -100,9 +102,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     discordNotification?: DiscordNotificationType
   ) => {
     setDiscordNotificationConfig(discordNotification)
-    if (discordNotification) {
-      await updateNotifications()
-    }
   }
 
   const updateNotifications = async () => {
@@ -195,13 +194,6 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setConnecting(false)
   }
 
-  const handleEmailToggle = async (checked: boolean) => {
-    setEmailNotifications(checked)
-    if (!checked) {
-      await updateNotifications()
-    }
-  }
-
   const handleEmailChange = () => {
     setIsEditingEmail(true)
     setTempEmail(email)
@@ -250,7 +242,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
                   colorScheme="primary"
                   size="lg"
                   isChecked={emailNotifications}
-                  onChange={e => handleEmailToggle(e.target.checked)}
+                  onChange={e => setEmailNotifications(e.target.checked)}
                 />
                 <Text fontSize="md">Email notifications</Text>
                 <Box
@@ -360,6 +352,15 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
               </HStack>
             </HStack>
           </Box>
+
+          <Button
+            isLoading={_loading}
+            alignSelf="start"
+            colorScheme="primary"
+            onClick={updateNotifications}
+          >
+            Save preferences
+          </Button>
         </VStack>
       )}
     </VStack>
