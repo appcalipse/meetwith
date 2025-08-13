@@ -163,7 +163,7 @@ export interface TokenMeta {
   last_updated: string
 }
 
-export const getNativeDecimals = (chain: SupportedChain): number => {
+export const getNativeDecimals = (_chain: SupportedChain): number => {
   // all supported tokens for now have 18 decimals
   return 18
 }
@@ -469,4 +469,32 @@ export const getTokenAddress = (
 export const getChainId = (chain: SupportedChain): number => {
   const chainInfo = getChainInfo(chain)
   return chainInfo?.id || 42220
+}
+
+export const getTokenFromName = (tokenName: string): AcceptedToken | null => {
+  const lowerName = tokenName.toLowerCase()
+  switch (lowerName) {
+    case 'ether':
+      return AcceptedToken.ETHER
+    case 'polygon':
+      return AcceptedToken.MATIC
+    case 'metis':
+      return AcceptedToken.METIS
+    case 'dai':
+      return AcceptedToken.DAI
+    case 'usd coin':
+      return AcceptedToken.USDC
+    case 'tether usd':
+      return AcceptedToken.USDT
+    case 'euro':
+      return AcceptedToken.EUR
+    case 'celo':
+      return AcceptedToken.CELO
+    case 'celo dollar':
+      return AcceptedToken.CUSD
+    case 'celo euro':
+      return AcceptedToken.CEUR
+    default:
+      return null
+  }
 }
