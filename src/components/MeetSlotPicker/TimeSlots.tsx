@@ -6,6 +6,7 @@ import {
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
+import { RescheduleConferenceData } from '@components/public-meeting'
 import { DateTime, Interval } from 'luxon'
 import React, { FC, useContext, useMemo } from 'react'
 
@@ -16,6 +17,7 @@ import { generateTimeSlots } from '@/utils/slots.helper'
 
 interface IProps {
   pickedDay: Date
+  pickedTime: Date | null
   slotSizeMinutes: number
   pickTime: (date: Date) => void
   showSelfAvailability: boolean
@@ -25,6 +27,7 @@ interface IProps {
   selfBusySlots: Interval<true>[]
   timezone?: string
   selectedType?: MeetingType | null
+  rescheduleSlot?: RescheduleConferenceData
 }
 
 const TimeSlots: FC<IProps> = ({
@@ -37,6 +40,8 @@ const TimeSlots: FC<IProps> = ({
   selfAvailableSlots,
   selfBusySlots,
   selectedType,
+  rescheduleSlot,
+  pickedTime,
   timezone = Intl.DateTimeFormat().resolvedOptions().timeZone, // Default to local timezone
 }) => {
   const { openConnection } = useContext(OnboardingModalContext)
@@ -79,6 +84,15 @@ const TimeSlots: FC<IProps> = ({
     const minScheduleTime = DateTime.now()
       .setZone(timezone)
       .plus({ minutes: minTime })
+    if (rescheduleSlot) {
+      const rescheduleInterval = Interval.fromDateTimes(
+        rescheduleSlot.start,
+        rescheduleSlot.end
+      )
+      if (rescheduleInterval.overlaps(slot)) {
+        return true
+      }
+    }
 
     if (minScheduleTime > slot.start) {
       return false
@@ -148,7 +162,12 @@ const TimeSlots: FC<IProps> = ({
                 onClick={() => pickTime(slot.start.toJSDate())}
                 width={{ base: '100%', md: '80%', lg: '70%' }}
                 borderWidth={2}
-                borderColor={borderColor}
+                borderColor={
+                  pickedTime &&
+                  slot.start.hasSame(DateTime.fromJSDate(pickedTime), 'minute')
+                    ? textColor
+                    : borderColor
+                }
                 px={4}
                 py={3}
                 justifyContent="center"
@@ -159,6 +178,12 @@ const TimeSlots: FC<IProps> = ({
                   bgColor: 'primary.400',
                   borderColor: textColor,
                 }}
+                bg={
+                  pickedTime &&
+                  slot.start.hasSame(DateTime.fromJSDate(pickedTime), 'minute')
+                    ? 'primary.400'
+                    : 'transparent'
+                }
                 role={'group'}
                 borderRadius={8}
                 color={textColor}
