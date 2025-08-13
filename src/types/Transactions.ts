@@ -113,6 +113,7 @@ export interface OnrampMoneyWebhook {
   walletAddress: string
   coinId: number
   fiatType: number
+  factor: number
   expectedPrice: number
   actualFiatAmount: number
   paymentType: number | string
