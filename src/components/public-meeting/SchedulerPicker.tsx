@@ -81,7 +81,6 @@ const SchedulerPicker = () => {
       setPickedTime(new Date(rescheduleSlot.start))
       setCurrentMonth(new Date(rescheduleSlot.start))
       setSelectedMonth(new Date(rescheduleSlot.start))
-      setShowConfirm(true)
     }
   }, [rescheduleSlotLoading, rescheduleSlot])
 
@@ -104,47 +103,7 @@ const SchedulerPicker = () => {
     if (!currentAccount?.address || !account?.address) return
     void handleContactCheck()
   }, [currentAccount, account])
-  const isFutureInTimezone = (date: Date, timezoneValue: string) => {
-    const dateInTimezone = DateTime.fromObject(
-      {
-        year: date.getFullYear(),
-        month: date.getMonth() + 1,
-        day: date.getDate(),
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      },
-      { zone: timezoneValue }
-    )
 
-    const nowInTimezone = DateTime.now().setZone(timezoneValue).startOf('day')
-
-    return dateInTimezone > nowInTimezone
-  }
-
-  const isTodayInTimezone = (date: Date, timezoneValue: string) => {
-    const dateInTimezone = DateTime.fromObject(
-      {
-        year: date.getFullYear(),
-        month: date.getMonth() + 1,
-        day: date.getDate(),
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      },
-      { zone: timezoneValue }
-    )
-
-    const nowInTimezone = DateTime.now().setZone(timezoneValue)
-
-    return (
-      dateInTimezone.year === nowInTimezone.year &&
-      dateInTimezone.month === nowInTimezone.month &&
-      dateInTimezone.day === nowInTimezone.day
-    )
-  }
   const validator = useCallback(
     (pickedDay: Date) => {
       const pickedDayInTimezone = DateTime.fromJSDate(pickedDay).setZone(
@@ -177,7 +136,15 @@ const SchedulerPicker = () => {
         const minScheduleTime = DateTime.now()
           .setZone(timezone.value)
           .plus({ minutes: minTime })
-
+        if (rescheduleSlot) {
+          const rescheduleInterval = Interval.fromDateTimes(
+            rescheduleSlot.start,
+            rescheduleSlot.end
+          )
+          if (rescheduleInterval.overlaps(slot)) {
+            return true
+          }
+        }
         if (minScheduleTime > slot.start) {
           return false
         }
@@ -308,6 +275,8 @@ const SchedulerPicker = () => {
               showSelfAvailability={checkedSelfSlots}
               timezone={timezone.value}
               selectedType={selectedType}
+              rescheduleSlot={rescheduleSlot}
+              pickedTime={pickedTime}
             />
           )}
         </VStack>
