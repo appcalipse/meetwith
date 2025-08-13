@@ -6,6 +6,8 @@ import {
   Account,
   MeetingType,
   PaidMeetingTypes,
+  PartialPaymentPreferences,
+  PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
@@ -1674,5 +1676,44 @@ export const getWalletTransactions = async (
     chain_id,
     limit,
     offset,
+  })
+}
+
+export const getPaymentPreferences =
+  async (): Promise<PaymentPreferences | null> => {
+    try {
+      return await internalFetch<PaymentPreferences>(
+        '/secure/payment-preferences'
+      )
+    } catch (e) {
+      if (e instanceof ApiFetchError && e.status === 404) {
+        return null
+      }
+      throw e
+    }
+  }
+
+export const savePaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >,
+  options?: { operation?: 'create' | 'update' }
+): Promise<PaymentPreferences> => {
+  const isUpdate =
+    options?.operation === 'update' || Object.keys(data).length < 3
+
+  return await internalFetch<PaymentPreferences>(
+    '/secure/payment-preferences',
+    isUpdate ? 'PATCH' : 'POST',
+    isUpdate
+      ? { owner_account_address, updates: data }
+      : { owner_account_address, data, options }
+  )
+}
+
+export const verifyPin = async (pin: string): Promise<{ valid: boolean }> => {
+  return await internalFetch<{ valid: boolean }>('/secure/verify-pin', 'POST', {
+    pin,
   })
 }

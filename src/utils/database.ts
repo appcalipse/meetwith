@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import bcrypt from 'bcrypt'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
@@ -19,6 +20,8 @@ import {
   DiscordConnectedAccounts,
   MeetingType,
   PaidMeetingTypes,
+  PartialPaymentPreferences,
+  PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,
   TgConnectedAccounts,
@@ -5070,6 +5073,155 @@ const getOwnerPublicUrlServer = async (
   }
 }
 
+const getPaymentPreferences = async (
+  owner_account_address: string
+): Promise<PaymentPreferences | null> => {
+  const { data, error } = await db.supabase
+    .from('payment_preferences')
+    .select(
+      'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
+    )
+    .eq('owner_account_address', owner_account_address.toLowerCase())
+    .single()
+
+  if (error) {
+    console.error('Database error in getPaymentPreferences:', error)
+    if (error.code === 'PGRST116') {
+      // No rows returned
+      return null
+    }
+    Sentry.captureException(error)
+    throw new Error('Could not get payment preferences')
+  }
+
+  // Transform the data to include hasPin without exposing pin_hash
+  if (data) {
+    const { pin_hash, ...rest } = data
+    return {
+      ...rest,
+      hasPin: !!pin_hash,
+    }
+  }
+
+  return null
+}
+
+const savePaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >,
+  options?: { operation?: 'create' | 'update' }
+): Promise<PaymentPreferences> => {
+  try {
+    // Check if record exists
+    const { data: existingRecord, error: checkError } = await db.supabase
+      .from('payment_preferences')
+      .select('id')
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .maybeSingle()
+
+    if (checkError) {
+      console.error('Error checking existing record:', checkError)
+      Sentry.captureException(checkError)
+      throw new Error('Could not check existing payment preferences')
+    }
+
+    let result
+    let error
+
+    if (existingRecord && options?.operation !== 'create') {
+      // Record exists, perform update
+      const { data: updateData, error: updateError } = await db.supabase
+        .from('payment_preferences')
+        .update(data)
+        .eq('owner_account_address', owner_account_address.toLowerCase())
+        .select(
+          'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
+        )
+        .single()
+
+      result = updateData
+      error = updateError
+    } else {
+      // Record doesn't exist or force create, perform upsert
+      const { data: upsertData, error: upsertError } = await db.supabase
+        .from('payment_preferences')
+        .upsert(
+          {
+            owner_account_address: owner_account_address.toLowerCase(),
+            ...data,
+          },
+          { onConflict: 'owner_account_address' }
+        )
+        .select(
+          'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
+        )
+        .single()
+
+      result = upsertData
+      error = upsertError
+    }
+
+    if (error) {
+      console.error('Database error in savePaymentPreferences:', error)
+      Sentry.captureException(error)
+      throw new Error('Could not save payment preferences')
+    }
+
+    // Transform the data to include hasPin without exposing pin_hash
+    if (result) {
+      const { pin_hash, ...rest } = result
+      return {
+        ...rest,
+        hasPin: !!pin_hash,
+      }
+    }
+
+    throw new Error('No data returned from database operation')
+  } catch (error) {
+    console.error('Unexpected error in savePaymentPreferences:', error)
+    Sentry.captureException(error)
+    throw error instanceof Error
+      ? error
+      : new Error('Could not save payment preferences')
+  }
+}
+
+const createPinHash = async (pin: string): Promise<string> => {
+  const saltRounds = 12
+  return await bcrypt.hash(pin, saltRounds)
+}
+
+const verifyUserPin = async (
+  owner_account_address: string,
+  pin: string
+): Promise<boolean> => {
+  try {
+    // Get raw data including pin_hash for verification
+    const { data, error } = await db.supabase
+      .from('payment_preferences')
+      .select('pin_hash')
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .single()
+
+    if (error) {
+      console.error('Error fetching PIN for verification:', error)
+      return false
+    }
+
+    if (!data?.pin_hash) {
+      return false
+    }
+
+    const isValid = await bcrypt.compare(pin, data.pin_hash)
+    return isValid
+  } catch (error) {
+    console.error('Unexpected error in verifyUserPin:', error)
+    return false
+  }
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -5080,6 +5232,7 @@ export {
   contactInviteByEmailExists,
   createCryptoTransaction,
   createMeetingType,
+  createPinHash,
   createTgConnection,
   deleteAllTgConnections,
   deleteGateCondition,
@@ -5129,6 +5282,7 @@ export {
   getOrCreateContactInvite,
   getOwnerPublicUrlServer,
   getPaidSessionsByMeetingType,
+  getPaymentPreferences,
   getSlotsByIds,
   getSlotsForAccount,
   getSlotsForAccountMinimal,
@@ -5157,6 +5311,7 @@ export {
   saveConferenceMeetingToDB,
   saveEmailToDB,
   saveMeeting,
+  savePaymentPreferences,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   subscribeWithCoupon,
@@ -5172,5 +5327,6 @@ export {
   updatePreferenceAvatar,
   updateRecurringSlots,
   upsertGateCondition,
+  verifyUserPin,
   workMeetingTypeGates,
 }
