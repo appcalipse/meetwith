@@ -760,7 +760,7 @@ const PublicPage: FC<IProps> = props => {
       let busySlots: Interval[] = []
       try {
         busySlots = await getBusySlots(
-          props?.account?.address,
+          currentAccount?.address,
           startDate,
           endDate
         ).then(busySlots =>
