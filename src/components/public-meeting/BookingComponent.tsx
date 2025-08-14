@@ -1,4 +1,5 @@
 import { Box, Text, VStack } from '@chakra-ui/react'
+import FormerTimeInfo from '@components/public-meeting/FormerTimeInfo'
 import { useQuery } from '@tanstack/react-query'
 import React, { useContext, useMemo } from 'react'
 
@@ -15,8 +16,14 @@ import { getTransactionByTxHash } from '@/utils/api_helper'
 import TimeNotAvailableWarning from './TimeNotAvailableWarning'
 
 const BookingComponent = () => {
-  const { tx, showHeader } = useContext(PublicScheduleContext)
-  const { showTimeNotAvailable } = useContext(ScheduleStateContext)
+  const { tx, showHeader, selectedType } = useContext(PublicScheduleContext)
+  const {
+    showTimeNotAvailable,
+    timezone,
+    rescheduleSlot,
+    meetingSlotId,
+    showConfirm,
+  } = useContext(ScheduleStateContext)
   const { data: meetingSessions, isLoading } = useQuery({
     queryKey: ['transaction', tx],
     queryFn: () => tx && getTransactionByTxHash(tx),
@@ -40,6 +47,14 @@ const BookingComponent = () => {
       {showHeader && <ProgressHeader />}
       <SessionTypeCardPaymentInfo />
       {showTimeNotAvailable && <TimeNotAvailableWarning />}
+      {meetingSlotId && rescheduleSlot && !showConfirm && (
+        <FormerTimeInfo
+          startTime={new Date(rescheduleSlot.start)}
+          timezone={timezone.value}
+          endTime={new Date(rescheduleSlot.end)}
+          duration_minutes={selectedType?.duration_minutes}
+        />
+      )}
       {!tx ? null : isLoading ? (
         <Box mx="auto" mt={8}>
           <Loading />
