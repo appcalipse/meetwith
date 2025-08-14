@@ -19,18 +19,7 @@ const items = [
 const ProgressHeader = () => {
   const { currentStep } = useContext(PublicScheduleContext)
 
-  return (
-    <HStack w={'100%'} gap={0} alignItems="center">
-      {items.map((item, index) => (
-        <Fragment key={item.label}>
-          <ProgressHeaderItem currentStep={currentStep} {...item} />
-          {index < items.length - 1 && (
-            <Box flex={0.6} borderBottomWidth={3} borderStyle="dotted" />
-          )}
-        </Fragment>
-      ))}
-    </HStack>
-  )
+  return <HStack w={'100%'} gap={0} alignItems="center"></HStack>
 }
 
 export default ProgressHeader

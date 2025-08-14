@@ -811,7 +811,7 @@ const isSlotAvailable = async (
   meetingTypeId: string,
   txHash?: Address | null
 ): Promise<boolean> => {
-  if (meetingTypeId !== 'no_type') {
+  if (meetingTypeId !== NO_MEETING_TYPE) {
     const meetingType = await getMeetingTypeFromDB(meetingTypeId)
     const minTime = meetingType.min_notice_minutes
     if (meetingType?.plan) {
