@@ -13,10 +13,10 @@ import {
   RadioGroup,
   Spinner,
   Text,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { OnrampWebSDK } from '@onramp.money/onramp-web-sdk'
-import React, { useEffect } from 'react'
+import React from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
 import { GrDocumentTime } from 'react-icons/gr'
@@ -37,6 +37,7 @@ import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
 
+import WithdrawFundsModal from '../wallet/WithdrawFundsModal'
 import Pagination from './Pagination'
 import ReceiveFundsModal from './ReceiveFundsModal'
 import SendFundsModal from './SendFundsModal'
@@ -88,8 +89,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   } = useWallet()
 
   const transactionsPerPage = 5
-  const [onrampInstance, setOnrampInstance] =
-    React.useState<OnrampWebSDK | null>(null)
+  const { isOpen, onClose, onOpen } = useDisclosure()
   const { totalBalance, isLoading: balanceLoading } =
     useWalletBalance(selectedCurrency)
 
@@ -142,27 +142,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
       'Meeting Session'.toLowerCase().includes(searchLower)
     )
   })
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const onrampInstance = new OnrampWebSDK({
-        appId: parseInt(process.env.NEXT_PUBLIC_ONRAMP_MONEY_APP_ID!), // replace this with the appID you got during onboarding process
-        flowType: 2, // 1 -> onramp || 2 -> offramp || 3 -> Merchant checkout,
-        merchantRecognitionId: currentAccount.address,
-      })
-      setOnrampInstance(onrampInstance)
-    }
-  }, [])
 
-  const handleShowWithdrawWidget = () => {
-    if (onrampInstance) {
-      onrampInstance.show()
-      onrampInstance.on('TX_EVENTS', e => {
-        if (e.type === 'ONRAMP_WIDGET_TX_COMPLETED') {
-          // record transaction to db
-        }
-      })
-    }
-  }
+  const handleShowWithdrawWidget = () => onOpen()
 
   const ActionButton = ({ icon, label, isActive = false, onClick }: any) => (
     <VStack spacing={3}>
@@ -202,6 +183,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
   return (
     <Box maxW="685px" ml="70px" overflowY="auto" height="100%" pb={8}>
+      <WithdrawFundsModal
+        selectedNetwork={selectedNetwork}
+        isOpen={isOpen}
+        onClose={onClose}
+      />
       {/* Header */}
       <VStack spacing={2} align="start" mb={6}>
         <Text fontSize="2xl" color="neutral.0" fontWeight="700">
