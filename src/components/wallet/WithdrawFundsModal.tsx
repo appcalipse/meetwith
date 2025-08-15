@@ -78,7 +78,10 @@ const WithdrawFundsModal = (props: Props) => {
         activeChainId === 0 ||
         !selectedNetworkInfo?.chain
       )
-        return 0n
+        return {
+          balance: 0n,
+          tokenInfo: null,
+        }
 
       // Get token balance from blockchain
       const [balance, tokenInfo] = await Promise.all([
@@ -106,8 +109,11 @@ const WithdrawFundsModal = (props: Props) => {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   })
+
   const handleShowWithdrawWidget = async () => {
-    if (amount > formatUnits(data.balance, data.tokenInfo?.decimals || 6)) {
+    if (
+      amount > formatUnits(data?.balance || 0n, data?.tokenInfo?.decimals || 6)
+    ) {
       toast({
         title: 'Insufficient funds',
         description: 'You do not have enough funds to withdraw this amount',
