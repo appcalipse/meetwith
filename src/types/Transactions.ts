@@ -134,3 +134,29 @@ export interface OnrampMoneyWebhook {
   coinCode: string
   network: string
 }
+
+export interface ICoinConfig {
+  allCoinConfig: {
+    [x: string]: {
+      coinId: number
+      networks: number[]
+      coinName: string
+      coinIcon: string
+      balanceFloatPlaces: number
+      tradeFloatPlaces: number
+    }
+  }
+  networkConfig: {
+    [x: number]: {
+      addressRegex: string
+      chainName: string
+      chainSymbol: string
+      hashLink: string
+      memoRegex: string
+      nativeToken: number
+      networkId: number
+      node: number
+      startingWith: string[]
+    }
+  }
+}
