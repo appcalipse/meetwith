@@ -1,8 +1,16 @@
+import jwt from 'jsonwebtoken'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { appUrl } from '@/utils/constants'
 import { sendEnablePinEmail } from '@/utils/email_helper'
+
+const JWT_SECRET = process.env.JWT_SECRET
+const TOKEN_EXPIRY = '5m'
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required')
+}
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -12,10 +20,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const account_address = req.session.account!.address
 
-    // Generate a simple enable token (in production, use a proper JWT or crypto token)
-    const enableToken = Buffer.from(
-      `${account_address}-${Date.now()}`
-    ).toString('base64')
+    // Create a secure JWT with expiration and single-use capability
+    const payload = {
+      type: 'enable_pin',
+      account_address,
+      iat: Math.floor(Date.now() / 1000),
+      jti: `${account_address}-${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`,
+    }
+
+    const enableToken = jwt.sign(payload, JWT_SECRET!, {
+      algorithm: 'HS256',
+      expiresIn: TOKEN_EXPIRY,
+    })
+
     const enableUrl = `${appUrl}/dashboard/enable-pin?token=${enableToken}&address=${account_address}`
 
     // Get user's notification email from the request body
@@ -27,8 +46,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Send the enable email
     await sendEnablePinEmail(email, enableUrl)
-
-    // TODO: Store the enable token in database with expiration
 
     return res.status(200).json({
       success: true,

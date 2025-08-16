@@ -20,7 +20,6 @@ import {
   DiscordConnectedAccounts,
   MeetingType,
   PaidMeetingTypes,
-  PartialPaymentPreferences,
   PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,

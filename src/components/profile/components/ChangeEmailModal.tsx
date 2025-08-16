@@ -33,7 +33,6 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
   const [error, setError] = useState('')
 
   const textColor = useColorModeValue('gray.900', 'white')
-  const mutedColor = useColorModeValue('gray.600', 'gray.400')
   const primaryColor = '#F46739'
 
   // Clear inputs whenever modal closes

@@ -7,6 +7,7 @@ import CustomLoading from '@/components/CustomLoading'
 import SuccessModal from '@/components/profile/components/SuccessModal'
 import TransactionPinModal from '@/components/profile/components/TransactionPinModal'
 import { savePaymentPreferences } from '@/utils/api_helper'
+import { isTokenExpired, verifyToken } from '@/utils/jwt_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 const EnablePinPage = () => {
@@ -17,18 +18,51 @@ const EnablePinPage = () => {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [isValidToken, setIsValidToken] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [pinEnableSuccessful, setPinEnableSuccessful] = useState(false)
 
-  // Validate token and address on page load
+  // Validate JWT token on page load
   useEffect(() => {
-    if (token && address) {
-      // TODO: In production, validate the token against database
-      // For now, just check if they exist
-      setIsValidToken(true)
-      // Auto-open the enable PIN modal
-      setIsEnableModalOpen(true)
+    const validateToken = async () => {
+      if (token && address && typeof token === 'string') {
+        try {
+          // Verify the JWT token
+          const decodedToken = await verifyToken(token)
+
+          if (decodedToken && !(await isTokenExpired(token))) {
+            // Check if token type matches and address matches
+            if (
+              decodedToken.type === 'enable_pin' &&
+              decodedToken.account_address === address
+            ) {
+              setIsValidToken(true)
+              // Only open the modal if PIN enable hasn't been successful yet
+              if (!pinEnableSuccessful) {
+                setIsEnableModalOpen(true)
+              }
+            } else {
+              showErrorToast(
+                'Invalid Token',
+                'This enable link is not valid for your account'
+              )
+            }
+          } else {
+            showErrorToast(
+              'Expired Token',
+              'This enable link has expired. Please request a new one.'
+            )
+          }
+        } catch (error) {
+          showErrorToast(
+            'Invalid Token',
+            'This enable link is invalid or corrupted'
+          )
+        }
+      }
+      setIsLoading(false)
     }
-    setIsLoading(false)
-  }, [token, address])
+
+    validateToken()
+  }, [token, address, showErrorToast, pinEnableSuccessful])
 
   // Enable PIN mutation
   const enablePinMutation = useMutation(
@@ -46,6 +80,7 @@ const EnablePinPage = () => {
         showSuccessToast('Success', 'Transaction PIN enabled successfully')
         setIsEnableModalOpen(false)
         setIsSuccessModalOpen(true)
+        setPinEnableSuccessful(true) // Mark as successful
       },
       onError: (error: unknown) => {
         if (error instanceof Error) {
@@ -92,7 +127,7 @@ const EnablePinPage = () => {
         <VStack spacing={6} textAlign="center">
           <Heading color="white">Invalid or Expired Link</Heading>
           <Text color="gray.400">
-            This enable PIN link is invalid or has expired.
+            This enable PIN link is invalid or has expired. Please request a
           </Text>
           <Button onClick={handleBackToDashboard} colorScheme="primary">
             Go to Dashboard
@@ -113,7 +148,7 @@ const EnablePinPage = () => {
       {/* Enable PIN Modal */}
       <TransactionPinModal
         isOpen={isEnableModalOpen}
-        onClose={() => setIsEnableModalOpen(false)}
+        onClose={() => setIsEnableModalOpen(true)}
         onPinCreated={handlePinEnable}
         isLoading={enablePinMutation.isLoading}
         mode="create"
@@ -122,7 +157,7 @@ const EnablePinPage = () => {
       {/* Success Modal */}
       <SuccessModal
         isOpen={isSuccessModalOpen}
-        onClose={() => setIsSuccessModalOpen(false)}
+        onClose={() => setIsSuccessModalOpen(true)}
         title="Transaction PIN enabled successfully"
         message="You have successfully set up your transaction PIN for secure transactions"
         buttonText="Go back to Dashboard"
