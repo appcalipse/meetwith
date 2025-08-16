@@ -32,9 +32,16 @@ import {
 } from '@utils/errors'
 import { useRouter } from 'next/router'
 import React, { Reducer, useContext, useMemo } from 'react'
-import { prepareContractCall, sendTransaction, waitForReceipt } from 'thirdweb'
+import {
+  Bridge,
+  prepareContractCall,
+  sendTransaction,
+  toUnits,
+  waitForReceipt,
+} from 'thirdweb'
 import { useActiveWallet } from 'thirdweb/react'
 import { Wallet } from 'thirdweb/wallets'
+import { v4 } from 'uuid'
 import { Address, formatUnits } from 'viem'
 import { z } from 'zod'
 
@@ -45,6 +52,10 @@ import { AcceptedToken, ChainInfo, supportedChains } from '@/types/chains'
 import { getAccountDomainUrl } from '@/utils/calendar_manager'
 import { appUrl } from '@/utils/constants'
 import { formatCurrency, parseUnits } from '@/utils/generic_utils'
+import {
+  DEFAULT_MESSAGE_NAME,
+  subscribeToMessages,
+} from '@/utils/pub-sub.helper'
 import {
   ErrorAction,
   errorReducerSingle,
@@ -102,7 +113,7 @@ const ConfirmPaymentInfo = () => {
   const chain = supportedChains.find(
     val => val.chain === selectedChain
   ) as ChainInfo
-  const { query } = useRouter()
+  const { query, push } = useRouter()
   const NATIVE_TOKEN_ADDRESS = chain?.acceptableTokens?.find(
     acceptedToken => acceptedToken.token === token
   )?.contractAddress as Address
@@ -130,22 +141,23 @@ const ConfirmPaymentInfo = () => {
       }
       return
     }
-    if (!currentAccount?.address) {
-      openConnection(undefined, false)
-      toast({
-        title: 'Account Not Found',
-        description: 'Please connect your wallet to proceed.',
-        status: 'error',
-        duration: 5000,
-      })
-      return
-    }
+
     setLoading(true)
     try {
       const amount =
         (selectedType?.plan?.price_per_slot || 0) *
         (selectedType?.plan?.no_of_slot || 0)
       if (paymentType === PaymentType.CRYPTO) {
+        if (!currentAccount?.address) {
+          openConnection(undefined, false)
+          toast({
+            title: 'Account Not Found',
+            description: 'Please connect your wallet to proceed.',
+            status: 'error',
+            duration: 5000,
+          })
+          return
+        }
         setProgress(0)
         let currentWallet: Wallet | undefined | null = wallet
         if (needsReconnection) {
@@ -297,6 +309,32 @@ const ConfirmPaymentInfo = () => {
           return
         }
       } else {
+        const messageChannel = `onramp:${v4()}`
+        subscribeToMessages(messageChannel, DEFAULT_MESSAGE_NAME, message => {
+          // console.log('Received message:', message)
+        })
+        const preparedOnramp = await Bridge.Onramp.prepare({
+          client: thirdWebClient,
+          onramp: 'stripe',
+          chainId: chain.id,
+          tokenAddress: NATIVE_TOKEN_ADDRESS,
+          receiver: (selectedType?.plan?.payment_address ||
+            account.address) as Address,
+          amount: toUnits(amount.toString(), 6),
+          currency: 'USD',
+          purchaseData: {
+            meetingId: selectedType?.id || '',
+            messageChannel,
+            guestEmail: email,
+            guestName: name,
+          },
+        })
+        window.open(preparedOnramp.link, '_blank', 'noopener,noreferrer')
+
+        // console.log({ preparedOnramp })
+        // console.log(preparedOnramp.link) // URL to redirect the user to
+
+        // console.log(preparedOnramp.currencyAmount)
       }
     } catch (error: unknown) {
       if (error instanceof TransactionCouldBeNotFoundError) {
