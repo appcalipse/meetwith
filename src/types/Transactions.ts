@@ -38,6 +38,7 @@ export interface BaseMeetingSession {
   owner_address: string | undefined
   guest_email?: string
   guest_address?: string
+  guest_name?: string
   session_number: number
 }
 
