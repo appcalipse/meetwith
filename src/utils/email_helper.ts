@@ -965,3 +965,39 @@ export const sendEnablePinEmail = async (
   }
   return true
 }
+
+export const sendVerificationCodeEmail = async (
+  toEmail: string,
+  verificationCode: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    verificationCode,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'verification_code')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'verification_code',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}

@@ -1771,3 +1771,13 @@ export const verifyJwtToken = async (
     { token }
   )
 }
+
+export const sendVerificationCode = async (
+  email: string
+): Promise<{ success: boolean; token: string }> => {
+  return await internalFetch<{ success: boolean; token: string }>(
+    '/secure/send-verification-code',
+    'POST',
+    { email }
+  )
+}

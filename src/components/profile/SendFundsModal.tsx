@@ -3,7 +3,6 @@ import {
   Button,
   HStack,
   Icon,
-  IconButton,
   Image,
   Input,
   Modal,
@@ -11,8 +10,6 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
-  PinInput,
-  PinInputField,
   Radio,
   RadioGroup,
   Spinner,
@@ -24,7 +21,6 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { erc20Abi } from 'abitype/abis'
 import React, { useEffect, useState } from 'react'
-import { FaArrowLeft, FaEye, FaEyeSlash } from 'react-icons/fa'
 import { FiArrowLeft } from 'react-icons/fi'
 import { IoChevronDown } from 'react-icons/io5'
 import {
@@ -64,8 +60,7 @@ import { getTokenDecimals, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
 import MagicLinkModal from './components/MagicLinkModal'
-import TransactionPinModal from './components/TransactionPinModal'
-import ReceiveFundsModal from './ReceiveFundsModal'
+import TransactionVerificationModal from './components/TransactionVerificationModal'
 
 interface SendFundsModalProps {
   isOpen: boolean
@@ -109,12 +104,8 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [isPinModalOpen, setIsPinModalOpen] = useState(false)
-  const [isVerifyingPin, setIsVerifyingPin] = useState(false)
-  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false)
-  const [isSendModalOpen, setIsSendModalOpen] = useState(false)
-  const [pinInput, setPinInput] = useState('')
-  const [showPin, setShowPin] = useState(false)
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
 
   // PIN protection state
   const {
@@ -155,9 +146,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     setAmount('')
     setProgress(0)
     setIsLoading(false)
-    setIsPinModalOpen(false)
-    setPinInput('')
-    setShowPin(false)
+    setIsVerificationModalOpen(false)
     onMagicLinkClose()
     setIsSendingMagicLink(false)
     setNotificationEmail(null)
@@ -290,28 +279,62 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
       return
     }
 
-    // User has a PIN, proceed with PIN verification
-    setIsPinModalOpen(true)
+    // User has a PIN, proceed with verification
+    setIsVerificationModalOpen(true)
   }
 
-  const handlePinVerification = async (pin: string) => {
-    setIsVerifyingPin(true)
+  const handleVerificationComplete = async (
+    pin: string,
+    verificationCode: string
+  ) => {
+    setIsVerifying(true)
     try {
-      const verification = await verifyPin(pin)
-      if (verification.valid) {
-        setIsPinModalOpen(false)
-        // PIN verified, proceed with transaction
-        await processTransaction()
-      } else {
+      // First verify the PIN
+      const pinVerification = await verifyPin(pin)
+      if (!pinVerification.valid) {
         showErrorToast('Incorrect PIN', 'The PIN you entered is incorrect')
+        return
+      }
+
+      // Verify the verification code
+      try {
+        const response = await fetch('/api/secure/verify-verification-code', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            verificationCode,
+          }),
+        })
+
+        const result = await response.json()
+
+        if (!result.success) {
+          showErrorToast(
+            'Invalid Code',
+            'The verification code you entered is incorrect or expired'
+          )
+          return
+        }
+
+        // Both PIN and verification code are valid
+        setIsVerificationModalOpen(false)
+        await processTransaction()
+      } catch (error) {
+        showErrorToast(
+          'Code Verification Failed',
+          'Failed to verify the code. Please try again.'
+        )
+        return
       }
     } catch (error) {
       showErrorToast(
-        'PIN Verification Failed',
-        'Failed to verify PIN. Please try again.'
+        'Verification Failed',
+        'Failed to verify credentials. Please try again.'
       )
     } finally {
-      setIsVerifyingPin(false)
+      setIsVerifying(false)
     }
   }
 
@@ -842,135 +865,18 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
         </ModalContent>
       </Modal>
 
-      {/* Transaction PIN Verification Modal */}
-      <Modal
-        isOpen={isPinModalOpen}
-        onClose={() => {
-          setIsPinModalOpen(false)
-          setPinInput('')
-          setShowPin(false)
-        }}
-        size="md"
-        isCentered
-      >
-        <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
-        <ModalContent
-          bg="dark.700"
-          borderRadius="12px"
-          p={8}
-          maxW="592px"
-          width="592px"
-        >
-          <ModalBody p={0}>
-            <VStack spacing={6} align="stretch">
-              {/* Header with back button */}
-              <HStack spacing={3} mb={2}>
-                <Button
-                  variant="ghost"
-                  p={0}
-                  minW="auto"
-                  onClick={() => setIsPinModalOpen(false)}
-                  _hover={{ bg: 'transparent' }}
-                >
-                  <FiArrowLeft color="#F46739" size={20} />
-                </Button>
-                <Text fontSize="sm" color="primary.400" fontWeight="medium">
-                  Back
-                </Text>
-              </HStack>
-
-              {/* Title and description */}
-              <VStack align="flex-start" spacing={2}>
-                <Text fontSize="2xl" fontWeight="bold" color="white">
-                  Enter transaction pin
-                </Text>
-                <Text fontSize="sm" color="gray.400">
-                  Enter your transaction PIN to confirm sending funds
-                </Text>
-              </VStack>
-
-              {/* PIN Input */}
-              <VStack align="flex-start" spacing={3}>
-                <Text fontSize="sm" fontWeight="medium" color="white">
-                  Transaction PIN
-                </Text>
-                <HStack spacing={3}>
-                  <PinInput
-                    value={pinInput}
-                    onChange={setPinInput}
-                    size="lg"
-                    type="number"
-                    mask={!showPin}
-                  >
-                    <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
-                    />
-                    <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
-                    />
-                    <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
-                    />
-                    <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
-                    />
-                    <PinInputField
-                      borderColor="neutral.400"
-                      _hover={{ borderColor: 'gray.400' }}
-                    />
-                  </PinInput>
-                  <IconButton
-                    aria-label={showPin ? 'Hide PIN' : 'Show PIN'}
-                    icon={showPin ? <FaEyeSlash /> : <FaEye />}
-                    onClick={() => setShowPin(!showPin)}
-                    variant="ghost"
-                    size="sm"
-                    color="neutral.400"
-                    _hover={{ bg: 'transparent', color: 'white' }}
-                  />
-                </HStack>
-              </VStack>
-
-              {/* Action buttons */}
-              <HStack spacing={4} pt={4} justifyContent="space-between" pb={10}>
-                <Button
-                  bg="primary.300"
-                  color="dark.800"
-                  _hover={{ bg: 'primary.400' }}
-                  onClick={() => handlePinVerification(pinInput)}
-                  size="md"
-                  borderRadius="8px"
-                  px="16px"
-                  py="12px"
-                  isLoading={isVerifyingPin}
-                  loadingText="Verifying PIN..."
-                  isDisabled={isVerifyingPin || pinInput.length !== 5}
-                >
-                  Verify PIN & Send Funds
-                </Button>
-                <Button
-                  variant="outline"
-                  border="1px solid"
-                  bg="neutral.825"
-                  borderColor="primary.300"
-                  color="primary.300"
-                  onClick={() => setIsPinModalOpen(false)}
-                  size="md"
-                  borderRadius="8px"
-                  px="16px"
-                  py="12px"
-                >
-                  Cancel
-                </Button>
-              </HStack>
-            </VStack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+      {/* Transaction Verification Modal */}
+      <TransactionVerificationModal
+        isOpen={isVerificationModalOpen}
+        onClose={() => setIsVerificationModalOpen(false)}
+        onVerificationComplete={handleVerificationComplete}
+        isLoading={isVerifying}
+        userEmail={
+          notificationSubscriptions?.notification_types?.find(
+            (sub: any) => sub.channel === 'email' && !sub.disabled
+          )?.destination || ''
+        }
+      />
 
       {/* Magic Link Modal for PIN Protection */}
       <MagicLinkModal

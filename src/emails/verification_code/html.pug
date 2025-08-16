@@ -1,0 +1,117 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title Your Transaction Verification Code
+    style.
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        padding: 40px 20px;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+      .logo {
+        font-size: 24px;
+        font-weight: bold;
+        color: #F46739;
+        margin-bottom: 10px;
+      }
+      .title {
+        font-size: 28px;
+        font-weight: bold;
+        color: #333333;
+        margin-bottom: 20px;
+      }
+      .subtitle {
+        font-size: 16px;
+        color: #666666;
+        margin-bottom: 30px;
+        line-height: 1.5;
+      }
+      .verification-code {
+        background-color: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 30px;
+        text-align: center;
+        margin: 30px 0;
+      }
+      .code {
+        font-size: 48px;
+        font-weight: bold;
+        color: #F46739;
+        letter-spacing: 8px;
+        font-family: 'Courier New', monospace;
+        margin: 20px 0;
+      }
+      .warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 30px 0;
+      }
+      .warning-title {
+        font-weight: bold;
+        color: #856404;
+        margin-bottom: 10px;
+      }
+      .warning-text {
+        color: #856404;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #e9ecef;
+        color: #999999;
+        font-size: 14px;
+      }
+      .button {
+        display: inline-block;
+        background-color: #F46739;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        margin: 20px 0;
+      }
+
+  body
+    .container
+      .header
+        .logo MeetWith
+        .title Transaction Verification Code
+        .subtitle
+          | You're about to send funds from your wallet. 
+          | Use the verification code below to complete your transaction.
+
+      .verification-code
+        .code= verificationCode
+
+      .warning
+        .warning-title ⚠️ Security Notice
+        .warning-text
+          | This verification code will expire in 5 minutes. 
+          | Never share this code with anyone. 
+          | MeetWith will never ask for your verification code via phone or email.
+
+      .footer
+        p This email was sent to verify a transaction on your MeetWith account.
+        p If you didn't request this code, please ignore this email and contact support.
+        p
+          a(href=appUrl style="color: #F46739; text-decoration: none;") Visit MeetWith 
