@@ -14,7 +14,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     )
 
     if (!discordUserInfo) {
-      return res.status(401).send('Unauthorized')
+      return res.status(400).send('No Discord user information found')
     }
 
     return res.status(200).json(discordUserInfo)
