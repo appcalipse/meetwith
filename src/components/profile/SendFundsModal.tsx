@@ -50,6 +50,7 @@ import {
   getPaymentPreferences,
   sendEnablePinLink,
   verifyPin,
+  verifyVerificationCode,
 } from '@/utils/api_helper'
 import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 import { TokenType } from '@/utils/constants/meeting-types'
@@ -251,7 +252,8 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
       // User doesn't have a PIN, show magic link modal
       if (notificationSubscriptions?.notification_types) {
         const emailSub = notificationSubscriptions.notification_types.find(
-          (sub: any) => sub.channel === 'email' && !sub.disabled
+          (sub: { channel: string; disabled: boolean }) =>
+            sub.channel === 'email' && !sub.disabled
         )
 
         if (emailSub?.destination) {
@@ -291,17 +293,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
       // Verify the verification code
       try {
-        const response = await fetch('/api/secure/verify-verification-code', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            verificationCode,
-          }),
-        })
-
-        const result = await response.json()
+        const result = await verifyVerificationCode(verificationCode)
 
         if (!result.success) {
           showErrorToast(
@@ -866,7 +858,8 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
         isLoading={isVerifying}
         userEmail={
           notificationSubscriptions?.notification_types?.find(
-            (sub: any) => sub.channel === 'email' && !sub.disabled
+            (sub: { channel: string; disabled: boolean }) =>
+              sub.channel === 'email' && !sub.disabled
           )?.destination || ''
         }
       />
