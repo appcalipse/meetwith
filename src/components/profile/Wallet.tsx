@@ -1394,10 +1394,7 @@ const Wallet: React.FC<WalletProps> = () => {
       <SendFundsModal
         isOpen={isSendModalOpen}
         onClose={() => setIsSendModalOpen(false)}
-        selectedNetwork={
-          networks.find(n => n.chainId === getChainId(selectedNetwork))?.name ||
-          'Arbitrum'
-        }
+        selectedNetwork={selectedNetwork}
         isFromTokenView={showCryptoDetails && selectedCrypto !== null}
         selectedCryptoNetwork={
           showCryptoDetails && selectedCrypto !== null

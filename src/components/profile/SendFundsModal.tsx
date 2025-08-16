@@ -65,7 +65,7 @@ import TransactionVerificationModal from './components/TransactionVerificationMo
 interface SendFundsModalProps {
   isOpen: boolean
   onClose: () => void
-  selectedNetwork?: string
+  selectedNetwork: SupportedChain
   isFromTokenView?: boolean
   selectedCryptoNetwork?: string
 }
@@ -93,11 +93,8 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     return acc
   }, {} as Record<string, SupportedChain>)
 
-  const [sendNetwork, setSendNetwork] = useState<SupportedChain>(
-    NETWORK_CONFIG[selectedNetwork as keyof typeof NETWORK_CONFIG] ||
-      supportedPaymentChains[0] ||
-      SupportedChain.CELO
-  )
+  const [sendNetwork, setSendNetwork] =
+    useState<SupportedChain>(selectedNetwork)
   const [recipientAddress, setRecipientAddress] = useState('')
   const [amount, setAmount] = useState('')
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false)
@@ -155,11 +152,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
   // Update sendNetwork when selectedNetwork prop changes
   useEffect(() => {
-    const newNetwork =
-      NETWORK_CONFIG[selectedNetwork as keyof typeof NETWORK_CONFIG] ||
-      supportedPaymentChains[0] ||
-      SupportedChain.CELO
-    setSendNetwork(newNetwork)
+    setSendNetwork(selectedNetwork)
   }, [selectedNetwork])
 
   // Get chain info and available tokens
