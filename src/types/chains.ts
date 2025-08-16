@@ -24,10 +24,11 @@ export interface ChainInfo {
   testnet: boolean
   nativeTokenSymbol: string
   domainContractAddess: string
-  image: string
   registarContractAddress: string
-  acceptableTokens: AcceptedTokenInfo[]
   blockExplorerUrl: string
+  image: string
+  acceptableTokens: AcceptedTokenInfo[]
+  walletSupported?: boolean
 }
 
 export enum SupportedChain {
@@ -59,6 +60,9 @@ export enum AcceptedToken {
 export interface AcceptedTokenInfo {
   token: AcceptedToken
   contractAddress: string
+  displayName?: string
+  icon?: string
+  walletSupported?: boolean // Flag for wallet support
 }
 export const getTokenIcon = (token: AcceptedToken) => {
   switch (token) {
@@ -301,26 +305,42 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '', // no applicable registar contract on Celo
     blockExplorerUrl: 'https://explorer.celo.org',
     image: '/assets/chains/Celo.svg',
+    walletSupported: true,
     acceptableTokens: [
       {
         token: AcceptedToken.CELO,
         contractAddress: '0x471EcE3750Da237f93B8E339c536989b8978a438',
+        displayName: 'Celo',
+        icon: '/assets/chains/Celo.svg',
+        walletSupported: false,
       },
       {
         token: AcceptedToken.CUSD,
         contractAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a', // cUSD
+        displayName: 'Celo Dollar',
+        icon: '/assets/tokens/CUSD.png',
+        walletSupported: true,
       },
       {
         token: AcceptedToken.USDC,
         contractAddress: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C',
+        displayName: 'US Dollar Coin',
+        icon: '/assets/tokens/USDC.svg',
+        walletSupported: true,
       },
       {
         token: AcceptedToken.USDT,
         contractAddress: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',
+        displayName: 'Tether',
+        icon: '/assets/tokens/USDT.svg',
+        walletSupported: true,
       },
       {
         token: AcceptedToken.CEUR, // cEUR
         contractAddress: '0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73',
+        displayName: 'Celo Euro',
+        icon: '/assets/chains/Celo.svg',
+        walletSupported: false,
       },
     ],
   },
@@ -361,18 +381,28 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
     blockExplorerUrl: 'https://arbiscan.io',
     image: '/assets/chains/Arbitrum.svg',
+    walletSupported: true, // Supported in wallet
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
         contractAddress: zeroAddress,
+        displayName: 'Ethereum',
+        icon: '/assets/chains/ethereum.svg',
+        walletSupported: false,
       },
       {
         token: AcceptedToken.USDC,
-        contractAddress: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
+        contractAddress: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', // Arbitrum-native USDC :contentReference[oaicite:1]{index_1}
+        displayName: 'US Dollar Coin',
+        icon: '/assets/tokens/USDC.svg',
+        walletSupported: true,
       },
       {
         token: AcceptedToken.USDT,
         contractAddress: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+        displayName: 'Tether',
+        icon: '/assets/tokens/USDT.svg',
+        walletSupported: true,
       },
     ],
   },
@@ -380,7 +410,7 @@ export const supportedChains: ChainInfo[] = [
     chain: SupportedChain.ARBITRUM_SEPOLIA,
     thirdwebChain: arbitrumSepolia,
     id: 421614,
-    name: 'Arbitrum',
+    name: 'Arbitrum Sepolia',
     fullName: 'Arbitrum Sepolia',
     rpcUrl: 'https://sepolia.arbiscan.io/rpc',
     testnet: true,
@@ -389,14 +419,21 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
     blockExplorerUrl: 'https://sepolia.arbiscan.io',
     image: '/assets/chains/Arbitrum.svg',
+    walletSupported: true, // Supported in wallet
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
         contractAddress: zeroAddress,
+        displayName: 'Ethereum',
+        icon: '/assets/chains/ethereum.svg',
+        walletSupported: false,
       },
       {
         token: AcceptedToken.USDC,
-        contractAddress: '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
+        contractAddress: '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d', // Arbitrum-native USDC :contentReference[oaicite:1]{index_1}
+        displayName: 'US Dollar Coin',
+        icon: '/assets/tokens/USDC.svg',
+        walletSupported: true,
       },
     ],
   },

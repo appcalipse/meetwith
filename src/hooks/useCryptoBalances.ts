@@ -2,15 +2,7 @@ import { useQueries } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import {
-  AcceptedToken,
-  getChainInfo,
-  getTokenIcon,
-  getTokenName,
-  getTokenSymbol,
-  SupportedChain,
-} from '@/types/chains'
-import { supportedPaymentChains } from '@/utils/constants/meeting-types'
+import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
 import { zeroAddress } from '@/utils/generic_utils'
 import { getCryptoTokenBalance } from '@/utils/token.service'
 import { CryptoConfig } from '@/utils/walletConfig'
@@ -18,44 +10,43 @@ import { CryptoConfig } from '@/utils/walletConfig'
 import { useCryptoConfig } from './useCryptoConfig'
 
 interface UseCryptoBalancesProps {
-  selectedNetwork: string
+  selectedChain: SupportedChain
 }
 
 export const useCryptoBalances = ({
-  selectedNetwork,
+  selectedChain,
 }: UseCryptoBalancesProps) => {
   const { data: cryptoConfig, isLoading: isConfigLoading } = useCryptoConfig()
   const currentAccount = useAccountContext()
 
   const config = cryptoConfig || []
 
-  // Map network display names to SupportedChain enum
-  const networkMap: Record<string, SupportedChain> = {
-    Celo: SupportedChain.CELO,
-    Arbitrum: SupportedChain.ARBITRUM,
-    'Arbitrum Sepolia': SupportedChain.ARBITRUM_SEPOLIA,
-  }
+  const chainInfo = useMemo(() => {
+    return supportedChains.find(chain => chain.chain === selectedChain)
+  }, [selectedChain])
 
-  const selectedChain = networkMap[selectedNetwork]
-  const chainInfo = selectedChain ? getChainInfo(selectedChain) : null
+  // Filter chains to only include wallet-supported ones
+  const walletSupportedChains = useMemo(() => {
+    return supportedChains.filter(chain => chain.walletSupported)
+  }, [])
+
+  // Map network display names to SupportedChain enum using chains.ts data
+  const networkMap: Record<string, SupportedChain> = useMemo(() => {
+    const map: Record<string, SupportedChain> = {}
+    walletSupportedChains.forEach(chain => {
+      map[chain.name] = chain.chain
+    })
+    return map
+  }, [walletSupportedChains])
 
   const chainTokens = useMemo(() => {
-    if (!chainInfo || !supportedPaymentChains.includes(selectedChain)) {
+    if (!chainInfo) {
       return []
     }
 
     return chainInfo.acceptableTokens
       .filter(tokenInfo => tokenInfo.contractAddress !== zeroAddress) // Exclude native tokens
-      .filter(tokenInfo => {
-        // exclude CELO and CEUR tokens
-        if (selectedChain === SupportedChain.CELO) {
-          return (
-            tokenInfo.token !== AcceptedToken.CELO &&
-            tokenInfo.token !== AcceptedToken.CEUR
-          )
-        }
-        return true
-      })
+      .filter(tokenInfo => tokenInfo.walletSupported) // Only include wallet-supported tokens
       .map(tokenInfo => ({
         token: tokenInfo.token,
         tokenAddress: tokenInfo.contractAddress,
@@ -92,13 +83,7 @@ export const useCryptoBalances = ({
 
   // Combine crypto assets with real balances
   const cryptoAssetsWithBalances = useMemo(() => {
-    if (
-      !config ||
-      config.length === 0 ||
-      isConfigLoading ||
-      !chainInfo ||
-      !supportedPaymentChains.includes(selectedChain)
-    ) {
+    if (!config || config.length === 0 || isConfigLoading || !chainInfo) {
       return []
     }
 
@@ -110,47 +95,38 @@ export const useCryptoBalances = ({
 
       // Find the corresponding config item based on token type
       const configItem = config.find((item: CryptoConfig) => {
-        switch (tokenInfo.token) {
-          case AcceptedToken.CUSD:
-            return item.symbol === 'cUSD'
-          case AcceptedToken.USDC:
-            return item.symbol === 'USDC'
-          case AcceptedToken.USDT:
-            return item.symbol === 'USDT'
-          default:
-            return false
-        }
+        return item.symbol === tokenInfo.token
       }) as CryptoConfig | undefined
 
       const tokenAddress = tokenInfo.tokenAddress
       const chainId = tokenInfo.chainId
 
       return {
-        name: configItem?.name || getTokenName(tokenInfo.token),
-        symbol: configItem?.symbol || getTokenSymbol(tokenInfo.token),
-        icon: configItem?.icon || getTokenIcon(tokenInfo.token) || '',
+        name: configItem?.name || tokenInfo.token,
+        symbol: configItem?.symbol || tokenInfo.token,
+        icon: configItem?.icon || '',
         price: configItem?.price || '0',
         tokenAddress,
         chainId,
         balance: balance
-          ? `${balance.toLocaleString()} ${getTokenSymbol(tokenInfo.token)}`
-          : `0 ${getTokenSymbol(tokenInfo.token)}`,
+          ? `${balance.toLocaleString()} ${tokenInfo.token}`
+          : `0 ${tokenInfo.token}`,
         usdValue: balance ? `$${balance.toLocaleString()}` : '$0',
         fullBalance: balance ? balance.toString() : '0',
         currencyIcon: configItem?.icon,
-        networkName: selectedNetwork,
+        networkName: chainInfo?.name || selectedChain,
         isLoading: isLoading || isConfigLoading,
         error,
       }
     })
   }, [
-    selectedNetwork,
+    selectedChain,
     config,
     isConfigLoading,
     chainInfo,
     chainTokens,
     balanceQueries,
-    selectedChain,
+    networkMap,
   ])
 
   return {
@@ -158,10 +134,9 @@ export const useCryptoBalances = ({
     balances: {
       ...chainTokens.reduce((acc, tokenInfo, index) => {
         const balanceQuery = balanceQueries[index]
-        const key = `${tokenInfo.tokenAddress.toLowerCase()}${selectedNetwork.replace(
-          /\s+/g,
-          ''
-        )}Balance`
+        const key = `${tokenInfo.tokenAddress.toLowerCase()}${
+          chainInfo?.name?.replace(/\s+/g, '') || selectedChain
+        }Balance`
         acc[key] = balanceQuery?.data || { balance: 0 }
         return acc
       }, {} as Record<string, { balance: number }>),

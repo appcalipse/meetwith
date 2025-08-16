@@ -90,6 +90,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
     () => getPaymentPreferences(),
     {
       enabled: !!currentAccount.address,
+      refetchOnMount: true,
     }
   )
 
