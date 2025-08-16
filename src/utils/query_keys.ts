@@ -46,4 +46,8 @@ export default class QueryKeys {
   ) {
     return ['chainLinkAggregator', feedAddress, chainId, method]
   }
+
+  static exchangeRate(currency: string) {
+    return ['exchangeRate', currency]
+  }
 }
