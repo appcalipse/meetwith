@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react'
 
-import { getNetworkDisplayName } from '@/types/chains'
+import { SupportedChain, supportedChains } from '@/types/chains'
 import { Transaction } from '@/types/Transactions'
 import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 
@@ -39,8 +39,8 @@ interface WalletContextType {
   // Selection states
   selectedCurrency: string
   setSelectedCurrency: (currency: string) => void
-  selectedNetwork: string
-  setSelectedNetwork: (network: string) => void
+  selectedNetwork: SupportedChain
+  setSelectedNetwork: (network: SupportedChain) => void
   selectedTransaction: Transaction | null
   setSelectedTransaction: (transaction: Transaction | null) => void
   selectedCrypto: CryptoAsset | null
@@ -84,11 +84,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Selection states
   const [selectedCurrency, setSelectedCurrency] = useState('USD')
-  const [selectedNetwork, setSelectedNetwork] = useState(() => {
-    const firstSupportedChain = supportedPaymentChains[0]
-    return firstSupportedChain
-      ? getNetworkDisplayName(firstSupportedChain)
-      : 'Arbitrum'
+  const [selectedNetwork, setSelectedNetwork] = useState<SupportedChain>(() => {
+    const firstWalletChain = supportedChains.find(
+      chain =>
+        chain.walletSupported && supportedPaymentChains.includes(chain.chain)
+    )
+    return firstWalletChain
+      ? firstWalletChain.chain
+      : SupportedChain.ARBITRUM_SEPOLIA
   })
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null)

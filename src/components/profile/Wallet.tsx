@@ -39,6 +39,7 @@ import { useWalletTransactions } from '@/hooks/useWalletTransactions'
 import { AccountContext } from '@/providers/AccountProvider'
 import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
+import { getChainId, supportedChains } from '@/types/chains'
 import { getPaymentPreferences } from '@/utils/api_helper'
 import { sendEnablePinLink } from '@/utils/api_helper'
 import { getNotificationSubscriptions } from '@/utils/api_helper'
@@ -169,7 +170,9 @@ const Wallet: React.FC<WalletProps> = () => {
   const networks = NETWORKS
 
   // Use the centralized crypto balances hook
-  const { cryptoAssetsWithBalances } = useCryptoBalances({ selectedNetwork })
+  const { cryptoAssetsWithBalances } = useCryptoBalances({
+    selectedChain: selectedNetwork,
+  })
 
   const filteredTransactions = transactions.filter(tx => {
     if (!searchQuery) return true
@@ -900,14 +903,24 @@ const Wallet: React.FC<WalletProps> = () => {
                     borderColor="neutral.400"
                   >
                     <Image
-                      src={networks.find(n => n.name === selectedNetwork)?.icon}
-                      alt={selectedNetwork}
+                      src={
+                        networks.find(
+                          n => n.chainId === getChainId(selectedNetwork)
+                        )?.icon
+                      }
+                      alt={
+                        networks.find(
+                          n => n.chainId === getChainId(selectedNetwork)
+                        )?.name || selectedNetwork
+                      }
                       borderRadius="full"
                       w="20px"
                       h="20px"
                     />
                     <Text color="white" fontSize="16px" fontWeight="700" pr={4}>
-                      {selectedNetwork}
+                      {networks.find(
+                        n => n.chainId === getChainId(selectedNetwork)
+                      )?.name || selectedNetwork}
                     </Text>
                     <Icon
                       as={IoChevronDown}
@@ -1323,12 +1336,25 @@ const Wallet: React.FC<WalletProps> = () => {
             Choose Network
           </ModalHeader>
           <ModalBody pb={6}>
-            <RadioGroup value={selectedNetwork} onChange={setSelectedNetwork}>
+            <RadioGroup
+              value={getChainId(selectedNetwork).toString()}
+              onChange={value => {
+                const chain = networks.find(n => n.chainId === parseInt(value))
+                if (chain) {
+                  const supportedChain = supportedChains.find(
+                    c => c.name === chain.name
+                  )
+                  if (supportedChain) {
+                    setSelectedNetwork(supportedChain.chain)
+                  }
+                }
+              }}
+            >
               <VStack spacing={6} align="stretch">
                 {networks.map(network => (
                   <Radio
                     key={network.name}
-                    value={network.name}
+                    value={network.chainId.toString()}
                     colorScheme="orange"
                     size="lg"
                     variant="filled"
@@ -1368,7 +1394,10 @@ const Wallet: React.FC<WalletProps> = () => {
       <SendFundsModal
         isOpen={isSendModalOpen}
         onClose={() => setIsSendModalOpen(false)}
-        selectedNetwork={selectedNetwork}
+        selectedNetwork={
+          networks.find(n => n.chainId === getChainId(selectedNetwork))?.name ||
+          'Arbitrum'
+        }
         isFromTokenView={showCryptoDetails && selectedCrypto !== null}
         selectedCryptoNetwork={
           showCryptoDetails && selectedCrypto !== null
