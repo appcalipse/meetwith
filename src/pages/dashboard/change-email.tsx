@@ -10,6 +10,7 @@ import {
   getNotificationSubscriptions,
   setNotificationSubscriptions,
 } from '@/utils/api_helper'
+import { isTokenExpired, verifyToken } from '@/utils/jwt_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 const ChangeEmailPage = () => {
@@ -19,20 +20,52 @@ const ChangeEmailPage = () => {
   const [isChangeEmailModalOpen, setIsChangeEmailModalOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [isValidToken, setIsValidToken] = useState(false)
-  const [newEmail, setNewEmail] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [emailChangeSuccessful, setEmailChangeSuccessful] = useState(false)
 
-  // Validate token and address on page load
+  // Validate JWT token on page load
   useEffect(() => {
-    if (token && address) {
-      // TODO: In production, validate the token against database
-      // For now, just check if they exist
-      setIsValidToken(true)
-      // Auto-open the change email modal
-      setIsChangeEmailModalOpen(true)
+    const validateToken = async () => {
+      if (token && address && typeof token === 'string') {
+        try {
+          // Verify the JWT token
+          const decodedToken = await verifyToken(token)
+
+          if (decodedToken && !(await isTokenExpired(token))) {
+            // Check if token type matches and address matches
+            if (
+              decodedToken.type === 'change_email' &&
+              decodedToken.account_address === address
+            ) {
+              setIsValidToken(true)
+              // Only open the modal if email change hasn't been successful yet
+              if (!emailChangeSuccessful) {
+                setIsChangeEmailModalOpen(true)
+              }
+            } else {
+              showErrorToast(
+                'Invalid Token',
+                'This change email link is not valid for your account'
+              )
+            }
+          } else {
+            showErrorToast(
+              'Expired Token',
+              'This change email link has expired. Please request a new one.'
+            )
+          }
+        } catch (error) {
+          showErrorToast(
+            'Invalid Token',
+            'This change email link is invalid or corrupted'
+          )
+        }
+      }
+      setIsLoading(false)
     }
-    setIsLoading(false)
-  }, [token, address])
+
+    validateToken()
+  }, [token, address, showErrorToast, emailChangeSuccessful])
 
   // Change email mutation
   const changeEmailMutation = useMutation(
@@ -62,6 +95,7 @@ const ChangeEmailPage = () => {
         showSuccessToast('Success', 'Email updated successfully')
         setIsChangeEmailModalOpen(false)
         setIsSuccessModalOpen(true)
+        setEmailChangeSuccessful(true) // Mark email change as successful
       },
       onError: (error: unknown) => {
         if (error instanceof Error) {
@@ -75,7 +109,6 @@ const ChangeEmailPage = () => {
   )
 
   const handleEmailChange = async (email: string) => {
-    setNewEmail(email)
     changeEmailMutation.mutate(email)
   }
 
@@ -109,7 +142,8 @@ const ChangeEmailPage = () => {
         <VStack spacing={6} textAlign="center">
           <Heading color="white">Invalid or Expired Link</Heading>
           <Text color="gray.400">
-            This change email link is invalid or has expired.
+            This change email link is invalid or has expired. Please request a
+            new one.
           </Text>
           <Button onClick={handleBackToDashboard} colorScheme="primary">
             Go to Dashboard

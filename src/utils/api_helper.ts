@@ -1731,15 +1731,13 @@ export const sendResetPinLink = async (
 }
 
 export const sendChangeEmailLink = async (
-  currentEmail: string,
-  newEmail: string
+  currentEmail: string
 ): Promise<{ success: boolean; message: string }> => {
   return await internalFetch<{ success: boolean; message: string }>(
     '/secure/send-change-email-link',
     'POST',
     {
       currentEmail,
-      newEmail,
     }
   )
 }
@@ -1753,5 +1751,23 @@ export const sendEnablePinLink = async (
     {
       email,
     }
+  )
+}
+
+interface TokenPayload {
+  type: 'reset_pin' | 'enable_pin' | 'change_email'
+  account_address: string
+  iat: number
+  exp: number
+  jti: string
+}
+
+export const verifyJwtToken = async (
+  token: string
+): Promise<{ success: boolean; token: TokenPayload }> => {
+  return await internalFetch<{ success: boolean; token: TokenPayload }>(
+    '/secure/verify-token',
+    'POST',
+    { token }
   )
 }

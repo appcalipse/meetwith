@@ -726,14 +726,14 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                 await sendEnablePinLink(notificationEmail)
                 showSuccessToast(
                   'Enable PIN Link Sent',
-                  'A magic link has been sent to your email to set up your transaction PIN'
+                  'A magic link has been sent to your email to set up your transaction PIN. It will expire in 5 minutes.'
                 )
               } else if (pinAction === 'reset') {
                 // Reset PIN flow
                 await sendResetPinLink(notificationEmail)
                 showSuccessToast(
                   'Reset PIN Link Sent',
-                  'A magic link has been sent to your email for this action'
+                  'A magic link has been sent to your email for this action. It will expire in 5 minutes.'
                 )
               }
               onMagicLinkClose()
@@ -773,7 +773,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
         message={
           pinAction === 'enable'
             ? 'You have successfully set up your transaction PIN for secure transactions'
-            : 'You have successfully updated your account & notification email'
+            : 'You have successfully reset your transaction PIN for secure transactions'
         }
         buttonText="Go back to Dashboard"
         onButtonClick={() => {

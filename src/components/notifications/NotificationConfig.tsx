@@ -372,12 +372,12 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
       <ChangeEmailModal
         isOpen={isChangeEmailModalOpen}
         onClose={() => setIsChangeEmailModalOpen(false)}
-        onEmailChange={async newEmail => {
+        onEmailChange={async () => {
           try {
-            await sendChangeEmailLink(email, newEmail)
+            await sendChangeEmailLink(email)
             showSuccessToast(
               'Success',
-              'A magic link has been sent to your email for this action'
+              'A magic link has been sent to your email for this action. It will expire in 5 minutes.'
             )
             setIsChangeEmailModalOpen(false)
           } catch (error) {
@@ -398,10 +398,10 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
           setIsSendingMagicLink(true)
           try {
             // Send change email link to current email
-            await sendChangeEmailLink(email, email)
+            await sendChangeEmailLink(email)
             showSuccessToast(
               'Magic Link Sent',
-              'A magic link has been sent to your email for this action'
+              'A magic link has been sent to your email for this action. It will expire in 5 minutes.'
             )
             setIsMagicLinkModalOpen(false)
           } catch (error) {
