@@ -3,6 +3,7 @@ import {
   Button,
   HStack,
   Icon,
+  IconButton,
   Image,
   Input,
   Modal,
@@ -10,16 +11,20 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
+  PinInput,
+  PinInputField,
   Radio,
   RadioGroup,
   Spinner,
   Stack,
   Text,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { erc20Abi } from 'abitype/abis'
 import React, { useEffect, useState } from 'react'
+import { FaArrowLeft, FaEye, FaEyeSlash } from 'react-icons/fa'
 import { FiArrowLeft } from 'react-icons/fi'
 import { IoChevronDown } from 'react-icons/io5'
 import {
@@ -43,7 +48,13 @@ import {
   SupportedChain,
   supportedChains,
 } from '@/types/chains'
-import { createCryptoTransaction } from '@/utils/api_helper'
+import {
+  createCryptoTransaction,
+  getNotificationSubscriptions,
+  getPaymentPreferences,
+  sendEnablePinLink,
+  verifyPin,
+} from '@/utils/api_helper'
 import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 import { TokenType } from '@/utils/constants/meeting-types'
 import { parseUnits, zeroAddress } from '@/utils/generic_utils'
@@ -51,6 +62,10 @@ import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { useToastHelpers } from '@/utils/toasts'
 import { getTokenDecimals, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
+
+import MagicLinkModal from './components/MagicLinkModal'
+import TransactionPinModal from './components/TransactionPinModal'
+import ReceiveFundsModal from './ReceiveFundsModal'
 
 interface SendFundsModalProps {
   isOpen: boolean
@@ -76,14 +91,6 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   selectedNetwork,
   isFromTokenView = false,
 }) => {
-  const handleClose = () => {
-    setSelectedToken(null)
-    setRecipientAddress('')
-    setAmount('')
-    setProgress(0)
-    setIsLoading(false)
-    onClose()
-  }
   const [selectedToken, setSelectedToken] = useState<Token | null>(null)
 
   const NETWORK_CONFIG = supportedPaymentChains.reduce((acc, chain) => {
@@ -102,10 +109,60 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false)
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false)
+  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false)
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const [showPin, setShowPin] = useState(false)
+
+  // PIN protection state
+  const {
+    isOpen: isMagicLinkOpen,
+    onOpen: onMagicLinkOpen,
+    onClose: onMagicLinkClose,
+  } = useDisclosure()
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
+  const [notificationEmail, setNotificationEmail] = useState<string | null>(
+    null
+  )
 
   const activeWallet = useActiveWallet()
   const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
   const queryClient = useQueryClient()
+
+  // Fetch payment preferences to check if PIN is set
+  const { data: paymentPreferences } = useQuery(
+    ['paymentPreferences'],
+    () => getPaymentPreferences(),
+    {
+      enabled: isOpen,
+    }
+  )
+
+  // Fetch notification subscriptions to get email
+  const { data: notificationSubscriptions } = useQuery(
+    ['notificationSubscriptions'],
+    () => getNotificationSubscriptions(),
+    {
+      enabled: isOpen,
+    }
+  )
+
+  const handleClose = () => {
+    setSelectedToken(null)
+    setRecipientAddress('')
+    setAmount('')
+    setProgress(0)
+    setIsLoading(false)
+    setIsPinModalOpen(false)
+    setPinInput('')
+    setShowPin(false)
+    onMagicLinkClose()
+    setIsSendingMagicLink(false)
+    setNotificationEmail(null)
+    onClose()
+  }
 
   // Update sendNetwork when selectedNetwork prop changes
   useEffect(() => {
@@ -168,7 +225,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
     } catch (error) {
       console.error('Error fetching token decimals:', error)
       showErrorToast(
-        'Token Error',
+        'Token Information Failed',
         'Failed to get token information. Please try again.'
       )
     }
@@ -177,19 +234,25 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   const handleSend = async () => {
     if (!selectedToken || !recipientAddress || !amount) {
       showErrorToast(
-        'Missing Information',
+        'Missing Required Fields',
         'Please fill in all required fields'
       )
       return
     }
 
     if (!isValidAddress(recipientAddress)) {
-      showErrorToast('Invalid Address', 'Please enter a valid wallet address')
+      showErrorToast(
+        'Invalid Wallet Address',
+        'Please enter a valid wallet address'
+      )
       return
     }
 
     if (!isValidAmount(amount)) {
-      showErrorToast('Invalid Amount', 'Please enter a valid amount')
+      showErrorToast(
+        'Invalid Amount',
+        'Please enter a valid amount greater than 0'
+      )
       return
     }
 
@@ -198,6 +261,63 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
         'Wallet Not Connected',
         'Please connect your wallet to send funds'
       )
+      return
+    }
+
+    // Check if user has a transaction PIN set up
+    if (!paymentPreferences?.hasPin) {
+      // User doesn't have a PIN, show magic link modal
+      if (notificationSubscriptions?.notification_types) {
+        const emailSub = notificationSubscriptions.notification_types.find(
+          (sub: any) => sub.channel === 'email' && !sub.disabled
+        )
+
+        if (emailSub?.destination) {
+          setNotificationEmail(emailSub.destination)
+          onMagicLinkOpen()
+        } else {
+          showErrorToast(
+            'Notification Email Required',
+            'You need to set up a notification email first to enable your transaction PIN'
+          )
+        }
+      } else {
+        showErrorToast(
+          'Notification Email Required',
+          'You need to set up a notification email first to enable your transaction PIN'
+        )
+      }
+      return
+    }
+
+    // User has a PIN, proceed with PIN verification
+    setIsPinModalOpen(true)
+  }
+
+  const handlePinVerification = async (pin: string) => {
+    setIsVerifyingPin(true)
+    try {
+      const verification = await verifyPin(pin)
+      if (verification.valid) {
+        setIsPinModalOpen(false)
+        // PIN verified, proceed with transaction
+        await processTransaction()
+      } else {
+        showErrorToast('Incorrect PIN', 'The PIN you entered is incorrect')
+      }
+    } catch (error) {
+      showErrorToast(
+        'PIN Verification Failed',
+        'Failed to verify PIN. Please try again.'
+      )
+    } finally {
+      setIsVerifyingPin(false)
+    }
+  }
+
+  const processTransaction = async () => {
+    if (!selectedToken || !activeWallet) {
+      showErrorToast('Transaction Setup Failed', 'Please try again')
       return
     }
 
@@ -721,6 +841,166 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      {/* Transaction PIN Verification Modal */}
+      <Modal
+        isOpen={isPinModalOpen}
+        onClose={() => {
+          setIsPinModalOpen(false)
+          setPinInput('')
+          setShowPin(false)
+        }}
+        size="md"
+        isCentered
+      >
+        <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
+        <ModalContent
+          bg="dark.700"
+          borderRadius="12px"
+          p={8}
+          maxW="592px"
+          width="592px"
+        >
+          <ModalBody p={0}>
+            <VStack spacing={6} align="stretch">
+              {/* Header with back button */}
+              <HStack spacing={3} mb={2}>
+                <Button
+                  variant="ghost"
+                  p={0}
+                  minW="auto"
+                  onClick={() => setIsPinModalOpen(false)}
+                  _hover={{ bg: 'transparent' }}
+                >
+                  <FiArrowLeft color="#F46739" size={20} />
+                </Button>
+                <Text fontSize="sm" color="primary.400" fontWeight="medium">
+                  Back
+                </Text>
+              </HStack>
+
+              {/* Title and description */}
+              <VStack align="flex-start" spacing={2}>
+                <Text fontSize="2xl" fontWeight="bold" color="white">
+                  Enter transaction pin
+                </Text>
+                <Text fontSize="sm" color="gray.400">
+                  Enter your transaction PIN to confirm sending funds
+                </Text>
+              </VStack>
+
+              {/* PIN Input */}
+              <VStack align="flex-start" spacing={3}>
+                <Text fontSize="sm" fontWeight="medium" color="white">
+                  Transaction PIN
+                </Text>
+                <HStack spacing={3}>
+                  <PinInput
+                    value={pinInput}
+                    onChange={setPinInput}
+                    size="lg"
+                    type="number"
+                    mask={!showPin}
+                  >
+                    <PinInputField
+                      borderColor="neutral.400"
+                      _hover={{ borderColor: 'gray.400' }}
+                    />
+                    <PinInputField
+                      borderColor="neutral.400"
+                      _hover={{ borderColor: 'gray.400' }}
+                    />
+                    <PinInputField
+                      borderColor="neutral.400"
+                      _hover={{ borderColor: 'gray.400' }}
+                    />
+                    <PinInputField
+                      borderColor="neutral.400"
+                      _hover={{ borderColor: 'gray.400' }}
+                    />
+                    <PinInputField
+                      borderColor="neutral.400"
+                      _hover={{ borderColor: 'gray.400' }}
+                    />
+                  </PinInput>
+                  <IconButton
+                    aria-label={showPin ? 'Hide PIN' : 'Show PIN'}
+                    icon={showPin ? <FaEyeSlash /> : <FaEye />}
+                    onClick={() => setShowPin(!showPin)}
+                    variant="ghost"
+                    size="sm"
+                    color="neutral.400"
+                    _hover={{ bg: 'transparent', color: 'white' }}
+                  />
+                </HStack>
+              </VStack>
+
+              {/* Action buttons */}
+              <HStack spacing={4} pt={4} justifyContent="space-between" pb={10}>
+                <Button
+                  bg="primary.300"
+                  color="dark.800"
+                  _hover={{ bg: 'primary.400' }}
+                  onClick={() => handlePinVerification(pinInput)}
+                  size="md"
+                  borderRadius="8px"
+                  px="16px"
+                  py="12px"
+                  isLoading={isVerifyingPin}
+                  loadingText="Verifying PIN..."
+                  isDisabled={isVerifyingPin || pinInput.length !== 5}
+                >
+                  Verify PIN & Send Funds
+                </Button>
+                <Button
+                  variant="outline"
+                  border="1px solid"
+                  bg="neutral.825"
+                  borderColor="primary.300"
+                  color="primary.300"
+                  onClick={() => setIsPinModalOpen(false)}
+                  size="md"
+                  borderRadius="8px"
+                  px="16px"
+                  py="12px"
+                >
+                  Cancel
+                </Button>
+              </HStack>
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Magic Link Modal for PIN Protection */}
+      <MagicLinkModal
+        isOpen={isMagicLinkOpen}
+        onClose={onMagicLinkClose}
+        onConfirm={async () => {
+          if (notificationEmail) {
+            setIsSendingMagicLink(true)
+            try {
+              await sendEnablePinLink(notificationEmail)
+              showSuccessToast(
+                'Success',
+                'A magic link has been sent to your email to set up your transaction PIN'
+              )
+              onMagicLinkClose()
+            } catch (error) {
+              showErrorToast(
+                'Error',
+                'Failed to send magic link. Please try again.'
+              )
+            } finally {
+              setIsSendingMagicLink(false)
+            }
+          }
+        }}
+        title="Enable Transaction PIN"
+        message="You need to set up a transaction PIN to send funds. A magic link will be sent to your notification email to set up your transaction PIN. This ensures the security of your account."
+        confirmButtonText="Send Magic Link"
+        isLoading={isSendingMagicLink}
+      />
     </>
   )
 }

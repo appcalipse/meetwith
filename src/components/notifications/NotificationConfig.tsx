@@ -9,16 +9,18 @@ import {
   Spinner,
   Switch,
   Text,
-  useColorModeValue,
-  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { useEffect } from 'react'
 
+import ChangeEmailModal from '@/components/profile/components/ChangeEmailModal'
+import MagicLinkModal from '@/components/profile/components/MagicLinkModal'
+import SuccessModal from '@/components/profile/components/SuccessModal'
 import { Account } from '@/types/Account'
 import { TelegramConnection } from '@/types/Telegram'
+import { useToastHelpers } from '@/utils/toasts'
 
 import {
   DiscordNotificationType,
@@ -29,6 +31,7 @@ import {
   createTelegramHash,
   getNotificationSubscriptions,
   getPendingTgConnection,
+  sendChangeEmailLink,
   setNotificationSubscriptions,
 } from '../../utils/api_helper'
 import { isValidEmail } from '../../utils/validations'
@@ -53,8 +56,12 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   >(undefined)
   const [isEditingEmail, setIsEditingEmail] = useState(false)
   const [tempEmail, setTempEmail] = useState('')
+  const [isChangeEmailModalOpen, setIsChangeEmailModalOpen] = useState(false)
+  const [isMagicLinkModalOpen, setIsMagicLinkModalOpen] = useState(false)
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
   const { push } = useRouter()
-  const toast = useToast()
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
 
   useEffect(() => {
     setLoadingInitialInfo(true)
@@ -109,14 +116,10 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     const subs = await getNotificationSubscriptions()
     if (emailNotifications) {
       if (!isValidEmail(email)) {
-        toast({
-          title: 'Invalid email',
-          description: 'The provided email seems invalid. Please check.',
-          status: 'error',
-          duration: 5000,
-          position: 'top',
-          isClosable: true,
-        })
+        showErrorToast(
+          'Invalid Email Format',
+          'The provided email seems invalid. Please check.'
+        )
         setLoading(false)
         return
       }
@@ -153,13 +156,10 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
 
     setLoading(false)
     setIsEditingEmail(false)
-    toast({
-      title: 'Success',
-      description: 'Notification preferences updated',
-      status: 'success',
-      duration: 3000,
-      position: 'top',
-    })
+    showSuccessToast(
+      'Notification Preferences Updated',
+      'Your notification preferences have been saved successfully'
+    )
   }
 
   const handleTgConnect = async () => {
@@ -194,21 +194,25 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
     setConnecting(false)
   }
 
-  const handleEmailChange = () => {
-    setIsEditingEmail(true)
-    setTempEmail(email)
+  const handleChangeEmail = () => {
+    // Check if user has notification email set up
+    if (!emailNotifications || !email) {
+      showErrorToast(
+        'Notification Email Required',
+        'You need to set up a notification email first to change your email'
+      )
+      return
+    }
+    // Show magic link confirmation modal instead of change email modal
+    setIsMagicLinkModalOpen(true)
   }
 
   const handleEmailSave = async () => {
     if (!isValidEmail(tempEmail)) {
-      toast({
-        title: 'Invalid email',
-        description: 'The provided email seems invalid. Please check.',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      showErrorToast(
+        'Invalid Email Format',
+        'The provided email seems invalid. Please check.'
+      )
       return
     }
     setEmail(tempEmail)
@@ -295,7 +299,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
                     variant="link"
                     colorScheme="primary"
                     px={0}
-                    onClick={handleEmailChange}
+                    onClick={handleChangeEmail}
                     textDecoration="underline"
                     width="fit-content"
                   >
@@ -363,6 +367,69 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
           </Button>
         </VStack>
       )}
+
+      {/* Change Email Modal */}
+      <ChangeEmailModal
+        isOpen={isChangeEmailModalOpen}
+        onClose={() => setIsChangeEmailModalOpen(false)}
+        onEmailChange={async newEmail => {
+          try {
+            await sendChangeEmailLink(email, newEmail)
+            showSuccessToast(
+              'Success',
+              'A magic link has been sent to your email for this action'
+            )
+            setIsChangeEmailModalOpen(false)
+          } catch (error) {
+            showErrorToast(
+              'Magic Link Failed',
+              'Failed to send magic link. Please try again.'
+            )
+          }
+        }}
+        isLoading={false}
+      />
+
+      {/* Magic Link Confirmation Modal */}
+      <MagicLinkModal
+        isOpen={isMagicLinkModalOpen}
+        onClose={() => setIsMagicLinkModalOpen(false)}
+        onConfirm={async () => {
+          setIsSendingMagicLink(true)
+          try {
+            // Send change email link to current email
+            await sendChangeEmailLink(email, email)
+            showSuccessToast(
+              'Magic Link Sent',
+              'A magic link has been sent to your email for this action'
+            )
+            setIsMagicLinkModalOpen(false)
+          } catch (error) {
+            showErrorToast(
+              'Magic Link Failed',
+              'Failed to send magic link. Please try again.'
+            )
+          } finally {
+            setIsSendingMagicLink(false)
+          }
+        }}
+        title="Change Account Email"
+        message="A magic link will be sent to your current notification email to confirm the email change. This ensures the security of your account."
+        confirmButtonText="Send Magic Link"
+        isLoading={isSendingMagicLink}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={isSuccessModalOpen}
+        onClose={() => setIsSuccessModalOpen(false)}
+        title="Email update was successful"
+        message="You have successfully updated your account & notification email"
+        buttonText="Go back to Dashboard"
+        onButtonClick={() => {
+          setIsSuccessModalOpen(false)
+        }}
+      />
     </VStack>
   )
 }

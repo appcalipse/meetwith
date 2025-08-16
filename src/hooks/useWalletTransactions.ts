@@ -56,7 +56,7 @@ export const useWalletTransactions = (
   const formatTransactionForDisplay = (tx: Transaction) => {
     const isCredit = tx.direction === 'credit'
     const amount = tx.fiat_equivalent || tx.amount
-    const formattedAmount = `$${amount.toLocaleString()}`
+    const formattedAmount = `${amount.toLocaleString()} ${tx.currency}`
 
     // Get meeting session info
     const meetingSession = tx.meeting_sessions?.[0]

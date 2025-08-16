@@ -1,0 +1,37 @@
+doctype html
+html
+  head
+    meta(charset='utf-8')
+    meta(name='viewport' content='width=device-width, initial-scale=1.0')
+    title Change Your Account Email
+    style.
+      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+      .header { background: #F46739; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+      .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+      .button { display: inline-block; background: #F46739; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+      .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+  
+  body
+    .container
+      .header
+        h1 Change Your Account Email
+      
+      .content
+        p Hello,
+        p You have requested to change your account email address for your MeetWith account.
+        p Click the button below to confirm the email change:
+        
+        a.button(href=changeUrl) Change Email Address
+        
+        p If the button doesn't work, you can copy and paste this link into your browser:
+        p #{changeUrl}
+        
+        p This link will expire in 24 hours for security reasons.
+        p If you didn't request this change, please ignore this email.
+        
+        .footer
+          p Best regards,
+          p The MeetWith Team
+          p 
+            a(href=appUrl) #{appUrl} 
