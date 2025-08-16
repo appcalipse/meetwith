@@ -37,6 +37,7 @@ import {
   listConnectedCalendars,
 } from '@utils/api_helper'
 import {
+  networkOptions,
   PaymentStep,
   PaymentType,
   PublicSchedulingSteps,
@@ -67,7 +68,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react'
 import { v4 } from 'uuid'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { AcceptedToken, SupportedChain } from '@/types/chains'
+import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
 import { Address } from '@/types/Transactions'
 import {
   getAccountDomainUrl,
@@ -448,6 +449,13 @@ const PublicPage: FC<IProps> = props => {
       pathname: `/${getAccountDomainUrl(props.account!)}/${type.slug}`,
       query: queryExists ? query : undefined,
     })
+    if (type?.plan) {
+      const selectedChain =
+        networkOptions.find(
+          network => network.id === type?.plan?.default_chain_id
+        )?.value || undefined
+      handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
+    }
     setCurrentStep(current_step)
   }
 
@@ -530,9 +538,15 @@ const PublicPage: FC<IProps> = props => {
           !query.payment_type &&
             setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
         }
+        if (type?.plan) {
+          const selectedChain =
+            networkOptions.find(
+              network => network.id === type?.plan?.default_chain_id
+            )?.value || undefined
+          handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
+        }
       }
     }
-
     if (query.payment_type) {
       const paymentType = query.payment_type as PaymentType
       setPaymentType(paymentType)
