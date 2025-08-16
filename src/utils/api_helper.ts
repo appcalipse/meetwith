@@ -1781,3 +1781,13 @@ export const sendVerificationCode = async (
     { email }
   )
 }
+
+export const verifyVerificationCode = async (
+  verificationCode: string
+): Promise<{ success: boolean }> => {
+  return await internalFetch<{ success: boolean }>(
+    '/secure/verify-verification-code',
+    'POST',
+    { verificationCode }
+  )
+}

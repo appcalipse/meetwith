@@ -2,7 +2,7 @@ import { useQueries } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
-import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
+import { SupportedChain, supportedChains } from '@/types/chains'
 import { zeroAddress } from '@/utils/generic_utils'
 import { getCryptoTokenBalance } from '@/utils/token.service'
 import { CryptoConfig } from '@/utils/walletConfig'
