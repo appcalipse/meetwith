@@ -19,6 +19,9 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query'
 import React, { useEffect, useState } from 'react'
 
+import MagicLinkModal from '@/components/profile/components/MagicLinkModal'
+import ResetPinModal from '@/components/profile/components/ResetPinModal'
+import SuccessModal from '@/components/profile/components/SuccessModal'
 import TransactionPinModal from '@/components/profile/components/TransactionPinModal'
 import { Account } from '@/types/Account'
 import {
@@ -27,8 +30,11 @@ import {
   SupportedChain,
 } from '@/types/chains'
 import {
+  getNotificationSubscriptions,
   getPaymentPreferences,
   savePaymentPreferences,
+  sendEnablePinLink,
+  sendResetPinLink,
   verifyPin,
 } from '@/utils/api_helper'
 import {
@@ -43,9 +49,25 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const {
+    isOpen: isResetPinOpen,
+    onOpen: _onResetPinOpen,
+    onClose: onResetPinClose,
+  } = useDisclosure()
+  const {
+    isOpen: isMagicLinkOpen,
+    onOpen: onMagicLinkOpen,
+    onClose: onMagicLinkClose,
+  } = useDisclosure()
+  const {
+    isOpen: isSuccessOpen,
+    onOpen: onSuccessOpen,
+    onClose: onSuccessClose,
+  } = useDisclosure()
   const [modalMode, setModalMode] = useState<'create' | 'change' | 'disable'>(
     'create'
   )
+  const [pinAction, setPinAction] = useState<'enable' | 'reset'>('enable')
   const { showSuccessToast, showErrorToast } = useToastHelpers()
   const [selectedNetwork, setSelectedNetwork] = useState<SupportedChain>(
     paymentNetworkOptions[0]?.value || supportedPaymentChains[0]
@@ -53,6 +75,10 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
   const [sendFundsNotification, setSendFundsNotification] = useState(true)
   const [receiveFundsNotification, setReceiveFundsNotification] =
     useState(false)
+  const [notificationEmail, setNotificationEmail] = useState<string | null>(
+    null
+  )
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
 
   // Fetch existing payment preferences
   const {
@@ -67,10 +93,19 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
     }
   )
 
+  // Fetch notification subscriptions to check for email
+  const { data: notificationSubscriptions, isLoading: _isNotificationLoading } =
+    useQuery(
+      ['notificationSubscriptions', currentAccount.address],
+      () => getNotificationSubscriptions(),
+      {
+        enabled: !!currentAccount.address,
+      }
+    )
+
   // Initialize selected network from existing preferences or default
   useEffect(() => {
     if (paymentPreferences?.default_chain_id) {
-      // Convert numeric chain ID back to SupportedChain enum
       const chainInfo = getSupportedChainFromId(
         paymentPreferences.default_chain_id
       )
@@ -113,11 +148,14 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
     },
     {
       onSuccess: () => {
-        showSuccessToast('Success', 'Payment preferences saved successfully')
+        showSuccessToast(
+          'Payment Preferences Saved',
+          'Payment preferences saved successfully'
+        )
         refetch()
       },
       onError: (error: unknown) => {
-        showErrorToast('Error', 'Failed to save payment preferences')
+        showErrorToast('Save Failed', 'Failed to save payment preferences')
         console.error('Error saving preferences:', error)
       },
     }
@@ -140,20 +178,24 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
     },
     {
       onSuccess: () => {
-        showSuccessToast('Success', 'Transaction PIN created successfully')
-        // Close modal after successful operation - this will clear inputs
+        showSuccessToast(
+          'Transaction PIN Created',
+          'Transaction PIN created successfully'
+        )
         handleModalClose()
         refetch()
       },
       onError: (error: unknown) => {
         // Show specific error message if available
         if (error instanceof Error) {
-          showErrorToast('Error', error.message)
+          showErrorToast('PIN Creation Failed', error.message)
         } else {
-          showErrorToast('Error', 'Failed to create transaction PIN')
+          showErrorToast(
+            'PIN Creation Failed',
+            'Failed to create transaction PIN'
+          )
         }
         console.error('Error creating PIN:', error)
-        // Don't close modal on error - let user try again
       },
     }
   )
@@ -169,27 +211,29 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
       }
 
       // PIN verified, now update with new PIN
-      // Use save function for partial updates
       return await savePaymentPreferences(currentAccount.address, {
         pin_hash: newPin, // Will be hashed on server
       })
     },
     {
       onSuccess: () => {
-        showSuccessToast('Success', 'Transaction PIN updated successfully')
-        // Close modal after successful operation - this will clear inputs
+        showSuccessToast(
+          'Transaction PIN Updated',
+          'Transaction PIN updated successfully'
+        )
         handleModalClose()
         refetch()
       },
       onError: (error: unknown) => {
         // Show specific error message if available
         if (error instanceof Error) {
-          showErrorToast('Error', error.message)
+          showErrorToast('PIN Update Failed', error.message)
         } else {
-          showErrorToast('Error', 'Failed to update transaction PIN')
+          showErrorToast(
+            'PIN Update Failed',
+            'Failed to update transaction PIN'
+          )
         }
-        console.error('Error updating PIN:', error)
-        // Don't close modal on error - let user try again
       },
     }
   )
@@ -204,34 +248,79 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
       }
 
       // PIN verified, now disable by setting pin_hash to null
-      // Use save function for partial updates
       return await savePaymentPreferences(currentAccount.address, {
         pin_hash: null,
       })
     },
     {
       onSuccess: () => {
-        showSuccessToast('Success', 'Transaction PIN disabled successfully')
-        // Close modal after successful operation - this will clear inputs
+        showSuccessToast(
+          'Transaction PIN Disabled',
+          'Transaction PIN disabled successfully'
+        )
         handleModalClose()
         refetch()
       },
       onError: (error: unknown) => {
         // Show specific error message if available
         if (error instanceof Error) {
-          showErrorToast('Error', error.message)
+          showErrorToast('PIN Disable Failed', error.message)
         } else {
-          showErrorToast('Error', 'Failed to disable transaction PIN')
+          showErrorToast(
+            'PIN Disable Failed',
+            'Failed to disable transaction PIN'
+          )
         }
         console.error('Error disabling PIN:', error)
-        // Don't close modal on error - let user try again
       },
     }
   )
 
   const handleEnablePin = () => {
-    setModalMode('create')
-    onOpen()
+    // Check if notificationSubscriptions exists and has data
+    if (
+      !notificationSubscriptions ||
+      !notificationSubscriptions.notification_types
+    ) {
+      showErrorToast(
+        'Notification Email Required',
+        'You need to set up a notification email first to enable your PIN'
+      )
+      return
+    }
+
+    // Check if user has notification email set up
+    const hasEmailNotification =
+      notificationSubscriptions.notification_types.some(
+        (sub: { channel: string; disabled: boolean }) =>
+          sub.channel === 'email' && !sub.disabled
+      )
+
+    if (!hasEmailNotification) {
+      showErrorToast(
+        'Notification Email Required',
+        'You need to set up a notification email first to enable your PIN'
+      )
+      return
+    }
+
+    // Get the email address
+    const emailSub = notificationSubscriptions.notification_types.find(
+      (sub: { channel: string; destination?: string }) =>
+        sub.channel === 'email'
+    )
+
+    if (emailSub?.destination) {
+      setModalMode('create') // Set mode to 'create' for enable PIN flow
+      setPinAction('enable') // Set action to 'enable'
+      setNotificationEmail(emailSub.destination)
+      onMagicLinkOpen()
+    } else {
+      showErrorToast(
+        'Notification Email Missing',
+        'Could not find your notification email address'
+      )
+    }
   }
 
   const handleChangePin = () => {
@@ -242,6 +331,52 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
   const handleDisablePin = () => {
     setModalMode('disable')
     onOpen()
+  }
+
+  const handleResetPin = () => {
+    // Check if notificationSubscriptions exists and has data
+    if (
+      !notificationSubscriptions ||
+      !notificationSubscriptions.notification_types
+    ) {
+      showErrorToast(
+        'Notification Email Required',
+        'You need to set up a notification email first to reset your PIN'
+      )
+      return
+    }
+
+    // Check if user has notification email set up
+    const hasEmailNotification =
+      notificationSubscriptions.notification_types.some(
+        (sub: { channel: string; disabled: boolean }) =>
+          sub.channel === 'email' && !sub.disabled
+      )
+
+    if (!hasEmailNotification) {
+      showErrorToast(
+        'Notification Email Required',
+        'You need to set up a notification email first to reset your PIN'
+      )
+      return
+    }
+
+    // Get the email address
+    const emailSub = notificationSubscriptions.notification_types.find(
+      (sub: { channel: string; destination?: string }) =>
+        sub.channel === 'email'
+    )
+
+    if (emailSub?.destination) {
+      setPinAction('reset') // Set action to 'reset'
+      setNotificationEmail(emailSub.destination)
+      onMagicLinkOpen()
+    } else {
+      showErrorToast(
+        'Notification Email Missing',
+        'Could not find your notification email address'
+      )
+    }
   }
 
   const handleModalClose = () => {
@@ -262,6 +397,38 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
 
   const handlePinDisabled = async (pin: string) => {
     disablePinMutation.mutate(pin)
+  }
+
+  // Reset PIN mutation
+  const resetPinMutation = useMutation(
+    async (newPin: string) => {
+      return await savePaymentPreferences(currentAccount.address, {
+        pin_hash: newPin, // Will be hashed on server
+      })
+    },
+    {
+      onSuccess: () => {
+        showSuccessToast(
+          'Transaction PIN Reset',
+          'Transaction PIN reset successfully'
+        )
+        onResetPinClose()
+        onSuccessOpen()
+        refetch()
+      },
+      onError: (error: unknown) => {
+        if (error instanceof Error) {
+          showErrorToast('PIN Reset Failed', error.message)
+        } else {
+          showErrorToast('PIN Reset Failed', 'Failed to reset transaction PIN')
+        }
+        console.error('Error resetting PIN:', error)
+      },
+    }
+  )
+
+  const handlePinReset = async (newPin: string) => {
+    resetPinMutation.mutate(newPin)
   }
 
   const handleSavePreferences = () => {
@@ -325,7 +492,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                   Disable Pin
                 </Button>
                 <Button
-                  onClick={() => {}}
+                  onClick={handleResetPin}
                   variant="outline"
                   borderColor="primary.200"
                   color="primary.200"
@@ -535,6 +702,84 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
           (modalMode === 'disable' && disablePinMutation.isLoading)
         }
         mode={modalMode}
+      />
+
+      {/* Reset PIN Modal */}
+      <ResetPinModal
+        isOpen={isResetPinOpen}
+        onClose={onResetPinClose}
+        onPinReset={handlePinReset}
+        isLoading={resetPinMutation.isLoading}
+      />
+
+      {/* Magic Link Confirmation Modal */}
+      <MagicLinkModal
+        isOpen={isMagicLinkOpen}
+        onClose={onMagicLinkClose}
+        onConfirm={async () => {
+          if (notificationEmail) {
+            setIsSendingMagicLink(true)
+            try {
+              // Determine which action to perform based on the current context
+              if (pinAction === 'enable') {
+                // Enable PIN flow
+                await sendEnablePinLink(notificationEmail)
+                showSuccessToast(
+                  'Enable PIN Link Sent',
+                  'A magic link has been sent to your email to set up your transaction PIN'
+                )
+              } else if (pinAction === 'reset') {
+                // Reset PIN flow
+                await sendResetPinLink(notificationEmail)
+                showSuccessToast(
+                  'Reset PIN Link Sent',
+                  'A magic link has been sent to your email for this action'
+                )
+              }
+              onMagicLinkClose()
+            } catch (error) {
+              showErrorToast(
+                'Magic Link Failed',
+                'Failed to send magic link. Please try again.'
+              )
+            } finally {
+              setIsSendingMagicLink(false)
+            }
+          }
+        }}
+        title={
+          pinAction === 'enable'
+            ? 'Enable Transaction PIN'
+            : 'Reset Transaction PIN'
+        }
+        message={
+          pinAction === 'enable'
+            ? 'A magic link will be sent to your notification email to set up your transaction PIN. This ensures the security of your account.'
+            : 'A magic link will be sent to your notification email to reset your transaction PIN. This ensures the security of your account.'
+        }
+        confirmButtonText="Send Magic Link"
+        isLoading={isSendingMagicLink}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={isSuccessOpen}
+        onClose={onSuccessClose}
+        title={
+          pinAction === 'enable'
+            ? 'Transaction PIN enabled successfully'
+            : 'Transaction pin reset was successful'
+        }
+        message={
+          pinAction === 'enable'
+            ? 'You have successfully set up your transaction PIN for secure transactions'
+            : 'You have successfully updated your account & notification email'
+        }
+        buttonText="Go back to Dashboard"
+        onButtonClick={() => {
+          onSuccessClose()
+          // Navigate back to dashboard or close all modals
+        }}
       />
     </VStack>
   )

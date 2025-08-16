@@ -99,6 +99,8 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
       setActiveSection(SettingsSection.CONNECTED_CALENDARS)
     } else if (hash === 'notifications') {
       setActiveSection(SettingsSection.NOTIFICATIONS)
+    } else if (hash === 'wallet-payment') {
+      setActiveSection(SettingsSection.WALLET_PAYMENT)
     }
   }, [router.asPath])
 

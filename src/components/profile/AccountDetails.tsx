@@ -12,7 +12,7 @@ import {
   InputGroup,
   InputLeftAddon,
   useDisclosure,
-  useToast,
+  VStack as ChakraVStack,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
 import { Avatar } from '@components/profile/components/Avatar'
@@ -40,6 +40,7 @@ import { appUrl } from '@/utils/constants'
 import { getLensHandlesForAddress } from '@/utils/lens.helper'
 import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
 import { changeDomainOnChain, isProAccount } from '@/utils/subscription_manager'
+import { useToastHelpers } from '@/utils/toasts'
 
 import Block from './components/Block'
 import HandlePicker, {
@@ -71,9 +72,19 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     onOpen: openEditImageModal,
     onClose: closeEditImageModal,
   } = useDisclosure()
-  const [name, setName] = useState<DisplayName | undefined>(undefined)
+  const [name, setName] = useState<DisplayName | undefined>(() => {
+    const currentName = currentAccount?.preferences?.name
+    if (currentName) {
+      return {
+        label: currentName,
+        value: currentName,
+        type: ProfileInfoProvider.CUSTOM,
+      }
+    }
+    return undefined
+  })
 
-  const toast = useToast()
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
   const activeWallet = useActiveWallet()
 
   const [proDomain, setProDomain] = useState<string>(
@@ -101,22 +112,16 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
               url: telegram,
             },
           ],
-          ...(name?.type === ProfileInfoProvider.CUSTOM
-            ? { name: name?.value }
-            : { name: '' }),
+          ...(name?.value ? { name: name.value } : { name: '' }),
           avatar_url: avatarUrl,
         },
       })
       await login(updatedAccount)
       reloadOnboardingInfo()
-      toast({
-        title: 'Details updated',
-        description: 'Your profile details have been updated',
-        status: 'success',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      showSuccessToast(
+        'Profile Details Updated',
+        'Your profile details have been updated successfully'
+      )
     } catch (error) {
       console.error(error)
       handleApiError('Error updating profile', error)
@@ -149,15 +154,19 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     )
 
     setDescription(currentAccount?.preferences?.description || '')
-    setName(
-      currentAccount?.preferences?.name
-        ? {
-            label: currentAccount.preferences.name,
-            value: currentAccount.preferences.name,
-            type: ProfileInfoProvider.CUSTOM,
-          }
-        : undefined
-    )
+
+    if (!name || name.value !== currentAccount?.preferences?.name) {
+      setName(
+        currentAccount?.preferences?.name
+          ? {
+              label: currentAccount.preferences.name,
+              value: currentAccount.preferences.name,
+              type: ProfileInfoProvider.CUSTOM,
+            }
+          : undefined
+      )
+    }
+
     setAvatarUrl(currentAccount?.preferences?.avatar_url || undefined)
     setNewProDomain(currentAccount?.subscriptions?.[0]?.domain ?? '')
   }
@@ -173,28 +182,16 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
 
     if (newProDomain === proDomain) {
       setLoading(false)
-      toast({
-        title: 'Nothing changed',
-        description: "You didn't change the current link",
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      showErrorToast('No Changes Made', "You didn't change the current link")
       return
     }
 
     if (!(await checkValidDomain(newProDomain, currentAccount!.address))) {
       setLoading(false)
-      toast({
-        title: 'You are not the owner of this domain',
-        description:
-          'To use ENS, Lens, Unstoppable domain, or other name services as your name you need to be the owner of it',
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      showErrorToast(
+        'You are not the owner of this domain',
+        'To use ENS, Lens, Unstoppable domain, or other name services as your name you need to be the owner of it'
+      )
       return
     }
 
@@ -214,25 +211,14 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       }
       await updateAccountSubs()
       setProDomain(newProDomain)
-      toast({
-        title: 'Calendar link updated',
-        description: 'Your calendar link has been changed',
-        status: 'success',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      showSuccessToast(
+        'Calendar Link Updated',
+        'Your calendar link has been changed successfully'
+      )
     } catch (e: any) {
       console.error(e)
       setLoading(false)
-      toast({
-        title: 'Error',
-        description: `${e.message}`,
-        status: 'error',
-        duration: 5000,
-        position: 'top',
-        isClosable: true,
-      })
+      showErrorToast('Domain Change Failed', `${e.message}`)
     }
 
     setLoading(false)
@@ -240,6 +226,16 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
 
   const getHandles = async () => {
     let handles: DisplayName[] = []
+
+    const currentName = currentAccount?.preferences?.name
+    if (currentName) {
+      handles.push({
+        label: currentName,
+        value: currentName,
+        type: ProfileInfoProvider.CUSTOM,
+      })
+    }
+
     const lensProfiles = async () => {
       const profiles = await getLensHandlesForAddress(currentAccount!.address)
       if (profiles) {

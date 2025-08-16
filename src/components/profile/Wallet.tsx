@@ -15,7 +15,11 @@ import {
   Text,
   VStack,
 } from '@chakra-ui/react'
-import React from 'react'
+import { useDisclosure } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/router'
+import React, { useContext } from 'react'
+import { useState } from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
 import { GrDocumentTime } from 'react-icons/gr'
@@ -32,10 +36,18 @@ import { useCryptoBalance } from '@/hooks/useCryptoBalance'
 import { useCryptoBalances } from '@/hooks/useCryptoBalances'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { useWalletTransactions } from '@/hooks/useWalletTransactions'
+import { AccountContext } from '@/providers/AccountProvider'
 import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
+import { getPaymentPreferences } from '@/utils/api_helper'
+import { sendEnablePinLink } from '@/utils/api_helper'
+import { getNotificationSubscriptions } from '@/utils/api_helper'
+import { useToastHelpers } from '@/utils/toasts'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
 
+import { Avatar } from './components/Avatar'
+import MagicLinkModal from './components/MagicLinkModal'
+import WalletActionButton from './components/WalletActionButton'
 import Pagination from './Pagination'
 import ReceiveFundsModal from './ReceiveFundsModal'
 import SendFundsModal from './SendFundsModal'
@@ -46,6 +58,39 @@ interface WalletProps {
 }
 
 const Wallet: React.FC<WalletProps> = () => {
+  const router = useRouter()
+  const { currentAccount } = useContext(AccountContext)
+  const { showSuccessToast, showErrorToast } = useToastHelpers()
+
+  // PIN protection state
+  const {
+    isOpen: isMagicLinkOpen,
+    onOpen: _onMagicLinkOpen,
+    onClose: onMagicLinkClose,
+  } = useDisclosure()
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
+  const [notificationEmail, _setNotificationEmail] = useState<string | null>(
+    null
+  )
+
+  // Fetch payment preferences to check if PIN is set
+  const { data: _paymentPreferences } = useQuery(
+    ['paymentPreferences', currentAccount?.address],
+    () => getPaymentPreferences(),
+    {
+      enabled: !!currentAccount?.address,
+    }
+  )
+
+  // Fetch notification subscriptions to get email
+  const { data: _notificationSubscriptions } = useQuery(
+    ['notificationSubscriptions', currentAccount?.address],
+    () => getNotificationSubscriptions(),
+    {
+      enabled: !!currentAccount?.address,
+    }
+  )
+
   const {
     // View states
     showBalance,
@@ -141,41 +186,16 @@ const Wallet: React.FC<WalletProps> = () => {
     )
   })
 
-  const ActionButton = ({ icon, label, isActive = false, onClick }: any) => (
-    <VStack spacing={3}>
-      <Box
-        w="68px"
-        h="54px"
-        borderRadius="16px"
-        bg={isActive ? 'primary.500' : 'neutral.0'}
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        cursor="pointer"
-        position="relative"
-        _hover={{ opacity: 0.8 }}
-        transition="all 0.2s"
-        boxShadow="0px 1px 2px rgba(0, 0, 0, 0.05)"
-        border={isActive ? '2px solid' : 'none'}
-        borderColor="neutral.0"
-        onClick={onClick}
-      >
-        <Icon
-          as={icon}
-          color={isActive ? 'white' : 'primary.500'}
-          fontSize="24px"
-        />
-      </Box>
-      <Text fontSize="16px" color="neutral.0" fontWeight="500">
-        {label}
-      </Text>
-    </VStack>
-  )
+  const handleSettingsClick = () => {
+    router.push('/dashboard/details#wallet-payment')
+  }
 
   // Reset pagination when selected crypto changes
   React.useEffect(() => {
     setSelectedCryptoCurrentPage(1)
   }, [selectedCrypto, setSelectedCryptoCurrentPage])
+
+  if (!currentAccount) return null
 
   return (
     <Box maxW="685px" ml="70px" overflowY="auto" height="100%" pb={8}>
@@ -294,17 +314,17 @@ const Wallet: React.FC<WalletProps> = () => {
 
             {/* Action Buttons */}
             <HStack justify="center" spacing={6}>
-              <ActionButton
+              <WalletActionButton
                 icon={PiArrowCircleUpRight}
                 label="Withdraw funds"
               />
-              <ActionButton
+              <WalletActionButton
                 icon={PiPlusCircleLight}
                 label="Receive funds"
                 isActive
                 onClick={() => setIsReceiveModalOpen(true)}
               />
-              <ActionButton
+              <WalletActionButton
                 icon={PiArrowCircleRight}
                 label="Send funds"
                 onClick={() => setIsSendModalOpen(true)}
@@ -540,23 +560,15 @@ const Wallet: React.FC<WalletProps> = () => {
             </Box>
 
             <HStack spacing={8}>
-              <Icon as={TbSettings2} color="neutral.0" fontSize="24px" />
-
-              <Box
-                w="40px"
-                h="40px"
-                borderRadius="full"
-                overflow="hidden"
+              <Icon
+                as={TbSettings2}
+                color="neutral.0"
                 cursor="pointer"
-              >
-                <Image
-                  src="/assets/wallet-add.png"
-                  alt="Profile"
-                  w="40px"
-                  h="40px"
-                  objectFit="cover"
-                />
-              </Box>
+                fontSize="24px"
+                onClick={handleSettingsClick}
+                _hover={{ color: 'primary.400' }}
+                transition="color 0.2s"
+              />
             </HStack>
           </Flex>
 
@@ -634,17 +646,17 @@ const Wallet: React.FC<WalletProps> = () => {
 
             {/* Action Buttons */}
             <HStack justify="center" spacing={16}>
-              <ActionButton
+              <WalletActionButton
                 icon={PiArrowCircleUpRight}
                 label="Withdraw funds"
               />
-              <ActionButton
+              <WalletActionButton
                 icon={PiPlusCircleLight}
                 label="Receive funds"
                 isActive
                 onClick={() => setIsReceiveModalOpen(true)}
               />
-              <ActionButton
+              <WalletActionButton
                 icon={PiArrowCircleRight}
                 label="Send funds"
                 onClick={() => setIsSendModalOpen(true)}
@@ -795,13 +807,7 @@ const Wallet: React.FC<WalletProps> = () => {
                               borderRadius="full"
                               overflow="hidden"
                             >
-                              <Image
-                                src={transaction.userImage}
-                                alt={transaction.user}
-                                w="40px"
-                                h="40px"
-                                objectFit="cover"
-                              />
+                              <Avatar account={currentAccount} />
                             </Box>
 
                             {/* Transaction Details */}
@@ -920,6 +926,7 @@ const Wallet: React.FC<WalletProps> = () => {
                     justifyContent="center"
                     cursor="pointer"
                     _hover={{ opacity: 0.8 }}
+                    onClick={() => setShowTransactions(true)}
                   >
                     <Icon
                       as={GrDocumentTime}
@@ -1176,13 +1183,6 @@ const Wallet: React.FC<WalletProps> = () => {
                                 >
                                   {asset.price}
                                 </Text>
-                                {/* <Text
-                                  fontSize="16px"
-                                  fontWeight="500"
-                                  color="green.400"
-                                >
-                                  {asset.change}
-                                </Text> */}
                               </HStack>
                             </VStack>
                           </HStack>
@@ -1381,6 +1381,36 @@ const Wallet: React.FC<WalletProps> = () => {
       <ReceiveFundsModal
         isOpen={isReceiveModalOpen}
         onClose={() => setIsReceiveModalOpen(false)}
+      />
+
+      {/* Magic Link Modal */}
+      <MagicLinkModal
+        isOpen={isMagicLinkOpen}
+        onClose={onMagicLinkClose}
+        onConfirm={async () => {
+          if (notificationEmail) {
+            setIsSendingMagicLink(true)
+            try {
+              await sendEnablePinLink(notificationEmail)
+              showSuccessToast(
+                'Enable PIN Link Sent',
+                'A magic link has been sent to your email to set up your transaction PIN'
+              )
+              onMagicLinkClose()
+            } catch (error) {
+              showErrorToast(
+                'Magic Link Failed',
+                'Failed to send magic link. Please try again.'
+              )
+            } finally {
+              setIsSendingMagicLink(false)
+            }
+          }
+        }}
+        title="Enable Transaction PIN"
+        message="A magic link will be sent to your notification email to set up your transaction PIN. This ensures the security of your account."
+        confirmButtonText="Send Magic Link"
+        isLoading={isSendingMagicLink}
       />
     </Box>
   )

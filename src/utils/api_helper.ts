@@ -1717,3 +1717,41 @@ export const verifyPin = async (pin: string): Promise<{ valid: boolean }> => {
     pin,
   })
 }
+
+export const sendResetPinLink = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/send-reset-pin-link',
+    'POST',
+    {
+      email,
+    }
+  )
+}
+
+export const sendChangeEmailLink = async (
+  currentEmail: string,
+  newEmail: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/send-change-email-link',
+    'POST',
+    {
+      currentEmail,
+      newEmail,
+    }
+  )
+}
+
+export const sendEnablePinLink = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/send-enable-pin-link',
+    'POST',
+    {
+      email,
+    }
+  )
+}

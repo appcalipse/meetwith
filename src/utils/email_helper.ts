@@ -857,3 +857,111 @@ export const sendInvoiceEmail = async (
     Sentry.captureException(err)
   }
 }
+
+export const sendResetPinEmail = async (
+  toEmail: string,
+  resetUrl: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    resetUrl,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'reset_pin')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'reset_pin',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+export const sendChangeEmailEmail = async (
+  toEmail: string,
+  changeUrl: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    changeUrl,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'change_email')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'account',
+        value: 'change_email',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+export const sendEnablePinEmail = async (
+  toEmail: string,
+  enableUrl: string
+): Promise<boolean> => {
+  const email = new Email()
+  const locals = {
+    enableUrl,
+    appUrl,
+  }
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'enable_pin')}`,
+    locals
+  )
+
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [
+      {
+        name: 'security',
+        value: 'enable_pin',
+      },
+    ],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
