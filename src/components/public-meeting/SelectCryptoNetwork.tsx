@@ -55,18 +55,7 @@ const SelectCryptoNetwork = () => {
       networkOptions.find(
         network => network.id === selectedType?.plan?.default_chain_id
       )?.value || undefined
-    const selectedNetworkInfo = supportedChains.find(
-      val => val.chain === selectedChain
-    )
-    const acceptedTokens = selectedNetworkInfo?.acceptableTokens?.filter(
-      token =>
-        [AcceptedToken.USDC, AcceptedToken.CEUR, AcceptedToken.CUSD].includes(
-          token.token
-        )
-    )
-
-    const selectedToken = acceptedTokens?.[0]?.token || undefined
-    handleSetTokenAndChain(selectedToken, selectedChain)
+    handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
   }, [selectedType])
   const handleContinue = async () => {
     setPaymentStep(PaymentStep.CONFIRM_PAYMENT)

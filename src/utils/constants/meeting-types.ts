@@ -98,7 +98,7 @@ const devChains = [
 const prodChains = [
   SupportedChain.ARBITRUM, //SupportedChain.CELO
 ]
-export const supportedPaymentChains = isProduction ? prodChains : devChains
+export const supportedPaymentChains = !isProduction ? prodChains : devChains
 
 export const CryptoNetworkForCardSettlementOptions = supportedChains
   .filter(val => (supportedPaymentChains || []).includes(val.chain))

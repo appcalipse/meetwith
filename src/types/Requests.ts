@@ -241,6 +241,8 @@ export interface ConfirmCryptoTransactionRequest {
   guest_address?: string
   guest_email?: string
   guest_name?: string
+  payment_method: PaymentType
+  provider_reference_id?: string
 }
 
 export interface RequestInvoiceRequest {
