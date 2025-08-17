@@ -133,3 +133,10 @@ export interface OnrampMoneyWebhook {
   coinCode: string
   network: string
 }
+
+export interface IPurchaseData {
+  meetingId: string
+  messageChannel: string
+  guestEmail: string
+  guestName: string
+}
