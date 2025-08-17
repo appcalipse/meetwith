@@ -4753,7 +4753,7 @@ export const getWalletTransactionsByToken = async (
 
 const createCryptoTransaction = async (
   transactionRequest: ConfirmCryptoTransactionRequest,
-  account_address: string
+  account_address?: string
 ) => {
   const chainInfo = getChainInfo(transactionRequest.chain)
   if (!chainInfo?.id) {
@@ -4771,7 +4771,7 @@ const createCryptoTransaction = async (
     : PaymentDirection.CREDIT
 
   const payload: BaseTransaction = {
-    method: PaymentType.CRYPTO,
+    method: transactionRequest.payment_method,
     transaction_hash:
       transactionRequest.transaction_hash.toLowerCase() as Address,
     amount: transactionRequest.amount,
@@ -4784,10 +4784,13 @@ const createCryptoTransaction = async (
     status: PaymentStatus.COMPLETED,
     token_type: TokenType.ERC20,
     confirmed_at: new Date().toISOString(),
+    provider_reference_id: transactionRequest.provider_reference_id,
     currency: Currency.USD,
     total_fee: feeInUSD,
     metadata: {
-      sender_address: account_address.toLowerCase(),
+      ...(account_address && {
+        sender_address: account_address.toLowerCase(),
+      }),
       ...(transactionRequest.receiver_address && {
         receiver_address: transactionRequest.receiver_address.toLowerCase(),
       }),
@@ -4797,7 +4800,9 @@ const createCryptoTransaction = async (
       fee_in_usd: feeInUSD,
     },
   }
-  const { data, error } = await db.supabase.from('transactions').insert(payload)
+  const { data, error } = await db.supabase
+    .from<Transaction>('transactions')
+    .insert(payload)
   if (error) {
     throw new Error(error.message)
   }
@@ -4815,7 +4820,7 @@ const createCryptoTransaction = async (
         .from('transactions')
         .update({
           metadata: {
-            sender_address: account_address.toLowerCase(),
+            sender_address: account_address?.toLowerCase(),
             receiver_address: meetingType.account_owner_address.toLowerCase(),
           },
         })
@@ -4838,8 +4843,9 @@ const createCryptoTransaction = async (
         meeting_type_id: transactionRequest.meeting_type_id!,
         transaction_id: data[0]?.id,
         session_number: i + 1,
-        guest_address: transactionRequest?.guest_address,
+        guest_address: account_address,
         guest_email: transactionRequest?.guest_email,
+        guest_name: transactionRequest?.guest_name,
         owner_address: meetingType?.account_owner_address,
       })
     )
@@ -4863,7 +4869,7 @@ const createCryptoTransaction = async (
             plan: meetingType?.title || '',
             number_of_sessions: totalNoOfSlots.toString(),
             price: transactionRequest.amount.toString(),
-            payment_method: PaymentType.CRYPTO,
+            payment_method: transactionRequest.payment_method,
             transaction_fee: '0',
             transaction_status: PaymentStatus.COMPLETED,
             transaction_hash: transactionRequest.transaction_hash,
@@ -4874,7 +4880,9 @@ const createCryptoTransaction = async (
       }
     }
   }
+  return data[0]
 }
+
 const getMeetingSessionsByTxHash = async (
   tx: Address
 ): Promise<Array<MeetingSession>> => {
