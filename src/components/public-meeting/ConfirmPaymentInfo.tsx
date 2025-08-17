@@ -49,6 +49,7 @@ import useAccountContext from '@/hooks/useAccountContext'
 import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { AcceptedToken, ChainInfo, supportedChains } from '@/types/chains'
+import { Transaction } from '@/types/Transactions'
 import { getAccountDomainUrl } from '@/utils/calendar_manager'
 import { appUrl } from '@/utils/constants'
 import { formatCurrency, parseUnits } from '@/utils/generic_utils'
@@ -110,6 +111,7 @@ const ConfirmPaymentInfo = () => {
   const { openConnection } = useContext(OnboardingModalContext)
   const [isInvoiceLoading, setIsInvoiceLoading] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
+
   const chain = supportedChains.find(
     val => val.chain === selectedChain
   ) as ChainInfo
@@ -237,7 +239,7 @@ const ConfirmPaymentInfo = () => {
             ],
           })
 
-          const { transactionHash, ...rest } = await sendTransaction({
+          const { transactionHash } = await sendTransaction({
             account: signingAccount,
             transaction,
           })
@@ -264,6 +266,7 @@ const ConfirmPaymentInfo = () => {
           } else {
             throw new Error('Transaction failed')
           }
+
           const payload: ConfirmCryptoTransactionRequest = {
             transaction_hash: transactionHash,
             amount: parseFloat(
@@ -277,6 +280,7 @@ const ConfirmPaymentInfo = () => {
             guest_address: currentAccount?.address,
             guest_email: email,
             guest_name: name,
+            payment_method: PaymentType.CRYPTO,
           }
           setProgress(90)
           await createCryptoTransaction(payload)
@@ -309,32 +313,77 @@ const ConfirmPaymentInfo = () => {
           return
         }
       } else {
-        const messageChannel = `onramp:${v4()}`
-        subscribeToMessages(messageChannel, DEFAULT_MESSAGE_NAME, message => {
-          // console.log('Received message:', message)
-        })
-        const preparedOnramp = await Bridge.Onramp.prepare({
-          client: thirdWebClient,
-          onramp: 'stripe',
-          chainId: chain.id,
-          tokenAddress: NATIVE_TOKEN_ADDRESS,
-          receiver: (selectedType?.plan?.payment_address ||
-            account.address) as Address,
-          amount: toUnits(amount.toString(), 6),
-          currency: 'USD',
-          purchaseData: {
-            meetingId: selectedType?.id || '',
-            messageChannel,
-            guestEmail: email,
-            guestName: name,
-          },
-        })
-        window.open(preparedOnramp.link, '_blank', 'noopener,noreferrer')
-
-        // console.log({ preparedOnramp })
-        // console.log(preparedOnramp.link) // URL to redirect the user to
-
-        // console.log(preparedOnramp.currencyAmount)
+        if ((selectedType?.plan?.no_of_slot || 0) > 1) {
+          toast({
+            title: 'Payment Method Not Supported',
+            description: 'You have to be logged in to pay for multiple slots',
+            status: 'error',
+          })
+          setLoading(false)
+          return
+        }
+        const transaction = await new Promise<Transaction>(
+          async (resolve, reject) => {
+            const messageChannel = `onramp:${v4()}:${selectedType?.id || ''}`
+            await subscribeToMessages(
+              messageChannel,
+              DEFAULT_MESSAGE_NAME,
+              message => {
+                const transaction = JSON.parse(message.data) as Transaction
+                resolve(transaction)
+              }
+            )
+            const preparedOnramp = await Bridge.Onramp.prepare({
+              client: thirdWebClient,
+              onramp: 'stripe',
+              chainId: chain?.id,
+              tokenAddress: NATIVE_TOKEN_ADDRESS,
+              receiver: (selectedType?.plan?.payment_address ||
+                account.address) as Address,
+              amount: toUnits(amount.toString(), 6),
+              currency: 'USD',
+              purchaseData: {
+                meetingId: selectedType?.id || '',
+                messageChannel,
+                guestEmail: email,
+                guestName: name,
+              },
+            })
+            window.open(preparedOnramp.link, '_blank', 'noopener,noreferrer')
+            setProgress(40)
+          }
+        )
+        if (transaction.transaction_hash) {
+          setProgress(100)
+          handleNavigateToBook(transaction.transaction_hash)
+          // persist the transaction in localStorage in-case the schedule fails
+          localStorage.setItem(
+            `${selectedType?.id || ''}:transaction`,
+            JSON.stringify(transaction)
+          )
+          await confirmSchedule(
+            scheduleType!,
+            pickedTime!,
+            guestEmail,
+            name,
+            content,
+            meetingUrl,
+            doSendEmailReminders ? userEmail : undefined,
+            title,
+            participants,
+            meetingProvider,
+            meetingNotification.map(n => n.value as MeetingReminders),
+            meetingRepeat.value,
+            transaction.transaction_hash
+          )
+        } else {
+          toast({
+            title: 'Payment Failed',
+            description: 'Transaction was not found on the blockchain',
+            status: 'error',
+            duration: 5000,
+          })
+        }
       }
     } catch (error: unknown) {
       if (error instanceof TransactionCouldBeNotFoundError) {
