@@ -14,7 +14,9 @@ import {
   GateConditionNotValidError,
   MeetingChangeConflictError,
   MeetingCreationError,
+  MeetingSessionNotFoundError,
   TimeNotAvailableError,
+  TransactionIsRequired,
 } from '@/utils/errors'
 import { getParticipantBaseInfoFromAccount } from '@/utils/user_manager'
 
@@ -65,6 +67,10 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(417).send(e)
       } else if (e instanceof GateConditionNotValidError) {
         return res.status(405).send(e)
+      } else if (e instanceof MeetingSessionNotFoundError) {
+        return res.status(404).send(e.message)
+      } else if (e instanceof TransactionIsRequired) {
+        return res.status(400).send(e)
       } else {
         Sentry.captureException(e)
         return res.status(500).send(e)
