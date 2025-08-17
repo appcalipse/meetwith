@@ -101,6 +101,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  MeetingSessionNotFoundError,
   MeetingSlugAlreadyExists,
   NoActiveSubscription,
   OwnInviteError,
@@ -366,17 +367,23 @@ export const updateMeetingAsGuest = async (
       'PUT',
       meeting
     )) as DBSlot
-  } catch (e: any) {
-    if (e.status && e.status === 409) {
-      throw new TimeNotAvailableError()
-    } else if (e.status && e.status === 412) {
-      throw new MeetingCreationError()
-    } else if (e.status && e.status === 417) {
-      throw new MeetingChangeConflictError()
-    } else if (e.status && e.status === 404) {
-      throw new MeetingNotFoundError(slotId)
-    } else if (e.status && e.status === 401) {
-      throw new UnauthorizedError()
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status && e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status && e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status && e.status === 404) {
+        throw e.message === 'MeetingSessionNotFoundError'
+          ? new MeetingSessionNotFoundError(slotId)
+          : new MeetingNotFoundError(slotId)
+      } else if (e.status && e.status === 401) {
+        throw new UnauthorizedError()
+      }
     }
     throw e
   }
@@ -395,12 +402,20 @@ export const updateMeeting = async (
     await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
     return response
   } catch (e: unknown) {
-    if (e instanceof ApiFetchError && e.status && e.status === 409) {
-      throw new TimeNotAvailableError()
-    } else if (e instanceof ApiFetchError && e.status === 412) {
-      throw new MeetingCreationError()
-    } else if (e instanceof ApiFetchError && e.status === 417) {
-      throw new MeetingChangeConflictError()
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status === 404) {
+        throw new MeetingNotFoundError(slotId)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      }
     }
     throw e
   }
