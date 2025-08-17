@@ -1,4 +1,4 @@
-import { Address, MeetingSession } from '@meta/Transactions'
+import { Address, ICoinConfig, MeetingSession } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { erc20Abi } from 'abitype/abis'
 import { getContract, readContract } from 'thirdweb'
@@ -1861,4 +1861,12 @@ export async function getCryptoBalance(
   }
 
   return getTokenBalance(walletAddress, tokenAddress, chain)
+}
+
+export const getCoinConfig = async (): Promise<ICoinConfig> => {
+  // bypass cors
+  return internalFetch<ICoinConfig>(
+    '/integrations/onramp-money/all-config',
+    'GET'
+  )
 }

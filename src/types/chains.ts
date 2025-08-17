@@ -14,6 +14,8 @@ import { metis } from 'viem/chains'
 
 import { zeroAddress } from '@/utils/generic_utils'
 
+import { Address } from './Transactions'
+
 export interface ChainInfo {
   chain: SupportedChain
   thirdwebChain: Chain
@@ -58,7 +60,7 @@ export enum AcceptedToken {
 
 export interface AcceptedTokenInfo {
   token: AcceptedToken
-  contractAddress: string
+  contractAddress: Address
 }
 export const getTokenIcon = (token: AcceptedToken) => {
   switch (token) {
@@ -433,8 +435,11 @@ export const getSupportedChainFromId = (
 ): ChainInfo | undefined => {
   return supportedChains.find(c => c.id === chainId)
 }
+export const getSupportedChain = (chain?: SupportedChain) => {
+  return supportedChains.find(val => val.chain === chain)
+}
 export const getChainImage = (chain: SupportedChain) => {
-  return supportedChains.find(val => val.chain === chain)?.image
+  return getSupportedChain(chain)?.image
 }
 
 export const getNetworkDisplayName = (chain: SupportedChain): string => {

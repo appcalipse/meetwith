@@ -38,6 +38,7 @@ export interface BaseMeetingSession {
   owner_address: string | undefined
   guest_email?: string
   guest_address?: string
+  guest_name?: string
   session_number: number
 }
 
@@ -113,6 +114,7 @@ export interface OnrampMoneyWebhook {
   walletAddress: string
   coinId: number
   fiatType: number
+  factor: number
   expectedPrice: number
   actualFiatAmount: number
   paymentType: number | string
@@ -139,4 +141,29 @@ export interface IPurchaseData {
   messageChannel: string
   guestEmail: string
   guestName: string
+}
+export interface ICoinConfig {
+  allCoinConfig: {
+    [x: string]: {
+      coinId: number
+      networks: number[]
+      coinName: string
+      coinIcon: string
+      balanceFloatPlaces: number
+      tradeFloatPlaces: number
+    }
+  }
+  networkConfig: {
+    [x: number]: {
+      addressRegex: string
+      chainName: string
+      chainSymbol: string
+      hashLink: string
+      memoRegex: string
+      nativeToken: number
+      networkId: number
+      node: number
+      startingWith: string[]
+    }
+  }
 }
