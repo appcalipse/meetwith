@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router'
-import React, { FC, useEffect } from 'react'
+import { FC, useEffect } from 'react'
 
 const RedirectHandler: FC = () => {
   const { query, push, prefetch } = useRouter()
@@ -9,8 +9,12 @@ const RedirectHandler: FC = () => {
       return
     }
     if (redirect) {
-      prefetch(redirect as string)
-      push(`${redirect as string}&intent=${intent}`)
+      let url = `${redirect}`
+      if (intent) {
+        url += `&intent=${intent}`
+      }
+      prefetch(url)
+      push(url)
     }
   }, [state, redirect])
   return null

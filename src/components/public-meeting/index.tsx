@@ -216,6 +216,8 @@ interface IScheduleContext {
   setLastScheduledMeeting: React.Dispatch<
     React.SetStateAction<MeetingDecrypted | undefined>
   >
+  setShowSlots: React.Dispatch<React.SetStateAction<boolean>>
+  showSlots: boolean
 }
 
 const baseState: IContext = {
@@ -311,6 +313,8 @@ const scheduleBaseState: IScheduleContext = {
   meetingSlotId: undefined,
   setIsCancelled: () => {},
   setLastScheduledMeeting: () => {},
+  setShowSlots: () => {},
+  showSlots: false,
 }
 
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
@@ -364,6 +368,7 @@ const PublicPage: FC<IProps> = props => {
   const [pickedDay, setPickedDay] = useState<Date | null>(null)
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showSlots, setShowSlots] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
   const [showTimeNotAvailable, setShowTimeNotAvailable] = useState(false)
   const [busySlots, setBusySlots] = useState<Interval[]>([])
@@ -674,6 +679,7 @@ const PublicPage: FC<IProps> = props => {
           setCurrentMonth(pickedTimeDate)
           setSelectedMonth(pickedTimeDate)
           setPickedDay(pickedTimeDate)
+          setShowSlots(true)
           setShowConfirm(true)
         }
       } catch (error) {
@@ -734,6 +740,7 @@ const PublicPage: FC<IProps> = props => {
     setSelectedMonth(new Date())
     setCurrentMonth(new Date())
     setIsScheduling(false)
+    setShowSlots(false)
     setPickedDay(null)
     setPickedTime(null)
     setShowConfirm(false)
@@ -786,7 +793,7 @@ const PublicPage: FC<IProps> = props => {
       let busySlots: Interval[] = []
       try {
         busySlots = await getBusySlots(
-          props?.account?.address,
+          currentAccount?.address,
           startDate,
           endDate
         ).then(busySlots =>
@@ -973,6 +980,7 @@ const PublicPage: FC<IProps> = props => {
       if (meetingSlotId) {
         meeting = await updateMeetingAsGuest(
           meetingSlotId,
+          selectedType?.id,
           start,
           end,
           participants,
@@ -1204,6 +1212,8 @@ const PublicPage: FC<IProps> = props => {
     meetingSlotId,
     setIsCancelled,
     setLastScheduledMeeting,
+    setShowSlots,
+    showSlots,
   }
   const renderStep = () => {
     switch (currentStep) {
