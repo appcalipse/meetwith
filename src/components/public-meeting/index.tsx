@@ -69,7 +69,7 @@ import { v4 } from 'uuid'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
-import { Address } from '@/types/Transactions'
+import { Address, Transaction } from '@/types/Transactions'
 import {
   getAccountDomainUrl,
   scheduleMeeting,
@@ -455,6 +455,18 @@ const PublicPage: FC<IProps> = props => {
           network => network.id === type?.plan?.default_chain_id
         )?.value || undefined
       handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
+      const localStorageTransaction = localStorage.getItem(
+        `${type.id}:transaction`
+      )
+      if (localStorageTransaction) {
+        const transaction = isJson(localStorageTransaction)
+          ? (JSON.parse(localStorageTransaction) as Transaction)
+          : null
+        if (transaction) {
+          setTx(transaction.transaction_hash as Address)
+          setPaymentType(transaction.method)
+        }
+      }
     }
     setCurrentStep(current_step)
   }
@@ -990,7 +1002,11 @@ const PublicPage: FC<IProps> = props => {
           undefined,
           txHash
         )
+        localStorage.removeItem(
+          `${selectedType?.id || ''}:transaction` // Clear the guest persisted transaction from localStorage after successful confirmation
+        )
       }
+
       await getAvailableSlots(true)
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
