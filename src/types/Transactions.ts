@@ -136,6 +136,12 @@ export interface OnrampMoneyWebhook {
   network: string
 }
 
+export interface IPurchaseData {
+  meetingId: string
+  messageChannel: string
+  guestEmail: string
+  guestName: string
+}
 export interface ICoinConfig {
   allCoinConfig: {
     [x: string]: {

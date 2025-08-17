@@ -52,6 +52,7 @@
     "@ukstv/jazzicon-react": "^1.0.0",
     "@unstoppabledomains/resolution": "^7.1.2",
     "abitype": "^1.0.2",
+    "ably": "^2.11.0",
     "arrow-keys-react": "^1.0.6",
     "busboy": "^1.6.0",
     "chakra-react-select": "^4.7.6",
