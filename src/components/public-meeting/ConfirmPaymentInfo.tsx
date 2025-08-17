@@ -154,10 +154,11 @@ const ConfirmPaymentInfo = () => {
           openConnection(undefined, false)
           toast({
             title: 'Account Not Found',
-            description: 'Please connect your wallet to proceed.',
+            description: 'Please login to proceed.',
             status: 'error',
             duration: 5000,
           })
+          setLoading(false)
           return
         }
         setProgress(0)
@@ -314,9 +315,11 @@ const ConfirmPaymentInfo = () => {
         }
       } else {
         if ((selectedType?.plan?.no_of_slot || 0) > 1) {
+          openConnection(undefined, false)
           toast({
-            title: 'Payment Method Not Supported',
-            description: 'You have to be logged in to pay for multiple slots',
+            title: 'Account Not Found',
+            description:
+              'You have to be logged in to pay for multiple slots, Please login to proceed.',
             status: 'error',
           })
           setLoading(false)
