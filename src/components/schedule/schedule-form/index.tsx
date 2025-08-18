@@ -312,7 +312,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           end: rescheduleSlot?.end || new Date(),
           meeting_url: rescheduleSlot?.meeting_url || '',
           participants,
-        } as unknown as MeetingDecrypted) // add only the needed properties
+        } as unknown as MeetingDecrypted) // add only the needed properties; TODO: Define a custom type only with what's needed on the modal.
         onClose()
       }
     } catch (error) {
