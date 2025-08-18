@@ -500,13 +500,7 @@ const Wallet: React.FC<WalletProps> = () => {
                                   borderRadius="full"
                                   overflow="hidden"
                                 >
-                                  <Image
-                                    src={transaction.userImage}
-                                    alt={transaction.user}
-                                    w={{ base: '32px', md: '40px' }}
-                                    h={{ base: '32px', md: '40px' }}
-                                    objectFit="cover"
-                                  />
+                                  <Avatar account={currentAccount} />
                                 </Box>
 
                                 {/* Transaction Details */}

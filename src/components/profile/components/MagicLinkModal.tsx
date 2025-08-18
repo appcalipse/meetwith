@@ -52,6 +52,7 @@ const MagicLinkModal: React.FC<MagicLinkModalProps> = ({
         width={{ base: '100%', md: '592px' }}
         mx={{ base: 0, md: 'auto' }}
         my={{ base: 0, md: 'auto' }}
+        boxShadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">

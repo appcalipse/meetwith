@@ -477,6 +477,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
           maxW={{ base: '100%', md: '500px' }}
           mx={{ base: 0, md: 'auto' }}
           my={{ base: 0, md: 'auto' }}
+          boxShadow="none"
         >
           {/* Header */}
           <ModalHeader pb={{ base: 3, md: 4 }}>
