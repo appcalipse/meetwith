@@ -6,29 +6,21 @@ import {
   HStack,
   Icon,
   Image,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalHeader,
-  ModalOverlay,
   Spacer,
   Text,
   useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { Textarea } from '@chakra-ui/textarea'
 import * as Sentry from '@sentry/nextjs'
-import { DateTime } from 'luxon'
 import { NextPage } from 'next'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useState } from 'react'
-import { FaBell, FaCalendar, FaClock, FaFile } from 'react-icons/fa'
-import { IoMdTimer } from 'react-icons/io'
+import { FaBell } from 'react-icons/fa'
 
 import Loading from '@/components/Loading'
 import { RescheduleConferenceData } from '@/components/public-meeting'
+import CancelComponent from '@/components/public-meeting/CancelComponent'
 import useAccountContext from '@/hooks/useAccountContext'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
@@ -46,7 +38,7 @@ const CancelMeetingPage: NextPage = () => {
   const [loading, setLoading] = useState(true)
   const [meeting, setMeeting] = useState<RescheduleConferenceData>()
   const [isCancelling, setIsCancelling] = useState(false)
-  const [cancelled, setCancelled] = useState(true)
+  const [cancelled, setCancelled] = useState(false)
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   )
@@ -288,12 +280,6 @@ const CancelMeetingPage: NextPage = () => {
       </Container>
     )
   }
-  const { formattedDate, timeDuration } = getFormattedDateAndDuration(
-    timezone,
-    meeting.start,
-    0, // safe to pass zero as we're also passing end time
-    meeting.end
-  )
   return (
     <Container minH="100vh">
       <Flex
@@ -306,74 +292,16 @@ const CancelMeetingPage: NextPage = () => {
         <VStack>
           <Loading label="" />
         </VStack>
-        <Modal
-          isOpen
+        <CancelComponent
+          meeting={meeting}
+          timezone={timezone}
+          reason={reason}
+          setReason={setReason}
+          handleCancelMeeting={handleCancelMeeting}
+          isCancelling={isCancelling}
           onClose={() => router.push('/')}
-          closeOnOverlayClick={false}
-          isCentered
-          size="xl"
-        >
-          <ModalOverlay />
-          <ModalContent p="6">
-            <ModalHeader
-              p={'0'}
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <ModalCloseButton />
-            </ModalHeader>
-            <ModalBody p={'10'} mt={'6'}>
-              <VStack alignItems="flex-start">
-                <Heading>Cancel Meeting</Heading>
-                <VStack alignItems="start" gap={4}>
-                  <HStack>
-                    <FaFile size={24} />
-                    <Text fontWeight="700" textAlign="left">
-                      {meeting.title}
-                    </Text>
-                  </HStack>
-                  <HStack>
-                    <FaCalendar size={24} />
-                    <Text fontWeight="700" textAlign="left">
-                      {formattedDate}
-                    </Text>
-                  </HStack>
-                  <HStack>
-                    <FaClock size={24} />
-                    <Text fontWeight="700">
-                      {timeDuration} ({timezone})
-                    </Text>
-                  </HStack>
-                  <HStack>
-                    <IoMdTimer size={28} />
-                    <Text fontWeight="700">
-                      {DateTime.fromJSDate(meeting.end)
-                        .diff(DateTime.fromJSDate(meeting.start))
-                        .as('minutes')}{' '}
-                      minutes
-                    </Text>
-                  </HStack>
-                </VStack>
-                <Text>Leave a message to the other participants</Text>
-                <Textarea
-                  rows={8}
-                  value={reason}
-                  onChange={e => setReason(e.target.value)}
-                />
-                <HStack w={'fit-content'} mt={'6'} gap={'4'}>
-                  <Button
-                    onClick={handleCancelMeeting}
-                    isLoading={isCancelling}
-                    colorScheme="primary"
-                  >
-                    Cancel Meeting
-                  </Button>
-                </HStack>
-              </VStack>
-            </ModalBody>
-          </ModalContent>
-        </Modal>
+          isOpen
+        />
       </Flex>
     </Container>
   )
