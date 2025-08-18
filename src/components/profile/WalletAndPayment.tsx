@@ -73,8 +73,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
     paymentNetworkOptions[0]?.value || supportedPaymentChains[0]
   )
   const [sendFundsNotification, setSendFundsNotification] = useState(true)
-  const [receiveFundsNotification, setReceiveFundsNotification] =
-    useState(false)
+  const [receiveFundsNotification, setReceiveFundsNotification] = useState(true)
   const [notificationEmail, setNotificationEmail] = useState<string | null>(
     null
   )
@@ -116,19 +115,22 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
     }
   }, [paymentPreferences])
 
-  // Initialize notification preferences from existing preferences
   useEffect(() => {
-    if (
-      paymentPreferences?.notification &&
-      paymentPreferences.notification.length > 0
-    ) {
-      setSendFundsNotification(
-        paymentPreferences.notification.includes('send-tokens')
-      )
-      setReceiveFundsNotification(
-        paymentPreferences.notification.includes('receive-tokens')
-      )
+    if (!paymentPreferences) {
+      setSendFundsNotification(true)
+      setReceiveFundsNotification(true)
+      return
     }
+
+    const notifications = paymentPreferences.notification
+    if (!notifications) {
+      setSendFundsNotification(true)
+      setReceiveFundsNotification(true)
+      return
+    }
+
+    setSendFundsNotification(notifications.includes('send-tokens'))
+    setReceiveFundsNotification(notifications.includes('receive-tokens'))
   }, [paymentPreferences])
 
   const selected = paymentNetworkOptions.find(n => n.value === selectedNetwork)
