@@ -87,11 +87,11 @@ const WithdrawFundsModal = (props: Props) => {
       const [balance, tokenInfo] = await Promise.all([
         getTokenBalance(
           currentAccount.address,
-          selectedAssetInfo.contractAddress,
+          selectedAssetInfo.contractAddress as `0x${string}`,
           selectedNetworkInfo?.chain
         ),
         getTokenInfo(
-          selectedAssetInfo.contractAddress,
+          selectedAssetInfo.contractAddress as `0x${string}`,
           selectedNetworkInfo?.chain
         ),
       ])
