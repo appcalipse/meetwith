@@ -462,49 +462,68 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={handleClose} size="md" isCentered>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        size={{ base: 'full', md: 'md' }}
+        isCentered
+      >
         <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
         <ModalContent
           bg="neutral.900"
-          borderRadius="12px"
+          borderRadius={{ base: '0', md: '12px' }}
           border="1px solid"
           borderColor="neutral.825"
-          maxW="500px"
+          maxW={{ base: '100%', md: '500px' }}
+          mx={{ base: 0, md: 'auto' }}
+          my={{ base: 0, md: 'auto' }}
         >
           {/* Header */}
-          <ModalHeader pb={4}>
+          <ModalHeader pb={{ base: 3, md: 4 }}>
             <HStack spacing={2} align="center">
               <Icon
                 as={FiArrowLeft}
                 color="primary.400"
-                fontSize="20px"
+                fontSize={{ base: '18px', md: '20px' }}
                 cursor="pointer"
                 onClick={handleClose}
                 _hover={{ color: 'primary.300' }}
               />
-              <Text color="white" fontSize="20px" fontWeight="600">
+              <Text
+                color="white"
+                fontSize={{ base: '18px', md: '20px' }}
+                fontWeight="600"
+              >
                 Send funds
               </Text>
             </HStack>
           </ModalHeader>
 
-          <ModalBody pb={6}>
-            <VStack spacing={6} align="stretch">
+          <ModalBody pb={{ base: 4, md: 6 }}>
+            <VStack spacing={{ base: 4, md: 6 }} align="stretch">
               {/* Progress Bar */}
               {isLoading && (
                 <Box>
-                  <HStack justify="space-between" mb={2}>
-                    <Text color="white" fontSize="14px" fontWeight="500">
+                  <HStack justify="space-between" mb={{ base: 1, md: 2 }}>
+                    <Text
+                      color="white"
+                      fontSize={{ base: '12px', md: '14px' }}
+                      fontWeight="500"
+                    >
                       Processing transaction...
                     </Text>
-                    <Text color="primary.400" fontSize="14px" fontWeight="500">
+                    <Text
+                      color="primary.400"
+                      fontSize={{ base: '12px', md: '14px' }}
+                      fontWeight="500"
+                    >
                       {progress.toString()}%
                     </Text>
                   </HStack>
                   <Box
                     bg="neutral.800"
                     borderRadius="full"
-                    h="4px"
+                    h={{ base: '3px', md: '4px' }}
                     overflow="hidden"
                   >
                     <Box
@@ -520,14 +539,19 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
               {/* Select Token */}
               <Box>
-                <Text color="white" fontSize="16px" fontWeight="600" mb={3}>
+                <Text
+                  color="white"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="600"
+                  mb={{ base: 2, md: 3 }}
+                >
                   Select token
                 </Text>
                 <Box
                   bg="neutral.825"
-                  borderRadius="12px"
-                  px={4}
-                  py={3}
+                  borderRadius={{ base: '8px', md: '12px' }}
+                  px={{ base: 3, md: 4 }}
+                  py={{ base: 2, md: 3 }}
                   display="flex"
                   alignItems="center"
                   gap={3}
@@ -543,23 +567,30 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                       <Image
                         src={selectedToken.icon}
                         alt={selectedToken.symbol}
-                        w="24px"
-                        h="24px"
+                        w={{ base: '20px', md: '24px' }}
+                        h={{ base: '20px', md: '24px' }}
                         borderRadius="full"
                       />
-                      <Text color="white" fontSize="16px" fontWeight="500">
+                      <Text
+                        color="white"
+                        fontSize={{ base: '14px', md: '16px' }}
+                        fontWeight="500"
+                      >
                         {selectedToken.symbol}
                       </Text>
                     </>
                   ) : (
-                    <Text color="neutral.400" fontSize="16px">
+                    <Text
+                      color="neutral.400"
+                      fontSize={{ base: '14px', md: '16px' }}
+                    >
                       Select a token
                     </Text>
                   )}
                   <Icon
                     as={IoChevronDown}
                     color="neutral.300"
-                    fontSize="16px"
+                    fontSize={{ base: '14px', md: '16px' }}
                     ml="auto"
                   />
                 </Box>
@@ -568,14 +599,19 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
               {/* Select Network - Only show if not from token view */}
               {!isFromTokenView && (
                 <Box>
-                  <Text color="white" fontSize="16px" fontWeight="600" mb={3}>
+                  <Text
+                    color="white"
+                    fontSize={{ base: '14px', md: '16px' }}
+                    fontWeight="600"
+                    mb={{ base: 2, md: 3 }}
+                  >
                     Select network
                   </Text>
                   <Box
                     bg="neutral.825"
-                    borderRadius="12px"
-                    px={4}
-                    py={3}
+                    borderRadius={{ base: '8px', md: '12px' }}
+                    px={{ base: 3, md: 4 }}
+                    py={{ base: 2, md: 3 }}
                     display="flex"
                     alignItems="center"
                     gap={3}
@@ -586,13 +622,17 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                     borderColor="neutral.700"
                     opacity={isLoading ? 0.6 : 1}
                   >
-                    <Text color="white" fontSize="16px" fontWeight="500">
+                    <Text
+                      color="white"
+                      fontSize={{ base: '14px', md: '16px' }}
+                      fontWeight="500"
+                    >
                       {getNetworkDisplayName(sendNetwork)}
                     </Text>
                     <Icon
                       as={IoChevronDown}
                       color="neutral.300"
-                      fontSize="16px"
+                      fontSize={{ base: '14px', md: '16px' }}
                       ml="auto"
                     />
                   </Box>
@@ -601,7 +641,12 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
               {/* Recipient Address */}
               <Box>
-                <Text color="white" fontSize="16px" fontWeight="600" mb={3}>
+                <Text
+                  color="white"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="600"
+                  mb={{ base: 2, md: 3 }}
+                >
                   Receive (enter wallet address)
                 </Text>
                 <Input
@@ -611,9 +656,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                   bg="neutral.825"
                   border="1px solid"
                   borderColor="neutral.700"
-                  borderRadius="12px"
+                  borderRadius={{ base: '8px', md: '12px' }}
                   color="white"
-                  fontSize="16px"
+                  fontSize={{ base: '14px', md: '16px' }}
                   _placeholder={{ color: 'neutral.400' }}
                   _focus={{
                     borderColor: 'primary.400',
@@ -626,13 +671,17 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
               {/* Warning Message */}
               <Box
                 bg="orange.900"
-                borderRadius="8px"
-                px={4}
-                py={3}
+                borderRadius={{ base: '6px', md: '8px' }}
+                px={{ base: 3, md: 4 }}
+                py={{ base: 2, md: 3 }}
                 border="1px solid"
                 borderColor="orange.700"
               >
-                <Text color="orange.200" fontSize="14px" fontWeight="500">
+                <Text
+                  color="orange.200"
+                  fontSize={{ base: '12px', md: '14px' }}
+                  fontWeight="500"
+                >
                   Ensure you&apos;re sending the funds to{' '}
                   {getNetworkDisplayName(sendNetwork).toLowerCase() ===
                     'arbitrum' ||
@@ -649,7 +698,12 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
 
               {/* Amount */}
               <Box>
-                <Text color="white" fontSize="16px" fontWeight="600" mb={3}>
+                <Text
+                  color="white"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="600"
+                  mb={{ base: 2, md: 3 }}
+                >
                   Amount
                 </Text>
                 <Input
@@ -659,9 +713,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                   bg="neutral.825"
                   border="1px solid"
                   borderColor="neutral.700"
-                  borderRadius="12px"
+                  borderRadius={{ base: '8px', md: '12px' }}
                   color="white"
-                  fontSize="16px"
+                  fontSize={{ base: '14px', md: '16px' }}
                   _placeholder={{ color: 'neutral.400' }}
                   _focus={{
                     borderColor: 'primary.400',
@@ -675,10 +729,10 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
               <Button
                 bg="primary.500"
                 color="white"
-                fontSize="16px"
+                fontSize={{ base: '14px', md: '16px' }}
                 fontWeight="600"
-                py={4}
-                borderRadius="12px"
+                py={{ base: 3, md: 4 }}
+                borderRadius={{ base: '8px', md: '12px' }}
                 _hover={{ bg: isLoading ? 'primary.500' : 'primary.600' }}
                 _active={{ bg: isLoading ? 'primary.500' : 'primary.700' }}
                 onClick={handleSend}
@@ -695,7 +749,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
                 {isLoading ? (
                   <HStack spacing={2}>
                     <Spinner size="sm" />
-                    <Text>Sending...</Text>
+                    <Text fontSize={{ base: '14px', md: '16px' }}>
+                      Sending...
+                    </Text>
                   </HStack>
                 ) : (
                   'Send'
