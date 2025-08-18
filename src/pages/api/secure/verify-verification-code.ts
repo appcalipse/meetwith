@@ -1,6 +1,20 @@
+import { createHmac } from 'crypto'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+
+function hmacSha256(value: string, salt: string, secret: string): Buffer {
+  return createHmac('sha256', secret).update(`${value}:${salt}`).digest()
+}
+
+function safeEqual(a: Buffer, b: Buffer): boolean {
+  if (a.length !== b.length) return false
+  let result = 0
+  for (let i = 0; i < a.length; i++) {
+    result |= a[i] ^ b[i]
+  }
+  return result === 0
+}
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -15,7 +29,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // Check if user has an active verification code in session
-    if (!req.session.verificationCode || !req.session.verificationCodeExpiry) {
+    if (!req.session.verificationCodeExpiry) {
       return res.status(400).json({
         error: 'No verification code found. Please request a new one.',
       })
@@ -24,7 +38,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Check if verification code has expired
     if (Date.now() > req.session.verificationCodeExpiry) {
       // Clear expired verification data
-      req.session.verificationCode = undefined
+      req.session.verificationCodeHash = undefined
+      req.session.verificationCodeSalt = undefined
       req.session.verificationCodeExpiry = undefined
       req.session.verificationCodeType = undefined
       await req.session.save()
@@ -39,13 +54,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(400).json({ error: 'Invalid verification code type' })
     }
 
-    // Verify the verification code matches
-    if (req.session.verificationCode !== verificationCode) {
+    const secret = process.env.JWT_SECRET || ''
+
+    // Hash+salt verification path
+    const storedHashHex = req.session.verificationCodeHash
+    const salt = req.session.verificationCodeSalt
+    if (!storedHashHex || !salt) {
+      return res.status(400).json({ error: 'Invalid verification code state' })
+    }
+    const providedDigest = hmacSha256(verificationCode, salt, secret)
+    const storedDigest = Buffer.from(storedHashHex, 'hex')
+    if (
+      providedDigest.length !== storedDigest.length ||
+      !safeEqual(providedDigest, storedDigest)
+    ) {
       return res.status(400).json({ error: 'Invalid verification code' })
     }
 
     // Clear the verification code after successful use (single-use)
-    req.session.verificationCode = undefined
+    req.session.verificationCodeHash = undefined
+    req.session.verificationCodeSalt = undefined
     req.session.verificationCodeExpiry = undefined
     req.session.verificationCodeType = undefined
     await req.session.save()

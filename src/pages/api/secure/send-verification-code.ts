@@ -1,8 +1,13 @@
-import { randomInt } from 'crypto'
+import { createHmac, randomBytes, randomInt } from 'crypto'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { sendVerificationCodeEmail } from '@/utils/email_helper'
+
+function hmacSha256(value: string, salt: string): string {
+  const secret = process.env.JWT_SECRET || ''
+  return createHmac('sha256', secret).update(`${value}:${salt}`).digest('hex')
+}
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -19,8 +24,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Generate a 5-digit verification code
     const verificationCode = randomInt(10000, 100000).toString()
 
-    // Store the verification code in the user's session (server-side)
-    req.session.verificationCode = verificationCode
+    // Create salt and hash
+    const salt = randomBytes(16).toString('hex')
+    const hash = hmacSha256(verificationCode, salt)
+
+    req.session.verificationCodeHash = hash
+    req.session.verificationCodeSalt = salt
     req.session.verificationCodeExpiry = Date.now() + 5 * 60 * 1000 // 5 minutes
     req.session.verificationCodeType = 'transaction'
 
