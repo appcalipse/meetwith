@@ -312,7 +312,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           end: rescheduleSlot?.end || new Date(),
           meeting_url: rescheduleSlot?.meeting_url || '',
           participants,
-        } as unknown as MeetingDecrypted)
+        } as unknown as MeetingDecrypted) // add only the needed properties
+        onClose()
       }
     } catch (error) {
       if (error instanceof MeetingNotFoundError) {
