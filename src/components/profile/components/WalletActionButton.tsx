@@ -14,11 +14,11 @@ const WalletActionButton: React.FC<WalletActionButtonProps> = ({
   isActive = false,
   onClick,
 }) => (
-  <VStack spacing={3}>
+  <VStack spacing={{ base: 2, md: 3 }}>
     <Box
-      w="68px"
-      h="54px"
-      borderRadius="16px"
+      w={{ base: '56px', md: '68px' }}
+      h={{ base: '44px', md: '54px' }}
+      borderRadius={{ base: '12px', md: '16px' }}
       bg={isActive ? 'primary.500' : 'neutral.0'}
       display="flex"
       alignItems="center"
@@ -35,10 +35,14 @@ const WalletActionButton: React.FC<WalletActionButtonProps> = ({
       <Icon
         as={icon}
         color={isActive ? 'white' : 'primary.500'}
-        fontSize="24px"
+        fontSize={{ base: '20px', md: '24px' }}
       />
     </Box>
-    <Text fontSize="16px" color="neutral.0" fontWeight="500">
+    <Text
+      fontSize={{ base: '14px', md: '16px' }}
+      color="neutral.0"
+      fontWeight="500"
+    >
       {label}
     </Text>
   </VStack>

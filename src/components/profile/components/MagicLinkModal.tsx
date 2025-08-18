@@ -37,14 +37,21 @@ const MagicLinkModal: React.FC<MagicLinkModalProps> = ({
   const primaryColor = '#F46739'
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size={{ base: 'full', md: 'md' }}
+      isCentered
+    >
       <ModalOverlay bg="#131A20CC" backdropFilter="blur(12px)" />
       <ModalContent
         bg="dark.700"
-        borderRadius="12px"
-        p={8}
-        maxW="592px"
-        width="592px"
+        borderRadius={{ base: '0', md: '12px' }}
+        p={{ base: 6, md: 8 }}
+        maxW={{ base: '100%', md: '592px' }}
+        width={{ base: '100%', md: '592px' }}
+        mx={{ base: 0, md: 'auto' }}
+        my={{ base: 0, md: 'auto' }}
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">
