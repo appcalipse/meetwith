@@ -31,7 +31,7 @@ export default async function handler(
       const payload: WebhookPayload = await Bridge.Webhook.parse(
         req.body,
         headerRecord,
-        process.env.WEBHOOK_SECRET!
+        process.env.THIRDWEB_WEBHOOK_SECRET!
       )
       if (payload.type === 'pay.onramp-transaction') {
         const supportedChain = getSupportedChainFromId(
