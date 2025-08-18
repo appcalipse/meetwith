@@ -108,6 +108,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
     <VStack
       alignItems="start"
       flex={1}
+      mt={3}
       mb={8}
       spacing={6}
       width="100%"
@@ -128,7 +129,7 @@ const AvailabilityConfig: React.FC<{ currentAccount: Account }> = ({
           xl: '1200px',
           '2xl': '1400px',
         }}
-        padding={{ base: 4, sm: 6, md: 8, lg: 10, xl: 12, '2xl': 16 }}
+        padding={{ base: 4, sm: 6, md: 8, lg: 10, xl: 12, '2xl': 12 }}
         borderRadius={12}
         background="neutral.900"
         position="relative"
