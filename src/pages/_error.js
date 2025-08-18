@@ -9,6 +9,7 @@ import {
 } from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
 import NextErrorComponent from 'next/error'
+import { useRouter } from 'next/router'
 
 const MyError = ({ statusCode, hasGetInitialPropsRun, err }) => {
   if (!hasGetInitialPropsRun && err) {
@@ -18,7 +19,7 @@ const MyError = ({ statusCode, hasGetInitialPropsRun, err }) => {
     Sentry.captureException(err)
     // Flushing is not required in this case as it only happens on the client
   }
-
+  const router = useRouter()
   return (
     <>
       <Container maxW="7xl" mt={8} flex={1} my={{ base: 12, md: 24 }}>
