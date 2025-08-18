@@ -14,12 +14,12 @@ import {
   Spinner,
   Text,
   Tooltip,
+  useDisclosure,
   VStack,
 } from '@chakra-ui/react'
-import { useDisclosure } from '@chakra-ui/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
-import React, { useContext } from 'react'
+import React from 'react'
 import { useState } from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
@@ -37,7 +37,6 @@ import { useCryptoBalance } from '@/hooks/useCryptoBalance'
 import { useCryptoBalances } from '@/hooks/useCryptoBalances'
 import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { useWalletTransactions } from '@/hooks/useWalletTransactions'
-import { AccountContext } from '@/providers/AccountProvider'
 import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
 import { getChainId, supportedChains } from '@/types/chains'
@@ -47,6 +46,7 @@ import { getNotificationSubscriptions } from '@/utils/api_helper'
 import { useToastHelpers } from '@/utils/toasts'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
 
+import WithdrawFundsModal from '../wallet/WithdrawFundsModal'
 import { Avatar } from './components/Avatar'
 import MagicLinkModal from './components/MagicLinkModal'
 import WalletActionButton from './components/WalletActionButton'
@@ -59,9 +59,8 @@ interface WalletProps {
   currentAccount: Account
 }
 
-const Wallet: React.FC<WalletProps> = () => {
+const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const router = useRouter()
-  const { currentAccount } = useContext(AccountContext)
   const { showSuccessToast, showErrorToast } = useToastHelpers()
 
   // PIN protection state
@@ -134,7 +133,7 @@ const Wallet: React.FC<WalletProps> = () => {
   } = useWallet()
 
   const transactionsPerPage = 5
-
+  const { isOpen, onClose, onOpen } = useDisclosure()
   const { totalBalance, isLoading: balanceLoading } =
     useWalletBalance(selectedCurrency)
 
@@ -190,6 +189,8 @@ const Wallet: React.FC<WalletProps> = () => {
     )
   })
 
+  const handleShowWithdrawWidget = () => onOpen()
+
   const handleSettingsClick = () => {
     router.push('/dashboard/details#wallet-payment')
   }
@@ -210,6 +211,11 @@ const Wallet: React.FC<WalletProps> = () => {
       pb={{ base: 4, md: 8 }}
       px={{ base: 4, md: 0 }}
     >
+      <WithdrawFundsModal
+        selectedNetwork={selectedNetwork}
+        isOpen={isOpen}
+        onClose={onClose}
+      />
       {/* Header */}
       <VStack
         spacing={{ base: 1, md: 2 }}
@@ -352,6 +358,7 @@ const Wallet: React.FC<WalletProps> = () => {
               <WalletActionButton
                 icon={PiArrowCircleUpRight}
                 label="Withdraw funds"
+                onClick={() => handleShowWithdrawWidget()}
               />
               <WalletActionButton
                 icon={PiPlusCircleLight}
@@ -761,6 +768,7 @@ const Wallet: React.FC<WalletProps> = () => {
               <WalletActionButton
                 icon={PiArrowCircleUpRight}
                 label="Withdraw funds"
+                onClick={() => handleShowWithdrawWidget()}
               />
               <WalletActionButton
                 icon={PiPlusCircleLight}

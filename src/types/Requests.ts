@@ -99,6 +99,7 @@ export interface MeetingSyncRequest {
   end: Date
   created_at: Date
   timezone: string
+  meeting_type_id?: string
 }
 
 export interface MeetingChange {
@@ -240,6 +241,8 @@ export interface ConfirmCryptoTransactionRequest {
   guest_address?: string
   guest_email?: string
   guest_name?: string
+  payment_method: PaymentType
+  provider_reference_id?: string
 }
 
 export interface RequestInvoiceRequest {

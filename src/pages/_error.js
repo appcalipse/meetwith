@@ -1,5 +1,15 @@
+import {
+  Button,
+  Container,
+  Heading,
+  Image,
+  Spacer,
+  Text,
+  VStack,
+} from '@chakra-ui/react'
 import * as Sentry from '@sentry/nextjs'
 import NextErrorComponent from 'next/error'
+import { useRouter } from 'next/router'
 
 const MyError = ({ statusCode, hasGetInitialPropsRun, err }) => {
   if (!hasGetInitialPropsRun && err) {
@@ -9,8 +19,40 @@ const MyError = ({ statusCode, hasGetInitialPropsRun, err }) => {
     Sentry.captureException(err)
     // Flushing is not required in this case as it only happens on the client
   }
-
-  return <NextErrorComponent statusCode={statusCode} />
+  const router = useRouter()
+  return (
+    <>
+      <Container maxW="7xl" mt={8} flex={1} my={{ base: 12, md: 24 }}>
+        <VStack alignItems="center" py={10} px={6}>
+          <Heading
+            display="inline-block"
+            as="h2"
+            size="2xl"
+            bgGradient="linear(to-r, primary.400, primary.600)"
+            backgroundClip="text"
+          >
+            Something went wrong
+          </Heading>
+          <Spacer />
+          <Image src="/assets/404.svg" alt="404" width="300px" />
+          <Spacer />
+          <Text color={'gray.500'} my={6} textAlign="center">
+            We encountered an unexpected error. Our team has been notified and
+            is working to fix it.
+          </Text>
+          <Spacer />
+          <Button
+            onClick={() => router.reload()}
+            colorScheme="primary"
+            variant="solid"
+          >
+            Reload page
+          </Button>
+          <Spacer />
+        </VStack>
+      </Container>
+    </>
+  )
 }
 
 MyError.getInitialProps = async ({ res, err, asPath }) => {

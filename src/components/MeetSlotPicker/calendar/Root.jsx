@@ -1,17 +1,9 @@
 import { useColorMode } from '@chakra-ui/color-mode'
 import { Center, Flex, Heading, HStack, Text, VStack } from '@chakra-ui/react'
-import {
-  addMonths,
-  format,
-  isAfter,
-  isSameMonth,
-  isToday,
-  startOfMonth,
-  subMonths,
-} from 'date-fns'
+import { addMonths, format, isAfter, startOfMonth, subMonths } from 'date-fns'
 import { DateTime } from 'luxon'
 import PropTypes from 'prop-types'
-import React, { useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
 import Loading from '@/components/Loading'
@@ -19,13 +11,14 @@ import Loading from '@/components/Loading'
 import { Calendar, FakeCalendar } from './Calendar'
 import generateDays from './generate-days'
 import { DaysOfMonth, DaysOfWeek, Grid, MonthYear, Wrapper } from './Layout'
-import { MonthDay, MonthDays } from './MonthDays'
+import { MonthDays } from './MonthDays'
 import {
   CurrentMonth,
   FakeCurrentMonth,
   NextMonth,
   PrevMonth,
 } from './MonthPicker'
+import StandAloneMonthDays from './StandAloneMonthDays'
 import { WEEK_DAYS, WeekDay, WeekDays } from './WeekDays'
 
 function Root({
@@ -41,8 +34,14 @@ function Root({
   const [fakeMonth, setFakeMonth] = useState(selectedMonth)
   const [animation, setAnimation] = useState('')
   const { colorMode } = useColorMode()
-  const [startDay, days] = generateDays(selectedMonth)
-  const [fakeStartDay, fakeDays] = generateDays(fakeMonth)
+  const [startDay, days] = useMemo(
+    () => generateDays(selectedMonth),
+    [selectedMonth]
+  )
+  const [fakeStartDay, fakeDays] = useMemo(
+    () => generateDays(fakeMonth),
+    [fakeMonth]
+  )
 
   const isAnimating = !!animation
 
@@ -95,34 +94,18 @@ function Root({
     )
     pickDay(dayInTimezone.toJSDate())
   }
-  const isTodayInTimezone = date => {
-    const dt = DateTime.fromJSDate(date, { zone: timezone })
-    const now = DateTime.now().setZone(timezone)
-    return dt.year === now.year && dt.month === now.month && dt.day === now.day
-  }
-  const checkIsToday = day => {
-    if (pickedDay) {
-      const pickedDt = DateTime.fromJSDate(pickedDay, { zone: timezone })
-      const dayInTimezone = DateTime.fromObject(
-        {
-          year: day.getFullYear(),
-          month: day.getMonth() + 1, // JS months are 0-indexed
-          day: day.getDate(),
-          hour: 0,
-          minute: 0,
-          second: 0,
-          millisecond: 0,
-        },
-        { zone: timezone }
+
+  const checkIsPickedDay = useCallback(
+    day => {
+      return DateTime.fromJSDate(day).hasSame(
+        pickedDay
+          ? DateTime.fromJSDate(pickedDay).setZone(timezone)
+          : DateTime.now().setZone(timezone),
+        'day'
       )
-      return (
-        pickedDt.day === dayInTimezone.day &&
-        pickedDt.month === dayInTimezone.month &&
-        pickedDt.year === dayInTimezone.year
-      )
-    }
-    return isTodayInTimezone(day)
-  }
+    },
+    [pickedDay, timezone]
+  )
 
   return (
     <VStack w="100%" alignItems={{ md: 'flex-start', base: 'center' }}>
@@ -169,7 +152,7 @@ function Root({
                   <WeekDays>
                     {WEEK_DAYS.map(weekDay => {
                       return (
-                        <Text fontWeight="500" color="white" key={weekDay}>
+                        <Text fontWeight="500" key={weekDay}>
                           {weekDay}
                         </Text>
                       )
@@ -178,28 +161,17 @@ function Root({
                 </DaysOfWeek>
 
                 <MonthDays>
-                  {days.map(day => {
-                    const _isSameMonth = isSameMonth(day, startDay)
-                    if (!_isSameMonth) {
-                      return <MonthDay key={day} />
-                    }
-                    const formatted = format(day, 'd')
-                    const _isToday = checkIsToday(day)
-                    const _isWeekend = [0, 6].includes(day.getDay())
-                    const isValid = validator ? validator(day) : true
-                    return (
-                      <MonthDay
-                        key={day}
-                        isValid={isValid}
-                        isToday={_isToday}
-                        isDarkMode={colorMode === 'dark'}
-                        isWeekend={_isWeekend}
-                        onClick={() => isValid && handlePickDay(day)}
-                      >
-                        {formatted}
-                      </MonthDay>
-                    )
-                  })}
+                  {days.map(day => (
+                    <StandAloneMonthDays
+                      day={day}
+                      checkIsPickedDay={checkIsPickedDay}
+                      colorMode={colorMode}
+                      handlePickDay={handlePickDay}
+                      startDay={startDay}
+                      validator={validator}
+                      key={day.toString()}
+                    />
+                  ))}
                 </MonthDays>
               </Calendar>
 
@@ -214,26 +186,17 @@ function Root({
 
                 <DaysOfMonth>
                   <MonthDays>
-                    {fakeDays.map(fakeDay => {
-                      const _isSameMonth = isSameMonth(fakeDay, fakeStartDay)
-                      if (!_isSameMonth) {
-                        return <MonthDay key={fakeDay} />
-                      }
-
-                      const formatted = format(fakeDay, 'd')
-                      const _isToday = isToday(fakeDay)
-                      const isValid = validator ? validator(fakeDay) : true
-                      return (
-                        <MonthDay
-                          key={fakeDay}
-                          disabled={!_isSameMonth}
-                          isValid={isValid}
-                          isToday={_isToday}
-                        >
-                          {formatted}
-                        </MonthDay>
-                      )
-                    })}
+                    {fakeDays.map(day => (
+                      <StandAloneMonthDays
+                        day={day}
+                        checkIsPickedDay={checkIsPickedDay}
+                        colorMode={colorMode}
+                        handlePickDay={handlePickDay}
+                        startDay={fakeStartDay}
+                        validator={validator}
+                        key={day.toString()}
+                      />
+                    ))}
                   </MonthDays>
                 </DaysOfMonth>
               </FakeCalendar>

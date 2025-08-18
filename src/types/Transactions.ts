@@ -11,10 +11,10 @@ export interface BaseTransaction {
   direction: PaymentDirection
   amount: number
   initiator_address?: string
-  meeting_type_id: string | null // [ref: > meeting_type.id, null] //  ensures persistence even if meeting type is only soft deleted
+  meeting_type_id?: string | null // [ref: > meeting_type.id, null] //  ensures persistence even if meeting type is only soft deleted
   status?: PaymentStatus
-  metadata?: Record<string, string> // e.g., { "iconUri": "...", "sender": "...", ... }
-  token_address?: string
+  metadata?: Record<string, string | number> // e.g., { "iconUri": "...", "sender": "...", ... }
+  token_address?: string | null
   token_type?: string // fiat resolves to crypto so safe to have
   chain_id?: number
   currency?: string // e.g "USD", "EUR"
@@ -38,6 +38,7 @@ export interface BaseMeetingSession {
   owner_address: string | undefined
   guest_email?: string
   guest_address?: string
+  guest_name?: string
   session_number: number
 }
 
@@ -105,4 +106,64 @@ export interface FormattedTransaction {
   paymentMethod?: string
   sessionLocation?: string
   transactionHash?: string
+}
+
+export interface OnrampMoneyWebhook {
+  orderId: number
+  eventType: string
+  walletAddress: string
+  coinId: number
+  fiatType: number
+  factor: number
+  expectedPrice: number
+  actualFiatAmount: number
+  paymentType: number | string
+  actualPrice: number
+  actualQuantity: number
+  kycNeeded: number
+  createdAt: Date | string
+  updatedAt: Date | string
+  status: number
+  statusDescription: string
+  referenceId: string
+  chainId: number
+  onRampFee: number
+  clientFee: number
+  gatewayFee: number
+  transactionHash: string
+  merchantRecognitionId: string
+  coinCode: string
+  network: string
+}
+
+export interface IPurchaseData {
+  meetingId: string
+  messageChannel: string
+  guestEmail: string
+  guestName: string
+}
+export interface ICoinConfig {
+  allCoinConfig: {
+    [x: string]: {
+      coinId: number
+      networks: number[]
+      coinName: string
+      coinIcon: string
+      balanceFloatPlaces: number
+      tradeFloatPlaces: number
+    }
+  }
+  networkConfig: {
+    [x: number]: {
+      addressRegex: string
+      chainName: string
+      chainSymbol: string
+      hashLink: string
+      memoRegex: string
+      nativeToken: number
+      networkId: number
+      node: number
+      startingWith: string[]
+    }
+  }
 }
