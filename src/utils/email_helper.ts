@@ -1001,3 +1001,70 @@ export const sendVerificationCodeEmail = async (
   }
   return true
 }
+
+// New: Crypto debit notification email to sender
+export const sendCryptoDebitEmail = async (
+  toEmail: string,
+  locals: {
+    amount: number
+    tokenSymbol: string
+    chainName: string
+    transactionHash: string
+    recipientAddress: string
+  }
+): Promise<boolean> => {
+  const email = new Email()
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'crypto_debit')}`,
+    { ...locals, appUrl }
+  )
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [{ name: 'wallet', value: 'crypto_debit' }],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}
+
+// New: Session booking income notification to host
+export const sendSessionBookingIncomeEmail = async (
+  toEmail: string,
+  locals: {
+    guestName: string
+    amount: number
+    tokenSymbol: string
+    chainName: string
+    transactionHash: string
+    meetingTypeTitle?: string
+  }
+): Promise<boolean> => {
+  const email = new Email()
+  const rendered = await email.renderAll(
+    `${path.resolve('src', 'emails', 'session_booking_income')}`,
+    { ...locals, appUrl }
+  )
+  const msg: CreateEmailOptions = {
+    to: toEmail,
+    subject: rendered.subject!,
+    html: rendered.html!,
+    text: rendered.text,
+    ...defaultResendOptions,
+    tags: [{ name: 'wallet', value: 'session_income' }],
+  }
+  try {
+    await resend.emails.send(msg)
+  } catch (err) {
+    console.error(err)
+    Sentry.captureException(err)
+  }
+  return true
+}

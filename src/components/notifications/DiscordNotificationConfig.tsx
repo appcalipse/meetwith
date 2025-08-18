@@ -70,40 +70,42 @@ const DiscordNotificationConfig: React.FC<Props> = ({
 
   return (
     <VStack alignItems="start" flex={1} spacing={2}>
-      <HStack py={2} justifyContent="space-between" width="100%">
-        <HStack spacing={3}>
-          <Switch
-            colorScheme="primary"
-            size="lg"
-            isChecked={isActive}
-            onChange={e => {
-              if (e.target.checked) {
-                onDiscordNotificationChange({
-                  channel: NotificationChannel.DISCORD,
-                  destination: account.discord_account!.discord_id.toString(),
-                  disabled: false,
-                  inMWWServer: true,
-                })
-              } else {
-                onDiscordNotificationChange(undefined)
-              }
-            }}
-            isDisabled={!loading && !canEnable}
-          />
-          <Text>Discord notifications</Text>
-          <Box
-            as="span"
-            px={3}
-            py={1.5}
-            borderRadius="full"
-            bg={isActive ? 'green.200' : 'primary.75'}
-            color={isActive ? 'green.400' : 'primary.500'}
-            fontSize="xs"
-          >
-            {isActive ? 'Active' : 'Inactive'}
-          </Box>
+      {!loading && (
+        <HStack py={2} justifyContent="space-between" width="100%">
+          <HStack spacing={3}>
+            <Switch
+              colorScheme="primary"
+              size="lg"
+              isChecked={isActive}
+              onChange={e => {
+                if (e.target.checked) {
+                  onDiscordNotificationChange({
+                    channel: NotificationChannel.DISCORD,
+                    destination: account.discord_account!.discord_id.toString(),
+                    disabled: false,
+                    inMWWServer: true,
+                  })
+                } else {
+                  onDiscordNotificationChange(undefined)
+                }
+              }}
+              isDisabled={!loading && !canEnable}
+            />
+            <Text>Discord notifications</Text>
+            <Box
+              as="span"
+              px={3}
+              py={1.5}
+              borderRadius="full"
+              bg={isActive ? 'green.200' : 'primary.75'}
+              color={isActive ? 'green.400' : 'primary.500'}
+              fontSize="xs"
+            >
+              {isActive ? 'Active' : 'Inactive'}
+            </Box>
+          </HStack>
         </HStack>
-      </HStack>
+      )}
       {loading ? (
         <HStack>
           <Spinner size={'sm'} />

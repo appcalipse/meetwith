@@ -36,7 +36,12 @@ import {
   ConnectedCalendar,
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
-import { getChainInfo, SupportedChain } from '@/types/chains'
+import {
+  getChainDisplayName,
+  getChainInfo,
+  resolveTokenSymbolFromAddress,
+  SupportedChain,
+} from '@/types/chains'
 import {
   ContactSearch,
   DBContact,
@@ -168,7 +173,11 @@ import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
-import { sendReceiptEmail } from './email_helper'
+import {
+  sendCryptoDebitEmail,
+  sendReceiptEmail,
+  sendSessionBookingIncomeEmail,
+} from './email_helper'
 import { CalendarService } from './services/calendar.service.types'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 import { isTimeInsideAvailabilities } from './slots.helper'
@@ -4524,6 +4533,63 @@ export const getWalletTransactionsByToken = async (
   )
 }
 
+const sendWalletDebitEmailIfPossible = async (
+  initiatorAddress: string,
+  tx: ConfirmCryptoTransactionRequest,
+  fallbackReceiver?: string | null
+) => {
+  try {
+    // Respect user preferences: only send if 'send-tokens' is enabled
+    const prefs = await getPaymentPreferences(initiatorAddress)
+    const notifications = prefs?.notification || []
+    if (!notifications.includes('send-tokens')) return
+
+    const senderEmail = await getAccountNotificationSubscriptionEmail(
+      initiatorAddress
+    )
+    if (!senderEmail) return
+
+    await sendCryptoDebitEmail(senderEmail, {
+      amount: tx.fiat_equivalent,
+      tokenSymbol: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      chainName: getChainDisplayName(tx.chain),
+      transactionHash: tx.transaction_hash,
+      recipientAddress: tx.receiver_address || fallbackReceiver || '',
+    })
+  } catch (e) {
+    console.warn('Failed to send wallet transfer email:', e)
+  }
+}
+
+const sendSessionIncomeEmailIfPossible = async (
+  meetingType: MeetingType | undefined | null,
+  tx: ConfirmCryptoTransactionRequest
+) => {
+  try {
+    const hostAddress = meetingType?.account_owner_address
+    if (!hostAddress) return
+
+    // Respect host preferences: only send if 'receive-tokens' is enabled
+    const prefs = await getPaymentPreferences(hostAddress)
+    const notifications = prefs?.notification || []
+    if (!notifications.includes('receive-tokens')) return
+
+    const hostEmail = await getAccountNotificationSubscriptionEmail(hostAddress)
+    if (!hostEmail) return
+
+    await sendSessionBookingIncomeEmail(hostEmail, {
+      guestName: tx.guest_name || 'Guest',
+      amount: tx.fiat_equivalent,
+      tokenSymbol: resolveTokenSymbolFromAddress(tx.chain, tx.token_address),
+      chainName: getChainDisplayName(tx.chain),
+      transactionHash: tx.transaction_hash,
+      meetingTypeTitle: meetingType?.title,
+    })
+  } catch (e) {
+    console.warn('Failed to send session booking income email:', e)
+  }
+}
+
 const createCryptoTransaction = async (
   transactionRequest: ConfirmCryptoTransactionRequest,
   account_address: string
@@ -4590,10 +4656,19 @@ const createCryptoTransaction = async (
     throw new Error(error.message)
   }
 
+  // Notify parties via email
+  if (isWalletTransfer) {
+    await sendWalletDebitEmailIfPossible(
+      account_address,
+      transactionRequest,
+      receiverAddress
+    )
+  }
+
   // Only create meeting sessions and send receipt if this is a meeting-related transaction
-  if (transactionRequest.meeting_type_id) {
+  if (!isWalletTransfer) {
     const meetingType = await getMeetingTypeFromDB(
-      transactionRequest.meeting_type_id
+      transactionRequest.meeting_type_id!
     )
     const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
 
@@ -4661,6 +4736,9 @@ const createCryptoTransaction = async (
         console.error(e)
       }
     }
+
+    // Notify host about income
+    await sendSessionIncomeEmailIfPossible(meetingType, transactionRequest)
   }
 }
 const getMeetingSessionsByTxHash = async (

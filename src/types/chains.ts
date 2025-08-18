@@ -494,3 +494,18 @@ export const getChainId = (chain: SupportedChain): number => {
   const chainInfo = getChainInfo(chain)
   return chainInfo?.id || 42220
 }
+
+// Helpers to build email payloads and send notifications
+export const resolveTokenSymbolFromAddress = (
+  chain: SupportedChain,
+  tokenAddress: string
+): string => {
+  const chainInfo = getChainInfo(chain)
+  const match = chainInfo?.acceptableTokens.find(
+    t => (t.contractAddress || '').toLowerCase() === tokenAddress.toLowerCase()
+  )
+  return match ? getTokenSymbol(match.token) : 'UNKNOWN'
+}
+
+export const getChainDisplayName = (chain: SupportedChain): string =>
+  getChainInfo(chain)?.name || String(chain)
