@@ -4685,30 +4685,71 @@ export const getWalletTransactions = async (
   const transactionsWithMeetingData = await Promise.all(
     (transactions || []).map(async tx => {
       if (tx.meeting_type_id) {
-        // Get meeting type data
-        const { data: meetingTypeData } = await db.supabase
-          .from('meeting_types')
-          .select('title')
+        // Get meeting type data with joined meeting sessions
+        const { data: meetingTypeData, error: typeError } = await db.supabase
+          .from('meeting_type')
+          .select(
+            `
+            id, 
+            title, 
+            account_owner_address, 
+            description,
+            meeting_sessions!inner(
+              id, 
+              guest_email, 
+              guest_name, 
+              session_number, 
+              created_at, 
+              updated_at
+            )
+          `
+          )
           .eq('id', tx.meeting_type_id)
+          .eq('meeting_sessions.transaction_id', tx.id)
           .single()
 
-        // Get meeting session data
-        const { data: meetingSessionData } = await db.supabase
-          .from('meeting_sessions')
-          .select('guest_email, session_number')
-          .eq('transaction_id', tx.id)
-          .single()
+        if (typeError) {
+          console.error('Error fetching meeting type:', typeError)
+        }
+
+        let meeting_host_name: string | null = null
+        if (meetingTypeData?.account_owner_address) {
+          const ownerAddr = meetingTypeData.account_owner_address.toLowerCase()
+          const { data: hostPrefs } = await db.supabase
+            .from('account_preferences')
+            .select('name')
+            .eq('owner_account_address', ownerAddr)
+            .single()
+          meeting_host_name = hostPrefs?.name || null
+          if (!meeting_host_name && ownerAddr) {
+            meeting_host_name = `${ownerAddr.slice(0, 3)}***${ownerAddr.slice(
+              -2
+            )}`
+          }
+        }
+
+        const meetingSessions = meetingTypeData?.meeting_sessions || []
 
         return {
           ...tx,
-          meeting_types: meetingTypeData || null,
-          meeting_sessions: meetingSessionData || null,
+          meeting_types: meetingTypeData
+            ? [
+                {
+                  id: meetingTypeData.id,
+                  title: meetingTypeData.title,
+                  account_owner_address: meetingTypeData.account_owner_address,
+                  description: meetingTypeData.description,
+                },
+              ]
+            : [],
+          meeting_sessions: meetingSessions,
+          meeting_host_name,
         }
       } else {
         return {
           ...tx,
-          meeting_types: null,
-          meeting_sessions: null,
+          meeting_types: [],
+          meeting_sessions: [],
         }
       }
     })
@@ -4725,6 +4766,7 @@ export const getWalletTransactions = async (
     // Determine direction based on whether current wallet is sender or receiver
     let direction: 'debit' | 'credit' | 'unknown' = 'unknown'
     let counterparty_address: string | undefined
+    let counterparty_name: string | undefined
 
     if (isSender) {
       direction = 'debit'
@@ -4737,10 +4779,19 @@ export const getWalletTransactions = async (
       counterparty_address = undefined
     }
 
+    if (tx.meeting_type_id) {
+      if (direction === 'credit') {
+        counterparty_name = tx?.meeting_sessions?.[0]?.guest_name || undefined
+      } else if (direction === 'debit') {
+        counterparty_name = tx?.meeting_host_name || undefined
+      }
+    }
+
     return {
       ...tx,
       direction,
       counterparty_address,
+      counterparty_name,
       has_full_metadata: !!(tx.initiator_address && metadata?.receiver_address),
     }
   })

@@ -58,26 +58,36 @@ export const useWalletTransactions = (
     const amount = tx.fiat_equivalent || tx.amount
     const formattedAmount = `${amount.toLocaleString()} ${tx.currency}`
 
-    // Get meeting session info
-    const meetingSession = tx.meeting_sessions?.[0]
-    const guestEmail = meetingSession?.guest_email
-    const guestName = guestEmail?.split('@')[0] || 'Guest'
+    const meetingSession = tx?.meeting_sessions
+    const counterpartyName = tx?.counterparty_name as string | undefined
+    const counterpartyAddress = tx?.counterparty_address as string | undefined
+    const maskAddress = (addr?: string) =>
+      addr && addr.length > 6
+        ? `${addr.slice(0, 3)}***${addr.slice(-2)}`
+        : addr || ''
 
     // Determine user and action based on transaction type
     let user = ''
     let action = ''
 
     if (isCredit) {
-      if (meetingSession) {
-        user = guestName
-        action = `paid ${formattedAmount}`
+      user = 'You'
+      if (tx.meeting_type_id) {
+        const name = counterpartyName || 'Guest'
+        action = `received ${formattedAmount} from ${name}`
       } else {
-        user = 'You'
-        action = `received ${formattedAmount}`
+        const from = maskAddress(counterpartyAddress)
+        action = `received ${formattedAmount}${from ? ` from ${from}` : ''}`
       }
     } else {
       user = 'You'
-      action = `sent ${formattedAmount}`
+      if (tx.meeting_type_id) {
+        const name = counterpartyName || 'Recipient'
+        action = `sent ${formattedAmount} to ${name}`
+      } else {
+        const to = maskAddress(counterpartyAddress)
+        action = `sent ${formattedAmount}${to ? ` to ${to}` : ''}`
+      }
     }
 
     const confirmedDate = new Date(tx.confirmed_at || new Date())
