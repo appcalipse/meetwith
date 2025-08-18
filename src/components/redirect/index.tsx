@@ -1,12 +1,12 @@
 import { useRouter } from 'next/router'
-import { FC, useEffect } from 'react'
+import { FC, useEffect, useState } from 'react'
 
 import useAccountContext from '@/hooks/useAccountContext'
 
 const RedirectHandler: FC = () => {
   const { query, push, prefetch } = useRouter()
   const { state, redirect, intent } = query
-  const [isRedirecting, setIsRedirecting] = React.useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const currentAccount = useAccountContext()
   const handleRedirect = async () => {
     if (!currentAccount || isRedirecting || state) return
