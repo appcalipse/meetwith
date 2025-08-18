@@ -86,8 +86,6 @@ export const useLogin = () => {
             (await router.push(
               redirectPath
                 ? `${redirectPath}&authstate=${state}`
-                : query.redirect
-                ? (query.redirect as string)
                 : `/dashboard/details?state=${state}`
             ))
           return
@@ -104,9 +102,11 @@ export const useLogin = () => {
         ) {
           shouldRedirect &&
             (await router.push(
-              `/dashboard/meetings${
-                redirectPath ? `?redirect=${redirectPath}` : ''
-              }`
+              query.redirect
+                ? (query.redirect as string)
+                : `/dashboard/meetings${
+                    redirectPath ? `?redirect=${redirectPath}` : ''
+                  }`
             ))
           return
         }
