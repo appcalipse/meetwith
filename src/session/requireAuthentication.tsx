@@ -37,19 +37,27 @@ const redirectBasedOnLogin = async (
     redirectType === AuthRedirect.REDIRECT_IF_AUTHED
       ? !!currentAccount
       : !currentAccount
-  if (currentRoute) {
-    route = `${route}?redirect=${encodeURIComponent(currentRoute)}`
+
+  // Prevent redirecting to the same route to avoid infinite loops
+  if (shouldRedirect && currentRoute === route) {
+    return currentAccount
   }
+
+  let redirectUrl = route
+  if (currentRoute && currentRoute !== route) {
+    redirectUrl = `${route}?redirect=${encodeURIComponent(currentRoute)}`
+  }
+
   // Only redirect here if we are on server side
   if (!!ctx.req && shouldRedirect) {
     // https://github.com/zeit/next.js/wiki/Redirecting-in-%60getInitialProps%60
     if (ctx.res) {
       ctx.res.writeHead(302, {
-        Location: route,
+        Location: redirectUrl,
       })
       ctx.res.end()
     } else {
-      router.push(route)
+      router.push(redirectUrl)
     }
     return null
   }
@@ -64,15 +72,42 @@ const withAuthRedirect =
       const { checkAuthOnClient } = props
       const { logged, currentAccount } = useContext(AccountContext)
 
+      // Prevent infinite redirects by checking if we're already on the target route
+      const currentRoute = router.pathname
+      const isOnTargetRoute = currentRoute === route
+
       // On the client side, if the user is not logged in,
       // then redirect it to the equivalent endpoint
-      if (!logged && redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED) {
-        const currentRoute = router.asPath
-        if (currentRoute) {
-          route = `${route}?redirect=${encodeURIComponent(currentRoute)}`
+      if (
+        !logged &&
+        redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED &&
+        !isOnTargetRoute
+      ) {
+        let redirectUrl = route
+        if (currentRoute && currentRoute !== route) {
+          redirectUrl = `${route}?redirect=${encodeURIComponent(currentRoute)}`
         }
-        router.push(route)
+        router.push(redirectUrl)
 
+        return (
+          <Flex
+            width="100%"
+            height="100%"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Loading />
+          </Flex>
+        )
+      }
+
+      // Similar check for authenticated users
+      if (
+        logged &&
+        redirectType === AuthRedirect.REDIRECT_IF_AUTHED &&
+        !isOnTargetRoute
+      ) {
+        router.push(route)
         return (
           <Flex
             width="100%"
