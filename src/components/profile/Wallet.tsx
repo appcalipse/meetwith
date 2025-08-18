@@ -507,7 +507,13 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   borderRadius="full"
                                   overflow="hidden"
                                 >
-                                  <Avatar account={currentAccount} />
+                                  <Image
+                                    src={transaction.userImage}
+                                    alt={transaction.user}
+                                    w={{ base: '32px', md: '40px' }}
+                                    h={{ base: '32px', md: '40px' }}
+                                    objectFit="cover"
+                                  />
                                 </Box>
 
                                 {/* Transaction Details */}
@@ -521,46 +527,35 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   </Text>
                                 </Box>
                               </HStack>
-
-                              {/* Status */}
-                              <Box
-                                px={{ base: 2, md: 3 }}
-                                py={{ base: 1, md: 1 }}
-                                borderRadius="100px"
-                                bg={
-                                  transaction.status === 'Successful'
-                                    ? 'green.600'
-                                    : 'red.700'
-                                }
-                              >
-                                <Text
-                                  fontSize={{ base: '12px', md: '14px' }}
-                                  fontWeight="500"
-                                  color="white"
+                              {/* Status + Date (right aligned) */}
+                              <VStack spacing={1} align="end" ml="auto">
+                                <Box
+                                  px={{ base: 2, md: 3 }}
+                                  py={{ base: 1, md: 1 }}
+                                  borderRadius="100px"
+                                  bg={
+                                    transaction.status === 'Successful'
+                                      ? 'green.600'
+                                      : 'red.700'
+                                  }
                                 >
-                                  {transaction.status}
+                                  <Text
+                                    fontSize={{ base: '12px', md: '14px' }}
+                                    fontWeight="500"
+                                    color="white"
+                                  >
+                                    {transaction.status}
+                                  </Text>
+                                </Box>
+                                <Text
+                                  fontSize={{ base: '14px', md: '16px' }}
+                                  color="neutral.0"
+                                  fontWeight="500"
+                                >
+                                  {transaction.date} {transaction.time}
                                 </Text>
-                              </Box>
-                              <Text
-                                fontSize={{ base: '14px', md: '16px' }}
-                                color="neutral.0"
-                                fontWeight="500"
-                                display={{ base: 'none', md: 'block' }}
-                              >
-                                {transaction.date} {transaction.time}
-                              </Text>
+                              </VStack>
                             </Flex>
-
-                            {/* Bottom row: Date and time */}
-                            <Text
-                              fontSize={{ base: '14px', md: '16px' }}
-                              color="neutral.0"
-                              fontWeight="500"
-                              textAlign="right"
-                              display={{ base: 'block', md: 'none' }}
-                            >
-                              {transaction.date} {transaction.time}
-                            </Text>
                           </VStack>
                         </Box>
                       ))}
@@ -784,46 +779,6 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             </HStack>
           </Box>
 
-          {/* Transaction Notification - only show when not in transaction view and there are recent transactions */}
-          {/* {!showTransactions && transactions.length > 0 && (
-            <Box
-              bg="neutral.825"
-              borderRadius={{ base: '20px', md: '25px' }}
-              px={{ base: 3, md: 4 }}
-              py={{ base: 2, md: 3 }}
-              mb={{ base: 4, md: 6 }}
-              width={{ base: '100%', md: '516px' }}
-              marginLeft="auto"
-              marginRight="auto"
-              textAlign="center"
-            >
-              <Text
-                color="neutral.75"
-                fontSize={{ base: '14px', md: '16px' }}
-                fontWeight="500"
-              >
-                {transactionsLoading ? (
-                  'Loading recent transactions...'
-                ) : (
-                  <>
-                    You have {totalCount} transaction
-                    {totalCount !== 1 ? 's' : ''}.{' '}
-                    <Text
-                      as="span"
-                      color="primary.200"
-                      cursor="pointer"
-                      textDecoration="underline"
-                      _hover={{ color: 'primary.300' }}
-                      onClick={() => setShowTransactions(true)}
-                    >
-                      Show all transactions
-                    </Text>
-                  </>
-                )}
-              </Text>
-            </Box>
-          )} */}
-
           {/* Transaction History Screen */}
           {showTransactions && !showTransactionDetails ? (
             <Box mt={{ base: 8, md: 12 }}>
@@ -972,46 +927,35 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                 </Text>
                               </Box>
                             </HStack>
-
-                            {/* Status */}
-                            <Box
-                              px={{ base: 2, md: 3 }}
-                              py={{ base: 1, md: 1 }}
-                              borderRadius="100px"
-                              bg={
-                                transaction.status === 'Successful'
-                                  ? 'green.600'
-                                  : 'red.700'
-                              }
-                            >
-                              <Text
-                                fontSize={{ base: '12px', md: '14px' }}
-                                fontWeight="500"
-                                color="white"
+                            {/* Status + Date (right aligned) */}
+                            <VStack spacing={1} align="end" ml="auto">
+                              <Box
+                                px={{ base: 2, md: 3 }}
+                                py={{ base: 1, md: 1 }}
+                                borderRadius="100px"
+                                bg={
+                                  transaction.status === 'Successful'
+                                    ? 'green.600'
+                                    : 'red.700'
+                                }
                               >
-                                {transaction.status}
+                                <Text
+                                  fontSize={{ base: '12px', md: '14px' }}
+                                  fontWeight="500"
+                                  color="white"
+                                >
+                                  {transaction.status}
+                                </Text>
+                              </Box>
+                              <Text
+                                fontSize={{ base: '14px', md: '16px' }}
+                                color="neutral.0"
+                                fontWeight="500"
+                              >
+                                {transaction.date} {transaction.time}
                               </Text>
-                            </Box>
-                            <Text
-                              fontSize={{ base: '14px', md: '16px' }}
-                              color="neutral.0"
-                              fontWeight="500"
-                              display={{ base: 'none', md: 'block' }}
-                            >
-                              {transaction.date} {transaction.time}
-                            </Text>
+                            </VStack>
                           </Flex>
-
-                          {/* Bottom row: Date and time */}
-                          <Text
-                            fontSize={{ base: '14px', md: '16px' }}
-                            color="neutral.0"
-                            fontWeight="500"
-                            textAlign="right"
-                            display={{ base: 'block', md: 'none' }}
-                          >
-                            {transaction.date} {transaction.time}
-                          </Text>
                         </VStack>
                       </Box>
                     ))}
