@@ -1,4 +1,4 @@
-import { Address, MeetingSession } from '@meta/Transactions'
+import { Address, ICoinConfig, MeetingSession } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
 import { DAVCalendar } from 'tsdav'
 
@@ -93,6 +93,7 @@ import {
   MeetingChangeConflictError,
   MeetingCreationError,
   MeetingNotFoundError,
+  MeetingSessionNotFoundError,
   MeetingSlugAlreadyExists,
   NoActiveSubscription,
   OwnInviteError,
@@ -357,17 +358,23 @@ export const updateMeetingAsGuest = async (
       'PUT',
       meeting
     )) as DBSlot
-  } catch (e: any) {
-    if (e.status && e.status === 409) {
-      throw new TimeNotAvailableError()
-    } else if (e.status && e.status === 412) {
-      throw new MeetingCreationError()
-    } else if (e.status && e.status === 417) {
-      throw new MeetingChangeConflictError()
-    } else if (e.status && e.status === 404) {
-      throw new MeetingNotFoundError(slotId)
-    } else if (e.status && e.status === 401) {
-      throw new UnauthorizedError()
+  } catch (e: unknown) {
+    if (e instanceof ApiFetchError) {
+      if (e.status && e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status && e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status && e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status && e.status === 404) {
+        throw e.message === 'MeetingSessionNotFoundError'
+          ? new MeetingSessionNotFoundError(slotId)
+          : new MeetingNotFoundError(slotId)
+      } else if (e.status && e.status === 401) {
+        throw new UnauthorizedError()
+      }
     }
     throw e
   }
@@ -386,12 +393,20 @@ export const updateMeeting = async (
     await queryClient.invalidateQueries(QueryKeys.meeting(slotId))
     return response
   } catch (e: unknown) {
-    if (e instanceof ApiFetchError && e.status && e.status === 409) {
-      throw new TimeNotAvailableError()
-    } else if (e instanceof ApiFetchError && e.status === 412) {
-      throw new MeetingCreationError()
-    } else if (e instanceof ApiFetchError && e.status === 417) {
-      throw new MeetingChangeConflictError()
+    if (e instanceof ApiFetchError) {
+      if (e.status === 409) {
+        throw new TimeNotAvailableError()
+      } else if (e.status === 400) {
+        throw new TransactionIsRequired()
+      } else if (e.status === 412) {
+        throw new MeetingCreationError()
+      } else if (e.status === 417) {
+        throw new MeetingChangeConflictError()
+      } else if (e.status === 404) {
+        throw new MeetingNotFoundError(slotId)
+      } else if (e.status === 401) {
+        throw new UnauthorizedError()
+      }
     }
     throw e
   }
@@ -523,6 +538,11 @@ export const getBusySlots = async (
   limit?: number,
   offset?: number
 ): Promise<Interval[]> => {
+  const url = `/meetings/busy/${accountIdentifier}?limit=${
+    limit || undefined
+  }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
+    end?.getTime() || undefined
+  }`
   const response = await queryClient.fetchQuery(
     QueryKeys.busySlots({
       id: accountIdentifier?.toLowerCase(),
@@ -531,14 +551,7 @@ export const getBusySlots = async (
       limit,
       offset,
     }),
-    () =>
-      internalFetch(
-        `/meetings/busy/${accountIdentifier}?limit=${
-          limit || undefined
-        }&offset=${offset || 0}&start=${start?.getTime() || undefined}&end=${
-          end?.getTime() || undefined
-        }`
-      ) as Promise<Interval[]>
+    () => internalFetch(url) as Promise<Interval[]>
   )
   return response.map(slot => ({
     ...slot,
@@ -612,11 +625,13 @@ export const getMeetingsForDashboard = async (
   }))
 }
 export const syncMeeting = async (
-  decryptedMeetingData: MeetingInfo
+  decryptedMeetingData: MeetingInfo,
+  slotId: string
 ): Promise<void> => {
   try {
     await internalFetch(`/secure/meetings/sync`, 'PATCH', {
       decryptedMeetingData,
+      slotId,
     })
   } catch (e) {}
 }
@@ -1789,5 +1804,13 @@ export const verifyVerificationCode = async (
     '/secure/verify-verification-code',
     'POST',
     { verificationCode }
+  )
+}
+
+export const getCoinConfig = async (): Promise<ICoinConfig> => {
+  // bypass cors
+  return internalFetch<ICoinConfig>(
+    '/integrations/onramp-money/all-config',
+    'GET'
   )
 }

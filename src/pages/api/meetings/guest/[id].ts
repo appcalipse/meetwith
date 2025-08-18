@@ -12,6 +12,8 @@ import {
 import {
   MeetingChangeConflictError,
   MeetingNotFoundError,
+  MeetingSessionNotFoundError,
+  TransactionIsRequired,
   UnauthorizedError,
 } from '@/utils/errors'
 
@@ -25,12 +27,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       const meeting = await getConferenceDataBySlotId(req.query.id as string)
       if (!meeting) {
         return res.status(404).send('Not found')
-      }
-      if (meeting.slots) {
-        meeting.slots = [] // we don't want other users slots to be exposed
-      }
-      if (meeting.meeting_url) {
-        meeting.meeting_url = '' // we don't want private data to be exposed
       }
       return res.status(200).json(meeting)
     } catch (err) {
@@ -74,6 +70,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(401).send(e.message)
       } else if (e instanceof MeetingChangeConflictError) {
         return res.status(417).send(e)
+      } else if (e instanceof TransactionIsRequired) {
+        return res.status(400).send(e)
+      } else if (e instanceof MeetingSessionNotFoundError) {
+        return res.status(404).send(e.message)
       }
       return res.status(500).send(e)
     }
@@ -96,6 +96,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(404).send(e.message)
       } else if (e instanceof UnauthorizedError) {
         return res.status(401).send(e.message)
+      } else if (e instanceof TransactionIsRequired) {
+        return res.status(400).send(e)
       }
       return res.status(500).send(e)
     }

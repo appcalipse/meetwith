@@ -14,6 +14,8 @@ import { metis } from 'viem/chains'
 
 import { zeroAddress } from '@/utils/generic_utils'
 
+import { Address } from './Transactions'
+
 export interface ChainInfo {
   chain: SupportedChain
   thirdwebChain: Chain
@@ -154,7 +156,7 @@ export interface TokenMeta {
   last_updated: string
 }
 
-export const getNativeDecimals = (chain: SupportedChain): number => {
+export const getNativeDecimals = (_chain: SupportedChain): number => {
   // all supported tokens for now have 18 decimals
   return 18
 }
@@ -457,8 +459,11 @@ export const getSupportedChainFromId = (
 ): ChainInfo | undefined => {
   return supportedChains.find(c => c.id === chainId)
 }
+export const getSupportedChain = (chain?: SupportedChain) => {
+  return supportedChains.find(val => val.chain === chain)
+}
 export const getChainImage = (chain: SupportedChain) => {
-  return supportedChains.find(val => val.chain === chain)?.image
+  return getSupportedChain(chain)?.image
 }
 
 export const getNetworkDisplayName = (chain: SupportedChain): string => {
@@ -493,6 +498,34 @@ export const getTokenAddress = (
 export const getChainId = (chain: SupportedChain): number => {
   const chainInfo = getChainInfo(chain)
   return chainInfo?.id || 42220
+}
+
+export const getTokenFromName = (tokenName: string): AcceptedToken | null => {
+  const lowerName = tokenName.toLowerCase()
+  switch (lowerName) {
+    case 'ether':
+      return AcceptedToken.ETHER
+    case 'polygon':
+      return AcceptedToken.MATIC
+    case 'metis':
+      return AcceptedToken.METIS
+    case 'dai':
+      return AcceptedToken.DAI
+    case 'usd coin':
+      return AcceptedToken.USDC
+    case 'tether usd':
+      return AcceptedToken.USDT
+    case 'euro':
+      return AcceptedToken.EUR
+    case 'celo':
+      return AcceptedToken.CELO
+    case 'celo dollar':
+      return AcceptedToken.CUSD
+    case 'celo euro':
+      return AcceptedToken.CEUR
+    default:
+      return null
+  }
 }
 
 // Helpers to build email payloads and send notifications

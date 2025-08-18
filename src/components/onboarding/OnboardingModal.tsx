@@ -163,17 +163,9 @@ const OnboardingModal = () => {
 
         // 3rd Case
         // Don't have any origin, just created Account
-      } else if (!origin) {
-        const isNewUser =
-          !currentAccount.preferences?.name ||
-          (currentAccount.created_at &&
-            new Date(currentAccount.created_at).toDateString() ===
-              new Date().toDateString())
-
-        if (isNewUser || signedUp) {
-          openOnboarding()
-          onboardingStarted()
-        }
+      } else if (!origin && signedUp) {
+        openOnboarding()
+        onboardingStarted()
       }
 
       // If not, we check if any origin is passed in and if the user its not logged in

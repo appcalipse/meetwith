@@ -12,6 +12,7 @@ import {
   Switch,
   Text,
   useColorModeValue,
+  useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -22,14 +23,22 @@ import {
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import { Select } from 'chakra-react-select'
-import { useContext, useEffect } from 'react'
+import { useRouter } from 'next/router'
+import { useContext, useEffect, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
+import CancelComponent from '@/components/public-meeting/CancelComponent'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { AccountPreferences, MeetingType } from '@/types/Account'
+import { AccountPreferences } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@/types/ParticipantInfo'
+import { guestMeetingCancel } from '@/utils/api_helper'
 import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
@@ -38,11 +47,13 @@ import {
   customSelectComponents,
   noClearCustomSelectComponent,
 } from '@/utils/constants/select'
+import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
 import { formatCurrency, renderProviderName } from '@/utils/generic_utils'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
 import { AccountContext } from '../../../providers/AccountProvider'
 import {
+  MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
   SchedulingType,
@@ -54,10 +65,8 @@ interface ScheduleFormProps {
   isSchedulingExternal: boolean
   willStartScheduling?: (isScheduling: boolean) => void
   isGateValid?: boolean
-  selectedType?: MeetingType | null
   preferences?: AccountPreferences
   notificationsSubs?: number
-  meetingProviders?: Array<MeetingProvider>
 }
 
 export const ScheduleForm: React.FC<ScheduleFormProps> = ({
@@ -68,11 +77,10 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   notificationsSubs,
   preferences,
 }) => {
-  const { currentAccount, logged } = useContext(AccountContext)
+  const { logged } = useContext(AccountContext)
   const {
     confirmSchedule,
     timezone,
-    setTimezone,
     participants,
     setParticipants,
     meetingProvider,
@@ -105,13 +113,24 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     setIsFirstUserEmailValid,
     showEmailConfirm,
     setShowEmailConfirm,
+    meetingSlotId,
+    rescheduleSlot,
+    setLastScheduledMeeting,
+    setIsCancelled,
   } = useContext(ScheduleStateContext)
-  const { setCurrentStep } = useContext(PublicScheduleContext)
-  const { tx, selectedType } = useContext(PublicScheduleContext)
+  const { tx, selectedType, setCurrentStep } = useContext(PublicScheduleContext)
   const toast = useToast()
+  const router = useRouter()
+  const query = router.query
+  const { account } = useContext(PublicScheduleContext)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [reason, setReason] = useState('')
+  const { metadata } = query
+  const { isOpen, onClose, onOpen } = useDisclosure()
   const meetingProviders = (preferences?.meetingProviders || []).concat(
     MeetingProvider.CUSTOM
   )
+
   useEffect(() => {
     if (selectedType?.custom_link) {
       setMeetingProvider(MeetingProvider.CUSTOM)
@@ -132,6 +151,56 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       setScheduleType(SchedulingType.GUEST)
     }
   }, [logged, selectedType])
+
+  useEffect(() => {
+    if (rescheduleSlot && meetingSlotId) {
+      if (rescheduleSlot.title) {
+        setTitle(rescheduleSlot.title)
+      }
+      if (rescheduleSlot.reminders) {
+        setMeetingNotification(
+          rescheduleSlot.reminders.map(reminder => ({
+            value: reminder,
+            label:
+              MeetingNotificationOptions.find(
+                option => option.value === reminder
+              )?.label || '',
+          }))
+        )
+      }
+      if (rescheduleSlot.provider) {
+        setMeetingProvider(rescheduleSlot.provider || MeetingProvider.CUSTOM)
+      }
+
+      if (rescheduleSlot.recurrence) {
+        setMeetingRepeat({
+          value: rescheduleSlot.recurrence,
+          label:
+            MeetingRepeatOptions.find(
+              option => option.value === rescheduleSlot.recurrence
+            )?.label || '',
+        })
+      }
+      if (rescheduleSlot.meeting_url) {
+        setMeetingUrl(rescheduleSlot.meeting_url)
+      }
+      if (rescheduleSlot.participants) {
+        const actor = rescheduleSlot.participants?.find(
+          p => p.slot_id === meetingSlotId
+        )
+        if (actor) {
+          setGuestEmail(actor.guest_email || '')
+          setName(actor.name || '')
+          setParticipants(
+            rescheduleSlot.participants.filter(
+              p => p.slot_id !== meetingSlotId && p.guest_email
+            )
+          )
+        }
+      }
+    }
+  }, [rescheduleSlot])
+
   const handleConfirm = async () => {
     if (meetingProvider === MeetingProvider.CUSTOM && !meetingUrl) {
       toast({
@@ -191,7 +260,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       return
     }
     try {
-      if (selectedType?.plan && !tx) {
+      if (selectedType?.plan && !tx && !meetingSlotId) {
         setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
       } else {
         const success = await confirmSchedule(
@@ -216,7 +285,65 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       willStartScheduling && willStartScheduling?.(true)
     }
   }
-
+  const handleCancelMeeting = async () => {
+    if (!meetingSlotId || !rescheduleSlot) return
+    setIsCancelling(true)
+    try {
+      const response = await guestMeetingCancel(meetingSlotId, {
+        metadata: metadata as string,
+        currentTimezone: timezone.value,
+      })
+      if (response?.success) {
+        setIsCancelled(true)
+        const participants: Array<ParticipantInfo> =
+          rescheduleSlot?.participants || []
+        participants.push({
+          account_address: account?.address,
+          name: account.preferences?.name,
+          type: ParticipantType.Owner,
+          status: ParticipationStatus.Accepted,
+          slot_id: '',
+          meeting_id: '',
+        })
+        setLastScheduledMeeting({
+          id: meetingSlotId,
+          title: rescheduleSlot?.title || '',
+          start: rescheduleSlot?.start || new Date(),
+          end: rescheduleSlot?.end || new Date(),
+          meeting_url: rescheduleSlot?.meeting_url || '',
+          participants,
+        } as unknown as MeetingDecrypted) // add only the needed properties; TODO: Define a custom type only with what's needed on the modal.
+        onClose()
+      }
+    } catch (error) {
+      if (error instanceof MeetingNotFoundError) {
+        toast({
+          title: 'Meeting not found',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          description: 'The meeting you are trying to cancel was not found',
+        })
+      } else if (error instanceof UnauthorizedError) {
+        toast({
+          title: 'Invalid Cancel Url',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          description: 'The cancel url is invalid',
+        })
+      } else if (error instanceof Error) {
+        toast({
+          title: 'Error cancelling meeting',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          description: error.message,
+        })
+      }
+    }
+    setIsCancelling(false)
+  }
   const { openConnection } = useContext(OnboardingModalContext)
 
   const handleScheduleType = async (type: SchedulingType) => {
@@ -236,12 +363,12 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const getScheduleButtonLabel = () => {
     if (isSchedulingExternal) return 'Scheduling...'
     if (logged || scheduleType === SchedulingType.GUEST) {
-      if (selectedType?.plan && !tx) {
+      if (selectedType?.plan && !tx && !meetingSlotId) {
         return `Continue to make payment (${formatCurrency(
           selectedType.plan.no_of_slot * selectedType.plan.price_per_slot
         )})`
       }
-      return 'Schedule'
+      return meetingSlotId ? 'Update Meeting' : 'Schedule'
     }
     return 'Connect Wallet to Schedule'
   }
@@ -262,6 +389,18 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         md: '550px',
       }}
     >
+      {rescheduleSlot && (
+        <CancelComponent
+          isOpen={isOpen}
+          onClose={onClose}
+          isCancelling={isCancelling}
+          handleCancelMeeting={handleCancelMeeting}
+          meeting={rescheduleSlot}
+          reason={reason}
+          setReason={setReason}
+          timezone={timezone.value}
+        />
+      )}
       <FormControl>
         <Flex
           alignItems="center"
@@ -578,26 +717,41 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           }}
         />
       )}
-      <Button
-        width="full"
-        isDisabled={
-          (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) ||
-          (logged &&
-            ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
-          isSchedulingExternal ||
-          isGateValid === false
-        }
-        isLoading={isSchedulingExternal}
-        onClick={
-          scheduleType === SchedulingType.REGULAR
-            ? handleScheduleWithWallet
-            : handleConfirm
-        }
-        colorScheme="primary"
-        // mt={6}
-      >
-        {getScheduleButtonLabel()}
-      </Button>
+      <HStack>
+        <Button
+          width="full"
+          flex={1}
+          isDisabled={
+            (scheduleType === SchedulingType.GUEST && !isGuestEmailValid()) ||
+            (logged &&
+              ((doSendEmailReminders && !isUserEmailValid()) || isNameEmpty)) ||
+            isSchedulingExternal ||
+            isGateValid === false
+          }
+          isLoading={isSchedulingExternal}
+          onClick={
+            scheduleType === SchedulingType.REGULAR
+              ? handleScheduleWithWallet
+              : handleConfirm
+          }
+          colorScheme="primary"
+        >
+          {getScheduleButtonLabel()}
+        </Button>
+        {meetingSlotId && (
+          <Button
+            width="full"
+            flex={1}
+            isDisabled={isCancelling}
+            isLoading={isCancelling}
+            onClick={onOpen}
+            bg={'orangeButton.800'}
+            color={'white'}
+          >
+            Cancel meeting
+          </Button>
+        )}
+      </HStack>
     </Flex>
   )
 }

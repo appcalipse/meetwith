@@ -52,7 +52,10 @@ import {
   verifyPin,
   verifyVerificationCode,
 } from '@/utils/api_helper'
-import { supportedPaymentChains } from '@/utils/constants/meeting-types'
+import {
+  PaymentType,
+  supportedPaymentChains,
+} from '@/utils/constants/meeting-types'
 import { TokenType } from '@/utils/constants/meeting-types'
 import { parseUnits, zeroAddress } from '@/utils/generic_utils'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
@@ -421,6 +424,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
           fiat_equivalent: parseFloat(amount), // Use user's input amount
           meeting_type_id: null,
           receiver_address: recipientAddress.toLowerCase(),
+          payment_method: PaymentType.CRYPTO,
         })
 
         // Refetch wallet balance and transactions

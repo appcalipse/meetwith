@@ -6,7 +6,7 @@ export enum SessionType {
   PAID = 'paid',
   FREE = 'free',
 }
-
+export const NO_MEETING_TYPE = 'no_type'
 export const isSessionType = (value: string): value is SessionType => {
   return Object.values(SessionType).some(type => type === value)
 }
@@ -171,10 +171,6 @@ export const getDefaultValues = (): Partial<MeetingType> => ({
     id: '',
   },
 })
-
-export enum Currency {
-  USD = 'USD',
-}
 
 export const networkOptions = supportedChains
   .filter(val => (supportedPaymentChains || []).includes(val.chain))
