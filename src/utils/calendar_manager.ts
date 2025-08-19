@@ -390,6 +390,7 @@ const buildMeetingData = async (
 
 const updateMeetingAsGuest = async (
   slotId: string,
+  meetingTypeId: string,
   startTime: Date,
   endTime: Date,
   participants: ParticipantInfo[],
@@ -511,7 +512,7 @@ const updateMeetingAsGuest = async (
 
   const meetingData = await buildMeetingData(
     SchedulingType.GUEST,
-    NO_MEETING_TYPE,
+    meetingTypeId,
     startTime,
     endTime,
     participantData.sanitizedParticipants,

@@ -12,6 +12,8 @@ import { DateTime, Interval as LuxonInterval } from 'luxon'
 
 import { DayAvailability } from '@/types/Account'
 
+import { parseMonthAvailabilitiesToDate } from './date_helper'
+
 export const generateTimeSlots = (
   selectedDate: Date,
   slotSizeMinutes: number,
@@ -112,47 +114,20 @@ export const isSlotAvailable = (
 export const isTimeInsideAvailabilities = (
   startOnTargetTimezone: Date,
   endOnTargetTimezone: Date,
-  targetAvailabilities: DayAvailability[]
+  targetAvailabilities: DayAvailability[],
+  timezone?: string
 ): boolean => {
-  const startTime = format(startOnTargetTimezone, 'HH:mm')
-  let endTime = format(endOnTargetTimezone, 'HH:mm')
-  if (endTime === '00:00') {
-    endTime = '24:00'
-  }
-
-  const compareTimes = (t1: string, t2: string) => {
-    const [h1, m1] = t1.split(':')
-    const [h2, m2] = t2.split(':')
-
-    if (h1 !== h2) {
-      return h1 > h2 ? 1 : -1
-    }
-
-    if (m1 !== m2) {
-      return m1 > m2 ? 1 : -1
-    }
-
-    return 0
-  }
-
-  //After midnight
-  if (compareTimes(startTime, endTime) > 0) {
-    endTime = `${getHours(endOnTargetTimezone) + 24}:00`
-  }
-
-  for (const availability of targetAvailabilities) {
-    if (availability.weekday === getDay(startOnTargetTimezone)) {
-      for (const range of availability.ranges) {
-        if (compareTimes(startTime, range.start) >= 0) {
-          if (compareTimes(endTime, range.end) <= 0) {
-            return true
-          }
-        }
-      }
-    }
-  }
-
-  return false
+  const startTime = DateTime.fromJSDate(startOnTargetTimezone).setZone(timezone)
+  const endTime = DateTime.fromJSDate(endOnTargetTimezone).setZone(timezone)
+  const slots = parseMonthAvailabilitiesToDate(
+    targetAvailabilities,
+    startTime.toJSDate(),
+    endTime.toJSDate(),
+    timezone || 'UTC'
+  )
+  return slots.some(slot =>
+    slot.overlaps(LuxonInterval.fromDateTimes(startTime, endTime))
+  )
 }
 
 export const getBlockedAvailabilities = (
