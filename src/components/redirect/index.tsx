@@ -23,7 +23,7 @@ const RedirectHandler: FC = () => {
   }
   useEffect(() => {
     void handleRedirect()
-  }, [state, redirect])
+  }, [state, redirect, currentAccount])
   return null
 }
 

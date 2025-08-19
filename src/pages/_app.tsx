@@ -14,6 +14,7 @@ import { ThirdwebProvider } from 'thirdweb/react'
 
 import { Head } from '@/components/Head'
 import { ConnectModal } from '@/components/nav/ConnectModal'
+import RedirectHandler from '@/components/redirect'
 import RedirectNotifier from '@/components/redirect/RedirectNotifier'
 import RedirectHandler from '@/components/redirect'
 import { BaseLayout } from '@/layouts/Base'
