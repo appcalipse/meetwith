@@ -5,7 +5,6 @@ import { Account } from '@/types/Account'
 
 import MeetingPlatform from './MeetingPlatform'
 import MeetingTypesConfig from './MeetingTypesConfig'
-
 const MeetingSettings: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
