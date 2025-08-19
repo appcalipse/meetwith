@@ -2,7 +2,6 @@ import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
   Encrypted,
@@ -19,7 +18,6 @@ import {
   BaseMeetingType,
   DiscordConnectedAccounts,
   MeetingType,
-  MeetingTypeLean,
   PaidMeetingTypes,
   PublicAccount,
   SimpleAccountInfo,
@@ -67,7 +65,6 @@ import {
   GroupMeetingRequest,
   GroupNotificationType,
   MeetingAccessType,
-  MeetingDecrypted,
   MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
@@ -2935,8 +2932,8 @@ const updateMeeting = async (
         let isTimeAvailable = () =>
           ownerAccount &&
           isTimeInsideAvailabilities(
-            new Date(meeting.start),
-            new Date(meeting.end),
+            new Date(meetingUpdateRequest.start),
+            new Date(meetingUpdateRequest.end),
             ownerAccount?.preferences.availabilities || [],
             ownerAccount?.preferences.timezone
           )
