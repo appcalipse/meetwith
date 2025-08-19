@@ -954,6 +954,7 @@ const PublicPage: FC<IProps> = props => {
       if (meetingSlotId) {
         meeting = await updateMeetingAsGuest(
           meetingSlotId,
+          selectedType?.id,
           start,
           end,
           participants,

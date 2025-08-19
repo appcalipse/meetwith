@@ -12,6 +12,7 @@ import {
 import {
   MeetingChangeConflictError,
   MeetingNotFoundError,
+  TimeNotAvailableError,
   UnauthorizedError,
 } from '@/utils/errors'
 
@@ -62,7 +63,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(200).json(meetingResult)
     } catch (e) {
       Sentry.captureException(e)
-      if (e instanceof MeetingNotFoundError) {
+      if (e instanceof TimeNotAvailableError) {
+        return res.status(409).send(e)
+      } else if (e instanceof MeetingNotFoundError) {
         return res.status(404).send(e.message)
       } else if (e instanceof UnauthorizedError) {
         return res.status(401).send(e.message)

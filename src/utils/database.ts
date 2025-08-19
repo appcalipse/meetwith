@@ -2,7 +2,6 @@ import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
-import { utcToZonedTime } from 'date-fns-tz'
 import EthCrypto, {
   decryptWithPrivateKey,
   Encrypted,
@@ -66,7 +65,6 @@ import {
   GroupMeetingRequest,
   GroupNotificationType,
   MeetingAccessType,
-  MeetingDecrypted,
   MeetingInfo,
   MeetingProvider,
   MeetingRepeat,
@@ -854,7 +852,6 @@ const isSlotAvailable = async (
       DateTime.fromJSDate(new Date(slot.end))
     )
   )
-
   const isAvailable = busySlots.every(slot => !slot.overlaps(interval))
   return isAvailable
 }
@@ -1245,20 +1242,32 @@ const saveMeeting = async (
             meeting.meetingTypeId,
             meeting.txHash
           ))
-        const isTimeAvailable = () =>
+        let isTimeAvailable = () =>
           ownerAccount &&
           isTimeInsideAvailabilities(
-            utcToZonedTime(
-              meeting.start,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            utcToZonedTime(
-              meeting.end,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            ownerAccount?.preferences.availabilities || []
+            new Date(meeting.start),
+            new Date(meeting.end),
+            ownerAccount?.preferences.availabilities || [],
+            ownerAccount?.preferences.timezone
           )
-        // TODO: check slots by meeting type and not users default Availaibility
+        if (
+          meeting.meetingTypeId &&
+          meeting.meetingTypeId !== NO_MEETING_TYPE
+        ) {
+          const accountAvailabilities =
+            await getTypeMeetingAvailabilityTypeFromDB(meeting.meetingTypeId)
+          isTimeAvailable = () =>
+            ownerAccount &&
+            accountAvailabilities?.some(availability =>
+              isTimeInsideAvailabilities(
+                new Date(meeting.start),
+                new Date(meeting.end),
+                availability?.weekly_availability || [],
+                availability?.timezone
+              )
+            )
+        }
+        // TODO: check slots by meeting type and not users default Availability
         if (
           participantIsOwner &&
           ownerIsNotScheduler &&
@@ -2920,19 +2929,33 @@ const updateMeeting = async (
             meetingUpdateRequest.meetingTypeId
           ))
 
-        const isTimeAvailable = () =>
+        let isTimeAvailable = () =>
           ownerAccount &&
           isTimeInsideAvailabilities(
-            utcToZonedTime(
-              meetingUpdateRequest.start,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            utcToZonedTime(
-              meetingUpdateRequest.end,
-              ownerAccount?.preferences.timezone || 'UTC'
-            ),
-            ownerAccount?.preferences.availabilities
+            new Date(meetingUpdateRequest.start),
+            new Date(meetingUpdateRequest.end),
+            ownerAccount?.preferences.availabilities || [],
+            ownerAccount?.preferences.timezone
           )
+        if (
+          meetingUpdateRequest.meetingTypeId &&
+          meetingUpdateRequest.meetingTypeId !== NO_MEETING_TYPE
+        ) {
+          const accountAvailabilities =
+            await getTypeMeetingAvailabilityTypeFromDB(
+              meetingUpdateRequest.meetingTypeId
+            )
+          isTimeAvailable = () =>
+            ownerAccount &&
+            accountAvailabilities?.some(availability =>
+              isTimeInsideAvailabilities(
+                new Date(meetingUpdateRequest.start),
+                new Date(meetingUpdateRequest.end),
+                availability?.weekly_availability || [],
+                availability?.timezone
+              )
+            )
+        }
 
         if (
           participantIsOwner &&
@@ -4172,6 +4195,7 @@ export const getAvailabilityBlocks = async (account_address: string) => {
 
   return sortedBlocks
 }
+
 const getMeetingTypesLean = async (
   account_address: string
 ): Promise<Array<MeetingType> | null> => {
@@ -4561,6 +4585,32 @@ const updateAvailabilityBlockMeetingTypes = async (
   )
 }
 
+const getTypeMeetingAvailabilityTypeFromDB = async (
+  id: string
+): Promise<MeetingType['availabilities'] | null> => {
+  if (id === NO_MEETING_TYPE) return null
+  const { data, error } = await db.supabase
+    .from('meeting_type')
+    .select(
+      `
+    *,
+    availabilities: meeting_type_availabilities(availabilities(*))
+    `
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+  if (!data) {
+    throw new MeetingTypeNotFound()
+  }
+  return data?.availabilities?.map(
+    (availability: { availabilities: MeetingType['availabilities'][0] }) =>
+      availability.availabilities
+  )
+}
 const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
   const { data, error } = await db.supabase
     .from('meeting_type')
