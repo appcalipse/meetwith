@@ -2949,8 +2949,8 @@ const updateMeeting = async (
             ownerAccount &&
             accountAvailabilities?.some(availability =>
               isTimeInsideAvailabilities(
-                new Date(meeting.start),
-                new Date(meeting.end),
+                new Date(meetingUpdateRequest.start),
+                new Date(meetingUpdateRequest.end),
                 availability?.weekly_availability || [],
                 availability?.timezone
               )
