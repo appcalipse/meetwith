@@ -271,7 +271,7 @@ const WithdrawFundsModal = (props: Props) => {
               )}
             </FormControl>
             <FormControl>
-              <FormLabel>Select Asset</FormLabel>
+              <FormLabel>Amount</FormLabel>
               <Input
                 placeholder="Enter amount to withdraw"
                 borderColor="neutral.400"
