@@ -260,7 +260,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
       return
     }
     try {
-      if (selectedType?.plan && !tx) {
+      if (selectedType?.plan && !tx && !meetingSlotId) {
         setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
       } else {
         const success = await confirmSchedule(
@@ -363,7 +363,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const getScheduleButtonLabel = () => {
     if (isSchedulingExternal) return 'Scheduling...'
     if (logged || scheduleType === SchedulingType.GUEST) {
-      if (selectedType?.plan && !tx) {
+      if (selectedType?.plan && !tx && !meetingSlotId) {
         return `Continue to make payment (${formatCurrency(
           selectedType.plan.no_of_slot * selectedType.plan.price_per_slot
         )})`

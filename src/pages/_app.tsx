@@ -15,6 +15,7 @@ import { ThirdwebProvider } from 'thirdweb/react'
 import { Head } from '@/components/Head'
 import { ConnectModal } from '@/components/nav/ConnectModal'
 import RedirectNotifier from '@/components/redirect/RedirectNotifier'
+import RedirectHandler from '@/components/redirect'
 import { BaseLayout } from '@/layouts/Base'
 import { AccountProvider } from '@/providers/AccountProvider'
 import { OnboardingModalProvider } from '@/providers/OnboardingModalProvider'
@@ -83,6 +84,7 @@ function MyApp({
               <Head />
               <RedirectNotifier />
               <BaseLayout consentCookie={consentCookie ?? false}>
+                <RedirectHandler />
                 <Component {...customProps} />
               </BaseLayout>
               <ConnectModal />
