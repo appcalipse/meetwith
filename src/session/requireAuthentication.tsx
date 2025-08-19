@@ -1,6 +1,6 @@
 import { Flex } from '@chakra-ui/react'
 import { NextComponentType, NextPageContext } from 'next'
-import router from 'next/router'
+import { useRouter } from 'next/router'
 import { useContext } from 'react'
 
 import Loading from '../components/Loading'
@@ -57,7 +57,9 @@ const redirectBasedOnLogin = async (
       })
       ctx.res.end()
     } else {
-      router.push(redirectUrl)
+      // For client-side redirects in getInitialProps, use Router (not useRouter)
+      const Router = (await import('next/router')).default
+      Router.push(redirectUrl)
     }
     return null
   }
@@ -71,6 +73,7 @@ const withAuthRedirect =
     function HOC(props: any) {
       const { checkAuthOnClient } = props
       const { logged, currentAccount } = useContext(AccountContext)
+      const router = useRouter()
 
       // Prevent infinite redirects by checking if we're already on the target route
       const currentRoute = router.pathname
