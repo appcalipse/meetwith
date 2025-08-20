@@ -1608,7 +1608,7 @@ export const getTransactionByTxHash = async (
 ): Promise<MeetingSession[]> => {
   try {
     return await queryClient.fetchQuery(QueryKeys.transactionHash(tx), () =>
-      internalFetch<MeetingSession[]>(`/transactions/meeting-sessions?tx=${tx}`)
+      internalFetch<MeetingSession[]>(`/transactions/meeting/sessions?tx=${tx}`)
     )
   } catch (e: unknown) {
     if (e instanceof ApiFetchError && e.status === 400) {
@@ -1624,7 +1624,7 @@ export const getPaidSessions = async (
   account_address: string
 ): Promise<PaidMeetingTypes[]> => {
   return await internalFetch<PaidMeetingTypes[]>(
-    `/secure/transactions/meeting-sessions?account_address=${account_address}`
+    `/secure/transactions/meeting/sessions?account_address=${account_address}`
   )
 }
 
