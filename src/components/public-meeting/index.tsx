@@ -1,6 +1,7 @@
 import {
   Container,
   Flex,
+  HStack,
   useColorModeValue,
   useToast,
   VStack,
@@ -15,6 +16,7 @@ import { AccountNotifications } from '@meta/AccountNotifications'
 import { ConnectedCalendarCore } from '@meta/CalendarConnections'
 import { MeetingReminders } from '@meta/common'
 import {
+  ConferenceMeeting,
   MeetingDecrypted,
   MeetingProvider,
   MeetingRepeat,
@@ -26,9 +28,11 @@ import {
   ParticipantType,
   ParticipationStatus,
 } from '@meta/ParticipantInfo'
+import Sentry from '@sentry/nextjs'
 import { logEvent } from '@utils/analytics'
 import {
   getBusySlots,
+  getMeetingGuest,
   getNotificationSubscriptions,
   listConnectedCalendars,
 } from '@utils/api_helper'
@@ -56,17 +60,11 @@ import {
 } from '@utils/errors'
 import { saveMeetingsScheduled } from '@utils/storage'
 import { getAccountDisplayName } from '@utils/user_manager'
-import {
-  addMinutes,
-  addMonths,
-  areIntervalsOverlapping,
-  endOfMonth,
-  Interval,
-  startOfMonth,
-} from 'date-fns'
-import { zonedTimeToUtc } from 'date-fns-tz'
+import { addMinutes, addMonths, endOfMonth, startOfMonth } from 'date-fns'
+import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { FC, useEffect, useMemo, useState } from 'react'
+import { v4 } from 'uuid'
 
 import useAccountContext from '@/hooks/useAccountContext'
 import { AcceptedToken, SupportedChain } from '@/types/chains'
@@ -75,25 +73,30 @@ import {
   getAccountDomainUrl,
   scheduleMeeting,
   selectDefaultProvider,
+  updateMeetingAsGuest,
 } from '@/utils/calendar_manager'
 import {
   MeetingNotificationOptions,
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
+import { decryptContent } from '@/utils/cryptography'
 import { isJson } from '@/utils/generic_utils'
+import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
+import Loading from '../Loading'
 const tzs = timezones.map(tz => {
   return {
     value: String(tz.tzCode),
     label: tz.name,
   }
 })
-
 interface IProps {
   account: PublicAccount
   url: string
 }
-
+export type RescheduleConferenceData = ConferenceMeeting & {
+  participants?: Array<ParticipantInfoForNotification>
+}
 interface IContext {
   account: PublicAccount
   selectedType: MeetingType | null
@@ -205,6 +208,15 @@ interface IScheduleContext {
   setShowEmailConfirm: React.Dispatch<React.SetStateAction<boolean>>
   showTimeNotAvailable: boolean
   setShowTimeNotAvailable: React.Dispatch<React.SetStateAction<boolean>>
+  rescheduleSlot?: RescheduleConferenceData
+  rescheduleSlotLoading: boolean
+  meetingSlotId?: string
+  setIsCancelled: React.Dispatch<React.SetStateAction<boolean>>
+  setLastScheduledMeeting: React.Dispatch<
+    React.SetStateAction<MeetingDecrypted | undefined>
+  >
+  setShowSlots: React.Dispatch<React.SetStateAction<boolean>>
+  showSlots: boolean
 }
 
 const baseState: IContext = {
@@ -295,18 +307,31 @@ const scheduleBaseState: IScheduleContext = {
   setShowEmailConfirm: () => {},
   showTimeNotAvailable: false,
   setShowTimeNotAvailable: () => {},
+  rescheduleSlot: undefined,
+  rescheduleSlotLoading: false,
+  meetingSlotId: undefined,
+  setIsCancelled: () => {},
+  setLastScheduledMeeting: () => {},
+  setShowSlots: () => {},
+  showSlots: false,
 }
+
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
 export const ScheduleStateContext =
   React.createContext<IScheduleContext>(scheduleBaseState)
 const PublicPage: FC<IProps> = props => {
   const bgColor = useColorModeValue('white', 'neutral.900')
   const { query, push, isReady, beforePopState, replace, asPath } = useRouter()
+  const [pageGettingReady, setPageGettingReady] = useState(true)
   const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState<
     MeetingDecrypted | undefined
   >(undefined)
+  const { slotId, metadata, slot } = query
   const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
+  const [meetingSlotId, setMeetingSlotId] = useState<string | undefined>(
+    undefined
+  )
   const [notificationsSubs, setNotificationSubs] = useState(0)
   const [isContact, setIsContact] = useState(false)
   const selectedType = useMemo(() => {
@@ -327,6 +352,8 @@ const PublicPage: FC<IProps> = props => {
     undefined
   )
   const [tx, setTx] = useState<Address | undefined>(undefined)
+  const [key, setKey] = useState<string | undefined>(v4())
+  const [isCancelled, setIsCancelled] = useState<boolean>(false)
   const [currentStep, setCurrentStep] = useState<PublicSchedulingSteps>(
     PublicSchedulingSteps.SELECT_TYPE
   )
@@ -340,13 +367,13 @@ const PublicPage: FC<IProps> = props => {
   const [pickedDay, setPickedDay] = useState<Date | null>(null)
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showSlots, setShowSlots] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
   const [showTimeNotAvailable, setShowTimeNotAvailable] = useState(false)
   const [busySlots, setBusySlots] = useState<Interval[]>([])
   const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
   const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
   const [showHeader, setShowHeader] = useState(true)
-  const toast = useToast()
   const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
     selectDefaultProvider(
       selectedType?.meeting_platforms ||
@@ -391,6 +418,12 @@ const PublicPage: FC<IProps> = props => {
           Intl.DateTimeFormat().resolvedOptions().timeZone)
     ) || tzs[0]
   )
+  const toast = useToast()
+  const [rescheduleSlot, setRescheduleSlot] = useState<
+    ConferenceMeeting | undefined
+  >(undefined)
+  const [rescheduleSlotLoading, setRescheduleSlotLoading] =
+    useState<boolean>(false)
   const handleNavigateToBook = (tx?: Address) => {
     setTx(tx)
   }
@@ -414,13 +447,79 @@ const PublicPage: FC<IProps> = props => {
     type: MeetingType,
     current_step: PublicSchedulingSteps
   ) => {
+    delete query.address
+    const queryExists = Object.keys(query).length > 0
     await push({
       pathname: `/${getAccountDomainUrl(props.account!)}/${type.slug}`,
+      query: queryExists ? query : undefined,
     })
     setCurrentStep(current_step)
   }
+
+  const getSlotInfo = async () => {
+    const baseId = slot || slotId
+    const rescheduleSlotId = Array.isArray(baseId) ? baseId[0] : baseId
+    if (rescheduleSlotId) {
+      setRescheduleSlotLoading(true)
+      try {
+        const meeting: RescheduleConferenceData = await getMeetingGuest(
+          rescheduleSlotId
+        )
+        if (!meeting) {
+          toast({
+            title: 'Meeting not found',
+            status: 'error',
+            description:
+              'The meeting you are trying to reschedule was not found.',
+          })
+          await push('/404')
+          return
+        }
+        if (metadata) {
+          const guestParticipants = decryptContent(
+            process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
+            Array.isArray(metadata) ? metadata[0] : metadata
+          )
+          if (guestParticipants) {
+            meeting.participants = isJson(guestParticipants)
+              ? (JSON.parse(
+                  guestParticipants
+                ) as Array<ParticipantInfoForNotification>)
+              : undefined
+          }
+          const actor = meeting.participants?.find(
+            p => p.slot_id === meetingSlotId
+          )
+          if (actor) {
+            setTimezone(
+              tzs.find(
+                val =>
+                  val.value ===
+                  (actor.timezone ||
+                    currentAccount?.preferences?.timezone ||
+                    Intl.DateTimeFormat().resolvedOptions().timeZone)
+              ) || tzs[0]
+            )
+          }
+        }
+        setMeetingSlotId(rescheduleSlotId)
+        setRescheduleSlot(meeting)
+      } catch (error) {
+        toast({
+          title: 'Unable to load meeting details',
+          status: 'error',
+          description:
+            'The meeting information could not be retrieved. Please try again.',
+        })
+
+        setRescheduleSlot(undefined)
+      }
+      setRescheduleSlotLoading(false)
+    }
+  }
   useEffect(() => {
     if (!isReady) return
+    setPageGettingReady(true)
     if (query.address) {
       const meeting_type = Array.isArray(query.address)
         ? query.address.at(-1)
@@ -554,6 +653,7 @@ const PublicPage: FC<IProps> = props => {
           setCurrentMonth(pickedTimeDate)
           setSelectedMonth(pickedTimeDate)
           setPickedDay(pickedTimeDate)
+          setShowSlots(true)
           setShowConfirm(true)
         }
       } catch (error) {
@@ -566,6 +666,8 @@ const PublicPage: FC<IProps> = props => {
     if (urlParams.meeting_url && typeof urlParams.meeting_url === 'string') {
       setMeetingUrl(urlParams.meeting_url)
     }
+    void getSlotInfo()
+    setPageGettingReady(false)
   }, [query])
   useEffect(() => {}, [])
 
@@ -597,10 +699,40 @@ const PublicPage: FC<IProps> = props => {
       beforePopState(() => true)
     }
   }, [currentStep, selectedType, beforePopState])
-
-  const _onClose = () => {
+  const resetState = () => {
+    if (
+      selectedType?.type !== SessionType.FREE &&
+      selectedType?.plan &&
+      selectedType?.plan?.no_of_slot <= 1
+    ) {
+      setPaymentType(undefined)
+      setPaymentStep(PaymentStep.SELECT_PAYMENT_METHOD)
+      setTx(undefined)
+      setSchedulingType(SchedulingType.REGULAR)
+    }
     setLastScheduledMeeting(undefined)
+    setSelectedMonth(new Date())
+    setCurrentMonth(new Date())
+    setIsScheduling(false)
+    setShowSlots(false)
+    setPickedDay(null)
+    setPickedTime(null)
+    setShowConfirm(false)
+    setParticipants([])
+    setTitle('')
+    setContent('')
+    setRescheduleSlot(undefined)
+    setMeetingSlotId(undefined)
+    setKey(v4())
   }
+  const _onClose = async () => {
+    await getAvailableSlots(true)
+    await push({
+      pathname: `/${getAccountDomainUrl(props.account!)}/${selectedType?.slug}`,
+    })
+    resetState()
+  }
+
   const context: IContext = {
     account: props.account,
     selectedType,
@@ -638,8 +770,31 @@ const PublicPage: FC<IProps> = props => {
           currentAccount?.address,
           startDate,
           endDate
+        ).then(busySlots =>
+          busySlots.map(slot =>
+            Interval.fromDateTimes(
+              DateTime.fromJSDate(new Date(slot.start)),
+              DateTime.fromJSDate(new Date(slot.end))
+            )
+          )
         )
-      } catch (error) {}
+      } catch (error) {
+        Sentry.captureException(error, {
+          extra: {
+            accountAddress: currentAccount?.address,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+          },
+        })
+        toast({
+          title: 'Error fetching busy slots',
+          description:
+            'Unable to fetch your busy slots. Please try again later.',
+          status: 'error',
+          duration: 5000,
+          position: 'top-right',
+        })
+      }
       const availabilities = parseMonthAvailabilitiesToDate(
         currentAccount?.preferences?.availabilities || [],
         startDate,
@@ -662,8 +817,14 @@ const PublicPage: FC<IProps> = props => {
     }
     getSelfAvailableSlots()
     setCheckingSlots(true)
-    const startDate = startOfMonth(currentMonth)
-    const endDate = addMonths(endOfMonth(currentMonth), 2)
+    const startDate = DateTime.fromJSDate(currentMonth)
+      .setZone(timezone.value || 'UTC')
+      .startOf('month')
+      .toJSDate()
+    const endDate = DateTime.fromJSDate(currentMonth)
+      .endOf('month')
+      .setZone(timezone.value || 'UTC')
+      .toJSDate()
     let busySlots: Interval[] = []
 
     try {
@@ -671,8 +832,31 @@ const PublicPage: FC<IProps> = props => {
         props?.account?.address,
         startDate,
         endDate
+      ).then(busySlots =>
+        busySlots.map(slot =>
+          Interval.fromDateTimes(
+            DateTime.fromJSDate(new Date(slot.start)),
+            DateTime.fromJSDate(new Date(slot.end))
+          )
+        )
       )
-    } catch (error) {}
+    } catch (error) {
+      Sentry.captureException(error, {
+        extra: {
+          accountAddress: props?.account?.address,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        },
+      })
+      toast({
+        title: 'Error fetching busy slots',
+        description:
+          'Unable to fetch busy slots for this account. Please try again later.',
+        status: 'error',
+        duration: 5000,
+        position: 'top-right',
+      })
+    }
     const availabilities =
       selectedType?.availabilities?.flatMap(availability =>
         parseMonthAvailabilitiesToDate(
@@ -687,9 +871,7 @@ const PublicPage: FC<IProps> = props => {
 
     const deduplicatedAvailabilities = availabilities.reduce<Interval[]>(
       (acc, current) => {
-        const hasOverlap = acc.some(existing =>
-          areIntervalsOverlapping(current, existing, { inclusive: true })
-        )
+        const hasOverlap = acc.some(existing => current.overlaps(existing))
         if (!hasOverlap) {
           acc.push(current)
         }
@@ -734,10 +916,7 @@ const PublicPage: FC<IProps> = props => {
     if (!selectedType) return false
     setIsScheduling(true)
 
-    const start = zonedTimeToUtc(
-      startTime,
-      timezone.value || Intl.DateTimeFormat().resolvedOptions().timeZone
-    )
+    const start = new Date(startTime)
     const end = addMinutes(new Date(start), selectedType.duration_minutes)
 
     if (scheduleType !== SchedulingType.GUEST && !name) {
@@ -770,24 +949,42 @@ const PublicPage: FC<IProps> = props => {
     })
 
     try {
-      const meeting = await scheduleMeeting(
-        false,
-        scheduleType,
-        selectedType?.id,
-        start,
-        end,
-        participants,
-        meetingProvider || MeetingProvider.HUDDLE,
-        currentAccount,
-        content,
-        meetingUrl,
-        emailToSendReminders,
-        title,
-        meetingReminders,
-        meetingRepeat,
-        undefined,
-        txHash
-      )
+      let meeting: MeetingDecrypted
+
+      if (meetingSlotId) {
+        meeting = await updateMeetingAsGuest(
+          meetingSlotId,
+          selectedType?.id,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          content,
+          meetingUrl,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      } else {
+        meeting = await scheduleMeeting(
+          false,
+          scheduleType,
+          selectedType?.id,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          emailToSendReminders,
+          title,
+          meetingReminders,
+          meetingRepeat,
+          undefined,
+          txHash
+        )
+      }
       await getAvailableSlots(true)
       currentAccount && saveMeetingsScheduled(currentAccount!.address)
       currentAccount && (await fetchNotificationSubscriptions())
@@ -811,7 +1008,9 @@ const PublicPage: FC<IProps> = props => {
           isClosable: true,
         })
       } else if (e instanceof TimeNotAvailableError) {
-        setShowTimeNotAvailable(true)
+        if (selectedType?.plan) {
+          setShowTimeNotAvailable(true)
+        }
         toast({
           title: 'Failed to schedule meeting',
           description: 'The selected time is not available anymore',
@@ -978,6 +1177,13 @@ const PublicPage: FC<IProps> = props => {
     setShowEmailConfirm,
     showTimeNotAvailable,
     setShowTimeNotAvailable,
+    rescheduleSlot,
+    rescheduleSlotLoading,
+    meetingSlotId,
+    setIsCancelled,
+    setLastScheduledMeeting,
+    setShowSlots,
+    showSlots,
   }
   const renderStep = () => {
     switch (currentStep) {
@@ -990,11 +1196,12 @@ const PublicPage: FC<IProps> = props => {
         return <BasePage />
     }
   }
+
   return (
     <PublicScheduleContext.Provider value={context}>
       <ScheduleStateContext.Provider value={scheduleContext}>
         <HeadMeta account={props.account} url={props.url} />
-        <VStack mb={36} gap={1}>
+        <VStack mb={36} gap={1} key={key}>
           <Container
             bg={bgColor}
             maxW={{ base: '100%', md: '95%' }}
@@ -1013,7 +1220,7 @@ const PublicPage: FC<IProps> = props => {
             {lastScheduledMeeting ? (
               <Flex justify="center">
                 <MeetingScheduledDialog
-                  participants={lastScheduledMeeting!.participants}
+                  participants={lastScheduledMeeting?.participants}
                   hostAccount={props.account}
                   scheduleType={schedulingType}
                   meeting={lastScheduledMeeting}
@@ -1022,8 +1229,18 @@ const PublicPage: FC<IProps> = props => {
                   isContact={isContact}
                   setIsContact={setIsContact}
                   reset={_onClose}
+                  isReschedule={!!meetingSlotId}
+                  isCancelled={isCancelled}
+                  timezone={
+                    timezone?.value ||
+                    Intl.DateTimeFormat().resolvedOptions().timeZone
+                  }
                 />
               </Flex>
+            ) : pageGettingReady ? (
+              <HStack w="100%" mt={8} mx="auto" justifyContent="center">
+                <Loading label="Loading..." />
+              </HStack>
             ) : (
               renderStep()
             )}

@@ -47,17 +47,32 @@ const generateChangeUrl = async (
   destinationAccountAddress: string | undefined,
   ownerAccountAddress: string | undefined,
   slot_id: string,
-  participantType: ParticipantType
+  participantType: ParticipantType,
+  participants?: ParticipantInfo[],
+  meetingTypeId?: string,
+  guestInfoEncrypted?: string
 ): Promise<string | undefined> => {
-  return !destinationAccountAddress
-    ? ownerAccountAddress
+  // For guests, only scheduler gets reschedule link
+  if (!destinationAccountAddress) {
+    return ownerAccountAddress
       ? participantType === ParticipantType.Scheduler
         ? `${await getOwnerPublicUrlServer(
-            ownerAccountAddress
-          )}?slot=${slot_id}`
+            ownerAccountAddress,
+            meetingTypeId
+          )}?slotId=${slot_id}&metadata=${encodeURIComponent(
+            guestInfoEncrypted || ''
+          )}`
         : undefined
       : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-    : undefined
+  }
+
+  const isGuestScheduling = participants?.some(p => !p.account_address)
+
+  if (isGuestScheduling && participantType === ParticipantType.Owner) {
+    return undefined
+  }
+
+  return `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
 }
 export const newGroupInviteEmail = async (
   toEmail: string,
@@ -144,7 +159,8 @@ export const newMeetingEmail = async (
   end: Date,
   meeting_id: string,
   slot_id: string,
-  destinationAccountAddress: string | undefined,
+  meetingTypeId?: string,
+  destinationAccountAddress?: string,
   meetingUrl?: string,
   title?: string,
   description?: string,
@@ -176,7 +192,10 @@ export const newMeetingEmail = async (
     destinationAccountAddress,
     ownerAccountAddress,
     slot_id,
-    participantType
+    participantType,
+    participants,
+    meetingTypeId,
+    guestInfoEncrypted
   )
 
   const locals = {
@@ -393,7 +412,8 @@ export const updateMeetingEmail = async (
   end: Date,
   meeting_id: string,
   slot_id: string,
-  destinationAccountAddress: string | undefined,
+  meetingTypeId?: string,
+  destinationAccountAddress?: string,
   meetingUrl?: string,
   title?: string,
   description?: string,
@@ -428,7 +448,10 @@ export const updateMeetingEmail = async (
     destinationAccountAddress,
     ownerAccountAddress,
     slot_id,
-    participantType
+    participantType,
+    participants,
+    meetingTypeId,
+    guestInfoEncrypted
   )
 
   const email = new Email()

@@ -133,8 +133,18 @@ export class GateConditionNotValidError extends Error {
 
 export class MeetingChangeConflictError extends Error {
   constructor() {
-    super(`Somebody edited the meeting before you.`)
+    super(
+      `Somebody edited the meeting before you, Please refresh the page to get the latest status.`
+    )
     this.name = 'MeetingChangeConflictError'
+  }
+}
+export class MeetingCancelConflictError extends Error {
+  constructor() {
+    super(
+      `Somebody else cancelled the meeting before you. Please refresh the page to get the latest status.`
+    )
+    this.name = 'MeetingCancelConflictError'
   }
 }
 

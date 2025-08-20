@@ -26,12 +26,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       if (!meeting) {
         return res.status(404).send('Not found')
       }
-      if (meeting.slots) {
-        meeting.slots = [] // we don't want other users slots to be exposed
-      }
-      if (meeting.meeting_url) {
-        meeting.meeting_url = '' // we don't want private data to be exposed
-      }
       return res.status(200).json(meeting)
     } catch (err) {
       Sentry.captureException(err)
