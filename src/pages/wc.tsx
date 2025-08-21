@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 import {
   Button,
   Container,
@@ -23,13 +22,13 @@ import React, { useContext, useEffect, useState } from 'react'
 import {
   defineChain,
   getContract,
-  prepareContractCall,
   readContract,
   sendTransaction,
 } from 'thirdweb'
 import { useActiveWallet } from 'thirdweb/react'
 import { hexToString } from 'viem'
 
+import Loading from '@/components/Loading'
 import useAccountContext from '@/hooks/useAccountContext'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { supportedChains } from '@/types/chains'
@@ -62,9 +61,7 @@ const Home: NextPage = () => {
 
     walletKit.on(
       'session_request',
-      async (event: WalletKitTypes.SessionRequest) => {
-        setEvent(event)
-      }
+      async (event: WalletKitTypes.SessionRequest) => setEvent(event)
     )
   }
   const handleWalletConnect = async () => {
@@ -135,20 +132,16 @@ const Home: NextPage = () => {
         const signature = account?.signMessage({
           message,
         })
-        console.log({ signature, message })
         const response = { id, result: signature, jsonrpc: '2.0' }
 
-        const eventSent = await walletKit.respondSessionRequest({
+        await walletKit.respondSessionRequest({
           topic,
           response,
         })
-        console.log(eventSent)
       } else if (method === 'eth_sendTransaction') {
         const { chainId } = params
         const { data, to } = requestParams
-        console.log(requestParams)
         const sepolia = defineChain(parseInt(chainId.replace('eip155:', '')))
-        console.log(sepolia)
         const tx = await sendTransaction({
           account,
           transaction: {
@@ -158,14 +151,11 @@ const Home: NextPage = () => {
             chain: sepolia,
           },
         })
-        console.log(tx)
         const response = { id, result: tx.transactionHash, jsonrpc: '2.0' }
-        const eventSent = await walletKit.respondSessionRequest({
+        await walletKit.respondSessionRequest({
           topic,
           response,
         })
-
-        console.log(eventSent)
       }
     } catch (e) {
       console.error('Error handling session request:', e)
@@ -202,7 +192,7 @@ const Home: NextPage = () => {
     return (
       <>
         <Text>Recipient: {decoded[0]}</Text>
-        {/* <Text>Amount: {parseUnits(decoded[1].toString(), decimals)}</Text> */}
+        {/* <Text>Amount: {parseUnits(BigInt(decoded[1]), decimals)}</Text> */}
       </>
     )
   }
@@ -237,7 +227,11 @@ const Home: NextPage = () => {
             <ModalBody p={'10'} mt={'6'}>
               <VStack alignItems="flex-start">
                 <Heading fontSize="2xl">Wallet Connection Request</Heading>
-                <VStack alignItems="start" gap={4}></VStack>
+                <Text>
+                  Connected as{' '}
+                  {currentAccount?.preferences?.name ||
+                    ellipsizeAddress(currentAccount?.address)}
+                </Text>
                 <Text>Please confirm the connection to your wallet.</Text>
                 <Text>Origin: {proposal?.verifyContext?.verified?.origin}</Text>
 
@@ -277,7 +271,11 @@ const Home: NextPage = () => {
             <ModalBody p={'10'} mt={'6'}>
               <VStack alignItems="flex-start">
                 <Heading fontSize="2xl">Sign Transaction</Heading>
-                <VStack alignItems="start" gap={4}></VStack>
+                <Text>
+                  Connected as{' '}
+                  {currentAccount?.preferences?.name ||
+                    ellipsizeAddress(currentAccount?.address)}
+                </Text>
                 <Text>
                   Please sign the transaction to continue your offramp
                 </Text>
@@ -308,12 +306,7 @@ const Home: NextPage = () => {
         </VStack>
       ) : (
         <VStack>
-          <Text>
-            Connected as{' '}
-            {currentAccount?.preferences?.name ||
-              ellipsizeAddress(currentAccount?.address)}
-          </Text>
-          <Button onClick={handleWalletConnect}>Continue</Button>
+          <Loading />
         </VStack>
       )}
     </Container>
