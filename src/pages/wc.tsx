@@ -26,7 +26,7 @@ import {
   sendTransaction,
 } from 'thirdweb'
 import { useActiveWallet } from 'thirdweb/react'
-import { hexToString } from 'viem'
+import { formatUnits, hexToString } from 'viem'
 
 import Loading from '@/components/Loading'
 import useAccountContext from '@/hooks/useAccountContext'
@@ -192,7 +192,9 @@ const Home: NextPage = () => {
     return (
       <>
         <Text>Recipient: {decoded[0]}</Text>
-        {/* <Text>Amount: {parseUnits(BigInt(decoded[1]), decimals)}</Text> */}
+        <Text>
+          Amount: {parseFloat(formatUnits(BigInt(decoded[1]), decimals))}
+        </Text>
       </>
     )
   }
