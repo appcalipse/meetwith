@@ -123,9 +123,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const { account } = useContext(PublicScheduleContext)
   const [isCancelling, setIsCancelling] = useState(false)
   const { metadata } = query
-  const meetingProviders = (preferences?.meetingProviders || []).concat(
-    MeetingProvider.CUSTOM
-  )
+  const meetingProviders = selectedType?.meeting_platforms || []
 
   useEffect(() => {
     if (selectedType?.custom_link) {
