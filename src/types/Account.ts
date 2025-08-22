@@ -120,7 +120,7 @@ export interface PaymentPreferences {
   id?: number
   created_at?: Date
   owner_account_address: string
-  pin_hash?: string | null
+  pin?: string | null
   hasPin?: boolean
   default_chain_id?: number
   notification?: Array<'send-tokens' | 'receive-tokens'>

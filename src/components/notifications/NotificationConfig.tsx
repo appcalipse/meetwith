@@ -195,15 +195,11 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
   }
 
   const handleChangeEmail = () => {
-    // Check if user has notification email set up
     if (!emailNotifications || !email) {
-      showErrorToast(
-        'Notification Email Required',
-        'You need to set up a notification email first to change your email'
-      )
+      setIsEditingEmail(true)
+      setTempEmail('')
       return
     }
-    // Show magic link confirmation modal instead of change email modal
     setIsMagicLinkModalOpen(true)
   }
 

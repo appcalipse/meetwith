@@ -2,6 +2,7 @@ import { getChainId, SupportedChain, supportedChains } from '@/types/chains'
 import { supportedPaymentChains } from '@/utils/constants/meeting-types'
 import { getPriceForChain } from '@/utils/services/chainlink.service'
 
+import { isProduction } from './constants'
 import { zeroAddress } from './generic_utils'
 
 export interface Currency {
@@ -72,7 +73,9 @@ export const getCryptoConfig = async (): Promise<CryptoConfig[]> => {
   // Get wallet-supported chains from chains.ts that are also in supportedPaymentChains
   const walletSupportedChains = supportedChains.filter(
     chain =>
-      chain.walletSupported && supportedPaymentChains.includes(chain.chain)
+      chain.walletSupported &&
+      supportedPaymentChains.includes(chain.chain) &&
+      (isProduction ? chain.isProduction : !chain.isProduction)
   )
 
   const configs: CryptoConfig[] = []

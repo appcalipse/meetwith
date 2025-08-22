@@ -3,13 +3,18 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { verifyUserPin } from '@/utils/database'
 
+// Type interface for request body
+interface VerifyPinBody {
+  pin: string
+}
+
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   const account_address = req.session.account!.address
-  const { pin } = req.body
+  const { pin }: VerifyPinBody = req.body
 
   if (!pin || typeof pin !== 'string') {
     return res.status(400).json({ error: 'PIN is required' })

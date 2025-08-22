@@ -6,7 +6,7 @@ import {
   extractOnRampStatus,
   getOnrampMoneyTokenAddress,
 } from '@utils/services/onramp.money'
-import bcrypt from 'bcrypt'
+import * as argon2 from 'argon2'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
 import { utcToZonedTime } from 'date-fns-tz'
@@ -118,6 +118,7 @@ import {
   OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
+import { PaymentNotificationType } from '@/utils/constants'
 import {
   NO_MEETING_TYPE,
   PaymentDirection,
@@ -197,6 +198,8 @@ import { isProAccount } from './subscription_manager'
 import { isConditionValid } from './token.gate.service'
 import { ellipsizeAddress } from './user_manager'
 import { isValidEVMAddress } from './validations'
+
+const PIN_SALT = process.env.PIN_SALT
 
 // TODO: better typing
 type SupabaseRecords = { ready: boolean } & Record<string, SupabaseClient>
@@ -4818,7 +4821,7 @@ export const getWalletTransactionsByToken = async (
   )
 }
 
-const sendWalletDebitEmailIfPossible = async (
+const sendWalletDebitEmail = async (
   initiatorAddress: string,
   tx: ConfirmCryptoTransactionRequest,
   fallbackReceiver?: string | null
@@ -4827,7 +4830,7 @@ const sendWalletDebitEmailIfPossible = async (
     // Respect user preferences: only send if 'send-tokens' is enabled
     const prefs = await getPaymentPreferences(initiatorAddress)
     const notifications = prefs?.notification || []
-    if (!notifications.includes('send-tokens')) return
+    if (!notifications.includes(PaymentNotificationType.SEND_TOKENS)) return
 
     const senderEmail = await getAccountNotificationSubscriptionEmail(
       initiatorAddress
@@ -4846,7 +4849,7 @@ const sendWalletDebitEmailIfPossible = async (
   }
 }
 
-const sendSessionIncomeEmailIfPossible = async (
+const sendSessionIncomeEmail = async (
   meetingType: MeetingType | undefined | null,
   tx: ConfirmCryptoTransactionRequest
 ) => {
@@ -4946,7 +4949,7 @@ const createCryptoTransaction = async (
 
   // Notify parties via email
   if (isWalletTransfer) {
-    await sendWalletDebitEmailIfPossible(
+    await sendWalletDebitEmail(
       account_address!,
       transactionRequest,
       receiverAddress
@@ -5027,7 +5030,7 @@ const createCryptoTransaction = async (
     }
 
     // Notify host about income
-    await sendSessionIncomeEmailIfPossible(meetingType, transactionRequest)
+    await sendSessionIncomeEmail(meetingType, transactionRequest)
   }
   return data[0]
 }
@@ -5580,91 +5583,115 @@ const getPaymentPreferences = async (
   return null
 }
 
-const savePaymentPreferences = async (
+const createPaymentPreferences = async (
   owner_account_address: string,
   data: Partial<
     Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
-  >,
-  options?: { operation?: 'create' | 'update' }
+  >
 ): Promise<PaymentPreferences> => {
   try {
-    // Check if record exists
-    const { data: existingRecord, error: checkError } = await db.supabase
+    let insertData: typeof data & { pin_hash?: string } = { ...data }
+    if ('pin' in data && typeof data.pin === 'string') {
+      const pinHash = await createPinHash(data.pin)
+      insertData = { ...data, pin_hash: pinHash }
+      delete insertData.pin
+    }
+
+    const { data: result, error } = await db.supabase
       .from('payment_preferences')
-      .select('id')
-      .eq('owner_account_address', owner_account_address.toLowerCase())
-      .maybeSingle()
-
-    if (checkError) {
-      console.error('Error checking existing record:', checkError)
-      Sentry.captureException(checkError)
-      throw new Error('Could not check existing payment preferences')
-    }
-
-    let result
-    let error
-
-    if (existingRecord && options?.operation !== 'create') {
-      // Record exists, perform update
-      const { data: updateData, error: updateError } = await db.supabase
-        .from('payment_preferences')
-        .update(data)
-        .eq('owner_account_address', owner_account_address.toLowerCase())
-        .select(
-          'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
-        )
-        .single()
-
-      result = updateData
-      error = updateError
-    } else {
-      // Record doesn't exist or force create, perform upsert
-      const { data: upsertData, error: upsertError } = await db.supabase
-        .from('payment_preferences')
-        .upsert(
-          {
-            owner_account_address: owner_account_address.toLowerCase(),
-            ...data,
-          },
-          { onConflict: 'owner_account_address' }
-        )
-        .select(
-          'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
-        )
-        .single()
-
-      result = upsertData
-      error = upsertError
-    }
+      .insert({
+        owner_account_address: owner_account_address.toLowerCase(),
+        ...insertData,
+      })
+      .select(
+        'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
+      )
+      .single()
 
     if (error) {
-      console.error('Database error in savePaymentPreferences:', error)
+      console.error('Database error in createPaymentPreferences:', error)
       Sentry.captureException(error)
-      throw new Error('Could not save payment preferences')
+      throw new Error('Could not create payment preferences')
     }
 
-    // Transform the data to include hasPin without exposing pin_hash
-    if (result) {
-      const { pin_hash, ...rest } = result
-      return {
-        ...rest,
-        hasPin: !!pin_hash,
-      }
+    if (!result) {
+      throw new Error('No data returned from database operation')
     }
 
-    throw new Error('No data returned from database operation')
+    const { pin_hash, ...rest } = result
+    return {
+      ...rest,
+      hasPin: !!pin_hash,
+    }
   } catch (error) {
-    console.error('Unexpected error in savePaymentPreferences:', error)
+    console.error('Unexpected error in createPaymentPreferences:', error)
     Sentry.captureException(error)
     throw error instanceof Error
       ? error
-      : new Error('Could not save payment preferences')
+      : new Error('Could not create payment preferences')
+  }
+}
+
+const updatePaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >
+): Promise<PaymentPreferences> => {
+  try {
+    let updateData: typeof data & { pin_hash?: string | null } = { ...data }
+    if ('pin' in data) {
+      if (data.pin === null) {
+        updateData = { ...data, pin_hash: null }
+        delete updateData.pin
+      } else if (typeof data.pin === 'string') {
+        const pinHash = await createPinHash(data.pin)
+        updateData = { ...data, pin_hash: pinHash }
+        delete updateData.pin
+      }
+    }
+
+    const { data: result, error } = await db.supabase
+      .from('payment_preferences')
+      .update(updateData)
+      .eq('owner_account_address', owner_account_address.toLowerCase())
+      .select(
+        'id, created_at, owner_account_address, default_chain_id, notification, pin_hash'
+      )
+      .single()
+
+    if (error) {
+      console.error('Database error in updatePaymentPreferences:', error)
+      Sentry.captureException(error)
+      throw new Error('Could not update payment preferences')
+    }
+
+    if (!result) {
+      throw new Error('No data returned from database operation')
+    }
+
+    const { pin_hash, ...rest } = result
+    return {
+      ...rest,
+      hasPin: !!pin_hash,
+    }
+  } catch (error) {
+    console.error('Unexpected error in updatePaymentPreferences:', error)
+    Sentry.captureException(error)
+    throw error instanceof Error
+      ? error
+      : new Error('Could not update payment preferences')
   }
 }
 
 const createPinHash = async (pin: string): Promise<string> => {
-  const saltRounds = 12
-  return await bcrypt.hash(pin, saltRounds)
+  const pinWithSalt = `${pin}${PIN_SALT}`
+  return await argon2.hash(pinWithSalt, {
+    type: argon2.argon2id,
+    memoryCost: 2 ** 16,
+    timeCost: 3,
+    parallelism: 1,
+  })
 }
 
 const verifyUserPin = async (
@@ -5688,7 +5715,8 @@ const verifyUserPin = async (
       return false
     }
 
-    const isValid = await bcrypt.compare(pin, data.pin_hash)
+    const pinWithSalt = `${pin}${PIN_SALT}`
+    const isValid = await argon2.verify(data.pin_hash, pinWithSalt)
     return isValid
   } catch (error) {
     console.error('Unexpected error in verifyUserPin:', error)
@@ -5706,6 +5734,7 @@ export {
   contactInviteByEmailExists,
   createCryptoTransaction,
   createMeetingType,
+  createPaymentPreferences,
   createPinHash,
   createTgConnection,
   deleteAllTgConnections,
@@ -5786,7 +5815,6 @@ export {
   saveConferenceMeetingToDB,
   saveEmailToDB,
   saveMeeting,
-  savePaymentPreferences,
   selectTeamMeetingRequest,
   setAccountNotificationSubscriptions,
   subscribeWithCoupon,
@@ -5799,6 +5827,7 @@ export {
   updateCustomSubscriptionDomain,
   updateMeeting,
   updateMeetingType,
+  updatePaymentPreferences,
   updatePreferenceAvatar,
   updateRecurringSlots,
   upsertGateCondition,

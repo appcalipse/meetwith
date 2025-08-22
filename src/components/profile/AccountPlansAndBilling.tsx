@@ -23,6 +23,7 @@ import { useActiveWallet } from 'thirdweb/react'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account } from '@/types/Account'
+import { EditMode, Intents } from '@/types/Dashboard'
 import { getPlanInfo, Plan, PlanInfo, Subscription } from '@/types/Subscription'
 import { logEvent } from '@/utils/analytics'
 import { syncSubscriptions } from '@/utils/api_helper'
@@ -35,6 +36,10 @@ import SubscriptionDialog from './SubscriptionDialog'
 const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
+  // Constants
+  const DEFAULT_COUPON_DURATION_MONTHS = 3
+  const PURCHASE_SUCCESS_TIMEOUT_MS = 10000
+
   const { login } = useContext(AccountContext)
   const { reload: reloadOnboardingInfo } = useContext(OnboardingContext)
   const toast = useToast()
@@ -56,12 +61,12 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
   const [couponDuration, setCouponDuration] = useState(0)
 
   const handleIntents = () => {
-    if (intent === 'use-coupon') {
+    if (intent === Intents.USE_COUPON) {
       subsRef.current?.scrollIntoView({ behavior: 'smooth' })
       if (coupon) {
         setCouponCode(coupon.toString())
-        setCouponDuration(3)
-        void push('/dashboard/details')
+        setCouponDuration(DEFAULT_COUPON_DURATION_MONTHS)
+        void push(`/dashboard/${EditMode.DETAILS}`)
         onOpen()
       }
     }
@@ -98,7 +103,7 @@ const AccountPlansAndBilling: React.FC<{ currentAccount: Account }> = ({
     setPurchased(sub)
     setCurrentPlan(Plan.PRO)
     void syncCurrentSubscriptions()
-    setTimeout(() => setPurchased(undefined), 10000)
+    setTimeout(() => setPurchased(undefined), PURCHASE_SUCCESS_TIMEOUT_MS)
   }
 
   return (

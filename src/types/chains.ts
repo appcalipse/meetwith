@@ -31,6 +31,7 @@ export interface ChainInfo {
   image: string
   acceptableTokens: AcceptedTokenInfo[]
   walletSupported?: boolean
+  isProduction?: boolean
 }
 
 export enum SupportedChain {
@@ -175,6 +176,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x2B1a67268BD808781bf5Eb761f1c43987dfa8E33',
     blockExplorerUrl: 'https://sepolia.etherscan.com',
     image: '/assets/chains/ethereum.svg',
+    isProduction: false,
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
@@ -203,6 +205,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x2Fa75727De367844b948172a94B5F752c2af8237',
     blockExplorerUrl: 'https://amoy.polygonscan.com/',
     image: '/assets/chains/Polygon.svg',
+    isProduction: false,
     acceptableTokens: [
       {
         token: AcceptedToken.MATIC,
@@ -227,6 +230,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x7721a7C1472A565534A80511734Bc84fB27eb0a2',
     blockExplorerUrl: 'https://etherscan.com',
     image: '/assets/chains/ethereum.svg',
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
@@ -255,6 +259,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0xf652014545758Bae52A019CAf671a29A6B117759',
     blockExplorerUrl: 'https://polygonscan.com',
     image: '/assets/chains/Polygon.svg',
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.MATIC,
@@ -283,6 +288,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x13B5065B2586f0D457641b4C4FA09C2550843F42',
     blockExplorerUrl: 'https://andromeda-explorer.metis.io',
     image: '/assets/chains/Metis.svg',
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.METIS,
@@ -290,7 +296,7 @@ export const supportedChains: ChainInfo[] = [
       },
       {
         token: AcceptedToken.USDC,
-        contractAddress: '0xea32a96608495e54156ae48931a7c20f0dcc1a21',
+        contractAddress: '0x0ea32a96608495e54156ae48931a7c20f0dcc1a21',
       },
     ],
   },
@@ -308,6 +314,7 @@ export const supportedChains: ChainInfo[] = [
     blockExplorerUrl: 'https://explorer.celo.org',
     image: '/assets/chains/Celo.svg',
     walletSupported: true,
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.CELO,
@@ -359,6 +366,7 @@ export const supportedChains: ChainInfo[] = [
     registarContractAddress: '0x0000000000000000000000000000000000000000', // N/A
     blockExplorerUrl: 'https://alfajores.celoscan.io',
     image: '/assets/chains/Celo.svg',
+    isProduction: false,
     acceptableTokens: [
       {
         token: AcceptedToken.CELO,
@@ -384,6 +392,7 @@ export const supportedChains: ChainInfo[] = [
     blockExplorerUrl: 'https://arbiscan.io',
     image: '/assets/chains/Arbitrum.svg',
     walletSupported: true, // Supported in wallet
+    isProduction: true,
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
@@ -422,6 +431,7 @@ export const supportedChains: ChainInfo[] = [
     blockExplorerUrl: 'https://sepolia.arbiscan.io',
     image: '/assets/chains/Arbitrum.svg',
     walletSupported: true, // Supported in wallet
+    isProduction: false,
     acceptableTokens: [
       {
         token: AcceptedToken.ETHER,
@@ -448,6 +458,14 @@ export const getTestnetChains = (): ChainInfo[] => {
 
 export const getMainnetChains = (): ChainInfo[] => {
   return supportedChains.filter(chain => !chain.testnet)
+}
+
+export const getProductionChains = (): ChainInfo[] => {
+  return supportedChains.filter(chain => chain.isProduction === true)
+}
+
+export const getDevelopmentChains = (): ChainInfo[] => {
+  return supportedChains.filter(chain => chain.isProduction === false)
 }
 
 export const getChainInfo = (chain: SupportedChain): ChainInfo | undefined => {

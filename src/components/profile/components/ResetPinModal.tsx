@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   HStack,
   IconButton,
@@ -85,6 +84,7 @@ const ResetPinModal: React.FC<ResetPinModalProps> = ({
         p={8}
         maxW="592px"
         width="592px"
+        boxShadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">
