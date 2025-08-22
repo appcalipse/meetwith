@@ -1683,7 +1683,8 @@ export const getWalletTransactions = async (
   token_address?: string,
   chain_id?: number,
   limit?: number,
-  offset?: number
+  offset?: number,
+  search_query?: string
 ) => {
   return await internalFetch(`/secure/transactions/wallet`, 'POST', {
     wallet_address,
@@ -1691,6 +1692,7 @@ export const getWalletTransactions = async (
     chain_id,
     limit,
     offset,
+    search_query,
   })
 }
 

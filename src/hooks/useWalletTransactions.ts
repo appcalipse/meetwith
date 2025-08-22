@@ -23,7 +23,8 @@ export const useWalletTransactions = (
   chainId?: number,
   limit = 5,
   offset = 0,
-  selectedCurrency = 'USD'
+  selectedCurrency = 'USD',
+  searchQuery?: string
 ) => {
   const currentAccount = useAccountContext()
 
@@ -68,6 +69,7 @@ export const useWalletTransactions = (
       limit,
       offset,
       selectedCurrency,
+      searchQuery,
     ],
     queryFn: async (): Promise<WalletTransactionsResponse> => {
       if (!currentAccount?.address) return { transactions: [], totalCount: 0 }
@@ -77,7 +79,8 @@ export const useWalletTransactions = (
         tokenAddress,
         chainId,
         limit,
-        offset
+        offset,
+        searchQuery
       ) as Promise<WalletTransactionsResponse>
     },
     enabled: !!currentAccount?.address,
