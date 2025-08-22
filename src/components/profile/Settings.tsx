@@ -6,12 +6,10 @@ import {
   HStack,
   Icon,
   Text,
-  useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
-import { IconType } from 'react-icons'
 import { FaArrowLeft } from 'react-icons/fa'
 
 import AccountPlansAndBilling from '@/components/profile/AccountPlansAndBilling'
@@ -89,8 +87,8 @@ const Settings: React.FC<{ currentAccount: Account }> = ({
   }
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const hash = window.location.hash.replace('#', '')
+    const hash = router.asPath.split('#')[1] || ''
+
     if (hash === 'subscriptions') {
       setActiveSection(SettingsSection.ACCOUNT_PLANS_BILLING)
     } else if (hash === 'connected-accounts') {
