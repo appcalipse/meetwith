@@ -28,7 +28,7 @@ import { mockEncrypted } from './cryptography'
 import { getOwnerPublicUrlServer } from './database'
 import { getAllParticipantsDisplayName } from './user_manager'
 
-const FROM = 'Meetwith <notifications@meetwith.xyz>'
+const FROM = process.env.FROM_MAIL!
 
 import { CreateEmailOptions, Resend } from 'resend'
 
