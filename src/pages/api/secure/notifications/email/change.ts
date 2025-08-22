@@ -2,19 +2,20 @@ import jwt from 'jsonwebtoken'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { appUrl } from '@/utils/constants'
+import { appUrl, EMAIL_CHANGE_TOKEN_EXPIRY } from '@/utils/constants'
+import { getAccountNotificationSubscriptionEmail } from '@/utils/database'
 import { sendChangeEmailEmail } from '@/utils/email_helper'
-
-const JWT_SECRET = process.env.JWT_SECRET
-const TOKEN_EXPIRY = '5m'
-
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required')
-}
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const JWT_SECRET = process.env.JWT_SECRET
+  if (!JWT_SECRET) {
+    return res
+      .status(500)
+      .json({ error: 'JWT_SECRET environment variable is required' })
   }
 
   try {
@@ -30,21 +31,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .substr(2, 9)}`,
     }
 
-    const changeToken = jwt.sign(payload, JWT_SECRET!, {
+    const changeToken = jwt.sign(payload, JWT_SECRET, {
       algorithm: 'HS256',
-      expiresIn: TOKEN_EXPIRY,
+      expiresIn: EMAIL_CHANGE_TOKEN_EXPIRY,
     })
 
     const changeUrl = `${appUrl}/dashboard/change-email?token=${changeToken}&address=${account_address}`
 
-    // Get user's current notification email from the request body
-    const { currentEmail } = req.body
+    const currentEmail = await getAccountNotificationSubscriptionEmail(
+      account_address
+    )
 
     if (!currentEmail) {
-      return res.status(400).json({ error: 'Current email is required' })
+      return res.status(400).json({ error: 'No email found for this account' })
     }
 
-    // Send the change email to the current email address
     await sendChangeEmailEmail(currentEmail, changeUrl)
 
     return res.status(200).json({

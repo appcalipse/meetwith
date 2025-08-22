@@ -54,7 +54,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(400).json({ error: 'Invalid verification code type' })
     }
 
-    const secret = process.env.JWT_SECRET || ''
+    const JWT_SECRET = process.env.JWT_SECRET
+    if (!JWT_SECRET) {
+      return res
+        .status(500)
+        .json({ error: 'JWT_SECRET environment variable is required' })
+    }
 
     // Hash+salt verification path
     const storedHashHex = req.session.verificationCodeHash
@@ -62,7 +67,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!storedHashHex || !salt) {
       return res.status(400).json({ error: 'Invalid verification code state' })
     }
-    const providedDigest = hmacSha256(verificationCode, salt, secret)
+    const providedDigest = hmacSha256(verificationCode, salt, JWT_SECRET)
     const storedDigest = Buffer.from(storedHashHex, 'hex')
     if (
       providedDigest.length !== storedDigest.length ||

@@ -30,17 +30,19 @@ import {
   SupportedChain,
 } from '@/types/chains'
 import {
+  createPaymentPreferences,
   getNotificationSubscriptions,
   getPaymentPreferences,
-  savePaymentPreferences,
   sendEnablePinLink,
   sendResetPinLink,
+  updatePaymentPreferences,
   verifyPin,
 } from '@/utils/api_helper'
 import {
   networkOptions as paymentNetworkOptions,
   supportedPaymentChains,
 } from '@/utils/constants/meeting-types'
+import { handleApiError } from '@/utils/error_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 import Block from './components/Block'
@@ -147,7 +149,17 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
           return notifications
         })(),
       }
-      return await savePaymentPreferences(currentAccount.address, preferences)
+      if (paymentPreferences) {
+        return await updatePaymentPreferences(
+          currentAccount.address,
+          preferences
+        )
+      } else {
+        return await createPaymentPreferences(
+          currentAccount.address,
+          preferences
+        )
+      }
     },
     {
       onSuccess: () => {
@@ -168,7 +180,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
   const createPinMutation = useMutation(
     async (pin: string) => {
       const preferences = {
-        pin_hash: pin, // Send plain PIN, server will hash it
+        pin: pin, // Send plain PIN, server will hash it
         default_chain_id: getChainId(selectedNetwork),
         notification: (() => {
           const notifications: Array<'send-tokens' | 'receive-tokens'> = []
@@ -177,7 +189,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
           return notifications
         })(),
       }
-      return await savePaymentPreferences(currentAccount.address, preferences)
+      return await createPaymentPreferences(currentAccount.address, preferences)
     },
     {
       onSuccess: () => {
@@ -189,15 +201,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
         refetch()
       },
       onError: (error: unknown) => {
-        // Show specific error message if available
-        if (error instanceof Error) {
-          showErrorToast('PIN Creation Failed', error.message)
-        } else {
-          showErrorToast(
-            'PIN Creation Failed',
-            'Failed to create transaction PIN'
-          )
-        }
+        handleApiError('PIN Creation Failed', error)
         console.error('Error creating PIN:', error)
       },
     }
@@ -214,8 +218,8 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
       }
 
       // PIN verified, now update with new PIN
-      return await savePaymentPreferences(currentAccount.address, {
-        pin_hash: newPin, // Will be hashed on server
+      return await updatePaymentPreferences(currentAccount.address, {
+        pin: newPin, // Will be hashed on server
       })
     },
     {
@@ -228,15 +232,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
         refetch()
       },
       onError: (error: unknown) => {
-        // Show specific error message if available
-        if (error instanceof Error) {
-          showErrorToast('PIN Update Failed', error.message)
-        } else {
-          showErrorToast(
-            'PIN Update Failed',
-            'Failed to update transaction PIN'
-          )
-        }
+        handleApiError('PIN Update Failed', error)
       },
     }
   )
@@ -250,9 +246,8 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
         throw new Error('The current pin you entered is incorrect')
       }
 
-      // PIN verified, now disable by setting pin_hash to null
-      return await savePaymentPreferences(currentAccount.address, {
-        pin_hash: null,
+      return await updatePaymentPreferences(currentAccount.address, {
+        pin: null,
       })
     },
     {
@@ -265,15 +260,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
         refetch()
       },
       onError: (error: unknown) => {
-        // Show specific error message if available
-        if (error instanceof Error) {
-          showErrorToast('PIN Disable Failed', error.message)
-        } else {
-          showErrorToast(
-            'PIN Disable Failed',
-            'Failed to disable transaction PIN'
-          )
-        }
+        handleApiError('PIN Disable Failed', error)
         console.error('Error disabling PIN:', error)
       },
     }
@@ -405,8 +392,8 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
   // Reset PIN mutation
   const resetPinMutation = useMutation(
     async (newPin: string) => {
-      return await savePaymentPreferences(currentAccount.address, {
-        pin_hash: newPin, // Will be hashed on server
+      return await updatePaymentPreferences(currentAccount.address, {
+        pin: newPin, // Will be hashed on server
       })
     },
     {

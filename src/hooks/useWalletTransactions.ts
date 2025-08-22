@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 
 import { Transaction } from '@/types/Transactions'
 import { getWalletTransactions } from '@/utils/api_helper'
+import { formatCurrency } from '@/utils/generic_utils'
 
 import useAccountContext from './useAccountContext'
 
@@ -56,7 +57,7 @@ export const useWalletTransactions = (
   const formatTransactionForDisplay = (tx: Transaction) => {
     const isCredit = tx.direction === 'credit'
     const amount = tx.fiat_equivalent || tx.amount
-    const formattedAmount = `${amount.toLocaleString()} ${tx.currency}`
+    const formattedAmount = formatCurrency(amount, tx.currency)
 
     const meetingSession = tx?.meeting_sessions
     const counterpartyName = tx?.counterparty_name as string | undefined

@@ -22,6 +22,13 @@ const NO_REPLY_EMAIL = 'no-reply@meetwithwallet.xyz'
 
 const WEBHOOK_URL = `${apiUrl}/server/webhook/calendar/sync`
 
+const EMAIL_CHANGE_TOKEN_EXPIRY = '5m'
+const PIN_ENABLE_TOKEN_EXPIRY = '5m'
+const PIN_RESET_TOKEN_EXPIRY = '5m'
+const VERIFICATION_CODE_TOKEN_EXPIRY = '5m'
+
+const VERIFICATION_CODE_EXPIRY_MS = 5 * 60 * 1000
+
 export enum OnboardingSubject {
   Discord = 'discord',
   DiscordConnectedInPage = 'discord_connected_page',
@@ -30,14 +37,24 @@ export enum OnboardingSubject {
   Office365CalendarConnected = 'office365_calendar_connected',
 }
 
+export enum PaymentNotificationType {
+  SEND_TOKENS = 'send-tokens',
+  RECEIVE_TOKENS = 'receive-tokens',
+}
+
 export {
   apiUrl,
   appUrl,
   DEFAULT_MESSAGE,
   discordRedirectUrl,
+  EMAIL_CHANGE_TOKEN_EXPIRY,
   isProduction,
   MWW_DISCORD_SERVER,
   NO_REPLY_EMAIL,
+  PIN_ENABLE_TOKEN_EXPIRY,
+  PIN_RESET_TOKEN_EXPIRY,
+  VERIFICATION_CODE_EXPIRY_MS,
+  VERIFICATION_CODE_TOKEN_EXPIRY,
   WEBHOOK_URL,
   YEAR_DURATION_IN_SECONDS,
 }

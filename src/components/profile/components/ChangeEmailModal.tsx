@@ -78,6 +78,7 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
         p={8}
         maxW="592px"
         width="592px"
+        boxShadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch">

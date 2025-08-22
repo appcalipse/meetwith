@@ -46,6 +46,36 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
   const mutedColor = useColorModeValue('gray.600', 'gray.400')
   const primaryColor = '#F46739'
 
+  const getModalTitle = (
+    modalMode: 'create' | 'change' | 'disable'
+  ): string => {
+    switch (modalMode) {
+      case 'create':
+        return 'Set transaction pin'
+      case 'change':
+        return 'Change transaction pin'
+      case 'disable':
+        return 'Disable transaction pin'
+      default:
+        return 'Transaction pin'
+    }
+  }
+
+  const getModalDescription = (
+    modalMode: 'create' | 'change' | 'disable'
+  ): string => {
+    switch (modalMode) {
+      case 'create':
+        return 'Create new transaction pin for your transactions'
+      case 'change':
+        return 'Change your current transaction pin for your transactions'
+      case 'disable':
+        return 'Enter your current PIN to disable transaction pin protection'
+      default:
+        return 'Manage your transaction pin'
+    }
+  }
+
   // Clear inputs whenever modal closes or mode changes (for security)
   useEffect(() => {
     if (!isOpen) {
@@ -97,10 +127,6 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
   const handleDisablePin = () => {
     if (currentPin.length !== 5) {
       setError('Please enter your current 5-digit PIN')
-      return
-    }
-    if (currentPin === '00000') {
-      setError('Please enter a valid PIN')
       return
     }
     setError('')
@@ -169,17 +195,10 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
             {/* Title and description */}
             <VStack align="flex-start" spacing={2}>
               <Text fontSize="2xl" fontWeight="bold" color={textColor}>
-                {mode === 'create' && 'Set transaction pin'}
-                {mode === 'change' && 'Change transaction pin'}
-                {mode === 'disable' && 'Disable transaction pin'}
+                {getModalTitle(mode)}
               </Text>
               <Text fontSize="sm" color={mutedColor}>
-                {mode === 'create' &&
-                  'Create new transaction pin for your transactions'}
-                {mode === 'change' &&
-                  'Change your current transaction pin for your transactions'}
-                {mode === 'disable' &&
-                  'Enter your current PIN to disable transaction pin protection'}
+                {getModalDescription(mode)}
               </Text>
             </VStack>
 
@@ -235,7 +254,7 @@ const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
             {(mode === 'create' || mode === 'change') && (
               <VStack align="flex-start" spacing={3}>
                 <Text fontSize="sm" fontWeight="medium" color={textColor}>
-                  {mode === 'create' ? 'New Pin' : 'New Pin'}
+                  New Pin
                 </Text>
                 <HStack spacing={3}>
                   <PinInput

@@ -173,8 +173,8 @@ export const getAccount = async (
 
 export const getOwnAccount = async (identifier: string): Promise<Account> => {
   try {
-    const account = await internalFetch('/secure/accounts')
-    return account as Account
+    const account = await internalFetch<Account>('/secure/accounts')
+    return account
   } catch (e: unknown) {
     if (e instanceof ApiFetchError && e.status === 404) {
       throw new AccountNotFoundError(identifier)
@@ -1698,7 +1698,7 @@ export const getPaymentPreferences =
   async (): Promise<PaymentPreferences | null> => {
     try {
       return await internalFetch<PaymentPreferences>(
-        '/secure/payment-preferences'
+        '/secure/preferences/payment'
       )
     } catch (e) {
       if (e instanceof ApiFetchError && e.status === 404) {
@@ -1708,36 +1708,47 @@ export const getPaymentPreferences =
     }
   }
 
-export const savePaymentPreferences = async (
+export const createPaymentPreferences = async (
   owner_account_address: string,
   data: Partial<
     Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
-  >,
-  options?: { operation?: 'create' | 'update' }
+  >
 ): Promise<PaymentPreferences> => {
-  const isUpdate =
-    options?.operation === 'update' || Object.keys(data).length < 3
-
   return await internalFetch<PaymentPreferences>(
-    '/secure/payment-preferences',
-    isUpdate ? 'PATCH' : 'POST',
-    isUpdate
-      ? { owner_account_address, updates: data }
-      : { owner_account_address, data, options }
+    '/secure/preferences/payment',
+    'POST',
+    { data }
+  )
+}
+
+export const updatePaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >
+): Promise<PaymentPreferences> => {
+  return await internalFetch<PaymentPreferences>(
+    '/secure/preferences/payment',
+    'PATCH',
+    { updates: data }
   )
 }
 
 export const verifyPin = async (pin: string): Promise<{ valid: boolean }> => {
-  return await internalFetch<{ valid: boolean }>('/secure/verify-pin', 'POST', {
-    pin,
-  })
+  return await internalFetch<{ valid: boolean }>(
+    '/secure/payments/pin/verify',
+    'POST',
+    {
+      pin,
+    }
+  )
 }
 
 export const sendResetPinLink = async (
   email: string
 ): Promise<{ success: boolean; message: string }> => {
   return await internalFetch<{ success: boolean; message: string }>(
-    '/secure/send-reset-pin-link',
+    '/secure/notifications/pin/reset',
     'POST',
     {
       email,
@@ -1749,7 +1760,7 @@ export const sendChangeEmailLink = async (
   currentEmail: string
 ): Promise<{ success: boolean; message: string }> => {
   return await internalFetch<{ success: boolean; message: string }>(
-    '/secure/send-change-email-link',
+    '/secure/notifications/email/change',
     'POST',
     {
       currentEmail,
@@ -1761,7 +1772,7 @@ export const sendEnablePinLink = async (
   email: string
 ): Promise<{ success: boolean; message: string }> => {
   return await internalFetch<{ success: boolean; message: string }>(
-    '/secure/send-enable-pin-link',
+    '/secure/notifications/pin/enable',
     'POST',
     {
       email,
@@ -1769,29 +1780,41 @@ export const sendEnablePinLink = async (
   )
 }
 
-interface TokenPayload {
-  type: 'reset_pin' | 'enable_pin' | 'change_email'
-  account_address: string
-  iat: number
-  exp: number
-  jti: string
+export const changeEmailWithToken = async (
+  newEmail: string,
+  token: string
+): Promise<{ success: boolean; message: string; account: Account }> => {
+  return await internalFetch(`/secure/accounts/change-email`, 'POST', {
+    newEmail,
+    token,
+  })
 }
 
-export const verifyJwtToken = async (
+export const enablePinWithToken = async (
+  pin: string,
   token: string
-): Promise<{ success: boolean; token: TokenPayload }> => {
-  return await internalFetch<{ success: boolean; token: TokenPayload }>(
-    '/secure/verify-token',
-    'POST',
-    { token }
-  )
+): Promise<PaymentPreferences> => {
+  return await internalFetch(`/secure/preferences/payment/enable-pin`, 'POST', {
+    pin,
+    token,
+  })
+}
+
+export const resetPinWithToken = async (
+  newPin: string,
+  token: string
+): Promise<PaymentPreferences> => {
+  return await internalFetch(`/secure/preferences/payment/reset-pin`, 'POST', {
+    newPin,
+    token,
+  })
 }
 
 export const sendVerificationCode = async (
   email: string
 ): Promise<{ success: boolean; token: string }> => {
   return await internalFetch<{ success: boolean; token: string }>(
-    '/secure/send-verification-code',
+    '/secure/notifications/email/verification',
     'POST',
     { email }
   )

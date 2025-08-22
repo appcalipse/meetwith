@@ -29,7 +29,6 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
   onButtonClick,
 }) => {
   const textColor = useColorModeValue('gray.900', 'white')
-  const primaryColor = '#F46739'
 
   const handleButtonClick = () => {
     if (onButtonClick) {
@@ -48,6 +47,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
         p={8}
         maxW="592px"
         width="592px"
+        boxShadow="none"
       >
         <ModalBody p={0}>
           <VStack spacing={6} align="stretch" textAlign="center">

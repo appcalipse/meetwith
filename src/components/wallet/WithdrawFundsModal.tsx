@@ -33,6 +33,7 @@ import {
   getSupportedChainFromId,
   getTokenIcon,
 } from '@/types/chains'
+import { Address } from '@/types/Transactions'
 import { formatUnits } from '@/utils/generic_utils'
 import { getOnRampMoneyNetworkAndCoinCode } from '@/utils/services/onramp.money'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
@@ -87,11 +88,11 @@ const WithdrawFundsModal = (props: Props) => {
       const [balance, tokenInfo] = await Promise.all([
         getTokenBalance(
           currentAccount.address,
-          selectedAssetInfo.contractAddress as `0x${string}`,
+          selectedAssetInfo.contractAddress as Address,
           selectedNetworkInfo?.chain
         ),
         getTokenInfo(
-          selectedAssetInfo.contractAddress as `0x${string}`,
+          selectedAssetInfo.contractAddress as Address,
           selectedNetworkInfo?.chain
         ),
       ])

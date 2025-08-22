@@ -2,10 +2,30 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import {
+  createPaymentPreferences,
   createPinHash,
   getPaymentPreferences,
-  savePaymentPreferences,
+  updatePaymentPreferences,
 } from '@/utils/database'
+
+interface CreatePaymentPreferencesBody {
+  data: Partial<{
+    pin?: string
+    pin_hash?: string
+    default_chain_id?: number
+    notification?: Array<'send-tokens' | 'receive-tokens'>
+  }>
+  options?: { operation?: 'create' | 'update' }
+}
+
+interface UpdatePaymentPreferencesBody {
+  updates: Partial<{
+    pin?: string
+    pin_hash?: string
+    default_chain_id?: number
+    notification?: Array<'send-tokens' | 'receive-tokens'>
+  }>
+}
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -20,24 +40,18 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   } else if (req.method === 'POST') {
     const account_address = req.session.account!.address
-    const { owner_account_address, data, options } = req.body
-
-    if (owner_account_address !== account_address) {
-      return res
-        .status(403)
-        .send("You can't edit someone else's payment preferences")
-    }
+    const { data }: CreatePaymentPreferencesBody = req.body
 
     try {
       // Hash the PIN if it's provided
-      if (data.pin_hash && typeof data.pin_hash === 'string') {
-        data.pin_hash = await createPinHash(data.pin_hash)
+      if (data.pin && typeof data.pin === 'string') {
+        data.pin_hash = await createPinHash(data.pin)
+        delete data.pin // Remove pin field before calling database function
       }
 
-      const updatedPreferences = await savePaymentPreferences(
+      const updatedPreferences = await createPaymentPreferences(
         account_address,
-        data,
-        options
+        data
       )
       return res.status(200).json(updatedPreferences)
     } catch (e) {
@@ -47,24 +61,18 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   } else if (req.method === 'PATCH') {
     const account_address = req.session.account!.address
-    const { owner_account_address, updates } = req.body
-
-    if (owner_account_address !== account_address) {
-      return res
-        .status(403)
-        .send("You can't edit someone else's payment preferences")
-    }
+    const { updates }: UpdatePaymentPreferencesBody = req.body
 
     try {
       // Hash the PIN if it's provided
-      if (updates.pin_hash && typeof updates.pin_hash === 'string') {
-        updates.pin_hash = await createPinHash(updates.pin_hash)
+      if (updates.pin && typeof updates.pin === 'string') {
+        updates.pin_hash = await createPinHash(updates.pin)
+        delete updates.pin // Remove pin field before calling database function
       }
 
-      const updatedPreferences = await savePaymentPreferences(
+      const updatedPreferences = await updatePaymentPreferences(
         account_address,
-        updates,
-        { operation: 'update' }
+        updates
       )
       return res.status(200).json(updatedPreferences)
     } catch (e) {
