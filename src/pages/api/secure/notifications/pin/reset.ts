@@ -2,8 +2,12 @@ import jwt from 'jsonwebtoken'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { VerificationChannel } from '@/types/AccountNotifications'
 import { appUrl, PIN_RESET_TOKEN_EXPIRY } from '@/utils/constants'
-import { getAccountNotificationSubscriptionEmail } from '@/utils/database'
+import {
+  createVerification,
+  getAccountNotificationSubscriptionEmail,
+} from '@/utils/database'
 import { sendResetPinEmail } from '@/utils/email_helper'
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -21,19 +25,29 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const account_address = req.session.account!.address
 
+    const jti = `${account_address}-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`
+
     const payload = {
       type: 'reset_pin',
       account_address,
       iat: Math.floor(Date.now() / 1000), // issued at
-      jti: `${account_address}-${Date.now()}-${Math.random()
-        .toString(36)
-        .substr(2, 9)}`,
+      jti,
     }
 
     const resetToken = jwt.sign(payload, JWT_SECRET, {
       algorithm: 'HS256',
       expiresIn: PIN_RESET_TOKEN_EXPIRY,
     })
+
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
+    await createVerification(
+      account_address,
+      jti,
+      VerificationChannel.TRANSACTION_PIN,
+      expiresAt
+    )
 
     const resetUrl = `${appUrl}/dashboard/reset-pin?token=${resetToken}&address=${account_address}`
 

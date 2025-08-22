@@ -2,12 +2,13 @@ import jwt from 'jsonwebtoken'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { VerificationChannel } from '@/types/AccountNotifications'
 import { supportedChains } from '@/types/chains'
-import { PIN_ENABLE_TOKEN_EXPIRY } from '@/utils/constants'
 import {
   createPaymentPreferences,
   getPaymentPreferences,
   updatePaymentPreferences,
+  verifyVerificationCode,
 } from '@/utils/database'
 
 interface EnablePinBody {
@@ -20,6 +21,7 @@ interface TokenPayload {
   account_address: string
   iat: number
   exp: number
+  jti: string
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -42,12 +44,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(400).json({ error: 'PIN and token are required' })
     }
 
-    // Verify the JWT token with expiry check
+    // Verify the JWT token
     let decodedToken: TokenPayload
     try {
       decodedToken = jwt.verify(token, JWT_SECRET, {
         algorithms: ['HS256'],
-        maxAge: PIN_ENABLE_TOKEN_EXPIRY,
       }) as TokenPayload
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
@@ -62,6 +63,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       decodedToken.account_address !== account_address
     ) {
       return res.status(401).json({ error: 'Invalid token for this operation' })
+    }
+
+    const isTokenValid = await verifyVerificationCode(
+      account_address,
+      decodedToken.jti,
+      VerificationChannel.TRANSACTION_PIN
+    )
+
+    if (!isTokenValid) {
+      return res
+        .status(401)
+        .json({ error: 'Token has already been used or is invalid' })
     }
 
     // Check if payment preferences already exist
