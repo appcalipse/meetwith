@@ -15,7 +15,7 @@ const RedirectNotifier = () => {
     if (query.redirect && !currentAccount) {
       toast({
         title: 'Session expired',
-        description: "You're signed out. Please sign to continue.",
+        description: "You're signed out. Please sign in to continue.",
         status: 'warning',
         duration: 15000,
         isClosable: true,
