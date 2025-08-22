@@ -147,6 +147,7 @@ interface IScheduleContext {
   handleDelete: (scheduler?: ParticipantInfo) => void
   isDeleting: boolean
   canDelete: boolean
+  canCancel: boolean
   isScheduler: boolean
   selectedPermissions: Array<MeetingPermissions> | undefined
   setSelectedPermissions: React.Dispatch<
@@ -204,6 +205,7 @@ const DEFAULT_CONTEXT: IScheduleContext = {
   isDeleting: false,
   canDelete: false,
   isScheduler: false,
+  canCancel: false,
   selectedPermissions: [MeetingPermissions.SEE_GUEST_LIST],
   setSelectedPermissions: () => {},
   meetingOwners: [],
@@ -263,6 +265,7 @@ const Schedule: NextPage<IInitialProps> = ({
   >(undefined)
   const toast = useToast()
   const [canDelete, setCanDelete] = useState(true)
+  const [canCancel, setCanCancel] = useState(true)
   const [isScheduler, setIsScheduler] = useState(true)
   const [meetingOwners, setMeetingOwners] = useState<Array<ParticipantInfo>>([])
   const router = useRouter()
@@ -800,6 +803,7 @@ const Schedule: NextPage<IInitialProps> = ({
     handleDelete,
     isDeleting,
     canDelete,
+    canCancel,
     isScheduler,
     selectedPermissions,
     setSelectedPermissions,
@@ -912,15 +916,22 @@ const Schedule: NextPage<IInitialProps> = ({
 
       setSelectedPermissions(decryptedMeeting.permissions || undefined)
 
+      const isSchedulerOrOwner = [
+        ParticipantType.Scheduler,
+        ParticipantType.Owner,
+      ].includes(
+        decryptedMeeting?.participants?.find(
+          p => p.account_address === currentAccount?.address
+        )?.type || ParticipantType?.Invitee
+      )
+      if (isSchedulerOrOwner && participants.length === 2) {
+        setCanCancel(true)
+      } else if (isCurrentUserScheduler) {
+        setCanCancel(true)
+      } else {
+        setCanCancel(false)
+      }
       if (decryptedMeeting.permissions) {
-        const isSchedulerOrOwner = [
-          ParticipantType.Scheduler,
-          ParticipantType.Owner,
-        ].includes(
-          decryptedMeeting?.participants?.find(
-            p => p.account_address === currentAccount?.address
-          )?.type || ParticipantType?.Invitee
-        )
         const canEditMeetingDetails =
           !!decryptedMeeting?.permissions?.includes(
             MeetingPermissions.EDIT_MEETING
