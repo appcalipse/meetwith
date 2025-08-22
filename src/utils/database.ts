@@ -392,14 +392,16 @@ const findAccountByIdentifier = async (
     Sentry.captureException(error)
     return []
   }
-  return await Promise.all(
-    data.map(async account => {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
+  return data?.length > 0
+    ? await Promise.all(
+        data?.map(async account => {
+          account.preferences = await getAccountPreferences(
+            account.address.toLowerCase()
+          )
+          return account
+        })
       )
-      return account
-    })
-  )
+    : []
 }
 
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
