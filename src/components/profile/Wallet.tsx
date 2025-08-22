@@ -43,6 +43,8 @@ import { getChainId, supportedChains } from '@/types/chains'
 import { getPaymentPreferences } from '@/utils/api_helper'
 import { sendEnablePinLink } from '@/utils/api_helper'
 import { getNotificationSubscriptions } from '@/utils/api_helper'
+import { CurrencySymbol } from '@/utils/constants'
+import { CurrencyService } from '@/utils/services/currency.service'
 import { useToastHelpers } from '@/utils/toasts'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
 
@@ -134,8 +136,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
   const transactionsPerPage = 5
   const { isOpen, onClose, onOpen } = useDisclosure()
-  const { totalBalance, isLoading: balanceLoading } =
-    useWalletBalance(selectedCurrency)
+  const { totalBalance, isLoading: balanceLoading } = useWalletBalance('USD')
 
   const {
     transactions,
@@ -145,7 +146,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     undefined,
     undefined,
     transactionsPerPage,
-    (currentPage - 1) * transactionsPerPage
+    (currentPage - 1) * transactionsPerPage,
+    selectedCurrency
   )
 
   // Token-specific data for crypto details view
@@ -162,7 +164,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     selectedCrypto?.tokenAddress,
     selectedCrypto?.chainId,
     transactionsPerPage,
-    (selectedCryptoCurrentPage - 1) * transactionsPerPage
+    (selectedCryptoCurrentPage - 1) * transactionsPerPage,
+    selectedCurrency
   )
 
   // Use centralized configurations
@@ -173,6 +176,38 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const { cryptoAssetsWithBalances } = useCryptoBalances({
     selectedChain: selectedNetwork,
   })
+
+  // Currency conversion hooks
+  const { data: exchangeRate } = useQuery(
+    ['exchangeRate', selectedCurrency],
+    () => CurrencyService.getExchangeRate(selectedCurrency),
+    {
+      enabled: selectedCurrency !== 'USD',
+      staleTime: 1000 * 60 * 60,
+      cacheTime: 1000 * 60 * 60 * 24,
+    }
+  )
+
+  // Convert USD amount to selected currency
+  const convertCurrency = (usdAmount: number): number => {
+    if (selectedCurrency === 'USD' || !exchangeRate) {
+      return usdAmount
+    }
+    return usdAmount * exchangeRate
+  }
+
+  // Format currency display
+  const formatCurrencyDisplay = (usdAmount: number): string => {
+    const convertedAmount = convertCurrency(usdAmount)
+    const currencySymbol =
+      CurrencySymbol[selectedCurrency as keyof typeof CurrencySymbol] ||
+      selectedCurrency
+
+    return `${currencySymbol}${convertedAmount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`
+  }
 
   const filteredTransactions = transactions.filter(tx => {
     if (!searchQuery) return true
@@ -193,6 +228,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
   const handleSettingsClick = () => {
     router.push('/dashboard/details#wallet-payment')
+  }
+
+  const handleCurrencyChange = (value: string) => {
+    setSelectedCurrency(value)
+    setIsCurrencyModalOpen(false)
   }
 
   // Reset pagination when selected crypto changes
@@ -245,6 +285,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
         <TransactionDetailsView
           transaction={selectedTransaction}
           onBack={() => setShowTransactionDetails(false)}
+          selectedCurrency={selectedCurrency}
         />
       ) : showCryptoDetails && selectedCrypto ? (
         <Box
@@ -344,10 +385,9 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     color="neutral.300"
                     fontWeight="500"
                   >
-                    $
                     {selectedCryptoBalance.balance
-                      ? selectedCryptoBalance.balance.toLocaleString()
-                      : '0'}
+                      ? formatCurrencyDisplay(selectedCryptoBalance.balance)
+                      : formatCurrencyDisplay(0)}
                   </Text>
                 </>
               )}
@@ -647,6 +687,9 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   fontWeight="500"
                 >
                   {selectedCurrency}
+                  {selectedCurrency !== 'USD' && !exchangeRate && (
+                    <Spinner size="xs" ml={1} color="neutral.400" />
+                  )}
                 </Text>
                 <Icon
                   as={IoChevronDown}
@@ -693,6 +736,11 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   fontWeight="500"
                 >
                   Wallet balance
+                  {selectedCurrency !== 'USD' && (
+                    <Text as="span" color="neutral.400" fontSize="12px" ml={2}>
+                      (in {selectedCurrency})
+                    </Text>
+                  )}
                 </Text>
                 <Icon
                   as={showBalance ? BsEye : BsEyeSlash}
@@ -703,7 +751,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   _hover={{ color: 'neutral.300' }}
                 />
               </HStack>
-              {balanceLoading ? (
+              {balanceLoading ||
+              (selectedCurrency !== 'USD' && !exchangeRate) ? (
                 <VStack spacing={2} align="center">
                   <Box
                     w={{ base: '160px', md: '200px' }}
@@ -752,7 +801,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   lineHeight="1"
                 >
                   {showBalance
-                    ? `$${totalBalance.toLocaleString()}`
+                    ? formatCurrencyDisplay(totalBalance)
                     : '••••••••'}
                 </Text>
               )}
@@ -1405,7 +1454,13 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                                   fontWeight="500"
                                   color="white"
                                 >
-                                  {asset.usdValue}
+                                  {asset.usdValue
+                                    ? formatCurrencyDisplay(
+                                        parseFloat(
+                                          asset.usdValue.replace('$', '')
+                                        )
+                                      )
+                                    : 'N/A'}
                                 </Text>
                               </>
                             )}
@@ -1437,7 +1492,10 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             Show value in
           </ModalHeader>
           <ModalBody pb={6}>
-            <RadioGroup value={selectedCurrency} onChange={setSelectedCurrency}>
+            <RadioGroup
+              value={selectedCurrency}
+              onChange={handleCurrencyChange}
+            >
               <VStack spacing={6} align="stretch">
                 {currencies.map(currency => (
                   <Radio

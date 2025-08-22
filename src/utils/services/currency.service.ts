@@ -148,4 +148,27 @@ export class CurrencyService {
       }
     )
   }
+
+  static async getExchangeRateFromCurrency(
+    fromCurrency: string,
+    toCurrency: string
+  ): Promise<number> {
+    if (fromCurrency === 'USD') {
+      return this.getExchangeRate(toCurrency)
+    }
+
+    if (toCurrency === 'USD') {
+      const rate = await this.getExchangeRate(fromCurrency)
+      return 1 / rate
+    }
+
+    const fromToUsd = await this.getExchangeRateFromCurrency(
+      fromCurrency,
+      'USD'
+    )
+
+    const usdToTarget = await this.getExchangeRate(toCurrency)
+
+    return fromToUsd * usdToTarget
+  }
 }

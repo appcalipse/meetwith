@@ -42,6 +42,48 @@ export enum PaymentNotificationType {
   RECEIVE_TOKENS = 'receive-tokens',
 }
 
+export enum CurrencySymbol {
+  USD = '$',
+  EUR = '€',
+  GBP = '£',
+}
+
+export const COMMON_CURRENCIES = [
+  'USD',
+  'EUR',
+  'GBP',
+  'NGN',
+  'INR',
+  'CAD',
+  'AUD',
+  'JPY',
+  'CHF',
+] as const
+
+export type CommonCurrency = (typeof COMMON_CURRENCIES)[number]
+
+export const isSupportedCurrency = (
+  currency: string
+): currency is CommonCurrency => {
+  return COMMON_CURRENCIES.includes(currency as CommonCurrency)
+}
+
+export const getCurrencyDisplayName = (currency: string): string => {
+  const currencyNames: Record<CommonCurrency, string> = {
+    USD: 'US Dollar',
+    EUR: 'Euro',
+    GBP: 'British Pound',
+    NGN: 'Nigerian Naira',
+    INR: 'Indian Rupee',
+    CAD: 'Canadian Dollar',
+    AUD: 'Australian Dollar',
+    JPY: 'Japanese Yen',
+    CHF: 'Swiss Franc',
+  }
+
+  return currencyNames[currency as CommonCurrency] || currency
+}
+
 export {
   apiUrl,
   appUrl,

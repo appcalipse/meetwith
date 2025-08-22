@@ -1,18 +1,55 @@
 import { Box, Flex, HStack, Icon, Text, VStack } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
 import React from 'react'
 import { FiArrowLeft } from 'react-icons/fi'
 
 import { Transaction } from '@/types/Transactions'
+import { CurrencySymbol } from '@/utils/constants'
+import { CurrencyService } from '@/utils/services/currency.service'
 
 interface TransactionDetailsViewProps {
   transaction: Transaction
   onBack: () => void
+  selectedCurrency?: string
 }
 
 const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
   transaction,
   onBack,
+  selectedCurrency = 'USD',
 }) => {
+  // Currency conversion hook
+  const { data: exchangeRate } = useQuery(
+    ['exchangeRate', selectedCurrency],
+    () => CurrencyService.getExchangeRate(selectedCurrency),
+    {
+      enabled: selectedCurrency !== 'USD',
+      staleTime: 1000 * 60 * 60,
+      cacheTime: 1000 * 60 * 60 * 24,
+    }
+  )
+
+  // Convert USD amount to selected currency
+  const convertCurrency = (usdAmount: number): number => {
+    if (selectedCurrency === 'USD' || !exchangeRate) {
+      return usdAmount
+    }
+    return usdAmount * exchangeRate
+  }
+
+  // Format currency display
+  const formatCurrencyDisplay = (usdAmount: number): string => {
+    const convertedAmount = convertCurrency(usdAmount)
+    const currencySymbol =
+      CurrencySymbol[selectedCurrency as keyof typeof CurrencySymbol] ||
+      selectedCurrency
+
+    return `${currencySymbol}${convertedAmount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`
+  }
+
   // Get guest information from meeting sessions
   const meetingSession = transaction.meeting_sessions?.[0]
   const guestEmail = meetingSession?.guest_email
@@ -277,7 +314,7 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
             textAlign="left"
             width="50%"
           >
-            {transaction.amount} {transaction.currency}
+            {formatCurrencyDisplay(transaction.amount)}
           </Text>
         </Flex>
 

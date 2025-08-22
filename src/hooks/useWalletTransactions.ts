@@ -3,7 +3,13 @@ import { format } from 'date-fns'
 
 import { Transaction } from '@/types/Transactions'
 import { getWalletTransactions } from '@/utils/api_helper'
+import {
+  COMMON_CURRENCIES,
+  getCurrencyDisplayName,
+  isSupportedCurrency,
+} from '@/utils/constants'
 import { formatCurrency } from '@/utils/generic_utils'
+import { CurrencyService } from '@/utils/services/currency.service'
 
 import useAccountContext from './useAccountContext'
 
@@ -16,9 +22,38 @@ export const useWalletTransactions = (
   tokenAddress?: string,
   chainId?: number,
   limit = 5,
-  offset = 0
+  offset = 0,
+  selectedCurrency = 'USD'
 ) => {
   const currentAccount = useAccountContext()
+
+  const { data: exchangeRates } = useQuery({
+    queryKey: ['exchangeRates', selectedCurrency],
+    queryFn: async () => {
+      if (selectedCurrency === 'USD') return { USD: 1 }
+
+      const rates: Record<string, number> = { USD: 1 }
+
+      rates[selectedCurrency] = await CurrencyService.getExchangeRate(
+        selectedCurrency
+      )
+
+      for (const currency of COMMON_CURRENCIES) {
+        if (currency !== selectedCurrency) {
+          try {
+            rates[currency] = await CurrencyService.getExchangeRate(currency)
+          } catch (error) {
+            console.warn(`Failed to fetch ${currency} exchange rate:`, error)
+          }
+        }
+      }
+
+      return rates
+    },
+    enabled: selectedCurrency !== 'USD',
+    staleTime: 1000 * 60 * 60,
+    cacheTime: 1000 * 60 * 60 * 24,
+  })
 
   const {
     data: response,
@@ -32,6 +67,7 @@ export const useWalletTransactions = (
       chainId,
       limit,
       offset,
+      selectedCurrency,
     ],
     queryFn: async (): Promise<WalletTransactionsResponse> => {
       if (!currentAccount?.address) return { transactions: [], totalCount: 0 }
@@ -57,9 +93,43 @@ export const useWalletTransactions = (
   const formatTransactionForDisplay = (tx: Transaction) => {
     const isCredit = tx.direction === 'credit'
     const amount = tx.fiat_equivalent || tx.amount
-    const formattedAmount = formatCurrency(amount, tx.currency)
 
-    const meetingSession = tx?.meeting_sessions
+    let displayAmount = amount
+    let displayCurrency = tx.currency
+
+    if (
+      selectedCurrency !== 'USD' &&
+      exchangeRates &&
+      tx.currency !== selectedCurrency
+    ) {
+      if (tx.currency === 'USD') {
+        displayAmount = amount * exchangeRates[selectedCurrency]
+        displayCurrency = selectedCurrency
+      } else if (tx.currency && exchangeRates[tx.currency]) {
+        const sourceToUsd = 1 / exchangeRates[tx.currency]
+        const usdToTarget = exchangeRates[selectedCurrency]
+        displayAmount = amount * sourceToUsd * usdToTarget
+        displayCurrency = selectedCurrency
+      } else if (tx.currency && !exchangeRates[tx.currency]) {
+        if (isSupportedCurrency(tx.currency)) {
+          console.warn(
+            `Exchange rate for ${getCurrencyDisplayName(tx.currency)} (${
+              tx.currency
+            }) temporarily unavailable. ` + `Displaying in original currency.`
+          )
+        } else {
+          console.warn(
+            `Currency ${tx.currency} is not supported for conversion. ` +
+              `Displaying in original currency. Consider adding ${tx.currency} to COMMON_CURRENCIES.`
+          )
+        }
+        displayAmount = amount
+        displayCurrency = tx.currency
+      }
+    }
+
+    const formattedAmount = formatCurrency(displayAmount, displayCurrency)
+
     const counterpartyName = tx?.counterparty_name as string | undefined
     const counterpartyAddress = tx?.counterparty_address as string | undefined
     const maskAddress = (addr?: string) =>
