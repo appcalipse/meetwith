@@ -147,7 +147,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     undefined,
     transactionsPerPage,
     (currentPage - 1) * transactionsPerPage,
-    selectedCurrency
+    selectedCurrency,
+    searchQuery
   )
 
   // Token-specific data for crypto details view
@@ -165,7 +166,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     selectedCrypto?.chainId,
     transactionsPerPage,
     (selectedCryptoCurrentPage - 1) * transactionsPerPage,
-    selectedCurrency
+    selectedCurrency,
+    searchQuery
   )
 
   // Use centralized configurations
@@ -208,21 +210,6 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
       maximumFractionDigits: 2,
     })}`
   }
-
-  const filteredTransactions = transactions.filter(tx => {
-    if (!searchQuery) return true
-    const searchLower = searchQuery.toLowerCase()
-    const meetingSession = tx.originalTransaction.meeting_sessions?.[0]
-    const guestEmail = meetingSession?.guest_email
-    const guestName = guestEmail?.split('@')[0] || 'Guest'
-
-    return (
-      tx.user.toLowerCase().includes(searchLower) ||
-      guestName.toLowerCase().includes(searchLower) ||
-      guestEmail?.toLowerCase().includes(searchLower) ||
-      'Meeting Session'.toLowerCase().includes(searchLower)
-    )
-  })
 
   const handleShowWithdrawWidget = () => onOpen()
 
@@ -450,24 +437,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             />
           </Box>
 
-          {/* Filter token-specific transactions */}
           {(() => {
-            const filteredCryptoTransactions =
-              selectedCryptoTransactions.filter(tx => {
-                if (!searchQuery) return true
-                const searchLower = searchQuery.toLowerCase()
-                const meetingSession =
-                  tx.originalTransaction.meeting_sessions?.[0]
-                const guestEmail = meetingSession?.guest_email
-                const guestName = guestEmail?.split('@')[0] || 'Guest'
-
-                return (
-                  tx.user.toLowerCase().includes(searchLower) ||
-                  guestName.toLowerCase().includes(searchLower) ||
-                  guestEmail?.toLowerCase().includes(searchLower) ||
-                  'Meeting Session'.toLowerCase().includes(searchLower)
-                )
-              })
             return (
               <>
                 <Text
@@ -496,7 +466,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                         Loading transactions...
                       </Text>
                     </Box>
-                  ) : filteredCryptoTransactions.length === 0 ? (
+                  ) : selectedCryptoTransactions.length === 0 ? (
                     <Box textAlign="center" py={{ base: 6, md: 8 }}>
                       <Text
                         color="neutral.400"
@@ -509,7 +479,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     </Box>
                   ) : (
                     <>
-                      {filteredCryptoTransactions.map(transaction => (
+                      {selectedCryptoTransactions.map(transaction => (
                         <Box
                           key={transaction.id}
                           bg="neutral.825"
@@ -914,7 +884,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       Loading transactions...
                     </Text>
                   </Box>
-                ) : filteredTransactions.length === 0 ? (
+                ) : transactions.length === 0 ? (
                   <Box textAlign="center" py={8}>
                     <Text color="neutral.400" fontSize="16px">
                       {searchQuery
@@ -924,7 +894,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   </Box>
                 ) : (
                   <>
-                    {filteredTransactions.map(transaction => (
+                    {transactions.map(transaction => (
                       <Box
                         key={transaction.id}
                         bg="neutral.825"

@@ -4635,7 +4635,8 @@ export const getWalletTransactions = async (
   tokenAddress?: string,
   chainId?: number,
   limit = 50,
-  offset = 0
+  offset = 0,
+  searchQuery?: string
 ) => {
   // Build base query for count
   let countQuery = db.supabase
@@ -4690,7 +4691,7 @@ export const getWalletTransactions = async (
     (transactions || []).map(async tx => {
       if (tx.meeting_type_id) {
         // Get meeting type data with joined meeting sessions
-        const { data: meetingTypeData, error: typeError } = await db.supabase
+        let meetingQuery = db.supabase
           .from('meeting_type')
           .select(
             `
@@ -4710,7 +4711,17 @@ export const getWalletTransactions = async (
           )
           .eq('id', tx.meeting_type_id)
           .eq('meeting_sessions.transaction_id', tx.id)
-          .single()
+
+        if (searchQuery && searchQuery.trim()) {
+          meetingQuery = meetingQuery.filter(
+            'meeting_sessions.guest_name',
+            'ilike',
+            `%${searchQuery.trim().toLowerCase()}%`
+          )
+        }
+
+        const { data: meetingTypeData, error: typeError } =
+          await meetingQuery.single()
 
         if (typeError) {
           console.error('Error fetching meeting type:', typeError)
@@ -4759,7 +4770,14 @@ export const getWalletTransactions = async (
     })
   )
 
-  const processedTransactions = transactionsWithMeetingData.map(tx => {
+  const transactionsToProcess =
+    searchQuery && searchQuery.trim()
+      ? transactionsWithMeetingData.filter(
+          tx => tx.meeting_sessions && tx.meeting_sessions.length > 0
+        )
+      : transactionsWithMeetingData
+
+  const processedTransactions = transactionsToProcess.map(tx => {
     const metadata = tx.metadata
 
     const isSender =
@@ -4802,7 +4820,10 @@ export const getWalletTransactions = async (
 
   return {
     transactions: processedTransactions,
-    totalCount: totalCount || 0,
+    totalCount:
+      searchQuery && searchQuery.trim()
+        ? transactionsToProcess.length
+        : totalCount || 0,
   }
 }
 
