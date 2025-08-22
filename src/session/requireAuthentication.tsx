@@ -1,7 +1,7 @@
 import { Flex } from '@chakra-ui/react'
 import { NextComponentType, NextPageContext } from 'next'
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
+import { useContext } from 'react'
 
 import Loading from '../components/Loading'
 import { AccountContext } from '../providers/AccountProvider'
@@ -57,9 +57,9 @@ const redirectBasedOnLogin = async (
       })
       ctx.res.end()
     } else {
-      // This part of the logic is now handled by the client-side useEffect
-      // and useRouter.
-      // For SSR, we just return the current account.
+      // For client-side redirects in getInitialProps, use Router (not useRouter)
+      const Router = (await import('next/router')).default
+      Router.push(redirectUrl)
     }
     return null
   }
@@ -74,41 +74,43 @@ const withAuthRedirect =
       const { checkAuthOnClient } = props
       const { logged, currentAccount } = useContext(AccountContext)
       const router = useRouter()
-      const [redirecting, setRedirecting] = useState(false)
 
-      useEffect(() => {
-        if (typeof window === 'undefined') return
-        const currentRoute = router.pathname
-        const isOnTargetRoute = currentRoute === route
+      // Prevent infinite redirects by checking if we're already on the target route
+      const currentRoute = router.pathname
+      const isOnTargetRoute = currentRoute === route
 
-        // Redirect unauthenticated users
-        if (
-          !logged &&
-          redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED &&
-          !isOnTargetRoute
-        ) {
-          let redirectUrl = route
-          if (currentRoute && currentRoute !== route) {
-            redirectUrl = `${route}?redirect=${encodeURIComponent(
-              currentRoute
-            )}`
-          }
-          setRedirecting(true)
-          router.push(redirectUrl)
+      // On the client side, if the user is not logged in,
+      // then redirect it to the equivalent endpoint
+      if (
+        !logged &&
+        redirectType === AuthRedirect.REDIRECT_IF_NOT_AUTHED &&
+        !isOnTargetRoute
+      ) {
+        let redirectUrl = route
+        if (currentRoute && currentRoute !== route) {
+          redirectUrl = `${route}?redirect=${encodeURIComponent(currentRoute)}`
         }
+        router.push(redirectUrl)
 
-        // Redirect authenticated users away when needed
-        if (
-          logged &&
-          redirectType === AuthRedirect.REDIRECT_IF_AUTHED &&
-          !isOnTargetRoute
-        ) {
-          setRedirecting(true)
-          router.push(route)
-        }
-      }, [logged, redirectType, router, route])
+        return (
+          <Flex
+            width="100%"
+            height="100%"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Loading />
+          </Flex>
+        )
+      }
 
-      if (redirecting) {
+      // Similar check for authenticated users
+      if (
+        logged &&
+        redirectType === AuthRedirect.REDIRECT_IF_AUTHED &&
+        !isOnTargetRoute
+      ) {
+        router.push(route)
         return (
           <Flex
             width="100%"
