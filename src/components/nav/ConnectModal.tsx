@@ -62,6 +62,11 @@ export const ConnectModal: React.FC = ({}) => {
       auth: {
         options: ['email', 'google', 'phone', 'passkey'],
       },
+
+      // executionMode: {
+      //   mode: 'EIP7702',
+      //   sponsorGas: true,
+      // },
     }),
     createWallet('io.metamask'),
     createWallet('com.coinbase.wallet'),

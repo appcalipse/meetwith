@@ -442,14 +442,16 @@ const findAccountByIdentifier = async (
     Sentry.captureException(error)
     return []
   }
-  return await Promise.all(
-    data.map(async account => {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
+  return data?.length > 0
+    ? await Promise.all(
+        data?.map(async account => {
+          account.preferences = await getAccountPreferences(
+            account.address.toLowerCase()
+          )
+          return account
+        })
       )
-      return account
-    })
-  )
+    : []
 }
 
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
@@ -608,9 +610,20 @@ async function getExistingAccountsFromDB(
   if (fullInformation) {
     queryString += `
       ,calendars: connected_calendars(provider),
-      preferences: account_preferences(*)
+      preferences: account_preferences(
+      *,
+      default_availability:availabilities!account_preferences_availaibility_id_fkey(
+          id,
+          title,
+          timezone,
+          weekly_availability,
+          created_at,
+          updated_at
+        )
+      )
       `
   }
+
   const { data, error } = await db.supabase
     .from('accounts')
     .select(queryString)
@@ -625,6 +638,12 @@ async function getExistingAccountsFromDB(
   for (const account of data) {
     if (account.calendars) {
       account.isCalendarConnected = account?.calendars?.length > 0
+      const { default_availability, ...preferences } = account.preferences
+      if (default_availability) {
+        preferences.availabilities = default_availability.weekly_availability
+        preferences.timezone = default_availability.timezone
+      }
+      account.preferences = preferences
       delete account.calendars
     }
   }
