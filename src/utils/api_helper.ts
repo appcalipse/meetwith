@@ -1812,8 +1812,8 @@ export const resetPinWithToken = async (
 
 export const sendVerificationCode = async (
   email: string
-): Promise<{ success: boolean; token: string }> => {
-  return await internalFetch<{ success: boolean; token: string }>(
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
     '/secure/notifications/email/verification',
     'POST',
     { email }
@@ -1821,12 +1821,12 @@ export const sendVerificationCode = async (
 }
 
 export const verifyVerificationCode = async (
-  verificationCode: string
-): Promise<{ success: boolean }> => {
-  return await internalFetch<{ success: boolean }>(
-    '/secure/verify-verification-code',
+  code: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/verify',
     'POST',
-    { verificationCode }
+    { code }
   )
 }
 

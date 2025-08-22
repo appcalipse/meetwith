@@ -1,28 +1,20 @@
-import { createHmac, randomBytes, randomInt } from 'crypto'
+import { randomInt } from 'crypto'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
+import { VerificationChannel } from '@/types/AccountNotifications'
 import { VERIFICATION_CODE_EXPIRY_MS } from '@/utils/constants'
+import { createVerification } from '@/utils/database'
 import { sendVerificationCodeEmail } from '@/utils/email_helper'
-
-function hmacSha256(value: string, salt: string, secret: string): string {
-  return createHmac('sha256', secret).update(`${value}:${salt}`).digest('hex')
-}
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const JWT_SECRET = process.env.JWT_SECRET
-  if (!JWT_SECRET) {
-    return res
-      .status(500)
-      .json({ error: 'JWT_SECRET environment variable is required' })
-  }
-
   try {
     const { email } = req.body
+    const account_address = req.session.account!.address
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' })
@@ -31,18 +23,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Generate a 5-digit verification code
     const verificationCode = randomInt(10000, 100000).toString()
 
-    // Create salt and hash
-    const salt = randomBytes(16).toString('hex')
-    const hash = hmacSha256(verificationCode, salt, JWT_SECRET)
+    const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_MS)
 
-    req.session.verificationCodeHash = hash
-    req.session.verificationCodeSalt = salt
-    req.session.verificationCodeExpiry =
-      Date.now() + VERIFICATION_CODE_EXPIRY_MS
-    req.session.verificationCodeType = 'transaction'
-
-    // Save the session
-    await req.session.save()
+    await createVerification(
+      account_address,
+      verificationCode,
+      VerificationChannel.TRANSACTION_PIN,
+      expiresAt
+    )
 
     // Send the verification code email
     await sendVerificationCodeEmail(email, verificationCode)

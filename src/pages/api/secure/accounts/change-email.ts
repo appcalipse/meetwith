@@ -2,10 +2,11 @@ import jwt from 'jsonwebtoken'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { EMAIL_CHANGE_TOKEN_EXPIRY } from '@/utils/constants'
+import { VerificationChannel } from '@/types/AccountNotifications'
 import {
   getAccountNotificationSubscriptions,
   setAccountNotificationSubscriptions,
+  verifyVerificationCode,
 } from '@/utils/database'
 
 interface TokenPayload {
@@ -36,7 +37,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const decodedToken = jwt.verify(token, JWT_SECRET, {
       algorithms: ['HS256'],
-      maxAge: EMAIL_CHANGE_TOKEN_EXPIRY,
     }) as TokenPayload
 
     if (decodedToken.type !== 'change_email') {
@@ -44,6 +44,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const account_address = decodedToken.account_address
+    const isTokenValid = await verifyVerificationCode(
+      account_address,
+      decodedToken.jti,
+      VerificationChannel.RESET_EMAIL
+    )
+
+    if (!isTokenValid) {
+      return res
+        .status(401)
+        .json({ error: 'Token has already been used or is invalid' })
+    }
 
     const currentNotifications = await getAccountNotificationSubscriptions(
       account_address

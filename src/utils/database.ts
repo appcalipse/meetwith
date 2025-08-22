@@ -36,6 +36,7 @@ import {
 import {
   AccountNotifications,
   NotificationChannel,
+  VerificationChannel,
 } from '@/types/AccountNotifications'
 import { AvailabilityBlock } from '@/types/availability'
 import {
@@ -5724,6 +5725,88 @@ const verifyUserPin = async (
   }
 }
 
+const createVerification = async (
+  owner_account_address: string,
+  code: string,
+  channel: VerificationChannel,
+  expiresAt: Date
+): Promise<void> => {
+  try {
+    const { error } = await db.supabase.from('verifications').insert({
+      owner_account_address: owner_account_address,
+      code_hash: await createPinHash(code),
+      channel: channel,
+      expires_at: expiresAt.toISOString(),
+    })
+
+    if (error) {
+      console.error('Error creating verification:', error)
+      throw new Error('Failed to create verification')
+    }
+  } catch (error) {
+    console.error('Error in createVerification:', error)
+    throw error
+  }
+}
+
+const verifyVerificationCode = async (
+  owner_account_address: string,
+  code: string,
+  channel: VerificationChannel
+): Promise<boolean> => {
+  try {
+    const { data, error } = await db.supabase
+      .from('verifications')
+      .select('*')
+      .eq('owner_account_address', owner_account_address)
+      .eq('channel', channel)
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error('Error fetching verification:', error)
+      return false
+    }
+
+    if (!data || data.length === 0) {
+      return false
+    }
+
+    const verification = data[0]
+
+    const codeWithSalt = `${code}${PIN_SALT}`
+    const isValid = await argon2.verify(verification.code_hash, codeWithSalt)
+
+    if (isValid) {
+      await deleteVerification(verification.id)
+      return true
+    }
+
+    return false
+  } catch (error) {
+    console.error('Error in verifyVerificationCode:', error)
+    throw error
+  }
+}
+
+const deleteVerification = async (verificationId: string): Promise<void> => {
+  try {
+    const { error } = await db.supabase
+      .from('verifications')
+      .delete()
+      .eq('id', verificationId)
+
+    if (error) {
+      console.error('Error deleting verification:', error)
+      throw new Error('Failed to delete verification')
+    }
+  } catch (error) {
+    console.error('Error in deleteVerification:', error)
+    throw error
+  }
+}
+
 export {
   acceptContactInvite,
   addOrUpdateConnectedCalendar,
@@ -5737,12 +5820,14 @@ export {
   createPaymentPreferences,
   createPinHash,
   createTgConnection,
+  createVerification,
   deleteAllTgConnections,
   deleteGateCondition,
   deleteGroup,
   deleteMeetingFromDB,
   deleteMeetingType,
   deleteTgConnection,
+  deleteVerification,
   editGroup,
   findAccountByIdentifier,
   findAccountsByText,
@@ -5832,5 +5917,6 @@ export {
   updateRecurringSlots,
   upsertGateCondition,
   verifyUserPin,
+  verifyVerificationCode,
   workMeetingTypeGates,
 }

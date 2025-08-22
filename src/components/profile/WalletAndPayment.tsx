@@ -17,6 +17,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/router'
 import React, { useEffect, useState } from 'react'
 
 import MagicLinkModal from '@/components/profile/components/MagicLinkModal'
@@ -50,6 +51,7 @@ import Block from './components/Block'
 const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
   currentAccount,
 }) => {
+  const router = useRouter()
   const { isOpen, onOpen, onClose } = useDisclosure()
   const {
     isOpen: isResetPinOpen,
@@ -86,6 +88,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
     data: paymentPreferences,
     refetch,
     isLoading: isPreferencesLoading,
+    isFetching: isPreferencesFetching,
   } = useQuery(
     ['paymentPreferences', currentAccount.address],
     () => getPaymentPreferences(),
@@ -425,6 +428,12 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
     savePreferencesMutation.mutate()
   }
 
+  useEffect(() => {
+    if (currentAccount.address) {
+      refetch()
+    }
+  }, [router.asPath, currentAccount.address, refetch])
+
   return (
     <VStack width="100%" maxW="100%" gap={6} alignItems={'flex-start'}>
       <Heading fontSize="2xl">Wallet & Payments</Heading>
@@ -442,8 +451,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
               Transaction Pin
             </Text>
 
-            {isPreferencesLoading ? (
-              // Show loading state while preferences are being fetched
+            {isPreferencesLoading || isPreferencesFetching ? (
               <HStack spacing={3}>
                 <Button
                   isLoading
@@ -534,8 +542,10 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
                 _active={{ bg: 'neutral.900' }}
                 justifyContent="flex-start"
                 px={4}
-                isDisabled={isPreferencesLoading}
-                opacity={isPreferencesLoading ? 0.6 : 1}
+                isDisabled={isPreferencesLoading || isPreferencesFetching}
+                opacity={
+                  isPreferencesLoading || isPreferencesFetching ? 0.6 : 1
+                }
               >
                 <HStack spacing={3}>
                   <Box
@@ -612,8 +622,8 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
               isChecked={sendFundsNotification}
               onChange={e => setSendFundsNotification(e.target.checked)}
               size="lg"
-              isDisabled={isPreferencesLoading}
-              opacity={isPreferencesLoading ? 0.6 : 1}
+              isDisabled={isPreferencesLoading || isPreferencesFetching}
+              opacity={isPreferencesLoading || isPreferencesFetching ? 0.6 : 1}
               sx={{
                 '.chakra-checkbox__control': {
                   bg: 'transparent',
@@ -637,8 +647,8 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
               isChecked={receiveFundsNotification}
               onChange={e => setReceiveFundsNotification(e.target.checked)}
               size="lg"
-              isDisabled={isPreferencesLoading}
-              opacity={isPreferencesLoading ? 0.6 : 1}
+              isDisabled={isPreferencesLoading || isPreferencesFetching}
+              opacity={isPreferencesLoading || isPreferencesFetching ? 0.6 : 1}
               sx={{
                 '.chakra-checkbox__control': {
                   bg: 'transparent',
@@ -665,9 +675,11 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
           <Button
             onClick={handleSavePreferences}
             isLoading={
-              savePreferencesMutation.isLoading || isPreferencesLoading
+              savePreferencesMutation.isLoading ||
+              isPreferencesLoading ||
+              isPreferencesFetching
             }
-            isDisabled={isPreferencesLoading}
+            isDisabled={isPreferencesLoading || isPreferencesFetching}
             bg="primary.200"
             color="dark.800"
             _hover={{ bg: 'primary.300' }}
