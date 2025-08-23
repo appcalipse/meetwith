@@ -311,7 +311,7 @@ export default class Office365CalendarService
     const slot_id = details.participants.filter(
       p => p.account_address === calendarOwnerAccountAddress
     )[0].slot_id
-
+    const hasGuests = details.participants.some(p => p.guest_email)
     const payload: Record<string, any> = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
@@ -323,7 +323,8 @@ export default class Office365CalendarService
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
           details.meeting_url,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
+          hasGuests
         ),
       },
       start: {
