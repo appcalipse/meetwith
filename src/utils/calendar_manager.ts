@@ -1021,6 +1021,10 @@ const generateIcs = (
   if (!isValidUrl(url)) {
     url = 'https://meetwith.xyz'
   }
+  const hasGuest =
+    meeting.participants.some(
+      p => p.guest_email && p.guest_email.trim() !== ''
+    ) && !!destination?.accountAddress
   const event: EventAttributes = {
     uid: meeting.id.replaceAll('-', ''),
     start: [
@@ -1046,7 +1050,8 @@ const generateIcs = (
     description: CalendarServiceHelper.getMeetingSummary(
       meeting.content,
       meeting.meeting_url,
-      changeUrl
+      changeUrl,
+      hasGuest
     ),
     url,
     location: meeting.meeting_url,
@@ -1058,7 +1063,6 @@ const generateIcs = (
       getMinutes(meeting.created_at!),
     ],
     organizer: {
-      // required by some services
       name: 'Meetwith',
       email: NO_REPLY_EMAIL,
     },
@@ -1118,7 +1122,6 @@ const generateIcs = (
   const icsEvent = createEvent(event)
   return icsEvent
 }
-
 const participantStatusToICSStatus = (status: ParticipationStatus) => {
   switch (status) {
     case ParticipationStatus.Accepted:
@@ -1357,6 +1360,7 @@ const generateGoogleCalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
+  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl = 'https://calendar.google.com/calendar/r/eventedit?sf=true'
   if (start && end) {
     baseUrl += `&dates=${googleUrlParsedDate(
@@ -1370,7 +1374,8 @@ const generateGoogleCalendarUrl = (
     baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`
+      `${appUrl}/dashboard/meetings`,
+      hasGuests
     )}`
   }
   if (timezone) {
@@ -1393,6 +1398,7 @@ const generateOffice365CalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
+  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl =
     'https://outlook.office.com/calendar/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&online=true'
   if (start) {
@@ -1408,7 +1414,8 @@ const generateOffice365CalendarUrl = (
     baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`
+      `${appUrl}/dashboard/meetings`,
+      hasGuests
     )}`
   }
   if (participants) {
