@@ -12,6 +12,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { Account } from '@meta/Account'
 import { useMutation } from '@tanstack/react-query'
 import router from 'next/router'
 import { useContext, useState } from 'react'
@@ -24,7 +25,7 @@ import {
   AccountNotifications,
   NotificationChannel,
 } from '@/types/AccountNotifications'
-import { Intents } from '@/types/Dashboard'
+import { EditMode, Intents } from '@/types/Dashboard'
 import { MeetingDecrypted, SchedulingType } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { logEvent } from '@/utils/analytics'
@@ -42,8 +43,6 @@ import { getMeetingsScheduled } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 import { isValidEmail } from '@/utils/validations'
 
-import { Account } from '../../types/Account'
-
 interface IProps {
   participants: ParticipantInfo[]
   hostAccount?: Account
@@ -54,6 +53,9 @@ interface IProps {
   reset: () => void
   isContact: boolean
   setIsContact: (isContact: boolean) => void
+  isReschedule?: boolean
+  timezone?: string
+  isCancelled?: boolean
 }
 
 const MeetingScheduledDialog: React.FC<IProps> = ({
@@ -66,9 +68,12 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   isContact,
   setIsContact,
   reset,
+  isReschedule,
+  timezone,
+  isCancelled,
 }) => {
   const { currentAccount } = useContext(AccountContext)
-
+  const [isResetting, setIsResetting] = useState<boolean>(false)
   const toast = useToast()
 
   const { openConnection } = useContext(OnboardingModalContext)
@@ -137,7 +142,7 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
   }
   const handleLogin = async () => {
     if (!currentAccount) {
-      logEvent('Clicked to start on WHY section')
+      logEvent('Clicked to login from schedule completed')
       openConnection()
     } else {
       await router.push('/dashboard')
@@ -206,7 +211,11 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
 
     router.push('/dashboard/notifications')
   }
-
+  const handleResent = async () => {
+    setIsResetting(true)
+    await reset()
+    setIsResetting(false)
+  }
   return (
     <>
       <Flex
@@ -229,9 +238,15 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
                 currentAccount?.address
               )} at ${dateToHumanReadable(
                 meeting!.start,
-                Intl.DateTimeFormat().resolvedOptions().timeZone,
-                false
-              )} was scheduled successfully.`}
+                timezone || '',
+                true
+              )} was ${
+                isCancelled
+                  ? 'cancelled'
+                  : isReschedule
+                  ? 'updated'
+                  : 'scheduled'
+              } successfully.`}
             </Text>
           )}
           <Image
@@ -329,11 +344,13 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               width="100%"
               onClick={() =>
                 router.push(
-                  `/dashboard/schedule?meetingId=${meeting?.id}&intent=${Intents.UPDATE_MEETING}`
+                  isCancelled
+                    ? `/dashboard/${EditMode.MEETINGS}`
+                    : `/dashboard/schedule?meetingId=${meeting?.id}&intent=${Intents.UPDATE_MEETING}`
                 )
               }
             >
-              View/Edit Meeting
+              {isCancelled ? 'View Meetings' : 'View/Edit Meeting'}
             </Button>
           </VStack>
         ) : (
@@ -361,7 +378,8 @@ const MeetingScheduledDialog: React.FC<IProps> = ({
               colorScheme="primary"
               variant="outline"
               width="100%"
-              onClick={() => reset()}
+              onClick={handleResent}
+              isLoading={isResetting}
             >
               Schedule Another
             </Button>

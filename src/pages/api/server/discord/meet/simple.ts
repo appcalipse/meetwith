@@ -1,7 +1,7 @@
 import { addDays } from 'date-fns'
 import { NextApiRequest, NextApiResponse } from 'next'
 
-import { MeetingProvider, SchedulingType } from '@/types/Meeting'
+import { SchedulingType } from '@/types/Meeting'
 import { ParticipantType, ParticipationStatus } from '@/types/ParticipantInfo'
 import { DiscordMeetingRequest } from '@/types/Requests'
 import { getSuggestedSlots } from '@/utils/api_helper'
@@ -9,6 +9,7 @@ import {
   scheduleMeeting,
   selectDefaultProvider,
 } from '@/utils/calendar_manager'
+import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import { getAccountFromDiscordId } from '@/utils/database'
 import { findStartDateForNotBefore } from '@/utils/time.helper'
 
@@ -101,7 +102,7 @@ export default async function simpleDiscordMeet(
       const meeting = await scheduleMeeting(
         false,
         SchedulingType.DISCORD,
-        'no_type',
+        NO_MEETING_TYPE,
         new Date(slot.start),
         new Date(slot.end),
         participants,
@@ -115,8 +116,12 @@ export default async function simpleDiscordMeet(
       )
 
       return res.status(200).json(meeting)
-    } catch (e: any) {
-      return res.status(e.status).send(e.message)
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        return res.status((e as any)?.status || 500).send(e.message)
+      } else {
+        return res.status(500).send('An unexpected errror occured')
+      }
     }
   }
 

@@ -111,7 +111,7 @@ export interface AccountPreferences {
   availaibility_id?: string
   socialLinks?: SocialLink[]
   name?: string
-  avatar?: string
+  avatar_url?: string
   meetingProviders: Array<MeetingProvider>
 }
 

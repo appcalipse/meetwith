@@ -34,7 +34,7 @@ import { CancelMeetingDialog } from '@/components/schedule/cancel-dialog'
 import { AccountContext } from '@/providers/AccountProvider'
 import { Intents } from '@/types/Dashboard'
 import {
-  DBSlot,
+  ExtendedDBSlot,
   MeetingChangeType,
   MeetingDecrypted,
   MeetingRepeat,
@@ -54,7 +54,7 @@ import { addUTMParams } from '@/utils/huddle.helper'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 interface MeetingCardProps {
-  meeting: DBSlot
+  meeting: ExtendedDBSlot
   timezone: string
   onCancel: (removed: string[]) => void
 }
@@ -210,6 +210,7 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
   const showEdit =
     isAfter(meeting.created_at!, LIMIT_DATE_TO_SHOW_UPDATE) &&
     isAfter(meeting.start, new Date())
+
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
   const isRecurring =
     meeting?.recurrence && meeting?.recurrence !== MeetingRepeat.NO_REPEAT
@@ -293,7 +294,11 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                 <VStack flex={1} alignItems="start">
                   <Flex flex={1} alignItems="center" gap={3}>
                     <Heading fontSize="24px">
-                      <strong>{decryptedMeeting?.title || 'No Title'}</strong>
+                      <strong>
+                        {meeting.conferenceData?.title ||
+                          decryptedMeeting?.title ||
+                          'No Title'}
+                      </strong>
                     </Heading>
                   </Flex>
                   <Text fontSize="16px" alignItems="start">
@@ -337,11 +342,31 @@ const MeetingCard = ({ meeting, timezone, onCancel }: MeetingCardProps) => {
                           color={iconColor}
                           aria-label="edit"
                           icon={<FaEdit size={16} />}
-                          onClick={() => {
-                            if (decryptedMeeting)
-                              void push(
-                                `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
-                              )
+                          onClick={async () => {
+                            if (decryptedMeeting) {
+                              try {
+                                await push(
+                                  `/dashboard/schedule?meetingId=${meeting.id}&intent=${Intents.UPDATE_MEETING}`
+                                )
+                              } catch (error) {
+                                toast({
+                                  title: 'Navigation Error',
+                                  description:
+                                    'Failed to navigate to edit page.',
+                                  status: 'error',
+                                  duration: 5000,
+                                  isClosable: true,
+                                })
+                              }
+                            } else {
+                              toast({
+                                title: 'Meeting Data Unavailable',
+                                description: 'Unable to edit this meeting.',
+                                status: 'warning',
+                                duration: 5000,
+                                isClosable: true,
+                              })
+                            }
                           }}
                         />
                         <IconButton

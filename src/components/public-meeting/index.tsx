@@ -1,28 +1,103 @@
-import { Container, Flex, useColorModeValue, VStack } from '@chakra-ui/react'
+import {
+  Container,
+  Flex,
+  HStack,
+  useColorModeValue,
+  useToast,
+  VStack,
+} from '@chakra-ui/react'
 import MeetingScheduledDialog from '@components/meeting/MeetingScheduledDialog'
 import BasePage from '@components/public-meeting/BasePage'
 import BookingComponent from '@components/public-meeting/BookingComponent'
 import HeadMeta from '@components/public-meeting/HeadMeta'
 import PaymentComponent from '@components/public-meeting/PaymentComponent'
 import { MeetingType, PublicAccount } from '@meta/Account'
-import { MeetingDecrypted, SchedulingType } from '@meta/Meeting'
+import { AccountNotifications } from '@meta/AccountNotifications'
+import { ConnectedCalendarCore } from '@meta/CalendarConnections'
+import { MeetingReminders } from '@meta/common'
 import {
+  ConferenceMeeting,
+  MeetingDecrypted,
+  MeetingProvider,
+  MeetingRepeat,
+  SchedulingType,
+  TimeSlotSource,
+} from '@meta/Meeting'
+import {
+  ParticipantInfo,
+  ParticipantType,
+  ParticipationStatus,
+} from '@meta/ParticipantInfo'
+import Sentry from '@sentry/nextjs'
+import { logEvent } from '@utils/analytics'
+import {
+  getBusySlots,
+  getMeetingGuest,
+  getNotificationSubscriptions,
+  listConnectedCalendars,
+} from '@utils/api_helper'
+import {
+  networkOptions,
   PaymentStep,
   PaymentType,
   PublicSchedulingSteps,
+  SessionType,
 } from '@utils/constants/meeting-types'
+import { Option } from '@utils/constants/select'
+import { parseMonthAvailabilitiesToDate, timezones } from '@utils/date_helper'
+import {
+  AllMeetingSlotsUsedError,
+  GateConditionNotValidError,
+  GoogleServiceUnavailable,
+  Huddle01ServiceUnavailable,
+  InvalidURL,
+  MeetingCreationError,
+  MeetingWithYourselfError,
+  MultipleSchedulersError,
+  TimeNotAvailableError,
+  TransactionIsRequired,
+  UrlCreationError,
+  ZoomServiceUnavailable,
+} from '@utils/errors'
+import { saveMeetingsScheduled } from '@utils/storage'
+import { getAccountDisplayName } from '@utils/user_manager'
+import { addMinutes, addMonths, endOfMonth, startOfMonth } from 'date-fns'
+import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { FC, useEffect, useMemo, useState } from 'react'
+import { v4 } from 'uuid'
 
-import { AcceptedToken, SupportedChain } from '@/types/chains'
-import { Address } from '@/types/Transactions'
-import { getAccountDomainUrl } from '@/utils/calendar_manager'
+import useAccountContext from '@/hooks/useAccountContext'
+import { AcceptedToken, SupportedChain, supportedChains } from '@/types/chains'
+import { Address, Transaction } from '@/types/Transactions'
+import {
+  getAccountDomainUrl,
+  scheduleMeeting,
+  selectDefaultProvider,
+  updateMeetingAsGuest,
+} from '@/utils/calendar_manager'
+import {
+  MeetingNotificationOptions,
+  MeetingRepeatOptions,
+} from '@/utils/constants/schedule'
+import { decryptContent } from '@/utils/cryptography'
+import { isJson } from '@/utils/generic_utils'
+import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
+import Loading from '../Loading'
+const tzs = timezones.map(tz => {
+  return {
+    value: String(tz.tzCode),
+    label: tz.name,
+  }
+})
 interface IProps {
   account: PublicAccount
   url: string
 }
-
+export type RescheduleConferenceData = ConferenceMeeting & {
+  participants?: Array<ParticipantInfoForNotification>
+}
 interface IContext {
   account: PublicAccount
   selectedType: MeetingType | null
@@ -51,18 +126,100 @@ interface IContext {
   tx?: Address
   handleNavigateToBook: (tx: Address) => void
   schedulingType: SchedulingType
-  setSchedulingType: React.Dispatch<React.SetStateAction<SchedulingType>>
   lastScheduledMeeting: MeetingDecrypted | undefined
+  hasConnectedCalendar: boolean
+  notificationsSubs: number
+  isContact: boolean
+  setIsContact: React.Dispatch<React.SetStateAction<boolean>>
+  showHeader: boolean
+  setShowHeader: React.Dispatch<React.SetStateAction<boolean>>
+}
+
+interface IScheduleContext {
+  currentMonth: Date
+  setCurrentMonth: React.Dispatch<React.SetStateAction<Date>>
+  availableSlots: Interval[]
+  selfAvailableSlots: Interval[]
+  checkingSlots: boolean
+  checkedSelfSlots: boolean
+  isScheduling: boolean
+  pickedDay: Date | null
+  setPickedDay: React.Dispatch<React.SetStateAction<Date | null>>
+  pickedTime: Date | null
+  setPickedTime: React.Dispatch<React.SetStateAction<Date | null>>
+  showConfirm: boolean
+  setShowConfirm: React.Dispatch<React.SetStateAction<boolean>>
+  selectedMonth: Date
+  setSelectedMonth: React.Dispatch<React.SetStateAction<Date>>
+  busySlots: Interval[]
+  selfBusySlots: Interval[]
+  timezone: Option<string>
+  setTimezone: React.Dispatch<React.SetStateAction<Option<string>>>
+  getAvailableSlots: (skipCache?: boolean) => Promise<void>
+  confirmSchedule: (
+    scheduleType: SchedulingType,
+    startTime: Date,
+    guestEmail?: string,
+    name?: string,
+    content?: string,
+    meetingUrl?: string,
+    emailToSendReminders?: string,
+    title?: string,
+    otherParticipants?: Array<ParticipantInfo>,
+    meetingProvider?: MeetingProvider,
+    meetingReminders?: Array<MeetingReminders>,
+    meetingRepeat?: MeetingRepeat,
+    txHash?: Address | null
+  ) => Promise<boolean>
+  participants: Array<ParticipantInfo>
+  setParticipants: React.Dispatch<React.SetStateAction<Array<ParticipantInfo>>>
+  meetingProvider: MeetingProvider
+  setMeetingProvider: React.Dispatch<React.SetStateAction<MeetingProvider>>
+  meetingNotification: Array<{ value: MeetingReminders; label?: string }>
+  setMeetingNotification: React.Dispatch<
+    React.SetStateAction<Array<{ value: MeetingReminders; label?: string }>>
+  >
+  meetingRepeat: { value: MeetingRepeat; label: string }
+  setMeetingRepeat: React.Dispatch<
+    React.SetStateAction<{ value: MeetingRepeat; label: string }>
+  >
+  content: string
+  setContent: React.Dispatch<React.SetStateAction<string>>
+  name: string
+  setName: React.Dispatch<React.SetStateAction<string>>
+  title: string
+  setTitle: React.Dispatch<React.SetStateAction<string>>
+  doSendEmailReminders: boolean
+  setSendEmailReminders: React.Dispatch<React.SetStateAction<boolean>>
+  scheduleType: SchedulingType
+  setScheduleType: React.Dispatch<React.SetStateAction<SchedulingType>>
+  addGuest: boolean
+  setAddGuest: React.Dispatch<React.SetStateAction<boolean>>
+  guestEmail: string
+  setGuestEmail: React.Dispatch<React.SetStateAction<string>>
+  userEmail: string
+  setUserEmail: React.Dispatch<React.SetStateAction<string>>
+  meetingUrl: string
+  setMeetingUrl: React.Dispatch<React.SetStateAction<string>>
+  isFirstGuestEmailValid: boolean
+  setIsFirstGuestEmailValid: React.Dispatch<React.SetStateAction<boolean>>
+  isFirstUserEmailValid: boolean
+  setIsFirstUserEmailValid: React.Dispatch<React.SetStateAction<boolean>>
+  showEmailConfirm: boolean
+  setShowEmailConfirm: React.Dispatch<React.SetStateAction<boolean>>
+  showTimeNotAvailable: boolean
+  setShowTimeNotAvailable: React.Dispatch<React.SetStateAction<boolean>>
+  rescheduleSlot?: RescheduleConferenceData
+  rescheduleSlotLoading: boolean
+  meetingSlotId?: string
+  setIsCancelled: React.Dispatch<React.SetStateAction<boolean>>
   setLastScheduledMeeting: React.Dispatch<
     React.SetStateAction<MeetingDecrypted | undefined>
   >
-  hasConnectedCalendar: boolean
-  setHasConnectedCalendar: React.Dispatch<React.SetStateAction<boolean>>
-  notificationsSubs: number
-  setNotificationSubs: React.Dispatch<React.SetStateAction<number>>
-  isContact: boolean
-  setIsContact: React.Dispatch<React.SetStateAction<boolean>>
+  setShowSlots: React.Dispatch<React.SetStateAction<boolean>>
+  showSlots: boolean
 }
+
 const baseState: IContext = {
   account: {} as PublicAccount,
   selectedType: null,
@@ -82,28 +239,102 @@ const baseState: IContext = {
   tx: undefined,
   handleNavigateToBook: () => {},
   schedulingType: SchedulingType.REGULAR,
-  setSchedulingType: () => {},
   lastScheduledMeeting: undefined,
-  setLastScheduledMeeting: () => {},
   hasConnectedCalendar: false,
-  setHasConnectedCalendar: () => {},
   notificationsSubs: 0,
-  setNotificationSubs: () => {},
   isContact: false,
   setIsContact: () => {},
+  showHeader: true,
+  setShowHeader: () => {},
 }
+const scheduleBaseState: IScheduleContext = {
+  currentMonth: new Date(),
+  setCurrentMonth: () => {},
+  availableSlots: [],
+  selfAvailableSlots: [],
+  checkingSlots: false,
+  checkedSelfSlots: false,
+  isScheduling: false,
+  pickedDay: null,
+  setPickedDay: () => {},
+  pickedTime: null,
+  setPickedTime: () => {},
+  showConfirm: false,
+  setShowConfirm: () => {},
+  selectedMonth: new Date(),
+  setSelectedMonth: () => {},
+  busySlots: [],
+  selfBusySlots: [],
+  timezone: { label: '', value: '' },
+  setTimezone: () => {},
+  getAvailableSlots: async () => {},
+  confirmSchedule: async () => {
+    return false
+  },
+  participants: [],
+  setParticipants: () => {},
+  meetingProvider: MeetingProvider.HUDDLE,
+  setMeetingProvider: () => {},
+  meetingNotification: [],
+  setMeetingNotification: () => {},
+  meetingRepeat: {
+    value: MeetingRepeat['NO_REPEAT'],
+    label: 'Does not repeat',
+  },
+  setMeetingRepeat: () => {},
+  content: '',
+  setContent: () => {},
+  name: '',
+  setName: () => {},
+  title: '',
+  setTitle: () => {},
+  doSendEmailReminders: false,
+  setSendEmailReminders: () => {},
+  scheduleType: SchedulingType.REGULAR,
+  setScheduleType: () => {},
+  addGuest: false,
+  setAddGuest: () => {},
+  guestEmail: '',
+  setGuestEmail: () => {},
+  userEmail: '',
+  setUserEmail: () => {},
+  meetingUrl: '',
+  setMeetingUrl: () => {},
+  isFirstGuestEmailValid: true,
+  setIsFirstGuestEmailValid: () => {},
+  isFirstUserEmailValid: true,
+  setIsFirstUserEmailValid: () => {},
+  showEmailConfirm: false,
+  setShowEmailConfirm: () => {},
+  showTimeNotAvailable: false,
+  setShowTimeNotAvailable: () => {},
+  rescheduleSlot: undefined,
+  rescheduleSlotLoading: false,
+  meetingSlotId: undefined,
+  setIsCancelled: () => {},
+  setLastScheduledMeeting: () => {},
+  setShowSlots: () => {},
+  showSlots: false,
+}
+
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
+export const ScheduleStateContext =
+  React.createContext<IScheduleContext>(scheduleBaseState)
 const PublicPage: FC<IProps> = props => {
   const bgColor = useColorModeValue('white', 'neutral.900')
   const { query, push, isReady, beforePopState, replace, asPath } = useRouter()
+  const [pageGettingReady, setPageGettingReady] = useState(true)
   const [schedulingType, setSchedulingType] = useState(SchedulingType.REGULAR)
   const [lastScheduledMeeting, setLastScheduledMeeting] = useState<
     MeetingDecrypted | undefined
   >(undefined)
+  const { slotId, metadata, slot } = query
   const [hasConnectedCalendar, setHasConnectedCalendar] = useState(false)
+  const [meetingSlotId, setMeetingSlotId] = useState<string | undefined>(
+    undefined
+  )
   const [notificationsSubs, setNotificationSubs] = useState(0)
   const [isContact, setIsContact] = useState(false)
-
   const selectedType = useMemo(() => {
     if (!isReady) return null
     const meeting_type = Array.isArray(query.address)
@@ -122,12 +353,80 @@ const PublicPage: FC<IProps> = props => {
     undefined
   )
   const [tx, setTx] = useState<Address | undefined>(undefined)
+  const [key, setKey] = useState<string | undefined>(v4())
+  const [isCancelled, setIsCancelled] = useState<boolean>(false)
   const [currentStep, setCurrentStep] = useState<PublicSchedulingSteps>(
     PublicSchedulingSteps.SELECT_TYPE
   )
+  const currentAccount = useAccountContext()
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [availableSlots, setAvailableSlots] = useState<Interval[]>([])
+  const [selfAvailableSlots, setSelfAvailableSlots] = useState<Interval[]>([])
+  const [checkingSlots, setCheckingSlots] = useState(false)
+  const [checkedSelfSlots, setCheckedSelfSlots] = useState(false)
+  const [isScheduling, setIsScheduling] = useState(false)
+  const [pickedDay, setPickedDay] = useState<Date | null>(null)
+  const [pickedTime, setPickedTime] = useState<Date | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [showSlots, setShowSlots] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
+  const [showTimeNotAvailable, setShowTimeNotAvailable] = useState(false)
+  const [busySlots, setBusySlots] = useState<Interval[]>([])
+  const [selfBusySlots, setSelfBusySlots] = useState<Interval[]>([])
+  const [participants, setParticipants] = useState<Array<ParticipantInfo>>([])
+  const [showHeader, setShowHeader] = useState(true)
+  const [meetingProvider, setMeetingProvider] = useState<MeetingProvider>(
+    selectDefaultProvider(
+      selectedType?.meeting_platforms ||
+        props?.account?.preferences?.meetingProviders
+    )
+  )
+  const [meetingNotification, setMeetingNotification] = useState<
+    Array<{
+      value: MeetingReminders
+      label?: string
+    }>
+  >([])
+
+  const [meetingRepeat, setMeetingRepeat] = useState({
+    value: MeetingRepeat['NO_REPEAT'],
+    label: 'Does not repeat',
+  })
+  const [content, setContent] = useState('')
+  const [name, setName] = useState(currentAccount?.preferences?.name || '')
+  const [title, setTitle] = useState('')
+  const [doSendEmailReminders, setSendEmailReminders] = useState(false)
+  const [scheduleType, setScheduleType] = useState(
+    SchedulingType.REGULAR as SchedulingType
+  )
+  const [addGuest, setAddGuest] = useState(false)
+  const [guestEmail, setGuestEmail] = useState('')
+  const [userEmail, setUserEmail] = useState('')
+  const [meetingUrl, setMeetingUrl] = useState('')
+  const [isFirstGuestEmailValid, setIsFirstGuestEmailValid] = useState(true)
+  const [isFirstUserEmailValid, setIsFirstUserEmailValid] = useState(true)
+  const [showEmailConfirm, setShowEmailConfirm] = useState(false)
+
+  const [cachedRange, setCachedRange] = useState<{
+    startDate: Date
+    endDate: Date
+  } | null>(null)
+  const [timezone, setTimezone] = useState<Option<string>>(
+    tzs.find(
+      val =>
+        val.value ===
+        (currentAccount?.preferences?.timezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone)
+    ) || tzs[0]
+  )
+  const toast = useToast()
+  const [rescheduleSlot, setRescheduleSlot] = useState<
+    ConferenceMeeting | undefined
+  >(undefined)
+  const [rescheduleSlotLoading, setRescheduleSlotLoading] =
+    useState<boolean>(false)
   const handleNavigateToBook = (tx?: Address) => {
     setTx(tx)
-    setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
   }
 
   const handleSetTokenAndChain = (
@@ -149,13 +448,98 @@ const PublicPage: FC<IProps> = props => {
     type: MeetingType,
     current_step: PublicSchedulingSteps
   ) => {
+    delete query.address
+    const queryExists = Object.keys(query).length > 0
     await push({
       pathname: `/${getAccountDomainUrl(props.account!)}/${type.slug}`,
+      query: queryExists ? query : undefined,
     })
+    if (type?.plan) {
+      const selectedChain =
+        networkOptions.find(
+          network => network.id === type?.plan?.default_chain_id
+        )?.value || undefined
+      handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
+      const localStorageTransaction = localStorage.getItem(
+        `${type.id}:transaction`
+      )
+      if (localStorageTransaction) {
+        const transaction = isJson(localStorageTransaction)
+          ? (JSON.parse(localStorageTransaction) as Transaction)
+          : null
+        if (transaction) {
+          setTx(transaction.transaction_hash as Address)
+          setPaymentType(transaction.method)
+        }
+      }
+    }
     setCurrentStep(current_step)
+  }
+
+  const getSlotInfo = async () => {
+    const baseId = slot || slotId
+    const rescheduleSlotId = Array.isArray(baseId) ? baseId[0] : baseId
+    if (rescheduleSlotId) {
+      setRescheduleSlotLoading(true)
+      try {
+        const meeting: RescheduleConferenceData = await getMeetingGuest(
+          rescheduleSlotId
+        )
+        if (!meeting) {
+          toast({
+            title: 'Meeting not found',
+            status: 'error',
+            description:
+              'The meeting you are trying to reschedule was not found.',
+          })
+          await push('/404')
+          return
+        }
+        if (metadata) {
+          const guestParticipants = decryptContent(
+            process.env.NEXT_PUBLIC_SERVER_PUB_KEY!,
+            Array.isArray(metadata) ? metadata[0] : metadata
+          )
+          if (guestParticipants) {
+            meeting.participants = isJson(guestParticipants)
+              ? (JSON.parse(
+                  guestParticipants
+                ) as Array<ParticipantInfoForNotification>)
+              : undefined
+          }
+          const actor = meeting.participants?.find(
+            p => p.slot_id === meetingSlotId
+          )
+          if (actor) {
+            setTimezone(
+              tzs.find(
+                val =>
+                  val.value ===
+                  (actor.timezone ||
+                    currentAccount?.preferences?.timezone ||
+                    Intl.DateTimeFormat().resolvedOptions().timeZone)
+              ) || tzs[0]
+            )
+          }
+        }
+        setMeetingSlotId(rescheduleSlotId)
+        setRescheduleSlot(meeting)
+      } catch (error) {
+        toast({
+          title: 'Unable to load meeting details',
+          status: 'error',
+          description:
+            'The meeting information could not be retrieved. Please try again.',
+        })
+
+        setRescheduleSlot(undefined)
+      }
+      setRescheduleSlotLoading(false)
+    }
   }
   useEffect(() => {
     if (!isReady) return
+    setPageGettingReady(true)
     if (query.address) {
       const meeting_type = Array.isArray(query.address)
         ? query.address.at(-1)
@@ -165,19 +549,30 @@ const PublicPage: FC<IProps> = props => {
           t => t.slug === meeting_type
         )
         if (type) {
-          const nextStep = type?.plan
-            ? PublicSchedulingSteps.PAY_FOR_SESSION
-            : PublicSchedulingSteps.BOOK_SESSION
-
-          // Use immediate push for initial step determination
-          setCurrentStep(nextStep)
+          if (type?.type === SessionType.FREE) {
+            setShowHeader(false)
+          }
+          !query.payment_type &&
+            setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
+        }
+        if (type?.plan) {
+          const selectedChain =
+            networkOptions.find(
+              network => network.id === type?.plan?.default_chain_id
+            )?.value || undefined
+          handleSetTokenAndChain(AcceptedToken.USDC, selectedChain)
         }
       }
     }
     if (query.payment_type) {
       const paymentType = query.payment_type as PaymentType
       setPaymentType(paymentType)
-      setPaymentStep(PaymentStep.CONFIRM_PAYMENT)
+      setPaymentStep(
+        query.type === 'direct-invoice'
+          ? PaymentStep.SELECT_PAYMENT_METHOD
+          : PaymentStep.CONFIRM_PAYMENT
+      )
+      setCurrentStep(PublicSchedulingSteps.PAY_FOR_SESSION)
       if (paymentType === PaymentType.CRYPTO) {
         const { chain, token } = query as {
           chain?: SupportedChain
@@ -189,6 +584,116 @@ const PublicPage: FC<IProps> = props => {
         }
       }
     }
+
+    const urlParams = query as Record<string, string | string[]>
+
+    if (urlParams.title && typeof urlParams.title === 'string') {
+      setTitle(urlParams.title)
+    }
+    if (urlParams.name && typeof urlParams.name === 'string') {
+      setName(urlParams.name)
+    }
+    if (urlParams.email && typeof urlParams.email === 'string') {
+      setGuestEmail(urlParams.email)
+    }
+    if (urlParams.user_email && typeof urlParams.user_email === 'string') {
+      setUserEmail(urlParams.user_email)
+    }
+    if (
+      urlParams.schedule_type &&
+      typeof urlParams.schedule_type === 'string'
+    ) {
+      const scheduleTypeValue =
+        urlParams.schedule_type as unknown as SchedulingType
+      if (Object.values(SchedulingType).includes(scheduleTypeValue)) {
+        setScheduleType(scheduleTypeValue)
+      }
+    }
+    if (
+      urlParams.meeting_provider &&
+      typeof urlParams.meeting_provider === 'string'
+    ) {
+      const providerValue = urlParams.meeting_provider as MeetingProvider
+      if (Object.values(MeetingProvider).includes(providerValue)) {
+        setMeetingProvider(providerValue)
+      }
+    }
+    if (urlParams.content && typeof urlParams.content === 'string') {
+      setContent(urlParams.content)
+    }
+    if (
+      urlParams.participants &&
+      typeof urlParams.participants === 'string' &&
+      isJson(urlParams.participants)
+    ) {
+      try {
+        const parsedParticipants = JSON.parse(
+          urlParams.participants
+        ) as ParticipantInfo[]
+        setParticipants(parsedParticipants)
+      } catch (error) {
+        console.warn('Failed to parse participants from URL:', error)
+      }
+    }
+    if (
+      urlParams.meeting_notification &&
+      typeof urlParams.meeting_notification === 'string'
+    ) {
+      const notifications = urlParams.meeting_notification
+        .split(',')
+        .map(value => value as unknown as MeetingReminders)
+      setMeetingNotification(
+        MeetingNotificationOptions.filter(option =>
+          notifications.some(notification => notification == option.value)
+        )
+      )
+    }
+    if (
+      urlParams.meeting_repeat &&
+      typeof urlParams.meeting_repeat === 'string'
+    ) {
+      const repeatValue = urlParams.meeting_repeat as unknown as MeetingRepeat
+      if (Object.values(MeetingRepeat).includes(repeatValue)) {
+        setMeetingRepeat(
+          MeetingRepeatOptions.find(option => option.value == repeatValue) || {
+            value: repeatValue,
+            label:
+              repeatValue == MeetingRepeat.NO_REPEAT
+                ? 'Does not repeat'
+                : repeatValue,
+          }
+        )
+      }
+    }
+    if (
+      urlParams.do_send_email_reminders &&
+      typeof urlParams.do_send_email_reminders === 'string'
+    ) {
+      setSendEmailReminders(urlParams.do_send_email_reminders === 'true')
+    }
+    if (urlParams.picked_time && typeof urlParams.picked_time === 'string') {
+      try {
+        const pickedTimeDate = new Date(urlParams.picked_time)
+        if (!isNaN(pickedTimeDate.getTime())) {
+          setPickedTime(pickedTimeDate)
+          setCurrentMonth(pickedTimeDate)
+          setSelectedMonth(pickedTimeDate)
+          setPickedDay(pickedTimeDate)
+          setShowSlots(true)
+          setShowConfirm(true)
+        }
+      } catch (error) {
+        console.warn('Failed to parse picked_time from URL:', error)
+      }
+    }
+    if (urlParams.guest_email && typeof urlParams.guest_email === 'string') {
+      setGuestEmail(urlParams.guest_email)
+    }
+    if (urlParams.meeting_url && typeof urlParams.meeting_url === 'string') {
+      setMeetingUrl(urlParams.meeting_url)
+    }
+    void getSlotInfo()
+    setPageGettingReady(false)
   }, [query])
   useEffect(() => {}, [])
 
@@ -220,10 +725,40 @@ const PublicPage: FC<IProps> = props => {
       beforePopState(() => true)
     }
   }, [currentStep, selectedType, beforePopState])
-
-  const _onClose = () => {
+  const resetState = () => {
+    if (
+      selectedType?.type !== SessionType.FREE &&
+      selectedType?.plan &&
+      selectedType?.plan?.no_of_slot <= 1
+    ) {
+      setPaymentType(undefined)
+      setPaymentStep(PaymentStep.SELECT_PAYMENT_METHOD)
+      setTx(undefined)
+      setSchedulingType(SchedulingType.REGULAR)
+    }
     setLastScheduledMeeting(undefined)
+    setSelectedMonth(new Date())
+    setCurrentMonth(new Date())
+    setIsScheduling(false)
+    setShowSlots(false)
+    setPickedDay(null)
+    setPickedTime(null)
+    setShowConfirm(false)
+    setParticipants([])
+    setTitle('')
+    setContent('')
+    setRescheduleSlot(undefined)
+    setMeetingSlotId(undefined)
+    setKey(v4())
   }
+  const _onClose = async () => {
+    await getAvailableSlots(true)
+    await push({
+      pathname: `/${getAccountDomainUrl(props.account!)}/${selectedType?.slug}`,
+    })
+    resetState()
+  }
+
   const context: IContext = {
     account: props.account,
     selectedType,
@@ -243,15 +778,442 @@ const PublicPage: FC<IProps> = props => {
     tx,
     handleNavigateToBook,
     schedulingType,
-    setSchedulingType,
     lastScheduledMeeting,
-    setLastScheduledMeeting,
     hasConnectedCalendar,
-    setHasConnectedCalendar,
     notificationsSubs,
-    setNotificationSubs,
     isContact,
     setIsContact,
+    showHeader,
+    setShowHeader,
+  }
+  const getSelfAvailableSlots = async () => {
+    if (currentAccount) {
+      const startDate = startOfMonth(currentMonth)
+      const endDate = addMonths(endOfMonth(currentMonth), 2)
+      let busySlots: Interval[] = []
+      try {
+        busySlots = await getBusySlots(
+          currentAccount?.address,
+          startDate,
+          endDate
+        ).then(busySlots =>
+          busySlots.map(slot =>
+            Interval.fromDateTimes(
+              DateTime.fromJSDate(new Date(slot.start)),
+              DateTime.fromJSDate(new Date(slot.end))
+            )
+          )
+        )
+      } catch (error) {
+        Sentry.captureException(error, {
+          extra: {
+            accountAddress: currentAccount?.address,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+          },
+        })
+        toast({
+          title: 'Error fetching busy slots',
+          description:
+            'Unable to fetch your busy slots. Please try again later.',
+          status: 'error',
+          duration: 5000,
+          position: 'top-right',
+        })
+      }
+      const availabilities = parseMonthAvailabilitiesToDate(
+        currentAccount?.preferences?.availabilities || [],
+        startDate,
+        endDate,
+        currentAccount?.preferences?.timezone || 'UTC'
+      )
+      setSelfAvailableSlots(availabilities)
+      setSelfBusySlots(busySlots)
+      setCheckedSelfSlots(true)
+    }
+  }
+  const getAvailableSlots = async (skipCache = false) => {
+    if (
+      !skipCache &&
+      cachedRange &&
+      currentMonth >= cachedRange.startDate &&
+      currentMonth <= cachedRange.endDate
+    ) {
+      return
+    }
+    getSelfAvailableSlots()
+    setCheckingSlots(true)
+    const startDate = DateTime.fromJSDate(currentMonth)
+      .setZone(timezone.value || 'UTC')
+      .startOf('month')
+      .toJSDate()
+    const endDate = DateTime.fromJSDate(currentMonth)
+      .endOf('month')
+      .setZone(timezone.value || 'UTC')
+      .toJSDate()
+    let busySlots: Interval[] = []
+
+    try {
+      busySlots = await getBusySlots(
+        props?.account?.address,
+        startDate,
+        endDate
+      ).then(busySlots =>
+        busySlots.map(slot =>
+          Interval.fromDateTimes(
+            DateTime.fromJSDate(new Date(slot.start)),
+            DateTime.fromJSDate(new Date(slot.end))
+          )
+        )
+      )
+    } catch (error) {
+      Sentry.captureException(error, {
+        extra: {
+          accountAddress: props?.account?.address,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        },
+      })
+      toast({
+        title: 'Error fetching busy slots',
+        description:
+          'Unable to fetch busy slots for this account. Please try again later.',
+        status: 'error',
+        duration: 5000,
+        position: 'top-right',
+      })
+    }
+    const availabilities =
+      selectedType?.availabilities?.flatMap(availability =>
+        parseMonthAvailabilitiesToDate(
+          availability.weekly_availability || [],
+          startDate,
+          endDate,
+          availability.timezone ||
+            props?.account?.preferences?.timezone ||
+            'UTC'
+        )
+      ) || []
+
+    const deduplicatedAvailabilities = availabilities.reduce<Interval[]>(
+      (acc, current) => {
+        const hasOverlap = acc.some(existing => current.overlaps(existing))
+        if (!hasOverlap) {
+          acc.push(current)
+        }
+        return acc
+      },
+      []
+    )
+
+    setBusySlots(busySlots)
+    setAvailableSlots(deduplicatedAvailabilities)
+    setCachedRange({ startDate, endDate })
+    setCheckingSlots(false)
+  }
+  const fetchNotificationSubscriptions = async () => {
+    let subs: AccountNotifications | null = null
+    let connectedCalendars: ConnectedCalendarCore[] = []
+    subs = (await getNotificationSubscriptions()) || {}
+    connectedCalendars = (await listConnectedCalendars()) || []
+
+    const validCals = connectedCalendars
+      .filter(cal => cal.provider !== TimeSlotSource.MWW)
+      .some(cal => cal.calendars.some(_cal => _cal.enabled))
+
+    setNotificationSubs(subs.notification_types?.length)
+    setHasConnectedCalendar(validCals)
+  }
+  const confirmSchedule = async (
+    scheduleType: SchedulingType,
+    startTime: Date,
+    guestEmail?: string,
+    name?: string,
+    content?: string,
+    meetingUrl?: string,
+    emailToSendReminders?: string,
+    title?: string,
+    otherParticipants?: Array<ParticipantInfo>,
+    meetingProvider?: MeetingProvider,
+    meetingReminders?: Array<MeetingReminders>,
+    meetingRepeat?: MeetingRepeat,
+    txHash?: Address | null
+  ): Promise<boolean> => {
+    if (!selectedType) return false
+    setIsScheduling(true)
+
+    const start = new Date(startTime)
+    const end = addMinutes(new Date(start), selectedType.duration_minutes)
+
+    if (scheduleType !== SchedulingType.GUEST && !name) {
+      name = getAccountDisplayName(currentAccount!)
+    }
+
+    const participants: ParticipantInfo[] = [...(otherParticipants || [])]
+
+    participants.push({
+      account_address: props.account?.address,
+      name: '',
+      type: ParticipantType.Owner,
+      status: ParticipationStatus.Accepted,
+      slot_id: '',
+      meeting_id: '',
+    })
+
+    setSchedulingType(scheduleType)
+
+    participants.push({
+      account_address: currentAccount?.address,
+      ...(scheduleType === SchedulingType.GUEST && {
+        guest_email: guestEmail!,
+      }),
+      name,
+      type: ParticipantType.Scheduler,
+      status: ParticipationStatus.Accepted,
+      slot_id: '',
+      meeting_id: '',
+    })
+
+    try {
+      let meeting: MeetingDecrypted
+
+      if (meetingSlotId) {
+        meeting = await updateMeetingAsGuest(
+          meetingSlotId,
+          selectedType?.id,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          content,
+          meetingUrl,
+          title,
+          meetingReminders,
+          meetingRepeat
+        )
+      } else {
+        meeting = await scheduleMeeting(
+          false,
+          scheduleType,
+          selectedType?.id,
+          start,
+          end,
+          participants,
+          meetingProvider || MeetingProvider.HUDDLE,
+          currentAccount,
+          content,
+          meetingUrl,
+          emailToSendReminders,
+          title,
+          meetingReminders,
+          meetingRepeat,
+          undefined,
+          txHash
+        )
+        localStorage.removeItem(
+          `${selectedType?.id || ''}:transaction` // Clear the guest persisted transaction from localStorage after successful confirmation
+        )
+      }
+
+      await getAvailableSlots(true)
+      currentAccount && saveMeetingsScheduled(currentAccount!.address)
+      currentAccount && (await fetchNotificationSubscriptions())
+
+      setLastScheduledMeeting(meeting)
+      logEvent('Scheduled a meeting', {
+        fromPublicCalendar: true,
+        participantsSize: meeting.participants.length,
+      })
+      setIsScheduling(false)
+      return true
+    } catch (e) {
+      setCurrentStep(PublicSchedulingSteps.BOOK_SESSION)
+      if (e instanceof MeetingWithYourselfError) {
+        toast({
+          title: "Ops! Can't do that",
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof TimeNotAvailableError) {
+        if (selectedType?.plan) {
+          setShowTimeNotAvailable(true)
+        }
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'The selected time is not available anymore',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GateConditionNotValidError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MeetingCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue scheduling your meeting. Please get in touch with us through support@meetwithwallet.xyz',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof MultipleSchedulersError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'A meeting must have only one scheduler',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof InvalidURL) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description: 'Please provide a valid url/link for your meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof Huddle01ServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Huddle01 seems to be offline. Please select a custom meeting link, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof ZoomServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Zoom seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof GoogleServiceUnavailable) {
+        toast({
+          title: 'Failed to create video meeting',
+          description:
+            'Google seems to be offline. Please select a different meeting location, or try again.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof UrlCreationError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'There was an issue generating a meeting url for your meeting. try using a different location',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof AllMeetingSlotsUsedError) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'You’ve used all your available meeting slots. Please purchase a new slot to schedule a meeting.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof TransactionIsRequired) {
+        toast({
+          title: 'Failed to schedule meeting',
+          description:
+            'This meeting type requires payment before scheduling. Please purchase a slot to continue.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      }
+    }
+    setIsScheduling(false)
+    return false
+  }
+  const scheduleContext: IScheduleContext = {
+    currentMonth,
+    setCurrentMonth,
+    availableSlots,
+    selfAvailableSlots,
+    checkingSlots,
+    checkedSelfSlots,
+    isScheduling,
+    pickedDay,
+    setPickedDay,
+    pickedTime,
+    setPickedTime,
+    showConfirm,
+    setShowConfirm,
+    selectedMonth,
+    setSelectedMonth,
+    busySlots,
+    selfBusySlots,
+    timezone,
+    setTimezone,
+    getAvailableSlots,
+    confirmSchedule,
+    participants,
+    setParticipants,
+    meetingProvider,
+    setMeetingProvider,
+    meetingNotification,
+    setMeetingNotification,
+    meetingRepeat,
+    setMeetingRepeat,
+    content,
+    setContent,
+    name,
+    setName,
+    title,
+    setTitle,
+    doSendEmailReminders,
+    setSendEmailReminders,
+    scheduleType,
+    setScheduleType,
+    addGuest,
+    setAddGuest,
+    guestEmail,
+    setGuestEmail,
+    userEmail,
+    setUserEmail,
+    meetingUrl,
+    setMeetingUrl,
+    isFirstGuestEmailValid,
+    setIsFirstGuestEmailValid,
+    isFirstUserEmailValid,
+    setIsFirstUserEmailValid,
+    showEmailConfirm,
+    setShowEmailConfirm,
+    showTimeNotAvailable,
+    setShowTimeNotAvailable,
+    rescheduleSlot,
+    rescheduleSlotLoading,
+    meetingSlotId,
+    setIsCancelled,
+    setLastScheduledMeeting,
+    setShowSlots,
+    showSlots,
   }
   const renderStep = () => {
     switch (currentStep) {
@@ -264,44 +1226,57 @@ const PublicPage: FC<IProps> = props => {
         return <BasePage />
     }
   }
+
   return (
     <PublicScheduleContext.Provider value={context}>
-      <HeadMeta account={props.account} url={props.url} />
-      <VStack mb={36} gap={1}>
-        <Container
-          bg={bgColor}
-          maxW={{ base: '100%', md: '95%' }}
-          mt={{ md: 36, base: 0 }}
-          pt={{ base: 36, md: 20 }}
-          flex={1}
-          width={'100%'}
-          pb={24}
-          marginX="auto"
-          borderRadius="lg"
-          transitionProperty="width"
-          transitionDuration="2s"
-          transitionTimingFunction="ease-in-out"
-          position={'relative'}
-        >
-          {lastScheduledMeeting ? (
-            <Flex justify="center">
-              <MeetingScheduledDialog
-                participants={lastScheduledMeeting!.participants}
-                hostAccount={props.account}
-                scheduleType={schedulingType}
-                meeting={lastScheduledMeeting}
-                accountNotificationSubs={notificationsSubs}
-                hasConnectedCalendar={hasConnectedCalendar}
-                isContact={isContact}
-                setIsContact={setIsContact}
-                reset={_onClose}
-              />
-            </Flex>
-          ) : (
-            renderStep()
-          )}
-        </Container>
-      </VStack>
+      <ScheduleStateContext.Provider value={scheduleContext}>
+        <HeadMeta account={props.account} url={props.url} />
+        <VStack mb={36} gap={1} key={key}>
+          <Container
+            bg={bgColor}
+            maxW={{ base: '100%', md: '95%' }}
+            mt={{ md: 36, base: 0 }}
+            pt={{ base: 36, md: 20 }}
+            flex={1}
+            width={'100%'}
+            pb={24}
+            marginX="auto"
+            borderRadius="lg"
+            transitionProperty="width"
+            transitionDuration="2s"
+            transitionTimingFunction="ease-in-out"
+            position={'relative'}
+          >
+            {lastScheduledMeeting ? (
+              <Flex justify="center">
+                <MeetingScheduledDialog
+                  participants={lastScheduledMeeting?.participants}
+                  hostAccount={props.account}
+                  scheduleType={schedulingType}
+                  meeting={lastScheduledMeeting}
+                  accountNotificationSubs={notificationsSubs}
+                  hasConnectedCalendar={hasConnectedCalendar}
+                  isContact={isContact}
+                  setIsContact={setIsContact}
+                  reset={_onClose}
+                  isReschedule={!!meetingSlotId}
+                  isCancelled={isCancelled}
+                  timezone={
+                    timezone?.value ||
+                    Intl.DateTimeFormat().resolvedOptions().timeZone
+                  }
+                />
+              </Flex>
+            ) : pageGettingReady ? (
+              <HStack w="100%" mt={8} mx="auto" justifyContent="center">
+                <Loading label="Loading..." />
+              </HStack>
+            ) : (
+              renderStep()
+            )}
+          </Container>
+        </VStack>
+      </ScheduleStateContext.Provider>
     </PublicScheduleContext.Provider>
   )
 }

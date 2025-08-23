@@ -73,6 +73,7 @@ export const CalendarServiceHelper = {
     if (hasGuests) {
       message += `\n\nGuests have to use the reschedule or cancel link in their meeting confirmation email to manage their booking`
     }
+
     return message
   },
 

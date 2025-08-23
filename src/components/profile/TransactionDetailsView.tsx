@@ -1,0 +1,262 @@
+import { Box, Flex, HStack, Icon, Text, VStack } from '@chakra-ui/react'
+import React from 'react'
+import { FiArrowLeft } from 'react-icons/fi'
+
+import { Transaction } from '@/types/Transactions'
+
+interface TransactionDetailsViewProps {
+  transaction: Transaction
+  onBack: () => void
+}
+
+const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
+  transaction,
+  onBack,
+}) => {
+  // Get guest information from meeting sessions
+  const meetingSession = transaction.meeting_sessions?.[0]
+  const guestEmail = meetingSession?.guest_email
+  const sessionNumber = meetingSession?.session_number
+
+  // Get meeting type information from joined data
+  const meetingType = transaction.meeting_types?.[0]
+  const meetingTypeTitle = meetingType?.title
+
+  // Get status color based on transaction status
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'green.400'
+      case 'pending':
+        return 'yellow.400'
+      case 'failed':
+        return 'red.400'
+      case 'cancelled':
+        return 'gray.400'
+      default:
+        return 'yellow.400'
+    }
+  }
+
+  // Format status for display
+  const formatStatus = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1)
+  }
+
+  return (
+    <Box
+      bg="neutral.900"
+      borderRadius="12px"
+      p={12}
+      border="1px solid"
+      borderColor="neutral.825"
+    >
+      <HStack gap={6} align="center" mb={8}>
+        <HStack
+          spacing={2}
+          cursor="pointer"
+          onClick={onBack}
+          color="primary.400"
+          _hover={{ color: 'primary.300' }}
+        >
+          <Icon as={FiArrowLeft} fontSize="20px" />
+          <Text fontSize="16px" fontWeight="600">
+            Back
+          </Text>
+        </HStack>
+
+        <Text fontSize="24px" fontWeight="700" color="neutral.0">
+          Transaction Details
+        </Text>
+      </HStack>
+
+      {/* Transaction Information */}
+      <VStack
+        spacing={0}
+        divider={<Box h="1px" bg="neutral.600" width="100%" />}
+      >
+        {transaction.direction === 'debit' ? (
+          // For debit transactions (sent), show receiver address
+          <Flex justify="space-between" align="start" py={6} width="100%">
+            <Text
+              color="neutral.300"
+              fontSize="16px"
+              fontWeight="700"
+              width="50%"
+            >
+              Receiver
+            </Text>
+            <Text
+              color="white"
+              fontSize="16px"
+              fontWeight="500"
+              textAlign="left"
+              width="50%"
+            >
+              {transaction.metadata?.receiver_address || 'N/A'}
+            </Text>
+          </Flex>
+        ) : (
+          // For credit transactions (received), show meeting-related fields
+          // Guest Email
+          <Flex justify="space-between" align="start" py={6} width="100%">
+            <Text
+              color="neutral.300"
+              fontSize="16px"
+              fontWeight="700"
+              width="50%"
+            >
+              Guest Email
+            </Text>
+            <Text
+              color="white"
+              fontSize="16px"
+              fontWeight="500"
+              textAlign="left"
+              width="50%"
+            >
+              {guestEmail || 'N/A'}
+            </Text>
+          </Flex>
+        )}
+
+        {/* Plan - show for credit transactions and meeting-related debit transactions */}
+        {(transaction.direction === 'credit' ||
+          (transaction.direction === 'debit' &&
+            transaction.meeting_type_id)) && (
+          <Flex justify="space-between" align="start" py={6} width="100%">
+            <Text
+              color="neutral.300"
+              fontSize="16px"
+              fontWeight="700"
+              width="50%"
+            >
+              Plan
+            </Text>
+            <Text
+              color="white"
+              fontSize="16px"
+              fontWeight="500"
+              textAlign="left"
+              width="50%"
+            >
+              {meetingTypeTitle || 'N/A'}
+            </Text>
+          </Flex>
+        )}
+
+        {/* Number of Sessions - show for credit transactions and meeting-related debit transactions */}
+        {(transaction.direction === 'credit' ||
+          (transaction.direction === 'debit' &&
+            transaction.meeting_type_id)) && (
+          <Flex justify="space-between" align="start" py={6} width="100%">
+            <Text
+              color="neutral.300"
+              fontSize="16px"
+              fontWeight="700"
+              width="50%"
+            >
+              Number of Sessions
+            </Text>
+            <Text
+              color="white"
+              fontSize="16px"
+              fontWeight="500"
+              textAlign="left"
+              width="50%"
+            >
+              {sessionNumber || 'N/A'}
+            </Text>
+          </Flex>
+        )}
+
+        {/* Amount */}
+        <Flex justify="space-between" align="start" py={6} width="100%">
+          <Text
+            color="neutral.300"
+            fontSize="16px"
+            fontWeight="700"
+            width="50%"
+          >
+            Amount
+          </Text>
+          <Text
+            color="white"
+            fontSize="16px"
+            fontWeight="500"
+            textAlign="left"
+            width="50%"
+          >
+            {transaction.amount} {transaction.currency}
+          </Text>
+        </Flex>
+
+        {/* Direction */}
+        <Flex justify="space-between" align="start" py={6} width="100%">
+          <Text
+            color="neutral.300"
+            fontSize="16px"
+            fontWeight="700"
+            width="50%"
+          >
+            Direction
+          </Text>
+          <Text
+            color="white"
+            fontSize="16px"
+            fontWeight="500"
+            textAlign="left"
+            width="50%"
+          >
+            {transaction.direction.charAt(0).toUpperCase() +
+              transaction.direction.slice(1)}
+          </Text>
+        </Flex>
+
+        {/* Transaction Status */}
+        <Flex justify="space-between" align="start" py={6} width="100%">
+          <Text
+            color="neutral.300"
+            fontSize="16px"
+            fontWeight="700"
+            width="50%"
+          >
+            Transaction Status
+          </Text>
+          <Text
+            color={getStatusColor(transaction.status || 'pending')}
+            fontSize="16px"
+            fontWeight="500"
+            textAlign="left"
+            width="50%"
+          >
+            {formatStatus(transaction.status || 'pending')}
+          </Text>
+        </Flex>
+
+        {/* Transaction Hash */}
+        <Flex justify="space-between" align="start" py={6} width="100%">
+          <Text
+            color="neutral.300"
+            fontSize="16px"
+            fontWeight="700"
+            width="50%"
+          >
+            Transaction Hash
+          </Text>
+          <Text
+            color="white"
+            fontSize="16px"
+            fontWeight="500"
+            textAlign="left"
+            width="50%"
+          >
+            {transaction.transaction_hash || 'N/A'}
+          </Text>
+        </Flex>
+      </VStack>
+    </Box>
+  )
+}
+
+export default TransactionDetailsView

@@ -11,7 +11,11 @@ import {
 import { ConditionRelation } from '@/types/common'
 import { TimeSlot, TimeSlotSource } from '@/types/Meeting'
 
-import { getConnectedCalendars, getSlotsForAccount } from '../database'
+import {
+  getConnectedCalendars,
+  getMeetingTypeFromDB,
+  getSlotsForAccount,
+} from '../database'
 import { getConnectedCalendarIntegration } from './connected_calendars.factory'
 
 export const CalendarBackendHelper = {
@@ -47,7 +51,6 @@ export const CalendarBackendHelper = {
       const calendars = await getConnectedCalendars(account_address, {
         activeOnly: true,
       })
-
       await Promise.all(
         calendars.map(async calendar => {
           const integration = getConnectedCalendarIntegration(
@@ -79,7 +82,6 @@ export const CalendarBackendHelper = {
     }
 
     await Promise.all([getMWWEvents(), getIntegratedCalendarEvents()])
-
     return busySlots
   },
 

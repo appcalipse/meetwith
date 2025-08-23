@@ -1,6 +1,4 @@
 import {
-  addDays,
-  addHours,
   addMinutes,
   compareAsc,
   format,
@@ -8,7 +6,6 @@ import {
   getHours,
   Interval,
   isAfter,
-  isToday,
 } from 'date-fns'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import { DateTime, Interval as LuxonInterval } from 'luxon'
@@ -21,7 +18,7 @@ export const generateTimeSlots = (
   fromStartDate: boolean,
   timezone = 'UTC',
   endDate?: Date
-): Interval[] => {
+): LuxonInterval<true>[] => {
   // Convert to Luxon DateTime in the specified timezone
   const selectedDateTime = DateTime.fromJSDate(selectedDate).setZone(timezone)
   const _isToday = selectedDateTime.hasSame(
@@ -54,18 +51,18 @@ export const generateTimeSlots = (
     ? DateTime.fromJSDate(endDate).setZone(timezone)
     : selectedDateTime.plus({ days: 1 }).startOf('day')
 
-  const timeSlots: Interval[] = []
+  const timeSlots: LuxonInterval[] = []
   let current = start
 
   while (current < end) {
     const slotEnd = current.plus({ minutes: slotSizeMinutes })
 
-    timeSlots.push({ start: current.toJSDate(), end: slotEnd.toJSDate() })
+    timeSlots.push(LuxonInterval.fromDateTimes(current, slotEnd))
 
     current = slotEnd
   }
 
-  return timeSlots
+  return timeSlots.filter(val => val.isValid)
 }
 
 export const isSlotAvailable = (

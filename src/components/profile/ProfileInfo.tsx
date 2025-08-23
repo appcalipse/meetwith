@@ -1,16 +1,8 @@
-import { Image } from '@chakra-ui/image'
-import { Box, Flex, HStack, Spacer, Text } from '@chakra-ui/layout'
-import {
-  Heading,
-  Icon,
-  IconButton,
-  Link,
-  useMediaQuery,
-  VStack,
-} from '@chakra-ui/react'
+import { Box, HStack, Text } from '@chakra-ui/layout'
+import { Heading, IconButton, Link, VStack } from '@chakra-ui/react'
 import { Tooltip, useColorModeValue } from '@chakra-ui/react'
 import { Select } from '@chakra-ui/select'
-import { addMinutes, format } from 'date-fns'
+import { DateTime } from 'luxon'
 import React, { useState } from 'react'
 import { BiChevronDown } from 'react-icons/bi'
 import {
@@ -22,8 +14,7 @@ import {
   FaTwitter,
 } from 'react-icons/fa'
 
-import { CalendarType } from '@/components/public-calendar'
-import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { CalendarType } from '@/utils/constants/schedule'
 
 import { Account, MeetingType, SocialLinkType } from '../../types/Account'
 import {
@@ -44,6 +35,7 @@ interface ProfileInfoProps {
   selectedTime?: Date
   selectedDay?: Date
   isMobile: boolean
+  timezone: string
 }
 
 const ProfileInfo: React.FC<ProfileInfoProps> = props => {
@@ -81,19 +73,18 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
       setCopyFeedbackOpen(false)
     }, 2000)
   }
+  // Alternative with Luxon (if you want to be consistent with other components)
+
+  // In the component:
   const startTime = props.selectedTime || new Date()
-  const endTime = addMinutes(startTime, props.selectedType.duration_minutes)
-  const formattedStartTime = startTime.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true,
+  const startDateTime = DateTime.fromJSDate(startTime).setZone(props.timezone)
+  const endDateTime = startDateTime.plus({
+    minutes: props.selectedType.duration_minutes,
   })
-  const formattedEndTime = endTime.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true,
-  })
-  const formattedDate = format(startTime, 'PPPP')
+
+  const formattedStartTime = startDateTime.toFormat('h:mm a')
+  const formattedEndTime = endDateTime.toFormat('h:mm a')
+  const formattedDate = startDateTime.toFormat('cccc, LLLL d, yyyy')
   const timeDuration = `${formattedStartTime} - ${formattedEndTime}`
   return (
     <VStack
@@ -136,7 +127,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = props => {
           <HStack>
             <FaGlobe size={24} />
             <Text align="center" fontSize="base" fontWeight="500">
-              {Intl.DateTimeFormat().resolvedOptions().timeZone}
+              {props.timezone}
             </Text>
           </HStack>
         </VStack>
