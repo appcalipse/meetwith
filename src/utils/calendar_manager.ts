@@ -1292,7 +1292,6 @@ const generateIcs = (
   const icsEvent = createEvent(event)
   return icsEvent
 }
-
 const participantStatusToICSStatus = (status: ParticipationStatus) => {
   switch (status) {
     case ParticipationStatus.Accepted:
@@ -1544,6 +1543,7 @@ const generateGoogleCalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
+  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl = 'https://calendar.google.com/calendar/r/eventedit?sf=true'
   if (start && end) {
     baseUrl += `&dates=${googleUrlParsedDate(
@@ -1557,7 +1557,8 @@ const generateGoogleCalendarUrl = (
     baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`
+      `${appUrl}/dashboard/meetings`,
+      hasGuests
     )}`
   }
   if (timezone) {
@@ -1580,6 +1581,7 @@ const generateOffice365CalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
+  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl =
     'https://outlook.office.com/calendar/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&online=true'
   if (start) {
@@ -1595,7 +1597,8 @@ const generateOffice365CalendarUrl = (
     baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`
+      `${appUrl}/dashboard/meetings`,
+      hasGuests
     )}`
   }
   if (participants) {
