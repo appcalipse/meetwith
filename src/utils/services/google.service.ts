@@ -382,6 +382,11 @@ export default class GoogleCalendarService
         p => p.account_address === calendarOwnerAccountAddress
       )?.slot_id
 
+      // Determine the correct URL format based on whether participants are guests
+      const hasGuests = meetingDetails.participants.some(p => p.guest_email)
+
+      const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+
       const payload: calendar_v3.Schema$Event = {
         id: meeting_id.replaceAll('-', ''), // required to edit events later
         summary: CalendarServiceHelper.getMeetingTitle(
@@ -392,7 +397,8 @@ export default class GoogleCalendarService
         description: CalendarServiceHelper.getMeetingSummary(
           meetingDetails.content,
           meetingDetails.meeting_url,
-          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+          changeUrl,
+          hasGuests
         ),
         start: {
           dateTime: new Date(meetingDetails.start).toISOString(),
