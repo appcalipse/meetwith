@@ -312,7 +312,7 @@ export default class Office365CalendarService
       p => p.account_address === calendarOwnerAccountAddress
     )[0].slot_id
     const hasGuests = details.participants.some(p => p.guest_email)
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
         participantsInfo,
