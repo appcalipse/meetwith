@@ -2,8 +2,20 @@ import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { GuestMeetingCancel } from '@/types/Meeting'
-import { getConferenceDataBySlotId, handleGuestCancel } from '@/utils/database'
-import { MeetingNotFoundError, UnauthorizedError } from '@/utils/errors'
+import { ParticipantType } from '@/types/ParticipantInfo'
+import { MeetingUpdateRequest } from '@/types/Requests'
+import {
+  getConferenceDataBySlotId,
+  handleGuestCancel,
+  updateMeeting,
+} from '@/utils/database'
+import {
+  MeetingChangeConflictError,
+  MeetingNotFoundError,
+  MeetingSessionNotFoundError,
+  TransactionIsRequired,
+  UnauthorizedError,
+} from '@/utils/errors'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -16,16 +28,54 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       if (!meeting) {
         return res.status(404).send('Not found')
       }
-      if (meeting.slots) {
-        meeting.slots = [] // we don't want other users slots to be exposed
-      }
-      if (meeting.meeting_url) {
-        meeting.meeting_url = '' // we don't want private data to be exposed
-      }
       return res.status(200).json(meeting)
     } catch (err) {
       Sentry.captureException(err)
       return res.status(404).send('Not found')
+    }
+  } else if (req.method === 'PUT') {
+    const slotId = req.query.id as string
+    if (!slotId) {
+      return res.status(400).send('Required parameter not provided')
+    }
+
+    const meetingUpdateRequest: MeetingUpdateRequest =
+      req.body as MeetingUpdateRequest
+    if (!meetingUpdateRequest) {
+      return res.status(400).send('Invalid update request')
+    }
+
+    try {
+      const schedulerParticipant =
+        meetingUpdateRequest.participants_mapping.find(
+          p => p.type === ParticipantType.Scheduler
+        )
+
+      const participantActing = {
+        name: schedulerParticipant?.name || 'Guest',
+        guest_email: schedulerParticipant?.guest_email || '',
+        account_address: schedulerParticipant?.account_address || '',
+      }
+
+      const meetingResult = await updateMeeting(
+        participantActing,
+        meetingUpdateRequest
+      )
+      return res.status(200).json(meetingResult)
+    } catch (e) {
+      Sentry.captureException(e)
+      if (e instanceof MeetingNotFoundError) {
+        return res.status(404).send(e.message)
+      } else if (e instanceof UnauthorizedError) {
+        return res.status(401).send(e.message)
+      } else if (e instanceof MeetingChangeConflictError) {
+        return res.status(417).send(e)
+      } else if (e instanceof TransactionIsRequired) {
+        return res.status(400).send(e)
+      } else if (e instanceof MeetingSessionNotFoundError) {
+        return res.status(404).send(e.message)
+      }
+      return res.status(500).send(e)
     }
   } else if (req.method === 'DELETE') {
     const { metadata, currentTimezone, reason } = req.body as GuestMeetingCancel
@@ -46,6 +96,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         return res.status(404).send(e.message)
       } else if (e instanceof UnauthorizedError) {
         return res.status(401).send(e.message)
+      } else if (e instanceof TransactionIsRequired) {
+        return res.status(400).send(e)
       }
       return res.status(500).send(e)
     }

@@ -71,8 +71,9 @@ describe('availability helper functions', () => {
       ]
       const result = getFormattedSchedule(availabilities)
       expect(result.length).toBe(1)
-      expect(result[0]).toMatch(
-        /Mon\s?:\s?\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm]/
+      expect(result[0].weekdays).toBe('Mon')
+      expect(result[0].timeRange).toMatch(
+        /\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm]/
       )
     })
 
@@ -89,31 +90,139 @@ describe('availability helper functions', () => {
       ]
       const result = getFormattedSchedule(availabilities)
       expect(result.length).toBe(1)
-      expect(result[0]).toMatch(
-        /Mon - Tue\s?:\s?\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm]/
+      expect(result[0].weekdays).toBe('Mon - Tue')
+      expect(result[0].timeRange).toMatch(
+        /\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm]/
+      )
+    })
+
+    // Tests for the multi-range fix
+    it('formats multiple ranges for a single day', () => {
+      const availabilities = [
+        {
+          weekday: 1,
+          ranges: [
+            { start: '09:00', end: '17:00' },
+            { start: '20:00', end: '23:00' },
+          ],
+        },
+      ]
+      const result = getFormattedSchedule(availabilities)
+      expect(result.length).toBe(1)
+      expect(result[0].weekdays).toBe('Mon')
+      expect(result[0].timeRange).toMatch(
+        /\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm],\s?\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm]/
+      )
+    })
+
+    it('groups consecutive days that share identical multi-range sets', () => {
+      const availabilities = [
+        {
+          weekday: 1,
+          ranges: [
+            { start: '09:00', end: '17:00' },
+            { start: '20:00', end: '23:00' },
+          ],
+        },
+        {
+          weekday: 2,
+          ranges: [
+            { start: '09:00', end: '17:00' },
+            { start: '20:00', end: '23:00' },
+          ],
+        },
+      ]
+      const result = getFormattedSchedule(availabilities)
+      expect(result.length).toBe(1)
+      expect(result[0].weekdays).toBe('Mon - Tue')
+      expect(result[0].timeRange).toMatch(
+        /\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm],\s?\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm]/
+      )
+    })
+
+    it('does not group days when multi-range sets differ', () => {
+      const availabilities = [
+        {
+          weekday: 1,
+          ranges: [
+            { start: '09:00', end: '17:00' },
+            { start: '20:00', end: '23:00' },
+          ],
+        },
+        {
+          weekday: 2,
+          ranges: [
+            { start: '09:00', end: '17:00' },
+            // Missing the evening range on Tuesday
+          ],
+        },
+      ]
+      const result = getFormattedSchedule(availabilities)
+      expect(result.length).toBe(2)
+      expect(result[0].weekdays).toBe('Mon')
+      expect(result[0].timeRange).toMatch(
+        /\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm],\s?\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm]/
+      )
+      expect(result[1].weekdays).toBe('Tue')
+      expect(result[1].timeRange).toMatch(
+        /\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm]/
+      )
+    })
+
+    it('treats range order as irrelevant when grouping', () => {
+      const availabilities = [
+        {
+          weekday: 1,
+          ranges: [
+            // Intentionally reversed order
+            { start: '20:00', end: '23:00' },
+            { start: '09:00', end: '17:00' },
+          ],
+        },
+        {
+          weekday: 2,
+          ranges: [
+            { start: '09:00', end: '17:00' },
+            { start: '20:00', end: '23:00' },
+          ],
+        },
+      ]
+      const result = getFormattedSchedule(availabilities)
+      expect(result.length).toBe(1)
+      expect(result[0].weekdays).toBe('Mon - Tue')
+      expect(result[0].timeRange).toMatch(
+        /\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm],\s?\d{1,2}:\d{2}\s?[AaPp][Mm]\s?-\s?\d{1,2}:\d{2}\s?[AaPp][Mm]/
       )
     })
   })
 
   describe('formatDayGroup', () => {
-    it('returns empty string for empty days array', () => {
-      expect(formatDayGroup([], '09:00 - 17:00')).toBe('')
+    it('returns empty object for empty days array', () => {
+      expect(formatDayGroup([], '09:00 - 17:00')).toEqual({
+        weekdays: '',
+        timeRange: '',
+      })
     })
 
     it('formats single day correctly', () => {
-      expect(formatDayGroup([1], '09:00 - 17:00')).toBe('Mon : 09:00 - 17:00')
+      expect(formatDayGroup([1], '09:00 - 17:00')).toEqual({
+        weekdays: 'Mon',
+        timeRange: '09:00 - 17:00',
+      })
     })
 
     it('formats consecutive days with dash', () => {
-      expect(formatDayGroup([1, 2], '09:00 - 17:00')).toBe(
-        'Mon - Tue : 09:00 - 17:00'
-      )
+      expect(formatDayGroup([1, 2], '09:00 - 17:00')).toEqual({
+        weekdays: 'Mon - Tue',
+        timeRange: '09:00 - 17:00',
+      })
     })
 
     it('formats non-consecutive days with comma', () => {
-      expect(formatDayGroup([1, 3], '09:00 - 17:00')).toBe(
-        'Mon, Wed : 09:00 - 17:00'
-      )
+      expect(formatDayGroup([1, 3], '09:00 - 17:00')).toEqual({
+        weekdays: 'Mon, Wed',
+        timeRange: '09:00 - 17:00',
+      })
     })
   })
 
@@ -240,7 +349,7 @@ describe('availability helper functions', () => {
       const sorted = sortAvailabilitiesByWeekday(availabilities)
       const weekdays = sorted.map(a => a.weekday)
 
-      expect(weekdays).toEqual([1, 2, 3, 4, 5, 0, 6]) // Mon, Tue, Wed, Thu, Fri, Sun, Sat
+      expect(weekdays).toEqual([1, 2, 3, 4, 5, 6, 0]) // Mon, Tue, Wed, Thu, Fri, Sat, Sun
     })
 
     it('preserves original data structure', () => {

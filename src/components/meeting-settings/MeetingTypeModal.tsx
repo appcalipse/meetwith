@@ -19,13 +19,13 @@ import {
   ModalHeader,
   ModalOverlay,
   Spinner,
-  Switch,
   Text,
   Textarea,
   useColorModeValue,
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import CreatableDurationSelect from '@components/custom-select/CreatableDurationSelect'
 import { ConnectedCalendarCore } from '@meta/CalendarConnections'
 import { CreateMeetingTypeRequest } from '@meta/Requests'
 import { saveMeetingType, updateMeetingType } from '@utils/api_helper'
@@ -73,7 +73,11 @@ import { z } from 'zod'
 import useAccountContext from '@/hooks/useAccountContext'
 import { MeetingType } from '@/types/Account'
 import { AvailabilityBlock } from '@/types/availability'
+import { EditMode } from '@/types/Dashboard'
 import { MeetingProvider } from '@/types/Meeting'
+
+import InfoTooltip from '../profile/components/Tooltip'
+
 interface IProps {
   onClose: () => void
   isOpen: boolean
@@ -140,11 +144,26 @@ const MeetingTypeModal: FC<IProps> = props => {
         convertMinutes(props.initialValues?.min_notice_minutes || 60 * 24).type
     ) || MinNoticeTimeOptions[0]
   )
-  const [duration, setDuration] = useState<Option<number>>(
-    DurationOptions.find(
-      option => option.value === props.initialValues?.duration_minutes
-    ) || DurationOptions[1]
-  )
+  const [duration, setDuration] = useState<Option<number>>(() => {
+    const initialDuration = props.initialValues?.duration_minutes
+    if (initialDuration) {
+      // Try to find in predefined options first
+      const existingOption = DurationOptions.find(
+        option => option.value === initialDuration
+      )
+      if (existingOption) {
+        return existingOption
+      }
+      // If not found, create a custom option
+      return {
+        value: initialDuration,
+        label: `${initialDuration} ${
+          initialDuration === 1 ? 'Minute' : 'Minutes'
+        }`,
+      }
+    }
+    return DurationOptions[1] // default to 30 minutes
+  })
   const [calendars, setCalendars] = useState<Option<number>[]>(
     props.initialValues?.calendars?.map(calendar => ({
       value: calendar.id,
@@ -231,7 +250,7 @@ const MeetingTypeModal: FC<IProps> = props => {
     setMinAdvanceType(newValue)
   }
   const domainUrl = getAccountDomainUrl(currentAccount)
-  const handleMeetingPlatformChange = async (
+  const handleMeetingPlatformChange = (
     value: MeetingProvider | 'ALL' | 'RESET'
   ) => {
     setSelectedProviders(prevProviders => {
@@ -441,6 +460,8 @@ const MeetingTypeModal: FC<IProps> = props => {
     }
     if (props.initialValues) props.onDelete()
   }
+  // Custom creatable duration select component
+
   return (
     <Modal
       isOpen={props.isOpen}
@@ -541,8 +562,23 @@ const MeetingTypeModal: FC<IProps> = props => {
                 onBlur={() => {
                   handleBlur('title')
                   if (!customBookingLink) {
-                    setCustomBookingLink(getSlugFromText(title))
-                    handleBlur('slug')
+                    const newSlug = getSlugFromText(title)
+                    setCustomBookingLink(newSlug)
+                    if (!!errors.slug) {
+                      const { isValid, error } = validateField('slug', newSlug)
+                      if (!isValid && error) {
+                        dispatchErrors({
+                          type: 'SET_ERROR',
+                          field: 'slug',
+                          message: error,
+                        })
+                      } else {
+                        dispatchErrors({
+                          type: 'CLEAR_ERROR',
+                          field: 'slug',
+                        })
+                      }
+                    }
                   }
                 }}
               />
@@ -662,7 +698,7 @@ const MeetingTypeModal: FC<IProps> = props => {
               )}
               <Link
                 color={'primary.400'}
-                href="/dashboard/schedule"
+                href={`/dashboard/${EditMode.AVAILABILITY}`}
                 borderBottom="1px solid"
                 pb={-4}
               >
@@ -678,7 +714,9 @@ const MeetingTypeModal: FC<IProps> = props => {
               alignItems="flex-start"
               isInvalid={!!errors.calendars}
             >
-              <FormLabel fontSize={'16px'}>Calendar to Add event to</FormLabel>
+              <FormLabel fontSize={'16px'}>
+                Calendar to Add event to (Optional)
+              </FormLabel>
               {props.isCalendarLoading ? (
                 <Spinner />
               ) : (
@@ -726,17 +764,15 @@ const MeetingTypeModal: FC<IProps> = props => {
             </FormControl>
             <HStack w={'100%'} gap={5}>
               <FormControl w={'35%'} isInvalid={!!errors.duration_minutes}>
-                <FormLabel mb={1}>Session Duration</FormLabel>
-                <ChakraSelect
+                <FormLabel mb={1}>
+                  Session Duration{' '}
+                  <InfoTooltip text="Select how long the session will last. This will be used to automatically calculate the end time. You can also create a custom duration by typing your preferred number of minutes into the input." />
+                </FormLabel>
+                <CreatableDurationSelect
                   value={duration}
-                  colorScheme="primary"
                   onChange={handleDurationChange}
-                  options={DurationOptions}
-                  // eslint-disable-next-line tailwindcss/no-custom-classname
-                  className="date-select"
-                  components={noClearCustomSelectComponent}
-                  chakraStyles={fullWidthStyle}
                   onBlur={() => handleBlur('duration_minutes')}
+                  isInvalid={!!errors.duration_minutes}
                 />
                 {!!errors.duration_minutes && (
                   <FormErrorMessage>{errors.duration_minutes}</FormErrorMessage>
@@ -813,51 +849,21 @@ const MeetingTypeModal: FC<IProps> = props => {
                 </HStack>
               </FormControl>
             </HStack>
-            <VStack alignItems="flex-start" width="100%" bg={bgColor} gap={2}>
-              <VStack alignItems="flex-start" width="100%">
+            <VStack alignItems="flex-start" width="100%" bg={bgColor} gap={1}>
+              <VStack alignItems="flex-start" width="100%" gap={0}>
                 <Heading fontSize="2xl">Meeting Platform</Heading>
                 <Text color="neutral.400" mt={2}>
                   Choose your default Meeting Platform
                 </Text>
               </VStack>
 
-              <HStack gap={2} width="100%">
-                <Checkbox
-                  colorScheme="primary"
-                  value={
-                    selectedProviders.length === PROVIDERS.length
-                      ? 'RESET'
-                      : 'ALL'
-                  }
-                  size="lg"
-                  borderColor="primary.200"
-                  isChecked={selectedProviders.length === PROVIDERS.length}
-                  onChange={e => {
-                    handleMeetingPlatformChange(
-                      e.target.value as MeetingProvider
-                    )
-                  }}
-                >
-                  <Text fontWeight="600" color={'primary.200'}>
-                    Select all
-                  </Text>
-                </Checkbox>
-              </HStack>
-              <HStack
-                gap={2}
-                justifyContent="space-between"
-                flexWrap="wrap"
-                width="100%"
-              >
+              <HStack gap={5} flexWrap="wrap" width="100%">
                 {PROVIDERS.map(provider => (
                   <Checkbox
                     key={provider}
                     borderRadius={8}
-                    mt={4}
-                    flexBasis={{
-                      base: '45%',
-                    }}
                     borderWidth={1}
+                    maxW={200}
                     borderColor={
                       selectedProviders.includes(provider)
                         ? 'primary.200'
@@ -890,37 +896,109 @@ const MeetingTypeModal: FC<IProps> = props => {
                   </Checkbox>
                 ))}
               </HStack>
-              <FormControl
-                pt={5}
-                display="flex"
-                flexDirection="column"
-                gap={3}
-                isInvalid={!!errors.custom_link}
-              >
-                <Text>Custom Meeting location</Text>
-                <VStack gap={0} alignItems="flex-start" width="100%">
-                  <Input
-                    width={'345px'}
-                    type="text"
-                    placeholder="Google Meet, Zoom, Discord anywhere"
-                    value={customLink}
-                    onChange={e => setCustomLink(e.target.value)}
-                    onBlur={() => handleBlur('custom_link')}
-                  />
+              <VStack alignItems="flex-start" width="100%" gap={5} mt={5}>
+                <Checkbox
+                  borderRadius={8}
+                  borderWidth={1}
+                  maxW={{ md: 420, base: '75%' }}
+                  borderColor={
+                    selectedProviders.includes(MeetingProvider.CUSTOM)
+                      ? 'primary.200'
+                      : 'neutral.0'
+                  }
+                  colorScheme="primary"
+                  p={4}
+                  isChecked={selectedProviders.includes(MeetingProvider.CUSTOM)}
+                  onChange={() =>
+                    handleMeetingPlatformChange(MeetingProvider.CUSTOM)
+                  }
+                  flexDirection="row-reverse"
+                  justifyContent="space-between"
+                  w="100%"
+                >
+                  <Text
+                    fontWeight="600"
+                    color={
+                      selectedProviders.includes(MeetingProvider.CUSTOM)
+                        ? 'primary.200'
+                        : 'neutral.0'
+                    }
+                    cursor="pointer"
+                  >
+                    Allow guest to add custom location
+                  </Text>
+                </Checkbox>
+                <FormControl
+                  display="flex"
+                  flexDirection="column"
+                  isInvalid={!!errors.custom_link}
+                >
+                  <HStack
+                    pos={'relative'}
+                    maxW={{ md: 350, base: '75%' }}
+                    borderWidth={1}
+                    borderColor={
+                      !!errors.custom_link
+                        ? 'red.300'
+                        : fixedLink
+                        ? 'primary.200'
+                        : 'neutral.0'
+                    }
+                    w="100%"
+                    borderRadius={8}
+                    p={1.5}
+                  >
+                    <Input
+                      w={{
+                        md: 320,
+                        base: '100%',
+                      }}
+                      flexBasis={'100%'}
+                      type="text"
+                      placeholder="Add your custom location"
+                      value={customLink}
+                      onChange={e => setCustomLink(e.target.value)}
+                      onBlur={() => handleBlur('custom_link')}
+                      bg={'neutral.450'}
+                      border={'none'}
+                      borderRadius={8}
+                      isDisabled={!fixedLink}
+                      _disabled={{
+                        cursor: 'not-allowed',
+                        _placeholder: {
+                          opacity: 1,
+                        },
+                      }}
+                      zIndex={999}
+                      _invalid={{
+                        border: 'none',
+                      }}
+                    />
+                    <Checkbox
+                      key={'custom_link_checkbox'}
+                      colorScheme="primary"
+                      isChecked={fixedLink}
+                      borderColor={fixedLink ? 'primary.200' : 'neutral.0'}
+                      p={4}
+                      onChange={e => {
+                        setFixedLink(e.target.checked)
+                        if (!e.target.checked) {
+                          setCustomLink('')
+                          dispatchErrors({
+                            type: 'CLEAR_ERROR',
+                            field: 'custom_link',
+                          })
+                        }
+                      }}
+                      gap={8}
+                      justifyContent={'space-between'}
+                    />
+                  </HStack>
                   {!!errors.custom_link && (
                     <FormErrorMessage>{errors.custom_link}</FormErrorMessage>
                   )}
-                </VStack>
-                <HStack>
-                  <Switch
-                    colorScheme="primary"
-                    size="md"
-                    isChecked={fixedLink}
-                    onChange={e => setFixedLink(e.target.checked)}
-                  />
-                  <Text>Allow scheduler to edit custom meeting location</Text>
-                </HStack>
-              </FormControl>
+                </FormControl>
+              </VStack>
             </VStack>
             <Collapse
               in={sessionType.value === SessionType.PAID}
@@ -952,7 +1030,6 @@ const MeetingTypeModal: FC<IProps> = props => {
                     value={planType}
                     colorScheme="primary"
                     onChange={handlePlanTypeChange}
-                    // eslint-disable-next-line tailwindcss/no-custom-classname
                     className="noLeftBorder timezone-select"
                     options={PlanTypeOptions}
                     components={noClearCustomSelectComponent}
@@ -1108,7 +1185,11 @@ const MeetingTypeModal: FC<IProps> = props => {
               <Button
                 colorScheme="primary"
                 onClick={handleSave}
-                isLoading={isLoading}
+                isLoading={
+                  isLoading ||
+                  props.isCalendarLoading ||
+                  props.isAvailabilityLoading
+                }
               >
                 {props?.initialValues?.id
                   ? 'Update Session Type'

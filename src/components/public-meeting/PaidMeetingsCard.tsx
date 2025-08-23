@@ -1,4 +1,12 @@
-import { Button, Heading, HStack, Tag, Text, VStack } from '@chakra-ui/react'
+import {
+  Button,
+  Heading,
+  HStack,
+  Tag,
+  Text,
+  Tooltip,
+  VStack,
+} from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { PaidMeetingTypes } from '@meta/Account'
 import { useRouter } from 'next/router'
@@ -6,9 +14,12 @@ import React, { FC, useContext, useState } from 'react'
 
 import { getAccountDomainUrl } from '@/utils/calendar_manager'
 import { formatCurrency } from '@/utils/generic_utils'
+
 type IProps = PaidMeetingTypes
 const PaidMeetingsCard: FC<IProps> = props => {
-  const { handleNavigateToBook, account } = useContext(PublicScheduleContext)
+  const { handleNavigateToBook, account, setShowHeader } = useContext(
+    PublicScheduleContext
+  )
   const { push } = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -20,6 +31,7 @@ const PaidMeetingsCard: FC<IProps> = props => {
     // wait for the page to load before setting the selected type
     await new Promise(resolve => setTimeout(resolve, 100))
     handleNavigateToBook(props.transaction_hash)
+    setShowHeader(false)
     setLoading(false)
   }
   return (
@@ -32,9 +44,19 @@ const PaidMeetingsCard: FC<IProps> = props => {
       gap={4}
     >
       <VStack gap={2} alignItems={'flex-start'} w={'100%'}>
-        <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
-          {props.title}
-        </Heading>
+        <Tooltip label={props.title}>
+          <Heading
+            fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}
+            maxW={{ '2xl': '400px', lg: 270, xl: 300, base: 200 }}
+            w="fit-content"
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            cursor={'pointer'}
+          >
+            {props.title}
+          </Heading>
+        </Tooltip>
         <Text>{props?.duration_minutes} mins per session</Text>
       </VStack>
       {props?.plan?.price_per_slot && (
@@ -61,7 +83,7 @@ const PaidMeetingsCard: FC<IProps> = props => {
           Schedule Now
         </Button>
         <Text color="primary.400" fontWeight={500}>
-          {props.session_used}/{props.plan?.no_of_slot} Sessions remaining
+          {props.session_used}/{props.session_total} Sessions remaining
         </Text>
       </HStack>
     </VStack>

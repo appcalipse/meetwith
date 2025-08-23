@@ -1,48 +1,29 @@
 import { ArrowForwardIcon } from '@chakra-ui/icons'
-import { Link } from '@chakra-ui/next-js'
-import {
-  Box,
-  Button,
-  Grid,
-  Heading,
-  HStack,
-  Image,
-  SlideFade,
-  Stack,
-  Text,
-  VStack,
-} from '@chakra-ui/react'
-import router from 'next/router'
+import { Box, Button, Heading, HStack, Text, VStack } from '@chakra-ui/react'
+import Image from 'next/image'
+import { useRouter } from 'next/router'
 import { useContext } from 'react'
-import { useInView } from 'react-intersection-observer'
 
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
 import { logEvent } from '@/utils/analytics'
 
-import { Why } from './Why'
-
-export function Hero() {
+function Hero() {
   const { currentAccount, loginIn } = useContext(AccountContext)
 
   const { openConnection } = useContext(OnboardingModalContext)
-
+  const { push } = useRouter()
   const handleLogin = async () => {
     if (!currentAccount) {
       logEvent('Clicked to start on FREE plan')
       openConnection()
     } else {
-      await router.push('/dashboard')
+      await push('/dashboard')
     }
   }
 
-  const { ref: heroContainer, inView: isHeroContainerVisible } = useInView({
-    triggerOnce: true,
-  })
-
   return (
     <Box
-      ref={heroContainer}
       color="neutral.0"
       position="relative"
       mx="auto"
@@ -101,20 +82,21 @@ export function Hero() {
             </Button>
           </HStack>
         </VStack>
-        <SlideFade
-          in={isHeroContainerVisible}
-          delay={0.5}
-          offsetY={-50}
-          unmountOnExit={false}
-          reverse={false}
-        >
-          <Image
-            width={'100%'}
-            src={'/assets/product-ui.png'}
-            alt="Product UI"
-            mt={10}
-          />
-        </SlideFade>
+        <Image
+          src={'/assets/product-ui.webp'}
+          alt="Product UI"
+          loading="eager"
+          priority
+          width={1200}
+          height={675}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+          style={{
+            width: '100%',
+            height: 'auto',
+            marginTop: 40,
+          }}
+          quality={75}
+        />
       </Box>
       <Box
         w="100%"
@@ -129,3 +111,5 @@ export function Hero() {
     </Box>
   )
 }
+
+export default Hero
