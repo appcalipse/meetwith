@@ -3,18 +3,29 @@ import * as Sentry from '@sentry/nextjs'
 import { Account } from '@/types/Account'
 import { MeetingCreationSyncRequest } from '@/types/Requests'
 
-import { getConnectedCalendars } from './database'
+import { getConnectedCalendars, getMeetingTypeFromDB } from './database'
 import { getConnectedCalendarIntegration } from './services/connected_calendars.factory'
 
 const syncCreatedEventWithCalendar = async (
   targetAccount: Account['address'],
   meetingDetails: MeetingCreationSyncRequest
 ) => {
-  const calendars = await getConnectedCalendars(targetAccount, {
+  let calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
     activeOnly: true,
   })
-
+  if (meetingDetails.meeting_type_id) {
+    const meetingType = await getMeetingTypeFromDB(
+      meetingDetails.meeting_type_id
+    )
+    if (meetingType.calendars) {
+      calendars = meetingType.calendars
+        ? calendars.filter(calendar =>
+            meetingType.calendars?.some(c => c.id === calendar.id)
+          )
+        : calendars
+    }
+  }
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
       calendar.account_address,
@@ -46,11 +57,23 @@ const syncUpdatedEventWithCalendar = async (
   meetingDetails: MeetingCreationSyncRequest,
   meeting_id: string
 ) => {
-  const calendars = await getConnectedCalendars(targetAccount, {
+  let calendars = await getConnectedCalendars(targetAccount, {
     syncOnly: true,
     activeOnly: true,
   })
 
+  if (meetingDetails.meeting_type_id) {
+    const meetingType = await getMeetingTypeFromDB(
+      meetingDetails.meeting_type_id
+    )
+    if (meetingType.calendars) {
+      calendars = meetingType.calendars
+        ? calendars.filter(calendar =>
+            meetingType.calendars?.some(c => c.id === calendar.id)
+          )
+        : calendars
+    }
+  }
   for (const calendar of calendars) {
     const integration = getConnectedCalendarIntegration(
       calendar.account_address,
@@ -124,7 +147,7 @@ const syncDeletedEventWithCalendar = async (
 
 export const ExternalCalendarSync = {
   create: async (meetingDetails: MeetingCreationSyncRequest) => {
-    const tasks: Promise<any>[] = []
+    const tasks = []
     for (const participant of meetingDetails.participants) {
       if (participant.account_address) {
         tasks.push(
@@ -139,7 +162,7 @@ export const ExternalCalendarSync = {
     await Promise.all(tasks)
   },
   update: async (meetingDetails: MeetingCreationSyncRequest) => {
-    const tasks: Promise<any>[] = []
+    const tasks = []
     for (const participant of meetingDetails.participants) {
       if (participant.account_address) {
         tasks.push(

@@ -20,11 +20,10 @@ export default function LogoutPage() {
   const params = new URLSearchParams(query as Record<string, string>)
   const { logged } = useContext(AccountContext)
   const queryString = params.toString()
+  const ACCEPT_URL = `/dashboard/${EditMode.CONTACTS}?${queryString}&intent=${Intents.ACCEPT_CONTACT}`
   useEffect(() => {
     if (logged) {
-      void push(
-        `/dashboard/${EditMode.CONTACTS}?${queryString}&intent=${Intents.ACCEPT_CONTACT}`
-      )
+      void push(ACCEPT_URL)
     }
   }, [logged])
 
@@ -59,13 +58,9 @@ export default function LogoutPage() {
         <Button
           onClick={() => {
             if (logged) {
-              push(
-                `/dashboard/${EditMode.CONTACTS}?${queryString}&intent=${Intents.ACCEPT_CONTACT}`
-              )
+              void push(ACCEPT_URL)
             } else {
-              openConnection(
-                `/dashboard/${EditMode.CONTACTS}?${queryString}&intent=${Intents.ACCEPT_CONTACT}`
-              )
+              openConnection(ACCEPT_URL)
             }
           }}
           colorScheme="primary"

@@ -23,16 +23,16 @@ import {
   generateIcs,
 } from './calendar_manager'
 import { appUrl } from './constants'
+import { MeetingPermissions } from './constants/schedule'
 import { mockEncrypted } from './cryptography'
+import { getOwnerPublicUrlServer } from './database'
 import { getAllParticipantsDisplayName } from './user_manager'
 
-const FROM = 'Meetwith <notifications@meetwith.xyz>'
+const FROM = process.env.FROM_MAIL!
 
 import { CreateEmailOptions, Resend } from 'resend'
 
 import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'
-
-import { MeetingPermissions } from './constants/schedule'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const defaultResendOptions = {
@@ -40,6 +40,39 @@ const defaultResendOptions = {
   headers: {
     'List-Unsubscribe': `<${appUrl}/dashboard/${EditMode.NOTIFICATIONS}>`,
   },
+}
+
+// Helper function to generate change URL for meeting emails
+const generateChangeUrl = async (
+  destinationAccountAddress: string | undefined,
+  ownerAccountAddress: string | undefined,
+  slot_id: string,
+  participantType: ParticipantType,
+  participants?: ParticipantInfo[],
+  meetingTypeId?: string,
+  guestInfoEncrypted?: string
+): Promise<string | undefined> => {
+  // For guests, only scheduler gets reschedule link
+  if (!destinationAccountAddress) {
+    return ownerAccountAddress
+      ? participantType === ParticipantType.Scheduler
+        ? `${await getOwnerPublicUrlServer(
+            ownerAccountAddress,
+            meetingTypeId
+          )}?slotId=${slot_id}&metadata=${encodeURIComponent(
+            guestInfoEncrypted || ''
+          )}`
+        : undefined
+      : `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
+  }
+
+  const isGuestScheduling = participants?.some(p => !p.account_address)
+
+  if (isGuestScheduling && participantType === ParticipantType.Owner) {
+    return undefined
+  }
+
+  return `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
 }
 export const newGroupInviteEmail = async (
   toEmail: string,
@@ -126,7 +159,8 @@ export const newMeetingEmail = async (
   end: Date,
   meeting_id: string,
   slot_id: string,
-  destinationAccountAddress: string | undefined,
+  meetingTypeId?: string,
+  destinationAccountAddress?: string,
   meetingUrl?: string,
   title?: string,
   description?: string,
@@ -148,6 +182,22 @@ export const newMeetingEmail = async (
     !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
     isSchedulerOrOwner
 
+  // Find the owner's account address for generating the public calendar URL
+  const ownerParticipant = participants.find(
+    p => p.type === ParticipantType.Owner
+  )
+  const ownerAccountAddress = ownerParticipant?.account_address
+
+  const changeUrl = await generateChangeUrl(
+    destinationAccountAddress,
+    ownerAccountAddress,
+    slot_id,
+    participantType,
+    participants,
+    meetingTypeId,
+    guestInfoEncrypted
+  )
+
   const locals = {
     participantsDisplay: getAllParticipantsDisplayName(
       participants,
@@ -161,9 +211,8 @@ export const newMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    // Only include reschedule link for guests
+    changeUrl,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted
@@ -218,9 +267,7 @@ export const newMeetingEmail = async (
     },
     destinationAccountAddress || '',
     MeetingChangeType.CREATE,
-    destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    changeUrl,
     false,
     destinationAccountAddress
       ? {
@@ -365,7 +412,8 @@ export const updateMeetingEmail = async (
   end: Date,
   meeting_id: string,
   slot_id: string,
-  destinationAccountAddress: string | undefined,
+  meetingTypeId?: string,
+  destinationAccountAddress?: string,
   meetingUrl?: string,
   title?: string,
   description?: string,
@@ -389,6 +437,23 @@ export const updateMeetingEmail = async (
     meetingPermissions === undefined ||
     !!meetingPermissions?.includes(MeetingPermissions.SEE_GUEST_LIST) ||
     isSchedulerOrOwner
+
+  // Find the owner's account address for generating the public calendar URL
+  const ownerParticipant = participants.find(
+    p => p.type === ParticipantType.Owner
+  )
+  const ownerAccountAddress = ownerParticipant?.account_address
+
+  const changeUrl = await generateChangeUrl(
+    destinationAccountAddress,
+    ownerAccountAddress,
+    slot_id,
+    participantType,
+    participants,
+    meetingTypeId,
+    guestInfoEncrypted
+  )
+
   const email = new Email()
   const newDuration = differenceInMinutes(end, start)
   const oldDuration = changes?.dateChange
@@ -412,9 +477,8 @@ export const updateMeetingEmail = async (
       title,
       description,
     },
-    changeUrl: destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    // Only include reschedule link for guests
+    changeUrl,
     cancelUrl: destinationAccountAddress
       ? `${appUrl}/dashboard/meetings?slotId=${slot_id}&intent=${Intents.CANCEL_MEETING}`
       : guestInfoEncrypted
@@ -476,9 +540,7 @@ export const updateMeetingEmail = async (
     },
     destinationAccountAddress || '',
     MeetingChangeType.UPDATE,
-    destinationAccountAddress
-      ? `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      : undefined,
+    changeUrl,
     false,
     destinationAccountAddress
       ? {
@@ -585,7 +647,8 @@ export const sendInvitationEmail = async (
 export const sendContactInvitationEmail = async (
   toEmail: string,
   inviterName: string,
-  invitationLink: string
+  invitationLink: string,
+  declineLink: string
 ): Promise<void> => {
   const email = new Email({
     views: {
@@ -606,6 +669,7 @@ export const sendContactInvitationEmail = async (
   const locals = {
     inviterName,
     invitationLink,
+    declineLink,
   }
 
   try {
@@ -617,7 +681,9 @@ export const sendContactInvitationEmail = async (
       from: FROM,
       subject: subject,
       html: rendered,
-      text: `${inviterName} invited as a contact. Accept your invite here: ${invitationLink}`,
+      text: `${inviterName} invited you to join their contact list on MeetWith.
+            Click here to accept the invitation: ${invitationLink}
+          If you weren’t expecting this, you can safely ignore this email.`,
       tags: [
         {
           name: 'contact',

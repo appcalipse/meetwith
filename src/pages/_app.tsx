@@ -7,11 +7,15 @@ import cookie from 'cookie'
 import setDefaultOptions from 'date-fns/setDefaultOptions'
 import type { AppContext, AppInitialProps, AppProps } from 'next/app'
 import App from 'next/app'
+import posthog from 'posthog-js'
+import { PostHogProvider } from 'posthog-js/react'
 import * as React from 'react'
 import { ThirdwebProvider } from 'thirdweb/react'
 
 import { Head } from '@/components/Head'
 import { ConnectModal } from '@/components/nav/ConnectModal'
+import RedirectHandler from '@/components/redirect'
+import RedirectNotifier from '@/components/redirect/RedirectNotifier'
 import { BaseLayout } from '@/layouts/Base'
 import { AccountProvider } from '@/providers/AccountProvider'
 import { OnboardingModalProvider } from '@/providers/OnboardingModalProvider'
@@ -66,25 +70,29 @@ function MyApp({
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={true} />
-      )}
-      <ThirdwebProvider>
-        <OnboardingModalProvider>
-          <AccountProvider
-            currentAccount={currentAccount}
-            logged={!!currentAccount}
-          >
-            <Head />
-            <BaseLayout consentCookie={consentCookie ?? false}>
-              <Component {...customProps} />
-            </BaseLayout>
-            <ConnectModal />
-          </AccountProvider>
-        </OnboardingModalProvider>
-      </ThirdwebProvider>
-    </QueryClientProvider>
+    <PostHogProvider client={posthog}>
+      <QueryClientProvider client={queryClient}>
+        {process.env.NODE_ENV === 'development' && (
+          <ReactQueryDevtools initialIsOpen={true} />
+        )}
+        <ThirdwebProvider>
+          <OnboardingModalProvider>
+            <AccountProvider
+              currentAccount={currentAccount}
+              logged={!!currentAccount}
+            >
+              <Head />
+              <RedirectNotifier />
+              <BaseLayout consentCookie={consentCookie ?? false}>
+                <RedirectHandler />
+                <Component {...customProps} />
+              </BaseLayout>
+              <ConnectModal />
+            </AccountProvider>
+          </OnboardingModalProvider>
+        </ThirdwebProvider>
+      </QueryClientProvider>
+    </PostHogProvider>
   )
 }
 

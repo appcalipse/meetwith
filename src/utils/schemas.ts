@@ -7,7 +7,7 @@ import { z } from 'zod'
 
 // Meeting Types
 
-export const createMeetingSchema = z.object({
+export const baseMeetingSchema = z.object({
   title: z.string().min(1, 'Title is required'), // Required string
   description: z
     .string()
@@ -27,16 +27,16 @@ export const createMeetingSchema = z.object({
       'Slug must be alphanumeric with dashes'
     )
     .optional(), // Optional slug
-  custom_link: z.string().url('Invalid custom link URL').optional(), // Optional custom link URL
+  custom_link: z.preprocess(
+    val => (val === '' ? undefined : val),
+    z.string().url('Invalid custom link URL').optional()
+  ), // Optional custom link URL
   fixed_link: z.boolean().optional(), // Optional boolean for fixed link
   availability_ids: z.array(z.string()).min(1, {
     message: 'At least one availability block must be selected.',
   }),
 
-  calendars: z
-    .array(z.number())
-    .min(1, 'At least one calendar must be selected')
-    .optional(), // Array of calendar IDs
+  calendars: z.array(z.number()).optional(), // Array of calendar IDs
 
   plan: z
     .object({
@@ -66,6 +66,17 @@ export const createMeetingSchema = z.object({
     .optional(), // Plan object is optional
 })
 
+export const createMeetingSchema = baseMeetingSchema.superRefine(
+  (data, ctx) => {
+    if (data.fixed_link && !data.custom_link) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Custom link is required when fixed link is enabled',
+        path: ['custom_link'], // Attach error to custom_link field
+      })
+    }
+  }
+)
 export type SchemaKeys = keyof z.infer<typeof createMeetingSchema>
 export type PlanKeys = NonNullable<z.infer<typeof createMeetingSchema>['plan']>
 
@@ -143,13 +154,13 @@ export const validateField = /*<T, J>*/ (
     if (isPlanFieldKey(field)) {
       const [topField, subField] = field.split('.') as ['plan', keyof PlanKeys]
 
-      const planSchema = createMeetingSchema.shape[topField]
+      const planSchema = baseMeetingSchema.shape[topField]
         .unwrap()
         .pick({ [subField]: true } as { [K in keyof PlanKeys]?: true })
 
       planSchema.parse({ [subField]: value })
     } else {
-      createMeetingSchema
+      baseMeetingSchema
         .pick({ [field]: true } as Partial<Record<SchemaKeys, true>>)
         .parse({ [field]: value })
     }

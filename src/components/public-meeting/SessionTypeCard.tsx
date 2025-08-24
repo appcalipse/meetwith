@@ -1,4 +1,12 @@
-import { Button, Heading, Tag, Text, VStack } from '@chakra-ui/react'
+import {
+  Button,
+  Heading,
+  Tag,
+  Text,
+  Tooltip,
+  useColorModeValue,
+  VStack,
+} from '@chakra-ui/react'
 import { PublicScheduleContext } from '@components/public-meeting/index'
 import { MeetingType } from '@meta/Account'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
@@ -9,19 +17,18 @@ type IProps = MeetingType
 const SessionTypeCard: FC<IProps> = props => {
   const { handleSetSelectedType } = useContext(PublicScheduleContext)
   const [loading, setLoading] = useState(false)
+  const bgColor = useColorModeValue('white', 'neutral.825')
+  const borderColor = useColorModeValue('neutral.200', 'neutral.825')
   const handleSelect = async () => {
     setLoading(true)
-    await handleSetSelectedType(
-      props,
-      props?.plan
-        ? PublicSchedulingSteps.PAY_FOR_SESSION
-        : PublicSchedulingSteps.BOOK_SESSION
-    )
+    await handleSetSelectedType(props, PublicSchedulingSteps.BOOK_SESSION)
     setLoading(false)
   }
   return (
     <VStack
-      bg={'neutral.825'}
+      border={'1px solid'}
+      borderColor={borderColor}
+      bg={bgColor}
       flexBasis={{ base: '100%', md: '49%' }}
       alignItems={'flex-start'}
       p={6}
@@ -29,9 +36,19 @@ const SessionTypeCard: FC<IProps> = props => {
       gap={4}
     >
       <VStack gap={2} alignItems={'flex-start'} w={'100%'}>
-        <Heading fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}>
-          {props.title}
-        </Heading>
+        <Tooltip label={props.title}>
+          <Heading
+            fontSize={{ base: 'lg', md: 'xl', lg: '2xl' }}
+            maxW={{ '2xl': '400px', lg: 270, xl: 300, base: 200 }}
+            w="fit-content"
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            cursor={'pointer'}
+          >
+            {props.title}
+          </Heading>
+        </Tooltip>
         <Text>{props?.duration_minutes} mins per session</Text>
       </VStack>
       <Tag bg="green.500" px={2} color="black" rounded={'full'} fontSize={'sm'}>

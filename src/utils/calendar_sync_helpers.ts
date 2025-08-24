@@ -19,6 +19,7 @@ import { getAccountDisplayName } from '@utils/user_manager'
 import { calendar_v3 } from 'googleapis'
 import { v4 as uuidv4 } from 'uuid'
 
+import { NO_MEETING_TYPE } from './constants/meeting-types'
 import {
   findAccountByIdentifier,
   getAccountFromDB,
@@ -295,7 +296,7 @@ const updateMeetingServer = async (
   )
   const meetingData = await buildMeetingData(
     SchedulingType.REGULAR,
-    'no_type',
+    NO_MEETING_TYPE,
     startTime,
     endTime,
     participantData.sanitizedParticipants,
