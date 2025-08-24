@@ -186,7 +186,7 @@ const ContactRejectInviteModal: React.FC<IContactRejectInviteModal> = props => {
         <ModalBody p={'0'} mt={'2'}>
           <Box px={6} pb={2}>
             <Text size={'sm'}>
-              You are about to deny this connection request, this will mean
+              You are about to decline this connection request, this will mean
               losing this connection
             </Text>
             {selectedContact && (
