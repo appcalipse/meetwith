@@ -8,7 +8,6 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { isProduction } from '@utils/constants'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo } from 'react'
 import { IconType } from 'react-icons'
@@ -70,17 +69,12 @@ export const NavMenu: React.FC<{
         mode: EditMode.GROUPS,
         badge: noOfInvitedGroups,
       },
-      // Hide "My Contacts" in production
-      ...(!isProduction
-        ? [
-            {
-              name: 'My Contacts',
-              icon: FaUserGroup,
-              mode: EditMode.CONTACTS,
-              badge: requestCount,
-            },
-          ]
-        : []),
+      {
+        name: 'My Contacts',
+        icon: FaUserGroup,
+        mode: EditMode.CONTACTS,
+        badge: requestCount,
+      },
       {
         name: 'Session Settings',
         icon: FaCalendarWeek,

@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronDownIcon } from '@chakra-ui/icons'
+import { CheckIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
@@ -26,7 +26,7 @@ import { InviteType } from '@/types/Dashboard'
 import { GroupInvitePayload, MemberType } from '@/types/Group'
 import { InvitedUser } from '@/types/ParticipantInfo'
 import { getExistingAccounts, inviteUsers } from '@/utils/api_helper'
-import { appUrl, isProduction } from '@/utils/constants'
+import { appUrl } from '@/utils/constants'
 import { handleApiError } from '@/utils/error_helper'
 import { ContactNotFound } from '@/utils/errors'
 import {
@@ -327,28 +327,26 @@ const GroupInviteForm: FC<InviteModalProps> = ({
               Press enter. No need to add yourself.
             </Text>
           </FormControl>
-          {!isProduction && (
-            <FormControl>
-              <FormLabel display="flex" alignItems="center">
-                Add from Contact list
-              </FormLabel>
-              <HStack
-                onClick={onOpen}
-                borderColor="neutral.400"
-                borderWidth={1}
-                cursor="pointer"
-                color="neutral.400"
-                justifyContent="space-between"
-                borderRadius="0.375rem"
-                height={10}
-                fontSize="16"
-                px={4}
-              >
-                <Text userSelect="none">Select member</Text>
-                <Icon as={FaChevronDown} w={4} h={4} />
-              </HStack>
-            </FormControl>
-          )}
+          <FormControl>
+            <FormLabel display="flex" alignItems="center">
+              Add from Contact list
+            </FormLabel>
+            <HStack
+              onClick={onOpen}
+              borderColor="neutral.400"
+              borderWidth={1}
+              cursor="pointer"
+              color="neutral.400"
+              justifyContent="space-between"
+              borderRadius="0.375rem"
+              height={10}
+              fontSize="16"
+              px={4}
+            >
+              <Text userSelect="none">Select member</Text>
+              <Icon as={FaChevronDown} w={4} h={4} />
+            </HStack>
+          </FormControl>
           <InvitedUsersList
             users={invitedUsers}
             removeUser={removeUser}
