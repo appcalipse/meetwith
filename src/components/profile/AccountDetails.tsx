@@ -21,10 +21,15 @@ import {
   useToast,
 } from '@chakra-ui/react'
 import { Textarea } from '@chakra-ui/textarea'
+import { Avatar } from '@components/profile/components/Avatar'
+import EditImageModal from '@components/profile/components/EditImageModal'
 import * as Sentry from '@sentry/nextjs'
+import { handleApiError } from '@utils/error_helper'
+import { readFile } from '@utils/image-utils'
+import { ellipsizeAddress } from '@utils/user_manager'
 import { differenceInMonths, format } from 'date-fns'
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
 
@@ -89,6 +94,15 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [couponCode, setCouponCode] = useState('')
   const [couponDuration, setCouponDuration] = useState(0)
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
+    currentAccount?.preferences?.avatar_url
+  )
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | undefined>()
+  const {
+    isOpen: isEditImageModalOpen,
+    onOpen: openEditImageModal,
+    onClose: closeEditImageModal,
+  } = useDisclosure()
   const [name, setName] = useState<DisplayName | undefined>(
     currentAccount?.preferences?.name
       ? {
@@ -135,6 +149,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
         : undefined
     )
     setNewProDomain(currentAccount?.subscriptions?.[0]?.domain ?? '')
+    setAvatarUrl(currentAccount?.preferences?.avatar_url || undefined)
   }
 
   const updateAccountSubs = async () => {
@@ -263,7 +278,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       logEvent('Updated account details')
       login(updatedAccount)
     } catch (e) {
-      //TODO handle error
+      handleApiError('Error Updating Profile', e)
       console.error(e)
     } finally {
       reloadOnboardingInfo()
@@ -402,7 +417,30 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const subscription = currentAccount?.subscriptions?.find(
     sub => new Date(sub.expiry_time) > new Date()
   )
-
+  const handleSelectFile = async () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/jpeg, image/png, image/webp'
+    input.onchange = async e => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      setLoading(true)
+      try {
+      } catch (error) {
+        console.error('Error uploading image:', error)
+      } finally {
+        setLoading(false)
+      }
+      const blob = new Blob([file], {
+        type: file.type,
+      })
+      const imageDataUrl = await readFile(file)
+      setSelectedImageUrl(imageDataUrl)
+      openEditImageModal()
+      // console.log({ imageDataUrl })
+    }
+    input.click()
+  }
   return (
     <VStack gap={4} mb={8} alignItems="start" flex={1}>
       <Block>
@@ -410,8 +448,42 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
           <Heading fontSize="2xl" mb={4}>
             Account Details
           </Heading>
-
+          <EditImageModal
+            imageSrc={selectedImageUrl}
+            isDialogOpen={isEditImageModalOpen}
+            onDialogClose={closeEditImageModal}
+            accountAddress={currentAccount?.address}
+            changeAvatar={avatar => {
+              setAvatarUrl(avatar)
+              currentAccount.preferences.avatar_url = avatar
+              login(currentAccount)
+            }}
+          />
           <FormControl pt={2}>
+            <HStack width="100%" textAlign="center" mb={6}>
+              <Box width="64px" height="64px">
+                <Avatar account={currentAccount} url={avatarUrl} />
+              </Box>
+
+              <VStack ml={2} flex={1} alignItems="flex-start">
+                <Text fontSize="lg" fontWeight={500}>
+                  {name?.label || ellipsizeAddress(currentAccount.address)}
+                </Text>
+                <Button
+                  flex={1}
+                  colorScheme="primary"
+                  variant={'link'}
+                  px={0}
+                  style={{
+                    display: 'flex',
+                  }}
+                  onClick={handleSelectFile}
+                  textDecoration="underline"
+                >
+                  Edit profile picture
+                </Button>
+              </VStack>
+            </HStack>
             <FormLabel>
               Calendar link
               <Tooltip text="Other users can book meetings with you through this personal domain" />

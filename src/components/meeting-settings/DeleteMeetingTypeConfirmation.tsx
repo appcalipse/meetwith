@@ -12,6 +12,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { removeMeetingType } from '@utils/api_helper'
 import { handleApiError } from '@utils/error_helper'
 import { ApiFetchError, LastMeetingTypeError } from '@utils/errors'
@@ -26,11 +27,15 @@ interface IProps {
 const DeleteMeetingTypeConfirmation: FC<IProps> = props => {
   const [isDeleting, setIsDeleting] = React.useState(false)
   const toast = useToast()
+  const queryClient = useQueryClient()
   const handleDeleteSessionType = async () => {
     setIsDeleting(true)
     try {
       if (props.meetingTypeId) {
         await removeMeetingType(props.meetingTypeId)
+        queryClient.invalidateQueries({
+          queryKey: ['availabilityBlockMeetingTypes'],
+        })
         await props.refetch()
         props.onClose()
       }

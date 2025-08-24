@@ -18,7 +18,6 @@ import {
   FaCalendarPlus,
   FaCalendarWeek,
   FaCog,
-  FaDoorClosed,
   FaSignOutAlt,
 } from 'react-icons/fa'
 import { FaUserGroup } from 'react-icons/fa6'
@@ -103,7 +102,7 @@ export const NavMenu: React.FC<{
         mode: EditMode.SIGNOUT,
       },
     ],
-    [noOfInvitedGroups]
+    [noOfInvitedGroups, requestCount]
   )
   const handleEmptyGroupCheck = async () => {
     const emptyGroups = await getGroupsEmpty()

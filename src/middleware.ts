@@ -1,3 +1,4 @@
+import { captureException } from '@sentry/nextjs'
 import { getIronSession } from 'iron-session/edge'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -19,14 +20,18 @@ export const sessionOptions = {
 }
 
 export function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith('/api/secure')) {
-    return handleSecureRoute(request)
-  }
+  try {
+    if (request.nextUrl.pathname.startsWith('/api/secure')) {
+      return handleSecureRoute(request)
+    }
 
-  if (request.nextUrl.pathname.startsWith('/api/server')) {
-    return handleServerRoute(request)
+    if (request.nextUrl.pathname.startsWith('/api/server')) {
+      return handleServerRoute(request)
+    }
+  } catch (e) {
+    captureException(e)
+    return notAuthorized()
   }
-
   return NextResponse.next()
 }
 
@@ -44,7 +49,7 @@ const handleSecureRoute = async (req: NextRequest) => {
 
   const session = await getIronSession(req, res, sessionOptions)
 
-  if (!session?.account) return notAuthorized
+  if (!session?.account) return notAuthorized()
 
   const response = await fetch(`${apiUrl}/server/accounts/check`, {
     method: 'POST',

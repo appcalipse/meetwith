@@ -3,7 +3,6 @@ import { EditMode } from '@meta/Dashboard'
 import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
-import RedirectHandler from '@/components/redirect'
 import { AccountContext } from '@/providers/AccountProvider'
 import ContactStateProvider from '@/providers/ContactInvitesProvider'
 
@@ -53,7 +52,6 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
         maxWidth="100%"
         justifyContent="space-between"
       >
-        <RedirectHandler />
         <Box
           flex={{ base: '0', lg: '4' }}
           mr={{ base: 0, lg: 18 }}

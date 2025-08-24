@@ -1,6 +1,5 @@
+import { getExistingAccountsFromDB } from '@utils/database'
 import { NextApiRequest, NextApiResponse } from 'next'
-
-import { getExistingAccountsFromDB } from '../../../utils/database'
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {

@@ -133,8 +133,18 @@ export class GateConditionNotValidError extends Error {
 
 export class MeetingChangeConflictError extends Error {
   constructor() {
-    super(`Somebody edited the meeting before you.`)
+    super(
+      `Somebody edited the meeting before you, Please refresh the page to get the latest status.`
+    )
     this.name = 'MeetingChangeConflictError'
+  }
+}
+export class MeetingCancelConflictError extends Error {
+  constructor() {
+    super(
+      `Somebody else cancelled the meeting before you. Please refresh the page to get the latest status.`
+    )
+    this.name = 'MeetingCancelConflictError'
   }
 }
 
@@ -311,8 +321,8 @@ export class AvailabilityBlockNotFoundError extends Error {
 }
 
 export class DefaultAvailabilityBlockError extends Error {
-  constructor() {
-    super('Cannot delete the default availability block')
+  constructor(message?: string) {
+    super(message || 'Cannot delete the default availability block')
     this.name = 'DefaultAvailabilityBlockError'
   }
 }
@@ -386,5 +396,19 @@ export class MeetingSlugAlreadyExists extends Error {
   constructor(slug: string) {
     super(`Custom booking link path ${slug} already exists`)
     this.name = 'MeetingSlugAlreadyExists'
+  }
+}
+
+export class UploadError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UploadError'
+  }
+}
+
+export class GuestRescheduleForbiddenError extends Error {
+  constructor() {
+    super('Only the scheduler can reschedule this meeting.')
+    this.name = 'GuestRescheduleForbiddenError'
   }
 }
