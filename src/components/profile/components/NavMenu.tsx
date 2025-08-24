@@ -8,7 +8,6 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { isProduction } from '@utils/constants'
 import { useRouter } from 'next/router'
 import React, { useContext, useEffect, useMemo } from 'react'
 import { IconType } from 'react-icons'
