@@ -6,6 +6,7 @@ import React, { FC } from 'react'
 
 import { Contact } from '@/types/Contacts'
 import { removeContact, sendContactListInvite } from '@/utils/api_helper'
+import { appUrl } from '@/utils/constants'
 import { ContactStatus } from '@/utils/constants/contact'
 import {
   AccountNotFoundError,
@@ -147,7 +148,7 @@ const ContactListItem: FC<Props> = ({ account, index, sync, refetch }) => {
           <Button
             colorScheme="primary"
             onClick={() => {
-              push(`/dashboard/schedule?ref=contact&contactId=${account.id}`)
+              push(`${appUrl}/${account.domain || account.address}`)
             }}
           >
             Schedule
