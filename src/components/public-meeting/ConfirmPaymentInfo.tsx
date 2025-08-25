@@ -338,7 +338,7 @@ const ConfirmPaymentInfo = () => {
             )
             const preparedOnramp = await Bridge.Onramp.prepare({
               client: thirdWebClient,
-              onramp: 'stripe',
+              onramp: 'transak',
               chainId: chain?.id,
               tokenAddress: NATIVE_TOKEN_ADDRESS,
               receiver: (selectedType?.plan?.payment_address ||
