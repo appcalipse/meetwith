@@ -84,7 +84,7 @@ const EditGroupSlugModal: React.FC<IEditGroupNameModal> = props => {
                 borderColor="neutral.400 !important"
                 pr={0}
               >
-                meetwithwallet.xyz/
+                meetwith.xyz/
               </InputLeftAddon>
               <Input
                 placeholder="my-group-name"

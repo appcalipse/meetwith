@@ -38,7 +38,7 @@ export const Head: React.FC<Partial<HeadProps>> = props => {
       />
       <meta
         property="twitter:domain"
-        content="meetwithwallet.xyz"
+        content="meetwith.xyz"
         key="twitter:domain"
       />
       <meta property="twitter:url" content={url} key="twitter:url" />
