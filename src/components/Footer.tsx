@@ -100,7 +100,7 @@ export default function SmallWithLogoLeft() {
             }}
           >
             <Link
-              href="mailto:contact@meetwithwallet.xyz"
+              href="mailto:contact@meetwith.xyz"
               isExternal
               color={'inherit'}
             >
@@ -128,7 +128,7 @@ export default function SmallWithLogoLeft() {
             }}
           >
             <Link
-              href="mailto:contact@meetwithwallet.xyz"
+              href="mailto:contact@meetwith.xyz"
               color={'inherit'}
               isExternal
             >
@@ -137,10 +137,7 @@ export default function SmallWithLogoLeft() {
           </Text>
         </HStack>
         <Stack direction={'row'} spacing={6}>
-          <SocialButton
-            label={'Eamil'}
-            href={'mailto:contact@meetwithwallet.xyz'}
-          >
+          <SocialButton label={'Eamil'} href={'mailto:contact@meetwith.xyz'}>
             <FaEnvelope size={22} />
           </SocialButton>
           <SocialButton label={'Twitter'} href={'https://x.com/meetwithhq'}>
