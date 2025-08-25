@@ -53,6 +53,7 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   MultipleSchedulersError,
+  ServiceUnavailableError,
   TimeNotAvailableError,
   TransactionIsRequired,
   UrlCreationError,
@@ -80,6 +81,7 @@ import {
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
 import { decryptContent } from '@/utils/cryptography'
+import { handleApiError } from '@/utils/error_helper'
 import { isJson } from '@/utils/generic_utils'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
@@ -1009,6 +1011,16 @@ const PublicPage: FC<IProps> = props => {
         toast({
           title: "Ops! Can't do that",
           description: e.message,
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
+      } else if (e instanceof ServiceUnavailableError) {
+        toast({
+          title: 'Service Unavailable',
+          description:
+            'We’re having trouble connecting at the moment. Please try again shortly.',
           status: 'error',
           duration: 5000,
           position: 'top',
