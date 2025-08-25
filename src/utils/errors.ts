@@ -418,3 +418,12 @@ export class MeetingSessionNotFoundError extends Error {
     this.name = 'MeetingSessionNotFoundError'
   }
 }
+
+export class ServiceUnavailableError extends Error {
+  constructor() {
+    super(
+      'We’re having trouble connecting at the moment. Please try again shortly.'
+    )
+    this.name = 'Service Unavailable'
+  }
+}
