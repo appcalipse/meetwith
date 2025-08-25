@@ -94,6 +94,7 @@ import {
   MeetingSlugAlreadyExists,
   NoActiveSubscription,
   OwnInviteError,
+  ServiceUnavailableError,
   SubscriptionNotCustom,
   TimeNotAvailableError,
   TransactionCouldBeNotFoundError,
@@ -146,6 +147,9 @@ export const internalFetch = async <T>(
       e.status === 404
     ) {
       Sentry.captureException(e)
+    } else if (e instanceof ApiFetchError && e.status === 504) {
+      Sentry.captureException(e)
+      throw new ServiceUnavailableError()
     }
     throw e
   }
