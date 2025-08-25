@@ -94,7 +94,7 @@ const DiscordBot: NextPage = () => {
                       <ListItem>
                         Invite your community members to create an account in{' '}
                         <Box textDecoration="underline" as="span">
-                          meetwithwallet.xyz
+                          meetwith.xyz
                         </Box>{' '}
                         and connect their Calendar and Discord.
                       </ListItem>

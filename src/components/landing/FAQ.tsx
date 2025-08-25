@@ -40,7 +40,7 @@ const faqs: Faq[] = [
     body: (
       <>
         Check our high-level feature roadmap{' '}
-        <Link href="mailto:contact@meetwithwallet.xyz" target="_blank">
+        <Link href="mailto:contact@meetwith.xyz" target="_blank">
           here
         </Link>{' '}
         and vote on what you want to be done next. You can also be an active
