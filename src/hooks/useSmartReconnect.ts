@@ -46,12 +46,9 @@ export const useSmartReconnect = () => {
     if (!lastKnownWallet) return null
 
     try {
-      const wallet = connect.connect(async () => {
-        // create a wallet instance
+      const wallet = await connect.connect(async () => {
         const wallet = createWallet(lastKnownWallet as WalletId)
-        // trigger the connection
         await wallet.connect({ client: thirdWebClient })
-        // return the wallet
         return wallet
       })
       setNeedsReconnection(false)
