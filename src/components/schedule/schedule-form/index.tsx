@@ -12,6 +12,7 @@ import {
   Switch,
   Text,
   useColorModeValue,
+  useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react'
@@ -28,8 +29,9 @@ import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
 import RichTextEditor from '@/components/profile/components/RichTextEditor'
+import CancelComponent from '@/components/public-meeting/CancelComponent'
 import { OnboardingModalContext } from '@/providers/OnboardingModalProvider'
-import { AccountPreferences, MeetingType } from '@/types/Account'
+import { AccountPreferences } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
 import {
   ParticipantInfo,
@@ -122,7 +124,9 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const query = router.query
   const { account } = useContext(PublicScheduleContext)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [reason, setReason] = useState('')
   const { metadata } = query
+  const { isOpen, onClose, onOpen } = useDisclosure()
   let meetingProviders = selectedType?.meeting_platforms || []
   const PROVIDERS = useMemo(() => {
     return [
@@ -134,6 +138,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
     ]
   }, [])
   meetingProviders = meetingProviders.length > 0 ? meetingProviders : PROVIDERS
+
   useEffect(() => {
     if (selectedType?.custom_link) {
       setMeetingProvider(MeetingProvider.CUSTOM)
@@ -315,7 +320,8 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
           end: rescheduleSlot?.end || new Date(),
           meeting_url: rescheduleSlot?.meeting_url || '',
           participants,
-        } as unknown as MeetingDecrypted)
+        } as unknown as MeetingDecrypted) // add only the needed properties; TODO: Define a custom type only with what's needed on the modal.
+        onClose()
       }
     } catch (error) {
       if (error instanceof MeetingNotFoundError) {
@@ -391,6 +397,18 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
         md: '550px',
       }}
     >
+      {rescheduleSlot && (
+        <CancelComponent
+          isOpen={isOpen}
+          onClose={onClose}
+          isCancelling={isCancelling}
+          handleCancelMeeting={handleCancelMeeting}
+          meeting={rescheduleSlot}
+          reason={reason}
+          setReason={setReason}
+          timezone={timezone.value}
+        />
+      )}
       <FormControl>
         <Flex
           alignItems="center"
@@ -734,7 +752,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
             flex={1}
             isDisabled={isCancelling}
             isLoading={isCancelling}
-            onClick={handleCancelMeeting}
+            onClick={onOpen}
             bg={'orangeButton.800'}
             color={'white'}
           >
