@@ -33,6 +33,7 @@ import React, { useContext, useEffect, useRef, useState } from 'react'
 import { FaTag } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
 
+import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account, SocialLink, SocialLinkType } from '@/types/Account'
@@ -113,6 +114,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
       : undefined
   )
   const wallet = useActiveWallet()
+  const { needsReconnection, attemptReconnection } = useSmartReconnect()
   const [twitter, setTwitter] = useState(
     socialLinks.find((link: SocialLink) => link.type === SocialLinkType.TWITTER)
       ?.url || ''
@@ -329,6 +331,9 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     }
 
     try {
+      if (needsReconnection) {
+        await attemptReconnection()
+      }
       const subscription = currentAccount?.subscriptions?.find(
         sub => new Date(sub.expiry_time) > new Date()
       )
