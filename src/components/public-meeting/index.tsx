@@ -53,6 +53,7 @@ import {
   MeetingCreationError,
   MeetingWithYourselfError,
   MultipleSchedulersError,
+  ServiceUnavailableError,
   TimeNotAvailableError,
   TransactionIsRequired,
   UrlCreationError,
@@ -80,6 +81,7 @@ import {
   MeetingRepeatOptions,
 } from '@/utils/constants/schedule'
 import { decryptContent } from '@/utils/cryptography'
+import { handleApiError } from '@/utils/error_helper'
 import { isJson } from '@/utils/generic_utils'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 
@@ -215,6 +217,8 @@ interface IScheduleContext {
   setLastScheduledMeeting: React.Dispatch<
     React.SetStateAction<MeetingDecrypted | undefined>
   >
+  setShowSlots: React.Dispatch<React.SetStateAction<boolean>>
+  showSlots: boolean
 }
 
 const baseState: IContext = {
@@ -310,6 +314,8 @@ const scheduleBaseState: IScheduleContext = {
   meetingSlotId: undefined,
   setIsCancelled: () => {},
   setLastScheduledMeeting: () => {},
+  setShowSlots: () => {},
+  showSlots: false,
 }
 
 export const PublicScheduleContext = React.createContext<IContext>(baseState)
@@ -372,6 +378,7 @@ const PublicPage: FC<IProps> = props => {
   const [pickedDay, setPickedDay] = useState<Date | null>(null)
   const [pickedTime, setPickedTime] = useState<Date | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showSlots, setShowSlots] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
   const [showTimeNotAvailable, setShowTimeNotAvailable] = useState(false)
   const [busySlots, setBusySlots] = useState<Interval[]>([])
@@ -649,6 +656,7 @@ const PublicPage: FC<IProps> = props => {
           setCurrentMonth(pickedTimeDate)
           setSelectedMonth(pickedTimeDate)
           setPickedDay(pickedTimeDate)
+          setShowSlots(true)
           setShowConfirm(true)
         }
       } catch (error) {
@@ -709,6 +717,7 @@ const PublicPage: FC<IProps> = props => {
     setSelectedMonth(new Date())
     setCurrentMonth(new Date())
     setIsScheduling(false)
+    setShowSlots(false)
     setPickedDay(null)
     setPickedTime(null)
     setShowConfirm(false)
@@ -1007,6 +1016,16 @@ const PublicPage: FC<IProps> = props => {
           position: 'top',
           isClosable: true,
         })
+      } else if (e instanceof ServiceUnavailableError) {
+        toast({
+          title: 'Service Unavailable',
+          description:
+            'We’re having trouble connecting at the moment. Please try again shortly.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        })
       } else if (e instanceof TimeNotAvailableError) {
         if (selectedType?.plan) {
           setShowTimeNotAvailable(true)
@@ -1182,6 +1201,8 @@ const PublicPage: FC<IProps> = props => {
     meetingSlotId,
     setIsCancelled,
     setLastScheduledMeeting,
+    setShowSlots,
+    showSlots,
   }
   const renderStep = () => {
     switch (currentStep) {

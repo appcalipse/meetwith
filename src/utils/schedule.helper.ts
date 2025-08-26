@@ -37,7 +37,7 @@ export const getMergedParticipants = (
                 account_address: groupMember.address,
                 name: groupMember.displayName,
                 type: ParticipantType.Invitee,
-                status: ParticipationStatus.Accepted,
+                status: ParticipationStatus.Pending,
                 meeting_id: '',
               }
             }

@@ -311,28 +311,8 @@ export default class Office365CalendarService
     const slot_id = details.participants.filter(
       p => p.account_address === calendarOwnerAccountAddress
     )[0].slot_id
-
-    // Determine the correct URL format
     const hasGuests = details.participants.some(p => p.guest_email)
-    let changeUrl: string
-
-    if (hasGuests) {
-      // For meetings with guests, use public calendar URL format
-      const ownerParticipant = details.participants.find(
-        p => p.type === ParticipantType.Owner
-      )
-      const ownerAddress = ownerParticipant?.account_address
-      if (ownerAddress) {
-        changeUrl = `${appUrl}/address/${ownerAddress}?slot=${slot_id}`
-      } else {
-        changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-      }
-    } else {
-      // For regular users, use dashboard format
-      changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
-    }
-
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       subject: CalendarServiceHelper.getMeetingTitle(
         calendarOwnerAccountAddress,
         participantsInfo,
@@ -343,7 +323,8 @@ export default class Office365CalendarService
         content: CalendarServiceHelper.getMeetingSummary(
           details.content,
           details.meeting_url,
-          changeUrl
+          `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`,
+          hasGuests
         ),
       },
       start: {
