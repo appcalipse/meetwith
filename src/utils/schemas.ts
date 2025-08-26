@@ -5,6 +5,8 @@ import {
 } from '@utils/constants/meeting-types'
 import { z } from 'zod'
 
+import { MeetingProvider } from '@/types/Meeting'
+
 // Meeting Types
 
 export const baseMeetingSchema = z.object({
@@ -34,6 +36,9 @@ export const baseMeetingSchema = z.object({
   fixed_link: z.boolean().optional(), // Optional boolean for fixed link
   availability_ids: z.array(z.string()).min(1, {
     message: 'At least one availability block must be selected.',
+  }),
+  meeting_platforms: z.array(z.string()).min(1, {
+    message: 'At least one meeting platform must be selected.',
   }),
 
   calendars: z.array(z.number()).optional(), // Array of calendar IDs

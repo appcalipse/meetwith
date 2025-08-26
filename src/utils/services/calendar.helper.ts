@@ -57,10 +57,10 @@ export const CalendarServiceHelper = {
   ) {
     let message = ''
     if (meetingDescription) {
-      message += `${this.convertHtmlToPlainText(meetingDescription)}\n\n`
+      message += `${this.convertHtmlToPlainText(meetingDescription)}`
     }
 
-    const meetingLocationText = `Your meeting will happen at ${
+    const meetingLocationText = `\n\nYour meeting will happen at ${
       meeting_url ? meeting_url : 'Meetwith'
     }`
 

@@ -49,22 +49,7 @@ const extractSlotIdFromDescription = (description: string): string | null => {
 const extractMeetingDescription = (summaryMessage: string): string | null => {
   const sections = summaryMessage.split('\n\n')
 
-  if (sections.length >= 2) {
-    const lastSection = sections.slice(2)
-
-    if (!lastSection.includes('To reschedule or cancel the meeting')) {
-      return lastSection.join('\n\n').trim()
-    }
-  }
-
-  if (sections.length === 3) {
-    const middleSection = sections[1]
-    if (!middleSection.includes('To reschedule or cancel the meeting')) {
-      return middleSection.trim()
-    }
-  }
-
-  return null
+  return sections[0]
 }
 const getParticipationStatus = (responseStatus: string | undefined) => {
   switch (responseStatus) {
@@ -132,6 +117,7 @@ const mapRelatedSlotsWithDBRecords = async (existingSlots: Array<DBSlot>) => {
   }
   return accountSlot
 }
+
 const updateMeetingServer = async (
   meetingId: string,
   currentAccountAddress: string,
@@ -160,15 +146,15 @@ const updateMeetingServer = async (
   const meetingRepeat = existingMeeting.recurrence
   const selectedPermissions = existingMeeting.permissions
   const slotIds = existingMeeting.slots
-  const existingSlot = await getSlotsByIds(slotIds)
-  if (!existingSlot || existingSlot.length === 0) {
+  const existingSlots = await getSlotsByIds(slotIds)
+  if (!existingSlots || existingSlots.length === 0) {
     console.warn(
       `Skipping event ${meetingId.replace('-', '')} due to no slots found`
     )
     return
   }
 
-  const actorSlot = existingSlot.find(
+  const actorSlot = existingSlots.find(
     slot => slot.account_address === currentAccountAddress
   )
   if (!actorSlot) {
@@ -194,17 +180,53 @@ const updateMeetingServer = async (
     throw new MeetingDetailsModificationDenied()
   }
 
-  const existingMeetingAccounts = existingSlot.map(slot =>
+  const existingMeetingAccounts = existingSlots.map(slot =>
     slot.account_address.toLowerCase()
   )
 
+  let guestSchedulerExists = false
+  const determineParticipantType = (
+    participant: calendar_v3.Schema$EventAttendee,
+    baseParticipants: calendar_v3.Schema$EventAttendee[],
+    existingMeetingAccounts: DBSlot[],
+    existingSlot?: DBSlot
+  ): ParticipantType => {
+    if (existingSlot?.role) {
+      return existingSlot?.role
+    }
+    if (
+      !existingMeetingAccounts.some(
+        slot => slot.role === ParticipantType.Scheduler
+      ) &&
+      !participant.self &&
+      !guestSchedulerExists
+    ) {
+      guestSchedulerExists = true
+      return ParticipantType.Scheduler
+    }
+
+    return ParticipantType.Invitee
+  }
   // We want a copy we can modify
   const existingMeetingAccountsCopy = [...existingMeetingAccounts]
   const parsedParticipants: Array<ParticipantInfo> = await Promise.all(
     baseParticipants.map(async (val): Promise<ParticipantInfo | undefined> => {
       try {
         // TODO: Get users actual status from their calendar RSVP
-
+        if (!val.email?.includes('meetwith') && !val.self) {
+          return {
+            type: determineParticipantType(
+              val,
+              baseParticipants,
+              existingSlots
+            ),
+            meeting_id: meetingId,
+            slot_id: uuidv4(),
+            status: getParticipationStatus(val.responseStatus || ''),
+            name: val.displayName || val.email || '',
+            guest_email: val.email || '',
+          }
+        }
         const accounts = await findAccountByIdentifier(
           val.self ? currentAccountAddress : val.displayName || ''
         )
@@ -221,12 +243,17 @@ const updateMeetingServer = async (
           }
           return valueExists
         })
-        const slot = existingSlot?.find(
+        const slot = existingSlots?.find(
           slot => slot.account_address === account?.address
         )
         return {
           account_address: account?.address,
-          type: slot?.role || ParticipantType.Invitee,
+          type: determineParticipantType(
+            val,
+            baseParticipants,
+            existingSlots,
+            slot
+          ),
           meeting_id: meetingId,
           slot_id: slot?.id,
           status: getParticipationStatus(val.responseStatus || ''),
@@ -257,7 +284,7 @@ const updateMeetingServer = async (
       .map(p => p.account_address!.toLowerCase()),
   ])
 
-  const accountSlotMap = await mapRelatedSlotsWithDBRecords(existingSlot)
+  const accountSlotMap = await mapRelatedSlotsWithDBRecords(existingSlots)
 
   const guests = parsedParticipants
     .filter(p => p.guest_email)

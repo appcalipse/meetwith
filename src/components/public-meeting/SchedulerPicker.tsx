@@ -66,6 +66,8 @@ const SchedulerPicker = () => {
     rescheduleSlot,
     rescheduleSlotLoading,
     meetingSlotId,
+    setShowSlots,
+    showSlots,
   } = useContext(ScheduleStateContext)
   const color = useColorModeValue('primary.500', 'white')
   const { account, selectedType, notificationsSubs, setIsContact } = useContext(
@@ -220,13 +222,16 @@ const SchedulerPicker = () => {
         <Box
           flex={1.5}
           minW="300px"
-          display={{ base: !pickedDay ? 'block' : 'none', md: 'block' }}
+          display={{ base: !showSlots ? 'block' : 'none', md: 'block' }}
         >
           <Calendar
             loading={checkingSlots}
             validator={validator}
             monthChanged={setCurrentMonth}
-            pickDay={(day: Date) => setPickedDay(day)}
+            pickDay={(day: Date) => {
+              setPickedDay(day)
+              setShowSlots(true)
+            }}
             pickedDay={pickedDay || new Date()}
             selectedMonth={selectedMonth}
             setSelectedMonth={setSelectedMonth}
@@ -235,14 +240,17 @@ const SchedulerPicker = () => {
         </Box>
         <VStack
           alignItems={{ md: 'flex-start', base: 'center' }}
-          display={{ base: pickedDay ? 'flex' : 'none', md: 'flex' }}
+          display={{ base: showSlots ? 'flex' : 'none', md: 'flex' }}
           w={{ base: '100%', md: 'auto' }}
         >
           <VStack alignItems={'flex-start'} w="100%">
             <HStack mb={0}>
               <Icon
                 as={FaArrowLeft}
-                onClick={() => setPickedDay(null)}
+                onClick={() => {
+                  setPickedDay(null)
+                  setShowSlots(false)
+                }}
                 size="1.5em"
                 color={color}
                 cursor="pointer"
