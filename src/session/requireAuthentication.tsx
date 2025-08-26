@@ -31,8 +31,7 @@ const redirectBasedOnLogin = async (
   redirectType: AuthRedirect
 ): Promise<Account | null> => {
   const currentAccount = await validateAuthentication(ctx)
-  const currentRoute =
-    ctx.asPath || ctx.pathname || (ctx.req ? ctx.req.url : '')
+  const currentRoute = ctx.asPath || (ctx.req ? ctx.req.url : '')
   const shouldRedirect =
     redirectType === AuthRedirect.REDIRECT_IF_AUTHED
       ? !!currentAccount
