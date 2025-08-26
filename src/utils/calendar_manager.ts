@@ -21,6 +21,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
+import { Intents } from '@/types/Dashboard'
 import {
   DBSlot,
   ExtendedDBSlot,
@@ -1292,7 +1293,6 @@ const generateIcs = (
   const icsEvent = createEvent(event)
   return icsEvent
 }
-
 const participantStatusToICSStatus = (status: ParticipationStatus) => {
   switch (status) {
     case ParticipationStatus.Accepted:
@@ -1536,6 +1536,7 @@ const googleUrlParsedDate = (date: Date) =>
 const outLookUrlParsedDate = (date: Date) =>
   formatInTimeZone(date, 'UTC', "yyyy-MM-dd:HH:mm:SS'Z'")
 const generateGoogleCalendarUrl = (
+  slot_id: string,
   start?: Date | number,
   end?: Date | number,
   title?: string,
@@ -1544,6 +1545,7 @@ const generateGoogleCalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
+  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl = 'https://calendar.google.com/calendar/r/eventedit?sf=true'
   if (start && end) {
     baseUrl += `&dates=${googleUrlParsedDate(
@@ -1554,10 +1556,12 @@ const generateGoogleCalendarUrl = (
     baseUrl += `&text=${title}`
   }
   if (content || meeting_url) {
+    const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
     baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`
+      changeUrl,
+      hasGuests
     )}`
   }
   if (timezone) {
@@ -1572,6 +1576,7 @@ const generateGoogleCalendarUrl = (
   return baseUrl
 }
 const generateOffice365CalendarUrl = (
+  slot_id: string,
   start?: Date | number,
   end?: Date | number,
   title?: string,
@@ -1580,6 +1585,7 @@ const generateOffice365CalendarUrl = (
   timezone?: string,
   participants?: MeetingDecrypted['participants']
 ) => {
+  const hasGuests = participants?.some(p => p.guest_email)
   let baseUrl =
     'https://outlook.office.com/calendar/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&online=true'
   if (start) {
@@ -1592,10 +1598,12 @@ const generateOffice365CalendarUrl = (
     baseUrl += `&subject=${title}`
   }
   if (content || meeting_url) {
+    const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
     baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`
+      changeUrl,
+      hasGuests
     )}`
   }
   if (participants) {

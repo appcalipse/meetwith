@@ -18,7 +18,7 @@ const MWW_DISCORD_SERVER = 'https://discord.gg/En7BK4vhUF'
 
 const discordRedirectUrl = `${baseURL}/dashboard/details`
 
-const NO_REPLY_EMAIL = 'no-reply@meetwithwallet.xyz'
+const NO_REPLY_EMAIL = 'no-reply@meetwith.xyz'
 
 const WEBHOOK_URL = `${apiUrl}/server/webhook/calendar/sync`
 

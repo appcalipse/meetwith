@@ -24,7 +24,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { PublicSchedulingSteps } from '@utils/constants/meeting-types'
 import { Select } from 'chakra-react-select'
 import { useRouter } from 'next/router'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaInfo } from 'react-icons/fa'
 
 import { ChipInput } from '@/components/chip-input'
@@ -127,9 +127,17 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
   const [reason, setReason] = useState('')
   const { metadata } = query
   const { isOpen, onClose, onOpen } = useDisclosure()
-  const meetingProviders = (preferences?.meetingProviders || []).concat(
-    MeetingProvider.CUSTOM
-  )
+  let meetingProviders = selectedType?.meeting_platforms || []
+  const PROVIDERS = useMemo(() => {
+    return [
+      MeetingProvider.GOOGLE_MEET,
+      MeetingProvider.ZOOM,
+      MeetingProvider.HUDDLE,
+      MeetingProvider.JITSI_MEET,
+      MeetingProvider.CUSTOM,
+    ]
+  }, [])
+  meetingProviders = meetingProviders.length > 0 ? meetingProviders : PROVIDERS
 
   useEffect(() => {
     if (selectedType?.custom_link) {
