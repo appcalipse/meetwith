@@ -14,6 +14,8 @@ import { metis } from 'viem/chains'
 
 import { zeroAddress } from '@/utils/generic_utils'
 
+import { Address } from './Transactions'
+
 export interface ChainInfo {
   chain: SupportedChain
   thirdwebChain: Chain
@@ -49,6 +51,7 @@ export enum AcceptedToken {
   METIS = 'METIS',
   DAI = 'DAI',
   USDC = 'USDC',
+  USDT = 'USDT',
   EUR = 'EUR',
   CELO = 'CELO',
   CUSD = 'CUSD',
@@ -57,7 +60,7 @@ export enum AcceptedToken {
 
 export interface AcceptedTokenInfo {
   token: AcceptedToken
-  contractAddress: string
+  contractAddress: Address
 }
 export const getTokenIcon = (token: AcceptedToken) => {
   switch (token) {
@@ -65,6 +68,8 @@ export const getTokenIcon = (token: AcceptedToken) => {
       return '/assets/chains/DAI.svg'
     case AcceptedToken.USDC:
       return '/assets/tokens/USDC.svg'
+    case AcceptedToken.USDT:
+      return '/assets/tokens/USDT.svg'
     case AcceptedToken.CUSD:
       return '/assets/tokens/CUSD.png'
     case AcceptedToken.METIS:
@@ -75,6 +80,73 @@ export const getTokenIcon = (token: AcceptedToken) => {
       return '/assets/chains/ethereum.svg'
     default:
       return
+  }
+}
+
+export const getTokenDecimals = (token: AcceptedToken): number => {
+  switch (token) {
+    case AcceptedToken.USDC:
+      return 6
+    case AcceptedToken.USDT:
+      return 6
+    case AcceptedToken.CEUR:
+      return 6
+    default:
+      return 18
+  }
+}
+
+export const getTokenName = (token: AcceptedToken): string => {
+  switch (token) {
+    case AcceptedToken.ETHER:
+      return 'Ether'
+    case AcceptedToken.MATIC:
+      return 'Polygon'
+    case AcceptedToken.METIS:
+      return 'Metis'
+    case AcceptedToken.DAI:
+      return 'Dai'
+    case AcceptedToken.USDC:
+      return 'USD Coin'
+    case AcceptedToken.USDT:
+      return 'Tether USD'
+    case AcceptedToken.EUR:
+      return 'Euro'
+    case AcceptedToken.CELO:
+      return 'Celo'
+    case AcceptedToken.CUSD:
+      return 'Celo Dollar'
+    case AcceptedToken.CEUR:
+      return 'Celo Euro'
+    default:
+      return 'Unknown'
+  }
+}
+
+export const getTokenSymbol = (token: AcceptedToken): string => {
+  switch (token) {
+    case AcceptedToken.ETHER:
+      return 'ETH'
+    case AcceptedToken.MATIC:
+      return 'MATIC'
+    case AcceptedToken.METIS:
+      return 'METIS'
+    case AcceptedToken.DAI:
+      return 'DAI'
+    case AcceptedToken.USDC:
+      return 'USDC'
+    case AcceptedToken.USDT:
+      return 'USDT'
+    case AcceptedToken.EUR:
+      return 'EUR'
+    case AcceptedToken.CELO:
+      return 'CELO'
+    case AcceptedToken.CUSD:
+      return 'cUSD'
+    case AcceptedToken.CEUR:
+      return 'cEUR'
+    default:
+      return 'UNKNOWN'
   }
 }
 
@@ -93,7 +165,7 @@ export interface TokenMeta {
   last_updated: string
 }
 
-export const getNativeDecimals = (chain: SupportedChain): number => {
+export const getNativeDecimals = (_chain: SupportedChain): number => {
   // all supported tokens for now have 18 decimals
   return 18
 }
@@ -254,6 +326,14 @@ export const supportedChains: ChainInfo[] = [
         contractAddress: '0x765DE816845861e75A25fCA122bb6898B8B1282a', // cUSD
       },
       {
+        token: AcceptedToken.USDC,
+        contractAddress: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C',
+      },
+      {
+        token: AcceptedToken.USDT,
+        contractAddress: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',
+      },
+      {
         token: AcceptedToken.CEUR, // cEUR
         contractAddress: '0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73',
       },
@@ -305,6 +385,10 @@ export const supportedChains: ChainInfo[] = [
         token: AcceptedToken.USDC,
         contractAddress: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', // Arbitrum-native USDC :contentReference[oaicite:1]{index=1}
       },
+      {
+        token: AcceptedToken.USDT,
+        contractAddress: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+      },
     ],
   },
   {
@@ -351,6 +435,71 @@ export const getSupportedChainFromId = (
 ): ChainInfo | undefined => {
   return supportedChains.find(c => c.id === chainId)
 }
+export const getSupportedChain = (chain?: SupportedChain) => {
+  return supportedChains.find(val => val.chain === chain)
+}
 export const getChainImage = (chain: SupportedChain) => {
-  return supportedChains.find(val => val.chain === chain)?.image
+  return getSupportedChain(chain)?.image
+}
+
+export const getNetworkDisplayName = (chain: SupportedChain): string => {
+  const displayNames: Record<SupportedChain, string> = {
+    [SupportedChain.ETHEREUM]: 'Ethereum',
+    [SupportedChain.POLYGON_MATIC]: 'Polygon Matic',
+    [SupportedChain.POLYGON_AMOY]: 'Polygon Amoy',
+    [SupportedChain.SEPOLIA]: 'Sepolia',
+    [SupportedChain.METIS_ANDROMEDA]: 'Metis Andromeda',
+    [SupportedChain.ARBITRUM]: 'Arbitrum',
+    [SupportedChain.ARBITRUM_SEPOLIA]: 'Arbitrum Sepolia',
+    [SupportedChain.CELO_ALFAJORES]: 'Celo Alfajores',
+    [SupportedChain.CELO]: 'Celo',
+    [SupportedChain.CUSTOM]: 'Custom',
+  }
+  return displayNames[chain] || chain
+}
+
+// Helper function to get token address for a specific chain and token
+export const getTokenAddress = (
+  chain: SupportedChain,
+  token: AcceptedToken
+): string => {
+  const chainInfo = getChainInfo(chain)
+  if (!chainInfo) return ''
+
+  const tokenInfo = chainInfo.acceptableTokens.find(t => t.token === token)
+  return tokenInfo?.contractAddress || ''
+}
+
+// Helper function to get chain ID for a specific chain
+export const getChainId = (chain: SupportedChain): number => {
+  const chainInfo = getChainInfo(chain)
+  return chainInfo?.id || 42220
+}
+
+export const getTokenFromName = (tokenName: string): AcceptedToken | null => {
+  const lowerName = tokenName.toLowerCase()
+  switch (lowerName) {
+    case 'ether':
+      return AcceptedToken.ETHER
+    case 'polygon':
+      return AcceptedToken.MATIC
+    case 'metis':
+      return AcceptedToken.METIS
+    case 'dai':
+      return AcceptedToken.DAI
+    case 'usd coin':
+      return AcceptedToken.USDC
+    case 'tether usd':
+      return AcceptedToken.USDT
+    case 'euro':
+      return AcceptedToken.EUR
+    case 'celo':
+      return AcceptedToken.CELO
+    case 'celo dollar':
+      return AcceptedToken.CUSD
+    case 'celo euro':
+      return AcceptedToken.CEUR
+    default:
+      return null
+  }
 }

@@ -9,6 +9,8 @@ export enum EditMode {
   CALENDARS = 'calendars',
   NOTIFICATIONS = 'notifications',
   GATES = 'gates',
+  WALLET = 'wallet',
+  CLIENTBOARD = 'clientboard',
   SIGNOUT = 'signout',
 }
 

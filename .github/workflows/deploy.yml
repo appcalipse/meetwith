@@ -87,9 +87,6 @@ jobs:
           echo "TECH_DETAILS<<EOF" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "## 🔧 Technical Details:" >> $GITHUB_ENV
-          echo "**Files Changed:** $(git diff --name-only HEAD~5 HEAD | wc -l) files" >> $GITHUB_ENV
-          echo "**Lines Added:** +$(git diff --numstat HEAD~5 HEAD | awk '{add+=$1} END {print add+0}')" >> $GITHUB_ENV
-          echo "**Lines Removed:** -$(git diff --numstat HEAD~5 HEAD | awk '{del+=$2} END {print del+0}')" >> $GITHUB_ENV
           echo "**Deployment Time:** $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV

@@ -36,7 +36,6 @@ const MakeYourPayment = () => {
         step: PaymentStep.CONFIRM_PAYMENT,
         icon: FiatLogo,
         type: PaymentType.FIAT,
-        disabled: true,
       },
       {
         id: 'pay-with-invoice',
