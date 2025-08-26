@@ -1727,12 +1727,21 @@ export const updatePaymentPreferences = async (
   owner_account_address: string,
   data: Partial<
     Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
-  >
+  >,
+  oldPin?: string
 ): Promise<PaymentPreferences> => {
+  const requestBody: { updates: typeof data; oldPin?: string } = {
+    updates: data,
+  }
+
+  if (oldPin) {
+    requestBody.oldPin = oldPin
+  }
+
   return await internalFetch<PaymentPreferences>(
     '/secure/preferences/payment',
     'PATCH',
-    { updates: data }
+    requestBody
   )
 }
 

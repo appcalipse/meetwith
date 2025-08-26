@@ -12,7 +12,7 @@ import { useToastHelpers } from '@/utils/toasts'
 
 const ResetPinPage = () => {
   const router = useRouter()
-  const { token, address } = router.query
+  const { token } = router.query
   const { showSuccessToast } = useToastHelpers()
   const [isResetModalOpen, setIsResetModalOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
@@ -21,24 +21,19 @@ const ResetPinPage = () => {
 
   // Set token as valid if present - actual verification happens on server
   useEffect(() => {
-    if (token && address && typeof token === 'string') {
+    if (token && typeof token === 'string') {
       if (!pinResetSuccessful) {
         setIsResetModalOpen(true)
       }
     }
     setIsLoading(false)
-  }, [token, address, pinResetSuccessful])
+  }, [token, pinResetSuccessful])
 
   // Reset PIN mutation
   const resetPinMutation = useMutation(
     async (newPin: string) => {
-      if (
-        !address ||
-        typeof address !== 'string' ||
-        !token ||
-        Array.isArray(token)
-      ) {
-        throw new Error('Invalid address or token')
+      if (!token || Array.isArray(token)) {
+        throw new Error('Invalid token')
       }
 
       return await resetPinWithToken(newPin, token)

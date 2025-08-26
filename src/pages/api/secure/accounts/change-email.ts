@@ -23,9 +23,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const JWT_SECRET = process.env.JWT_SECRET
   if (!JWT_SECRET) {
-    return res
-      .status(500)
-      .json({ error: 'JWT_SECRET environment variable is required' })
+    return res.status(500).json({
+      error:
+        'There was an issue updating preferences. Please contact us at support@meetwith.xyz',
+    })
   }
 
   try {
@@ -44,6 +45,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const account_address = decodedToken.account_address
+    if (account_address !== req.session.account!.address) {
+      return res
+        .status(401)
+        .json({ error: 'Unauthorized: Token does not belong to this user' })
+    }
+
     const isTokenValid = await verifyVerificationCode(
       account_address,
       decodedToken.jti,
@@ -59,6 +66,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const currentNotifications = await getAccountNotificationSubscriptions(
       account_address
     )
+
+    const emailChannel = currentNotifications.notification_types.find(
+      n => n.channel === 'email'
+    )
+
+    if (!emailChannel) {
+      return res.status(400).json({
+        error:
+          'No email notification channel found. Please set up email notifications first.',
+      })
+    }
+
+    const hasEmailChannel = currentNotifications.notification_types.some(
+      n => n.channel === 'email'
+    )
+
+    if (!hasEmailChannel) {
+      return res.status(400).json({
+        error: 'Cannot change email: no email notification channel configured',
+      })
+    }
 
     const updatedNotifications = {
       ...currentNotifications,

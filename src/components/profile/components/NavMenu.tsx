@@ -90,24 +90,6 @@ export const NavMenu: React.FC<{
         icon: FaCalendarAlt,
         mode: EditMode.AVAILABILITY,
       },
-      // {
-      //   name: 'Payments',
-      //   icon: FaCreditCard,
-      //   mode: EditMode.WALLET,
-      //   isDropdownItem: true,
-      //   subItems: [
-      //     {
-      //       text: 'Wallet',
-      //       icon: FaWallet,
-      //       mode: EditMode.WALLET,
-      //     },
-      //     // {
-      //     //   text: 'Clientboard',
-      //     //   icon: FaClipboard,
-      //     //   mode: EditMode.CLIENTBOARD,
-      //     // },
-      //   ],
-      // },
       {
         name: 'Wallet',
         icon: FaWallet,

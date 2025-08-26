@@ -7,6 +7,7 @@ import { appUrl, EMAIL_CHANGE_TOKEN_EXPIRY } from '@/utils/constants'
 import {
   createVerification,
   getAccountNotificationSubscriptionEmail,
+  invalidatePreviousVerifications,
 } from '@/utils/database'
 import { sendChangeEmailEmail } from '@/utils/email_helper'
 
@@ -17,9 +18,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const JWT_SECRET = process.env.JWT_SECRET
   if (!JWT_SECRET) {
-    return res
-      .status(500)
-      .json({ error: 'JWT_SECRET environment variable is required' })
+    return res.status(500).json({
+      error:
+        'There was an issue updating preferences. Please contact us at support@meetwith.xyz',
+    })
   }
 
   try {
@@ -42,6 +44,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       expiresIn: EMAIL_CHANGE_TOKEN_EXPIRY,
     })
 
+    await invalidatePreviousVerifications(
+      account_address,
+      VerificationChannel.RESET_EMAIL
+    )
+
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
     await createVerification(
       account_address,
@@ -50,7 +57,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       expiresAt
     )
 
-    const changeUrl = `${appUrl}/dashboard/change-email?token=${changeToken}&address=${account_address}`
+    const changeUrl = `${appUrl}/dashboard/change-email?token=${changeToken}`
 
     const currentEmail = await getAccountNotificationSubscriptionEmail(
       account_address

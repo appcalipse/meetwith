@@ -8,10 +8,6 @@ import {
 declare module 'iron-session' {
   interface IronSessionData {
     account?: AccountSession
-    verificationCodeHash?: string
-    verificationCodeSalt?: string
-    verificationCodeExpiry?: number
-    verificationCodeType?: string
   }
 }
 

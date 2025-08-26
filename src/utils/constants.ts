@@ -26,6 +26,7 @@ const EMAIL_CHANGE_TOKEN_EXPIRY = '5m'
 const PIN_ENABLE_TOKEN_EXPIRY = '5m'
 const PIN_RESET_TOKEN_EXPIRY = '5m'
 const VERIFICATION_CODE_TOKEN_EXPIRY = '5m'
+const TRANSFER_FUNCTION_SELECTOR = '0xa9059cbb'
 
 const VERIFICATION_CODE_EXPIRY_MS = 5 * 60 * 1000
 
@@ -40,12 +41,6 @@ export enum OnboardingSubject {
 export enum PaymentNotificationType {
   SEND_TOKENS = 'send-tokens',
   RECEIVE_TOKENS = 'receive-tokens',
-}
-
-export enum CurrencySymbol {
-  USD = '$',
-  EUR = '€',
-  GBP = '£',
 }
 
 export const COMMON_CURRENCIES = [
@@ -95,6 +90,7 @@ export {
   NO_REPLY_EMAIL,
   PIN_ENABLE_TOKEN_EXPIRY,
   PIN_RESET_TOKEN_EXPIRY,
+  TRANSFER_FUNCTION_SELECTOR,
   VERIFICATION_CODE_EXPIRY_MS,
   VERIFICATION_CODE_TOKEN_EXPIRY,
   WEBHOOK_URL,

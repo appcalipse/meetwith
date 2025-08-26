@@ -6,6 +6,7 @@ import {
   createPinHash,
   getPaymentPreferences,
   updatePaymentPreferences,
+  verifyUserPin,
 } from '@/utils/database'
 
 interface CreatePaymentPreferencesBody {
@@ -25,6 +26,7 @@ interface UpdatePaymentPreferencesBody {
     default_chain_id?: number
     notification?: Array<'send-tokens' | 'receive-tokens'>
   }>
+  oldPin?: string
 }
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -61,13 +63,25 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   } else if (req.method === 'PATCH') {
     const account_address = req.session.account!.address
-    const { updates }: UpdatePaymentPreferencesBody = req.body
+    const { updates, oldPin }: UpdatePaymentPreferencesBody = req.body
 
     try {
-      // Hash the PIN if it's provided
       if (updates.pin && typeof updates.pin === 'string') {
+        if (!oldPin || typeof oldPin !== 'string') {
+          return res.status(400).json({
+            error: 'Current PIN is required to update to a new PIN',
+          })
+        }
+
+        const isOldPinValid = await verifyUserPin(account_address, oldPin)
+        if (!isOldPinValid) {
+          return res.status(401).json({
+            error: 'Current PIN is incorrect',
+          })
+        }
+
         updates.pin_hash = await createPinHash(updates.pin)
-        delete updates.pin // Remove pin field before calling database function
+        delete updates.pin
       }
 
       const updatedPreferences = await updatePaymentPreferences(

@@ -12,7 +12,7 @@ import { useToastHelpers } from '@/utils/toasts'
 
 const ChangeEmailPage = () => {
   const router = useRouter()
-  const { token, address } = router.query
+  const { token } = router.query
   const { showSuccessToast } = useToastHelpers()
   const [isChangeEmailModalOpen, setIsChangeEmailModalOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
@@ -20,24 +20,19 @@ const ChangeEmailPage = () => {
   const [emailChangeSuccessful, setEmailChangeSuccessful] = useState(false)
 
   useEffect(() => {
-    if (token && address && typeof token === 'string') {
+    if (token && typeof token === 'string') {
       if (!emailChangeSuccessful) {
         setIsChangeEmailModalOpen(true)
       }
     }
     setIsLoading(false)
-  }, [token, address, emailChangeSuccessful])
+  }, [token, emailChangeSuccessful])
 
   // Change email mutation
   const changeEmailMutation = useMutation(
     async (email: string) => {
-      if (
-        !address ||
-        typeof address !== 'string' ||
-        !token ||
-        Array.isArray(token)
-      ) {
-        throw new Error('Invalid address or token')
+      if (!token || Array.isArray(token)) {
+        throw new Error('Invalid token')
       }
 
       return await changeEmailWithToken(email, token)

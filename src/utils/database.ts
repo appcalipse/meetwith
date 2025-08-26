@@ -5819,7 +5819,7 @@ const verifyVerificationCode = async (
     const isValid = await argon2.verify(verification.code_hash, codeWithSalt)
 
     if (isValid) {
-      await deleteVerification(verification.id)
+      await deleteVerifications(verification.id)
       return true
     }
 
@@ -5830,7 +5830,46 @@ const verifyVerificationCode = async (
   }
 }
 
-const deleteVerification = async (verificationId: string): Promise<void> => {
+const cleanupExpiredVerifications = async (): Promise<void> => {
+  try {
+    const { error } = await db.supabase
+      .from('verifications')
+      .delete()
+      .lt('expires_at', new Date().toISOString())
+
+    if (error) {
+      console.error('Error cleaning up expired verifications:', error)
+      throw new Error('Failed to clean up expired verifications')
+    }
+  } catch (error) {
+    console.error('Error in cleanupExpiredVerifications:', error)
+    throw error
+  }
+}
+
+const invalidatePreviousVerifications = async (
+  owner_account_address: string,
+  channel: VerificationChannel
+): Promise<void> => {
+  try {
+    const { error } = await db.supabase
+      .from('verifications')
+      .update({ expires_at: new Date().toISOString() })
+      .eq('owner_account_address', owner_account_address)
+      .eq('channel', channel)
+      .gt('expires_at', new Date().toISOString())
+
+    if (error) {
+      console.error('Error invalidating previous verifications:', error)
+      throw new Error('Failed to invalidate previous verifications')
+    }
+  } catch (error) {
+    console.error('Error in invalidatePreviousVerifications:', error)
+    throw error
+  }
+}
+
+const deleteVerifications = async (verificationId: string): Promise<void> => {
   try {
     const { error } = await db.supabase
       .from('verifications')
@@ -5841,8 +5880,10 @@ const deleteVerification = async (verificationId: string): Promise<void> => {
       console.error('Error deleting verification:', error)
       throw new Error('Failed to delete verification')
     }
+
+    await cleanupExpiredVerifications()
   } catch (error) {
-    console.error('Error in deleteVerification:', error)
+    console.error('Error in deleteVerifications:', error)
     throw error
   }
 }
@@ -5853,6 +5894,7 @@ export {
   addUserToGroup,
   changeGroupRole,
   checkContactExists,
+  cleanupExpiredVerifications,
   connectedCalendarExists,
   contactInviteByEmailExists,
   createCryptoTransaction,
@@ -5867,7 +5909,7 @@ export {
   deleteMeetingFromDB,
   deleteMeetingType,
   deleteTgConnection,
-  deleteVerification,
+  deleteVerifications,
   editGroup,
   findAccountByIdentifier,
   findAccountsByText,
@@ -5924,6 +5966,7 @@ export {
   initAccountDBForWallet,
   initDB,
   insertOfficeEventMapping,
+  invalidatePreviousVerifications,
   isGroupAdmin,
   isSlotAvailable as isSlotFree,
   isUserContact,

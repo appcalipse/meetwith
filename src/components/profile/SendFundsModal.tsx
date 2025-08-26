@@ -57,6 +57,7 @@ import {
   supportedPaymentChains,
 } from '@/utils/constants/meeting-types'
 import { TokenType } from '@/utils/constants/meeting-types'
+import { handleApiError } from '@/utils/error_helper'
 import { parseUnits, zeroAddress } from '@/utils/generic_utils'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { useToastHelpers } from '@/utils/toasts'
@@ -210,10 +211,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
       })
     } catch (error) {
       console.error('Error fetching token decimals:', error)
-      showErrorToast(
-        'Token Information Failed',
-        'Failed to get token information. Please try again.'
-      )
+      handleApiError('Token Information Failed', error)
     }
   }
 
@@ -310,17 +308,11 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
         setIsVerificationModalOpen(false)
         await processTransaction()
       } catch (error) {
-        showErrorToast(
-          'Code Verification Failed',
-          'Failed to verify the code. Please try again.'
-        )
+        handleApiError('Code Verification Failed', error)
         return
       }
     } catch (error) {
-      showErrorToast(
-        'Verification Failed',
-        'Failed to verify credentials. Please try again.'
-      )
+      handleApiError('Verification Failed', error)
     } finally {
       setIsVerifying(false)
     }
@@ -452,12 +444,9 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
       } else {
         throw new Error('Transaction failed')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Send transaction failed:', error)
-      showErrorToast(
-        'Transaction Failed',
-        error.message || 'Failed to send funds'
-      )
+      handleApiError('Transaction Failed', error)
     } finally {
       setIsLoading(false)
       setProgress(0)
@@ -940,10 +929,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
               )
               onMagicLinkClose()
             } catch (error) {
-              showErrorToast(
-                'Error',
-                'Failed to send magic link. Please try again.'
-              )
+              handleApiError('Magic Link Error', error)
             } finally {
               setIsSendingMagicLink(false)
             }
