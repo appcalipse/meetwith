@@ -25,6 +25,7 @@ import { useContext, useEffect, useRef, useState } from 'react'
 import { FaMinus, FaPlus } from 'react-icons/fa'
 import { useActiveWallet } from 'thirdweb/react'
 
+import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import { subscribeWithCoupon, syncSubscriptions } from '@/utils/api_helper'
 import {
   CouponAlreadyUsed,
@@ -35,7 +36,6 @@ import { zeroAddress } from '@/utils/generic_utils'
 
 import { AccountContext } from '../../providers/AccountProvider'
 import {
-  AcceptedToken,
   AcceptedTokenInfo,
   ChainInfo,
   getChainInfo,
@@ -112,6 +112,7 @@ const SubscriptionDialog: React.FC<IProps> = ({
   const toast = useToast()
   const [couponCode, setCouponCode] = useState(defaultCoupon || '')
   const wallet = useActiveWallet()
+  const { needsReconnection, attemptReconnection } = useSmartReconnect()
   const changeDuration = (duration: number) => {
     setDuration(duration)
   }
@@ -121,6 +122,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
 
   const updateSubscriptionDetails = async () => {
+    if (needsReconnection) {
+      await attemptReconnection()
+    }
     setNeedsApproval(false)
     setCheckingCanSubscribe(false)
     if (currentToken && currentToken.contractAddress !== zeroAddress) {
@@ -244,6 +248,9 @@ const SubscriptionDialog: React.FC<IProps> = ({
   }
   const subscribe = async () => {
     setCheckingCanSubscribe(true)
+    if (needsReconnection) {
+      await attemptReconnection()
+    }
     if (couponCode) {
       return handleCouponSubscribe()
     }
