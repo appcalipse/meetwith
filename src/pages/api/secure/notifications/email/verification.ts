@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { randomInt } from 'crypto'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -40,6 +41,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       message: 'Verification code sent successfully',
     })
   } catch (error) {
+    Sentry.captureException(error)
     console.error('Error sending verification code:', error)
     return res.status(500).json({
       error: 'Failed to send verification code',

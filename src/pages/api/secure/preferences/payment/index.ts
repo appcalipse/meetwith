@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
@@ -36,6 +37,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const preferences = await getPaymentPreferences(account_address)
       return res.status(200).json(preferences)
     } catch (e) {
+      Sentry.captureException(e)
       return res
         .status(500)
         .json({ error: 'Failed to fetch payment preferences' })
@@ -57,6 +59,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       return res.status(200).json(updatedPreferences)
     } catch (e) {
+      Sentry.captureException(e)
       return res
         .status(500)
         .json({ error: 'Failed to save payment preferences' })
@@ -90,6 +93,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       )
       return res.status(200).json(updatedPreferences)
     } catch (e) {
+      Sentry.captureException(e)
       return res
         .status(500)
         .json({ error: 'Failed to update payment preferences' })

@@ -32,6 +32,7 @@ import {
 import { useActiveWallet } from 'thirdweb/react'
 import { formatUnits } from 'viem'
 
+import { useSmartReconnect } from '@/hooks/useSmartReconnect'
 import {
   AcceptedToken,
   AcceptedTokenInfo,
@@ -123,6 +124,7 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
   const activeWallet = useActiveWallet()
   const { showSuccessToast, showErrorToast, showInfoToast } = useToastHelpers()
   const queryClient = useQueryClient()
+  const { needsReconnection, attemptReconnection } = useSmartReconnect()
 
   // Fetch payment preferences to check if PIN is set
   const { data: paymentPreferences } = useQuery(
@@ -238,6 +240,17 @@ const SendFundsModal: React.FC<SendFundsModalProps> = ({
         'Please enter a valid amount greater than 0'
       )
       return
+    }
+
+    if (needsReconnection) {
+      const reconnectedWallet = await attemptReconnection()
+      if (!reconnectedWallet) {
+        showErrorToast(
+          'Wallet Reconnection Failed',
+          'Please reconnect your wallet and try again'
+        )
+        return
+      }
     }
 
     if (!activeWallet) {

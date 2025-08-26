@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import jwt from 'jsonwebtoken'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -109,6 +110,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       account: { address: account_address, email: newEmail },
     })
   } catch (error) {
+    Sentry.captureException(error)
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(400).json({ error: 'Invalid token' })
     }
