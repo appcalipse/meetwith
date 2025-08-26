@@ -1,5 +1,11 @@
 import * as Sentry from '@sentry/nextjs'
 import { type SupabaseClient, createClient } from '@supabase/supabase-js'
+import {
+  currenciesMap,
+  Currency,
+  extractOnRampStatus,
+  getOnrampMoneyTokenAddress,
+} from '@utils/services/onramp.money'
 import CryptoJS from 'crypto-js'
 import { add, addMinutes, addMonths, isAfter, sub } from 'date-fns'
 import EthCrypto, {
@@ -34,7 +40,7 @@ import {
   ConnectedCalendar,
   ConnectedCalendarCore,
 } from '@/types/CalendarConnections'
-import { getChainInfo, SupportedChain } from '@/types/chains'
+import { getChainInfo, getTokenAddress, SupportedChain } from '@/types/chains'
 import {
   ContactSearch,
   DBContact,
@@ -99,10 +105,10 @@ import {
   BaseMeetingSession,
   BaseTransaction,
   MeetingSession,
+  OnrampMoneyWebhook,
   Transaction,
 } from '@/types/Transactions'
 import {
-  Currency,
   NO_MEETING_TYPE,
   PaymentDirection,
   PaymentStatus,
@@ -135,6 +141,7 @@ import {
   MeetingCreationError,
   MeetingDetailsModificationDenied,
   MeetingNotFoundError,
+  MeetingSessionNotFoundError,
   MeetingSlugAlreadyExists,
   MeetingTypeNotFound,
   NoActiveSubscription,
@@ -150,6 +157,7 @@ import {
 } from '@/utils/errors'
 import { ParticipantInfoForNotification } from '@/utils/notification_helper'
 import { getTransactionFeeThirdweb } from '@/utils/transaction.helper'
+import { thirdWebClient } from '@/utils/user_manager'
 
 import {
   generateDefaultAvailabilities,
@@ -547,7 +555,6 @@ export const getAccountPreferences = async (
       )
       .eq('owner_account_address', owner_account_address.toLowerCase())
       .single()
-
   if (account_preferences_error || !account_preferences) {
     console.error(account_preferences_error)
     throw new Error("Couldn't get account's preferences")
@@ -826,25 +833,36 @@ const isSlotAvailable = async (
   start: Date,
   end: Date,
   meetingTypeId: string,
-  txHash?: Address | null
+  txHash?: Address | null,
+  meeting_id?: string
 ): Promise<boolean> => {
   if (meetingTypeId !== NO_MEETING_TYPE) {
     const meetingType = await getMeetingTypeFromDB(meetingTypeId)
     const minTime = meetingType.min_notice_minutes
     if (meetingType?.plan) {
-      if (!txHash) {
-        throw new TransactionIsRequired()
-      }
-      const transaction = await getTransactionBytxHashAndMeetingType(
-        txHash,
-        meetingTypeId
-      )
-      const meetingSessions = transaction.meeting_sessions || []
-      const isAnyMeetingSlotFree = meetingSessions.some(
-        session => session.used_at === null
-      )
-      if (!isAnyMeetingSlotFree) {
-        throw new AllMeetingSlotsUsedError()
+      if (meeting_id) {
+        const meetingSession = await getMeetingSessionByMeetingId(
+          meeting_id,
+          meetingTypeId
+        )
+        if (!meetingSession) {
+          throw new MeetingSessionNotFoundError(meeting_id)
+        }
+      } else {
+        if (!txHash) {
+          throw new TransactionIsRequired()
+        }
+        const transaction = await getTransactionBytxHashAndMeetingType(
+          txHash,
+          meetingTypeId
+        )
+        const meetingSessions = transaction.meeting_sessions || []
+        const isAnyMeetingSlotFree = meetingSessions.some(
+          session => session.used_at === null
+        )
+        if (!isAnyMeetingSlotFree) {
+          throw new AllMeetingSlotsUsedError()
+        }
       }
     }
 
@@ -2944,7 +2962,9 @@ const updateMeeting = async (
             participant.account_address!,
             new Date(meetingUpdateRequest.start),
             new Date(meetingUpdateRequest.end),
-            meetingUpdateRequest.meetingTypeId
+            meetingUpdateRequest.meetingTypeId,
+            undefined,
+            meetingUpdateRequest.meeting_id
           ))
 
         let isTimeAvailable = () =>
@@ -3658,11 +3678,13 @@ const getContactInvites = async (
   limit = 10,
   offset = 0
 ): Promise<DBContactInvite> => {
+  const userEmail = await getAccountNotificationSubscriptionEmail(address)
   const { data, error } = await db.supabase.rpc('search_contact_invites', {
     search: query,
     max_results: limit,
     skip: offset,
     current_account: address,
+    current_account_email: userEmail || '',
   })
   if (error) {
     throw new Error(error.message)
@@ -3698,10 +3720,12 @@ const _getContactByAddress = async (
   return data
 }
 const getContactInvitesCount = async (address: string) => {
+  const userEmail = await getAccountNotificationSubscriptionEmail(address)
+  const query = `destination.eq.${address},destination.eq.${userEmail}`
   const { error, count } = await db.supabase
     .from('contact_invite')
     .select('id', { count: 'exact' })
-    .eq('destination', address)
+    .or(query)
   if (error) {
     throw new Error(error.message)
   }
@@ -4657,86 +4681,293 @@ const getMeetingTypeFromDB = async (id: string): Promise<MeetingType> => {
   )
   return data
 }
+// Function to get transactions for a wallet (both sent and received) with optional token filtering
+export const getWalletTransactions = async (
+  walletAddress: string,
+  tokenAddress?: string,
+  chainId?: number,
+  limit = 50,
+  offset = 0
+) => {
+  // Build base query for count
+  let countQuery = db.supabase
+    .from('transactions')
+    .select('*', { count: 'exact', head: true })
+    .or(
+      `initiator_address.eq.${walletAddress},metadata->>sender_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
+    )
+
+  // Apply optional token and chain filters to count query
+  if (tokenAddress && typeof tokenAddress === 'string') {
+    countQuery = countQuery.eq('token_address', tokenAddress.toLowerCase())
+  }
+
+  if (chainId && typeof chainId === 'number') {
+    countQuery = countQuery.eq('chain_id', chainId)
+  }
+
+  const { count: totalCount, error: countError } = await countQuery
+
+  if (countError) {
+    throw new Error(countError.message)
+  }
+
+  // Build base query for transactions
+  let query = db.supabase
+    .from('transactions')
+    .select('*')
+    .or(
+      `initiator_address.eq.${walletAddress},metadata->>sender_address.eq.${walletAddress},metadata->>receiver_address.eq.${walletAddress}`
+    )
+
+  // Apply optional token and chain filters
+  if (tokenAddress && typeof tokenAddress === 'string') {
+    query = query.eq('token_address', tokenAddress.toLowerCase())
+  }
+
+  if (chainId && typeof chainId === 'number') {
+    query = query.eq('chain_id', chainId)
+  }
+
+  const { data: transactions, error } = await query
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  // Get meeting data for transactions that have meeting_type_id
+  const transactionsWithMeetingData = await Promise.all(
+    (transactions || []).map(async tx => {
+      if (tx.meeting_type_id) {
+        // Get meeting type data
+        const { data: meetingTypeData } = await db.supabase
+          .from('meeting_types')
+          .select('title')
+          .eq('id', tx.meeting_type_id)
+          .single()
+
+        // Get meeting session data
+        const { data: meetingSessionData } = await db.supabase
+          .from('meeting_sessions')
+          .select('guest_email, session_number')
+          .eq('transaction_id', tx.id)
+          .single()
+
+        return {
+          ...tx,
+          meeting_types: meetingTypeData || null,
+          meeting_sessions: meetingSessionData || null,
+        }
+      } else {
+        return {
+          ...tx,
+          meeting_types: null,
+          meeting_sessions: null,
+        }
+      }
+    })
+  )
+
+  const processedTransactions = transactionsWithMeetingData.map(tx => {
+    const metadata = tx.metadata
+
+    const hasMetadata = metadata?.sender_address && metadata?.receiver_address
+
+    let isSender = false
+    let isReceiver = false
+
+    if (hasMetadata) {
+      isSender =
+        metadata.sender_address.toLowerCase() === walletAddress.toLowerCase()
+      isReceiver =
+        metadata.receiver_address.toLowerCase() === walletAddress.toLowerCase()
+    } else {
+      isSender =
+        tx.initiator_address.toLowerCase() === walletAddress.toLowerCase()
+      isReceiver = false
+    }
+
+    // Determine direction based on whether current wallet is sender or receiver
+    let direction: 'debit' | 'credit' | 'unknown' = 'unknown'
+    let counterparty_address: string | undefined
+
+    if (isSender) {
+      direction = 'debit'
+      counterparty_address = metadata?.receiver_address
+    } else if (isReceiver) {
+      direction = 'credit'
+      counterparty_address = metadata?.sender_address
+    } else {
+      direction = 'unknown'
+      counterparty_address = undefined
+    }
+
+    return {
+      ...tx,
+      direction,
+      counterparty_address,
+      has_full_metadata: !!(
+        metadata?.sender_address && metadata?.receiver_address
+      ),
+    }
+  })
+
+  return {
+    transactions: processedTransactions,
+    totalCount: totalCount || 0,
+  }
+}
+
+export const getWalletTransactionsByToken = async (
+  walletAddress: string,
+  tokenAddress?: string,
+  chainId?: number,
+  limit = 50,
+  offset = 0
+) => {
+  return getWalletTransactions(
+    walletAddress,
+    tokenAddress,
+    chainId,
+    limit,
+    offset
+  )
+}
+
 const createCryptoTransaction = async (
   transactionRequest: ConfirmCryptoTransactionRequest,
-  account_address: string
+  account_address?: string
 ) => {
   const chainInfo = getChainInfo(transactionRequest.chain)
   if (!chainInfo?.id) {
     throw new ChainNotFound(transactionRequest.chain)
   }
-  const { feeInUSD, gasUsed, from } = await getTransactionFeeThirdweb(
+  const { feeInUSD, gasUsed } = await getTransactionFeeThirdweb(
     transactionRequest.transaction_hash,
     transactionRequest.chain
   )
+
+  // Determine payment direction based on transaction type
+  const isWalletTransfer = !transactionRequest.meeting_type_id
+  const paymentDirection = isWalletTransfer
+    ? PaymentDirection.DEBIT
+    : PaymentDirection.CREDIT
+
   const payload: BaseTransaction = {
-    method: PaymentType.CRYPTO,
+    method: transactionRequest.payment_method,
     transaction_hash:
       transactionRequest.transaction_hash.toLowerCase() as Address,
     amount: transactionRequest.amount,
-    direction: PaymentDirection.CREDIT,
+    direction: paymentDirection,
     chain_id: chainInfo?.id,
-    token_address: from,
+    token_address: transactionRequest.token_address,
     fiat_equivalent: transactionRequest.fiat_equivalent,
     meeting_type_id: transactionRequest?.meeting_type_id,
     initiator_address: account_address,
     status: PaymentStatus.COMPLETED,
     token_type: TokenType.ERC20,
     confirmed_at: new Date().toISOString(),
+    provider_reference_id: transactionRequest.provider_reference_id,
     currency: Currency.USD,
     total_fee: feeInUSD,
-    metadata: {},
+    metadata: {
+      ...(account_address && {
+        sender_address: account_address.toLowerCase(),
+      }),
+      ...(transactionRequest.receiver_address && {
+        receiver_address: transactionRequest.receiver_address.toLowerCase(),
+      }),
+    },
     fee_breakdown: {
       gas_used: gasUsed,
       fee_in_usd: feeInUSD,
     },
   }
-  const { data, error } = await db.supabase.from('transactions').insert(payload)
+  const { data, error } = await db.supabase
+    .from<Transaction>('transactions')
+    .insert(payload)
   if (error) {
     throw new Error(error.message)
   }
-  const meetingType = await getMeetingTypeFromDB(
-    transactionRequest.meeting_type_id
-  )
-  const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
-  const meetingSessions: Array<BaseMeetingSession> = Array.from(
-    { length: totalNoOfSlots },
-    (_, i) => ({
-      meeting_type_id: transactionRequest.meeting_type_id,
-      transaction_id: data[0]?.id,
-      session_number: i + 1,
-      guest_address: transactionRequest?.guest_address,
-      guest_email: transactionRequest?.guest_email,
-      owner_address: meetingType?.account_owner_address,
-    })
-  )
-  const { error: slotError } = await db.supabase
-    .from('meeting_sessions')
-    .insert(meetingSessions)
-  if (slotError) {
-    throw new Error(slotError.message)
-  }
-  try {
-    // don't wait for receipt to be sent before serving a response
-    sendReceiptEmail(
-      transactionRequest.guest_email,
-      transactionRequest.guest_name,
-      {
-        full_name: transactionRequest.guest_name,
-        email_address: transactionRequest.guest_email,
-        plan: meetingType.title,
-        number_of_sessions: totalNoOfSlots.toString(),
-        price: transactionRequest.amount.toString(),
-        payment_method: PaymentType.CRYPTO,
-        transaction_fee: '0',
-        transaction_status: PaymentStatus.COMPLETED,
-        transaction_hash: transactionRequest.transaction_hash,
-      }
+
+  // Only create meeting sessions and send receipt if this is a meeting-related transaction
+  if (transactionRequest.meeting_type_id) {
+    const meetingType = await getMeetingTypeFromDB(
+      transactionRequest.meeting_type_id
     )
-  } catch (e) {
-    console.error(e)
+    const totalNoOfSlots = meetingType?.plan?.no_of_slot || 1
+
+    // For meeting payments, add the meeting owner's address to metadata as receiver
+    if (meetingType?.account_owner_address) {
+      const { error: updateError } = await db.supabase
+        .from('transactions')
+        .update({
+          metadata: {
+            sender_address: account_address?.toLowerCase(),
+            receiver_address: meetingType.account_owner_address.toLowerCase(),
+          },
+        })
+        .eq(
+          'transaction_hash',
+          transactionRequest.transaction_hash.toLowerCase()
+        )
+
+      if (updateError) {
+        console.error(
+          'Failed to update transaction metadata with receiver address:',
+          updateError
+        )
+      }
+    }
+
+    const meetingSessions: Array<BaseMeetingSession> = Array.from(
+      { length: totalNoOfSlots },
+      (_, i) => ({
+        meeting_type_id: transactionRequest.meeting_type_id!,
+        transaction_id: data[0]?.id,
+        session_number: i + 1,
+        guest_address: account_address,
+        guest_email: transactionRequest?.guest_email,
+        guest_name: transactionRequest?.guest_name,
+        owner_address: meetingType?.account_owner_address,
+      })
+    )
+    const { error: slotError } = await db.supabase
+      .from('meeting_sessions')
+      .insert(meetingSessions)
+    if (slotError) {
+      throw new Error(slotError.message)
+    }
+
+    // Only send receipt if guest email and name are provided
+    if (transactionRequest.guest_email && transactionRequest.guest_name) {
+      try {
+        // don't wait for receipt to be sent before serving a response
+        sendReceiptEmail(
+          transactionRequest.guest_email,
+          transactionRequest.guest_name,
+          {
+            full_name: transactionRequest.guest_name,
+            email_address: transactionRequest.guest_email,
+            plan: meetingType?.title || '',
+            number_of_sessions: totalNoOfSlots.toString(),
+            price: transactionRequest.amount.toString(),
+            payment_method: transactionRequest.payment_method,
+            transaction_fee: '0',
+            transaction_status: PaymentStatus.COMPLETED,
+            transaction_hash: transactionRequest.transaction_hash,
+          }
+        )
+      } catch (e) {
+        console.error(e)
+      }
+    }
   }
+  return data[0]
 }
+
 const getMeetingSessionsByTxHash = async (
   tx: Address
 ): Promise<Array<MeetingSession>> => {
@@ -4782,6 +5013,22 @@ const getTransactionBytxHashAndMeetingType = async (
     throw new TransactionNotFoundError(tx)
   }
   return transaction
+}
+const getMeetingSessionByMeetingId = async (
+  meeting_id: string,
+  meeting_type_id: string
+) => {
+  const { data: meetingSession, error } = await db.supabase
+    .from('meeting_sessions')
+    .select('*')
+    .eq('id', meeting_id)
+    .eq('meeting_type_id', meeting_type_id)
+    .single()
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return meetingSession
 }
 
 const registerMeetingSession = async (tx: Address, meeting_id: string) => {
@@ -5168,6 +5415,73 @@ const getOwnerPublicUrlServer = async (
     return `${appUrl}/address/${ownerAccountAddress}`
   }
 }
+const recordOffRampTransaction = async (event: OnrampMoneyWebhook) => {
+  const { data: transactionExists } = await db.supabase
+    .from<BaseTransaction>('transactions')
+    .select('*')
+    .eq('provider_reference_id', event.referenceId)
+    .eq('initiator_address', event.merchantRecognitionId.toLowerCase())
+    .eq('transaction_hash', event.transactionHash.toLowerCase())
+  const status = extractOnRampStatus(event.status)
+  const exists = transactionExists?.[0]
+  const payload: BaseTransaction = {
+    method: PaymentType.CRYPTO,
+    transaction_hash: event.transactionHash.toLowerCase() as Address,
+    amount: event.actualFiatAmount,
+    direction:
+      event.eventType.toLowerCase() === 'offramp'
+        ? PaymentDirection.DEBIT
+        : PaymentDirection.CREDIT,
+    chain_id: event.chainId,
+    token_address: await getOnrampMoneyTokenAddress(
+      event.coinId,
+      event.chainId
+    ),
+    fiat_equivalent: event.actualFiatAmount,
+    initiator_address: event.merchantRecognitionId.toLowerCase() as Address,
+    status,
+    token_type: TokenType.ERC20,
+    confirmed_at: status === 'completed' ? new Date().toISOString() : undefined,
+    currency: currenciesMap[event.fiatType],
+    provider_reference_id: event.referenceId,
+    fee_breakdown: {
+      client_fee: event.clientFee,
+      gateway_fee: event.gatewayFee,
+      on_ramp_fee: event.onRampFee,
+    },
+    total_fee: event.clientFee + event.gatewayFee + event.onRampFee,
+    metadata: {
+      order_id: event.orderId,
+      actual_quantity: event.actualQuantity,
+      kyc_needed: event?.kycNeeded,
+      payment_type: event.paymentType,
+    },
+  }
+
+  if (exists) {
+    // If transaction already exists, update it
+    payload.updated_at = new Date()
+    const { data, error } = await db.supabase
+      .from('transactions')
+      .update(payload)
+      .eq('provider_reference_id', event.referenceId)
+      .eq('initiator_address', event.merchantRecognitionId.toLowerCase())
+    if (error) {
+      throw new Error(error.message)
+    }
+    return data?.[0] as Transaction
+  } else {
+    // If transaction does not exist, insert it
+    const { data, error } = await db.supabase
+      .from('transactions')
+      .insert([payload])
+    if (error) {
+      throw new Error(error.message)
+    }
+    return data?.[0] as Transaction
+  }
+  //TODO: send notification
+}
 
 export {
   acceptContactInvite,
@@ -5247,6 +5561,7 @@ export {
   leaveGroup,
   manageGroupInvite,
   publicGroupJoin,
+  recordOffRampTransaction,
   registerMeetingSession,
   rejectContactInvite,
   rejectGroupInvite,
