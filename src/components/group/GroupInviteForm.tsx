@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronDownIcon } from '@chakra-ui/icons'
+import { CheckIcon } from '@chakra-ui/icons'
 import {
   Box,
   Button,
