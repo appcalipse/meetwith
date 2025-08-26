@@ -76,6 +76,7 @@ export interface DBContactInvite {
 export interface Contact {
   id: string
   address: string
+  domain?: string | null
   status: ContactStatus
   name: string
   avatar_url: string

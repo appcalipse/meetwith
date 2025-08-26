@@ -29,6 +29,7 @@ import { getOwnerPublicUrlServer } from './database'
 import { getAllParticipantsDisplayName } from './user_manager'
 
 const FROM = process.env.FROM_MAIL!
+
 import { CreateEmailOptions, Resend } from 'resend'
 
 import { InvoiceMetadata, ReceiptMetadata } from '@/types/Transactions'

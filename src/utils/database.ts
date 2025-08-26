@@ -162,7 +162,7 @@ import {
   getBaseEventId,
   updateMeetingServer,
 } from './calendar_sync_helpers'
-import { apiUrl, appUrl, isProduction, WEBHOOK_URL } from './constants'
+import { apiUrl, appUrl, WEBHOOK_URL } from './constants'
 import { ChannelType, ContactStatus } from './constants/contact'
 import { decryptContent, encryptContent } from './cryptography'
 import { addRecurrence } from './date_helper'
@@ -416,14 +416,16 @@ const findAccountByIdentifier = async (
     Sentry.captureException(error)
     return []
   }
-  return await Promise.all(
-    data.map(async account => {
-      account.preferences = await getAccountPreferences(
-        account.address.toLowerCase()
+  return data?.length > 0
+    ? await Promise.all(
+        data?.map(async account => {
+          account.preferences = await getAccountPreferences(
+            account.address.toLowerCase()
+          )
+          return account
+        })
       )
-      return account
-    })
-  )
+    : []
 }
 
 const updateAccountPreferences = async (account: Account): Promise<Account> => {
@@ -583,9 +585,20 @@ async function getExistingAccountsFromDB(
   if (fullInformation) {
     queryString += `
       ,calendars: connected_calendars(provider),
-      preferences: account_preferences(*)
+      preferences: account_preferences(
+      *,
+      default_availability:availabilities!account_preferences_availaibility_id_fkey(
+          id,
+          title,
+          timezone,
+          weekly_availability,
+          created_at,
+          updated_at
+        )
+      )
       `
   }
+
   const { data, error } = await db.supabase
     .from('accounts')
     .select(queryString)
@@ -600,6 +613,12 @@ async function getExistingAccountsFromDB(
   for (const account of data) {
     if (account.calendars) {
       account.isCalendarConnected = account?.calendars?.length > 0
+      const { default_availability, ...preferences } = account.preferences
+      if (default_availability) {
+        preferences.availabilities = default_availability.weekly_availability
+        preferences.timezone = default_availability.timezone
+      }
+      account.preferences = preferences
       delete account.calendars
     }
   }
@@ -2396,30 +2415,29 @@ const addOrUpdateConnectedCalendar = async (
   }
   const calendar = data[0] as ConnectedCalendar
 
-  if (!isProduction) {
-    try {
-      const integration = getConnectedCalendarIntegration(
-        address.toLowerCase(),
+  try {
+    const integration = getConnectedCalendarIntegration(
+      address.toLowerCase(),
+      email,
+      provider,
+      payload
+    )
+    for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
+      // don't parellelize this as it can make us hit google's rate limit
+      await handleWebHook(cal.calendarId, calendar.id, integration)
+    }
+  } catch (e) {
+    Sentry.captureException(e, {
+      extra: {
+        calendarId: calendar.id,
+        accountAddress: address,
         email,
         provider,
-        payload
-      )
-      for (const cal of calendars.filter(cal => cal.enabled && cal.sync)) {
-        // don't parellelize this as it can make us hit google's rate limit
-        await handleWebHook(cal.calendarId, calendar.id, integration)
-      }
-    } catch (e) {
-      Sentry.captureException(e, {
-        extra: {
-          calendarId: calendar.id,
-          accountAddress: address,
-          email,
-          provider,
-        },
-      })
-      console.error('Error adding new calendar to existing meeting types:', e)
-    }
+      },
+    })
+    console.error('Error adding new calendar to existing meeting types:', e)
   }
+
   return calendar
 }
 
