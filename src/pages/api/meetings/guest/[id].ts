@@ -12,8 +12,8 @@ import {
 import {
   MeetingChangeConflictError,
   MeetingNotFoundError,
-  TimeNotAvailableError,
   MeetingSessionNotFoundError,
+  TimeNotAvailableError,
   TransactionIsRequired,
   UnauthorizedError,
 } from '@/utils/errors'
