@@ -49,22 +49,7 @@ const extractSlotIdFromDescription = (description: string): string | null => {
 const extractMeetingDescription = (summaryMessage: string): string | null => {
   const sections = summaryMessage.split('\n\n')
 
-  if (sections.length >= 2) {
-    const lastSection = sections.slice(2)
-
-    if (!lastSection.includes('To reschedule or cancel the meeting')) {
-      return lastSection.join('\n\n').trim()
-    }
-  }
-
-  if (sections.length === 3) {
-    const middleSection = sections[1]
-    if (!middleSection.includes('To reschedule or cancel the meeting')) {
-      return middleSection.trim()
-    }
-  }
-
-  return null
+  return sections[0]
 }
 const getParticipationStatus = (responseStatus: string | undefined) => {
   switch (responseStatus) {
@@ -132,28 +117,7 @@ const mapRelatedSlotsWithDBRecords = async (existingSlots: Array<DBSlot>) => {
   }
   return accountSlot
 }
-const determineParticipantType = (
-  participant: calendar_v3.Schema$EventAttendee,
-  baseParticipants: calendar_v3.Schema$EventAttendee[],
-  existingMeetingAccounts: DBSlot[],
-  existingSlot?: DBSlot
-): ParticipantType => {
-  if (existingSlot?.role) {
-    return existingSlot?.role
-  }
-  if (
-    baseParticipants.length === 2 &&
-    existingMeetingAccounts.length === 1 &&
-    !existingMeetingAccounts.some(
-      slot => slot.role === ParticipantType.Scheduler
-    ) &&
-    !participant.self
-  ) {
-    return ParticipantType.Scheduler
-  }
 
-  return ParticipantType.Invitee
-}
 const updateMeetingServer = async (
   meetingId: string,
   currentAccountAddress: string,
@@ -220,6 +184,29 @@ const updateMeetingServer = async (
     slot.account_address.toLowerCase()
   )
 
+  let guestSchedulerExists = false
+  const determineParticipantType = (
+    participant: calendar_v3.Schema$EventAttendee,
+    baseParticipants: calendar_v3.Schema$EventAttendee[],
+    existingMeetingAccounts: DBSlot[],
+    existingSlot?: DBSlot
+  ): ParticipantType => {
+    if (existingSlot?.role) {
+      return existingSlot?.role
+    }
+    if (
+      !existingMeetingAccounts.some(
+        slot => slot.role === ParticipantType.Scheduler
+      ) &&
+      !participant.self &&
+      !guestSchedulerExists
+    ) {
+      guestSchedulerExists = true
+      return ParticipantType.Scheduler
+    }
+
+    return ParticipantType.Invitee
+  }
   // We want a copy we can modify
   const existingMeetingAccountsCopy = [...existingMeetingAccounts]
   const parsedParticipants: Array<ParticipantInfo> = await Promise.all(

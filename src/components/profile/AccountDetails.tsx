@@ -1,7 +1,6 @@
-import { Box, Flex, Text, VStack } from '@chakra-ui/layout'
+import { Box, Text, VStack } from '@chakra-ui/layout'
 import {
   Button,
-  Circle,
   Divider,
   FormControl,
   FormHelperText,
