@@ -39,7 +39,7 @@ export const handleMeetingSchedule = async (
           url = huddleResponse?.url
           break
         case MeetingProvider.JITSI_MEET:
-          url = `https://meet.jit.si/meetwithwallet/${meeting.meeting_id}`
+          url = `https://meet.jit.si/meetwith/${meeting.meeting_id}`
           break
         case MeetingProvider.ZOOM:
           const zoomResponse = await createZoomMeeting(meeting)
