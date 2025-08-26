@@ -62,7 +62,7 @@ import {
 } from '@utils/errors'
 import { saveMeetingsScheduled } from '@utils/storage'
 import { getAccountDisplayName } from '@utils/user_manager'
-import { addMinutes, addMonths, endOfMonth, startOfMonth } from 'date-fns'
+import { addMinutes } from 'date-fns'
 import { DateTime, Interval } from 'luxon'
 import { useRouter } from 'next/router'
 import React, { FC, useEffect, useMemo, useState } from 'react'
@@ -351,6 +351,16 @@ const PublicPage: FC<IProps> = props => {
   const [paymentType, setPaymentType] = useState<PaymentType | undefined>(
     undefined
   )
+  const currentAccount = useAccountContext()
+
+  const [timezone, setTimezone] = useState<Option<string>>(
+    tzs.find(
+      val =>
+        val.value ===
+        (currentAccount?.preferences?.timezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone)
+    ) || tzs[0]
+  )
   const [paymentStep, setPaymentStep] = useState<PaymentStep | undefined>(
     undefined
   )
@@ -360,7 +370,6 @@ const PublicPage: FC<IProps> = props => {
   const [currentStep, setCurrentStep] = useState<PublicSchedulingSteps>(
     PublicSchedulingSteps.SELECT_TYPE
   )
-  const currentAccount = useAccountContext()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [availableSlots, setAvailableSlots] = useState<Interval[]>([])
   const [selfAvailableSlots, setSelfAvailableSlots] = useState<Interval[]>([])
@@ -413,14 +422,6 @@ const PublicPage: FC<IProps> = props => {
     startDate: Date
     endDate: Date
   } | null>(null)
-  const [timezone, setTimezone] = useState<Option<string>>(
-    tzs.find(
-      val =>
-        val.value ===
-        (currentAccount?.preferences?.timezone ||
-          Intl.DateTimeFormat().resolvedOptions().timeZone)
-    ) || tzs[0]
-  )
   const toast = useToast()
   const [rescheduleSlot, setRescheduleSlot] = useState<
     ConferenceMeeting | undefined
@@ -790,8 +791,14 @@ const PublicPage: FC<IProps> = props => {
   }
   const getSelfAvailableSlots = async () => {
     if (currentAccount) {
-      const startDate = startOfMonth(currentMonth)
-      const endDate = addMonths(endOfMonth(currentMonth), 2)
+      const startDate = DateTime.fromJSDate(currentMonth)
+        .setZone(timezone.value || 'UTC')
+        .startOf('month')
+        .toJSDate()
+      const endDate = DateTime.fromJSDate(currentMonth)
+        .endOf('month')
+        .setZone(timezone.value || 'UTC')
+        .toJSDate()
       let busySlots: Interval[] = []
       try {
         busySlots = await getBusySlots(

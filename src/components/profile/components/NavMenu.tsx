@@ -105,7 +105,7 @@ export const NavMenu: React.FC<{
         mode: EditMode.SIGNOUT,
       },
     ],
-    [noOfInvitedGroups]
+    [noOfInvitedGroups, requestCount]
   )
 
   const DropdownItems = useMemo(
