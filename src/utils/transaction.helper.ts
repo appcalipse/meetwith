@@ -6,9 +6,11 @@ import { TransactionCouldBeNotFoundError } from '@/utils/errors'
 import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
+import { TRANSFER_FUNCTION_SELECTOR } from './constants'
+
 // Helper function to extract receiver address from ERC20 transfer input data
 function extractReceiverFromERC20Input(input: string): string | null {
-  if (input.startsWith('0xa9059cbb') && input.length >= 138) {
+  if (input.startsWith(TRANSFER_FUNCTION_SELECTOR) && input.length >= 138) {
     const receiverHex = input.slice(34, 74)
     return `0x${receiverHex}`
   }

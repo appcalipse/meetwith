@@ -31,9 +31,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const JWT_SECRET = process.env.JWT_SECRET
   if (!JWT_SECRET) {
-    return res
-      .status(500)
-      .json({ error: 'JWT_SECRET environment variable is required' })
+    return res.status(500).json({
+      error:
+        'There was an issue updating preferences. Please contact us at support@meetwith.xyz',
+    })
   }
 
   try {

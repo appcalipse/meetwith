@@ -4,7 +4,7 @@ import React from 'react'
 import { FiArrowLeft } from 'react-icons/fi'
 
 import { Transaction } from '@/types/Transactions'
-import { CurrencySymbol } from '@/utils/constants'
+import { formatCurrency } from '@/utils/generic_utils'
 import { CurrencyService } from '@/utils/services/currency.service'
 
 interface TransactionDetailsViewProps {
@@ -37,17 +37,9 @@ const TransactionDetailsView: React.FC<TransactionDetailsViewProps> = ({
     return usdAmount * exchangeRate
   }
 
-  // Format currency display
   const formatCurrencyDisplay = (usdAmount: number): string => {
     const convertedAmount = convertCurrency(usdAmount)
-    const currencySymbol =
-      CurrencySymbol[selectedCurrency as keyof typeof CurrencySymbol] ||
-      selectedCurrency
-
-    return `${currencySymbol}${convertedAmount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`
+    return formatCurrency(convertedAmount, selectedCurrency, 2)
   }
 
   // Get guest information from meeting sessions

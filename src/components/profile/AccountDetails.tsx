@@ -28,6 +28,7 @@ import { AccountContext } from '@/providers/AccountProvider'
 import { OnboardingContext } from '@/providers/OnboardingProvider'
 import { Account, SocialLink, SocialLinkType } from '@/types/Account'
 import { SupportedChain } from '@/types/chains'
+import { Plan } from '@/types/Subscription'
 import {
   getUnstoppableDomainsForAddress,
   saveAccountChanges,
@@ -39,7 +40,11 @@ import {
 import { appUrl } from '@/utils/constants'
 import { getLensHandlesForAddress } from '@/utils/lens.helper'
 import { checkValidDomain, resolveENS } from '@/utils/rpc_helper_front'
-import { changeDomainOnChain, isProAccount } from '@/utils/subscription_manager'
+import {
+  changeDomainOnChain,
+  getActiveProSubscription,
+  isProAccount,
+} from '@/utils/subscription_manager'
 import { useToastHelpers } from '@/utils/toasts'
 
 import Block from './components/Block'
@@ -93,6 +98,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   const [newProDomain, setNewProDomain] = useState<string>(
     currentAccount.subscriptions?.[0]?.domain ?? ''
   )
+  const [_currentPlan, setCurrentPlan] = useState<Plan | undefined>(undefined)
 
   const saveDetails = async () => {
     setLoading(true)
@@ -172,9 +178,11 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
   }
 
   const updateAccountSubs = async () => {
+    setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
     const subscriptions = await syncSubscriptions()
     currentAccount!.subscriptions = subscriptions
     await login(currentAccount!)
+    setCurrentPlan(isProAccount(currentAccount!) ? Plan.PRO : undefined)
   }
 
   const changeDomain = async () => {
@@ -318,17 +326,6 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
     input.click()
   }
 
-  const handleImageUpdate = (url: string) => {
-    setAvatarUrl(url)
-    closeEditImageModal()
-  }
-
-  const handleRemoveImage = () => {
-    setAvatarUrl(undefined)
-    setSelectedImageUrl(undefined)
-    closeEditImageModal()
-  }
-
   return (
     <VStack width="100%" maxW="100%" gap={6} alignItems={'flex-start'}>
       <Block>
@@ -399,9 +396,7 @@ const AccountDetails: React.FC<{ currentAccount: Account }> = ({
                     )
                   }
                   placeholder={
-                    currentAccount?.subscriptions?.find(
-                      sub => new Date(sub.expiry_time) > new Date()
-                    )
+                    getActiveProSubscription(currentAccount)
                       ? 'your_custom_link'
                       : `address/${currentAccount?.address}`
                   }

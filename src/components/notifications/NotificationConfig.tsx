@@ -20,6 +20,7 @@ import MagicLinkModal from '@/components/profile/components/MagicLinkModal'
 import SuccessModal from '@/components/profile/components/SuccessModal'
 import { Account } from '@/types/Account'
 import { TelegramConnection } from '@/types/Telegram'
+import { handleApiError } from '@/utils/error_helper'
 import { useToastHelpers } from '@/utils/toasts'
 
 import {
@@ -377,10 +378,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             )
             setIsChangeEmailModalOpen(false)
           } catch (error) {
-            showErrorToast(
-              'Magic Link Failed',
-              'Failed to send magic link. Please try again.'
-            )
+            handleApiError('Magic Link Failed', error)
           }
         }}
         isLoading={false}
@@ -401,10 +399,7 @@ const NotificationsConfig: React.FC<{ currentAccount: Account }> = ({
             )
             setIsMagicLinkModalOpen(false)
           } catch (error) {
-            showErrorToast(
-              'Magic Link Failed',
-              'Failed to send magic link. Please try again.'
-            )
+            handleApiError('Magic Link Failed', error)
           } finally {
             setIsSendingMagicLink(false)
           }

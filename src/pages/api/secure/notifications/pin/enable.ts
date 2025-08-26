@@ -7,6 +7,7 @@ import { appUrl, PIN_ENABLE_TOKEN_EXPIRY } from '@/utils/constants'
 import {
   createVerification,
   getAccountNotificationSubscriptionEmail,
+  invalidatePreviousVerifications,
 } from '@/utils/database'
 import { sendEnablePinEmail } from '@/utils/email_helper'
 
@@ -17,9 +18,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const JWT_SECRET = process.env.JWT_SECRET
   if (!JWT_SECRET) {
-    return res
-      .status(500)
-      .json({ error: 'JWT_SECRET environment variable is required' })
+    return res.status(500).json({
+      error:
+        'There was an issue updating preferences. Please contact us at support@meetwith.xyz',
+    })
   }
 
   try {
@@ -41,6 +43,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       expiresIn: PIN_ENABLE_TOKEN_EXPIRY,
     })
 
+    await invalidatePreviousVerifications(
+      account_address,
+      VerificationChannel.TRANSACTION_PIN
+    )
+
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
     await createVerification(
       account_address,
@@ -49,7 +56,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       expiresAt
     )
 
-    const enableUrl = `${appUrl}/dashboard/enable-pin?token=${enableToken}&address=${account_address}`
+    const enableUrl = `${appUrl}/dashboard/enable-pin?token=${enableToken}`
 
     const email = await getAccountNotificationSubscriptionEmail(account_address)
 

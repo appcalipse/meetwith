@@ -37,7 +37,6 @@ import {
   sendEnablePinLink,
   sendResetPinLink,
   updatePaymentPreferences,
-  verifyPin,
 } from '@/utils/api_helper'
 import {
   networkOptions as paymentNetworkOptions,
@@ -213,17 +212,13 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
   // Change PIN mutation
   const changePinMutation = useMutation(
     async ({ oldPin, newPin }: { oldPin: string; newPin: string }) => {
-      // First verify the old PIN
-      const verification = await verifyPin(oldPin)
-
-      if (!verification.valid) {
-        throw new Error('The current pin you entered is incorrect')
-      }
-
-      // PIN verified, now update with new PIN
-      return await updatePaymentPreferences(currentAccount.address, {
-        pin: newPin, // Will be hashed on server
-      })
+      return await updatePaymentPreferences(
+        currentAccount.address,
+        {
+          pin: newPin,
+        },
+        oldPin
+      )
     },
     {
       onSuccess: () => {
@@ -243,15 +238,13 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
   // Disable PIN mutation
   const disablePinMutation = useMutation(
     async (pin: string) => {
-      // First verify the PIN
-      const verification = await verifyPin(pin)
-      if (!verification.valid) {
-        throw new Error('The current pin you entered is incorrect')
-      }
-
-      return await updatePaymentPreferences(currentAccount.address, {
-        pin: null,
-      })
+      return await updatePaymentPreferences(
+        currentAccount.address,
+        {
+          pin: null,
+        },
+        pin
+      )
     },
     {
       onSuccess: () => {
@@ -264,7 +257,6 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
       },
       onError: (error: unknown) => {
         handleApiError('PIN Disable Failed', error)
-        console.error('Error disabling PIN:', error)
       },
     }
   )
@@ -740,10 +732,7 @@ const WalletAndPayment: React.FC<{ currentAccount: Account }> = ({
               }
               onMagicLinkClose()
             } catch (error) {
-              showErrorToast(
-                'Magic Link Failed',
-                'Failed to send magic link. Please try again.'
-              )
+              handleApiError('Magic Link Failed', error)
             } finally {
               setIsSendingMagicLink(false)
             }

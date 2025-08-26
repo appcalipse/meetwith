@@ -43,7 +43,8 @@ import { getChainId, supportedChains } from '@/types/chains'
 import { getPaymentPreferences } from '@/utils/api_helper'
 import { sendEnablePinLink } from '@/utils/api_helper'
 import { getNotificationSubscriptions } from '@/utils/api_helper'
-import { CurrencySymbol } from '@/utils/constants'
+import { handleApiError } from '@/utils/error_helper'
+import { formatCurrency } from '@/utils/generic_utils'
 import { CurrencyService } from '@/utils/services/currency.service'
 import { useToastHelpers } from '@/utils/toasts'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
@@ -63,7 +64,7 @@ interface WalletProps {
 
 const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const router = useRouter()
-  const { showSuccessToast, showErrorToast } = useToastHelpers()
+  const { showSuccessToast } = useToastHelpers()
 
   // PIN protection state
   const {
@@ -198,17 +199,9 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     return usdAmount * exchangeRate
   }
 
-  // Format currency display
   const formatCurrencyDisplay = (usdAmount: number): string => {
     const convertedAmount = convertCurrency(usdAmount)
-    const currencySymbol =
-      CurrencySymbol[selectedCurrency as keyof typeof CurrencySymbol] ||
-      selectedCurrency
-
-    return `${currencySymbol}${convertedAmount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`
+    return formatCurrency(convertedAmount, selectedCurrency, 2)
   }
 
   const handleShowWithdrawWidget = () => onOpen()
@@ -1602,10 +1595,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               )
               onMagicLinkClose()
             } catch (error) {
-              showErrorToast(
-                'Magic Link Failed',
-                'Failed to send magic link. Please try again.'
-              )
+              handleApiError('Magic Link Failed', error)
             } finally {
               setIsSendingMagicLink(false)
             }
