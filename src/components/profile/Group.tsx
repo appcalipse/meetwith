@@ -11,6 +11,7 @@ import {
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/router'
 import React, { ReactNode, useEffect, useState } from 'react'
 import { FaPlus } from 'react-icons/fa'
@@ -39,6 +40,7 @@ import {
   getGroups,
   listConnectedCalendars,
 } from '@/utils/api_helper'
+import QueryKeys from '@/utils/query_keys'
 
 import GroupCard from '../group/GroupCard'
 import InviteModal from '../group/InviteModal'
@@ -73,11 +75,41 @@ const DEFAULT_STATE: IGroupModal = {
   openRemoveModal: () => {},
 }
 export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
+const PAGE_SIZE = 10
+
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
-  const [groups, setGroups] = useState<Array<GetGroupsResponse>>([])
-  const [loading, setLoading] = useState(true)
-  const [noMoreFetch, setNoMoreFetch] = useState(false)
-  const [firstFetch, setFirstFetch] = useState(true)
+  const {
+    data,
+    isLoading,
+    isFetching,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    isError,
+    error,
+  } = useInfiniteQuery({
+    queryKey: QueryKeys.groups(currentAccount?.address),
+    queryFn: ({ pageParam = 0 }) => getGroups(PAGE_SIZE, pageParam),
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage || lastPage.length < PAGE_SIZE) {
+        return undefined
+      }
+      return allPages.flat().length
+    },
+    enabled: !!currentAccount?.address,
+    staleTime: 0,
+    refetchOnMount: true,
+  })
+
+  const groups = data?.pages.flat() ?? []
+  const firstFetch = isLoading
+  const loading = isFetching
+  const noMoreFetch = !hasNextPage
+
+  // const [groups, setGroups] = useState<Array<GetGroupsResponse>>([])
+  // const [loading, setLoading] = useState(true)
+  // const [noMoreFetch, setNoMoreFetch] = useState(false)
+  // const [firstFetch, setFirstFetch] = useState(true)
   const [inviteGroupData, setInviteGroupData] = useState<
     GroupResponse | undefined
   >(undefined)
@@ -137,24 +169,15 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setSelectedGroupMember,
     openRemoveModal,
   }
-  const fetchGroups = async (reset?: boolean) => {
-    const PAGE_SIZE = 10
-    setLoading(true)
-    const newGroups = await getGroups(PAGE_SIZE, reset ? 0 : groups.length)
-    if (newGroups?.length < PAGE_SIZE) {
-      setNoMoreFetch(true)
+  const fetchGroups = () => {
+    if (hasNextPage && !isFetching) {
+      fetchNextPage()
     }
-    setGroups(prev => (reset ? [] : [...prev]).concat(newGroups))
-    setLoading(false)
-    setFirstFetch(false)
   }
 
   const resetState = async () => {
-    setFirstFetch(true)
-    setNoMoreFetch(false)
-    void fetchGroups(true)
+    await refetch()
   }
-
   const fetchGroup = async (group_id: string) => {
     setInviteDataIsLoading(true)
     const group = await getGroupExternal(group_id)
@@ -207,10 +230,6 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
     setInviteGroupData(group)
     setInviteDataIsLoading(false)
   }
-  useEffect(() => {
-    void resetState()
-  }, [currentAccount?.address])
-
   useEffect(() => {
     if (join) {
       void fetchGroup(join as string)
