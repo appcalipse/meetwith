@@ -21,6 +21,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { Account, DayAvailability, MeetingType } from '@/types/Account'
 import { MeetingReminders } from '@/types/common'
+import { Intents } from '@/types/Dashboard'
 import {
   DBSlot,
   ExtendedDBSlot,
@@ -1535,6 +1536,7 @@ const googleUrlParsedDate = (date: Date) =>
 const outLookUrlParsedDate = (date: Date) =>
   formatInTimeZone(date, 'UTC', "yyyy-MM-dd:HH:mm:SS'Z'")
 const generateGoogleCalendarUrl = (
+  slot_id: string,
   start?: Date | number,
   end?: Date | number,
   title?: string,
@@ -1554,10 +1556,11 @@ const generateGoogleCalendarUrl = (
     baseUrl += `&text=${title}`
   }
   if (content || meeting_url) {
+    const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
     baseUrl += `&details=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`,
+      changeUrl,
       hasGuests
     )}`
   }
@@ -1573,6 +1576,7 @@ const generateGoogleCalendarUrl = (
   return baseUrl
 }
 const generateOffice365CalendarUrl = (
+  slot_id: string,
   start?: Date | number,
   end?: Date | number,
   title?: string,
@@ -1594,10 +1598,11 @@ const generateOffice365CalendarUrl = (
     baseUrl += `&subject=${title}`
   }
   if (content || meeting_url) {
+    const changeUrl = `${appUrl}/dashboard/schedule?meetingId=${slot_id}&intent=${Intents.UPDATE_MEETING}`
     baseUrl += `&body=${CalendarServiceHelper.getMeetingSummary(
       content,
       meeting_url,
-      `${appUrl}/dashboard/meetings`,
+      changeUrl,
       hasGuests
     )}`
   }
