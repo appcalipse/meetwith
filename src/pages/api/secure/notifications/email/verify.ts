@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
@@ -35,6 +36,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       })
     }
   } catch (error) {
+    Sentry.captureException(error)
     console.error('Error verifying code:', error)
     return res.status(500).json({
       error: 'Failed to verify code',

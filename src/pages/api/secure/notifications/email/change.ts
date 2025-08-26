@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import jwt from 'jsonwebtoken'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -74,6 +75,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       message: 'Change email link sent successfully',
     })
   } catch (error) {
+    Sentry.captureException(error)
     console.error('Error sending change email link:', error)
     return res.status(500).json({
       error: 'Failed to send change email link',

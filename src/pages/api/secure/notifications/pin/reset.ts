@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import jwt from 'jsonwebtoken'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -71,6 +72,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       message: 'Reset PIN email sent successfully',
     })
   } catch (error) {
+    Sentry.captureException(error)
     console.error('Error sending reset PIN email:', error)
     return res.status(500).json({
       error: 'Failed to send reset PIN email',

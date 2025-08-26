@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
@@ -29,6 +30,7 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       return res.status(200).json({ valid: false })
     }
   } catch (e) {
+    Sentry.captureException(e)
     return res.status(500).json({ error: 'Failed to verify PIN' })
   }
 }
