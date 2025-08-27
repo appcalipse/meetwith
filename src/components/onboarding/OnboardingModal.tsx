@@ -126,9 +126,19 @@ const OnboardingModal = () => {
 
   // Modal opening flow
   useEffect(() => {
+    const isStandaloneAuthPage =
+      router.pathname === '/reset-pin' ||
+      router.pathname === '/change-email' ||
+      router.pathname === '/enable-pin'
+
     // When something related to user changes, check if we should open the modal
     // If the user is logged in and modal hans't been opened yet
-    if (!!currentAccount?.address && !onboardingInit && !skipNextSteps) {
+    if (
+      !!currentAccount?.address &&
+      !onboardingInit &&
+      !skipNextSteps &&
+      !isStandaloneAuthPage
+    ) {
       // We check if the user is comming from Discord Onboarding Modal
       // and has its discord account linked
 
@@ -165,7 +175,8 @@ const OnboardingModal = () => {
       !currentAccount?.address &&
       !!origin &&
       !didOpenConnectWallet &&
-      !isOnboardingOpened
+      !isOnboardingOpened &&
+      !isStandaloneAuthPage
     ) {
       // We open the connection modal and avoid it being opened again
       openConnection()
@@ -178,6 +189,7 @@ const OnboardingModal = () => {
     openConnection,
     isOnboardingOpened,
     signedUp,
+    router.pathname,
   ])
 
   useEffect(() => {

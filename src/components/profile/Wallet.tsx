@@ -13,10 +13,14 @@ import {
   RadioGroup,
   Spinner,
   Text,
+  Tooltip,
   useDisclosure,
   VStack,
 } from '@chakra-ui/react'
+import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/router'
 import React from 'react'
+import { useState } from 'react'
 import { BsEye, BsEyeSlash } from 'react-icons/bs'
 import { FiArrowLeft, FiSearch } from 'react-icons/fi'
 import { GrDocumentTime } from 'react-icons/gr'
@@ -35,9 +39,20 @@ import { useWalletBalance } from '@/hooks/useWalletBalance'
 import { useWalletTransactions } from '@/hooks/useWalletTransactions'
 import { useWallet } from '@/providers/WalletProvider'
 import { Account } from '@/types/Account'
+import { getChainId, supportedChains } from '@/types/chains'
+import { getPaymentPreferences } from '@/utils/api_helper'
+import { sendEnablePinLink } from '@/utils/api_helper'
+import { getNotificationSubscriptions } from '@/utils/api_helper'
+import { handleApiError } from '@/utils/error_helper'
+import { formatCurrency } from '@/utils/generic_utils'
+import { CurrencyService } from '@/utils/services/currency.service'
+import { useToastHelpers } from '@/utils/toasts'
 import { CURRENCIES, NETWORKS } from '@/utils/walletConfig'
 
 import WithdrawFundsModal from '../wallet/WithdrawFundsModal'
+import { Avatar } from './components/Avatar'
+import MagicLinkModal from './components/MagicLinkModal'
+import WalletActionButton from './components/WalletActionButton'
 import Pagination from './Pagination'
 import ReceiveFundsModal from './ReceiveFundsModal'
 import SendFundsModal from './SendFundsModal'
@@ -48,6 +63,38 @@ interface WalletProps {
 }
 
 const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
+  const router = useRouter()
+  const { showSuccessToast } = useToastHelpers()
+
+  // PIN protection state
+  const {
+    isOpen: isMagicLinkOpen,
+    onOpen: _onMagicLinkOpen,
+    onClose: onMagicLinkClose,
+  } = useDisclosure()
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false)
+  const [notificationEmail, _setNotificationEmail] = useState<string | null>(
+    null
+  )
+
+  // Fetch payment preferences to check if PIN is set
+  const { data: _paymentPreferences } = useQuery(
+    ['paymentPreferences', currentAccount?.address],
+    () => getPaymentPreferences(),
+    {
+      enabled: !!currentAccount?.address,
+    }
+  )
+
+  // Fetch notification subscriptions to get email
+  const { data: _notificationSubscriptions } = useQuery(
+    ['notificationSubscriptions', currentAccount?.address],
+    () => getNotificationSubscriptions(),
+    {
+      enabled: !!currentAccount?.address,
+    }
+  )
+
   const {
     // View states
     showBalance,
@@ -90,8 +137,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
 
   const transactionsPerPage = 5
   const { isOpen, onClose, onOpen } = useDisclosure()
-  const { totalBalance, isLoading: balanceLoading } =
-    useWalletBalance(selectedCurrency)
+  const { totalBalance, isLoading: balanceLoading } = useWalletBalance('USD')
 
   const {
     transactions,
@@ -101,7 +147,9 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     undefined,
     undefined,
     transactionsPerPage,
-    (currentPage - 1) * transactionsPerPage
+    (currentPage - 1) * transactionsPerPage,
+    selectedCurrency,
+    searchQuery
   )
 
   // Token-specific data for crypto details view
@@ -118,7 +166,9 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
     selectedCrypto?.tokenAddress,
     selectedCrypto?.chainId,
     transactionsPerPage,
-    (selectedCryptoCurrentPage - 1) * transactionsPerPage
+    (selectedCryptoCurrentPage - 1) * transactionsPerPage,
+    selectedCurrency,
+    searchQuery
   )
 
   // Use centralized configurations
@@ -126,78 +176,84 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
   const networks = NETWORKS
 
   // Use the centralized crypto balances hook
-  const { cryptoAssetsWithBalances } = useCryptoBalances({ selectedNetwork })
-
-  const filteredTransactions = transactions.filter(tx => {
-    if (!searchQuery) return true
-    const searchLower = searchQuery.toLowerCase()
-    const meetingSession = tx.originalTransaction.meeting_sessions?.[0]
-    const guestEmail = meetingSession?.guest_email
-    const guestName = guestEmail?.split('@')[0] || 'Guest'
-
-    return (
-      tx.user.toLowerCase().includes(searchLower) ||
-      guestName.toLowerCase().includes(searchLower) ||
-      guestEmail?.toLowerCase().includes(searchLower) ||
-      'Meeting Session'.toLowerCase().includes(searchLower)
-    )
+  const { cryptoAssetsWithBalances } = useCryptoBalances({
+    selectedChain: selectedNetwork,
   })
+
+  // Currency conversion hooks
+  const { data: exchangeRate } = useQuery(
+    ['exchangeRate', selectedCurrency],
+    () => CurrencyService.getExchangeRate(selectedCurrency),
+    {
+      enabled: selectedCurrency !== 'USD',
+      staleTime: 1000 * 60 * 60,
+      cacheTime: 1000 * 60 * 60 * 24,
+    }
+  )
+
+  // Convert USD amount to selected currency
+  const convertCurrency = (usdAmount: number): number => {
+    if (selectedCurrency === 'USD' || !exchangeRate) {
+      return usdAmount
+    }
+    return usdAmount * exchangeRate
+  }
+
+  const formatCurrencyDisplay = (usdAmount: number): string => {
+    const convertedAmount = convertCurrency(usdAmount)
+    return formatCurrency(convertedAmount, selectedCurrency, 2)
+  }
 
   const handleShowWithdrawWidget = () => onOpen()
 
-  const ActionButton = ({ icon, label, isActive = false, onClick }: any) => (
-    <VStack spacing={3}>
-      <Box
-        w="68px"
-        h="54px"
-        borderRadius="16px"
-        bg={isActive ? 'primary.500' : 'neutral.0'}
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        cursor="pointer"
-        position="relative"
-        _hover={{ opacity: 0.8 }}
-        transition="all 0.2s"
-        boxShadow="0px 1px 2px rgba(0, 0, 0, 0.05)"
-        border={isActive ? '2px solid' : 'none'}
-        borderColor="neutral.0"
-        onClick={onClick}
-      >
-        <Icon
-          as={icon}
-          color={isActive ? 'white' : 'primary.500'}
-          fontSize="24px"
-        />
-      </Box>
-      <Text fontSize="16px" color="neutral.0" fontWeight="500">
-        {label}
-      </Text>
-    </VStack>
-  )
+  const handleSettingsClick = () => {
+    router.push('/dashboard/details#wallet-payment')
+  }
+
+  const handleCurrencyChange = (value: string) => {
+    setSelectedCurrency(value)
+    setIsCurrencyModalOpen(false)
+  }
 
   // Reset pagination when selected crypto changes
   React.useEffect(() => {
     setSelectedCryptoCurrentPage(1)
   }, [selectedCrypto, setSelectedCryptoCurrentPage])
 
+  if (!currentAccount) return null
+
   return (
-    <Box maxW="685px" ml="70px" overflowY="auto" height="100%" pb={8}>
+    <Box
+      maxW={{ base: '100%', md: '685px' }}
+      ml={{ base: 0, md: '70px' }}
+      overflowY="auto"
+      height="100%"
+      pb={{ base: 4, md: 8 }}
+      px={{ base: 4, md: 0 }}
+    >
       <WithdrawFundsModal
         selectedNetwork={selectedNetwork}
         isOpen={isOpen}
         onClose={onClose}
       />
       {/* Header */}
-      <VStack spacing={2} align="start" mb={6}>
-        <Text fontSize="2xl" color="neutral.0" fontWeight="700">
+      <VStack
+        spacing={{ base: 1, md: 2 }}
+        align="start"
+        mb={{ base: 4, md: 6 }}
+      >
+        <Text
+          fontSize={{ base: 'xl', md: '2xl' }}
+          color="neutral.0"
+          fontWeight="700"
+        >
           My Wallet
         </Text>
         <Text
           color="neutral.200"
-          fontSize="16px"
+          fontSize={{ base: '14px', md: '16px' }}
           fontWeight="500"
-          width="600px"
+          width={{ base: '100%', md: '600px' }}
         >
           A wallet to receive session booking payments, spend your funds and
           participate in DeFi
@@ -209,17 +265,18 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
         <TransactionDetailsView
           transaction={selectedTransaction}
           onBack={() => setShowTransactionDetails(false)}
+          selectedCurrency={selectedCurrency}
         />
       ) : showCryptoDetails && selectedCrypto ? (
         <Box
           bg="neutral.900"
-          borderRadius="12px"
-          p={12}
+          borderRadius={{ base: '8px', md: '12px' }}
+          p={{ base: 6, md: 12 }}
           border="1px solid"
           borderColor="neutral.825"
         >
           {/* Header with Back Link and Title */}
-          <Box position="relative" mb={8}>
+          <Box position="relative" mb={{ base: 6, md: 8 }}>
             <HStack
               spacing={2}
               cursor="pointer"
@@ -231,14 +288,14 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               top={0}
               zIndex={1}
             >
-              <Icon as={FiArrowLeft} fontSize="20px" />
-              <Text fontSize="16px" fontWeight="600">
+              <Icon as={FiArrowLeft} fontSize={{ base: '16px', md: '20px' }} />
+              <Text fontSize={{ base: '14px', md: '16px' }} fontWeight="600">
                 Back
               </Text>
             </HStack>
 
             <Text
-              fontSize="24px"
+              fontSize={{ base: '20px', md: '24px' }}
               fontWeight="700"
               color="neutral.0"
               textAlign="center"
@@ -249,40 +306,52 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
           </Box>
 
           {/* Wallet Balance Card */}
-          <Box bg="neutral.825" borderRadius="12px" p={6} mb={6}>
+          <Box
+            bg="neutral.825"
+            borderRadius={{ base: '8px', md: '12px' }}
+            p={{ base: 4, md: 6 }}
+            mb={{ base: 4, md: 6 }}
+          >
             {/* Currency Icon */}
             <Box
-              w="48px"
-              h="48px"
+              w={{ base: '40px', md: '48px' }}
+              h={{ base: '40px', md: '48px' }}
               borderRadius="full"
               bg="neutral.800"
               display="flex"
               alignItems="center"
               justifyContent="center"
-              mb={4}
+              mb={{ base: 3, md: 4 }}
               mx="auto"
             >
               <Image
                 src={selectedCrypto.icon}
                 alt={selectedCrypto.symbol}
-                w="32px"
-                h="32px"
+                w={{ base: '24px', md: '32px' }}
+                h={{ base: '24px', md: '32px' }}
               />
             </Box>
 
             {/* Balance */}
-            <VStack spacing={1} mb={6}>
+            <VStack spacing={1} mb={{ base: 4, md: 6 }}>
               {selectedCryptoBalance.isLoading ? (
                 <HStack spacing={3} align="center">
-                  <Spinner color="neutral.400" size="md" />
-                  <Text fontSize="16px" color="neutral.400" fontWeight="500">
+                  <Spinner
+                    color="neutral.400"
+                    size={{ base: 'sm', md: 'md' }}
+                  />
+                  <Text
+                    fontSize={{ base: '14px', md: '16px' }}
+                    color="neutral.400"
+                    fontWeight="500"
+                  >
                     Loading balance...
                   </Text>
                 </HStack>
               ) : (
                 <>
                   <Text
-                    fontSize="48px"
+                    fontSize={{ base: '32px', md: '48px' }}
                     fontWeight="500"
                     color="white"
                     lineHeight="1"
@@ -291,30 +360,33 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       ? selectedCryptoBalance.balance.toLocaleString()
                       : '0'}
                   </Text>
-                  <Text fontSize="16px" color="neutral.300" fontWeight="500">
-                    $
+                  <Text
+                    fontSize={{ base: '14px', md: '16px' }}
+                    color="neutral.300"
+                    fontWeight="500"
+                  >
                     {selectedCryptoBalance.balance
-                      ? selectedCryptoBalance.balance.toLocaleString()
-                      : '0'}
+                      ? formatCurrencyDisplay(selectedCryptoBalance.balance)
+                      : formatCurrencyDisplay(0)}
                   </Text>
                 </>
               )}
             </VStack>
 
             {/* Action Buttons */}
-            <HStack justify="center" spacing={6}>
-              <ActionButton
+            <HStack justify="center" spacing={{ base: 3, md: 6 }}>
+              <WalletActionButton
                 icon={PiArrowCircleUpRight}
                 label="Withdraw funds"
                 onClick={() => handleShowWithdrawWidget()}
               />
-              <ActionButton
+              <WalletActionButton
                 icon={PiPlusCircleLight}
                 label="Receive funds"
                 isActive
                 onClick={() => setIsReceiveModalOpen(true)}
               />
-              <ActionButton
+              <WalletActionButton
                 icon={PiArrowCircleRight}
                 label="Send funds"
                 onClick={() => setIsSendModalOpen(true)}
@@ -326,16 +398,21 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
           <Box
             bg="dark.900"
             borderRadius="6px"
-            px={4}
-            py={2}
-            mb={6}
-            width="320px"
+            px={{ base: 3, md: 4 }}
+            py={{ base: 2, md: 2 }}
+            mb={{ base: 4, md: 6 }}
+            width={{ base: '100%', md: '320px' }}
             display="flex"
             alignItems="center"
             border="1px solid"
             borderColor="neutral.400"
           >
-            <Icon as={FiSearch} color="neutral.400" fontSize="20px" mr={2} />
+            <Icon
+              as={FiSearch}
+              color="neutral.400"
+              fontSize={{ base: '16px', md: '20px' }}
+              mr={{ base: 1, md: 2 }}
+            />
             <input
               type="text"
               placeholder="Search transaction by client name"
@@ -346,55 +423,48 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 border: 'none',
                 outline: 'none',
                 color: 'neutral.400',
-                fontSize: '16px',
+                fontSize: '14px',
                 width: '100%',
                 fontWeight: '500',
               }}
             />
           </Box>
 
-          {/* Filter token-specific transactions */}
           {(() => {
-            const filteredCryptoTransactions =
-              selectedCryptoTransactions.filter(tx => {
-                if (!searchQuery) return true
-                const searchLower = searchQuery.toLowerCase()
-                const meetingSession =
-                  tx.originalTransaction.meeting_sessions?.[0]
-                const guestEmail = meetingSession?.guest_email
-                const guestName = guestEmail?.split('@')[0] || 'Guest'
-
-                return (
-                  tx.user.toLowerCase().includes(searchLower) ||
-                  guestName.toLowerCase().includes(searchLower) ||
-                  guestEmail?.toLowerCase().includes(searchLower) ||
-                  'Meeting Session'.toLowerCase().includes(searchLower)
-                )
-              })
             return (
               <>
                 <Text
-                  fontSize="24px"
+                  fontSize={{ base: '20px', md: '24px' }}
                   fontWeight="700"
                   color="neutral.0"
-                  mb={4}
+                  mb={{ base: 3, md: 4 }}
                   textAlign="left"
                 >
                   Transaction History
                 </Text>
-                <VStack spacing={3}>
+                <VStack spacing={{ base: 2, md: 3 }}>
                   {/* Transaction History Title */}
 
                   {selectedCryptoTransactionsLoading ? (
-                    <Box textAlign="center" py={8}>
-                      <Spinner color="neutral.400" size="md" />
-                      <Text color="neutral.400" fontSize="16px" mt={2}>
+                    <Box textAlign="center" py={{ base: 6, md: 8 }}>
+                      <Spinner
+                        color="neutral.400"
+                        size={{ base: 'sm', md: 'md' }}
+                      />
+                      <Text
+                        color="neutral.400"
+                        fontSize={{ base: '14px', md: '16px' }}
+                        mt={2}
+                      >
                         Loading transactions...
                       </Text>
                     </Box>
-                  ) : filteredCryptoTransactions.length === 0 ? (
-                    <Box textAlign="center" py={8}>
-                      <Text color="neutral.400" fontSize="16px">
+                  ) : selectedCryptoTransactions.length === 0 ? (
+                    <Box textAlign="center" py={{ base: 6, md: 8 }}>
+                      <Text
+                        color="neutral.400"
+                        fontSize={{ base: '14px', md: '16px' }}
+                      >
                         {searchQuery
                           ? 'No transactions found'
                           : 'No transactions yet'}
@@ -402,12 +472,12 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     </Box>
                   ) : (
                     <>
-                      {filteredCryptoTransactions.map(transaction => (
+                      {selectedCryptoTransactions.map(transaction => (
                         <Box
                           key={transaction.id}
                           bg="neutral.825"
-                          borderRadius="16px"
-                          p={4}
+                          borderRadius={{ base: '12px', md: '16px' }}
+                          p={{ base: 3, md: 4 }}
                           width="100%"
                           cursor="pointer"
                           _hover={{ bg: 'neutral.800' }}
@@ -420,63 +490,76 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                             setShowTransactionDetails(true)
                           }}
                         >
-                          <Flex justify="flex-start" gap={5} align="center">
-                            <HStack spacing={3}>
-                              {/* User Avatar */}
-                              <Box
-                                w="40px"
-                                h="40px"
-                                borderRadius="full"
-                                overflow="hidden"
-                              >
-                                <Image
-                                  src={transaction.userImage}
-                                  alt={transaction.user}
-                                  w="40px"
-                                  h="40px"
-                                  objectFit="cover"
-                                />
-                              </Box>
+                          <VStack
+                            spacing={{ base: 2, md: 0 }}
+                            align="stretch"
+                            width="100%"
+                          >
+                            {/* Top row: User info and status */}
+                            <Flex
+                              justify="flex-start"
+                              align="center"
+                              width="100%"
+                              gap={{ base: 3, md: '18px' }}
+                            >
+                              <HStack spacing={3}>
+                                {/* User Avatar */}
+                                <Box
+                                  w={{ base: '32px', md: '40px' }}
+                                  h={{ base: '32px', md: '40px' }}
+                                  borderRadius="full"
+                                  overflow="hidden"
+                                >
+                                  <Image
+                                    src={transaction.userImage}
+                                    alt={transaction.user}
+                                    w={{ base: '32px', md: '40px' }}
+                                    h={{ base: '32px', md: '40px' }}
+                                    objectFit="cover"
+                                  />
+                                </Box>
 
-                              {/* Transaction Details */}
-                              <Box>
+                                {/* Transaction Details */}
+                                <Box>
+                                  <Text
+                                    color="white"
+                                    fontSize={{ base: '14px', md: '16px' }}
+                                    fontWeight="500"
+                                  >
+                                    {transaction.user} {transaction.action}
+                                  </Text>
+                                </Box>
+                              </HStack>
+                              {/* Status + Date (right aligned) */}
+                              <VStack spacing={1} align="end" ml="auto">
+                                <Box
+                                  px={{ base: 2, md: 3 }}
+                                  py={{ base: 1, md: 1 }}
+                                  borderRadius="100px"
+                                  bg={
+                                    transaction.status === 'Successful'
+                                      ? 'green.600'
+                                      : 'red.700'
+                                  }
+                                >
+                                  <Text
+                                    fontSize={{ base: '12px', md: '14px' }}
+                                    fontWeight="500"
+                                    color="white"
+                                  >
+                                    {transaction.status}
+                                  </Text>
+                                </Box>
                                 <Text
-                                  color="white"
-                                  fontSize="16px"
+                                  fontSize={{ base: '14px', md: '16px' }}
+                                  color="neutral.0"
                                   fontWeight="500"
                                 >
-                                  {transaction.user} {transaction.action}
+                                  {transaction.date} {transaction.time}
                                 </Text>
-                              </Box>
-                            </HStack>
-
-                            {/* Status and Date */}
-                            <Box
-                              px={3}
-                              py={1}
-                              borderRadius="100px"
-                              bg={
-                                transaction.status === 'Successful'
-                                  ? 'green.600'
-                                  : 'red.700'
-                              }
-                            >
-                              <Text
-                                fontSize="14px"
-                                fontWeight="500"
-                                color="white"
-                              >
-                                {transaction.status}
-                              </Text>
-                            </Box>
-                            <Text
-                              fontSize="16px"
-                              color="neutral.0"
-                              fontWeight="500"
-                            >
-                              {transaction.date} {transaction.time}
-                            </Text>
-                          </Flex>
+                              </VStack>
+                            </Flex>
+                          </VStack>
                         </Box>
                       ))}
 
@@ -502,97 +585,142 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
         /* Main Wallet Container */
         <Box
           bg="neutral.900"
-          borderRadius="12px"
-          p={12}
+          borderRadius={{ base: '8px', md: '12px' }}
+          p={{ base: 6, md: 12 }}
           border="1px solid"
           borderColor="neutral.825"
         >
           {/* Top Row */}
-          <Flex justify="space-between" align="center" mb={6}>
-            <Box
-              bg="neutral.825"
-              borderRadius="12px"
-              p="10px"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
+          <VStack
+            spacing={{ base: 3, md: 0 }}
+            align="stretch"
+            mb={{ base: 4, md: 6 }}
+          >
+            <Flex
+              direction="row"
+              justify="space-between"
+              align="center"
+              width="100%"
             >
-              <HStack spacing={1}>
-                <Icon as={TbWallet} color="white" fontSize="20px" />
-                <Text color="white" fontSize="16px" fontWeight="500">
-                  Wallet
-                </Text>
-              </HStack>
-            </Box>
-
-            <Box
-              bg="neutral.825"
-              borderRadius="12px"
-              px={3}
-              py="10px"
-              display="flex"
-              alignItems="center"
-              gap={2}
-              cursor="pointer"
-              onClick={() => setIsCurrencyModalOpen(true)}
-              _hover={{ opacity: 0.8 }}
-            >
-              <Image
-                src={currencies.find(c => c.code === selectedCurrency)?.flag}
-                alt={selectedCurrency}
-                w="20px"
-                h="20px"
-              />
-              <Text color="white" fontSize="16px" fontWeight="500">
-                {selectedCurrency}
-              </Text>
-              <Icon as={IoChevronDown} color="neutral.300" fontSize="16px" />
-            </Box>
-
-            <HStack spacing={8}>
-              <Icon as={TbSettings2} color="neutral.0" fontSize="24px" />
+              <Box
+                bg="neutral.825"
+                borderRadius={{ base: '8px', md: '12px' }}
+                p={{ base: '8px', md: '10px' }}
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <HStack spacing={1}>
+                  <Icon
+                    as={TbWallet}
+                    color="white"
+                    fontSize={{ base: '16px', md: '20px' }}
+                  />
+                  <Text
+                    color="white"
+                    fontSize={{ base: '14px', md: '16px' }}
+                    fontWeight="500"
+                  >
+                    Wallet
+                  </Text>
+                </HStack>
+              </Box>
 
               <Box
-                w="40px"
-                h="40px"
-                borderRadius="full"
-                overflow="hidden"
+                bg="neutral.825"
+                borderRadius={{ base: '8px', md: '12px' }}
+                px={{ base: 2, md: 3 }}
+                py={{ base: '8px', md: '10px' }}
+                display="flex"
+                alignItems="center"
+                gap={2}
                 cursor="pointer"
+                onClick={() => setIsCurrencyModalOpen(true)}
+                _hover={{ opacity: 0.8 }}
               >
                 <Image
-                  src="/assets/wallet-add.png"
-                  alt="Profile"
-                  w="40px"
-                  h="40px"
-                  objectFit="cover"
+                  src={currencies.find(c => c.code === selectedCurrency)?.flag}
+                  alt={selectedCurrency}
+                  w={{ base: '16px', md: '20px' }}
+                  h={{ base: '16px', md: '20px' }}
+                />
+                <Text
+                  color="white"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="500"
+                >
+                  {selectedCurrency}
+                  {selectedCurrency !== 'USD' && !exchangeRate && (
+                    <Spinner size="xs" ml={1} color="neutral.400" />
+                  )}
+                </Text>
+                <Icon
+                  as={IoChevronDown}
+                  color="neutral.300"
+                  fontSize={{ base: '14px', md: '16px' }}
                 />
               </Box>
-            </HStack>
-          </Flex>
+
+              <Box
+                display={{ base: 'flex', md: 'flex' }}
+                justifyContent="flex-end"
+                width={{ base: '20px', md: '70px' }}
+              >
+                <Icon
+                  as={TbSettings2}
+                  color="neutral.0"
+                  cursor="pointer"
+                  fontSize={{ base: '20px', md: '24px' }}
+                  onClick={handleSettingsClick}
+                  _hover={{ color: 'primary.400' }}
+                  transition="color 0.2s"
+                />
+              </Box>
+            </Flex>
+          </VStack>
 
           {/* Wallet Card */}
-          <Box bg="neutral.825" borderRadius="12px" p={6} mb={6}>
+          <Box
+            bg="neutral.825"
+            borderRadius={{ base: '8px', md: '12px' }}
+            p={{ base: 4, md: 6 }}
+            mb={{ base: 4, md: 6 }}
+          >
             {/* Balance Section */}
-            <VStack spacing={2} align="center" mb={4}>
+            <VStack
+              spacing={{ base: 1, md: 2 }}
+              align="center"
+              mb={{ base: 3, md: 4 }}
+            >
               <HStack spacing={2}>
-                <Text fontSize="16px" color="white" fontWeight="500">
+                <Text
+                  fontSize={{ base: '14px', md: '16px' }}
+                  color="white"
+                  fontWeight="500"
+                >
                   Wallet balance
+                  {selectedCurrency !== 'USD' && (
+                    <Text as="span" color="neutral.400" fontSize="12px" ml={2}>
+                      (in {selectedCurrency})
+                    </Text>
+                  )}
                 </Text>
                 <Icon
                   as={showBalance ? BsEye : BsEyeSlash}
                   color="neutral.400"
-                  fontSize="16px"
+                  fontSize={{ base: '14px', md: '16px' }}
                   cursor="pointer"
                   onClick={() => setShowBalance(!showBalance)}
                   _hover={{ color: 'neutral.300' }}
                 />
               </HStack>
-              {balanceLoading ? (
+              {balanceLoading ||
+              (selectedCurrency !== 'USD' && !exchangeRate) ? (
                 <VStack spacing={2} align="center">
                   <Box
-                    w="200px"
-                    h="48px"
-                    borderRadius="8px"
+                    w={{ base: '160px', md: '200px' }}
+                    h={{ base: '36px', md: '48px' }}
+                    borderRadius={{ base: '6px', md: '8px' }}
                     bg="neutral.800"
                     position="relative"
                     overflow="hidden"
@@ -609,9 +737,9 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                     }}
                   />
                   <Box
-                    w="120px"
-                    h="16px"
-                    borderRadius="4px"
+                    w={{ base: '100px', md: '120px' }}
+                    h={{ base: '12px', md: '16px' }}
+                    borderRadius={{ base: '3px', md: '4px' }}
                     bg="neutral.800"
                     position="relative"
                     overflow="hidden"
@@ -630,32 +758,32 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 </VStack>
               ) : (
                 <Text
-                  fontSize="48px"
+                  fontSize={{ base: '32px', md: '48px' }}
                   fontWeight="500"
                   color="white"
                   lineHeight="1"
                 >
                   {showBalance
-                    ? `$${totalBalance.toLocaleString()}`
+                    ? formatCurrencyDisplay(totalBalance)
                     : '••••••••'}
                 </Text>
               )}
             </VStack>
 
             {/* Action Buttons */}
-            <HStack justify="center" spacing={16}>
-              <ActionButton
+            <HStack justify="center" spacing={{ base: 8, md: 16 }}>
+              <WalletActionButton
                 icon={PiArrowCircleUpRight}
                 label="Withdraw funds"
                 onClick={() => handleShowWithdrawWidget()}
               />
-              <ActionButton
+              <WalletActionButton
                 icon={PiPlusCircleLight}
                 label="Receive funds"
                 isActive
                 onClick={() => setIsReceiveModalOpen(true)}
               />
-              <ActionButton
+              <WalletActionButton
                 icon={PiArrowCircleRight}
                 label="Send funds"
                 onClick={() => setIsSendModalOpen(true)}
@@ -663,57 +791,32 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             </HStack>
           </Box>
 
-          {/* Transaction Notification - only show when not in transaction view and there are recent transactions */}
-          {!showTransactions && transactions.length > 0 && (
-            <Box
-              bg="neutral.825"
-              borderRadius="25px"
-              px={4}
-              py={3}
-              mb={6}
-              width="516px"
-              marginLeft="auto"
-              marginRight="auto"
-              textAlign="center"
-            >
-              <Text color="neutral.75" fontSize="16px" fontWeight="500">
-                {transactionsLoading ? (
-                  'Loading recent transactions...'
-                ) : (
-                  <>
-                    You have {totalCount} transaction
-                    {totalCount !== 1 ? 's' : ''}.{' '}
-                    <Text
-                      as="span"
-                      color="primary.200"
-                      cursor="pointer"
-                      textDecoration="underline"
-                      _hover={{ color: 'primary.300' }}
-                      onClick={() => setShowTransactions(true)}
-                    >
-                      Show all transactions
-                    </Text>
-                  </>
-                )}
-              </Text>
-            </Box>
-          )}
-
           {/* Transaction History Screen */}
           {showTransactions && !showTransactionDetails ? (
-            <Box mt={12}>
-              <HStack justify="space-between" align="center">
+            <Box mt={{ base: 8, md: 12 }}>
+              <Flex
+                direction={{ base: 'column', md: 'row' }}
+                justify={{ base: 'flex-start', md: 'space-between' }}
+                align={{ base: 'flex-start', md: 'center' }}
+                mb={{ base: 0, md: 6 }}
+              >
                 {/* Back Link */}
                 <HStack
                   spacing={2}
-                  mb={8}
+                  mb={{ base: 4, md: 0 }}
                   cursor="pointer"
                   onClick={() => setShowTransactions(false)}
                   color="primary.400"
                   _hover={{ color: 'primary.300' }}
                 >
-                  <Icon as={FiArrowLeft} fontSize="20px" />
-                  <Text fontSize="16px" fontWeight="600">
+                  <Icon
+                    as={FiArrowLeft}
+                    fontSize={{ base: '18px', md: '20px' }}
+                  />
+                  <Text
+                    fontSize={{ base: '14px', md: '16px' }}
+                    fontWeight="600"
+                  >
                     Back
                   </Text>
                 </HStack>
@@ -722,10 +825,10 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                 <Box
                   bg="dark.900"
                   borderRadius="6px"
-                  px={4}
-                  py={2}
-                  mb={6}
-                  width="320px"
+                  px={{ base: 3, md: 4 }}
+                  py={{ base: 2, md: 2 }}
+                  mb={{ base: 4, md: 0 }}
+                  width={{ base: '100%', md: '320px' }}
                   display="flex"
                   alignItems="center"
                   border="1px solid"
@@ -734,8 +837,8 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   <Icon
                     as={FiSearch}
                     color="neutral.400"
-                    fontSize="20px"
-                    mr={2}
+                    fontSize={{ base: '16px', md: '20px' }}
+                    mr={{ base: 1, md: 2 }}
                   />
                   <input
                     type="text"
@@ -747,16 +850,21 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       border: 'none',
                       outline: 'none',
                       color: 'neutral.400',
-                      fontSize: '16px',
+                      fontSize: '14px',
                       width: '100%',
                       fontWeight: '500',
                     }}
                   />
                 </Box>
-              </HStack>
+              </Flex>
 
               {/* Title */}
-              <Text fontSize="24px" fontWeight="700" color="neutral.0" mb={2}>
+              <Text
+                fontSize={{ base: '20px', md: '24px' }}
+                fontWeight="700"
+                color="neutral.0"
+                mb={{ base: 1, md: 2 }}
+              >
                 Transaction History
               </Text>
 
@@ -769,7 +877,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       Loading transactions...
                     </Text>
                   </Box>
-                ) : filteredTransactions.length === 0 ? (
+                ) : transactions.length === 0 ? (
                   <Box textAlign="center" py={8}>
                     <Text color="neutral.400" fontSize="16px">
                       {searchQuery
@@ -779,12 +887,12 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                   </Box>
                 ) : (
                   <>
-                    {filteredTransactions.map(transaction => (
+                    {transactions.map(transaction => (
                       <Box
                         key={transaction.id}
                         bg="neutral.825"
-                        borderRadius="16px"
-                        p={4}
+                        borderRadius={{ base: '12px', md: '16px' }}
+                        p={{ base: 3, md: 4 }}
                         width="100%"
                         cursor="pointer"
                         _hover={{ bg: 'neutral.800' }}
@@ -797,63 +905,70 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                           setShowTransactionDetails(true)
                         }}
                       >
-                        <Flex justify="flex-start" gap={5} align="center">
-                          <HStack spacing={3}>
-                            {/* User Avatar */}
-                            <Box
-                              w="40px"
-                              h="40px"
-                              borderRadius="full"
-                              overflow="hidden"
-                            >
-                              <Image
-                                src={transaction.userImage}
-                                alt={transaction.user}
-                                w="40px"
-                                h="40px"
-                                objectFit="cover"
-                              />
-                            </Box>
+                        <VStack
+                          spacing={{ base: 2, md: 0 }}
+                          align="stretch"
+                          width="100%"
+                        >
+                          {/* Top row: User info and status */}
+                          <Flex
+                            justify="flex-start"
+                            align="center"
+                            width="100%"
+                            gap={{ base: 3, md: '18px' }}
+                          >
+                            <HStack spacing={3}>
+                              {/* User Avatar */}
+                              <Box
+                                w={{ base: '32px', md: '40px' }}
+                                h={{ base: '32px', md: '40px' }}
+                                borderRadius="full"
+                                overflow="hidden"
+                              >
+                                <Avatar account={currentAccount} />
+                              </Box>
 
-                            {/* Transaction Details */}
-                            <Box>
+                              {/* Transaction Details */}
+                              <Box>
+                                <Text
+                                  color="white"
+                                  fontSize={{ base: '14px', md: '16px' }}
+                                  fontWeight="500"
+                                >
+                                  {transaction.user} {transaction.action}
+                                </Text>
+                              </Box>
+                            </HStack>
+                            {/* Status + Date (right aligned) */}
+                            <VStack spacing={1} align="end" ml="auto">
+                              <Box
+                                px={{ base: 2, md: 3 }}
+                                py={{ base: 1, md: 1 }}
+                                borderRadius="100px"
+                                bg={
+                                  transaction.status === 'Successful'
+                                    ? 'green.600'
+                                    : 'red.700'
+                                }
+                              >
+                                <Text
+                                  fontSize={{ base: '12px', md: '14px' }}
+                                  fontWeight="500"
+                                  color="white"
+                                >
+                                  {transaction.status}
+                                </Text>
+                              </Box>
                               <Text
-                                color="white"
-                                fontSize="16px"
+                                fontSize={{ base: '14px', md: '16px' }}
+                                color="neutral.0"
                                 fontWeight="500"
                               >
-                                {transaction.user} {transaction.action}
+                                {transaction.date} {transaction.time}
                               </Text>
-                            </Box>
-                          </HStack>
-
-                          {/* Status and Date */}
-                          <Box
-                            px={3}
-                            py={1}
-                            borderRadius="100px"
-                            bg={
-                              transaction.status === 'Successful'
-                                ? 'green.600'
-                                : 'red.700'
-                            }
-                          >
-                            <Text
-                              fontSize="14px"
-                              fontWeight="500"
-                              color="white"
-                            >
-                              {transaction.status}
-                            </Text>
-                          </Box>
-                          <Text
-                            fontSize="16px"
-                            color="neutral.0"
-                            fontWeight="500"
-                          >
-                            {transaction.date} {transaction.time}
-                          </Text>
-                        </Flex>
+                            </VStack>
+                          </Flex>
+                        </VStack>
                       </Box>
                     ))}
 
@@ -871,75 +986,131 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
               </VStack>
             </Box>
           ) : (
-            <>
+            <Box>
               {/* Crypto Section Header */}
-              <Flex justify="space-between" align="center" mb={4}>
-                <Box p={1.5} bg="neutral.825" borderRadius="12px">
-                  <Box
-                    bg="neutral.600"
-                    color="white"
-                    px={5}
-                    py={1.5}
-                    borderRadius="12px"
-                    fontSize="16px"
-                    fontWeight="700"
-                    _hover={{ bg: 'neutral.600', opacity: 0.8 }}
+              <VStack
+                spacing={{ base: 3, md: 0 }}
+                align="stretch"
+                mb={{ base: 3, md: 4 }}
+              >
+                {/* Mobile: Stack vertically, Desktop: Keep horizontal */}
+                <VStack
+                  spacing={{ base: 3, md: 0 }}
+                  align={{ base: 'stretch', md: 'center' }}
+                >
+                  <Flex
+                    direction="row"
+                    justify="space-between"
+                    align={{ base: 'stretch', md: 'center' }}
+                    width="100%"
                   >
-                    Crypto
-                  </Box>
-                </Box>
+                    <Box
+                      p={1.5}
+                      bg="neutral.825"
+                      borderRadius={{ base: '8px', md: '12px' }}
+                      display={{ base: 'none', md: 'block' }}
+                    >
+                      <Box
+                        bg="neutral.600"
+                        color="white"
+                        px={{ base: 4, md: 5 }}
+                        py={1.5}
+                        borderRadius={{ base: '8px', md: '12px' }}
+                        fontSize={{ base: '14px', md: '16px' }}
+                        fontWeight="700"
+                        _hover={{ bg: 'neutral.600', opacity: 0.8 }}
+                        display={{ base: 'none', md: 'block' }}
+                      >
+                        Crypto
+                      </Box>
+                    </Box>
 
-                <HStack spacing={5}>
-                  <Box
-                    bg="neutral.825"
-                    borderRadius="12px"
-                    px={4}
-                    py={2}
-                    display="flex"
-                    alignItems="center"
-                    gap={2}
-                    cursor="pointer"
-                    onClick={() => setIsNetworkModalOpen(true)}
-                    _hover={{ opacity: 0.8 }}
-                    border="1px solid"
-                    borderColor="neutral.400"
-                  >
-                    <Image
-                      src={networks.find(n => n.name === selectedNetwork)?.icon}
-                      alt={selectedNetwork}
-                      borderRadius="full"
-                      w="20px"
-                      h="20px"
-                    />
-                    <Text color="white" fontSize="16px" fontWeight="700" pr={4}>
-                      {selectedNetwork}
-                    </Text>
-                    <Icon
-                      as={IoChevronDown}
-                      color="neutral.0"
-                      fontSize="16px"
-                    />
-                  </Box>
+                    <Flex
+                      width={{ base: '100%', md: 'auto' }}
+                      justify={{ base: 'space-between', md: 'flex-start' }}
+                      align="center"
+                      gap={{ base: 3, md: 5 }}
+                    >
+                      <Box
+                        bg="neutral.825"
+                        borderRadius={{ base: '8px', md: '12px' }}
+                        px={{ base: 3, md: 4 }}
+                        py={2}
+                        display="flex"
+                        alignItems="center"
+                        gap={2}
+                        cursor="pointer"
+                        onClick={() => setIsNetworkModalOpen(true)}
+                        _hover={{ opacity: 0.8 }}
+                        border="1px solid"
+                        borderColor="neutral.400"
+                      >
+                        <Image
+                          src={
+                            networks.find(
+                              n => n.chainId === getChainId(selectedNetwork)
+                            )?.icon
+                          }
+                          alt={
+                            networks.find(
+                              n => n.chainId === getChainId(selectedNetwork)
+                            )?.name || selectedNetwork
+                          }
+                          borderRadius="full"
+                          w={{ base: '16px', md: '20px' }}
+                          h={{ base: '16px', md: '20px' }}
+                        />
+                        <Text
+                          color="white"
+                          fontSize={{ base: '14px', md: '16px' }}
+                          fontWeight="700"
+                          pr={{ base: 2, md: 4 }}
+                        >
+                          {networks.find(
+                            n => n.chainId === getChainId(selectedNetwork)
+                          )?.name || selectedNetwork}
+                        </Text>
+                        <Icon
+                          as={IoChevronDown}
+                          color="neutral.0"
+                          fontSize={{ base: '14px', md: '16px' }}
+                        />
+                      </Box>
 
-                  <Box
-                    w="40px"
-                    h="40px"
-                    borderRadius="10px"
-                    bg="primary.200"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    cursor="pointer"
-                    _hover={{ opacity: 0.8 }}
-                  >
-                    <Icon
-                      as={GrDocumentTime}
-                      color="neutral.800"
-                      fontSize="20px"
-                    />
-                  </Box>
-                </HStack>
-              </Flex>
+                      <Tooltip
+                        label="Show all transactions"
+                        placement="top"
+                        hasArrow
+                        bg="neutral.825"
+                        color="neutral.0"
+                        borderRadius="8px"
+                        px={3}
+                        py={2}
+                        fontSize="sm"
+                      >
+                        <Box
+                          w={{ base: '32px', md: '40px' }}
+                          h={{ base: '32px', md: '40px' }}
+                          borderRadius={{ base: '8px', md: '10px' }}
+                          bg="primary.200"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          cursor="pointer"
+                          _hover={{ opacity: 0.8 }}
+                          onClick={() => setShowTransactions(true)}
+                        >
+                          <Icon
+                            as={GrDocumentTime}
+                            color="neutral.800"
+                            fontSize={{ base: '16px', md: '20px' }}
+                          />
+                        </Box>
+                      </Tooltip>
+                    </Flex>
+                  </Flex>
+                </VStack>
+              </VStack>
 
               {/* Crypto Assets */}
               <VStack spacing={4} mt={5}>
@@ -1174,26 +1345,19 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                             <VStack align="start" spacing={0}>
                               <Text
                                 color="white"
-                                fontSize="20px"
+                                fontSize={{ base: '16px', md: '20px' }}
                                 fontWeight="700"
                               >
                                 {asset.name}
                               </Text>
                               <HStack spacing={3}>
                                 <Text
-                                  fontSize="16px"
+                                  fontSize={{ base: '12px', md: '16px' }}
                                   fontWeight="500"
                                   color="white"
                                 >
                                   {asset.price}
                                 </Text>
-                                {/* <Text
-                                  fontSize="16px"
-                                  fontWeight="500"
-                                  color="green.400"
-                                >
-                                  {asset.change}
-                                </Text> */}
                               </HStack>
                             </VStack>
                           </HStack>
@@ -1243,17 +1407,23 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                               <>
                                 <Text
                                   color="white"
-                                  fontSize="20px"
+                                  fontSize={{ base: '16px', md: '20px' }}
                                   fontWeight="700"
                                 >
                                   {asset.balance}
                                 </Text>
                                 <Text
-                                  fontSize="16px"
+                                  fontSize={{ base: '12px', md: '16px' }}
                                   fontWeight="500"
                                   color="white"
                                 >
-                                  {asset.usdValue}
+                                  {asset.usdValue
+                                    ? formatCurrencyDisplay(
+                                        parseFloat(
+                                          asset.usdValue.replace('$', '')
+                                        )
+                                      )
+                                    : 'N/A'}
                                 </Text>
                               </>
                             )}
@@ -1262,7 +1432,7 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
                       </Box>
                     ))}
               </VStack>
-            </>
+            </Box>
           )}
         </Box>
       )}
@@ -1285,7 +1455,10 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             Show value in
           </ModalHeader>
           <ModalBody pb={6}>
-            <RadioGroup value={selectedCurrency} onChange={setSelectedCurrency}>
+            <RadioGroup
+              value={selectedCurrency}
+              onChange={handleCurrencyChange}
+            >
               <VStack spacing={6} align="stretch">
                 {currencies.map(currency => (
                   <Radio
@@ -1334,12 +1507,25 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
             Choose Network
           </ModalHeader>
           <ModalBody pb={6}>
-            <RadioGroup value={selectedNetwork} onChange={setSelectedNetwork}>
+            <RadioGroup
+              value={getChainId(selectedNetwork).toString()}
+              onChange={value => {
+                const chain = networks.find(n => n.chainId === parseInt(value))
+                if (chain) {
+                  const supportedChain = supportedChains.find(
+                    c => c.name === chain.name
+                  )
+                  if (supportedChain) {
+                    setSelectedNetwork(supportedChain.chain)
+                  }
+                }
+              }}
+            >
               <VStack spacing={6} align="stretch">
                 {networks.map(network => (
                   <Radio
                     key={network.name}
-                    value={network.name}
+                    value={network.chainId.toString()}
                     colorScheme="orange"
                     size="lg"
                     variant="filled"
@@ -1392,6 +1578,33 @@ const Wallet: React.FC<WalletProps> = ({ currentAccount }) => {
       <ReceiveFundsModal
         isOpen={isReceiveModalOpen}
         onClose={() => setIsReceiveModalOpen(false)}
+      />
+
+      {/* Magic Link Modal */}
+      <MagicLinkModal
+        isOpen={isMagicLinkOpen}
+        onClose={onMagicLinkClose}
+        onConfirm={async () => {
+          if (notificationEmail) {
+            setIsSendingMagicLink(true)
+            try {
+              await sendEnablePinLink(notificationEmail)
+              showSuccessToast(
+                'Enable PIN Link Sent',
+                'A magic link has been sent to your email to set up your transaction PIN'
+              )
+              onMagicLinkClose()
+            } catch (error) {
+              handleApiError('Magic Link Failed', error)
+            } finally {
+              setIsSendingMagicLink(false)
+            }
+          }
+        }}
+        title="Enable Transaction PIN"
+        message="A magic link will be sent to your notification email to set up your transaction PIN. This ensures the security of your account."
+        confirmButtonText="Send Magic Link"
+        isLoading={isSendingMagicLink}
       />
     </Box>
   )

@@ -7,6 +7,20 @@ import QueryKeys from '@/utils/query_keys'
 import { queryClient } from '@/utils/react_query'
 import { thirdWebClient } from '@/utils/user_manager'
 
+export const getPriceForChain = async (
+  chain: SupportedChain,
+  token: AcceptedToken
+): Promise<string> => {
+  const priceService = new PriceFeedService()
+  try {
+    const price = await priceService.getPrice(chain, token)
+    return `$${price.toFixed(2)}`
+  } catch (error) {
+    console.warn(`Failed to get price for ${token} on ${chain}:`, error)
+    return '$1.00' // Fallback price
+  }
+}
+
 export class PriceFeedService {
   #PRICE_FEEDS: Record<Partial<SupportedChain>, Record<string, string>>
 
