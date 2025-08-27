@@ -1512,6 +1512,7 @@ const getGroupsAndMembers = async (
     }
     if (data) {
       return {
+        // TODO: add a step to include invites and add a getInvites query to the request
         ...group.group,
         members: members.map(member => ({
           userId: member?.id,
