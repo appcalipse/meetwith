@@ -15,40 +15,26 @@ import {
   MenuList,
   Portal,
   Spacer,
-  Spinner,
   Text,
   useColorModeValue,
   VStack,
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useRouter } from 'next/router'
-import React, {
-  Fragment,
-  ReactNode,
-  useContext,
-  useEffect,
-  useId,
-  useMemo,
-  useState,
-} from 'react'
+import React, { Fragment, useContext, useId, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
 import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
 
 import { GroupContext } from '@/components/profile/Group'
 import { Account } from '@/types/Account'
-import {
-  GetGroupsResponse,
-  GroupMember,
-  MemberType,
-  MenuOptions,
-} from '@/types/Group'
+import { GetGroupsFullResponse, MemberType, MenuOptions } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
-import { getGroupsMembers, updateGroupRole } from '@/utils/api_helper'
+import { updateGroupRole } from '@/utils/api_helper'
 import { isProduction } from '@/utils/constants'
 
 import GroupMemberCard from './GroupMemberCard'
 
-export interface IGroupCard extends GetGroupsResponse {
+export interface IGroupCard extends GetGroupsFullResponse {
   currentAccount: Account
   onAddNewMember: (groupId: string, groupName: string) => void
   mt: number
@@ -62,14 +48,15 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
 
-  const [groupMembers, setGroupsMembers] = useState<Array<GroupMember>>([])
-  const [loading, setLoading] = useState(true)
-  const [noMoreFetch, setNoMoreFetch] = useState(false)
   const id = useId()
   const { push } = useRouter()
-  const [firstFetch, setFirstFetch] = useState(true)
-  const [groupRoles, setGroupRoles] = useState<Array<MemberType>>([])
-  const [isAdmin, setIsAdmin] = useState(false)
+  const actor = props.members.find(
+    member => member.address === props.currentAccount.address
+  )
+  const [isAdmin, setIsAdmin] = useState(actor?.role === MemberType.ADMIN)
+  const [groupRoles, setGroupRoles] = useState<Array<MemberType>>(
+    props.members.map(member => member.role)
+  )
   const {
     openDeleteModal,
     setGroupName,
@@ -77,43 +64,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
     openNameEditModal,
     openLeaveModal,
   } = useContext(GroupContext)
-  const fetchMembers = async (reset?: boolean) => {
-    const PAGE_SIZE = 10
-    setLoading(true)
-    const newGroupMembers = await getGroupsMembers(
-      props.id,
-      PAGE_SIZE,
-      reset ? 0 : groupMembers?.length
-    )
-    if (newGroupMembers?.length < PAGE_SIZE) {
-      setNoMoreFetch(true)
-    }
-    setGroupsMembers(prev => {
-      const newMembers = (reset ? [] : [...prev]).concat(newGroupMembers)
-      newMembers.forEach(val => {
-        if (val.address === props.currentAccount.address) {
-          setIsAdmin(val.role === MemberType.ADMIN)
-        } else {
-          return false
-        }
-      })
-      return newMembers
-    })
-    setGroupRoles(prev =>
-      (reset ? [] : [...prev]).concat(newGroupMembers?.map(val => val.role))
-    )
-    setLoading(false)
-    setFirstFetch(false)
-  }
-  const resetState = async () => {
-    setFirstFetch(true)
-    setNoMoreFetch(false)
-    fetchMembers(true)
-  }
 
-  useEffect(() => {
-    resetState()
-  }, [props.currentAccount])
   const renderPopOverOptions = (role: MemberType): Array<MenuOptions> => {
     const defaultOptions: Array<MenuOptions> = []
     switch (role) {
@@ -158,129 +109,12 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const updateRole = async (data: ChangeGroupAdminRequest) => {
     return await updateGroupRole(props.id, data)
   }
-  let content: ReactNode
+
   const menuItems = useMemo(
-    () => renderPopOverOptions(props.role),
-    [props.role]
+    () => renderPopOverOptions(actor?.role || MemberType.MEMBER),
+    [actor?.role]
   )
-  if (firstFetch) {
-    content = (
-      <VStack alignItems="center" mb={6}>
-        <HStack pt={8}>
-          <Spinner />
-          <Text fontSize="lg">Checking for your groups members...</Text>
-        </HStack>
-      </VStack>
-    )
-  } else if (groupMembers.length > 0) {
-    content = (
-      <VStack my={6} width="100%" px={0}>
-        <HStack
-          width="100%"
-          justifyContent="space-between"
-          pb={2}
-          borderBottomWidth={1}
-          borderBottomColor={borderColor}
-          py={3}
-          px={1}
-        >
-          <Heading size="sm" flexBasis="57%" fontWeight={800}>
-            Contact
-          </Heading>
-          <Flex
-            alignItems="center"
-            gap={0.5}
-            align="flex-start"
-            flexBasis="30%"
-          >
-            <Heading size="sm" fontWeight={800}>
-              Role{' '}
-            </Heading>
-            <Tooltip.Provider delayDuration={400}>
-              <Tooltip.Root>
-                <Tooltip.Trigger>
-                  <Flex
-                    w="16px"
-                    h="16px"
-                    borderRadius="50%"
-                    bgColor={iconColor}
-                    justifyContent="center"
-                    alignItems="center"
-                    ml={1}
-                  >
-                    <Icon w={1} color={itemsBgColor} as={FaInfo} />
-                  </Flex>
-                </Tooltip.Trigger>
-                <Tooltip.Content>
-                  <Text
-                    fontSize="sm"
-                    p={4}
-                    maxW="200px"
-                    bgColor={itemsBgColor}
-                    shadow="lg"
-                  >
-                    Admins can add and remove members from the group, change the
-                    group&apos;s name, calendar link, and delete group.
-                  </Text>
-                  <Tooltip.Arrow />
-                </Tooltip.Content>
-              </Tooltip.Root>
-            </Tooltip.Provider>
-          </Flex>
-        </HStack>
-        <VStack width="100%" borderRadius="lg">
-          {groupMembers.map(member => (
-            <GroupMemberCard
-              currentAccount={props.currentAccount}
-              key={member?.address}
-              isEmpty={groupMembers.length < 2}
-              viewerRole={props.role}
-              groupRoles={groupRoles}
-              setGroupRoles={setGroupRoles}
-              updateRole={updateRole}
-              groupSlug={props.slug}
-              groupID={props.id}
-              groupName={props.name}
-              resetState={props.resetState}
-              isAdmin={isAdmin}
-              handleIsAdminChange={setIsAdmin}
-              {...member}
-            />
-          ))}
-        </VStack>
-        {!noMoreFetch && !firstFetch && (
-          <Button
-            isLoading={loading}
-            colorScheme="primary"
-            variant="outline"
-            alignSelf="center"
-            my={4}
-            onClick={() => fetchMembers()}
-          >
-            Load more
-          </Button>
-        )}
-        {isAdmin && (
-          <>
-            <Spacer />
-            <Button
-              mt={3}
-              variant="ghost"
-              leftIcon={<Icon as={IoMdPersonAdd} h={25} />}
-              color="white"
-              px={1.5}
-              height="fit-content !important"
-              mr="auto"
-              py={1}
-              onClick={() => props.onAddNewMember(props.id, props.name)}
-            >
-              Add new member
-            </Button>
-          </>
-        )}
-      </VStack>
-    )
-  }
+
   return (
     <AccordionItem
       width="100%"
@@ -397,7 +231,100 @@ const GroupCard: React.FC<IGroupCard> = props => {
             </HStack>
           </HStack>
           <AccordionPanel px={0} pb={4}>
-            {content}
+            <VStack my={6} width="100%" px={0}>
+              <HStack
+                width="100%"
+                justifyContent="space-between"
+                pb={2}
+                borderBottomWidth={1}
+                borderBottomColor={borderColor}
+                py={3}
+                px={1}
+              >
+                <Heading size="sm" flexBasis="57%" fontWeight={800}>
+                  Contact
+                </Heading>
+                <Flex
+                  alignItems="center"
+                  gap={0.5}
+                  align="flex-start"
+                  flexBasis="30%"
+                >
+                  <Heading size="sm" fontWeight={800}>
+                    Role{' '}
+                  </Heading>
+                  <Tooltip.Provider delayDuration={400}>
+                    <Tooltip.Root>
+                      <Tooltip.Trigger>
+                        <Flex
+                          w="16px"
+                          h="16px"
+                          borderRadius="50%"
+                          bgColor={iconColor}
+                          justifyContent="center"
+                          alignItems="center"
+                          ml={1}
+                        >
+                          <Icon w={1} color={itemsBgColor} as={FaInfo} />
+                        </Flex>
+                      </Tooltip.Trigger>
+                      <Tooltip.Content>
+                        <Text
+                          fontSize="sm"
+                          p={4}
+                          maxW="200px"
+                          bgColor={itemsBgColor}
+                          shadow="lg"
+                        >
+                          Admins can add and remove members from the group,
+                          change the group&apos;s name, calendar link, and
+                          delete group.
+                        </Text>
+                        <Tooltip.Arrow />
+                      </Tooltip.Content>
+                    </Tooltip.Root>
+                  </Tooltip.Provider>
+                </Flex>
+              </HStack>
+              <VStack width="100%" borderRadius="lg">
+                {props.members.map(member => (
+                  <GroupMemberCard
+                    currentAccount={props.currentAccount}
+                    key={member?.address}
+                    isEmpty={props.members.length < 2}
+                    viewerRole={actor?.role || MemberType.MEMBER}
+                    groupRoles={groupRoles}
+                    setGroupRoles={setGroupRoles}
+                    updateRole={updateRole}
+                    groupSlug={props.slug}
+                    groupID={props.id}
+                    groupName={props.name}
+                    resetState={props.resetState}
+                    isAdmin={isAdmin}
+                    handleIsAdminChange={setIsAdmin}
+                    {...member}
+                  />
+                ))}
+              </VStack>
+              {isAdmin && (
+                <>
+                  <Spacer />
+                  <Button
+                    mt={3}
+                    variant="ghost"
+                    leftIcon={<Icon as={IoMdPersonAdd} h={25} />}
+                    color="white"
+                    px={1.5}
+                    height="fit-content !important"
+                    mr="auto"
+                    py={1}
+                    onClick={() => props.onAddNewMember(props.id, props.name)}
+                  >
+                    Add new member
+                  </Button>
+                </>
+              )}
+            </VStack>
           </AccordionPanel>
         </>
       )}
