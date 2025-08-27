@@ -100,51 +100,67 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size={{ base: 'full', md: 'md' }}
+      isCentered
+    >
       <ModalOverlay bg="rgba(19, 26, 32, 0.8)" backdropFilter="blur(10px)" />
       <ModalContent
         bg="neutral.900"
-        borderRadius="12px"
+        borderRadius={{ base: '0', md: '12px' }}
         border="1px solid"
         borderColor="neutral.825"
-        maxW="500px"
+        maxW={{ base: '100%', md: '500px' }}
+        mx={{ base: 0, md: 'auto' }}
+        my={{ base: 0, md: 'auto' }}
+        boxShadow="none"
       >
         {/* Header */}
-        <ModalHeader pb={4}>
+        <ModalHeader pb={{ base: 3, md: 4 }}>
           <HStack spacing={2} align="center">
             <Icon
               as={FiArrowLeft}
               color="primary.400"
-              fontSize="20px"
+              fontSize={{ base: '18px', md: '20px' }}
               cursor="pointer"
               onClick={onClose}
               _hover={{ color: 'primary.300' }}
             />
-            <Text color="white" fontSize="20px" fontWeight="600">
+            <Text
+              color="white"
+              fontSize={{ base: '18px', md: '20px' }}
+              fontWeight="600"
+            >
               Receive funds
             </Text>
           </HStack>
         </ModalHeader>
 
-        <ModalBody pb={6}>
-          <VStack spacing={6} align="center">
+        <ModalBody pb={{ base: 4, md: 6 }}>
+          <VStack spacing={{ base: 4, md: 6 }} align="center">
             {/* Network Indicator */}
             <Box textAlign="center" mb={2}>
-              <Text color="neutral.300" fontSize="14px" fontWeight="500">
+              <Text
+                color="neutral.300"
+                fontSize={{ base: '12px', md: '14px' }}
+                fontWeight="500"
+              >
                 Receive funds on any EVM network
               </Text>
             </Box>
 
             {/* QR Code */}
             <Box
-              w="200px"
-              h="200px"
+              w={{ base: '160px', md: '200px' }}
+              h={{ base: '160px', md: '200px' }}
               bg="white"
-              borderRadius="12px"
+              borderRadius={{ base: '8px', md: '12px' }}
               display="flex"
               alignItems="center"
               justifyContent="center"
-              p={4}
+              p={{ base: 3, md: 4 }}
               position="relative"
             >
               {isGeneratingQR ? (
@@ -204,22 +220,27 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
             <Box w="100%">
               <Box
                 bg="neutral.825"
-                borderRadius="12px"
-                px={4}
-                py={3}
+                borderRadius={{ base: '8px', md: '12px' }}
+                px={{ base: 3, md: 4 }}
+                py={{ base: 2, md: 3 }}
                 display="flex"
                 alignItems="center"
                 gap={3}
                 border="1px solid"
                 borderColor="neutral.700"
               >
-                <Text color="white" fontSize="16px" fontWeight="500" flex="1">
+                <Text
+                  color="white"
+                  fontSize={{ base: '14px', md: '16px' }}
+                  fontWeight="500"
+                  flex="1"
+                >
                   {walletAddress || 'No wallet address available'}
                 </Text>
                 <Icon
                   as={FiCopy}
                   color="white"
-                  fontSize="16px"
+                  fontSize={{ base: '14px', md: '16px' }}
                   cursor="pointer"
                   _hover={{ opacity: 0.8 }}
                   onClick={handleCopyAddress}
@@ -229,10 +250,14 @@ const ReceiveFundsModal: React.FC<ReceiveFundsModalProps> = ({
 
             {/* Instructional Text */}
             <VStack spacing={2} align="center" textAlign="center">
-              <Text color="white" fontSize="14px">
+              <Text color="white" fontSize={{ base: '12px', md: '14px' }}>
                 Copy the address to send funds to this wallet.
               </Text>
-              <Text color="primary.400" fontSize="14px" fontWeight="500">
+              <Text
+                color="primary.400"
+                fontSize={{ base: '12px', md: '14px' }}
+                fontWeight="500"
+              >
                 This is an EVM wallet, only send EVM compatible assets to this
                 address.
               </Text>

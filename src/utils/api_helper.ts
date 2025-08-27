@@ -1,14 +1,13 @@
 import { Address, ICoinConfig, MeetingSession } from '@meta/Transactions'
 import * as Sentry from '@sentry/nextjs'
-import { erc20Abi } from 'abitype/abis'
-import { getContract, readContract } from 'thirdweb'
-import { viemAdapter } from 'thirdweb/adapters/viem'
 import { DAVCalendar } from 'tsdav'
 
 import {
   Account,
   MeetingType,
   PaidMeetingTypes,
+  PartialPaymentPreferences,
+  PaymentPreferences,
   PublicAccount,
   SimpleAccountInfo,
 } from '@/types/Account'
@@ -20,13 +19,6 @@ import {
   ConnectedCalendarCore,
   ConnectResponse,
 } from '@/types/CalendarConnections'
-import {
-  AcceptedToken,
-  getChainId,
-  getChainInfo,
-  getTokenAddress,
-  SupportedChain,
-} from '@/types/chains'
 import { ConditionRelation, SuccessResponse } from '@/types/common'
 import {
   Contact,
@@ -120,7 +112,6 @@ import { queryClient } from './react_query'
 import { POAP, POAPEvent } from './services/poap.helper'
 import { getSignature } from './storage'
 import { safeConvertConditionFromAPI } from './token.gate.service'
-import { thirdWebClient } from './user_manager'
 
 export const internalFetch = async <T>(
   path: string,
@@ -186,8 +177,8 @@ export const getAccount = async (
 
 export const getOwnAccount = async (identifier: string): Promise<Account> => {
   try {
-    const account = await internalFetch('/secure/accounts')
-    return account as Account
+    const account = await internalFetch<Account>('/secure/accounts')
+    return account
   } catch (e: unknown) {
     if (e instanceof ApiFetchError && e.status === 404) {
       throw new AccountNotFoundError(identifier)
@@ -1696,7 +1687,8 @@ export const getWalletTransactions = async (
   token_address?: string,
   chain_id?: number,
   limit?: number,
-  offset?: number
+  offset?: number,
+  search_query?: string
 ) => {
   return await internalFetch(`/secure/transactions/wallet`, 'POST', {
     wallet_address,
@@ -1704,182 +1696,153 @@ export const getWalletTransactions = async (
     chain_id,
     limit,
     offset,
+    search_query,
   })
 }
 
-// New Thirdweb-based balance functions
-export const getNativeBalance = async (
-  walletAddress: string,
-  chain: SupportedChain
-): Promise<{ balance: number }> => {
-  try {
-    const chainInfo = getChainInfo(chain)
-    if (!chainInfo) {
-      throw new Error(`Unsupported chain: ${chain}`)
+export const getPaymentPreferences =
+  async (): Promise<PaymentPreferences | null> => {
+    try {
+      return await internalFetch<PaymentPreferences>(
+        '/secure/preferences/payment'
+      )
+    } catch (e) {
+      if (e instanceof ApiFetchError && e.status === 404) {
+        return null
+      }
+      throw e
     }
-
-    const publicClient = viemAdapter.publicClient.toViem({
-      chain: chainInfo.thirdwebChain,
-      client: thirdWebClient,
-    })
-
-    const balance = await publicClient.getBalance({
-      address: walletAddress as `0x${string}`,
-    })
-
-    return { balance: Number(balance) / 1e18 } // Convert from wei to ether
-  } catch (error) {
-    console.error('Error getting native balance:', error)
-    return { balance: 0 }
   }
-}
 
-export const getTokenBalance = async (
-  walletAddress: string,
-  tokenAddress: string,
-  chain: SupportedChain
-): Promise<{ balance: number }> => {
-  try {
-    const chainInfo = getChainInfo(chain)
-    if (!chainInfo) {
-      throw new Error(`Unsupported chain: ${chain}`)
-    }
-
-    const contract = getContract({
-      client: thirdWebClient,
-      chain: chainInfo.thirdwebChain,
-      address: tokenAddress as `0x${string}`,
-      abi: erc20Abi,
-    })
-
-    const balance = await readContract({
-      contract,
-      method: 'balanceOf',
-      params: [walletAddress as `0x${string}`],
-    })
-
-    // Get decimals for proper formatting
-    const decimals = await readContract({
-      contract,
-      method: 'decimals',
-    })
-
-    return { balance: Number(balance) / Math.pow(10, decimals) }
-  } catch (error) {
-    console.error('Error getting token balance:', error)
-    return { balance: 0 }
-  }
-}
-
-export const getTotalWalletBalance = async (
-  walletAddress: string
-): Promise<{ balance: number }> => {
-  try {
-    const supportedChains = [
-      SupportedChain.CELO,
-      SupportedChain.ARBITRUM,
-      SupportedChain.ARBITRUM_SEPOLIA,
-    ]
-
-    // Get all token configurations from chains.ts
-    const tokenConfigs = [
-      // Celo tokens
-      {
-        address: getTokenAddress(SupportedChain.CELO, AcceptedToken.CUSD),
-        chain: SupportedChain.CELO,
-        symbol: 'cUSD',
-      },
-      {
-        address: getTokenAddress(SupportedChain.CELO, AcceptedToken.USDC),
-        chain: SupportedChain.CELO,
-        symbol: 'USDC',
-      },
-      {
-        address: getTokenAddress(SupportedChain.CELO, AcceptedToken.USDT),
-        chain: SupportedChain.CELO,
-        symbol: 'USDT',
-      },
-      // Arbitrum tokens
-      {
-        address: getTokenAddress(SupportedChain.ARBITRUM, AcceptedToken.USDC),
-        chain: SupportedChain.ARBITRUM,
-        symbol: 'USDC',
-      },
-      {
-        address: getTokenAddress(SupportedChain.ARBITRUM, AcceptedToken.USDT),
-        chain: SupportedChain.ARBITRUM,
-        symbol: 'USDT',
-      },
-      // Arbitrum Sepolia tokens
-      {
-        address: getTokenAddress(
-          SupportedChain.ARBITRUM_SEPOLIA,
-          AcceptedToken.USDC
-        ),
-        chain: SupportedChain.ARBITRUM_SEPOLIA,
-        symbol: 'USDC',
-      },
-    ]
-
-    let totalBalance = 0
-
-    const balancePromises = [
-      ...supportedChains.map(async chain => {
-        try {
-          const nativeBalance = await getNativeBalance(walletAddress, chain)
-          return nativeBalance.balance
-        } catch (error) {
-          console.error(
-            `Error getting native balance for chain ${chain}:`,
-            error
-          )
-          return 0
-        }
-      }),
-
-      ...tokenConfigs.map(async token => {
-        try {
-          const tokenBalance = await getTokenBalance(
-            walletAddress,
-            token.address,
-            token.chain
-          )
-          return tokenBalance.balance
-        } catch (error) {
-          console.error(
-            `Error getting token balance for ${token.symbol}:`,
-            error
-          )
-          return 0
-        }
-      }),
-    ]
-
-    // Wait for all balance requests to complete
-    const balances = await Promise.all(balancePromises)
-    totalBalance = balances.reduce((sum, balance) => sum + balance, 0)
-
-    return { balance: totalBalance }
-  } catch (error) {
-    console.error('Error getting total wallet balance:', error)
-    return { balance: 0 }
-  }
-}
-
-export async function getCryptoBalance(
-  walletAddress: string,
-  tokenAddress: string,
-  chainId: number
-): Promise<{ balance: number }> {
-  const chain = Object.values(SupportedChain).find(
-    supportedChain => getChainId(supportedChain) === chainId
+export const createPaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >
+): Promise<PaymentPreferences> => {
+  return await internalFetch<PaymentPreferences>(
+    '/secure/preferences/payment',
+    'POST',
+    { data }
   )
+}
 
-  if (!chain) {
-    throw new Error(`Unsupported chain ID: ${chainId}`)
+export const updatePaymentPreferences = async (
+  owner_account_address: string,
+  data: Partial<
+    Omit<PaymentPreferences, 'id' | 'created_at' | 'owner_account_address'>
+  >,
+  oldPin?: string
+): Promise<PaymentPreferences> => {
+  const requestBody: { updates: typeof data; oldPin?: string } = {
+    updates: data,
   }
 
-  return getTokenBalance(walletAddress, tokenAddress, chain)
+  if (oldPin) {
+    requestBody.oldPin = oldPin
+  }
+
+  return await internalFetch<PaymentPreferences>(
+    '/secure/preferences/payment',
+    'PATCH',
+    requestBody
+  )
+}
+
+export const verifyPin = async (pin: string): Promise<{ valid: boolean }> => {
+  return await internalFetch<{ valid: boolean }>(
+    '/secure/payments/pin/verify',
+    'POST',
+    {
+      pin,
+    }
+  )
+}
+
+export const sendResetPinLink = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/pin/reset',
+    'POST',
+    {
+      email,
+    }
+  )
+}
+
+export const sendChangeEmailLink = async (
+  currentEmail: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/change',
+    'POST',
+    {
+      currentEmail,
+    }
+  )
+}
+
+export const sendEnablePinLink = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/pin/enable',
+    'POST',
+    {
+      email,
+    }
+  )
+}
+
+export const changeEmailWithToken = async (
+  newEmail: string,
+  token: string
+): Promise<{ success: boolean; message: string; account: Account }> => {
+  return await internalFetch(`/secure/accounts/change-email`, 'POST', {
+    newEmail,
+    token,
+  })
+}
+
+export const enablePinWithToken = async (
+  pin: string,
+  token: string
+): Promise<PaymentPreferences> => {
+  return await internalFetch(`/secure/preferences/payment/enable-pin`, 'POST', {
+    pin,
+    token,
+  })
+}
+
+export const resetPinWithToken = async (
+  newPin: string,
+  token: string
+): Promise<PaymentPreferences> => {
+  return await internalFetch(`/secure/preferences/payment/reset-pin`, 'POST', {
+    newPin,
+    token,
+  })
+}
+
+export const sendVerificationCode = async (
+  email: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/verification',
+    'POST',
+    { email }
+  )
+}
+
+export const verifyVerificationCode = async (
+  code: string
+): Promise<{ success: boolean; message: string }> => {
+  return await internalFetch<{ success: boolean; message: string }>(
+    '/secure/notifications/email/verify',
+    'POST',
+    { code }
+  )
 }
 
 export const getCoinConfig = async (): Promise<ICoinConfig> => {

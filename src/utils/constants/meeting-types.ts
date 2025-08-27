@@ -93,14 +93,12 @@ export const PaymentChannelOptions = (address: string) => [
 const devChains = [
   // SupportedChain.SEPOLIA,
   SupportedChain.ARBITRUM_SEPOLIA,
-  SupportedChain.ARBITRUM,
+  // SupportedChain.ARBITRUM,
+  // SupportedChain.CELO,
   // SupportedChain.CELO_ALFAJORES,
 ]
-const prodChains = [
-  SupportedChain.ARBITRUM,
-  //SupportedChain.CELO
-]
-export const supportedPaymentChains = !isProduction ? prodChains : devChains
+const prodChains = [SupportedChain.ARBITRUM, SupportedChain.CELO]
+export const supportedPaymentChains = isProduction ? prodChains : devChains
 
 export const CryptoNetworkForCardSettlementOptions = supportedChains
   .filter(val => (supportedPaymentChains || []).includes(val.chain))
