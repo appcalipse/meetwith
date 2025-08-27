@@ -1,13 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
-import { GetGroupsResponse } from '@/types/Group'
-import {
-  getAccountNotificationSubscriptionEmail,
-  getGroupsAndMembers,
-  getUserGroups,
-  initDB,
-} from '@/utils/database'
+import { getGroupsAndMembers, initDB } from '@/utils/database'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
