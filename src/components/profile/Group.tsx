@@ -9,6 +9,7 @@ import {
   Spinner,
   Text,
   useDisclosure,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import { useInfiniteQuery } from '@tanstack/react-query'
@@ -30,16 +31,17 @@ import GroupOnBoardingModal from '@/components/onboarding/GroupOnBoardingModal'
 import { Account } from '@/types/Account'
 import { Intents, InviteType } from '@/types/Dashboard'
 import {
-  GetGroupsResponse,
+  GetGroupsFullResponse,
   Group as GroupResponse,
   GroupMember,
   MemberType,
 } from '@/types/Group'
 import {
   getGroupExternal,
-  getGroups,
+  getGroupsFull,
   listConnectedCalendars,
 } from '@/utils/api_helper'
+import { ApiFetchError } from '@/utils/errors'
 import QueryKeys from '@/utils/query_keys'
 
 import GroupCard from '../group/GroupCard'
@@ -78,35 +80,39 @@ export const GroupContext = React.createContext<IGroupModal>(DEFAULT_STATE)
 const PAGE_SIZE = 10
 
 const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
-  const {
-    data,
-    isLoading,
-    isFetching,
-    hasNextPage,
-    fetchNextPage,
-    refetch,
-    isError,
-    error,
-  } = useInfiniteQuery({
-    queryKey: QueryKeys.groups(currentAccount?.address),
-    queryFn: ({ pageParam = 0 }) => getGroups(PAGE_SIZE, pageParam),
-    getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage || lastPage.length < PAGE_SIZE) {
-        return undefined
-      }
-      return allPages.flat().length
-    },
-    enabled: !!currentAccount?.address,
-    staleTime: 0,
-    refetchOnMount: true,
-  })
+  const toast = useToast()
+  const { data, isLoading, isFetching, hasNextPage, fetchNextPage, refetch } =
+    useInfiniteQuery({
+      queryKey: QueryKeys.groups(currentAccount?.address),
+      queryFn: ({ pageParam = 0 }) => {
+        return getGroupsFull(PAGE_SIZE, pageParam)
+      },
+      getNextPageParam: (lastPage, allPages) => {
+        if (!lastPage || lastPage.length < PAGE_SIZE) {
+          return undefined
+        }
+        return allPages.flat().length
+      },
+      enabled: !!currentAccount?.address,
+      staleTime: 0,
+      refetchOnMount: true,
+      onError(err) {
+        if (err instanceof ApiFetchError) {
+          toast({
+            title: 'An error occurred',
+            description: err.message,
+            position: 'top',
+          })
+        }
+      },
+    })
 
   const groups = data?.pages.flat() ?? []
   const firstFetch = isLoading
   const loading = isFetching
   const noMoreFetch = !hasNextPage
 
-  // const [groups, setGroups] = useState<Array<GetGroupsResponse>>([])
+  // const [groups, setGroups] = useState<Array<getGroupsFullResponse>>([])
   // const [loading, setLoading] = useState(true)
   // const [noMoreFetch, setNoMoreFetch] = useState(false)
   // const [firstFetch, setFirstFetch] = useState(true)
@@ -326,27 +332,22 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           groupID={selectedGroupId}
         />
         <Accordion allowMultiple width="100%">
-          {groups.map(group =>
-            group?.invitePending ? (
-              <GroupInviteCard
-                key={group.id}
-                {...group}
-                resetState={resetState}
-              />
-            ) : (
-              <GroupCard
-                key={group.id}
-                currentAccount={currentAccount}
-                {...group}
-                onAddNewMember={(...args) => {
-                  if (group.role !== MemberType.ADMIN) return
-                  handleAddNewMember(...args)
-                }}
-                mt={0}
-                resetState={resetState}
-              />
-            )
-          )}
+          {groups.map(group => (
+            <GroupCard
+              key={group.id}
+              currentAccount={currentAccount}
+              {...group}
+              onAddNewMember={(...args) => {
+                const actor = group.members.find(
+                  member => member.address === currentAccount?.address
+                )
+                if (!actor || actor?.role !== MemberType.ADMIN) return
+                handleAddNewMember(...args)
+              }}
+              mt={0}
+              resetState={resetState}
+            />
+          ))}
         </Accordion>
         {!noMoreFetch && !firstFetch && (
           <Button
