@@ -1473,55 +1473,6 @@ const getAccountsNotificationSubscriptionEmails = async (
   return userEmails
 }
 
-const getUserGroups = async (
-  address: string,
-  limit: number,
-  offset: number,
-  email?: string
-): Promise<Array<UserGroups>> => {
-  const { data: invites, error: invitesError } = await db.supabase
-    .from('group_invites')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .or(
-      `user_id.eq.${address.toLowerCase()}${email ? `,email.eq.${email}` : ''}`
-    )
-    .range(
-      offset || 0,
-      (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-    )
-  const { data, error } = await db.supabase
-    .from('group_members')
-    .select(
-      `
-      role,
-      group: groups( id, name, slug )
-  `
-    )
-    .eq('member_id', address.toLowerCase())
-    .range(
-      offset || 0,
-      (offset || 0) +
-        (limit ? limit - 1 - (invites?.length || 0) : 999_999_999_999_999)
-    )
-
-  if (invitesError) {
-    throw new Error(invitesError.message)
-  }
-  if (error) {
-    throw new Error(error.message)
-  }
-  if (data || invites) {
-    return invites
-      .map(val => ({ ...val, invitePending: true }))
-      .concat(data.map(val => ({ ...val, invitePending: false })))
-  }
-  return []
-}
 const getGroupsAndMembers = async (
   address: string,
   limit: number,
@@ -1543,50 +1494,41 @@ const getGroupsAndMembers = async (
   if (error) {
     throw new Error(error.message)
   }
-  const groups = []
-  for (const group of data) {
-    const { data: membersData, error: membersError } = await db.supabase
-      .from('group_members')
-      .select()
-      .eq('group_id', group.group.id)
-    if (membersError) {
-      throw new Error(membersError.message)
-    }
-    const addresses = membersData.map(
-      (member: GroupMemberQuery) => member.member_id
-    )
+  const groupPromises = data.map(async group => {
     const { data: members, error } = await db.supabase
-      .from('accounts')
+      .from('group_members')
       .select(
         `
-         group_members: group_members(*),
-         preferences: account_preferences(name)
+         *,
+         account: accounts(
+          preferences: account_preferences(name),
+          subscriptions: subscriptions(domain,expiry_time)
+         )
     `
       )
-      .in('address', addresses)
-      .filter('group_members.group_id', 'eq', group.group.id)
-      .range(
-        offset || 0,
-        (offset || 0) + (limit ? limit - 1 : 999_999_999_999_999)
-      )
+      .eq('group_id', group.group.id)
     if (error) {
-      throw new Error(error.message)
+      return null
     }
-
     if (data) {
-      groups.push({
+      return {
         ...group.group,
         members: members.map(member => ({
-          userId: member.group_members?.[0]?.id,
-          displayName: member.preferences?.name,
-          address: member.group_members?.[0]?.member_id as string,
-          role: member.group_members?.[0].role,
+          userId: member?.id,
+          displayName: member.account.preferences?.name,
+          address: member?.member_id as string,
+          role: member?.role,
           invitePending: false,
+          domain: member.account.subscriptions?.find(
+            sub => new Date(sub.expiry_time) > new Date()
+          )?.domain,
         })),
-      })
+      }
     }
-  }
-  return groups
+  })
+  return await Promise.all(groupPromises).then(
+    groups => groups.filter(group => group !== null) as GetGroupsFullResponse[]
+  )
 }
 
 async function findGroupsWithSingleMember(
@@ -5234,7 +5176,6 @@ export {
   getSlotsForDashboard,
   getTgConnection,
   getTgConnectionByTgId,
-  getUserGroups,
   handleGuestCancel,
   handleMeetingCancelSync,
   handleWebhookEvent,
