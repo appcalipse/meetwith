@@ -622,15 +622,7 @@ export const syncMeeting = async (
     })
   } catch (e) {}
 }
-export const getGroups = async (
-  limit?: number,
-  offset?: number
-): Promise<Array<GetGroupsResponse>> => {
-  const response = await internalFetch<Array<GetGroupsResponse>>(
-    `/secure/group/user?limit=${limit}&offset=${offset}`
-  )
-  return response
-}
+
 export const getGroupsFull = async (
   limit?: number,
   offset?: number
@@ -647,9 +639,9 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   return response
 }
 
-export const getGroupsInvites = async (address: string) => {
+export const getGroupsInvites = async () => {
   const response = await internalFetch<Array<EmptyGroupsResponse>>(
-    `/secure/group/user/${address}`
+    `/secure/group/invites`
   )
   return response
 }
