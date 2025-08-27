@@ -1521,7 +1521,8 @@ const getGroupsAndMembers = async (
           role: member?.role,
           invitePending: false,
           domain: member.account.subscriptions?.find(
-            sub => new Date(sub.expiry_time) > new Date()
+            (sub: { expiry_time: string | number | Date }) =>
+              new Date(sub.expiry_time) > new Date()
           )?.domain,
         })),
       }
