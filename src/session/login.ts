@@ -102,7 +102,7 @@ export const useLogin = () => {
         ) {
           shouldRedirect &&
             (await router.push(
-              query.redirect
+              query.redirect && !query.redirect?.includes('[section]')
                 ? (query.redirect as string)
                 : `/dashboard/meetings${
                     redirectPath ? `?redirect=${redirectPath}` : ''
