@@ -18,7 +18,6 @@ import Image from 'next/image'
 import { useRouter } from 'next/router'
 import React, { ReactNode, useContext, useEffect, useState } from 'react'
 
-import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
 import { ContactInvite } from '@/types/Contacts'
 import { EditMode, Intents } from '@/types/Dashboard'
