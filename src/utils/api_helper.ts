@@ -625,11 +625,14 @@ export const syncMeeting = async (
 
 export const getGroupsFull = async (
   limit?: number,
-  offset?: number
+  offset?: number,
+  search?: string
 ): Promise<Array<GetGroupsFullResponse>> => {
-  const response = await internalFetch<Array<GetGroupsFullResponse>>(
-    `/secure/group/full?limit=${limit}&offset=${offset}`
-  )
+  let url = `/secure/group/full?limit=${limit}&offset=${offset}`
+  if (search) {
+    url += `&search=${search}`
+  }
+  const response = await internalFetch<Array<GetGroupsFullResponse>>(url)
   return response
 }
 export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
@@ -639,10 +642,12 @@ export const getGroupsEmpty = async (): Promise<Array<EmptyGroupsResponse>> => {
   return response
 }
 
-export const getGroupsInvites = async () => {
-  const response = await internalFetch<Array<EmptyGroupsResponse>>(
-    `/secure/group/invites`
-  )
+export const getGroupsInvites = async (search?: string) => {
+  let url = `/secure/group/invites`
+  if (search) {
+    url += `?search=${search}`
+  }
+  const response = await internalFetch<Array<EmptyGroupsResponse>>(url)
   return response
 }
 
@@ -1298,6 +1303,10 @@ export const inviteUsers = async (
     Sentry.captureException(e)
     throw e
   }
+}
+
+export const getGroupInviteCount = async () => {
+  return await internalFetch<number>(`/secure/group/invites/metrics`)
 }
 
 export const createTelegramHash = async () => {
