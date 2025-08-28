@@ -53,3 +53,5 @@ package-lock.json
 zoom-token.json
 .qodo
 test.http
+
+sql/
