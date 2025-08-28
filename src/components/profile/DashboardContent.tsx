@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import React, { useContext } from 'react'
 
 import { AccountContext } from '@/providers/AccountProvider'
-import ContactStateProvider from '@/providers/ContactInvitesProvider'
+import MetricStateProvider from '@/providers/MetricStateProvider'
 
 import AvailabilityConfig from '../availabilities/AvailabilityConfig'
 import Loading from '../Loading'
@@ -45,7 +45,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
   }
 
   return currentAccount ? (
-    <ContactStateProvider currentAccount={currentAccount}>
+    <MetricStateProvider currentAccount={currentAccount}>
       <HStack
         alignItems="start"
         width="100%"
@@ -70,7 +70,7 @@ const DashboardContent: React.FC<{ currentSection?: EditMode }> = ({
           {renderSelected()}
         </Box>
       </HStack>
-    </ContactStateProvider>
+    </MetricStateProvider>
   ) : (
     <Flex
       width="100%"
