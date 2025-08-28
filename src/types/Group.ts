@@ -138,6 +138,7 @@ export interface GroupInviteFilters {
   discord_id?: string
   limit?: number
   offset?: number
+  search?: string
 }
 
 export interface CreateGroupPayload {
