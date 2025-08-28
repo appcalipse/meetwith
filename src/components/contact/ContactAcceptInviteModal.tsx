@@ -25,6 +25,8 @@ import {
   OwnInviteError,
 } from '@/utils/errors'
 
+import { ContactStateContext } from '../profile/Contact'
+
 export interface IContactAcceptInviteModal {
   onClose: () => void
   isOpen: boolean
@@ -35,7 +37,8 @@ export interface IContactAcceptInviteModal {
 
 const ContactAcceptInviteModal: React.FC<IContactAcceptInviteModal> = props => {
   const [isAccepting, setIsAccepting] = React.useState(false)
-  const { selectedContact, fetchRequestCount } = useContext(MetricStateContext)
+  const { fetchContactsRequestCount } = useContext(MetricStateContext)
+  const { selectedContact } = useContext(ContactStateContext)
 
   const toast = useToast()
 
@@ -108,7 +111,7 @@ const ContactAcceptInviteModal: React.FC<IContactAcceptInviteModal> = props => {
     } finally {
       setIsAccepting(false)
       props.onClose()
-      fetchRequestCount()
+      fetchContactsRequestCount()
     }
   }
   const handleDecline = async () => {

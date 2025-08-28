@@ -13,6 +13,8 @@ import {
 } from '@/utils/errors'
 import { ellipsizeAddress } from '@/utils/user_manager'
 
+import { ContactStateContext } from '../profile/Contact'
+
 type Props = {
   index: number
   account: ContactInvite
@@ -30,8 +32,8 @@ const ContactRequestItem: FC<Props> = ({
 }) => {
   const [isAccepting, setIsAccepting] = React.useState(false)
 
-  const { setSelectedContact, fetchRequestCount } =
-    useContext(MetricStateContext)
+  const { fetchContactsRequestCount } = useContext(MetricStateContext)
+  const { setSelectedContact } = useContext(ContactStateContext)
 
   const toast = useToast()
   const handleAccept = async () => {
@@ -90,7 +92,7 @@ const ContactRequestItem: FC<Props> = ({
     } finally {
       setIsAccepting(false)
     }
-    fetchRequestCount()
+    fetchContactsRequestCount()
   }
 
   const handleRemove = async () => {
