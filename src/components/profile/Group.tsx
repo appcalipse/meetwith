@@ -8,7 +8,6 @@ import {
   HStack,
   Input,
   Tab,
-  TableContainer,
   TabList,
   TabPanel,
   TabPanels,
@@ -158,7 +157,7 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
         gap={6}
       >
         <Heading fontSize="2xl">
-          My Groups
+          My Groups21
           <Text fontSize="sm" fontWeight={500} mt={1} lineHeight={1.5}>
             A group allows you to add multiple members and schedule meetings by
             automatically finding a suitable time based on each member’s
@@ -166,10 +165,11 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
           </Text>
         </Heading>
       </HStack>
-      <Tabs variant="unstyled" borderRadius={15} pb={0}>
-        <VStack w={'100%'}>
+      <Tabs variant="unstyled" pb={0} mb={10}>
+        <VStack w={'100%'} p={5}>
           <HStack
             justifyContent="space-between"
+            mb={4}
             w={'100%'}
             alignItems="flex-start"
           >
@@ -267,24 +267,22 @@ const Group: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
             Create new group
           </Button>
         </VStack>
-        <TableContainer>
-          <TabPanels p={0}>
-            <TabPanel p={0}>
-              <Groups
-                currentAccount={currentAccount}
-                search={debouncedValue}
-                ref={groupRef}
-              />
-            </TabPanel>
-            <TabPanel p={0}>
-              <GroupInvites
-                currentAccount={currentAccount}
-                search={debouncedValue}
-                reloadGroups={() => groupRef.current?.resetState()}
-              />
-            </TabPanel>
-          </TabPanels>
-        </TableContainer>
+        <TabPanels p={0}>
+          <TabPanel p={0}>
+            <Groups
+              currentAccount={currentAccount}
+              search={debouncedValue}
+              ref={groupRef}
+            />
+          </TabPanel>
+          <TabPanel p={0}>
+            <GroupInvites
+              currentAccount={currentAccount}
+              search={debouncedValue}
+              reloadGroups={() => groupRef.current?.resetState()}
+            />
+          </TabPanel>
+        </TabPanels>
       </Tabs>
     </Flex>
   )
