@@ -18,7 +18,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/router'
 import React, { ReactNode, useContext, useEffect, useState } from 'react'
 
-import { ContactStateContext } from '@/providers/ContactInvitesProvider'
+import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { Account } from '@/types/Account'
 import { ContactInvite } from '@/types/Contacts'
 import { EditMode, Intents } from '@/types/Dashboard'
@@ -28,6 +28,7 @@ import {
 } from '@/utils/api_helper'
 import { ContactAlreadyExists, ContactInviteNotFound } from '@/utils/errors'
 
+import { ContactStateContext } from '../profile/Contact'
 import ContactAcceptInviteModal from './ContactAcceptInviteModal'
 import ContactRejectInviteModal from './ContactRejectInviteModal'
 import ContactRequestItem from './ContactRequestItem'

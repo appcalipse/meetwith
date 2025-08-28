@@ -15,7 +15,7 @@ import {
 import { Jazzicon } from '@ukstv/jazzicon-react'
 import React, { useContext } from 'react'
 
-import { ContactStateContext } from '@/providers/ContactInvitesProvider'
+import { MetricStateContext } from '@/providers/MetricStateProvider'
 import { logEvent } from '@/utils/analytics'
 import { acceptContactInvite } from '@/utils/api_helper'
 import {
@@ -35,7 +35,7 @@ export interface IContactAcceptInviteModal {
 
 const ContactAcceptInviteModal: React.FC<IContactAcceptInviteModal> = props => {
   const [isAccepting, setIsAccepting] = React.useState(false)
-  const { selectedContact, fetchRequestCount } = useContext(ContactStateContext)
+  const { selectedContact, fetchRequestCount } = useContext(MetricStateContext)
 
   const toast = useToast()
 
