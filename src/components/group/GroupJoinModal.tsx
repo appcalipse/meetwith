@@ -26,6 +26,7 @@ export interface IGroupInviteCardModal {
   onClose: () => void
   inviteEmail?: string
   type?: InviteType
+  shouldOpen: boolean
 }
 
 const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
@@ -79,7 +80,7 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
         props.onClose()
         push('/dashboard/groups')
       }}
-      isOpen={!!props.group?.id}
+      isOpen={props.shouldOpen && !!props.group?.id}
       blockScrollOnMount={false}
       size={'lg'}
       isCentered

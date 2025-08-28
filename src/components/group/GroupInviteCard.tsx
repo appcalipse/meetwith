@@ -10,12 +10,12 @@ import {
 import React from 'react'
 
 import GroupInviteCardModal from '@/components/group/GroupInviteCardModal'
-import { GetGroupsResponse } from '@/types/Group'
+import { EmptyGroupsResponse, GetGroupsResponse } from '@/types/Group'
 import { logEvent } from '@/utils/analytics'
 import { joinGroup } from '@/utils/api_helper'
 import { handleApiError } from '@/utils/error_helper'
 
-export interface IGroupInviteCard extends GetGroupsResponse {
+export interface IGroupInviteCard extends EmptyGroupsResponse {
   resetState: () => void
 }
 
