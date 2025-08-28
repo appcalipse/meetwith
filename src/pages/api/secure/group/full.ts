@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 
 import { withSessionRoute } from '@/ironAuth/withSessionApiRoute'
 import { getGroupsAndMembers, initDB } from '@/utils/database'
+import { extractQuery } from '@/utils/generic_utils'
 
 const handle = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'GET') {
@@ -14,7 +15,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
       const groups = await getGroupsAndMembers(
         account_address,
         Number(req.query.limit as string),
-        Number(req.query.offset as string)
+        Number(req.query.offset as string),
+        extractQuery(req.query, 'search')
       )
       return res.status(200).json(groups)
     } catch (e) {
