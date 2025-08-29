@@ -232,13 +232,14 @@ export const NavMenu: React.FC<{
     <Box
       bgColor={menuBg}
       zIndex="10"
-      width={{ base: '100vw', lg: '296px' }}
+      width={{ base: '100vw', lg: '21%' }}
       height="100vh"
       position="fixed"
       left={0}
       top={0}
       display={isMenuOpen ? 'flex' : { base: 'none', lg: 'flex' }}
       flexDirection="column"
+      borderRadius={12}
     >
       {!isMenuOpen ? (
         <VStack
