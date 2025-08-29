@@ -8,9 +8,9 @@ import {
 
 interface IMetricStateContext {
   contactsRequestCount: number
-  fetchContactsRequestCount: () => void
+  fetchContactsRequestCount: () => Promise<void>
   groupInvitesCount: number
-  fetchGroupInvitesCount: () => void
+  fetchGroupInvitesCount: () => Promise<void>
 }
 
 const DEFAULT_STATE: IMetricStateContext = {
