@@ -138,24 +138,30 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
       borderBottomColor={borderColor}
       pb={3}
     >
-      <HStack flexBasis="57%" overflow="hidden">
-        <Box width="64px" height="64px" display="block" flexBasis={'64px'}>
+      <HStack flexBasis={{ md: '57%' }} overflow="hidden">
+        <Box
+          width={{ base: '32px', md: '48px', lg: '64px' }}
+          height={{ base: '32px', md: '48px', lg: '64px' }}
+          display="block"
+          flexBasis={{ base: '32px', md: '48px', lg: '64px' }}
+        >
           <Avatar address={props.address || ''} />
         </Box>
         <VStack alignItems="start" gap={1} width="calc(100% - 72px)">
-          <Heading size="sm">
+          <Heading size={{ base: 'xs', md: 'sm' }}>
             {props.displayName || ellipsizeAddress(props.address || '')}{' '}
             {props.currentAccount.address === props.address && '(You)'}
           </Heading>
           {!props.invitePending ? (
             <CopyLinkButton
               url={`${appUrl}/${props.domain || props.address}`}
-              size="md"
+              size={{ base: 'sm', md: 'md' }}
               label={`${appUrl}/${props.domain || props.address}`}
               withIcon
               design_type="link"
               pl={0}
               maxW="335px"
+              px={{ base: 0, md: 4 }}
               childStyle={{
                 style: {
                   width: '150px',
@@ -177,13 +183,17 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 placeContent="center"
                 bg={tagColor}
               >
-                <Text size="sm">Pending</Text>
+                <Text size={{ base: 'xs', md: 'sm' }}>Pending</Text>
               </Box>
             </HStack>
           )}
         </VStack>
       </HStack>
-      <HStack display="flex" flexBasis="30%" justifyContent="space-between">
+      <HStack
+        display="flex"
+        flexBasis={{ md: '30%' }}
+        justifyContent="space-between"
+      >
         <HStack overflow="hidden" maxW={'150px'}>
           {loading ? (
             <Spinner marginInline="auto" />
@@ -201,6 +211,7 @@ const GroupMemberCard: React.FC<IGroupMemberCard> = props => {
                 }
                 variant="ghost"
                 gap={12}
+                width="100px"
                 pr={4}
                 pl={0}
                 textTransform="capitalize"
