@@ -1019,7 +1019,7 @@ const Schedule: NextPage<IInitialProps> = ({
           base: '100%',
           '2xl': '100%',
         }}
-        mt={36}
+        mt={8}
         flex={1}
         pb={16}
         px={{
