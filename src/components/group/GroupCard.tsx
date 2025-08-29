@@ -17,20 +17,28 @@ import {
   Spacer,
   Text,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
+import { InviteType } from '@meta/Dashboard'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useRouter } from 'next/router'
 import React, { Fragment, useContext, useId, useMemo, useState } from 'react'
 import { FaChevronDown, FaChevronUp, FaInfo } from 'react-icons/fa'
-import { IoMdPersonAdd, IoMdSettings } from 'react-icons/io'
+import {
+  IoMdPersonAdd,
+  IoMdSettings,
+  IoMdShare,
+  IoMdShareAlt,
+} from 'react-icons/io'
+import { IoShareSocialOutline } from 'react-icons/io5'
 
-import { GroupContext } from '@/components/profile/Group'
+import { GroupContext } from '@/components/group/Groups'
 import { Account } from '@/types/Account'
 import { GetGroupsFullResponse, MemberType, MenuOptions } from '@/types/Group'
 import { ChangeGroupAdminRequest } from '@/types/Requests'
 import { updateGroupRole } from '@/utils/api_helper'
-import { isProduction } from '@/utils/constants'
+import { appUrl, isProduction } from '@/utils/constants'
 
 import GroupMemberCard from './GroupMemberCard'
 
@@ -47,6 +55,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
   const iconColor = useColorModeValue('gray.600', 'white')
   const borderColor = useColorModeValue('neutral.200', 'neutral.600')
   const menuBgColor = useColorModeValue('gray.50', 'neutral.800')
+  const toast = useToast()
 
   const id = useId()
   const { push } = useRouter()
@@ -114,7 +123,29 @@ const GroupCard: React.FC<IGroupCard> = props => {
     () => renderPopOverOptions(actor?.role || MemberType.MEMBER),
     [actor?.role]
   )
-
+  const handlePublicLinkCopy = async () => {
+    try {
+      const publicInviteLink = `${appUrl}/invite-accept?groupId=${props.id}&type=${InviteType.PUBLIC}`
+      await navigator.clipboard.writeText(publicInviteLink)
+      toast({
+        title: 'Link copied',
+        description: 'Public invite link copied to clipboard.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+        position: 'top',
+      })
+    } catch (e) {
+      toast({
+        title: 'Error copying link',
+        description: 'Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+        position: 'top',
+      })
+    }
+  }
   return (
     <AccordionItem
       width="100%"
@@ -123,7 +154,7 @@ const GroupCard: React.FC<IGroupCard> = props => {
       py={4}
       border={0}
       borderRadius="lg"
-      mt={6}
+      mt={2}
       bgColor={bgColor}
       id={props.id}
     >
@@ -133,6 +164,10 @@ const GroupCard: React.FC<IGroupCard> = props => {
             justifyContent="space-between"
             width="100%"
             alignItems="flex-start"
+            flexDirection={{
+              base: 'column',
+              md: 'row',
+            }}
           >
             <VStack gap={0} alignItems="start">
               <Heading
@@ -146,9 +181,19 @@ const GroupCard: React.FC<IGroupCard> = props => {
                 {props.name}
               </Heading>
             </VStack>
+            <Button
+              colorScheme="primary"
+              display={{ base: 'flex', md: 'none' }}
+              onClick={() =>
+                push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
+              }
+            >
+              Schedule
+            </Button>
             <HStack gap={3} width="fit-content">
               <Button
                 colorScheme="primary"
+                display={{ base: 'none', md: 'flex' }}
                 onClick={() =>
                   push(`/dashboard/schedule?ref=group&groupId=${props.id}`)
                 }
@@ -161,6 +206,14 @@ const GroupCard: React.FC<IGroupCard> = props => {
                   p={'8px 16px'}
                   icon={<IoMdPersonAdd size={20} />}
                   onClick={() => props.onAddNewMember(props.id, props.name)}
+                />
+              )}
+              {isAdmin && (
+                <IconButton
+                  aria-label="Copy Public Link"
+                  p={'8px 16px'}
+                  icon={<IoShareSocialOutline size={20} />}
+                  onClick={handlePublicLinkCopy}
                 />
               )}
               <Menu>
