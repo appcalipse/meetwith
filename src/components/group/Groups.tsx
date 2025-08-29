@@ -43,7 +43,7 @@ type Props = {
 }
 
 export interface GroupRef {
-  resetState: () => void
+  resetState: () => Promise<void>
 }
 interface IGroupModal {
   openLeaveModal: () => void
