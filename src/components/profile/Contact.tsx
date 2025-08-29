@@ -118,13 +118,21 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               mb={4}
               w={'100%'}
               alignItems="flex-start"
+              flexDirection={{
+                base: 'column-reverse',
+                md: 'row',
+              }}
             >
-              <Box w="fit-content" pos="relative" h="100%">
+              <Box
+                w={{ base: '100%', md: 'fit-content' }}
+                pos="relative"
+                h="100%"
+              >
                 <FormLabel
                   display="flex"
                   htmlFor="search"
                   pos="absolute"
-                  left={2}
+                  left={3}
                   insetY={0}
                   h="100%"
                   justifyContent="center"
@@ -133,8 +141,8 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                   <RiSearch2Line color="neutral.400" />
                 </FormLabel>
                 <Input
-                  pl={8}
-                  w="fit-content"
+                  pl={10}
+                  w={{ base: '100%', md: 'fit-content' }}
                   h={12}
                   type="search"
                   placeholder="Search contact"
@@ -148,9 +156,20 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                   }}
                 />
               </Box>
-
+              <Button
+                onClick={onOpen}
+                flexShrink={0}
+                colorScheme="primary"
+                display={{ base: 'flex', md: 'none' }}
+                mt={{ base: 4, md: 0 }}
+                mb={4}
+                leftIcon={<FaPlus />}
+                w={'100%'}
+              >
+                Add new contact
+              </Button>
               <TabList
-                w="auto"
+                w={{ base: '100%', md: 'auto' }}
                 bg="neutral.850"
                 p={1}
                 borderWidth={1}
@@ -158,6 +177,10 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
               >
                 <Tab
                   rounded={4}
+                  flexGrow={{
+                    base: 1,
+                    md: 0,
+                  }}
                   fontWeight={700}
                   _selected={{
                     color: 'neutral.900',
@@ -168,6 +191,10 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                 </Tab>
                 <Tab
                   rounded={4}
+                  flexGrow={{
+                    base: 1,
+                    md: 0,
+                  }}
                   fontWeight={700}
                   _selected={{
                     color: 'neutral.900',
@@ -178,7 +205,7 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                   {contactsRequestCount > 0 && (
                     <Badge
                       colorScheme="primary"
-                      color="neutral.900"
+                      color="white"
                       bg="primary.600"
                       ml={2}
                       px={1.5}
@@ -218,18 +245,6 @@ const Contact: React.FC<{ currentAccount: Account }> = ({ currentAccount }) => {
                 </Box>
               </Text>
             )}
-            <Button
-              onClick={onOpen}
-              flexShrink={0}
-              colorScheme="primary"
-              display={{ base: 'flex', md: 'none' }}
-              mt={{ base: 4, md: 0 }}
-              mb={4}
-              leftIcon={<FaPlus />}
-              w={'100%'}
-            >
-              Add new contact
-            </Button>
           </VStack>
           <TableContainer>
             <TabPanels p={0}>
