@@ -22,7 +22,7 @@ import { handleApiError } from '@/utils/error_helper'
 
 export interface IGroupInviteCardModal {
   group: Group | undefined
-  resetState: () => void
+  resetState: () => Promise<unknown>
   onClose: () => void
   inviteEmail?: string
   type?: InviteType
@@ -49,12 +49,12 @@ const GroupJoinModal: React.FC<IGroupInviteCardModal> = props => {
     setDeclining(true)
     try {
       await rejectGroup(props.group.id, props.inviteEmail)
+      await props.resetState()
     } catch (error: any) {
       handleApiError('Error rejecting invite', error)
     }
     props.onClose()
     void push('/dashboard/groups')
-    props.resetState()
     setDeclining(false)
   }
   const handleAccept = async () => {
