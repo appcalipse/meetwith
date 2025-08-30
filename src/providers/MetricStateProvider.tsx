@@ -15,9 +15,9 @@ interface IMetricStateContext {
 
 const DEFAULT_STATE: IMetricStateContext = {
   contactsRequestCount: 0,
-  fetchContactsRequestCount: () => {},
+  fetchContactsRequestCount: async () => {},
   groupInvitesCount: 0,
-  fetchGroupInvitesCount: () => {},
+  fetchGroupInvitesCount: async () => {},
 }
 
 export const MetricStateContext =
