@@ -63,7 +63,7 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       groupParticipants,
       currentAccount?.address || ''
     )
-    return participantsMerged.length
+    return participantsMerged.length + 1
   }, [participants, allGroups, groupParticipants, currentAccount?.address])
   const handleParticipantRemove = (account_address: string) => {
     if (account_address === currentAccount?.address) return
