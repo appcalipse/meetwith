@@ -45,6 +45,7 @@ import { MeetingProvider, MeetingRepeat } from '@/types/Meeting'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { isGroupParticipant, Participant } from '@/types/schedule'
 import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import {
   DEFAULT_GROUP_SCHEDULING_DURATION,
   MeetingNotificationOptions,
@@ -169,17 +170,16 @@ const ScheduleBase = () => {
     if (_participants.length) {
       setIsParticipantsValid(true)
     }
-    const key = 'no_group'
     const addresses = _participants
       .map(val => val.account_address)
       .filter(val => val != undefined)
     setGroupAvailability(prev => ({
       ...prev,
-      [key]: addresses as string[],
+      [NO_GROUP_KEY]: addresses as string[],
     }))
     setGroupParticipants(prev => ({
       ...prev,
-      [key]: addresses as string[],
+      [NO_GROUP_KEY]: addresses as string[],
     }))
   }
 
