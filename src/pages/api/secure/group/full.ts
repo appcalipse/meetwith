@@ -14,8 +14,8 @@ const handle = async (req: NextApiRequest, res: NextApiResponse) => {
     try {
       const groups = await getGroupsAndMembers(
         account_address,
-        Number(req.query.limit as string),
-        Number(req.query.offset as string),
+        extractQuery(req.query, 'limit'),
+        extractQuery(req.query, 'offset'),
         extractQuery(req.query, 'search')
       )
       return res.status(200).json(groups)
