@@ -69,6 +69,8 @@ import { PriceFeedService } from '@/utils/services/chainlink.service'
 import { getTokenBalance, getTokenInfo } from '@/utils/token.service'
 import { thirdWebClient } from '@/utils/user_manager'
 
+import CheckoutWidgetModal from './CheckoutWidget'
+
 const ConfirmPaymentInfo = () => {
   const {
     setPaymentType,
@@ -479,27 +481,12 @@ const ConfirmPaymentInfo = () => {
         <ArrowBackIcon w={6} h={6} />
         <Text fontSize={16}>Back</Text>
       </HStack>
-      <CheckoutWidget
-        client={thirdWebClient}
-        chain={chain.thirdwebChain}
-        amount={amount.toString()}
-        tokenAddress={NATIVE_TOKEN_ADDRESS}
-        seller={
-          (selectedType?.plan?.payment_address || account.address) as Address
-        }
-        name={selectedType?.title}
-        description={selectedType?.description}
-        image={'/logo.svg'}
-        purchaseData={{
-          meetingId: selectedType?.id || '',
-          messageChannel,
-          guestEmail: email,
-          guestName: name,
-        }}
-        onSuccess={() => {
-          alert('Purchase successful!')
-          // Redirect or update UI
-        }}
+      <CheckoutWidgetModal
+        chain={chain}
+        activeWallet={wallet}
+        amount={amount}
+        email={email}
+        messageChannel={messageChannel}
       />
       <Heading size="md">Confirm Payment Info</Heading>
       <VStack alignItems="flex-start" w={{ base: '100%', md: '30%' }} gap={4}>
