@@ -167,7 +167,7 @@ export const extractQuery = <T extends string = string>(
     result = value
   }
 
-  if (!result) return undefined
+  if (!result || result === 'undefined') return undefined
 
   // If valid values provided, check against them
   if (validValues && !validValues.includes(result as T)) {
