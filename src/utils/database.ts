@@ -1475,8 +1475,8 @@ const getAccountsNotificationSubscriptionEmails = async (
 
 const getGroupsAndMembers = async (
   address: string,
-  limit: number,
-  offset: number,
+  limit?: string,
+  offset?: string,
   search?: string
 ): Promise<Array<GetGroupsFullResponse>> => {
   const { data, error } = await db.supabase.rpc(
@@ -1484,7 +1484,7 @@ const getGroupsAndMembers = async (
     {
       user_address: address.toLowerCase(),
       search_term: search || null,
-      limit_count: limit || 999_999_999_999_999,
+      limit_count: limit || 1000,
       offset_count: offset || 0,
     }
   )
