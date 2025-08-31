@@ -40,7 +40,7 @@ const ScheduleGroup: FC<ScheduleGroupItemProps> = props => {
     [participants, props.id]
   )
   const loadGroupMembers = () => {
-    const actualMembers = props.members
+    const actualMembers = props.members.filter(member => !member.invitePending)
     setGroupsMembers(actualMembers)
     if (isExpanded && !groupParticipants?.[props.id]) {
       setGroupAvailability(prev => ({
