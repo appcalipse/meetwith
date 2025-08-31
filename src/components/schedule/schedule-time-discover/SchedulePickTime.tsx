@@ -2,10 +2,13 @@
 import {
   Box,
   Flex,
+  FormControl,
+  FormLabel,
   Grid,
   Heading,
   HStack,
   IconButton,
+  Select as ChakraSelect,
   SlideFade,
   Text,
   VStack,
@@ -22,6 +25,8 @@ import Loading from '@/components/Loading'
 import InfoTooltip from '@/components/profile/components/Tooltip'
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { fetchBusySlotsRawForMultipleAccounts } from '@/utils/api_helper'
+import { durationToHumanReadable } from '@/utils/calendar_manager'
+import { DEFAULT_GROUP_SCHEDULING_DURATION } from '@/utils/constants/schedule'
 import { customSelectComponents } from '@/utils/constants/select'
 import { parseMonthAvailabilitiesToDate, timezones } from '@/utils/date_helper'
 import { handleApiError } from '@/utils/error_helper'
@@ -82,7 +87,10 @@ export function SchedulePickTime() {
     handlePageSwitch,
     pickedTime,
     duration,
+    handleDurationChange,
     meetingMembers,
+    canEditMeetingDetails,
+    isScheduling,
   } = useContext(ScheduleContext)
 
   const [isLoading, setIsLoading] = useState(false)
@@ -389,6 +397,33 @@ export function SchedulePickTime() {
               components={customSelectComponents}
             />
           </VStack>
+          <FormControl
+            w={'max-content'}
+            isDisabled={!canEditMeetingDetails || isScheduling}
+          >
+            <FormLabel htmlFor="date">
+              Duration
+              <Text color="red.500" display="inline">
+                *
+              </Text>
+            </FormLabel>
+            <ChakraSelect
+              id="duration"
+              placeholder="Duration"
+              onChange={e => handleDurationChange(Number(e.target.value))}
+              value={duration}
+              borderColor="neutral.400"
+              width={'max-content'}
+              maxW="350px"
+              errorBorderColor="red.500"
+            >
+              {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
+                <option key={type.id} value={type.duration}>
+                  {durationToHumanReadable(type.duration)}
+                </option>
+              ))}
+            </ChakraSelect>
+          </FormControl>
           <Grid
             gridTemplateColumns={'1fr 1fr'}
             justifyContent={'space-between'}
