@@ -12,16 +12,8 @@ import {
 } from '@chakra-ui/react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { Select, SingleValue } from 'chakra-react-select'
-import {
-  add,
-  addDays,
-  endOfMonth,
-  isSameMonth,
-  startOfMonth,
-  sub,
-} from 'date-fns'
+import { addDays, isSameMonth } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
-import debounce from 'lodash.debounce'
 import { DateTime, Interval } from 'luxon'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
@@ -48,9 +40,9 @@ export const getBgColor = (state: State) => {
     case State.ALL_AVAILABLE:
       return 'green.400'
     case State.MOST_AVAILABLE:
-      return 'green.300'
+      return 'yellow.600'
     case State.SOME_AVAILABLE:
-      return 'green.200'
+      return 'yellow.100'
     case State.NONE_AVAILABLE:
       return 'neutral.0'
   }
@@ -82,8 +74,6 @@ type Dates = {
 export function SchedulePickTime() {
   const {
     groupAvailability,
-    currentMonth,
-    setCurrentMonth,
     timezone,
     setTimezone,
     currentSelectedDate,
@@ -122,7 +112,7 @@ export function SchedulePickTime() {
     return slots
   }
   const months = useMemo(() => {
-    const year = currentMonth.getFullYear()
+    const year = currentSelectedDate.getFullYear()
     const monthsArray = []
     const formatter = new Intl.DateTimeFormat('en-US', { month: 'long' })
     const currentDateInTimezone = DateTime.now().setZone(timezone)
@@ -144,15 +134,15 @@ export function SchedulePickTime() {
       })
     }
     return monthsArray
-  }, [currentMonth.getFullYear()])
+  }, [currentSelectedDate.getFullYear()])
   const [dates, setDates] = useState<Array<Dates>>([])
   const [monthValue, setMonthValue] = useState<
     SingleValue<{ label: string; value: string }>
   >({
     label: `${new Intl.DateTimeFormat('en-US', { month: 'long' }).format(
-      currentMonth
-    )} ${currentMonth.getFullYear()}`,
-    value: String(currentMonth.getMonth()),
+      currentSelectedDate
+    )} ${currentSelectedDate.getFullYear()}`,
+    value: String(currentSelectedDate.getMonth()),
   })
 
   const _onChangeMonth = (newValue: unknown, newMonth?: Date) => {
@@ -162,10 +152,12 @@ export function SchedulePickTime() {
     const month = newValue as SingleValue<{ label: string; value: string }>
     setMonthValue(month)
     if (!month?.value) return
-    const year = newMonth ? newMonth?.getFullYear() : currentMonth.getFullYear()
-    setCurrentMonth(new Date(year, Number(month.value), 1))
     if (!newMonth) {
-      setCurrentSelectedDate(new Date(year, Number(month.value), 1))
+      setCurrentSelectedDate(
+        DateTime.now()
+          .set({ month: Number(month.value), day: 1 })
+          .toJSDate()
+      )
     }
   }
 
@@ -196,7 +188,15 @@ export function SchedulePickTime() {
   const getDates = (scheduleDuration = duration) => {
     const days = Array.from({ length: 7 }, (v, k) => k)
       .map(k => addDays(currentSelectedDate, k))
-      .filter(val => isSameMonth(val, currentMonth))
+      .filter(val =>
+        isSameMonth(
+          val,
+          DateTime.fromJSDate(currentSelectedDate)
+            .setZone(timezone)
+            .startOf('month')
+            .toJSDate()
+        )
+      )
     return days.map(date => {
       const slots = getEmptySlots(date, scheduleDuration)
       date = DateTime.fromJSDate(date)
@@ -216,8 +216,14 @@ export function SchedulePickTime() {
     try {
       setAvailableSlots(new Map())
       setBusySlots(new Map())
-      const monthStart = startOfMonth(currentMonth)
-      const monthEnd = endOfMonth(currentMonth)
+      const monthStart = DateTime.fromJSDate(currentSelectedDate)
+        .setZone(timezone)
+        .startOf('month')
+        .toJSDate()
+      const monthEnd = DateTime.fromJSDate(currentSelectedDate)
+        .setZone(timezone)
+        .endOf('month')
+        .toJSDate()
       const accounts = [...new Set(Object.values(groupAvailability).flat())]
       const availableSlots = await fetchBusySlotsRawForMultipleAccounts(
         accounts,
@@ -261,51 +267,54 @@ export function SchedulePickTime() {
   }
   useEffect(() => {
     handleSlotLoad()
-  }, [groupAvailability, currentMonth, duration, meetingMembers])
+  }, [
+    groupAvailability,
+    currentSelectedDate.getMonth(),
+    duration,
+    meetingMembers,
+  ])
   useEffect(() => {
     setDates(getDates())
   }, [currentSelectedDate, timezone])
   const handleScheduledTimeBack = () => {
-    const currentDay = currentSelectedDate.getDate()
-    if (currentDay === 1) {
-      const newMonth = startOfMonth(sub(currentSelectedDate, { months: 1 }))
-
-      setCurrentSelectedDate(addDays(endOfMonth(newMonth), -6))
+    const currentDate = DateTime.fromJSDate(currentSelectedDate)
+      .setZone(timezone)
+      .startOf('day')
+    let newDate = currentDate.minus({ days: 7 })
+    const differenceInDays = currentDate
+      .diff(currentDate.startOf('month'), 'days')
+      .toObject().days
+    if (differenceInDays && differenceInDays < 7) {
+      newDate = currentDate.startOf('month')
+    }
+    if (!newDate.hasSame(currentDate, 'month')) {
+      newDate = newDate.endOf('month').startOf('week')
       _onChangeMonth(
         {
-          label: `${new Intl.DateTimeFormat('en-US', { month: 'long' }).format(
-            newMonth
-          )} ${newMonth.getFullYear()}`,
-          value: String(newMonth.getMonth()),
+          label: `${newDate.toFormat('MMMM yyyy')}`,
+          value: String(newDate.month - 1),
         },
-        newMonth
+        newDate.toJSDate()
       )
-    } else if (currentDay - 7 < 1) {
-      setCurrentSelectedDate(startOfMonth(currentSelectedDate))
-    } else {
-      setCurrentSelectedDate(addDays(currentSelectedDate, -7))
     }
+    setCurrentSelectedDate(newDate.toJSDate())
   }
   const handleScheduledTimeNext = () => {
-    const currentDay = currentSelectedDate.getDate()
-    const lastDateOfMonth = endOfMonth(currentSelectedDate).getDate()
-    if (currentDay === lastDateOfMonth - 6) {
-      const newMonth = startOfMonth(add(currentSelectedDate, { months: 1 }))
-      setCurrentSelectedDate(newMonth)
+    const currentDate = DateTime.fromJSDate(currentSelectedDate)
+      .setZone(timezone)
+      .startOf('day')
+    let newDate = currentDate.plus({ days: 7 })
+    if (!newDate.hasSame(currentDate, 'month')) {
+      newDate = newDate.startOf('month')
       _onChangeMonth(
         {
-          label: `${new Intl.DateTimeFormat('en-US', { month: 'long' }).format(
-            newMonth
-          )} ${newMonth.getFullYear()}`,
-          value: String(newMonth.getMonth()),
+          label: `${newDate.toFormat('MMMM yyyy')}`,
+          value: String(newDate.month - 1),
         },
-        newMonth
+        newDate.toJSDate()
       )
-    } else if (currentDay + 7 > lastDateOfMonth - 7) {
-      setCurrentSelectedDate(addDays(endOfMonth(currentSelectedDate), -6))
-    } else {
-      setCurrentSelectedDate(addDays(currentSelectedDate, 7))
     }
+    setCurrentSelectedDate(newDate.toJSDate())
   }
   const HOURS_SLOTS = useMemo(() => {
     const slots = getEmptySlots(new Date(), duration >= 45 ? duration : 60)
@@ -314,13 +323,7 @@ export function SchedulePickTime() {
       return zonedTime.toFormat(zonedTime.hour < 12 ? 'HH:mm a' : 'hh:mm a')
     })
   }, [duration, timezone])
-  const debouncedTimezoneChange = useMemo(
-    () =>
-      debounce((newTimezone: string) => {
-        setTimezone(newTimezone)
-      }, 300),
-    []
-  )
+
   const isBackDisabled = useMemo(() => {
     const selectedDate =
       DateTime.fromJSDate(currentSelectedDate).setZone(timezone)
@@ -396,7 +399,7 @@ export function SchedulePickTime() {
               return (
                 <HStack key={index} gap={2}>
                   <Box w={5} h={5} bg={guide.color} borderRadius={4} />
-                  <Text>{guide.description}</Text>
+                  <Text>{guide.description.split(' ')[0]}</Text>
                 </HStack>
               )
             })}
