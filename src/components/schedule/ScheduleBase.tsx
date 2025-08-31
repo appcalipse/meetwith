@@ -328,102 +328,158 @@ const ScheduleBase = () => {
                 </FormHelperText>
               )}
             </FormControl>
-            <FormControl
-              w={'max-content'}
-              isDisabled={!canEditMeetingDetails || isScheduling}
-            >
-              <FormLabel htmlFor="date">
-                Duration
-                <Text color="red.500" display="inline">
-                  *
-                </Text>
-              </FormLabel>
-              <Select
-                id="duration"
-                placeholder="Duration"
-                onChange={e => handleDurationChange(Number(e.target.value))}
-                value={duration}
-                borderColor="neutral.400"
-                width={'max-content'}
-                maxW="350px"
-                isInvalid={!isDurationValid}
-                errorBorderColor="red.500"
-              >
-                {DEFAULT_GROUP_SCHEDULING_DURATION.map(type => (
-                  <option key={type.id} value={type.duration}>
-                    {durationToHumanReadable(type.duration)}
-                  </option>
-                ))}
-              </Select>
-              {!isDurationValid && (
-                <FormHelperText color="red.500">
-                  Duration is required
-                </FormHelperText>
-              )}
-            </FormControl>
           </Flex>
+          <FormControl isDisabled={!canEditMeetingDetails || isScheduling}>
+            <FormLabel htmlFor="info">Description (optional)</FormLabel>
+            <RichTextEditor
+              id="info"
+              value={content}
+              onValueChange={handleContentChange}
+              placeholder="Any information you want to share prior to the meeting?"
+              isDisabled={!canEditMeetingDetails || isScheduling}
+            />
+          </FormControl>
+          {(type?.fixed_link || !type?.custom_link) && (
+            <VStack alignItems="start" w={'100%'} gap={4}>
+              <Text fontSize="18px" fontWeight={500}>
+                Location
+              </Text>
+              <RadioGroup
+                onChange={(val: MeetingProvider) => setMeetingProvider(val)}
+                value={meetingProvider}
+                w={'100%'}
+                isDisabled={!canEditMeetingDetails || isScheduling}
+              >
+                <VStack w={'100%'} gap={4}>
+                  {meetingProviders.map(provider => (
+                    <Radio
+                      flexDirection="row-reverse"
+                      justifyContent="space-between"
+                      w="100%"
+                      colorScheme="primary"
+                      value={provider}
+                      key={provider}
+                    >
+                      <Text
+                        fontWeight="600"
+                        color={'primary.200'}
+                        cursor="pointer"
+                      >
+                        {renderProviderName(provider)}
+                      </Text>
+                    </Radio>
+                  ))}
+                </VStack>
+              </RadioGroup>
+              {meetingProvider === MeetingProvider.CUSTOM && (
+                <Input
+                  type="text"
+                  placeholder="insert a custom meeting url"
+                  isDisabled={isScheduling}
+                  my={4}
+                  value={meetingUrl}
+                  onChange={e => setMeetingUrl(e.target.value)}
+                />
+              )}
+            </VStack>
+          )}
           <FormControl
             w="100%"
             maxW="100%"
             isDisabled={!canEditMeetingDetails || isScheduling}
           >
-            <FormLabel htmlFor="participants">
-              Participants
-              <Text color="red.500" display="inline">
-                *
-              </Text>{' '}
-              <InfoTooltip text="You can enter wallet addresses, ENS, Lens, Unstoppable Domain, or email" />
-            </FormLabel>
-            <Box w="100%" maxW="100%">
-              <ChipInput
-                currentItems={participants}
-                placeholder="Enter participants"
-                onChange={onParticipantsChange}
-                renderItem={p => {
-                  if (p.account_address) {
-                    return p.name || ellipsizeAddress(p.account_address!)
-                  } else if (p.name && p.guest_email) {
-                    return `${p.name} - ${p.guest_email}`
-                  } else if (p.name) {
-                    return `${p.name}`
-                  } else {
-                    return p.guest_email!
-                  }
-                }}
-                inputProps={{
-                  pr: 180,
-                  isInvalid: !isParticipantsValid,
-                  errorBorderColor: 'red.500',
-                }}
-                isReadOnly={!canEditMeetingDetails || isScheduling}
-                button={
-                  <Button
-                    pos="absolute"
-                    insetY={0}
-                    right={2}
-                    alignItems="center"
-                    onClick={openGroupModal}
-                    variant={'link'}
-                    _hover={{
-                      textDecoration: 'none',
-                    }}
-                  >
-                    <AddIcon color="white" mr={3} />
-                    <Text fontSize={{ base: 12, md: 16 }}>Add/Edit Groups</Text>
-                  </Button>
+            <FormLabel>Meeting Reminders</FormLabel>
+            <ChakraSelect
+              value={meetingNotification}
+              colorScheme="gray"
+              onChange={val => {
+                const meetingNotification = val as Array<{
+                  value: MeetingReminders
+                  label?: string
+                }>
+                // can't select more than 5 notifications
+                if (meetingNotification.length > 5) {
+                  toast({
+                    title: 'Limit reached',
+                    description: 'You can select up to 5 notifications only.',
+                    status: 'warning',
+                    duration: 3000,
+                    isClosable: true,
+                  })
+                  return
                 }
-              />
-            </Box>
-            <FormHelperText minW={{ md: '600px' }}>
-              {isParticipantsValid ? (
-                <Text>
-                  Separate participants by comma. You will be added
-                  automatically, no need to insert yourself
-                </Text>
-              ) : (
-                <Text color="red.500">Participants are required</Text>
-              )}
-            </FormHelperText>
+                setMeetingNotification(meetingNotification)
+              }}
+              className="noLeftBorder timezone-select"
+              placeholder="Select Notification Alerts"
+              isMulti
+              tagVariant={'solid'}
+              options={MeetingNotificationOptions}
+              components={noClearCustomSelectComponent}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  border: '1px solid',
+                  borderTopColor: 'currentColor',
+                  borderLeftColor: 'currentColor',
+                  borderRightColor: 'currentColor',
+                  borderBottomColor: 'currentColor',
+                  borderColor: 'inherit',
+                  borderRadius: 'md',
+                  maxW: '100%',
+                  display: 'block',
+                }),
+
+                placeholder: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+              }}
+            />
+          </FormControl>
+          <FormControl
+            w="100%"
+            maxW="100%"
+            isDisabled={!canEditMeetingDetails || isScheduling}
+          >
+            <FormLabel>Meeting Repeat</FormLabel>
+            <ChakraSelect
+              value={meetingRepeat}
+              colorScheme="primary"
+              onChange={newValue =>
+                setMeetingRepeat(
+                  newValue as {
+                    value: MeetingRepeat
+                    label: string
+                  }
+                )
+              }
+              // eslint-disable-next-line tailwindcss/no-custom-classname
+              className="noLeftBorder timezone-select"
+              options={MeetingRepeatOptions}
+              components={noClearCustomSelectComponent}
+              chakraStyles={{
+                container: provided => ({
+                  ...provided,
+                  borderColor: 'inherit',
+                  borderRadius: 'md',
+                  maxW: '100%',
+                  display: 'block',
+                }),
+                placeholder: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+                input: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+                control: provided => ({
+                  ...provided,
+                  textAlign: 'left',
+                }),
+              }}
+            />
           </FormControl>
 
           {isScheduler && (
@@ -502,289 +558,62 @@ const ScheduleBase = () => {
               </FormControl>
             </VStack>
           )}
-          <VStack w="100%">
-            <HStack width="fit-content" ml={'auto'}>
-              {' '}
-              <Text fontWeight="500">What is this?</Text>{' '}
-              <InfoIcon
-                onClick={() => setOpenWhatIsThis(true)}
-                cursor="pointer"
-                color={iconColor}
-              />
-            </HStack>
+          <HStack w="100%" flexWrap="wrap">
             <Button
               w="100%"
               py={3}
+              flex={1}
+              flexBasis="50%"
               h={'auto'}
+              variant="outline"
               colorScheme="primary"
-              onClick={handleSubmit}
-              isDisabled={!canEditMeetingDetails || isScheduling}
-            >
-              Discover a time
-            </Button>
-          </VStack>
-        </VStack>
-
-        <HStack width="100%">
-          <Divider />
-          <Text
-            w={'100%'}
-            color={'neutral.400'}
-            whiteSpace="nowrap"
-            fontWeight="700"
-          >
-            Or enter a time manually
-          </Text>
-          <Divider />
-        </HStack>
-        <FormControl
-          w={'100%'}
-          isDisabled={!canEditMeetingDetails || isScheduling}
-        >
-          <FormLabel htmlFor="date">When</FormLabel>
-          <HStack w={'100%'}>
-            <SingleDatepicker
-              date={pickedTime || new Date()}
-              onDateChange={handleTimePick}
-              blockPast={true}
-              inputProps={{
-                height: 'auto',
-                py: 3,
-                pl: 12,
-
-                borderColor: 'neutral.400',
-                _placeholder: {
-                  color: 'neutral.400',
-                },
-              }}
-              iconColor="neutral.400"
-              iconSize={20}
-            />
-            <InputTimePicker
-              value={format(pickedTime || new Date(), 'p')}
-              onChange={time => handleTimePick(new Date(time))}
-              currentDate={pickedTime || new Date()}
-              inputProps={{
-                height: 'auto',
-                py: 3,
-                pl: 12,
-                borderColor: 'neutral.400',
-                _placeholder: {
-                  color: 'neutral.400',
-                },
-              }}
-              iconColor="neutral.400"
-              iconSize={20}
-            />
-          </HStack>
-        </FormControl>
-        {(type?.fixed_link || !type?.custom_link) && (
-          <VStack alignItems="start" w={'100%'} gap={4}>
-            <Text fontSize="18px" fontWeight={500}>
-              Location
-            </Text>
-            <RadioGroup
-              onChange={(val: MeetingProvider) => setMeetingProvider(val)}
-              value={meetingProvider}
-              w={'100%'}
-              isDisabled={!canEditMeetingDetails || isScheduling}
-            >
-              <VStack w={'100%'} gap={4}>
-                {meetingProviders.map(provider => (
-                  <Radio
-                    flexDirection="row-reverse"
-                    justifyContent="space-between"
-                    w="100%"
-                    colorScheme="primary"
-                    value={provider}
-                    key={provider}
-                  >
-                    <Text
-                      fontWeight="600"
-                      color={'primary.200'}
-                      cursor="pointer"
-                    >
-                      {renderProviderName(provider)}
-                    </Text>
-                  </Radio>
-                ))}
-              </VStack>
-            </RadioGroup>
-            {meetingProvider === MeetingProvider.CUSTOM && (
-              <Input
-                type="text"
-                placeholder="insert a custom meeting url"
-                isDisabled={isScheduling}
-                my={4}
-                value={meetingUrl}
-                onChange={e => setMeetingUrl(e.target.value)}
-              />
-            )}
-          </VStack>
-        )}
-        <FormControl
-          w="100%"
-          maxW="100%"
-          isDisabled={!canEditMeetingDetails || isScheduling}
-        >
-          <FormLabel>Meeting reminders</FormLabel>
-          <ChakraSelect
-            value={meetingNotification}
-            colorScheme="gray"
-            onChange={val => {
-              const meetingNotification = val as Array<{
-                value: MeetingReminders
-                label?: string
-              }>
-              // can't select more than 5 notifications
-              if (meetingNotification.length > 5) {
-                toast({
-                  title: 'Limit reached',
-                  description: 'You can select up to 5 notifications only.',
-                  status: 'warning',
-                  duration: 3000,
-                  isClosable: true,
-                })
-                return
+              onClick={handleSchedule}
+              isLoading={isScheduling}
+              isDisabled={
+                participants.length === 0 ||
+                !title ||
+                !duration ||
+                !pickedTime ||
+                !canEditMeetingDetails
               }
-              setMeetingNotification(meetingNotification)
-            }}
-            className="hideBorder"
-            placeholder="Select Notification Alerts"
-            isMulti
-            tagVariant={'solid'}
-            options={MeetingNotificationOptions}
-            components={noClearCustomSelectComponent}
-            chakraStyles={{
-              container: provided => ({
-                ...provided,
-                border: '1px solid',
-                borderTopColor: 'currentColor',
-                borderLeftColor: 'currentColor',
-                borderRightColor: 'currentColor',
-                borderBottomColor: 'currentColor',
-                borderColor: 'inherit',
-                borderRadius: 'md',
-                maxW: '100%',
-                display: 'block',
-              }),
-
-              placeholder: provided => ({
-                ...provided,
-                textAlign: 'left',
-              }),
-            }}
-          />
-        </FormControl>
-        <FormControl
-          w="100%"
-          maxW="100%"
-          isDisabled={!canEditMeetingDetails || isScheduling}
-        >
-          <FormLabel>Meeting Repeat</FormLabel>
-          <ChakraSelect
-            value={meetingRepeat}
-            colorScheme="primary"
-            onChange={newValue =>
-              setMeetingRepeat(
-                newValue as {
-                  value: MeetingRepeat
-                  label: string
-                }
-              )
-            }
-            // eslint-disable-next-line tailwindcss/no-custom-classname
-            className="noLeftBorder timezone-select"
-            options={MeetingRepeatOptions}
-            components={noClearCustomSelectComponent}
-            chakraStyles={{
-              container: provided => ({
-                ...provided,
-                borderColor: 'inherit',
-                borderRadius: 'md',
-                maxW: '100%',
-                display: 'block',
-              }),
-              placeholder: provided => ({
-                ...provided,
-                textAlign: 'left',
-              }),
-              input: provided => ({
-                ...provided,
-                textAlign: 'left',
-              }),
-              control: provided => ({
-                ...provided,
-                textAlign: 'left',
-              }),
-            }}
-          />
-        </FormControl>
-        <FormControl isDisabled={!canEditMeetingDetails || isScheduling}>
-          <FormLabel htmlFor="info">Description (optional)</FormLabel>
-          <RichTextEditor
-            id="info"
-            value={content}
-            onValueChange={handleContentChange}
-            placeholder="Any information you want to share prior to the meeting?"
-            isDisabled={!canEditMeetingDetails || isScheduling}
-          />
-        </FormControl>
-        <HStack w="100%" flexWrap="wrap">
-          <Button
-            w="100%"
-            py={3}
-            flex={1}
-            flexBasis="50%"
-            h={'auto'}
-            variant="outline"
-            colorScheme="primary"
-            onClick={handleSchedule}
-            isLoading={isScheduling}
-            isDisabled={
-              participants.length === 0 ||
-              !title ||
-              !duration ||
-              !pickedTime ||
-              !canEditMeetingDetails
-            }
-          >
-            {query.intent === Intents.UPDATE_MEETING
-              ? 'Update Meeting'
-              : 'Schedule now'}
-          </Button>
-          {query.intent === Intents.UPDATE_MEETING && canCancel && (
-            <Button
-              w="100%"
-              py={3}
-              h={'auto'}
-              colorScheme="primary"
-              onClick={handleCancel}
-              flex={1}
-              flexBasis="40%"
             >
-              Cancel Meeting
+              {query.intent === Intents.UPDATE_MEETING
+                ? 'Update Meeting'
+                : 'Schedule now'}
             </Button>
-          )}
-          {query.intent === Intents.UPDATE_MEETING && canDelete && (
-            <Button
-              w="100%"
-              py={3}
-              h={'auto'}
-              onClick={onDeleteOpen}
-              color={'white'}
-              bg={'orangeButton.800'}
-              _hover={{
-                opacity: 0.75,
-              }}
-              isLoading={isDeleting}
-              flex={1}
-              flexBasis="40%"
-            >
-              Delete Meeting
-            </Button>
-          )}
-        </HStack>
+            {query.intent === Intents.UPDATE_MEETING && canCancel && (
+              <Button
+                w="100%"
+                py={3}
+                h={'auto'}
+                colorScheme="primary"
+                onClick={handleCancel}
+                flex={1}
+                flexBasis="40%"
+              >
+                Cancel Meeting
+              </Button>
+            )}
+            {query.intent === Intents.UPDATE_MEETING && canDelete && (
+              <Button
+                w="100%"
+                py={3}
+                h={'auto'}
+                onClick={onDeleteOpen}
+                color={'white'}
+                bg={'orangeButton.800'}
+                _hover={{
+                  opacity: 0.75,
+                }}
+                isLoading={isDeleting}
+                flex={1}
+                flexBasis="40%"
+              >
+                Delete Meeting
+              </Button>
+            )}
+          </HStack>
+        </VStack>
       </VStack>
     </Box>
   )
