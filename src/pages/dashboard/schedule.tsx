@@ -49,6 +49,7 @@ import {
   selectDefaultProvider,
   updateMeeting,
 } from '@/utils/calendar_manager'
+import { NO_GROUP_KEY } from '@/utils/constants/group'
 import { NO_MEETING_TYPE } from '@/utils/constants/meeting-types'
 import {
   MeetingNotificationOptions,
@@ -75,7 +76,6 @@ import { getSignature } from '@/utils/storage'
 import { getAllParticipantsDisplayName } from '@/utils/user_manager'
 
 export enum Page {
-  SCHEDULE,
   SCHEDULE_TIME,
   SCHEDULE_DETAILS,
   COMPLETED,
@@ -242,7 +242,7 @@ const Schedule: NextPage<IInitialProps> = ({
   const [groupAvailability, setGroupAvailability] = useState<
     Record<string, Array<string>>
   >({})
-  const [currentPage, setCurrentPage] = useState<Page>(Page.SCHEDULE)
+  const [currentPage, setCurrentPage] = useState<Page>(Page.SCHEDULE_TIME)
   const [title, setTitle] = React.useState('')
   const [content, setContent] = useState('')
   const [duration, setDuration] = React.useState(30)
@@ -346,12 +346,10 @@ const Schedule: NextPage<IInitialProps> = ({
   }
   const renderCurrentPage = () => {
     switch (currentPage) {
-      case Page.SCHEDULE:
+      case Page.SCHEDULE_DETAILS:
         return <ScheduleBase />
       case Page.SCHEDULE_TIME:
         return <ScheduleTimeDiscover />
-      case Page.SCHEDULE_DETAILS:
-        return <ScheduleDetails />
       case Page.COMPLETED:
         return <ScheduleCompleted />
     }
@@ -850,7 +848,7 @@ const Schedule: NextPage<IInitialProps> = ({
     try {
       const contact = await getContactById(contactId)
       if (contact) {
-        const key = 'no_group'
+        const key = NO_GROUP_KEY
         const participant: ParticipantInfo = {
           account_address: contact.address,
           name: contact.name,
@@ -1007,6 +1005,16 @@ const Schedule: NextPage<IInitialProps> = ({
     }
     await Promise.all(promises)
     setIsPrefetching(false)
+    if (promises.length === 0) {
+      setGroupAvailability(prev => ({
+        ...prev,
+        [NO_GROUP_KEY]: [currentAccount?.address || ''],
+      }))
+      setGroupParticipants(prev => ({
+        ...prev,
+        [NO_GROUP_KEY]: [currentAccount?.address || ''],
+      }))
+    }
   }
   useEffect(() => {
     void handlePrefetch()
