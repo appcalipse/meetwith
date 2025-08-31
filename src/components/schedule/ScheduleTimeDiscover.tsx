@@ -1,10 +1,12 @@
 import { Flex, Heading, HStack, Icon, VStack } from '@chakra-ui/react'
 import { Account } from '@meta/Account'
+import { useRouter } from 'next/router'
 import { useContext, useEffect, useId, useState } from 'react'
 import { FaArrowLeft } from 'react-icons/fa6'
 
 import { Page, ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
+import { EditMode } from '@/types/Dashboard'
 import { ParticipantInfo } from '@/types/ParticipantInfo'
 import { getExistingAccounts } from '@/utils/api_helper'
 
@@ -17,18 +19,17 @@ import { SchedulePickTime } from './schedule-time-discover/SchedulePickTime'
 export type MeetingMembers = ParticipantInfo & { isCalendarConnected?: boolean }
 
 const ScheduleTimeDiscover = () => {
-  const {
-    participants,
-    groupParticipants,
-    handlePageSwitch,
-    meetingMembers,
-    setMeetingMembers,
-  } = useContext(ScheduleContext)
-  const id = useId()
+  const { participants, groupParticipants, setMeetingMembers } =
+    useContext(ScheduleContext)
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
   const { currentAccount } = useContext(AccountContext)
   const handleClose = () => {
-    handlePageSwitch(Page.SCHEDULE)
+    let url = `/dashboard/${EditMode.MEETINGS}`
+    if (router.query.ref === 'group') {
+      url = `/dashboard/${EditMode.GROUPS}`
+    }
+    router.push(url)
   }
 
   const [loading, setLoading] = useState(false)
