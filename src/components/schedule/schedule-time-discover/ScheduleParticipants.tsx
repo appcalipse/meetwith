@@ -1,42 +1,49 @@
 import {
-  Checkbox,
+  Box,
+  Button,
   Divider,
   Heading,
   HStack,
-  Tag,
-  TagLabel,
-  TagLeftIcon,
   Text,
   VStack,
 } from '@chakra-ui/react'
 import React, { useContext, useMemo } from 'react'
-import { GoDotFill } from 'react-icons/go'
+import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
+import { IoMdClose } from 'react-icons/io'
 
 import { ScheduleContext } from '@/pages/dashboard/schedule'
 import { AccountContext } from '@/providers/AccountProvider'
+import { isGroupParticipant } from '@/types/schedule'
+import { getMergedParticipants } from '@/utils/schedule.helper'
 
 interface ScheduleParticipantsProps {
   isMobile?: boolean
 }
 
 export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
-  const { groupAvailability, setGroupAvailability, meetingMembers } =
-    useContext(ScheduleContext)
+  const {
+    groupAvailability,
+    setGroupAvailability,
+    groupParticipants,
+    setGroupParticipants,
+    meetingMembers,
+    participants,
+    groups: allGroups,
+  } = useContext(ScheduleContext)
   const { currentAccount } = useContext(AccountContext)
+  const groups = useMemo(
+    () =>
+      participants.filter(val => {
+        return isGroupParticipant(val)
+      }),
+    [participants]
+  )
   const allAvailabilities = useMemo(() => {
-    const availabilities = [
-      ...new Set(Object.values(groupAvailability).flat()),
-    ].map(val => val.toLowerCase())
-    if (availabilities.length === 0) {
-      availabilities.push(currentAccount?.address || '')
-    }
-    return availabilities
+    return [...new Set(Object.values(groupAvailability).flat())].map(val =>
+      val.toLowerCase()
+    )
   }, [groupAvailability])
-
-  const handleAvailabilityChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const account_address = event.target.value
+  const handleAvailabilityChange = (account_address: string) => {
     const keys = Object.keys(groupAvailability)
     for (const key of keys) {
       const allGroupParticipants = groupAvailability[key] || []
@@ -44,6 +51,29 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
         ? allGroupParticipants.filter(val => val !== account_address)
         : [...allGroupParticipants, account_address]
       setGroupAvailability(prev => ({
+        ...prev,
+        [key]: newParticipants,
+      }))
+    }
+  }
+  const totalParticipantsCount = useMemo(() => {
+    const participantsMerged = getMergedParticipants(
+      participants,
+      allGroups,
+      groupParticipants,
+      currentAccount?.address || ''
+    )
+    return participantsMerged.length
+  }, [participants, allGroups, groupParticipants, currentAccount?.address])
+  const handleParticipantRemove = (account_address: string) => {
+    if (account_address === currentAccount?.address) return
+    const keys = Object.keys(groupAvailability)
+    for (const key of keys) {
+      const allGroupParticipants = groupParticipants[key] || []
+      const newParticipants = allAvailabilities.includes(account_address)
+        ? allGroupParticipants.filter(val => val !== account_address)
+        : [...allGroupParticipants, account_address]
+      setGroupParticipants(prev => ({
         ...prev,
         [key]: newParticipants,
       }))
@@ -67,10 +97,24 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
       }}
     >
       <HStack gap={9} w="100%" justify={'space-between'}>
-        <Heading size={'sm'}>Participants</Heading>
-        <Heading size={'sm'}>Calendar connection</Heading>
+        <Heading size={'sm'}>Select Participants</Heading>
+        <Heading size={'sm'}>Delete</Heading>
       </HStack>
       <Divider bg={'neutral.400'} />
+      {groups.length > 0 && totalParticipantsCount > 1 && (
+        <VStack gap={2} alignItems="start">
+          {groups.length > 0 && (
+            <Text>
+              <b>Groups Selected:</b> {groups.map(val => val.name).join(', ')}
+            </Text>
+          )}
+          {totalParticipantsCount > 1 && (
+            <Text>
+              <b>Number of Participants:</b> {totalParticipantsCount}
+            </Text>
+          )}
+        </VStack>
+      )}
       <VStack gap={4} w="100%">
         {meetingMembers?.map((participant, index) => {
           return (
@@ -82,16 +126,26 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
               alignItems={'center'}
               h={'72px'}
             >
-              <Checkbox
-                onChange={handleAvailabilityChange}
-                colorScheme={'primary'}
-                value={participant.address?.toLowerCase()}
-                size="lg"
-                alignItems={'center'}
-                isChecked={allAvailabilities.includes(
-                  participant.address?.toLowerCase() || ''
-                )}
-              >
+              <HStack>
+                <Box
+                  onClick={() =>
+                    handleAvailabilityChange(
+                      participant.address?.toLowerCase() || ''
+                    )
+                  }
+                >
+                  {allAvailabilities.includes(
+                    participant.address?.toLowerCase() || ''
+                  ) ? (
+                    <AiOutlineEye cursor="pointer" size={30} color="#F9B19A" />
+                  ) : (
+                    <AiOutlineEyeInvisible
+                      cursor="pointer"
+                      size={30}
+                      color="#F9B19A"
+                    />
+                  )}
+                </Box>
                 <VStack
                   alignItems="flex-start"
                   ml={4}
@@ -117,27 +171,24 @@ export function ScheduleParticipants({ isMobile }: ScheduleParticipantsProps) {
                     </Text>
                   )}
                 </VStack>
-              </Checkbox>
-              {participant.isCalendarConnected ? (
-                <Tag size={'sm'} bg="neutral.400">
-                  <TagLeftIcon
-                    boxSize="12px"
-                    w={5}
-                    h={5}
-                    as={GoDotFill}
-                    color="green.500"
-                  />
-                  <TagLabel px="2px">Connected</TagLabel>
-                </Tag>
-              ) : (
-                <Text p={0} fontWeight={700}>
-                  Not connected
-                </Text>
-              )}
+              </HStack>
+              <IoMdClose
+                size={30}
+                cursor="pointer"
+                color="#CBD2D9"
+                onClick={() =>
+                  handleParticipantRemove(
+                    participant.address?.toLowerCase() || ''
+                  )
+                }
+              />
             </HStack>
           )
         })}
       </VStack>
+      <Button variant="outline" colorScheme="primary" w="100%" px={4} py={3}>
+        Add more participants
+      </Button>
     </VStack>
   )
 }
