@@ -36,3 +36,14 @@ export const subscribeToMessages = async (
   const channelInstance = await getChannel(channel)
   channelInstance.subscribe(name, callback)
 }
+
+export const unSubscribeToMessages = async (
+  channel: string,
+  name = DEFAULT_MESSAGE_NAME
+) => {
+  const channelInstance = await getChannel(channel)
+  channelInstance.unsubscribe(name, () => {
+    // eslint-disable-next-line no-restricted-syntax
+    console.log(`Unsubscribed from ${name} on channel ${channel}`)
+  })
+}
